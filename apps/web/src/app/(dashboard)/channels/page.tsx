@@ -59,11 +59,9 @@ interface ContactOption { id: string; fullName: string | null; phoneE164: string
 
 function ContactPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { data } = useApi<{ items: ContactOption[] }>('/api/contacts?limit=200')
-  const [query, setQuery]   = useState('')
-  const [open, setOpen]     = useState(false)
-  const ref                 = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
+  const ref             = useRef<HTMLDivElement>(null)
 
-  // Close on outside click
   useEffect(() => {
     function handler(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
     document.addEventListener('mousedown', handler)
@@ -71,76 +69,77 @@ function ContactPicker({ value, onChange }: { value: string; onChange: (v: strin
   }, [])
 
   const contacts = (data?.items ?? []).filter(c => c.phoneE164)
-  const filtered = query
-    ? contacts.filter(c =>
-        (c.fullName ?? '').toLowerCase().includes(query.toLowerCase()) ||
-        (c.phoneE164 ?? '').includes(query)
-      )
-    : contacts
 
-  const selectedContact = contacts.find(c => c.phoneE164 === value)
+  // Normalize typed input: strip non-digits, prefix +1
+  function handleInput(raw: string) {
+    if (raw === '' || raw === '+') { onChange('+1'); return }
+    const digits = raw.replace(/\D/g, '')
+    if (!digits) { onChange(''); return }
+    // Always produce +1XXXXXXXXXX
+    const national = digits.startsWith('1') ? digits.slice(1) : digits
+    onChange(`+1${national}`)
+  }
+
+  // Suggestions: contacts whose number contains the typed digits
+  const typedDigits = value.replace(/\D/g, '')
+  const suggestions = typedDigits.length >= 2
+    ? contacts.filter(c => (c.phoneE164 ?? '').replace(/\D/g, '').includes(typedDigits) && c.phoneE164 !== value)
+    : []
+
+  // Show name if value exactly matches a contact
+  const matched = contacts.find(c => c.phoneE164 === value)
 
   return (
     <div ref={ref} className="relative">
-      <div className="flex gap-2">
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={inp}
-          placeholder="+18005551234"
-        />
-        <button
-          type="button"
-          onClick={() => setOpen(o => !o)}
-          className="px-3 py-2 text-xs rounded-lg flex-shrink-0"
-          style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
-          title="Pick from contacts"
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <input
+        value={value}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => { handleInput(e.target.value); setOpen(true) }}
+        className={inp}
+        placeholder="+1"
+        autoComplete="off"
+      />
+
+      {/* Matched contact name tag */}
+      {matched && (
+        <div className="mt-1.5 flex items-center gap-1.5">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" style={{ color: 'var(--text-tertiary)' }}>
             <path d="M8 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5 6a5 5 0 0 1 10 0" />
           </svg>
-        </button>
-      </div>
-
-      {selectedContact && (
-        <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-          {selectedContact.fullName ?? selectedContact.phoneE164}
-        </p>
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{matched.fullName ?? matched.phoneE164}</span>
+        </div>
       )}
 
-      {open && (
+      {/* Dropdown: suggestions from contacts */}
+      {open && (suggestions.length > 0 || contacts.length > 0) && (
         <div className="absolute z-20 mt-1 w-full rounded-lg shadow-lg overflow-hidden"
           style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <div className="p-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search contacts…"
-              className="w-full px-2 py-1.5 text-xs rounded-md"
-              style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
-            />
-          </div>
-          <div className="max-h-48 overflow-y-auto">
-            {filtered.length === 0 && (
-              <p className="px-3 py-4 text-xs text-center" style={{ color: 'var(--text-tertiary)' }}>
-                No contacts with phone numbers found.
-              </p>
-            )}
-            {filtered.map(c => (
+          <div className="max-h-52 overflow-y-auto">
+            {/* Filtered suggestions when typing */}
+            {suggestions.length > 0 && suggestions.map(c => (
               <button key={c.id} type="button"
-                onClick={() => { onChange(c.phoneE164!); setOpen(false); setQuery('') }}
+                onClick={() => { onChange(c.phoneE164!); setOpen(false) }}
                 className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{c.fullName ?? '—'}</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.fullName ?? '—'}</span>
                 <span className="text-xs font-mono" style={{ color: 'var(--text-tertiary)' }}>{c.phoneE164}</span>
               </button>
             ))}
+            {/* Full list when not filtering */}
+            {suggestions.length === 0 && contacts.map(c => (
+              <button key={c.id} type="button"
+                onClick={() => { onChange(c.phoneE164!); setOpen(false) }}
+                className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                style={{ background: c.phoneE164 === value ? 'var(--surface-overlay)' : undefined }}>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.fullName ?? '—'}</span>
+                <span className="text-xs font-mono" style={{ color: 'var(--text-tertiary)' }}>{c.phoneE164}</span>
+              </button>
+            ))}
+            {contacts.length === 0 && (
+              <p className="px-3 py-4 text-xs text-center" style={{ color: 'var(--text-tertiary)' }}>
+                No contacts with phone numbers. Add them in Contacts first.
+              </p>
+            )}
           </div>
-          {contacts.length === 0 && (
-            <p className="px-3 py-2 text-xs" style={{ color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-subtle)' }}>
-              Add contacts in the Contacts page first.
-            </p>
-          )}
         </div>
       )}
     </div>
