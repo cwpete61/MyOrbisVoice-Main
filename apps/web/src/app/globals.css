@@ -1,0 +1,284 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── MyOrbisVoice Design Tokens ──────────────────────────────────────────────
+   Theme: Dark-first. Inspired by the Haze dashboard.
+   Brand hue: 193 (teal — #1a9898 primary).
+   Neutrals tinted toward hue 193 at chroma 0.008–0.012.
+   Default experience is dark mode; light mode available via toggle.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Brand — teal (#3dbcbc → #0a5c5c) */
+  --brand-50:  oklch(96% 0.04 193);
+  --brand-100: oklch(90% 0.07 193);
+  --brand-200: oklch(82% 0.10 193);
+  --brand-300: oklch(72% 0.12 193);
+  --brand-400: oklch(62% 0.12 193);
+  --brand-500: oklch(55% 0.11 193);
+  --brand-600: oklch(46% 0.10 193);
+  --brand-700: oklch(37% 0.08 193);
+  --brand-800: oklch(28% 0.07 193);
+  --brand-900: oklch(20% 0.05 193);
+
+  /* Neutrals — tinted toward hue 193, chroma 0.008 */
+  --n0:   oklch(100% 0.003 193);
+  --n50:  oklch(97%  0.005 193);
+  --n100: oklch(93%  0.007 193);
+  --n200: oklch(87%  0.008 193);
+  --n300: oklch(78%  0.009 193);
+  --n400: oklch(64%  0.009 193);
+  --n500: oklch(52%  0.009 193);
+  --n600: oklch(40%  0.008 193);
+  --n700: oklch(30%  0.008 193);
+  --n750: oklch(24%  0.010 193);
+  --n800: oklch(19%  0.011 193);
+  --n850: oklch(15%  0.012 193);
+  --n900: oklch(12%  0.012 193);
+  --n950: oklch(9%   0.010 193);
+
+  /* Semantic */
+  --success-bg:   oklch(96% 0.04 193);
+  --success-text: oklch(35% 0.11 193);
+  --success-border: oklch(55% 0.11 193 / 0.25);
+
+  --error-bg:   oklch(96% 0.04 25);
+  --error-text: oklch(38% 0.17 25);
+  --error-border: oklch(55% 0.22 25 / 0.25);
+
+  --warning-bg:   oklch(97% 0.04 75);
+  --warning-text: oklch(40% 0.14 75);
+
+  /* Focus ring */
+  --focus-ring: oklch(55% 0.11 193);
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+/* ─── DARK MODE (default) ────────────────────────────────────────────────── */
+/* Dark is the default visual identity — matches the Haze dashboard feel. */
+
+:root,
+.dark {
+  --surface-app:     var(--n950);   /* outermost background */
+  --surface-sidebar: var(--n900);   /* sidebar panel */
+  --surface-raised:  var(--n850);   /* cards, panels */
+  --surface-overlay: var(--n800);   /* modals, dropdowns */
+
+  --border-subtle:  oklch(24% 0.010 193);
+  --border-default: oklch(27% 0.010 193);
+
+  --text-primary:   var(--n50);
+  --text-secondary: var(--n400);
+  --text-tertiary:  var(--n600);
+  --text-inverse:   var(--n950);
+
+  --nav-active-bg:   oklch(19% 0.04 193);
+  --nav-active-text: var(--brand-300);
+
+  /* Semantic alerts — dark */
+  --alert-success-bg:     oklch(14% 0.04 193);
+  --alert-success-text:   oklch(72% 0.12 193);
+  --alert-success-border: oklch(37% 0.08 193 / 0.35);
+
+  --alert-error-bg:     oklch(13% 0.04 25);
+  --alert-error-text:   oklch(70% 0.18 25);
+  --alert-error-border: oklch(40% 0.17 25 / 0.35);
+}
+
+/* ─── LIGHT MODE ─────────────────────────────────────────────────────────── */
+
+.light {
+  --surface-app:     var(--n50);
+  --surface-sidebar: var(--n0);
+  --surface-raised:  var(--n0);
+  --surface-overlay: var(--n0);
+
+  --border-subtle:  var(--n200);
+  --border-default: var(--n200);
+
+  --text-primary:   var(--n950);
+  --text-secondary: var(--n500);
+  --text-tertiary:  var(--n400);
+  --text-inverse:   var(--n0);
+
+  --nav-active-bg:   var(--brand-50);
+  --nav-active-text: var(--brand-600);
+
+  --alert-success-bg:     var(--success-bg);
+  --alert-success-text:   var(--success-text);
+  --alert-success-border: var(--success-border);
+
+  --alert-error-bg:     var(--error-bg);
+  --alert-error-text:   var(--error-text);
+  --alert-error-border: var(--error-border);
+}
+
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--surface-app);
+    color: var(--text-primary);
+    line-height: 1.6;
+  }
+
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  input:focus, textarea:focus, select:focus { outline: none; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 0;
+  }
+}
+
+/* ─── Components ─────────────────────────────────────────────────────────── */
+
+@layer components {
+  /* Input */
+  .input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: var(--surface-overlay);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+    line-height: 1.5;
+  }
+  .input::placeholder { color: var(--text-tertiary); }
+  .input:focus {
+    border-color: oklch(55% 0.11 193 / 0.7);
+    box-shadow: 0 0 0 3px oklch(55% 0.11 193 / 0.12);
+  }
+  .input:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Label */
+  .label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+    letter-spacing: 0.005em;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5625rem 1rem;
+    background: oklch(55% 0.11 193);
+    color: oklch(10% 0.01 193);
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: background 120ms ease, transform 60ms ease;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .btn-primary:hover { background: oklch(62% 0.12 193); }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Ghost button */
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5625rem 1rem;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 8px;
+    border: 1px solid var(--border-default);
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+    white-space: nowrap;
+  }
+  .btn-ghost:hover {
+    background: var(--surface-overlay);
+    color: var(--text-primary);
+  }
+  .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Danger button */
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5625rem 1rem;
+    background: transparent;
+    color: oklch(68% 0.20 25);
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 8px;
+    border: 1px solid oklch(68% 0.20 25 / 0.3);
+    cursor: pointer;
+    transition: background 120ms ease;
+    white-space: nowrap;
+  }
+  .btn-danger:hover { background: oklch(13% 0.04 25); }
+  .btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Card */
+  .card {
+    background: var(--surface-raised);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+
+  /* Badge */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1875rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  /* Alerts */
+  .alert-success {
+    padding: 0.75rem 1rem;
+    background: var(--alert-success-bg);
+    border: 1px solid var(--alert-success-border);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: var(--alert-success-text);
+  }
+
+  .alert-error {
+    padding: 0.75rem 1rem;
+    background: var(--alert-error-bg);
+    border: 1px solid var(--alert-error-border);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    color: var(--alert-error-text);
+  }
+}

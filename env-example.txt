@@ -1,0 +1,77 @@
+# Core
+NODE_ENV=development
+APP_NAME=VoiceAutomation
+APP_BASE_URL=http://localhost:3000
+API_BASE_URL=http://localhost:4000
+
+# Domains
+MARKETING_DOMAIN=myorbisvoice.com
+APP_DOMAIN=app.myorbisvoice.com
+N8N_DOMAIN=n8n.myorbisvoice.com
+TRANSACTIONAL_EMAIL_SUBDOMAIN=notify.myorbisvoice.com
+
+# Database
+DATABASE_URL=postgresql://voiceautomation:voiceautomation@postgres:5432/voiceautomation?schema=public
+
+# Redis
+REDIS_URL=redis://redis:6379
+
+# Auth
+AUTH_SECRET=replace-with-long-random-secret
+SESSION_COOKIE_NAME=voiceautomation_session
+
+# Google OAuth
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:4000/api/integrations/google/callback
+
+# Twilio
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_API_KEY_SID=
+TWILIO_API_KEY_SECRET=
+TWILIO_MESSAGING_SERVICE_SID=
+TWILIO_STATUS_CALLBACK_BASE_URL=http://localhost:4000
+
+# Stripe
+STRIPE_SECRET_KEY=
+STRIPE_PUBLISHABLE_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PRICE_STARTER_MONTHLY=
+STRIPE_PRICE_PRO_MONTHLY=
+STRIPE_PRICE_ENTERPRISE_MONTHLY=
+
+# OpenAI
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+
+# Gemini
+GEMINI_API_KEY=
+GEMINI_LIVE_MODEL=gemini-live-2.5-flash-preview
+
+# Transactional email provider
+TRANSACTIONAL_EMAIL_PROVIDER=
+TRANSACTIONAL_EMAIL_API_KEY=
+TRANSACTIONAL_EMAIL_FROM_AUTH=auth@notify.myorbisvoice.com
+TRANSACTIONAL_EMAIL_FROM_BOOKINGS=bookings@notify.myorbisvoice.com
+TRANSACTIONAL_EMAIL_FROM_BILLING=billing@notify.myorbisvoice.com
+TRANSACTIONAL_EMAIL_FROM_SYSTEM=system@notify.myorbisvoice.com
+
+# n8n — runs on schema "n8n" inside the shared DB, never on the app "public" schema
+N8N_HOST=n8n.local
+N8N_PORT=5678
+N8N_PROTOCOL=http
+N8N_EDITOR_BASE_URL=http://localhost:5678
+N8N_WEBHOOK_URL=http://localhost:5678
+N8N_ENCRYPTION_KEY=replace-with-long-random-key
+N8N_DB_SCHEMA=n8n
+N8N_USER_MANAGEMENT_DISABLED=false
+
+# App runtime flags
+ENABLE_WIDGET=true
+ENABLE_INBOUND=true
+ENABLE_OUTBOUND=true
+ENABLE_AFFILIATES=true
+
+# Logging
+LOG_LEVEL=debug

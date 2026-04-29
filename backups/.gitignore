@@ -1,0 +1,7 @@
+# Ignore all dump files, keep the directory
+*.dump
+*.sql
+*.tar
+*.gz
+!.gitkeep
+!.gitignore

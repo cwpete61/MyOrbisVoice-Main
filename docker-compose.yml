@@ -1,0 +1,167 @@
+version: "3.9"
+
+name: voiceautomation
+
+services:
+  reverse-proxy:
+    image: caddy:2.8
+    container_name: voiceautomation-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app-web
+      - app-api
+      - n8n-main
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: voiceautomation-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: voiceautomation
+      POSTGRES_USER: voiceautomation
+      POSTGRES_PASSWORD: voiceautomation
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voiceautomation -d voiceautomation"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: voiceautomation-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app-web:
+    image: node:20-alpine
+    container_name: voiceautomation-web
+    restart: unless-stopped
+    working_dir: /workspace
+    command: sh -c "echo 'apps/web scaffold placeholder' && tail -f /dev/null"
+    volumes:
+      - ./:/workspace
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  app-api:
+    image: node:20-alpine
+    container_name: voiceautomation-api
+    restart: unless-stopped
+    working_dir: /workspace
+    command: sh -c "echo 'apps/api scaffold placeholder' && tail -f /dev/null"
+    volumes:
+      - ./:/workspace
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://voiceautomation:voiceautomation@postgres:5432/voiceautomation?schema=public
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  voice-gateway:
+    image: node:20-alpine
+    container_name: voiceautomation-voice-gateway
+    restart: unless-stopped
+    working_dir: /workspace
+    command: sh -c "echo 'apps/voice-gateway scaffold placeholder' && tail -f /dev/null"
+    volumes:
+      - ./:/workspace
+    ports:
+      - "4010:4010"
+    environment:
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  n8n-main:
+    image: n8nio/n8n:1.88.0
+    container_name: voiceautomation-n8n-main
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # n8n uses its own schema (n8n) inside the same postgres database.
+      # This keeps n8n tables fully isolated from the app schema (public).
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: voiceautomation
+      DB_POSTGRESDB_USER: voiceautomation
+      DB_POSTGRESDB_PASSWORD: voiceautomation
+      DB_POSTGRESDB_SCHEMA: n8n
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+      EXECUTIONS_MODE: queue
+      N8N_HOST: n8n.local
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_EDITOR_BASE_URL: http://localhost:5678
+      N8N_WEBHOOK_URL: http://localhost:5678
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me-in-production}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  n8n-worker:
+    image: n8nio/n8n:1.88.0
+    container_name: voiceautomation-n8n-worker
+    restart: unless-stopped
+    command: worker
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: voiceautomation
+      DB_POSTGRESDB_USER: voiceautomation
+      DB_POSTGRESDB_PASSWORD: voiceautomation
+      DB_POSTGRESDB_SCHEMA: n8n
+      QUEUE_BULL_REDIS_HOST: redis
+      QUEUE_BULL_REDIS_PORT: 6379
+      EXECUTIONS_MODE: queue
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  n8n_data:
+  caddy_data:
+  caddy_config:

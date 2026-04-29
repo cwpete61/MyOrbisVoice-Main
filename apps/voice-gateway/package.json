@@ -1,0 +1,8 @@
+{
+  "name": "@voiceautomation/voice-gateway",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "echo 'Implement voice gateway here' && tail -f /dev/null"
+  }
+}
