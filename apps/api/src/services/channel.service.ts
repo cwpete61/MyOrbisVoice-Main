@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
@@ -50,7 +51,15 @@ export async function updateChannel(
     if (!prompt) throw new AppError('NOT_FOUND', 'Prompt version not found', 404)
   }
 
+  // Auto-generate publicKey when enabling the widget channel for the first time
+  const existing = await prisma.channelConfig.findUnique({
+    where: { tenantId_channelType: { tenantId, channelType: channelType as (typeof CHANNEL_TYPES)[number] } },
+    select: { publicKey: true },
+  })
+  const needsPublicKey = channelType === 'WIDGET' && data.isEnabled && !existing?.publicKey
+
   const update: Prisma.ChannelConfigUpdateInput = {
+    ...(needsPublicKey && { publicKey: randomBytes(24).toString('hex') }),
     ...(data.isEnabled !== undefined && { isEnabled: data.isEnabled }),
     ...(data.greetingMode !== undefined && { greetingMode: data.greetingMode }),
     ...(data.afterHoursMode !== undefined && { afterHoursMode: data.afterHoursMode }),

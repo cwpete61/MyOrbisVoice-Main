@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import * as googleService from '../services/google.service.js'
+import * as twilioService from '../services/twilio.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { getEnv } from '@voiceautomation/config'
 
@@ -25,14 +26,41 @@ function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
 router.get('/integrations', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const google = await googleService.getGoogleConnection(tenantId)
+    const [google, twilio] = await Promise.all([
+      googleService.getGoogleConnection(tenantId),
+      twilioService.getTwilioConnection(tenantId),
+    ])
     res.json({
       data: {
         google: google
           ? { status: google.status, email: google.email, lastVerifiedAt: google.lastVerifiedAt, calendarCount: (google.calendarIds as string[]).length }
           : { status: 'NOT_CONNECTED', email: null, lastVerifiedAt: null, calendarCount: 0 },
+        twilio,
       },
     })
+  } catch (err) { next(err) }
+})
+
+// Save Twilio credentials (write-only — auth token is encrypted at rest)
+router.post('/integrations/twilio', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    const { accountSid, authToken } = req.body as { accountSid?: string; authToken?: string }
+    if (!accountSid || !authToken) {
+      res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'accountSid and authToken are required' }] })
+      return
+    }
+    await twilioService.saveTwilioCredentials(tenantId, accountSid.trim(), authToken.trim())
+    res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
+
+// Disconnect Twilio
+router.delete('/integrations/twilio', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    await twilioService.disconnectTwilio(tenantId)
+    res.json({ data: { ok: true } })
   } catch (err) { next(err) }
 })
 

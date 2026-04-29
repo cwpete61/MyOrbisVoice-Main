@@ -23,6 +23,7 @@
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
     "stripe": "^22.1.0",
+    "twilio": "^6.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

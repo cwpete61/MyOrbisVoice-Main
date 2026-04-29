@@ -407,19 +407,20 @@ model AgentProfile {
 }
 
 model ChannelConfig {
-  id             String        @id @default(uuid())
-  tenantId       String
-  channelType    ChannelType
-  isEnabled      Boolean       @default(false)
-  greetingMode   String?
-  afterHoursMode String?
-  escalationMode String?
-  configJson     Json?
+  id              String         @id @default(uuid())
+  tenantId        String
+  channelType     ChannelType
+  isEnabled       Boolean        @default(false)
+  publicKey       String?        @unique
+  greetingMode    String?
+  afterHoursMode  String?
+  escalationMode  String?
+  configJson      Json?
   promptVersionId String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  promptVersion  PromptVersion? @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  promptVersion   PromptVersion? @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, channelType])
 }
@@ -458,6 +459,7 @@ model TwilioConnectionDetail {
   id                     String               @id @default(uuid())
   integrationConnectionId String             @unique
   accountSid             String
+  encryptedAuthToken     String?
   messagingServiceSid    String?
   createdAt              DateTime             @default(now())
   updatedAt              DateTime             @updatedAt

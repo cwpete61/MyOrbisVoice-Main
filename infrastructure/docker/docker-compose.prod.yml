@@ -43,8 +43,6 @@ services:
     restart: unless-stopped
     env_file: .env.prod
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-voiceautomation}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-voiceautomation}?schema=public
-      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NODE_ENV: production
     networks:
       - internal
@@ -70,12 +68,36 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: https://api.myorbisvoice.com
+      NEXT_PUBLIC_GATEWAY_URL: https://gateway.myorbisvoice.com
     networks:
       - internal
       - caddy_app_edge
     depends_on:
       api:
         condition: service_healthy
+
+  voice-gateway:
+    build:
+      context: ../../
+      dockerfile: apps/voice-gateway/Dockerfile
+    image: myorbisvoice-gateway:latest
+    container_name: myorbisvoice-gateway
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      NODE_ENV: production
+      GATEWAY_PORT: "5000"
+    networks:
+      - internal
+      - caddy_app_edge
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health | grep -q ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   n8n:
     image: n8nio/n8n:1.88.0

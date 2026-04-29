@@ -3,26 +3,185 @@
 import { useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 
+interface BusinessHours {
+  [day: string]: { open: string; close: string; closed: boolean }
+}
+
+interface ChannelConfig {
+  forwardingNumber?: string
+  transferNumber?: string
+  businessHours?: BusinessHours
+}
+
 interface Channel {
   id: string; channelType: string; isEnabled: boolean
   greetingMode: string | null; afterHoursMode: string | null; escalationMode: string | null
+  configJson: ChannelConfig | null
   promptVersion: { id: string; name: string } | null
 }
 
-const CHANNEL_LABELS: Record<string, { label: string; description: string }> = {
-  WIDGET: { label: 'Website Widget', description: 'Real-time browser voice agent' },
-  INBOUND: { label: 'Inbound Receptionist', description: 'Handles live phone calls' },
-  OUTBOUND: { label: 'Outbound Caller', description: 'Runs campaigns and follow-up calls' },
+interface PhoneNumber {
+  id: string; e164Number: string; displayLabel: string | null
+  isInboundEnabled: boolean; isOutboundEnabled: boolean; isSmsEnabled: boolean
+  forwardingTarget: string | null; twilioNumberSid: string | null
 }
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500'
-const labelCls = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 capitalize'
+const CHANNEL_LABELS: Record<string, { label: string; description: string }> = {
+  WIDGET:   { label: 'Website Widget',       description: 'Real-time browser voice agent' },
+  INBOUND:  { label: 'Inbound Receptionist', description: 'Handles live phone calls' },
+  OUTBOUND: { label: 'Outbound Caller',      description: 'Runs campaigns and follow-up calls' },
+}
+
+const AFTER_HOURS_OPTIONS = [
+  { value: '',          label: 'Default (inform & hang up)' },
+  { value: 'voicemail', label: 'Record voicemail' },
+  { value: 'forward',   label: 'Forward to number' },
+]
+
+const DAYS = ['mon','tue','wed','thu','fri','sat','sun']
+const DAY_LABELS: Record<string, string> = { mon:'Mon', tue:'Tue', wed:'Wed', thu:'Thu', fri:'Fri', sat:'Sat', sun:'Sun' }
+
+const DEFAULT_HOURS: BusinessHours = {
+  mon: { open: '09:00', close: '17:00', closed: false },
+  tue: { open: '09:00', close: '17:00', closed: false },
+  wed: { open: '09:00', close: '17:00', closed: false },
+  thu: { open: '09:00', close: '17:00', closed: false },
+  fri: { open: '09:00', close: '17:00', closed: false },
+  sat: { open: '09:00', close: '13:00', closed: true  },
+  sun: { open: '09:00', close: '13:00', closed: true  },
+}
+
+const inp  = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
+const lbl  = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'
+const mono = 'font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded'
+
+function PhoneNumbersPanel({ numbers, onAdd, onDelete }: {
+  numbers: PhoneNumber[]
+  onAdd: (draft: { e164Number: string; displayLabel: string; twilioNumberSid: string }) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+}) {
+  const [adding, setAdding] = useState(false)
+  const [draft, setDraft]   = useState({ e164Number: '', displayLabel: '', twilioNumberSid: '' })
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg]       = useState('')
+
+  async function addNumber() {
+    setSaving(true); setMsg('')
+    try {
+      await onAdd(draft)
+      setDraft({ e164Number: '', displayLabel: '', twilioNumberSid: '' })
+      setAdding(false)
+    } catch (err) { setMsg(err instanceof Error ? err.message : 'Failed') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Phone Numbers</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Numbers Twilio routes to this receptionist</p>
+        </div>
+        <button onClick={() => setAdding(true)}
+          className="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
+          + Add number
+        </button>
+      </div>
+
+      {msg && <p className="text-xs text-red-500">{msg}</p>}
+
+      {numbers.length === 0
+        ? <p className="text-xs text-gray-400 dark:text-gray-500 py-3 text-center">No phone numbers yet.</p>
+        : (
+          <div className="space-y-2">
+            {numbers.map((n) => (
+              <div key={n.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                <div>
+                  <span className={mono}>{n.e164Number}</span>
+                  {n.displayLabel && <span className="ml-2 text-xs text-gray-500">{n.displayLabel}</span>}
+                </div>
+                <button onClick={() => onDelete(n.id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+      {adding && (
+        <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 space-y-3">
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Add phone number</h4>
+          <div>
+            <label className={lbl}>E.164 number <span className="text-gray-400 font-normal">(e.g. +18005551234)</span></label>
+            <input value={draft.e164Number} onChange={(e) => setDraft({ ...draft, e164Number: e.target.value })} className={inp} placeholder="+18005551234" />
+          </div>
+          <div>
+            <label className={lbl}>Display label <span className="text-gray-400 font-normal">(optional)</span></label>
+            <input value={draft.displayLabel} onChange={(e) => setDraft({ ...draft, displayLabel: e.target.value })} className={inp} placeholder="Main reception line" />
+          </div>
+          <div>
+            <label className={lbl}>Twilio Number SID <span className="text-gray-400 font-normal">(optional)</span></label>
+            <input value={draft.twilioNumberSid} onChange={(e) => setDraft({ ...draft, twilioNumberSid: e.target.value })} className={inp} placeholder="PNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={addNumber} disabled={saving || !draft.e164Number}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button onClick={() => setAdding(false)} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BusinessHoursEditor({ hours, onChange }: { hours: BusinessHours; onChange: (h: BusinessHours) => void }) {
+  return (
+    <div className="space-y-2">
+      {DAYS.map((day) => {
+        const entry = hours[day] ?? DEFAULT_HOURS[day]!
+        return (
+          <div key={day} className="flex items-center gap-3">
+            <div className="w-8 text-xs font-medium text-gray-500 dark:text-gray-400">{DAY_LABELS[day]}</div>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={!entry.closed}
+                onChange={(e) => onChange({ ...hours, [day]: { ...entry, closed: !e.target.checked } })}
+                className="rounded" />
+              <span className="text-xs text-gray-600 dark:text-gray-400">Open</span>
+            </label>
+            {!entry.closed && (
+              <>
+                <input type="time" value={entry.open}
+                  onChange={(e) => onChange({ ...hours, [day]: { ...entry, open: e.target.value } })}
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                <span className="text-xs text-gray-400">to</span>
+                <input type="time" value={entry.close}
+                  onChange={(e) => onChange({ ...hours, [day]: { ...entry, close: e.target.value } })}
+                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              </>
+            )}
+            {entry.closed && <span className="text-xs text-gray-400 italic">Closed</span>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function ChannelsPage() {
   const { data: channels, loading, error, reload } = useApi<Channel[]>('/api/channels')
+  const { data: phoneNumbers, reload: reloadNumbers } = useApi<PhoneNumber[]>('/api/phone-numbers')
   const [selected, setSelected] = useState<Channel | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
+  const [saving, setSaving]     = useState(false)
+  const [message, setMessage]   = useState('')
+
+  function getConfig(ch: Channel): ChannelConfig {
+    return (ch.configJson as ChannelConfig) ?? {}
+  }
+
+  function setConfig(key: keyof ChannelConfig, value: unknown) {
+    if (!selected) return
+    setSelected({ ...selected, configJson: { ...getConfig(selected), [key]: value } })
+  }
 
   async function saveChannel() {
     if (!selected) return
@@ -31,10 +190,11 @@ export default function ChannelsPage() {
       const updated = await apiFetch<Channel>(`/api/channels/${selected.channelType}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          isEnabled: selected.isEnabled,
-          greetingMode: selected.greetingMode,
+          isEnabled:      selected.isEnabled,
+          greetingMode:   selected.greetingMode,
           afterHoursMode: selected.afterHoursMode,
           escalationMode: selected.escalationMode,
+          configJson:     selected.configJson,
         }),
       })
       setSelected(updated)
@@ -44,19 +204,42 @@ export default function ChannelsPage() {
     finally { setSaving(false) }
   }
 
+  async function handleAddNumber(draft: { e164Number: string; displayLabel: string; twilioNumberSid: string }) {
+    await apiFetch('/api/phone-numbers', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...draft,
+        displayLabel:    draft.displayLabel    || null,
+        twilioNumberSid: draft.twilioNumberSid || null,
+        isInboundEnabled: true,
+      }),
+    })
+    await reloadNumbers()
+  }
+
+  async function handleDeleteNumber(id: string) {
+    if (!confirm('Remove this phone number?')) return
+    await apiFetch(`/api/phone-numbers/${id}`, { method: 'DELETE' })
+    await reloadNumbers()
+  }
+
   if (loading) return <div className="p-8 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
-  if (error) return <div className="p-8 text-sm text-red-500">{error}</div>
+  if (error)   return <div className="p-8 text-sm text-red-500">{error}</div>
+
+  const cfg = selected ? getConfig(selected) : {}
 
   return (
     <div className="p-8">
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Channels</h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Enable and configure each voice channel</p>
 
-      {message && <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-400">{message}</div>}
+      {message && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-400">{message}</div>
+      )}
 
       <div className="grid grid-cols-3 gap-4 mb-8">
         {(channels ?? []).map((c) => (
-          <button key={c.id} onClick={() => setSelected(c)}
+          <button key={c.id} onClick={() => { setSelected(c); setMessage('') }}
             className={`text-left p-5 rounded-xl border transition-all ${selected?.id === c.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600'}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{CHANNEL_LABELS[c.channelType]?.label}</span>
@@ -68,32 +251,93 @@ export default function ChannelsPage() {
       </div>
 
       {selected && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 space-y-4 max-w-lg">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 max-w-xl space-y-5">
+
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">{CHANNEL_LABELS[selected.channelType]?.label}</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{CHANNEL_LABELS[selected.channelType]?.label}</h2>
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
               <input type="checkbox" checked={selected.isEnabled}
-                onChange={(e) => setSelected({ ...selected, isEnabled: e.target.checked })}
-                className="rounded" />
+                onChange={(e) => setSelected({ ...selected, isEnabled: e.target.checked })} className="rounded" />
               Enabled
             </label>
           </div>
-          {(['greetingMode', 'afterHoursMode', 'escalationMode'] as const).map((field) => (
-            <div key={field}>
-              <label className={labelCls}>{field.replace(/([A-Z])/g, ' $1').trim()}</label>
-              <input value={selected[field] ?? ''}
-                onChange={(e) => setSelected({ ...selected, [field]: e.target.value || null })}
-                className={inputCls}
-                placeholder="e.g. friendly, voicemail, escalate-to-human" />
-            </div>
-          ))}
+
+          {/* Greeting mode */}
+          <div>
+            <label className={lbl}>Greeting mode</label>
+            <input value={selected.greetingMode ?? ''} onChange={(e) => setSelected({ ...selected, greetingMode: e.target.value || null })}
+              className={inp} placeholder="e.g. friendly, formal, professional" />
+            <p className="mt-1 text-xs text-gray-400">Sets the tone of the agent's opening message</p>
+          </div>
+
+          {/* Escalation mode + transfer number */}
+          <div>
+            <label className={lbl}>Escalation mode</label>
+            <input value={selected.escalationMode ?? ''} onChange={(e) => setSelected({ ...selected, escalationMode: e.target.value || null })}
+              className={inp} placeholder="e.g. escalate-to-human" />
+          </div>
+
+          <div>
+            <label className={lbl}>Transfer / escalation number</label>
+            <input value={cfg.transferNumber ?? ''} onChange={(e) => setConfig('transferNumber', e.target.value || undefined)}
+              className={inp} placeholder="+18005551234" />
+            <p className="mt-1 text-xs text-gray-400">The agent dials this number when escalating to a human</p>
+          </div>
+
+          {/* Inbound-specific fields */}
+          {selected.channelType === 'INBOUND' && (
+            <>
+              <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-4">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">After-hours</h3>
+
+                <div>
+                  <label className={lbl}>After-hours behaviour</label>
+                  <select value={selected.afterHoursMode ?? ''}
+                    onChange={(e) => setSelected({ ...selected, afterHoursMode: e.target.value || null })}
+                    className={inp}>
+                    {AFTER_HOURS_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {selected.afterHoursMode === 'forward' && (
+                  <div>
+                    <label className={lbl}>Forward calls to</label>
+                    <input value={cfg.forwardingNumber ?? ''} onChange={(e) => setConfig('forwardingNumber', e.target.value || undefined)}
+                      className={inp} placeholder="+18005551234" />
+                    <p className="mt-1 text-xs text-gray-400">Calls outside business hours are forwarded here</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Business hours</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Calls outside these hours trigger the after-hours behaviour above</p>
+                <BusinessHoursEditor
+                  hours={cfg.businessHours ?? DEFAULT_HOURS}
+                  onChange={(h) => setConfig('businessHours', h)} />
+              </div>
+            </>
+          )}
+
           {selected.promptVersion && (
             <p className="text-xs text-gray-500 dark:text-gray-400">Bound prompt: {selected.promptVersion.name}</p>
           )}
+
           <button onClick={saveChannel} disabled={saving}
             className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
             {saving ? 'Saving…' : 'Save channel'}
           </button>
+
+          {selected.channelType === 'INBOUND' && (
+            <PhoneNumbersPanel
+              numbers={phoneNumbers ?? []}
+              onAdd={handleAddNumber}
+              onDelete={handleDeleteNumber}
+            />
+          )}
         </div>
       )}
     </div>

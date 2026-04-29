@@ -6,12 +6,17 @@ import rateLimit from 'express-rate-limit'
 import { getEnv } from '@voiceautomation/config'
 import routes from './routes/index.js'
 import { webhooksRouter } from './routes/webhooks.js'
+import { twilioInboundRouter } from './routes/twilio-inbound.js'
+import { outboundWebhooksRouter } from './routes/outbound-webhooks.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { startTokenCleanupJob } from './jobs/token-cleanup.js'
 
 const env = getEnv()
 const app: Express = express()
 const PORT = 4000
+
+// Trust reverse proxy (Caddy) so rate-limit sees real client IP from X-Forwarded-For
+app.set('trust proxy', 1)
 
 // Security headers
 app.use(helmet())
@@ -73,6 +78,10 @@ app.use(
     message: rateLimitResponse,
   }),
 )
+
+// Twilio webhooks — urlencoded body (Twilio posts application/x-www-form-urlencoded)
+app.use('/api/webhooks/twilio', express.urlencoded({ extended: false }), twilioInboundRouter)
+app.use('/api/webhooks/twilio', express.urlencoded({ extended: false }), outboundWebhooksRouter)
 
 // Routes
 app.use(routes)
