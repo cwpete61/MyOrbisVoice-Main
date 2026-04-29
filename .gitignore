@@ -34,3 +34,6 @@ pnpm-debug.log*
 postgres_data/
 redis_data/
 n8n_data/
+backups/
+site/Site.zip
+*.dump

@@ -32,7 +32,7 @@ build_gateway() {
 sync_prisma() {
   log "Syncing Prisma schema..."
   rsync -az prisma/schema.prisma "$SERVER:$REMOTE/prisma/schema.prisma"
-  rsync -az schema.prisma         "$SERVER:$REMOTE/schema.prisma"
+  ssh "$SERVER" "rm -f $REMOTE/schema.prisma"
 }
 
 sync_api() {
