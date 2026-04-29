@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 
 interface BusinessHours {
@@ -54,6 +54,98 @@ const DEFAULT_HOURS: BusinessHours = {
 const inp  = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
 const lbl  = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'
 const mono = 'font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded'
+
+interface ContactOption { id: string; fullName: string | null; phoneE164: string | null }
+
+function ContactPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { data } = useApi<{ items: ContactOption[] }>('/api/contacts?limit=200')
+  const [query, setQuery]   = useState('')
+  const [open, setOpen]     = useState(false)
+  const ref                 = useRef<HTMLDivElement>(null)
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const contacts = (data?.items ?? []).filter(c => c.phoneE164)
+  const filtered = query
+    ? contacts.filter(c =>
+        (c.fullName ?? '').toLowerCase().includes(query.toLowerCase()) ||
+        (c.phoneE164 ?? '').includes(query)
+      )
+    : contacts
+
+  const selectedContact = contacts.find(c => c.phoneE164 === value)
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="flex gap-2">
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={inp}
+          placeholder="+18005551234"
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          className="px-3 py-2 text-xs rounded-lg flex-shrink-0"
+          style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+          title="Pick from contacts"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M8 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5 6a5 5 0 0 1 10 0" />
+          </svg>
+        </button>
+      </div>
+
+      {selectedContact && (
+        <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+          {selectedContact.fullName ?? selectedContact.phoneE164}
+        </p>
+      )}
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full rounded-lg shadow-lg overflow-hidden"
+          style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+          <div className="p-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search contacts…"
+              className="w-full px-2 py-1.5 text-xs rounded-md"
+              style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+            />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0 && (
+              <p className="px-3 py-4 text-xs text-center" style={{ color: 'var(--text-tertiary)' }}>
+                No contacts with phone numbers found.
+              </p>
+            )}
+            {filtered.map(c => (
+              <button key={c.id} type="button"
+                onClick={() => { onChange(c.phoneE164!); setOpen(false); setQuery('') }}
+                className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{c.fullName ?? '—'}</span>
+                <span className="text-xs font-mono" style={{ color: 'var(--text-tertiary)' }}>{c.phoneE164}</span>
+              </button>
+            ))}
+          </div>
+          {contacts.length === 0 && (
+            <p className="px-3 py-2 text-xs" style={{ color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-subtle)' }}>
+              Add contacts in the Contacts page first.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function PhoneNumbersPanel({ numbers, onAdd, onDelete }: {
   numbers: PhoneNumber[]
@@ -280,8 +372,10 @@ export default function ChannelsPage() {
 
           <div>
             <label className={lbl}>Transfer / escalation number</label>
-            <input value={cfg.transferNumber ?? ''} onChange={(e) => setConfig('transferNumber', e.target.value || undefined)}
-              className={inp} placeholder="+18005551234" />
+            <ContactPicker
+              value={cfg.transferNumber ?? ''}
+              onChange={(v) => setConfig('transferNumber', v || undefined)}
+            />
             <p className="mt-1 text-xs text-gray-400">The agent dials this number when escalating to a human</p>
           </div>
 
@@ -305,8 +399,10 @@ export default function ChannelsPage() {
                 {selected.afterHoursMode === 'forward' && (
                   <div>
                     <label className={lbl}>Forward calls to</label>
-                    <input value={cfg.forwardingNumber ?? ''} onChange={(e) => setConfig('forwardingNumber', e.target.value || undefined)}
-                      className={inp} placeholder="+18005551234" />
+                    <ContactPicker
+                      value={cfg.forwardingNumber ?? ''}
+                      onChange={(v) => setConfig('forwardingNumber', v || undefined)}
+                    />
                     <p className="mt-1 text-xs text-gray-400">Calls outside business hours are forwarded here</p>
                   </div>
                 )}
