@@ -65,6 +65,8 @@ That rule must hold across all implementation decisions.
 - domain: `n8n.myorbisvoice.com`
 - same server as application
 - internal use only
+- **Double-locked:** Caddy basic_auth (user: `admin`, password: `Orbis@8214@@!!`) + n8n's own basic auth (same credentials via `N8N_BASIC_AUTH_USER/PASSWORD` in `.env.prod`)
+- Caddy hash (bcrypt, generated 2026-05-01): `$2a$14$YDTB.X3eWzhjyqm6YB8.geZtskuBB0EmWpjk2EaNFWLZWH2VSZbXy`
 
 ### Transactional email
 - use a separate sending subdomain such as `notify.myorbisvoice.com`
@@ -1059,6 +1061,63 @@ Phase 5+: Only connect Gemini Live once the local session flow is verified.
 - [ ] `POST /api/appointments/availability/search` returns slots when Google connected
 - [ ] `POST /api/appointments` creates appointment in Google Calendar + DB
 
+### Phase 5 & 6 — Voice Gateway + Inbound Receptionist — 2026-04-30 / 2026-05-01
+
+**Voice gateway (inbound calls):**
+- [x] Gemini Live session management via `apps/voice-gateway/src/services/gemini.service.ts`
+- [x] Inbound Twilio Media Stream handler at `apps/voice-gateway/src/inbound.ts`
+- [x] Transcript delta accumulation with per-speaker buffers — flushed on turn complete or speaker switch
+- [x] `cleanTranscript()` in `summary.service.ts` — GPT-4o-mini post-processes raw ASR output to fix mid-word spacing artifacts before storing
+- [x] `generateSummary()` — 2-3 sentence call summary stored in `Conversation.summaryText`
+- [x] `persistConversation()` — updates existing Conversation (matched by `externalCallId`) for inbound; creates new for widget
+- [x] `onClose` fix — removed `closed = true` from `close()` so the WebSocket close event fires `finalize()`
+- [x] Voice name selector — `voiceName` stored in `ChannelConfig.configJson`, passed to Gemini `speech_config.voice_config.prebuilt_voice_config`
+- [x] Gateway reads OpenAI key from DB via `lib/config.ts` (AES-256-GCM decrypt) — not raw env var
+
+**Curated agent voices (7 options presented to tenants in channel config):**
+| Voice | Gender | Style |
+|---|---|---|
+| Zephyr | Female | Bright & clear |
+| Despina | Female | Smooth & polished |
+| Aoede | Female | Warm & breezy |
+| Charon | Male | Deep & authoritative |
+| Fenrir | Male | Warm & approachable (default) |
+| Puck | Male | Upbeat & conversational |
+| Sulafat | Neutral | Warm & even |
+
+**Twilio recording pipeline:**
+- [x] `startCallRecording()` — triggers Twilio REST API to start recording on call connect
+- [x] Twilio sends webhook to `POST /api/webhooks/twilio/recording` when recording is ready
+- [x] `handleRecordingReady()` — decrypts Twilio auth token from `TwilioConnectionDetail`, fetches MP3, uploads to Bunny storage zone
+- [x] `Conversation.recordingStatus` lifecycle: `null → processing → stored` (or `failed` / `twilio_hosted`)
+- [x] `GET /api/conversations/:id/recording` — proxies audio blob from Bunny storage via API (bypasses CDN auth requirement)
+- [x] Conversations page — audio player, transcript (word-for-word, speaker-labeled), and summary
+
+**Key bug fixes logged here to avoid repeating:**
+- Frankfurt (DE) Bunny region uses `storage.bunnycdn.com` — NOT `de.storage.bunnycdn.com`
+- Twilio Media Stream `<Connect><Stream>` cannot coexist with `<Record>` — recording must use REST API separately
+- `persistConversation` must `updateMany` by `externalCallId` for inbound calls, not create a new record
+- `scryptSync` dot separator (`.`) for Twilio tokens; colon separator (`:`) for systemConfig AES secrets — do not mix
+
+### Phase 9 — Hardening — 2026-05-01
+
+- [x] `TWILIO_ENFORCE_SIG=true` set in `/opt/myorbisvoice/.env.prod` — spoofed Twilio webhooks now hard-rejected with 403
+- [x] Audit logging added: `auth.signup`, `auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`
+- [x] Audit logging added: `billing.checkout_completed`, `billing.invoice_paid`, `billing.subscription_updated`, `billing.subscription_canceled`
+- [x] `db-backup` Docker service added to `docker-compose.prod.yml` — runs `pg_dump` every 24h, retains 30 days, volume `myorbisvoice_db_backups`
+- [x] n8n double-locked: Caddy `basic_auth` layer added to `Caddyfile` + n8n's own auth (both required)
+- [x] Disaster backup taken: `backups/disaster-20260501/` — local DB, prod DB, env.prod, n8n exports, manifest
+- [x] Git tag: `disaster-backup-20260501` — aligns with snapshot `db_20260501_044937_hardening-complete.dump`
+- [x] Stale files removed: `client_secret_*.json`, `plan.md`, `WORKING_STATE.md`, `docker-compose.yml` (root), `infrustructure/` (typo duplicate)
+
+**Known Deploy Pitfalls (additions):**
+| Pitfall | What Happens | Fix |
+|---|---|---|
+| Bunny DE region wrong hostname | `ENOTFOUND de.storage.bunnycdn.com` | Frankfurt uses `storage.bunnycdn.com` (same as NY) |
+| CDN URL without linked pull zone | Audio player shows 0:00/0:00 | Proxy audio via API storage endpoint instead |
+| `closed=true` in `close()` before ws.close() | `onClose` never fires, summaries never generated | Remove `closed=true` from `close()` — let the ws event set it |
+| Caddy bcrypt hash with `$` in .env.prod | Docker Compose expands `$2a` as variable | Hardcode hash directly in Caddyfile, don't use env var |
+
 ### Phase 1 notes
 - Existing ports 5432 and 6379 are occupied by other projects (umoja-postgres, umoja-redis). Phase 1 reuses these services. The voiceautomation DB was created on umoja-postgres with its own user/role.
 - Docker compose is set up for full-stack mode but dev workflow runs API/web natively via pnpm dev.
@@ -1129,12 +1188,14 @@ Phase 5+: Only connect Gemini Live once the local session flow is verified.
 ---
 
 ### Bunny.net Storage & Streaming
-- **API Key:** `[REDACTED-BUNNY-SHORT]`
-- **Storage Zone:** *(pending — enter when zone is created in Bunny dashboard)*
-- **Storage Password:** *(pending)*
-- **CDN Hostname:** *(pending — e.g. `recordings.b-cdn.net`)*
-- **Storage Region:** `ny` (New York)
+- **API Key (short):** `[REDACTED-BUNNY-SHORT]`
+- **API Key (long/full):** `[REDACTED-BUNNY-LONG]`
+- **Storage Zone:** `orbisvoice`
+- **Storage Password:** *(stored encrypted in DB — retrieve from Admin → System Settings → Bunny.net card)*
+- **CDN Hostname:** `OrbisVoice.b-cdn.net`
+- **Storage Region:** `de` (Frankfurt — uses `storage.bunnycdn.com`, NOT `de.storage.bunnycdn.com`)
 - **Enter via:** Admin → System Settings → Bunny.net card
+- **⚠️ CDN pull zone must be linked to the `orbisvoice` storage zone in Bunny dashboard for CDN URLs to serve. Audio is proxied via the API storage endpoint to bypass this requirement.**
 
 ---
 
