@@ -11,7 +11,28 @@ interface Tenant {
   publicEmail: string | null
   publicPhone: string | null
   website: string | null
+  industryVertical: string
 }
+
+const INDUSTRY_VERTICALS = [
+  { value: 'GENERAL',             label: 'General' },
+  { value: 'ACCOUNTING',          label: 'Accounting / Tax' },
+  { value: 'AUTO_REPAIR',         label: 'Auto Repair' },
+  { value: 'BEAUTY',              label: 'Beauty & Wellness' },
+  { value: 'CHILDCARE',           label: 'Childcare / Nursery' },
+  { value: 'DENTAL',              label: 'Dental' },
+  { value: 'EDUCATION',           label: 'Education' },
+  { value: 'FINANCIAL',           label: 'Financial Services' },
+  { value: 'FITNESS',             label: 'Fitness & Gym' },
+  { value: 'HOME_SERVICES',       label: 'Home Services' },
+  { value: 'HOSPITALITY',         label: 'Hospitality' },
+  { value: 'INSURANCE',           label: 'Insurance' },
+  { value: 'LEGAL',               label: 'Legal' },
+  { value: 'MEDICAL',             label: 'Medical / Clinic' },
+  { value: 'PROPERTY_MANAGEMENT', label: 'Property Management' },
+  { value: 'REAL_ESTATE',         label: 'Real Estate' },
+  { value: 'VETERINARY',          label: 'Veterinary' },
+]
 
 interface BusinessProfile {
   brandName: string
@@ -191,6 +212,30 @@ export default function SettingsPage() {
             onChange={(v) => setTenantForm({ ...tenantForm, [f.key]: v || null })}
           />
         ))}
+      </Section>
+
+      <Section
+        title="Industry"
+        description="Select your industry so we can recommend the right campaign templates for your business."
+        onSave={saveTenant}
+        saving={saving === 'workspace'}
+        saveLabel="Save industry"
+      >
+        <div>
+          <label className="label">Industry vertical</label>
+          <select
+            value={(tenantForm as Tenant).industryVertical ?? 'GENERAL'}
+            onChange={e => setTenantForm({ ...tenantForm, industryVertical: e.target.value })}
+            className="input"
+          >
+            {INDUSTRY_VERTICALS.map(v => (
+              <option key={v.value} value={v.value}>{v.label}</option>
+            ))}
+          </select>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+            This determines which campaign templates appear in your Campaign Library.
+          </p>
+        </div>
       </Section>
 
       <Section

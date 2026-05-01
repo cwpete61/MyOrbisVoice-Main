@@ -39,10 +39,10 @@ export async function apiLogin(login: string, password: string) {
   })
 }
 
-export async function apiSignup(username: string, email: string, password: string, businessName: string) {
+export async function apiSignup(username: string, email: string, password: string, businessName: string, affiliateCode?: string) {
   return apiCall<{ user: unknown; tenant: unknown } & AuthTokens>('/api/auth/signup', {
     method: 'POST',
-    body: { username, email, password, businessName },
+    body: { username, email, password, businessName, ...(affiliateCode ? { affiliateCode } : {}) },
   })
 }
 

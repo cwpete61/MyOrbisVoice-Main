@@ -11,9 +11,14 @@ interface TwilioStatus {
   status: 'NOT_CONNECTED' | 'CONNECTED'
   accountSid: string | null; lastVerifiedAt: string | null
 }
+interface GeminiStatus {
+  status: 'NOT_CONNECTED' | 'CONNECTED'
+  lastVerifiedAt: string | null
+}
 interface IntegrationsData {
   google: GoogleStatus
   twilio: TwilioStatus
+  gemini: GeminiStatus
 }
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -34,6 +39,10 @@ export default function IntegrationsPage() {
   // Twilio form state
   const [twilioForm, setTwilioForm] = useState({ accountSid: '', authToken: '' })
   const [twilioSaving, setTwilioSaving] = useState(false)
+
+  // Gemini form state
+  const [geminiKey, setGeminiKey] = useState('')
+  const [geminiSaving, setGeminiSaving] = useState(false)
 
   function showToast(type: 'success' | 'error', text: string) {
     setToast({ type, text })
@@ -106,10 +115,36 @@ export default function IntegrationsPage() {
     } catch { showToast('error', 'Failed to disconnect Twilio') }
   }
 
+  async function saveGemini() {
+    if (!geminiKey.trim()) return
+    setGeminiSaving(true)
+    try {
+      await apiFetch('/api/integrations/gemini', {
+        method: 'POST',
+        body: JSON.stringify({ apiKey: geminiKey }),
+      })
+      setGeminiKey('')
+      showToast('success', 'Gemini API key saved.')
+      reload()
+    } catch (err) { showToast('error', err instanceof Error ? err.message : 'Failed') }
+    finally { setGeminiSaving(false) }
+  }
+
+  async function disconnectGemini() {
+    if (!confirm('Remove Gemini API key? Voice sessions will fall back to the platform key if one is configured.')) return
+    try {
+      await apiFetch('/api/integrations/gemini', { method: 'DELETE' })
+      showToast('success', 'Gemini key removed.')
+      reload()
+    } catch { showToast('error', 'Failed to remove Gemini key') }
+  }
+
   const google      = data?.google
   const twilio      = data?.twilio
+  const gemini      = data?.gemini
   const googleStyle = STATUS_STYLES[google?.status ?? 'NOT_CONNECTED']!
   const twilioStyle = STATUS_STYLES[twilio?.status ?? 'NOT_CONNECTED']!
+  const geminiStyle = STATUS_STYLES[gemini?.status ?? 'NOT_CONNECTED']!
 
   return (
     <div className="space-y-8">
@@ -139,7 +174,7 @@ export default function IntegrationsPage() {
               </div>
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Google Workspace</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Gmail · Google Calendar</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Agent mailbox · Google Calendar</p>
               </div>
             </div>
             <span className="badge" style={{ background: googleStyle.bg, color: googleStyle.text }}>{googleStyle.label}</span>
@@ -163,7 +198,7 @@ export default function IntegrationsPage() {
                 )}
               </dl>
             )}
-            {google.status === 'NOT_CONNECTED' && <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>Connect your Google account to enable appointment booking and email confirmations.</p>}
+            {google.status === 'NOT_CONNECTED' && <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>Connect the dedicated Google account your agent will use to send emails and manage appointments. This should be a mailbox set up specifically for your agent — not the email address you used to register.</p>}
             {(google.status === 'ERROR' || google.status === 'RECONNECT_REQUIRED') && <p className="text-sm mb-5" style={{ color: 'var(--error-600)' }}>Your Google connection needs to be reauthorized. Click Reconnect to fix it.</p>}
             <div className="flex flex-wrap gap-2.5">
               {google.status === 'NOT_CONNECTED' && (
@@ -178,7 +213,7 @@ export default function IntegrationsPage() {
             </div>
           </div>
           <div className="px-6 py-3.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Required scopes: Gmail Send, Gmail Read, Google Calendar. Tokens are encrypted at rest and never displayed.</p>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Connect a dedicated Google account for your agent — not your personal or registration email. Required scopes: Gmail Send, Gmail Read, Google Calendar. Tokens are encrypted at rest and never displayed.</p>
           </div>
         </div>
       )}
@@ -270,6 +305,83 @@ export default function IntegrationsPage() {
           <div className="px-6 py-3.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
               Auth token is encrypted at rest and never displayed. Find your credentials at console.twilio.com → Account → API keys & tokens.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Gemini Live ────────────────────────────────────────────────── */}
+      {!loading && gemini && (
+        <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+          <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'oklch(19% 0.06 264)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2L8.5 8.5 2 9.27l4.5 4.38L5.36 20 12 16.77 18.64 20l-1.14-6.35L22 9.27l-6.5-.77L12 2z" fill="oklch(72% 0.18 264)" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Gemini Live API</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Real-time voice AI · Required for voice sessions</p>
+              </div>
+            </div>
+            <span className="badge" style={{ background: geminiStyle.bg, color: geminiStyle.text }}>{geminiStyle.label}</span>
+          </div>
+
+          <div className="px-6 py-5 space-y-4">
+            {gemini.status === 'CONNECTED' && gemini.lastVerifiedAt && (
+              <dl className="space-y-2">
+                <div className="flex items-center gap-6">
+                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>API Key</dt>
+                  <dd className="text-sm" style={{ color: 'var(--text-tertiary)' }}>••••••••••••••••••••••••••••••••</dd>
+                </div>
+                <div className="flex items-center gap-6">
+                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>Saved</dt>
+                  <dd className="text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(gemini.lastVerifiedAt).toLocaleString()}</dd>
+                </div>
+              </dl>
+            )}
+
+            {gemini.status === 'NOT_CONNECTED' && (
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Enter your Gemini Live API key to enable real-time voice sessions for your agents.
+                Get a Live API-enabled key from{' '}
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer"
+                  className="underline" style={{ color: 'oklch(60% 0.18 264)' }}>
+                  Google AI Studio
+                </a>. Make sure the key has access to the <strong>Gemini Live API</strong> (BidiGenerateContent).
+              </p>
+            )}
+
+            <div className="space-y-3">
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                {gemini.status === 'CONNECTED' ? 'Rotate API key' : 'Add API key'}
+              </p>
+              <div>
+                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>API Key</label>
+                <input
+                  type="password"
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
+                  className={inp}
+                  placeholder="AIza…"
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={saveGemini} disabled={geminiSaving || !geminiKey.trim()} className="btn-primary">
+                  {geminiSaving ? 'Saving…' : gemini.status === 'CONNECTED' ? 'Rotate' : 'Save key'}
+                </button>
+                {gemini.status === 'CONNECTED' && (
+                  <button onClick={disconnectGemini} className="btn-danger">Remove</button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="px-6 py-3.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              API key is encrypted at rest and never displayed. Each account requires its own Gemini Live API key with BidiGenerateContent access enabled.
             </p>
           </div>
         </div>

@@ -1,118 +1,173 @@
-import { Prisma } from '@prisma/client'
+import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { AppError } from '@voiceautomation/shared'
 
+export const createCampaignSchema = z.object({
+  templateId:          z.string().optional(),
+  campaignType:        z.string(),
+  name:                z.string().min(1).max(100),
+  description:         z.string().optional(),
+  prompt:              z.string().min(1),
+  triggerTag:          z.string().min(1).max(80),
+  delayHours:          z.number().int().min(0).default(1),
+  maxRetries:          z.number().int().min(0).max(10).default(2),
+  retryIntervalHours:  z.number().int().min(1).default(24),
+  isActive:            z.boolean().default(false),
+  exitOnReply:         z.boolean().default(true),
+  exitOnOptOut:        z.boolean().default(true),
+})
+
+export const updateCampaignSchema = createCampaignSchema.partial()
+
+export async function listTemplates() {
+  return prisma.campaignTemplate.findMany({
+    where: { isActive: true },
+    orderBy: [{ vertical: 'asc' }, { name: 'asc' }],
+  })
+}
+
 export async function listCampaigns(tenantId: string) {
-  return prisma.outboundCampaign.findMany({
+  return prisma.campaign.findMany({
     where: { tenantId },
-    orderBy: { createdAt: 'desc' },
-    include: { _count: { select: { attempts: true } } },
-  })
-}
-
-export async function getCampaign(tenantId: string, id: string) {
-  return prisma.outboundCampaign.findFirst({
-    where: { id, tenantId },
     include: {
-      attempts: {
-        orderBy: { createdAt: 'desc' },
-        take: 100,
-        include: { contact: { select: { id: true, fullName: true, phoneE164: true } } },
-      },
-      _count: { select: { attempts: true } },
+      template: { select: { name: true, vertical: true } },
+      _count: { select: { enrollments: true } },
     },
+    orderBy: { createdAt: 'desc' },
   })
 }
 
-export async function createCampaign(tenantId: string, data: {
-  name: string; description?: string
-  audienceJson?: Record<string, unknown>; scheduleJson?: Record<string, unknown>
-  promptVersionId?: string
-}) {
-  return prisma.outboundCampaign.create({
-    data: {
-      tenantId,
-      name:            data.name,
-      description:     data.description,
-      status:          'DRAFT',
-      audienceJson:    (data.audienceJson ?? {}) as Prisma.InputJsonValue,
-      scheduleJson:    (data.scheduleJson ?? {}) as Prisma.InputJsonValue,
-      promptVersionId: data.promptVersionId,
+export async function getCampaign(tenantId: string, campaignId: string) {
+  const campaign = await prisma.campaign.findFirst({
+    where: { id: campaignId, tenantId },
+    include: {
+      template: true,
+      _count: { select: { enrollments: true } },
     },
   })
-}
-
-export async function updateCampaign(tenantId: string, id: string, data: {
-  name?: string; description?: string
-  audienceJson?: Record<string, unknown>; scheduleJson?: Record<string, unknown>
-  promptVersionId?: string
-}) {
-  const campaign = await prisma.outboundCampaign.findFirst({ where: { id, tenantId } })
   if (!campaign) throw new AppError('NOT_FOUND', 'Campaign not found', 404)
-  if (campaign.status === 'RUNNING') throw new AppError('CONFLICT', 'Cannot edit a running campaign', 409)
-  return prisma.outboundCampaign.update({
-    where: { id },
-    data: {
-      ...data,
-      audienceJson: data.audienceJson !== undefined ? (data.audienceJson as Prisma.InputJsonValue) : undefined,
-      scheduleJson: data.scheduleJson !== undefined ? (data.scheduleJson as Prisma.InputJsonValue) : undefined,
-    },
-  })
+  return campaign
 }
 
-export async function launchCampaign(tenantId: string, id: string) {
-  const campaign = await prisma.outboundCampaign.findFirst({ where: { id, tenantId } })
-  if (!campaign) throw new AppError('NOT_FOUND', 'Campaign not found', 404)
-  if (!['DRAFT', 'PAUSED'].includes(campaign.status)) {
-    throw new AppError('CONFLICT', `Campaign is ${campaign.status} — cannot launch`, 409)
+export async function createCampaign(tenantId: string, data: z.infer<typeof createCampaignSchema>) {
+  const existing = await prisma.campaign.findFirst({
+    where: { tenantId, triggerTag: data.triggerTag },
+  })
+  if (existing) {
+    throw new AppError('CONFLICT', `A campaign with trigger tag "${data.triggerTag}" already exists`, 409)
   }
-  return prisma.outboundCampaign.update({ where: { id }, data: { status: 'RUNNING' } })
-}
-
-export async function pauseCampaign(tenantId: string, id: string) {
-  const campaign = await prisma.outboundCampaign.findFirst({ where: { id, tenantId } })
-  if (!campaign) throw new AppError('NOT_FOUND', 'Campaign not found', 404)
-  if (campaign.status !== 'RUNNING') throw new AppError('CONFLICT', 'Campaign is not running', 409)
-  return prisma.outboundCampaign.update({ where: { id }, data: { status: 'PAUSED' } })
-}
-
-export async function cancelCampaign(tenantId: string, id: string) {
-  const campaign = await prisma.outboundCampaign.findFirst({ where: { id, tenantId } })
-  if (!campaign) throw new AppError('NOT_FOUND', 'Campaign not found', 404)
-  if (campaign.status === 'COMPLETED') throw new AppError('CONFLICT', 'Campaign already completed', 409)
-  return prisma.outboundCampaign.update({ where: { id }, data: { status: 'CANCELED' } })
-}
-
-export async function addContactsToCampaign(tenantId: string, campaignId: string, contactIds: string[]) {
-  const campaign = await prisma.outboundCampaign.findFirst({ where: { id: campaignId, tenantId } })
-  if (!campaign) throw new AppError('NOT_FOUND', 'Campaign not found', 404)
-
-  const existing = await prisma.outboundCallAttempt.findMany({
-    where: { campaignId, contactId: { in: contactIds } },
-    select: { contactId: true },
+  return prisma.campaign.create({
+    data: { tenantId, ...data, campaignType: data.campaignType as any },
+    include: { template: { select: { name: true, vertical: true } } },
   })
-  const existingIds = new Set(existing.map(e => e.contactId))
-  const toAdd = contactIds.filter(id => !existingIds.has(id))
+}
 
-  if (toAdd.length === 0) return { added: 0 }
+export async function updateCampaign(tenantId: string, campaignId: string, data: z.infer<typeof updateCampaignSchema>) {
+  const campaign = await prisma.campaign.findFirst({ where: { id: campaignId, tenantId } })
+  if (!campaign) throw new AppError('NOT_FOUND', 'Campaign not found', 404)
 
-  await prisma.outboundCallAttempt.createMany({
-    data: toAdd.map(contactId => ({
-      campaignId,
-      tenantId,
-      contactId,
+  if (data.triggerTag && data.triggerTag !== campaign.triggerTag) {
+    const conflict = await prisma.campaign.findFirst({
+      where: { tenantId, triggerTag: data.triggerTag, id: { not: campaignId } },
+    })
+    if (conflict) throw new AppError('CONFLICT', `Tag "${data.triggerTag}" is already used by another campaign`, 409)
+  }
+
+  return prisma.campaign.update({
+    where: { id: campaignId },
+    data: { ...data, campaignType: data.campaignType as any },
+    include: { template: { select: { name: true, vertical: true } } },
+  })
+}
+
+export async function deleteCampaign(tenantId: string, campaignId: string) {
+  const campaign = await prisma.campaign.findFirst({ where: { id: campaignId, tenantId } })
+  if (!campaign) throw new AppError('NOT_FOUND', 'Campaign not found', 404)
+  await prisma.campaign.delete({ where: { id: campaignId } })
+}
+
+export async function applyTag(tenantId: string, contactId: string, tag: string) {
+  const contact = await prisma.contact.findFirst({ where: { id: contactId, tenantId } })
+  if (!contact) throw new AppError('NOT_FOUND', 'Contact not found', 404)
+
+  const campaign = await prisma.campaign.findFirst({
+    where: { tenantId, triggerTag: tag, isActive: true },
+  })
+
+  const existingTags: string[] = Array.isArray(contact.tagsJson) ? contact.tagsJson as string[] : []
+  if (!existingTags.includes(tag)) {
+    await prisma.contact.update({
+      where: { id: contactId },
+      data: { tagsJson: [...existingTags, tag] },
+    })
+  }
+
+  if (!campaign) return { enrolled: false, tag }
+
+  const scheduledCallAt = new Date(Date.now() + campaign.delayHours * 60 * 60 * 1000)
+
+  const enrollment = await prisma.campaignEnrollment.upsert({
+    where: { campaignId_contactId: { campaignId: campaign.id, contactId } },
+    update: {
       status: 'PENDING',
-      attemptNumber: 1,
-    })),
+      triggerTag: tag,
+      triggeredAt: new Date(),
+      scheduledCallAt,
+      attemptCount: 0,
+      completedAt: null,
+      exitReason: null,
+    },
+    create: {
+      tenantId,
+      campaignId: campaign.id,
+      contactId,
+      triggerTag: tag,
+      scheduledCallAt,
+      status: 'PENDING',
+    },
   })
-  return { added: toAdd.length }
+
+  return { enrolled: true, tag, campaign: { id: campaign.id, name: campaign.name }, enrollment }
 }
 
-export async function getAttemptStats(campaignId: string) {
-  const groups = await prisma.outboundCallAttempt.groupBy({
-    by: ['status'],
-    where: { campaignId },
-    _count: true,
+export async function removeTag(tenantId: string, contactId: string, tag: string) {
+  const contact = await prisma.contact.findFirst({ where: { id: contactId, tenantId } })
+  if (!contact) throw new AppError('NOT_FOUND', 'Contact not found', 404)
+
+  const existingTags: string[] = Array.isArray(contact.tagsJson) ? contact.tagsJson as string[] : []
+  await prisma.contact.update({
+    where: { id: contactId },
+    data: { tagsJson: existingTags.filter(t => t !== tag) },
   })
-  return Object.fromEntries(groups.map(g => [g.status, g._count]))
+
+  await prisma.campaignEnrollment.updateMany({
+    where: { tenantId, contactId, triggerTag: tag, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+    data: { status: 'CANCELLED', exitReason: 'tag_removed', completedAt: new Date() },
+  })
+
+  return { removed: true, tag }
+}
+
+export async function listEnrollments(tenantId: string, campaignId?: string, status?: string) {
+  return prisma.campaignEnrollment.findMany({
+    where: {
+      tenantId,
+      ...(campaignId ? { campaignId } : {}),
+      ...(status ? { status: status as any } : {}),
+    },
+    include: {
+      contact: { select: { id: true, firstName: true, lastName: true, fullName: true, email: true, phoneE164: true } },
+      campaign: { select: { id: true, name: true, campaignType: true } },
+    },
+    orderBy: { triggeredAt: 'desc' },
+    take: 200,
+  })
+}
+
+export async function updateTenantVertical(tenantId: string, vertical: string) {
+  return prisma.tenant.update({
+    where: { id: tenantId },
+    data: { industryVertical: vertical as any },
+    select: { id: true, industryVertical: true },
+  })
 }

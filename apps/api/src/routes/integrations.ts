@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import * as googleService from '../services/google.service.js'
 import * as twilioService from '../services/twilio.service.js'
+import * as geminiService from '../services/gemini-integration.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { getEnv } from '@voiceautomation/config'
 
@@ -26,9 +27,10 @@ function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
 router.get('/integrations', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const [google, twilio] = await Promise.all([
+    const [google, twilio, gemini] = await Promise.all([
       googleService.getGoogleConnection(tenantId),
       twilioService.getTwilioConnection(tenantId),
+      geminiService.getGeminiConnection(tenantId),
     ])
     res.json({
       data: {
@@ -36,6 +38,7 @@ router.get('/integrations', async (req, res, next) => {
           ? { status: google.status, email: google.email, lastVerifiedAt: google.lastVerifiedAt, calendarCount: (google.calendarIds as string[]).length }
           : { status: 'NOT_CONNECTED', email: null, lastVerifiedAt: null, calendarCount: 0 },
         twilio,
+        gemini,
       },
     })
   } catch (err) { next(err) }
@@ -60,6 +63,28 @@ router.delete('/integrations/twilio', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
     await twilioService.disconnectTwilio(tenantId)
+    res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
+
+// Save Gemini API key (write-only — encrypted at rest)
+router.post('/integrations/gemini', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    const { apiKey } = req.body as { apiKey?: string }
+    if (!apiKey?.trim()) {
+      res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'apiKey is required' }] }); return
+    }
+    await geminiService.saveGeminiApiKey(tenantId, apiKey)
+    res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
+
+// Disconnect Gemini
+router.delete('/integrations/gemini', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    await geminiService.disconnectGemini(tenantId)
     res.json({ data: { ok: true } })
   } catch (err) { next(err) }
 })

@@ -3,6 +3,7 @@ import { getStripe } from '../lib/stripe.js'
 import { getEnv } from '@voiceautomation/config'
 import { AppError } from '@voiceautomation/shared'
 import { syncEntitlementsFromPlan } from './entitlement.service.js'
+import { writeAuditLog } from '../lib/audit.js'
 
 // Minimal shapes we extract from Stripe webhook objects
 interface StripeSub {
@@ -141,10 +142,25 @@ async function handleCheckoutCompleted(session: StripeCheckoutSession) {
   if (!subscriptionId) return
 
   const stripe = getStripe()
-  const stripeSub = await stripe.subscriptions.retrieve(subscriptionId, {
-    expand: ['items.data'],
-  })
+  const stripeSub = await stripe.subscriptions.retrieve(subscriptionId, { expand: ['items.data'] })
   await upsertSubscription(tenantId, planCode, stripeSub as unknown as StripeSub)
+
+  writeAuditLog({ actorType: 'SYSTEM', action: 'billing.checkout_completed', tenantId, metadataJson: { planCode, subscriptionId } }).catch(() => null)
+
+  // Record affiliate conversion if this tenant was referred
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, referredByCode: true } })
+  if (tenant?.referredByCode) {
+    const amountCents = (stripeSub as unknown as { items: { data: { price: { unit_amount: number } }[] } })
+      .items?.data?.[0]?.price?.unit_amount ?? 0
+    const { recordConversion } = await import('./affiliate.service.js')
+    await recordConversion({
+      referralCode:        tenant.referredByCode,
+      tenantId,
+      subscriptionId,
+      conversionType:      'subscription',
+      conversionValueCents: amountCents,
+    }).catch(() => {})
+  }
 }
 
 async function handleInvoicePaid(invoice: StripeInvoice) {
@@ -159,6 +175,9 @@ async function handleInvoicePaid(invoice: StripeInvoice) {
     where: { stripeSubscriptionId: subscriptionId },
     data: { status: 'ACTIVE' },
   })
+
+  const sub = await prisma.subscription.findFirst({ where: { stripeSubscriptionId: subscriptionId }, select: { tenantId: true } })
+  writeAuditLog({ actorType: 'SYSTEM', action: 'billing.invoice_paid', tenantId: sub?.tenantId, metadataJson: { subscriptionId, amountPaid: (invoice as any).amount_paid } }).catch(() => null)
 }
 
 async function handleSubscriptionUpdated(stripeSub: StripeSub) {
@@ -166,6 +185,7 @@ async function handleSubscriptionUpdated(stripeSub: StripeSub) {
   const planCode = stripeSub.metadata?.planCode
   if (!tenantId || !planCode) return
   await upsertSubscription(tenantId, planCode, stripeSub)
+  writeAuditLog({ actorType: 'SYSTEM', action: 'billing.subscription_updated', tenantId, metadataJson: { stripeSubscriptionId: stripeSub.id, status: stripeSub.status, planCode } }).catch(() => null)
 }
 
 async function handleSubscriptionDeleted(stripeSub: StripeSub) {
@@ -178,6 +198,7 @@ async function handleSubscriptionDeleted(stripeSub: StripeSub) {
   })
 
   await prisma.tenant.update({ where: { id: tenantId }, data: { status: 'TRIAL' } })
+  writeAuditLog({ actorType: 'SYSTEM', action: 'billing.subscription_canceled', tenantId, metadataJson: { stripeSubscriptionId: stripeSub.id } }).catch(() => null)
 }
 
 async function upsertSubscription(tenantId: string, planCode: string, stripeSub: StripeSub) {

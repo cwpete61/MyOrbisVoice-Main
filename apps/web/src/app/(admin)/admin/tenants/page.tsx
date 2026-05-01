@@ -9,7 +9,7 @@ interface Tenant {
   registrationEmail: string; createdAt: string
   _count: { members: number; conversations: number }
 }
-interface ListResult { tenants: Tenant[]; total: number }
+interface ListResult { items: Tenant[]; total: number }
 
 const STATUS_COLORS: Record<string, string> = {
   TRIAL: 'bg-yellow-100 text-yellow-800',
@@ -58,7 +58,7 @@ export default function AdminTenantsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {(data?.tenants ?? []).map((t) => (
+              {(data?.items ?? []).map((t) => (
                 <tr key={t.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <Link href={`/admin/tenants/${t.id}`} className="font-medium text-blue-600 hover:underline">{t.displayName}</Link>
@@ -75,7 +75,7 @@ export default function AdminTenantsPage() {
                   <td className="px-4 py-3 text-gray-400 text-xs">{new Date(t.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}
-              {(data?.tenants ?? []).length === 0 && (
+              {(data?.items ?? []).length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">No tenants found</td></tr>
               )}
             </tbody>

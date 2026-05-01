@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js'
+import { verifyEmail } from './reoon.service.js'
 
 export async function listContacts(tenantId: string, opts: { search?: string; page?: number; limit?: number }) {
   const { search, page = 1, limit = 50 } = opts
@@ -26,31 +27,68 @@ export async function getContact(tenantId: string, id: string) {
 export async function createContact(tenantId: string, data: {
   firstName?: string; lastName?: string; fullName?: string
   email?: string; phoneE164?: string; source?: string
+  addressLine1?: string; city?: string; region?: string; postalCode?: string; country?: string
 }) {
-  return prisma.contact.create({
+  // Verify email in background — non-blocking save, then update status
+  const contact = await prisma.contact.create({
     data: {
       tenantId,
-      firstName: data.firstName,
-      lastName:  data.lastName,
-      fullName:  data.fullName ?? ([data.firstName, data.lastName].filter(Boolean).join(' ') || null),
-      email:     data.email,
-      phoneE164: data.phoneE164,
-      source:    data.source ?? 'manual',
+      firstName:    data.firstName,
+      lastName:     data.lastName,
+      fullName:     data.fullName ?? ([data.firstName, data.lastName].filter(Boolean).join(' ') || null),
+      email:        data.email,
+      phoneE164:    data.phoneE164,
+      addressLine1: data.addressLine1,
+      city:         data.city,
+      region:       data.region,
+      postalCode:   data.postalCode,
+      country:      data.country,
+      source:       data.source ?? 'manual',
+      emailStatus:  data.email ? 'unchecked' : null,
+      phoneStatus:  data.phoneE164 ? 'unchecked' : null,
     },
   })
+
+  // Run Reoon verification async — doesn't block the response
+  if (data.email) {
+    verifyEmail(data.email).then(({ status }) => {
+      prisma.contact.update({
+        where: { id: contact.id },
+        data: {
+          emailStatus:     status,
+          emailVerifiedAt: status === 'valid' ? new Date() : null,
+        },
+      }).catch(() => {})
+    }).catch(() => {})
+  }
+
+  return contact
 }
 
 export async function updateContact(tenantId: string, id: string, data: {
   firstName?: string; lastName?: string; fullName?: string
   email?: string; phoneE164?: string
+  addressLine1?: string; city?: string; region?: string; postalCode?: string; country?: string
 }) {
-  return prisma.contact.updateMany({
+  const contact = await prisma.contact.findFirst({ where: { id, tenantId }, select: { email: true } })
+
+  await prisma.contact.updateMany({
     where: { id, tenantId },
-    data: {
-      ...data,
-      updatedAt: new Date(),
-    },
+    data: { ...data, updatedAt: new Date() },
   })
+
+  // Re-verify if email changed
+  if (data.email && data.email !== contact?.email) {
+    verifyEmail(data.email).then(({ status }) => {
+      prisma.contact.updateMany({
+        where: { id, tenantId },
+        data: {
+          emailStatus:     status,
+          emailVerifiedAt: status === 'valid' ? new Date() : null,
+        },
+      }).catch(() => {})
+    }).catch(() => {})
+  }
 }
 
 export async function deleteContact(tenantId: string, id: string) {

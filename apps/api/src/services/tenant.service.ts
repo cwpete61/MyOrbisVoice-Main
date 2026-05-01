@@ -10,6 +10,7 @@ export const updateTenantSchema = z.object({
   publicEmail: z.string().email().optional().nullable(),
   publicPhone: z.string().max(30).optional().nullable(),
   website: z.string().url().optional().nullable(),
+  industryVertical: z.string().optional(),
 })
 
 export const updateBusinessProfileSchema = z.object({
@@ -33,7 +34,7 @@ export async function getTenant(tenantId: string) {
       id: true, slug: true, displayName: true, legalName: true,
       status: true, timezone: true, registrationEmail: true,
       publicEmail: true, publicPhone: true, website: true,
-      createdAt: true, updatedAt: true,
+      industryVertical: true, createdAt: true, updatedAt: true,
     },
   })
   if (!tenant) throw new AppError('NOT_FOUND', 'Tenant not found', 404)
@@ -41,13 +42,14 @@ export async function getTenant(tenantId: string) {
 }
 
 export async function updateTenant(tenantId: string, data: z.infer<typeof updateTenantSchema>) {
+  const { industryVertical, ...rest } = data
   return prisma.tenant.update({
     where: { id: tenantId },
-    data,
+    data: { ...rest, ...(industryVertical ? { industryVertical: industryVertical as any } : {}) },
     select: {
       id: true, slug: true, displayName: true, legalName: true,
       status: true, timezone: true, publicEmail: true, publicPhone: true,
-      website: true, updatedAt: true,
+      website: true, industryVertical: true, updatedAt: true,
     },
   })
 }

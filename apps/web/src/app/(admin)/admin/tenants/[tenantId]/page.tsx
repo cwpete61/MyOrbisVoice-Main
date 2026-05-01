@@ -2,8 +2,10 @@
 
 import { useParams } from 'next/navigation'
 import { useState } from 'react'
-import { useApi, apiFetch } from '@/hooks/useApi'
+import { useApi, apiFetch, apiFetchRaw } from '@/hooks/useApi'
 import Link from 'next/link'
+
+const TIERS = ['LTD', 'BASIC', 'ESSENTIALS', 'PREMIUM', 'ENTERPRISE'] as const
 
 interface TenantDetail {
   id: string; displayName: string; legalName: string | null
@@ -14,6 +16,10 @@ interface TenantDetail {
   integrationConnections: { id: string; provider: string; status: string; label: string }[]
   subscriptions: { status: string; plan: { name: string } }[]
   _count: { conversations: number; appointments: number; contacts: number }
+  storageTier: string | null
+  storageQuotaBytes: string | null
+  storageUsedBytes: string
+  storageGracePeriodEndsAt: string | null
 }
 
 export default function AdminTenantDetailPage() {
@@ -22,6 +28,43 @@ export default function AdminTenantDetailPage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [editName, setEditName] = useState('')
+  const [selectedTier, setSelectedTier] = useState('')
+  const [quotaOverrideGb, setQuotaOverrideGb] = useState('')
+  const [tierSaving, setTierSaving] = useState(false)
+
+  async function assignTier() {
+    if (!selectedTier) return
+    setTierSaving(true)
+    try {
+      const res = await apiFetchRaw(`/api/admin/tenants/${tenantId}/storage-tier`, {
+        method: 'POST', body: JSON.stringify({ tier: selectedTier }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const json = await res.json() as { data?: { gracePeriod: boolean; graceEndsAt: string | null }; errors?: { message: string }[] }
+      if (!res.ok) { setMessage(json.errors?.[0]?.message ?? 'Failed'); return }
+      const { gracePeriod, graceEndsAt } = json.data!
+      await reload()
+      setMessage(gracePeriod
+        ? `Tier set to ${selectedTier}. Downgrade detected — 30-day grace period active until ${new Date(graceEndsAt!).toLocaleDateString()}.`
+        : `Tier ${selectedTier} applied immediately.`)
+    } catch (err) { setMessage(err instanceof Error ? err.message : 'Failed') }
+    finally { setTierSaving(false) }
+  }
+
+  async function saveQuotaOverride() {
+    setTierSaving(true)
+    try {
+      const res = await apiFetchRaw(`/api/admin/tenants/${tenantId}/storage-quota`, {
+        method: 'PATCH', body: JSON.stringify({ quotaGb: quotaOverrideGb ? parseFloat(quotaOverrideGb) : null }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!res.ok) { setMessage('Failed to save quota override'); return }
+      await reload()
+      setMessage('Quota override saved.')
+      setQuotaOverrideGb('')
+    } catch (err) { setMessage(err instanceof Error ? err.message : 'Failed') }
+    finally { setTierSaving(false) }
+  }
 
   async function suspend() {
     setSaving(true)
@@ -136,6 +179,76 @@ export default function AdminTenantDetailPage() {
                 <span className={i.status === 'CONNECTED' ? 'text-green-600' : 'text-red-500'}>{i.status}</span>
               </div>
             ))}
+        </div>
+      </div>
+
+      {/* Storage & Tier */}
+      <div className="mt-6 bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+        <h2 className="text-sm font-medium text-gray-900">Recording Storage</h2>
+
+        {/* Current status */}
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: 'Tier', value: tenant.storageTier ?? 'Not assigned' },
+            { label: 'Quota', value: tenant.storageQuotaBytes ? `${(Number(tenant.storageQuotaBytes) / 1024 / 1024 / 1024).toFixed(1)} GB` : 'Default' },
+            { label: 'Used', value: `${(Number(tenant.storageUsedBytes) / 1024 / 1024 / 1024).toFixed(2)} GB` },
+            { label: 'Grace period', value: tenant.storageGracePeriodEndsAt ? `Until ${new Date(tenant.storageGracePeriodEndsAt).toLocaleDateString()}` : 'None' },
+          ].map(({ label, value }) => (
+            <div key={label} className="p-3 rounded-lg bg-gray-50 border border-gray-100">
+              <p className="text-xs text-gray-500">{label}</p>
+              <p className="text-sm font-semibold text-gray-900 mt-0.5">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Usage bar */}
+        {tenant.storageQuotaBytes && (
+          <div>
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <span>Storage used</span>
+              <span>{Math.min(100, Math.round(Number(tenant.storageUsedBytes) / Number(tenant.storageQuotaBytes) * 100))}%</span>
+            </div>
+            <div className="h-2 rounded-full bg-gray-200">
+              <div
+                className="h-2 rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, Number(tenant.storageUsedBytes) / Number(tenant.storageQuotaBytes) * 100)}%`,
+                  background: Number(tenant.storageUsedBytes) / Number(tenant.storageQuotaBytes) >= 0.9 ? '#ef4444' : 'oklch(55% 0.11 193)',
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Assign tier */}
+        <div className="flex items-end gap-3 pt-2 border-t border-gray-100">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Assign storage tier</label>
+            <select value={selectedTier} onChange={e => setSelectedTier(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+              <option value="">— Select tier —</option>
+              {TIERS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <button onClick={assignTier} disabled={!selectedTier || tierSaving}
+            className="px-4 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900 disabled:opacity-50">
+            {tierSaving ? 'Applying…' : 'Apply tier'}
+          </button>
+        </div>
+
+        {/* Manual quota override */}
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1">Manual quota override (GB) — overrides tier default</label>
+            <input type="number" min="0.1" step="0.5" value={quotaOverrideGb}
+              onChange={e => setQuotaOverrideGb(e.target.value)}
+              placeholder="e.g. 25 — leave blank to clear override"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
+          </div>
+          <button onClick={saveQuotaOverride} disabled={tierSaving}
+            className="px-4 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900 disabled:opacity-50">
+            Save override
+          </button>
         </div>
       </div>
 

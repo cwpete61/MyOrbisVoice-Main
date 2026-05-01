@@ -36,6 +36,13 @@ const envSchema = z.object({
   ENABLE_INBOUND: z.string().transform(v => v === 'true').default('true'),
   ENABLE_OUTBOUND: z.string().transform(v => v === 'true').default('true'),
   ENABLE_AFFILIATES: z.string().transform(v => v === 'true').default('true'),
+  REOON_API_KEY: z.string().optional(),
+  REOON_MODE: z.enum(['quick', 'power']).default('power'),
+  BUNNY_API_KEY: z.string().optional(),
+  BUNNY_STORAGE_ZONE: z.string().optional(),
+  BUNNY_STORAGE_PASSWORD: z.string().optional(),
+  BUNNY_CDN_HOSTNAME: z.string().optional(),
+  BUNNY_STORAGE_REGION: z.string().default('ny'),
 })
 
 export type Env = z.infer<typeof envSchema>

@@ -4,6 +4,7 @@ import { resolveSystemPrompt } from './lib/prompt-resolver.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { generateSummary } from './services/summary.service.js'
 import { persistConversation, markSessionFailed, type TranscriptEntry } from './services/conversation.service.js'
+import { getGeminiApiKey } from './lib/gemini-key.js'
 
 // Message types sent from the browser widget
 type ClientMsg =
@@ -17,6 +18,7 @@ type ServerMsg =
   | { type: 'audio'; data: string }   // base64 audio from Gemini
   | { type: 'transcript'; role: 'user' | 'assistant'; text: string }
   | { type: 'turn_complete' }
+  | { type: 'interrupted' }
   | { type: 'ended'; conversationId?: string }
   | { type: 'error'; message: string }
 
@@ -71,10 +73,29 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
 
   console.log('[session] opening Gemini Live session')
 
+  // Look up tenant Gemini key; fall back to platform env key
+  let tenantGeminiKey: string | undefined
+  try {
+    const geminiConn = await prisma.integrationConnection.findFirst({
+      where: { tenantId: session.tenantId, provider: 'GEMINI', status: 'CONNECTED' },
+    })
+    if (geminiConn) {
+      const meta = geminiConn.metadataJson as Record<string, string> | null
+      const enc = meta?.['encryptedApiKey']
+      if (enc) tenantGeminiKey = getGeminiApiKey(enc) ?? undefined
+    }
+  } catch { /* fallback to platform key */ }
+
   // 3. Open Gemini Live session
   const gemini = openGeminiLiveSession(systemPrompt, {
+    onReady() {
+      gemini.sendText('The visitor just opened the voice widget. Greet them warmly and ask how you can help.')
+    },
     onAudioChunk(chunk) {
       send(ws, { type: 'audio', data: chunk.toString('base64') })
+    },
+    onInterrupted() {
+      send(ws, { type: 'interrupted' })
     },
     onTranscriptDelta(role, text) {
       transcript.push({ role, text, timestamp: Date.now() })
@@ -92,7 +113,7 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
       await finalize('FAILED')
       ws.close()
     },
-  })
+  }, tenantGeminiKey)
 
   send(ws, { type: 'ready' })
 

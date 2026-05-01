@@ -37,3 +37,4 @@ n8n_data/
 backups/
 site/Site.zip
 *.dump
+snapshots/

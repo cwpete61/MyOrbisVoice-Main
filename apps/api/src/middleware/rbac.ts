@@ -1,15 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
-import type { RoleKey } from '@voiceautomation/types'
 import { Errors } from '@voiceautomation/shared'
 import { prisma } from '../lib/prisma.js'
-
-export function requireRole(...roles: RoleKey[]) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    if (!req.user) { next(Errors.unauthorized()); return }
-    if (!roles.includes(req.user.roleKey)) { next(Errors.forbidden()); return }
-    next()
-  }
-}
 
 export function requirePlatformAdmin(req: Request, _res: Response, next: NextFunction): void {
   if (!req.user) { next(Errors.unauthorized()); return }
@@ -38,15 +29,4 @@ export function requireTenantContext(req: Request, _res: Response, next: NextFun
   }).catch(() => {
     next(Errors.forbidden('No tenant context'))
   })
-}
-
-export function requireTenantMatch(req: Request, _res: Response, next: NextFunction): void {
-  if (!req.user) { next(Errors.unauthorized()); return }
-  const paramTenantId = req.params['tenantId']
-  if (!paramTenantId) { next(); return }
-  if (!req.user.isPlatformRole && req.user.currentTenantId !== paramTenantId) {
-    next(Errors.forbidden('Tenant access denied'))
-    return
-  }
-  next()
 }

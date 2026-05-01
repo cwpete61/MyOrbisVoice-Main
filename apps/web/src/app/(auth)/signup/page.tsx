@@ -1,13 +1,28 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { apiSignup } from '@/lib/api'
 import { setTokens } from '@/lib/auth'
 import { PasswordInput } from '@/components/PasswordInput'
 
-export default function SignupPage() {
+function getReferralCookie(): string | undefined {
+  if (typeof document === 'undefined') return undefined
+  const match = document.cookie.match(/(?:^|; )ref=([^;]*)/)
+  return match ? decodeURIComponent(match[1]!) : undefined
+}
+
+function RefCapture({ onRef }: { onRef: (code: string) => void }) {
+  const searchParams = useSearchParams()
+  useEffect(() => {
+    const code = searchParams.get('ref') ?? getReferralCookie()
+    if (code) onRef(code)
+  }, [searchParams, onRef])
+  return null
+}
+
+function SignupForm() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [businessName, setBusinessName] = useState('')
@@ -15,6 +30,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [refCode, setRefCode] = useState<string | undefined>()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -22,7 +38,7 @@ export default function SignupPage() {
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
     setLoading(true)
     try {
-      const result = await apiSignup(username, email, password, businessName)
+      const result = await apiSignup(username, email, password, businessName, refCode)
       setTokens(result.accessToken, result.refreshToken)
       router.push('/dashboard')
     } catch (err) {
@@ -37,6 +53,9 @@ export default function SignupPage() {
       className="min-h-screen flex items-center justify-center px-4 py-12"
       style={{ background: 'var(--surface-app)' }}
     >
+      <Suspense fallback={null}>
+        <RefCapture onRef={setRefCode} />
+      </Suspense>
       <div
         className="w-full max-w-md rounded-2xl p-8"
         style={{
@@ -143,9 +162,9 @@ export default function SignupPage() {
 
         <p className="text-center mt-4 text-xs" style={{ color: 'var(--text-tertiary)' }}>
           By signing up you agree to our{' '}
-          <a href="#" style={{ color: 'oklch(55% 0.11 193)' }}>Terms</a>
+          <a href="https://myorbisvoice.com/terms.html" target="_blank" rel="noopener" style={{ color: 'oklch(55% 0.11 193)' }}>Terms</a>
           {' '}and{' '}
-          <a href="#" style={{ color: 'oklch(55% 0.11 193)' }}>Privacy Policy</a>.
+          <a href="https://myorbisvoice.com/privacy.html" target="_blank" rel="noopener" style={{ color: 'oklch(55% 0.11 193)' }}>Privacy Policy</a>.
         </p>
 
         <p className="text-center mt-3 text-sm" style={{ color: 'var(--text-tertiary)' }}>
@@ -156,5 +175,13 @@ export default function SignupPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
   )
 }

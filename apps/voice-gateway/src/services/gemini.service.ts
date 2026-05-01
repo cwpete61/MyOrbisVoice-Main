@@ -5,12 +5,17 @@ import type { TranscriptEntry } from './conversation.service.js'
 // We connect server-side and relay audio chunks between the visitor's browser and Gemini.
 
 const GEMINI_LIVE_HOST = 'generativelanguage.googleapis.com'
-const GEMINI_MODEL = 'models/gemini-2.5-flash-native-audio-latest'
+const GEMINI_API_VERSION = 'v1alpha'
+const GEMINI_MODEL = process.env['GEMINI_LIVE_MODEL']
+  ? `models/${process.env['GEMINI_LIVE_MODEL']}`
+  : 'models/gemini-2.5-flash-native-audio-latest'
 
 export type GeminiSessionCallbacks = {
+  onReady?: () => void
   onAudioChunk: (chunk: Buffer) => void
   onTranscriptDelta: (role: 'user' | 'assistant', text: string) => void
   onTurnComplete: () => void
+  onInterrupted?: () => void  // model output was cut off by user speech
   onError: (err: Error) => void
   onClose: () => void
 }
@@ -24,11 +29,14 @@ export type GeminiSession = {
 export function openGeminiLiveSession(
   systemPrompt: string,
   callbacks: GeminiSessionCallbacks,
+  apiKeyOverride?: string,
+  voiceName?: string,
 ): GeminiSession {
+  const apiKey = apiKeyOverride ?? env.GEMINI_API_KEY
   // Gemini Live WebSocket URL
   const url =
-    `wss://${GEMINI_LIVE_HOST}/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent` +
-    `?key=${env.GEMINI_API_KEY}`
+    `wss://${GEMINI_LIVE_HOST}/ws/google.ai.generativelanguage.${GEMINI_API_VERSION}.GenerativeService.BidiGenerateContent` +
+    `?key=${apiKey}`
 
   let ws: import('ws').WebSocket | null = null
   let closed = false
@@ -45,13 +53,22 @@ export function openGeminiLiveSession(
           model: GEMINI_MODEL,
           generation_config: {
             response_modalities: ['AUDIO'],
-            speech_config: {
-              voice_config: { prebuilt_voice_config: { voice_name: 'Aoede' } },
-            },
+            ...(voiceName ? { speech_config: { voice_config: { prebuilt_voice_config: { voice_name: voiceName } } } } : {}),
           },
           system_instruction: {
             parts: [{ text: systemPrompt }],
           },
+          realtime_input_config: {
+            automatic_activity_detection: {
+              disabled: false,
+              start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',
+              end_of_speech_sensitivity:   'END_SENSITIVITY_HIGH',
+              prefix_padding_ms:           20,
+              silence_duration_ms:         400,
+            },
+          },
+          input_audio_transcription:  {},
+          output_audio_transcription: {},
         },
       }))
     })
@@ -59,27 +76,39 @@ export function openGeminiLiveSession(
     ws.on('message', (raw: Buffer) => {
       try {
         const msg = JSON.parse(raw.toString('utf8'))
+        const keys = Object.keys(msg)
+        if (!keys.includes('serverContent') || process.env['GEMINI_DEBUG'] === 'true') {
+          console.log('[gemini] msg keys:', keys, JSON.stringify(msg).slice(0, 200))
+        }
+
+        // Setup complete — Gemini is ready to receive input
+        if (msg?.setupComplete !== undefined) {
+          console.log('[gemini] setup complete')
+          callbacks.onReady?.()
+        }
+
+        // Model interrupted by user speech — tell caller to clear its audio buffer
+        if (msg?.serverContent?.interrupted) {
+          callbacks.onInterrupted?.()
+        }
 
         // Audio output from Gemini
         const audioParts = msg?.serverContent?.modelTurn?.parts ?? []
         for (const part of audioParts) {
-          // Skip thinking/reasoning tokens — they are internal to the model
           if (part.thought === true) continue
-
           if (part.inlineData?.mimeType?.startsWith('audio/')) {
-            const audioBuffer = Buffer.from(part.inlineData.data, 'base64')
-            callbacks.onAudioChunk(audioBuffer)
+            callbacks.onAudioChunk(Buffer.from(part.inlineData.data, 'base64'))
           }
           if (part.text) {
             callbacks.onTranscriptDelta('assistant', part.text)
           }
         }
 
-        // User transcript from Gemini's transcription
-        const inputTranscript = msg?.serverContent?.inputTranscription?.text
-        if (inputTranscript) {
-          callbacks.onTranscriptDelta('user', inputTranscript)
-        }
+        // Real-time transcription (arrives faster than modelTurn.parts.text)
+        const inputTranscript  = msg?.serverContent?.inputTranscription?.text
+        const outputTranscript = msg?.serverContent?.outputTranscription?.text
+        if (inputTranscript)  callbacks.onTranscriptDelta('user',      inputTranscript)
+        if (outputTranscript) callbacks.onTranscriptDelta('assistant', outputTranscript)
 
         if (msg?.serverContent?.turnComplete) {
           callbacks.onTurnComplete()
@@ -113,14 +142,14 @@ export function openGeminiLiveSession(
   connect().catch(callbacks.onError)
 
   return {
-    sendAudio(pcm16: Buffer) {
+    sendAudio(pcm16k: Buffer) {
       if (!ws || ws.readyState !== 1) return
       ws.send(JSON.stringify({
         realtime_input: {
-          media_chunks: [{
+          audio: {
+            data: pcm16k.toString('base64'),
             mime_type: 'audio/pcm;rate=16000',
-            data: pcm16.toString('base64'),
-          }],
+          },
         },
       }))
     },
@@ -136,7 +165,7 @@ export function openGeminiLiveSession(
     },
 
     close() {
-      closed = true
+      // Do NOT set closed=true here — let the ws 'close' event fire so onClose() runs finalize
       ws?.close()
     },
   }

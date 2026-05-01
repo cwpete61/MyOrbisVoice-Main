@@ -15,30 +15,64 @@ export async function persistConversation(opts: {
 }): Promise<string> {
   const { tenantId, sessionId, transcript, summary, channelType = 'WIDGET' } = opts
 
+  const transcriptJson = transcript.map(e => ({
+    role:      e.role,
+    text:      e.text,
+    timestamp: e.timestamp,
+  }))
+
+  if (channelType === 'INBOUND' || channelType === 'OUTBOUND') {
+    // Conversation was already created by logCallStart — update it
+    const updated = await prisma.conversation.updateMany({
+      where: { externalCallId: sessionId, tenantId },
+      data:  {
+        status:        'COMPLETED',
+        endedAt:       new Date(),
+        summaryText:   summary,
+        transcriptJson: transcriptJson as any,
+      },
+    })
+
+    if (updated.count === 0) {
+      console.warn(`[conversation] no conversation found for callSid=${sessionId}, creating fallback`)
+      const conv = await prisma.conversation.create({
+        data: {
+          tenantId,
+          channelType,
+          direction:      channelType === 'OUTBOUND' ? 'OUTBOUND' : 'INBOUND',
+          status:         'COMPLETED',
+          startedAt:      new Date(transcript[0]?.timestamp ?? Date.now()),
+          endedAt:        new Date(),
+          summaryText:    summary,
+          transcriptJson: transcriptJson as any,
+          externalCallId: sessionId,
+        },
+      })
+      return conv.id
+    }
+
+    const conv = await prisma.conversation.findFirst({ where: { externalCallId: sessionId, tenantId } })
+    return conv?.id ?? sessionId
+  }
+
+  // WIDGET — create a new conversation record
   const conversation = await prisma.conversation.create({
     data: {
       tenantId,
       channelType,
-      direction:     'INBOUND',
-      status:        'COMPLETED',
-      startedAt:     new Date(transcript[0]?.timestamp ?? Date.now()),
-      endedAt:       new Date(),
-      summaryText:   summary,
-      transcriptRef: JSON.stringify(transcript),
+      direction:      'INBOUND',
+      status:         'COMPLETED',
+      startedAt:      new Date(transcript[0]?.timestamp ?? Date.now()),
+      endedAt:        new Date(),
+      summaryText:    summary,
+      transcriptJson: transcriptJson as any,
     },
   })
 
-  if (channelType === 'WIDGET') {
-    await prisma.widgetSession.update({
-      where: { id: sessionId },
-      data:  { status: 'COMPLETED', endedAt: new Date(), conversationId: conversation.id },
-    }).catch(() => null)
-  } else if (channelType === 'INBOUND') {
-    await prisma.callLog.updateMany({
-      where: { providerCallId: sessionId },
-      data:  { conversationId: conversation.id, status: 'completed', endAt: new Date() },
-    }).catch(() => null)
-  }
+  await prisma.widgetSession.update({
+    where: { id: sessionId },
+    data:  { status: 'COMPLETED', endedAt: new Date(), conversationId: conversation.id },
+  }).catch(() => null)
 
   return conversation.id
 }

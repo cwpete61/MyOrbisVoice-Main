@@ -3,6 +3,8 @@ import { prisma } from '../lib/prisma.js'
 import { getTwilioAuthToken } from './twilio.service.js'
 import { getEnv } from '@voiceautomation/config'
 
+const GW_WS_BASE = process.env['GATEWAY_WS_URL'] ?? 'wss://gateway.myorbisvoice.com'
+
 async function getTwilioClient(tenantId: string) {
   const conn = await prisma.integrationConnection.findFirst({
     where: { tenantId, provider: 'TWILIO', status: 'CONNECTED' },
@@ -52,6 +54,10 @@ export async function dispatchPendingCalls(tenantId: string, campaignId: string)
         statusCallback: `${env.API_BASE_URL}/api/webhooks/twilio/outbound/status?attemptId=${attempt.id}`,
         statusCallbackMethod: 'POST',
         statusCallbackEvent:  ['initiated', 'ringing', 'answered', 'completed'],
+        machineDetection:     'DetectMessageEnd',
+        asyncAmd:             'true',
+        asyncAmdStatusCallback: `${env.API_BASE_URL}/api/webhooks/twilio/outbound/amd?attemptId=${attempt.id}`,
+        timeLimit:            300, // 5 minute hard cap
       })
 
       await prisma.outboundCallAttempt.update({
@@ -67,33 +73,17 @@ export async function dispatchPendingCalls(tenantId: string, campaignId: string)
   }
 }
 
-export async function buildOutboundTwiml(tenantId: string, campaignId: string): Promise<string> {
-  const campaign = await prisma.outboundCampaign.findFirst({
-    where: { id: campaignId, tenantId },
-  })
+export async function buildOutboundTwiml(tenantId: string, campaignId: string, attemptId: string): Promise<string> {
+  const VoiceResponse = twilio.twiml.VoiceResponse
+  const response      = new VoiceResponse()
 
-  const agentName = 'Alex'
-  const businessName = 'our team'
+  const connect = response.connect()
+  const stream  = connect.stream({ url: `${GW_WS_BASE}/ws/outbound` })
+  stream.parameter({ name: 'tenantId',   value: tenantId })
+  stream.parameter({ name: 'campaignId', value: campaignId })
+  stream.parameter({ name: 'attemptId',  value: attemptId })
 
-  // Try to get business profile for personalisation
-  try {
-    const profile = await prisma.businessProfile.findFirst({ where: { tenantId } })
-    if (profile?.brandName) {
-      return `<Response>
-  <Say voice="Polly.Joanna">Hi, this is ${agentName} calling from ${profile.brandName}. ${campaign?.description ?? 'We are reaching out to connect with you.'} Please stay on the line.</Say>
-  <Pause length="1"/>
-  <Say voice="Polly.Joanna">Thank you for your time. We will follow up shortly. Goodbye.</Say>
-  <Hangup/>
-</Response>`
-    }
-  } catch { /* fall through */ }
-
-  return `<Response>
-  <Say voice="Polly.Joanna">Hi, this is ${agentName} calling from ${businessName}. We are reaching out to connect with you. Please stay on the line.</Say>
-  <Pause length="1"/>
-  <Say voice="Polly.Joanna">Thank you for your time. We will follow up shortly. Goodbye.</Say>
-  <Hangup/>
-</Response>`
+  return response.toString()
 }
 
 export async function handleOutboundStatus(attemptId: string, callStatus: string, callDuration?: string) {

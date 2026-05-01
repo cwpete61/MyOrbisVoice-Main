@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyOrbisVoice — Platform Overview</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      color: #1a1a1a;
+      background: #ffffff;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 48px 32px;
+    }
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 36px;
+    }
+    .logo-mark {
+      width: 42px;
+      height: 42px;
+      background: #1a9898;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a9898;
+      letter-spacing: -0.5px;
+    }
+    .tagline {
+      font-size: 13px;
+      color: #666;
+      margin-top: 2px;
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #0f1a1a;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+    .intro {
+      font-size: 16px;
+      color: #444;
+      margin-bottom: 40px;
+      border-left: 4px solid #1a9898;
+      padding-left: 16px;
+    }
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f1a1a;
+      margin-top: 40px;
+      margin-bottom: 14px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #e8f5f5;
+    }
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a9898;
+      margin-top: 20px;
+      margin-bottom: 6px;
+    }
+    p { margin-bottom: 12px; color: #333; }
+    ul {
+      margin: 6px 0 14px 20px;
+      color: #333;
+    }
+    ul li { margin-bottom: 5px; }
+    .channel-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin: 20px 0;
+    }
+    .channel-card {
+      border: 1px solid #d4ecec;
+      border-radius: 10px;
+      padding: 18px 16px;
+      background: #f5fafa;
+    }
+    .channel-card .icon {
+      font-size: 26px;
+      margin-bottom: 8px;
+    }
+    .channel-card h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f1a1a;
+      margin-bottom: 6px;
+    }
+    .channel-card p {
+      font-size: 13px;
+      color: #555;
+      margin: 0;
+    }
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #f9fafa;
+      border: 1px solid #e5eeee;
+    }
+    .feature-item .check {
+      color: #1a9898;
+      font-weight: 700;
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .feature-item span {
+      font-size: 13.5px;
+      color: #333;
+    }
+    .highlight-box {
+      background: #e8f5f5;
+      border-radius: 10px;
+      padding: 20px 22px;
+      margin: 20px 0;
+    }
+    .highlight-box p { color: #1a5050; margin: 0; font-size: 14.5px; }
+    .stack-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0 20px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12.5px;
+      font-weight: 600;
+      background: #d4ecec;
+      color: #0f5050;
+    }
+    .divider {
+      border: none;
+      border-top: 1px solid #e5eeee;
+      margin: 36px 0;
+    }
+    .closing {
+      background: #0f1a1a;
+      color: #fff;
+      border-radius: 12px;
+      padding: 28px 28px;
+      margin-top: 40px;
+    }
+    .closing h2 {
+      color: #5dd6d6;
+      border-color: #2a4040;
+      font-size: 17px;
+      margin-top: 0;
+    }
+    .closing p { color: #ccc; font-size: 14px; }
+    .closing a { color: #5dd6d6; }
+    @media (max-width: 600px) {
+      .channel-grid { grid-template-columns: 1fr; }
+      .feature-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="logo-row">
+    <div class="logo-mark">
+      <svg width="20" height="20" viewBox="0 0 14 14" fill="none">
+        <circle cx="7" cy="7" r="3" fill="#fff"/>
+        <circle cx="7" cy="7" r="6" stroke="#fff" stroke-opacity="0.45" stroke-width="1.5"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-name">MyOrbisVoice</div>
+      <div class="tagline">AI-Powered Voice Automation for Modern Businesses</div>
+    </div>
+  </div>
+
+  <h1>Turn Every Call Into a Business Opportunity — Automatically</h1>
+
+  <p class="intro">
+    MyOrbisVoice is a full-stack, multi-tenant AI voice automation platform that answers your phones,
+    handles your website visitors, and runs your outbound calling campaigns — around the clock, without
+    hiring additional staff. Every interaction is logged, transcribed, summarized, and available instantly
+    from your dashboard.
+  </p>
+
+  <!-- What It Is -->
+  <h2>What Is MyOrbisVoice?</h2>
+  <p>
+    MyOrbisVoice replaces or augments your front-line communications team with a configurable AI voice
+    agent. The agent knows your business — your services, pricing, hours, rules, and tone — and handles
+    inbound calls, web visitors, and outbound follow-up campaigns exactly the way you would, 24 hours a
+    day, 7 days a week.
+  </p>
+  <p>
+    It is not a call center. It is not a chatbot. It is a trained, real-time voice AI that speaks,
+    listens, books appointments, answers questions, qualifies leads, and escalates to a human when
+    necessary — all within a single platform your team manages from a browser.
+  </p>
+
+  <hr class="divider" />
+
+  <!-- 3 Channels -->
+  <h2>Three Communication Channels</h2>
+  <div class="channel-grid">
+    <div class="channel-card">
+      <div class="icon">📞</div>
+      <h4>Inbound Receptionist</h4>
+      <p>Answers every inbound call, greets callers by your brand, handles questions, books appointments,
+         and escalates to a live person when needed. Fully after-hours capable.</p>
+    </div>
+    <div class="channel-card">
+      <div class="icon">🌐</div>
+      <h4>Website Voice Widget</h4>
+      <p>Embedded directly on your website. Visitors click to speak with your AI agent in real time —
+         no phone number required. Works on desktop and mobile.</p>
+    </div>
+    <div class="channel-card">
+      <div class="icon">📤</div>
+      <h4>Outbound Caller</h4>
+      <p>Runs automated outbound calling campaigns to your contact lists. Follow-ups, reminders,
+         re-engagement, and lead qualification — executed at scale with no manual dialing.</p>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- Core Features -->
+  <h2>Core Platform Features</h2>
+
+  <h3>Business DNA — Your Agent Knows Your Business</h3>
+  <p>
+    Every tenant configures a <strong>Business DNA</strong> profile — a structured knowledge base
+    that covers your business identity, services, pricing, operating hours, lead qualification
+    rules, appointment logic, escalation conditions, language preferences, compliance rules, and
+    prohibited topics. The AI agent draws from this in every conversation without you needing to
+    script every possible interaction.
+  </p>
+
+  <h3>AI Voice Agent — Real-Time, Human-Quality Conversations</h3>
+  <p>
+    Powered by <strong>Google Gemini Live</strong> for real-time voice understanding and generation,
+    and <strong>OpenAI GPT-4o</strong> for reasoning and orchestration. The agent listens, responds,
+    handles interruptions naturally, detects silence, and knows when to transfer, book, or escalate.
+    Conversations feel natural — not robotic.
+  </p>
+
+  <h3>Appointment Booking — Fully Automated</h3>
+  <p>
+    The agent books appointments directly into <strong>Google Calendar</strong> during the call.
+    It checks live availability, offers alternative slots, confirms the booking verbally, and
+    sends a confirmation. No manual follow-up required.
+  </p>
+
+  <h3>Call Transcripts &amp; Summaries</h3>
+  <p>
+    Every conversation — inbound, outbound, and widget — is automatically:
+  </p>
+  <ul>
+    <li>Transcribed word-for-word, line by line, labeled Caller and Agent</li>
+    <li>Summarized in 2–3 sentences by AI for quick review</li>
+    <li>Stored and searchable from the Conversations dashboard</li>
+    <li>Available for playback via voice recording</li>
+  </ul>
+
+  <h3>Voice Recordings</h3>
+  <p>
+    All calls are recorded and stored securely in cloud storage (Bunny.net). Recordings are
+    accessible from the conversation history with a signed playback link. Storage quotas are
+    managed per account with configurable retention policies.
+  </p>
+
+  <h3>Contact Management</h3>
+  <p>
+    A full contact database with call history, SMS history, opt-out tracking per channel
+    (voice, SMS, email), email validation, and a complete activity timeline per contact.
+    Contacts are automatically matched to inbound callers.
+  </p>
+
+  <h3>SMS — Two-Way Messaging</h3>
+  <p>
+    Send and receive SMS messages through the platform. Inbound STOP/START keywords are
+    automatically detected and processed. Opt-out status is enforced before any outbound SMS
+    is sent. All messages are logged to the contact timeline.
+  </p>
+
+  <h3>Outbound Campaigns</h3>
+  <p>
+    Build and launch outbound call campaigns to your contact list. Configure the calling script,
+    target audience, retry policy, and scheduling. Campaign results, outcomes, and recordings
+    are tracked per call.
+  </p>
+
+  <hr class="divider" />
+
+  <!-- Dashboard & Management -->
+  <h2>Dashboard &amp; Management Tools</h2>
+
+  <div class="feature-grid">
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>Live Dashboard</strong> — real-time active conversation count, recent call feed, storage usage bar</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>Conversations Tab</strong> — filterable list of all calls and chats with transcript and summary on click</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>Contacts &amp; Timeline</strong> — full contact profile with call, SMS, and opt-out history in one view</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>Appointments</strong> — view, reschedule, and cancel bookings from the dashboard</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>Agent Configuration</strong> — 7 agent role types, each with its own prompt, model, and allowed action set</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>Prompt Editor</strong> — layered prompt system (platform → tenant → channel → role → session)</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>Channel Controls</strong> — enable/disable inbound, widget, and outbound channels independently</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>Phone Number Management</strong> — assign numbers, enable inbound/outbound, configure forwarding</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>After-Hours Rules</strong> — route after-hours calls to voicemail, forwarding, or a polite close message</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>Notification Bell</strong> — real-time system alerts for storage warnings, missed escalations, and platform events</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>Billing &amp; Subscription</strong> — plan selection, usage overview, and Stripe-powered upgrade portal</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span><strong>Affiliate Portal</strong> — referral tracking, commission ledger, and payout management for partners</span>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- Agent Roles -->
+  <h2>AI Agent Roles</h2>
+  <p>Each business configures one or more agent roles, each with its own personality, prompt stack, and allowed actions:</p>
+  <ul>
+    <li><strong>Orchestrator</strong> — routes and coordinates between other agents</li>
+    <li><strong>Appointment Agent</strong> — focused on booking, rescheduling, and calendar management</li>
+    <li><strong>Sales Agent</strong> — lead qualification, product presentation, objection handling</li>
+    <li><strong>Customer Service Agent</strong> — issue resolution, account questions, support escalation</li>
+    <li><strong>Marketing Agent</strong> — campaign outreach, promotions, survey collection</li>
+    <li><strong>Assistant</strong> — general-purpose help for any caller need</li>
+    <li><strong>Secretary</strong> — message taking, transferring, scheduling</li>
+  </ul>
+
+  <hr class="divider" />
+
+  <!-- Integrations -->
+  <h2>Integrations</h2>
+
+  <h3>Google (Gmail &amp; Calendar)</h3>
+  <p>
+    Connect a dedicated Google account via OAuth. The AI agent sends booking confirmations,
+    follow-up emails, and manages calendar events directly — no manual intervention required.
+    Credentials are stored encrypted and never exposed.
+  </p>
+
+  <h3>Twilio</h3>
+  <p>
+    All phone calls and SMS messages are handled through Twilio. Inbound call routing, outbound
+    dialing, SMS delivery, call recording, voicemail, and call forwarding are all managed natively
+    through the platform with no additional configuration required.
+  </p>
+
+  <h3>Stripe</h3>
+  <p>
+    Subscription billing, plan upgrades, and payment management are handled through Stripe.
+    Tenants can manage their own billing from the dashboard including upgrading, downgrading,
+    and accessing invoices through the Stripe customer portal.
+  </p>
+
+  <h3>OpenAI &amp; Google Gemini</h3>
+  <p>
+    OpenAI GPT-4o powers agent reasoning, call summarization, and orchestration. Google Gemini
+    Live powers real-time voice — the actual spoken conversation. Both are configured at the
+    platform level and available to every tenant automatically.
+  </p>
+
+  <hr class="divider" />
+
+  <!-- Security & Architecture -->
+  <h2>Security, Privacy &amp; Reliability</h2>
+  <div class="feature-grid">
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span>All secrets stored AES-256 encrypted — never visible in the UI or API responses</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span>Complete tenant isolation — no cross-tenant data access possible</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span>Role-based access control — Owner, Manager, Staff, and Affiliate roles per workspace</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span>Immutable audit logs for all sensitive actions — impersonation, secret rotation, billing changes</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span>SMS opt-out compliance — STOP/START keywords enforced automatically per contact per channel</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span>Signed recording URLs — audio files are never publicly accessible, only via short-lived tokens</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span>Storage quota monitoring — tenants warned at 90%, recordings paused at 100%</span>
+    </div>
+    <div class="feature-item">
+      <span class="check">✓</span>
+      <span>Webhook signature validation on all Twilio and Stripe events</span>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- Admin Platform -->
+  <h2>Platform Administration</h2>
+  <p>
+    A full admin control surface is available to platform operators — separate from the tenant-facing
+    dashboard. Admins can:
+  </p>
+  <ul>
+    <li>Search, view, and manage all tenant workspaces</li>
+    <li>Override entitlements and storage quotas per tenant</li>
+    <li>Suspend and restore tenant accounts</li>
+    <li>Assign storage tiers (LTD, Basic, Essentials, Premium, Enterprise)</li>
+    <li>Manage platform-level credentials for Google, Stripe, Twilio, OpenAI, Bunny, and Reoon</li>
+    <li>Impersonate tenants for support (all impersonation actions are audit-logged)</li>
+    <li>Monitor system health, notifications, and workflow activity</li>
+  </ul>
+
+  <hr class="divider" />
+
+  <!-- Tech Stack -->
+  <h2>Technology Stack</h2>
+  <p>Built on enterprise-grade, production-proven technologies:</p>
+  <div class="stack-row">
+    <span class="badge">Next.js (React)</span>
+    <span class="badge">Node.js + TypeScript</span>
+    <span class="badge">PostgreSQL</span>
+    <span class="badge">Redis</span>
+    <span class="badge">Docker</span>
+    <span class="badge">Google Gemini Live</span>
+    <span class="badge">OpenAI GPT-4o</span>
+    <span class="badge">Twilio</span>
+    <span class="badge">Stripe</span>
+    <span class="badge">Google OAuth</span>
+    <span class="badge">Bunny.net CDN</span>
+    <span class="badge">n8n Orchestration</span>
+    <span class="badge">Prisma ORM</span>
+    <span class="badge">WebSocket (Real-Time Audio)</span>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- Roadmap -->
+  <h2>Coming Soon</h2>
+  <ul>
+    <li><strong>Mobile App</strong> — iOS and Android app for on-the-go conversation monitoring and playback</li>
+    <li><strong>Desktop App</strong> — native Windows/Mac app with full transcript search and audio player</li>
+    <li><strong>Campaign Results Dashboard</strong> — detailed per-call outcomes, conversion tracking, and ROI reporting</li>
+    <li><strong>CRM Integrations</strong> — sync contacts, calls, and outcomes to HubSpot, Salesforce, and more</li>
+    <li><strong>Multi-Language Support</strong> — agent conversations in Spanish, French, and additional languages</li>
+    <li><strong>Voicemail Transcription</strong> — after-hours voicemails transcribed and emailed automatically</li>
+  </ul>
+
+  <hr class="divider" />
+
+  <!-- Closing CTA -->
+  <div class="closing">
+    <h2>Ready to Put Your Phones on Autopilot?</h2>
+    <p>
+      MyOrbisVoice is live, production-ready, and accepting new business accounts now.
+      Whether you run a medical office, a real estate team, a home services company, or any
+      business that lives on phone calls — we have a plan and a configuration that fits.
+    </p>
+    <p style="margin-top: 14px;">
+      <strong style="color:#fff;">Visit:</strong>
+      <a href="https://myorbisvoice.com">myorbisvoice.com</a>
+      &nbsp;·&nbsp;
+      <strong style="color:#fff;">App:</strong>
+      <a href="https://app.myorbisvoice.com">app.myorbisvoice.com</a>
+    </p>
+    <p style="margin-top: 10px; color: #aaa; font-size: 13px;">
+      Platform built and maintained by the Antigravity / OrbisVoice team. All rights reserved.
+    </p>
+  </div>
+
+</body>
+</html>

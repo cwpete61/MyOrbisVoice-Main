@@ -161,10 +161,44 @@ services:
       redis:
         condition: service_healthy
 
+  db-backup:
+    image: postgres:16-alpine
+    container_name: myorbisvoice-db-backup
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-voiceautomation}
+      POSTGRES_USER: ${POSTGRES_USER:-voiceautomation}
+    volumes:
+      - db_backups:/backups
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Run pg_dump daily at 2 AM, keep last 30 dumps
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          DUMP_FILE="/backups/db_$$(date +%Y%m%d_%H%M%S).dump"
+          pg_dump -h postgres -U $$POSTGRES_USER -d $$POSTGRES_DB -F c -f "$$DUMP_FILE"
+          if [ $$? -eq 0 ]; then
+            echo "[backup] Dump written: $$DUMP_FILE"
+          else
+            echo "[backup] ERROR: pg_dump failed"
+          fi
+          # Delete dumps older than 30 days
+          find /backups -name "*.dump" -mtime +30 -delete
+          # Sleep until next 2 AM (86400s = 24h; approximate via fixed sleep)
+          sleep 86400
+        done
+
 volumes:
   postgres_data:
   redis_data:
   n8n_data:
+  db_backups:
 
 networks:
   internal:

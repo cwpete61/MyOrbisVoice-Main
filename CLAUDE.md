@@ -565,6 +565,78 @@ Minimum checks:
 - outbound call flow works
 - audit logs record critical actions
 
+## Deploy Protocol — MANDATORY
+
+Every code change follows this exact sequence. No exceptions.
+
+### Step 1 — Before writing any code
+- State what you are about to change and why
+- Identify which containers will be affected (api / web / gateway)
+- If schema changes: flag that Prisma client must be pushed
+
+### Step 2 — Build
+```bash
+pnpm --filter @voiceautomation/api build          # if API changed
+pnpm --filter @voiceautomation/voice-gateway build # if gateway changed
+pnpm --filter @voiceautomation/web build           # if web changed
+```
+Build must be clean (zero TypeScript errors) before proceeding.
+
+### Step 3 — Deploy using the script
+```bash
+./infrastructure/scripts/deploy.sh [api|web|gateway|all] "reason"
+```
+
+The script handles everything atomically:
+- Pre-deploy DB snapshot (local + prod)
+- Prisma client regeneration and push to BOTH api and gateway containers
+- rsync to server
+- `docker cp` into containers (NOT just rsync — containers have their own filesystem)
+- **Wipe stale static chunks for web** before injecting (prevents cached chunk crashes)
+- Restart containers
+- Health check
+- Post-deploy DB snapshot
+
+### Step 4 — Verify in browser
+After every deploy:
+1. Hard-refresh the browser (`Ctrl+Shift+R`) to clear cached chunks
+2. Confirm the changed feature works
+3. Confirm no regressions on adjacent pages
+
+### Step 5 — Snapshot if stable
+If the feature is confirmed working:
+```bash
+docker exec umoja-postgres pg_dump -U voiceautomation -d voiceautomation -F c \
+  > backups/db_$(date +%Y%m%d_%H%M%S)_<label>.dump
+```
+
+---
+
+## Known Deploy Pitfalls — Never Repeat These
+
+| Pitfall | What Happens | Fix |
+|---|---|---|
+| rsync without docker cp | Container runs old code | Always docker cp after rsync |
+| Web deploy without wiping static | Browser loads stale chunk hashes → crash | Script wipes `/app/apps/web/.next/static` first |
+| Schema change without prisma generate | `prisma.newModel` is undefined → 500 | Script always runs prisma generate + push |
+| Prisma pushed to api only | Gateway crashes on new models | Script pushes to BOTH containers |
+| Shell `$` in psql command | bcrypt hash corrupted silently | Always write SQL to a file, use `docker cp` + `psql -f` |
+| `apiFetch` strips `meta` | Paginated data silently empty | API must embed everything inside `{ data: { items, total } }` |
+
+---
+
+## Consistency Checks — Run After Any Code Change
+
+Before reporting a task complete, verify:
+- [ ] TypeScript build clean (zero errors)
+- [ ] `docker logs myorbisvoice-api --tail=5` shows "listening on" with no errors
+- [ ] `docker logs myorbisvoice-gateway --tail=5` shows "listening on port 5000" with no errors
+- [ ] `docker logs myorbisvoice-web --tail=5` shows "Ready in"
+- [ ] `curl https://api.myorbisvoice.com/health` returns 200
+- [ ] Changed feature tested manually in browser after hard-refresh
+
+---
+
 ## Implementation behavior
 
 When making architecture or coding decisions:
@@ -590,6 +662,62 @@ Start with:
 Do not start with aesthetic UI polish.  
 Do not start with deep workflow automation before the data model and auth model are stable.  
 Do not let raw provider payloads shape the internal domain model.
+
+---
+
+## Planned Feature: Voice Recording + Transcript Storage
+
+**Status:** Designed, not yet built. Do not skip this when building Phase 5/6/7.
+
+### Purpose
+Every call — inbound, outbound, and widget — must produce two persistent artifacts:
+1. A **voice recording** (audio file) stored and retrievable per call
+2. A **text transcript** with speaker labels and timestamps
+
+These artifacts are foundational for:
+- The web app conversation history view
+- The future desktop app and mobile app (playback, search, review)
+- Campaign outcome analysis
+- Agent quality review
+- Compliance and audit trails
+
+### Recording Storage
+- Twilio provides call recordings natively via its Recording API
+- Gemini Live sessions produce audio that must be captured at the gateway layer
+- Recordings must be stored in a tenant-isolated location (object storage or Twilio-hosted)
+- Store the recording URL/ref in the `Conversation` record, never the raw audio in PostgreSQL
+- Access must be gated — tenants can only retrieve their own recordings
+
+### Transcript Storage
+- Transcripts are generated from the audio after the call ends
+- For Twilio calls: use Twilio's transcription service or pipe audio to OpenAI Whisper
+- For Gemini Live sessions: capture turn-by-turn text at the gateway in real time
+- Store full transcript as structured JSON (speaker, text, timestamp per turn) in object storage
+- Store a plain-text summary in the `Conversation.summaryText` field for quick display
+- Store the transcript reference (URL or key) in `Conversation.transcriptRef`
+
+### Data model touch points
+- `Conversation.transcriptRef` — already exists, use for transcript file reference
+- `Conversation.summaryText` — already exists, use for AI-generated summary
+- `Conversation.outcomeCode` — already exists, use for structured call outcome
+- Add `Conversation.recordingRef` — URL or storage key for the audio file
+- Add `Conversation.recordingDurationSecs` — integer, call length in seconds
+- Add `Conversation.transcriptJson` — JSONB, structured turn-by-turn transcript
+
+### Desktop + Mobile app considerations
+- Recordings and transcripts must be accessible via the REST API with proper auth
+- Playback must stream, not download — use signed URLs with short TTL
+- Transcript search must be possible — index transcript text or use full-text search
+- Mobile app will need a lightweight transcript view and audio player component
+- All of this depends on recordings and transcripts being stored consistently from day one
+
+### Build order
+1. Add `recordingRef`, `recordingDurationSecs`, `transcriptJson` to `Conversation` schema (do during Phase 5)
+2. Wire Twilio recording webhook to store `recordingRef` on call end (Phase 6)
+3. Wire Gemini Live transcript capture at gateway layer (Phase 5)
+4. Build conversation detail view in web app showing transcript + playback link (Phase 5/6)
+5. Expose `GET /api/conversations/:id/recording` and `GET /api/conversations/:id/transcript` endpoints
+6. Mobile/desktop app consumes these same endpoints — no separate API needed
 
 ---
 
@@ -940,17 +1068,104 @@ Phase 5+: Only connect Gemini Live once the local session flow is verified.
 
 ## Credentials
 
+> ⚠️ All keys below are production credentials. Never commit to a public repo. Store encrypted backups off-repo (1Password, Bitwarden, etc.).
+
+---
+
+### Hosting — Contabo Production Server
+- **IP:** `147.93.183.4`
+- **User:** `root`
+- **Password:** `Orbis@8214@@!!` (fallback: `Orbis@8214`)
+- **Docker network:** `myorbisvoice_net`
+- **App domain:** `app.myorbisvoice.com`
+- **API domain:** `api.myorbisvoice.com`
+- **n8n domain:** `n8n.myorbisvoice.com` (internal only)
+
+---
+
+### Database — PostgreSQL (shared umoja-postgres container)
+- **Host:** `localhost:5432` (container: `umoja-postgres`)
+- **Database:** `voiceautomation`
+- **User:** `voiceautomation`
+- **Password:** `voiceautomation`
+- **Connection string:** `postgresql://voiceautomation:voiceautomation@localhost:5432/voiceautomation`
+
+---
+
+### Auth
+- **AUTH_SECRET:** `[REDACTED-AUTH-SECRET]`
+- **N8N_ENCRYPTION_KEY:** `[REDACTED-AUTH-SECRET]`
+
+---
+
+### OpenAI
+- **API Key:** `sk-proj-[REDACTED]`
+- **Default model:** `gpt-4o-mini`
+- **Used for:** call summaries, agent reasoning, campaign assistance, email enrichment
+- **Enter via:** Admin → System Settings → OpenAI card (stored encrypted in DB)
+
+---
+
 ### Google OAuth (myorbisvoice project)
-- **Project ID:** myorbisvoice
-- **Client ID:** 548023119687-734aljh9786uh1k85kv0506coob25rje.apps.googleusercontent.com
-- **Client Secret:** GOCSPX-[REDACTED]
-- **Auth URI:** https://accounts.google.com/o/oauth2/auth
-- **Token URI:** https://oauth2.googleapis.com/token
-- **Correct Redirect URI (use this):** https://api.myorbisvoice.com/api/integrations/google/callback
+- **Project ID:** `myorbisvoice`
+- **Client ID:** `548023119687-734aljh9786uh1k85kv0506coob25rje.apps.googleusercontent.com`
+- **Client Secret:** `GOCSPX-[REDACTED]`
+- **Auth URI:** `https://accounts.google.com/o/oauth2/auth`
+- **Token URI:** `https://oauth2.googleapis.com/token`
+- **Correct Redirect URI:** `https://api.myorbisvoice.com/api/integrations/google/callback`
+- **Enter via:** Admin → System Settings → Google OAuth card
 
 > ⚠️ The downloaded JSON has `redirect_uris: ["https://app.myorbisvoice.com/"]` — this is wrong.
 > The authorised redirect URI in Google Cloud Console must be set to:
 > `https://api.myorbisvoice.com/api/integrations/google/callback`
+
+---
+
+### Reoon Email Verifier
+- **API Key:** `[REDACTED-REOON-KEY]`
+- **Mode:** `power`
+- **Enter via:** Admin → System Settings → Reoon card
+
+---
+
+### Bunny.net Storage & Streaming
+- **API Key:** `[REDACTED-BUNNY-SHORT]`
+- **Storage Zone:** *(pending — enter when zone is created in Bunny dashboard)*
+- **Storage Password:** *(pending)*
+- **CDN Hostname:** *(pending — e.g. `recordings.b-cdn.net`)*
+- **Storage Region:** `ny` (New York)
+- **Enter via:** Admin → System Settings → Bunny.net card
+
+---
+
+### Twilio
+- **Account SID:** *(enter from Twilio console → Account → General Settings)*
+- **Auth Token:** *(enter from Twilio console → Account → General Settings)*
+- **Platform phone number:** *(enter after purchasing a number in Twilio)*
+- **Inbound webhook URL:** `https://api.myorbisvoice.com/api/webhooks/twilio/voice`
+- **Recording webhook URL:** `https://api.myorbisvoice.com/api/webhooks/twilio/recording`
+- **SMS webhook URL:** `https://api.myorbisvoice.com/api/webhooks/twilio/sms`
+- **Status callback URL:** `https://api.myorbisvoice.com/api/webhooks/twilio/status`
+- **Enter via:** Admin → System Settings → Twilio card
+
+---
+
+### Stripe
+- **Secret Key:** *(enter from Stripe dashboard → Developers → API Keys)*
+- **Publishable Key:** *(enter from Stripe dashboard → Developers → API Keys)*
+- **Webhook Secret:** *(enter from Stripe dashboard → Developers → Webhooks → signing secret)*
+- **Webhook endpoint to register:** `https://api.myorbisvoice.com/api/webhooks/stripe`
+- **Enter via:** Admin → System Settings → Stripe card
+
+---
+
+### Gemini Live (Google AI)
+- **API Key:** *(enter from Google AI Studio — aistudio.google.com → Get API Key)*
+- **Model:** `gemini-2.5-flash-native-audio-latest` (or override via `GEMINI_LIVE_MODEL` env var)
+- **Used for:** real-time voice sessions (inbound calls, widget)
+- **Set via:** `.env` file — `GEMINI_API_KEY=` (not yet in admin UI)
+
+---
 
 ### Brand Color Palette (Marketing Site)
 Teal swatch — 6 shades light to deep:

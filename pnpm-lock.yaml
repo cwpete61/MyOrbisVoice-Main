@@ -143,6 +143,9 @@ importers:
       openai:
         specifier: ^4.52.7
         version: 4.104.0(ws@8.20.0)(zod@3.25.76)
+      twilio:
+        specifier: ^6.0.0
+        version: 6.0.0
       ws:
         specifier: ^8.18.0
         version: 8.20.0

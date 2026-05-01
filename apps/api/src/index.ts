@@ -6,8 +6,6 @@ import rateLimit from 'express-rate-limit'
 import { getEnv } from '@voiceautomation/config'
 import routes from './routes/index.js'
 import { webhooksRouter } from './routes/webhooks.js'
-import { twilioInboundRouter } from './routes/twilio-inbound.js'
-import { outboundWebhooksRouter } from './routes/outbound-webhooks.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { startTokenCleanupJob } from './jobs/token-cleanup.js'
 
@@ -79,11 +77,7 @@ app.use(
   }),
 )
 
-// Twilio webhooks — urlencoded body (Twilio posts application/x-www-form-urlencoded)
-app.use('/api/webhooks/twilio', express.urlencoded({ extended: false }), twilioInboundRouter)
-app.use('/api/webhooks/twilio', express.urlencoded({ extended: false }), outboundWebhooksRouter)
-
-// Routes
+// Routes (Twilio webhooks are mounted inside routes/index.ts before auth-gated routers)
 app.use(routes)
 
 // 404 handler

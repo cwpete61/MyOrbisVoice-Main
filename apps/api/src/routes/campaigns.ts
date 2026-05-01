@@ -1,48 +1,43 @@
 import { Router, type IRouter } from 'express'
-import { z } from 'zod'
 import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
-import * as campaignService from '../services/campaign.service.js'
-import * as outboundService from '../services/outbound.service.js'
+import * as svc from '../services/campaign.service.js'
+import { AppError } from '@voiceautomation/shared'
 
 const router: IRouter = Router()
 router.use(authenticate, requireTenantContext)
 
-const createSchema = z.object({
-  name:            z.string().min(1),
-  description:     z.string().optional(),
-  audienceJson:    z.record(z.unknown()).optional(),
-  scheduleJson:    z.record(z.unknown()).optional(),
-  promptVersionId: z.string().uuid().optional(),
+// ── Templates (what the platform offers for a vertical) ───────────────────────
+router.get('/campaigns/templates', async (req, res, next) => {
+  try {
+    const templates = await svc.listTemplates()
+    res.json({ data: templates })
+  } catch (err) { next(err) }
 })
 
+// ── Campaigns CRUD ─────────────────────────────────────────────────────────────
 router.get('/campaigns', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const campaigns = await campaignService.listCampaigns(tenantId)
-    res.json({ data: campaigns })
+    res.json({ data: await svc.listCampaigns(tenantId) })
   } catch (err) { next(err) }
 })
 
 router.get('/campaigns/:id', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const campaign = await campaignService.getCampaign(tenantId, req.params.id!)
-    if (!campaign) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'Campaign not found' }] }); return }
-    const stats = await campaignService.getAttemptStats(req.params.id!)
-    res.json({ data: { ...campaign, stats } })
+    res.json({ data: await svc.getCampaign(tenantId, req.params['id']!) })
   } catch (err) { next(err) }
 })
 
 router.post('/campaigns', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const parsed = createSchema.safeParse(req.body)
+    const parsed = svc.createCampaignSchema.safeParse(req.body)
     if (!parsed.success) {
-      res.status(422).json({ errors: parsed.error.issues.map(i => ({ code: 'VALIDATION_ERROR', message: i.message })) })
-      return
+      throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
     }
-    const campaign = await campaignService.createCampaign(tenantId, parsed.data)
+    const campaign = await svc.createCampaign(tenantId, parsed.data)
     res.status(201).json({ data: campaign })
   } catch (err) { next(err) }
 })
@@ -50,51 +45,63 @@ router.post('/campaigns', async (req, res, next) => {
 router.patch('/campaigns/:id', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const campaign = await campaignService.updateCampaign(tenantId, req.params.id!, req.body as Record<string, unknown>)
-    res.json({ data: campaign })
+    const parsed = svc.updateCampaignSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    res.json({ data: await svc.updateCampaign(tenantId, req.params['id']!, parsed.data) })
   } catch (err) { next(err) }
 })
 
-// Add contacts to campaign
-router.post('/campaigns/:id/contacts', async (req, res, next) => {
+router.delete('/campaigns/:id', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const { contactIds } = req.body as { contactIds?: string[] }
-    if (!Array.isArray(contactIds) || contactIds.length === 0) {
-      res.status(422).json({ errors: [{ code: 'VALIDATION_ERROR', message: 'contactIds array required' }] })
-      return
-    }
-    const result = await campaignService.addContactsToCampaign(tenantId, req.params.id!, contactIds)
+    await svc.deleteCampaign(tenantId, req.params['id']!)
+    res.sendStatus(204)
+  } catch (err) { next(err) }
+})
+
+// ── Tag engine ─────────────────────────────────────────────────────────────────
+router.post('/contacts/:contactId/tags', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    const { tag } = req.body as { tag?: string }
+    if (!tag) throw new AppError('VALIDATION_ERROR', 'tag is required', 422)
+    const result = await svc.applyTag(tenantId, req.params['contactId']!, tag)
     res.json({ data: result })
   } catch (err) { next(err) }
 })
 
-// Launch
-router.post('/campaigns/:id/launch', async (req, res, next) => {
+router.delete('/contacts/:contactId/tags/:tag', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const campaign = await campaignService.launchCampaign(tenantId, req.params.id!)
-    // Kick off pending calls (non-blocking)
-    outboundService.dispatchPendingCalls(tenantId, req.params.id!).catch(() => null)
-    res.json({ data: campaign })
+    const result = await svc.removeTag(tenantId, req.params['contactId']!, req.params['tag']!)
+    res.json({ data: result })
   } catch (err) { next(err) }
 })
 
-// Pause
-router.post('/campaigns/:id/pause', async (req, res, next) => {
+// ── Enrollments ────────────────────────────────────────────────────────────────
+router.get('/campaigns/:id/enrollments', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const campaign = await campaignService.pauseCampaign(tenantId, req.params.id!)
-    res.json({ data: campaign })
+    const status = req.query['status'] as string | undefined
+    res.json({ data: await svc.listEnrollments(tenantId, req.params['id']!, status) })
   } catch (err) { next(err) }
 })
 
-// Cancel
-router.post('/campaigns/:id/cancel', async (req, res, next) => {
+router.get('/enrollments', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const campaign = await campaignService.cancelCampaign(tenantId, req.params.id!)
-    res.json({ data: campaign })
+    const status = req.query['status'] as string | undefined
+    res.json({ data: await svc.listEnrollments(tenantId, undefined, status) })
+  } catch (err) { next(err) }
+})
+
+// ── Tenant vertical ────────────────────────────────────────────────────────────
+router.patch('/tenant/vertical', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    const { vertical } = req.body as { vertical?: string }
+    if (!vertical) throw new AppError('VALIDATION_ERROR', 'vertical is required', 422)
+    res.json({ data: await svc.updateTenantVertical(tenantId, vertical) })
   } catch (err) { next(err) }
 })
 

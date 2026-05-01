@@ -1,0 +1,139 @@
+MYORBISVOICE — PLATFORM OVERVIEW
+AI-Powered Voice Automation for Modern Businesses
+https://myorbisvoice.com | https://app.myorbisvoice.com
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+WHAT IS MYORBISVOICE?
+
+MyOrbisVoice is a full-stack AI voice automation platform that answers your phones, handles your website visitors, and runs your outbound calling campaigns — around the clock, without hiring additional staff.
+
+The platform replaces or augments your front-line communications team with a configurable AI voice agent that knows your business — your services, pricing, hours, rules, and tone. It handles inbound calls, web visitors, and outbound follow-up campaigns the way you would, 24 hours a day, 7 days a week.
+
+Every conversation is automatically transcribed word-for-word, summarized by AI, recorded, and stored — instantly accessible from your dashboard.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+THREE COMMUNICATION CHANNELS
+
+1. INBOUND RECEPTIONIST (Phone)
+Answers every inbound call, greets callers by your brand name, handles questions, books appointments, and escalates to a live person when needed. Fully operational after hours — callers are never sent to a dead line.
+
+2. WEBSITE VOICE WIDGET
+Embedded directly on your website. Visitors click a button to speak with your AI agent in real time — no phone number required. Works on desktop and mobile browsers.
+
+3. OUTBOUND CALLER (Campaigns)
+Runs automated outbound calling campaigns to your contact list. Follow-ups, appointment reminders, lead re-engagement, and qualification calls — executed at scale with no manual dialing.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CORE FEATURES
+
+BUSINESS DNA
+Every account is configured with a Business DNA profile — a structured knowledge base covering your business identity, services, pricing, operating hours, lead qualification rules, appointment logic, escalation conditions, language preferences, compliance rules, and prohibited topics. The AI agent draws from this in every conversation automatically.
+
+REAL-TIME AI VOICE CONVERSATIONS
+Powered by Google Gemini Live for real-time voice and OpenAI GPT-4o for reasoning. The agent listens, responds, handles interruptions naturally, detects caller silence, and knows when to transfer, book, or escalate. Conversations feel natural — not robotic.
+
+APPOINTMENT BOOKING
+The agent books directly into Google Calendar during the call. It checks live availability, offers alternative slots if needed, confirms the booking verbally, and sends a confirmation. Zero manual follow-up required.
+
+WORD-FOR-WORD TRANSCRIPTS
+Every conversation is transcribed line by line, labeled "Caller" and "Agent," and stored. No audio review needed — just read the transcript from your dashboard.
+
+AI CALL SUMMARIES
+Every call also gets a 2-3 sentence AI-written summary so you can scan what happened without reading the full transcript.
+
+VOICE RECORDINGS
+All calls are recorded and stored securely in cloud storage. Accessible from your conversation history with a click-to-play link. Storage quotas and retention periods are configurable per account.
+
+CONTACT MANAGEMENT
+Full contact database with complete call history, SMS history, opt-out status per channel (voice, SMS, email), email validation, and a full activity timeline per contact. Inbound callers are automatically matched to existing contacts.
+
+TWO-WAY SMS MESSAGING
+Send and receive SMS through the platform. STOP/START keywords are automatically detected and honored. Opt-out status is enforced before any outbound SMS is sent. All messages are logged to the contact timeline.
+
+OUTBOUND CAMPAIGNS
+Build and launch outbound call campaigns to your contact list. Set the script, audience, retry policy, and schedule. Outcomes, recordings, and results are tracked per call.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DASHBOARD & MANAGEMENT TOOLS
+
+  • Live Dashboard — active conversation count, recent call feed, storage usage
+  • Conversations Tab — full list of all calls and chats with transcript and summary
+  • Contacts & Timeline — full contact profile with call, SMS, and opt-out history
+  • Appointments — view, reschedule, and cancel bookings from the dashboard
+  • Agent Configuration — 7 agent role types, each with its own prompt and behavior
+  • Prompt Editor — layered prompt system (platform → tenant → channel → role → session)
+  • Channel Controls — enable/disable inbound, widget, and outbound independently
+  • Phone Number Management — assign numbers, enable routing, configure forwarding
+  • After-Hours Rules — voicemail, forwarding, or polite close message after hours
+  • Notification Bell — real-time alerts for storage warnings and platform events
+  • Billing & Subscription — plan management and Stripe-powered upgrade portal
+  • Affiliate Portal — referral tracking, commission ledger, and payout management
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AI AGENT ROLES
+
+Each business configures one or more agent roles — each with its own personality, prompt, and allowed actions:
+
+  • Orchestrator — routes and coordinates between other agents
+  • Appointment Agent — booking, rescheduling, and calendar management
+  • Sales Agent — lead qualification, product presentation, objection handling
+  • Customer Service Agent — issue resolution, account questions, support escalation
+  • Marketing Agent — campaign outreach, promotions, survey collection
+  • Assistant — general-purpose help for any caller need
+  • Secretary — message taking, transferring, and scheduling
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+INTEGRATIONS
+
+Google (Gmail & Calendar)
+Connect a dedicated Google account via OAuth. The AI agent sends booking confirmations, follow-up emails, and manages calendar events directly — no manual work required.
+
+Twilio
+All phone calls and SMS messages run through Twilio. Inbound routing, outbound dialing, recording, voicemail, and forwarding are all managed through the platform.
+
+Stripe
+Subscription billing, plan upgrades, and invoices are handled through Stripe. Tenants manage their own billing from the dashboard.
+
+OpenAI & Google Gemini
+OpenAI GPT-4o handles reasoning, summarization, and orchestration. Google Gemini Live handles the real-time voice conversation. Both are available to every tenant automatically.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SECURITY & COMPLIANCE
+
+  • All credentials stored AES-256 encrypted — never visible in the UI or API
+  • Complete tenant isolation — no cross-account data access possible
+  • Role-based access control — Owner, Manager, Staff, and Affiliate roles per workspace
+  • Immutable audit logs for all sensitive actions
+  • SMS opt-out compliance — STOP/START enforced automatically per contact
+  • Signed recording URLs — audio files are never publicly accessible
+  • Storage quota monitoring with automatic warnings and recording pause at limit
+  • Webhook signature validation on all Twilio and Stripe events
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMING SOON
+
+  • Mobile App — iOS and Android for on-the-go monitoring and call playback
+  • Desktop App — native Windows/Mac app with transcript search and audio player
+  • Campaign Results Dashboard — per-call outcomes, conversion tracking, ROI reporting
+  • CRM Integrations — HubSpot, Salesforce, and more
+  • Multi-Language Support — Spanish, French, and additional languages
+  • Voicemail Transcription — after-hours voicemails transcribed and emailed automatically
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+READY TO PUT YOUR PHONES ON AUTOPILOT?
+
+MyOrbisVoice is live, production-ready, and accepting new business accounts now. Whether you run a medical office, a real estate team, a home services company, or any business that lives on phone calls — we have a plan and a configuration that fits.
+
+Website:  https://myorbisvoice.com
+Platform: https://app.myorbisvoice.com
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

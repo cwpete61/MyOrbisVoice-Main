@@ -6,6 +6,7 @@ import { WebSocketServer } from 'ws'
 import { env } from './lib/env.js'
 import { handleWidgetSession } from './session.js'
 import { handleInboundCall } from './inbound.js'
+import { handleOutboundCall } from './outbound.js'
 
 const WIDGET_JS = path.resolve(process.cwd(), 'apps/voice-gateway/widget/orbisvoice-widget.js')
 
@@ -49,8 +50,9 @@ const server = http.createServer((req, res) => {
   res.end()
 })
 
-const wss        = new WebSocketServer({ noServer: true })
-const wssInbound = new WebSocketServer({ noServer: true })
+const wss         = new WebSocketServer({ noServer: true })
+const wssInbound  = new WebSocketServer({ noServer: true })
+const wssOutbound = new WebSocketServer({ noServer: true })
 
 server.on('upgrade', (req, socket, head) => {
   const url = new URL(req.url ?? '', 'http://localhost')
@@ -58,6 +60,8 @@ server.on('upgrade', (req, socket, head) => {
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req))
   } else if (url.pathname === '/ws/inbound') {
     wssInbound.handleUpgrade(req, socket, head, (ws) => wssInbound.emit('connection', ws, req))
+  } else if (url.pathname === '/ws/outbound') {
+    wssOutbound.handleUpgrade(req, socket, head, (ws) => wssOutbound.emit('connection', ws, req))
   } else {
     socket.destroy()
   }
@@ -81,6 +85,13 @@ wss.on('connection', (ws, req) => {
 wssInbound.on('connection', (ws) => {
   handleInboundCall(ws).catch((err) => {
     console.error('[gateway] unhandled inbound call error:', err)
+    ws.close(1011, 'Internal error')
+  })
+})
+
+wssOutbound.on('connection', (ws) => {
+  handleOutboundCall(ws).catch((err) => {
+    console.error('[gateway] unhandled outbound call error:', err)
     ws.close(1011, 'Internal error')
   })
 })

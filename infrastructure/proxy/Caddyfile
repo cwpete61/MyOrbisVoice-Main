@@ -1,0 +1,40 @@
+# MyOrbisVoice — Caddy reverse proxy
+# Handles TLS (Let's Encrypt auto), HTTP→HTTPS redirect, and WebSocket proxying.
+# Deploy this alongside the docker-compose.prod.yml stack.
+# The containers must share the caddy_app_edge and caddy_n8n_edge Docker networks.
+
+# ── App — Next.js frontend ─────────────────────────────────────────────────
+app.myorbisvoice.com {
+  reverse_proxy myorbisvoice-web:3000
+}
+
+# ── API — Express backend ──────────────────────────────────────────────────
+api.myorbisvoice.com {
+  reverse_proxy myorbisvoice-api:4000
+}
+
+# ── Voice Gateway — WebSocket + HTTP ─────────────────────────────────────
+# WebSocket upgrade is handled transparently by Caddy's reverse_proxy.
+# The widget JS uses wss://gateway.myorbisvoice.com/ws/widget?token=...
+gateway.myorbisvoice.com {
+  reverse_proxy myorbisvoice-gateway:5000 {
+    # Keep connections alive for long-running WebSocket sessions
+    transport http {
+      keepalive 120s
+      keepalive_idle_conns 10
+    }
+    # Raise the flush interval so audio chunks are not held
+    flush_interval -1
+  }
+}
+
+# ── n8n — Internal automation — double-locked ─────────────────────────────
+# Layer 1: Caddy basic_auth (blocks request before it reaches n8n at all)
+# Layer 2: n8n's own basic auth (N8N_BASIC_AUTH_ACTIVE=true in compose)
+# Hash generated with: caddy hash-password --plaintext 'Orbis@8214@@!!'
+n8n.myorbisvoice.com {
+  basic_auth {
+    admin $2a$14$YDTB.X3eWzhjyqm6YB8.geZtskuBB0EmWpjk2EaNFWLZWH2VSZbXy
+  }
+  reverse_proxy myorbisvoice-n8n:5678
+}

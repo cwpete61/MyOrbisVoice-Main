@@ -7,6 +7,7 @@ import { AppError } from '@voiceautomation/shared'
 import { getEnv } from '@voiceautomation/config'
 import { prisma } from '../lib/prisma.js'
 import * as systemConfig from '../services/system-config.service.js'
+import * as storageTierSvc from '../services/storage-tier.service.js'
 import { writeAuditLog } from '../lib/audit.js'
 
 const router: IRouter = Router()
@@ -62,7 +63,7 @@ router.get('/tenants', async (req, res, next) => {
   try {
     const params = validate(listQuerySchema, req.query)
     const result = await adminService.listTenants(params)
-    res.json({ data: result.tenants, meta: { total: result.total, limit: result.limit, offset: result.offset } })
+    res.json({ data: { items: result.tenants, total: result.total, limit: result.limit, offset: result.offset } })
   } catch (err) { next(err) }
 })
 
@@ -186,6 +187,220 @@ router.patch('/system-settings/twilio', async (req, res, next) => {
 
     const settings = await systemConfig.getSystemSettings()
     res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
+const reoonSettingsSchema = z.object({
+  apiKey: z.string().min(1).optional(),
+  mode: z.enum(['quick', 'power']).optional(),
+})
+
+router.patch('/system-settings/reoon', async (req, res, next) => {
+  try {
+    const parsed = reoonSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const { apiKey, mode } = parsed.data
+    const userId = req.user!.id
+
+    if (apiKey) await systemConfig.setConfigValue('reoon_api_key', apiKey, true, userId)
+    if (mode)   await systemConfig.setConfigValue('reoon_mode', mode, false, userId)
+
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.reoon.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
+const openaiSettingsSchema = z.object({
+  apiKey: z.string().min(1).optional(),
+  model:  z.string().min(1).optional(),
+})
+
+router.patch('/system-settings/openai', async (req, res, next) => {
+  try {
+    const parsed = openaiSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const { apiKey, model } = parsed.data
+    const userId = req.user!.id
+
+    if (apiKey) await systemConfig.setConfigValue('openai_api_key', apiKey, true, userId)
+    if (model)  await systemConfig.setConfigValue('openai_model', model, false, userId)
+
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.openai.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
+const bunnySettingsSchema = z.object({
+  apiKey:          z.string().min(1).optional(),
+  storageZone:     z.string().min(1).optional(),
+  storagePassword: z.string().min(1).optional(),
+  cdnHostname:     z.string().min(1).optional(),
+  storageRegion:   z.string().min(1).optional(),
+})
+
+router.patch('/system-settings/bunny', async (req, res, next) => {
+  try {
+    const parsed = bunnySettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const { apiKey, storageZone, storagePassword, cdnHostname, storageRegion } = parsed.data
+    const userId = req.user!.id
+
+    if (apiKey)          await systemConfig.setConfigValue('bunny_api_key',          apiKey,          true,  userId)
+    if (storageZone)     await systemConfig.setConfigValue('bunny_storage_zone',      storageZone,     false, userId)
+    if (storagePassword) await systemConfig.setConfigValue('bunny_storage_password',  storagePassword, true,  userId)
+    if (cdnHostname)     await systemConfig.setConfigValue('bunny_cdn_hostname',      cdnHostname,     false, userId)
+    if (storageRegion)   await systemConfig.setConfigValue('bunny_storage_region',    storageRegion,   false, userId)
+
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.bunny.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
+const storageSettingsSchema = z.object({
+  defaultQuotaGb:      z.number().int().min(1).optional(),
+  warningThresholdPct: z.number().int().min(50).max(99).optional(),
+  retentionDays:       z.number().int().min(1).nullable().optional(),
+})
+
+router.patch('/system-settings/storage', async (req, res, next) => {
+  try {
+    const parsed = storageSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const { defaultQuotaGb, warningThresholdPct, retentionDays } = parsed.data
+    const userId = req.user!.id
+
+    if (defaultQuotaGb      !== undefined) await systemConfig.setConfigValue('storage_default_quota_gb',       String(defaultQuotaGb),      false, userId)
+    if (warningThresholdPct !== undefined) await systemConfig.setConfigValue('storage_warning_threshold_pct',  String(warningThresholdPct), false, userId)
+    if (retentionDays       !== undefined) await systemConfig.setConfigValue('storage_retention_days',         retentionDays ? String(retentionDays) : '', false, userId)
+
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.storage.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
+// Per-tenant storage quota override
+router.patch('/tenants/:tenantId/storage-quota', async (req, res, next) => {
+  try {
+    const { tenantId } = req.params
+    const { quotaGb } = z.object({ quotaGb: z.number().int().min(0).nullable() }).parse(req.body)
+    const userId = req.user!.id
+
+    await prisma.tenant.update({
+      where: { id: tenantId },
+      data:  { storageQuotaBytes: quotaGb !== null ? BigInt(quotaGb) * BigInt(1024 * 1024 * 1024) : null },
+    })
+
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'admin.tenant.storage_quota_override',
+      targetType: 'Tenant', targetId: tenantId,
+      metadataJson: { quotaGb },
+    })
+
+    res.json({ data: { tenantId, quotaGb } })
+  } catch (err) { next(err) }
+})
+
+// ── Storage tier config ────────────────────────────────────────────────────────
+router.get('/storage-tiers', async (_req, res, next) => {
+  try {
+    const tiers = await storageTierSvc.getTierConfigs()
+    res.json({ data: tiers.map(t => ({ ...t, quotaBytes: String(t.quotaBytes) })) })
+  } catch (err) { next(err) }
+})
+
+const updateTierSchema = z.object({
+  quotaGb:         z.number().positive().optional(),
+  retentionDays:   z.number().int().min(1).nullable().optional(),
+  gracePeriodDays: z.number().int().min(1).max(365).optional(),
+})
+
+router.patch('/storage-tiers/:tier', async (req, res, next) => {
+  try {
+    const tier   = req.params['tier']!.toUpperCase() as storageTierSvc.StorageTier
+    if (!storageTierSvc.TIERS.includes(tier)) throw new AppError('NOT_FOUND', 'Unknown tier', 404)
+    const parsed = updateTierSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const userId = req.user!.id
+    await storageTierSvc.updateTierConfig(tier, parsed.data, userId)
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'admin.storage_tier.updated',
+      targetType: 'StorageTierConfig', targetId: tier,
+      metadataJson: parsed.data,
+    })
+    const tiers = await storageTierSvc.getTierConfigs()
+    res.json({ data: tiers.map(t => ({ ...t, quotaBytes: String(t.quotaBytes) })) })
+  } catch (err) { next(err) }
+})
+
+// Assign a storage tier to a tenant
+router.post('/tenants/:tenantId/storage-tier', async (req, res, next) => {
+  try {
+    const { tenantId } = req.params
+    const { tier }     = z.object({ tier: z.enum(storageTierSvc.TIERS) }).parse(req.body)
+    const userId       = req.user!.id
+    const result       = await storageTierSvc.applyTierToTenant(tenantId!, tier)
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'admin.tenant.storage_tier_assigned',
+      targetType: 'Tenant', targetId: tenantId,
+      metadataJson: { tier, gracePeriod: result.gracePeriod },
+    })
+    res.json({ data: { ...result, quotaBytes: String(result.quotaBytes) } })
+  } catch (err) { next(err) }
+})
+
+// Twilio event logs — all tenants or filtered by tenantId
+router.get('/twilio-logs', async (req, res, next) => {
+  try {
+    const { tenantId, direction, eventType, limit = '50', offset = '0' } = req.query as Record<string, string>
+
+    const where: Record<string, unknown> = {}
+    if (tenantId)  where['tenantId']  = tenantId
+    if (direction) where['direction'] = direction
+    if (eventType) where['eventType'] = eventType
+
+    const [total, events] = await Promise.all([
+      prisma.twilioEventLog.count({ where }),
+      prisma.twilioEventLog.findMany({
+        where,
+        orderBy: { occurredAt: 'desc' },
+        take:    Math.min(parseInt(limit, 10), 200),
+        skip:    parseInt(offset, 10),
+        include: { tenant: { select: { displayName: true } } },
+      }),
+    ])
+
+    res.json({ data: { items: events, total, limit: parseInt(limit, 10), offset: parseInt(offset, 10) } })
   } catch (err) { next(err) }
 })
 

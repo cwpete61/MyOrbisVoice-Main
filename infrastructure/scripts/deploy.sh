@@ -1,232 +1,154 @@
 #!/usr/bin/env bash
-# deploy.sh — build locally, push to server, restart containers
-# Usage: ./infrastructure/scripts/deploy.sh [api|web|gateway|all]
+# deploy.sh — atomic build → sync → inject → verify
+# Usage: ./infrastructure/scripts/deploy.sh [api|web|gateway|all] "reason"
 set -euo pipefail
 
 SERVER="root@147.93.183.4"
 REMOTE="/opt/myorbisvoice"
 TARGET="${1:-all}"
+REASON="${2:-}"
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PRISMA_CLIENT="$REPO_ROOT/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client"
+STAMP="$(date '+%Y%m%d_%H%M%S')"
+
+if [[ -z "$REASON" ]]; then
+  echo "Usage: $0 [api|web|gateway|all] \"reason for this deploy\""
+  exit 1
+fi
+
+log()  { echo ""; echo "── $*"; }
+ok()   { echo "   ✓ $*"; }
+fail() { echo "   ✗ $*"; exit 1; }
 
 cd "$REPO_ROOT"
 
-log() { echo ""; echo "── $*"; }
+# ── 1. Pre-deploy snapshot ─────────────────────────────────────────────────
+log "Pre-deploy snapshot..."
+mkdir -p backups
+docker exec umoja-postgres pg_dump -U voiceautomation -d voiceautomation -F c \
+  > "backups/db_${STAMP}_pre_${TARGET}.dump" 2>/dev/null && ok "Local DB snapshot: backups/db_${STAMP}_pre_${TARGET}.dump"
+ssh "$SERVER" "docker exec myorbisvoice-postgres pg_dump -U voiceautomation -d voiceautomation -F c \
+  > /var/backups/va/db_${STAMP}_pre_${TARGET}.dump" && ok "Prod DB snapshot saved"
 
-# ── 1. Build locally ──────────────────────────────────────────────────────────
-build_api() {
-  log "Building API..."
-  pnpm --filter @voiceautomation/api build
+# ── 2. Prisma — always regenerate and push ─────────────────────────────────
+log "Prisma client — regenerate and push to containers..."
+pnpm exec prisma generate --schema=prisma/schema.prisma 2>&1 | grep -E "Generated|error" || true
+rsync -az "$PRISMA_CLIENT/" \
+  "$SERVER:$REMOTE/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/"
+ssh "$SERVER" "
+  docker cp $REMOTE/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/. \
+    myorbisvoice-api:/app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/ &&
+  docker cp $REMOTE/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/. \
+    myorbisvoice-gateway:/app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/
+"
+ok "Prisma client pushed to api + gateway containers"
+
+# ── 3. Service steps ───────────────────────────────────────────────────────
+step_api() {
+  log "API — build → sync → inject → restart..."
+  pnpm --filter @voiceautomation/api build 2>&1 | grep -E "error TS|^>" || true
+  rsync -az --delete "$REPO_ROOT/apps/api/dist/" "$SERVER:$REMOTE/apps/api/dist/"
+  ssh "$SERVER" "docker cp $REMOTE/apps/api/dist/. myorbisvoice-api:/app/apps/api/dist/"
+  ssh "$SERVER" "docker restart myorbisvoice-api"
+  sleep 5
+  # Verify API started
+  RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-api --tail=5 2>&1")
+  if echo "$RESULT" | grep -q "listening on"; then
+    ok "API listening"
+  else
+    fail "API did not start cleanly:\n$RESULT"
+  fi
+  # Check for stale Prisma errors
+  if echo "$RESULT" | grep -q "Cannot read properties of undefined"; then
+    fail "Prisma client stale in API container — re-run deploy or push Prisma client manually"
+  fi
 }
 
-build_web() {
-  log "Building web..."
-  pnpm --filter @voiceautomation/web build
+step_gateway() {
+  log "Gateway — build → sync → inject → restart..."
+  pnpm --filter @voiceautomation/voice-gateway build 2>&1 | grep -E "error TS|^>" || true
+  rsync -az --delete "$REPO_ROOT/apps/voice-gateway/dist/" "$SERVER:$REMOTE/apps/voice-gateway/dist/"
+  ssh "$SERVER" "docker cp $REMOTE/apps/voice-gateway/dist/. myorbisvoice-gateway:/app/apps/voice-gateway/dist/"
+  ssh "$SERVER" "docker restart myorbisvoice-gateway"
+  sleep 5
+  RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-gateway --tail=5 2>&1")
+  if echo "$RESULT" | grep -q "listening on port 5000"; then
+    ok "Gateway listening"
+  else
+    fail "Gateway did not start cleanly:\n$RESULT"
+  fi
+  if echo "$RESULT" | grep -q "Cannot find module"; then
+    fail "Missing module in gateway — check container has all dist files"
+  fi
 }
 
-build_gateway() {
-  log "Building voice-gateway..."
-  pnpm --filter @voiceautomation/voice-gateway build 2>/dev/null || true
+step_web() {
+  log "Web — build → sync → WIPE stale chunks → inject → restart..."
+  pnpm --filter @voiceautomation/web build 2>&1 | grep -E "Error|Failed|^>" || true
+  rsync -az --delete "$REPO_ROOT/apps/web/.next/" "$SERVER:$REMOTE/apps/web/.next/"
+  # CRITICAL: wipe stale static chunks before injecting — old chunk hashes cause client crashes
+  ssh "$SERVER" "docker exec myorbisvoice-web sh -c 'rm -rf /app/apps/web/.next/static'"
+  ssh "$SERVER" "docker cp $REMOTE/apps/web/.next/. myorbisvoice-web:/app/apps/web/.next/"
+  ssh "$SERVER" "docker restart myorbisvoice-web"
+  sleep 5
+  RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-web --tail=5 2>&1")
+  if echo "$RESULT" | grep -q "Ready in"; then
+    ok "Web ready"
+  else
+    fail "Web did not start cleanly:\n$RESULT"
+  fi
 }
 
-# ── 2. Sync source + build artifacts to server ───────────────────────────────
-sync_prisma() {
-  log "Syncing Prisma schema..."
-  rsync -az prisma/schema.prisma "$SERVER:$REMOTE/prisma/schema.prisma"
-  ssh "$SERVER" "rm -f $REMOTE/schema.prisma"
-}
-
-sync_api() {
-  log "Syncing API source..."
-  rsync -az --delete \
-    --exclude='node_modules' \
-    --exclude='dist' \
-    apps/api/src/ "$SERVER:$REMOTE/apps/api/src/"
-  rsync -az apps/api/package.json "$SERVER:$REMOTE/apps/api/package.json"
-}
-
-sync_web() {
-  log "Syncing web source..."
-  rsync -az --delete \
-    --exclude='node_modules' \
-    --exclude='.next' \
-    apps/web/src/ "$SERVER:$REMOTE/apps/web/src/"
-  rsync -az apps/web/package.json "$SERVER:$REMOTE/apps/web/package.json"
-}
-
-sync_packages() {
-  log "Syncing shared packages..."
-  rsync -az --delete \
-    --exclude='node_modules' \
-    packages/ "$SERVER:$REMOTE/packages/"
-}
-
-# ── 3. Build Docker image on server ──────────────────────────────────────────
-remote_build_api() {
-  log "Building API Docker image on server..."
-  ssh "$SERVER" "cd $REMOTE && docker build --no-cache -f apps/api/Dockerfile -t myorbisvoice-api:latest . 2>&1 | tail -5"
-}
-
-remote_build_web() {
-  log "Building web Docker image on server..."
-  ssh "$SERVER" "cd $REMOTE && docker build --no-cache -f apps/web/Dockerfile -t myorbisvoice-web:latest . 2>&1 | tail -5"
-}
-
-remote_build_gateway() {
-  log "Building gateway Docker image on server..."
-  ssh "$SERVER" "cd $REMOTE && docker build --no-cache -f apps/voice-gateway/Dockerfile -t myorbisvoice-gateway:latest . 2>&1 | tail -5" || true
-}
-
-# ── 4. Recreate container with new image ─────────────────────────────────────
-recreate_api() {
-  log "Restarting API container..."
-  ssh "$SERVER" "
-    docker stop myorbisvoice-api 2>/dev/null || true
-    docker rm   myorbisvoice-api 2>/dev/null || true
-    $(docker_run_api_cmd)
-    sleep 4
-    docker logs myorbisvoice-api --tail 4
-  "
-}
-
-recreate_web() {
-  log "Restarting web container..."
-  ssh "$SERVER" "
-    docker stop myorbisvoice-web 2>/dev/null || true
-    docker rm   myorbisvoice-web 2>/dev/null || true
-    $(docker_run_web_cmd)
-    sleep 4
-    docker logs myorbisvoice-web --tail 4
-  "
-}
-
-recreate_gateway() {
-  log "Restarting gateway container..."
-  ssh "$SERVER" "docker restart myorbisvoice-gateway && sleep 3 && docker logs myorbisvoice-gateway --tail 4" || true
-}
-
-docker_run_api_cmd() {
-  # Read env from running container if it exists, otherwise use stored env file
-  cat <<'EOF'
-docker run -d \
-  --name myorbisvoice-api \
-  --restart unless-stopped \
-  --network myorbisvoice_internal \
-  --network bps_zf_caddy_app_edge \
-  --env-file /opt/myorbisvoice/.env.api \
-  myorbisvoice-api:latest
-EOF
-}
-
-docker_run_web_cmd() {
-  cat <<'EOF'
-docker run -d \
-  --name myorbisvoice-web \
-  --restart unless-stopped \
-  --network myorbisvoice_internal \
-  --network bps_zf_caddy_app_edge \
-  --env-file /opt/myorbisvoice/.env.web \
-  myorbisvoice-web:latest
-EOF
-}
-
-# ── Write env files on server if they don't exist ────────────────────────────
-ensure_env_files() {
-  log "Checking env files on server..."
-  ssh "$SERVER" "
-    if [ ! -f /opt/myorbisvoice/.env.api ]; then
-      docker inspect myorbisvoice-api --format '{{range .Config.Env}}{{.}}\n{{end}}' 2>/dev/null \
-        | grep -v '^PATH=\|^NODE_VERSION=\|^YARN_VERSION=' \
-        > /opt/myorbisvoice/.env.api || true
-      echo 'Created .env.api from running container'
-    fi
-    if [ ! -f /opt/myorbisvoice/.env.web ]; then
-      docker inspect myorbisvoice-web --format '{{range .Config.Env}}{{.}}\n{{end}}' 2>/dev/null \
-        | grep -v '^PATH=\|^NODE_VERSION=\|^YARN_VERSION=' \
-        > /opt/myorbisvoice/.env.web || true
-      echo 'Created .env.web from running container'
-    fi
-  "
-}
-
-# ── Clean stale server artifacts ─────────────────────────────────────────────
-clean_server() {
-  log "Cleaning stale artifacts on server..."
-  ssh "$SERVER" "
-    set -e
-
-    echo '→ Removing stale source dirs (will be replaced by rsync)...'
-    rm -rf $REMOTE/apps/api/src
-    rm -rf $REMOTE/apps/web/src
-    rm -rf $REMOTE/packages
-
-    echo '→ Removing old Docker build cache...'
-    docker builder prune -f
-
-    echo '→ Removing dangling images...'
-    docker image prune -f
-
-    echo '→ Removing old myorbisvoice images (keeping :latest)...'
-    docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' \
-      | grep '^myorbisvoice-' \
-      | grep -v ':latest' \
-      | awk '{print \$2}' \
-      | xargs -r docker rmi -f || true
-
-    echo 'Clean done.'
-  "
-}
-
-# ── Main ──────────────────────────────────────────────────────────────────────
-echo "=== MyOrbisVoice Deploy: $TARGET ==="
+# ── 4. Run selected targets ────────────────────────────────────────────────
+echo ""
+echo "╔══════════════════════════════════════╗"
+echo "║  MyOrbisVoice Deploy: $TARGET"
+echo "║  Reason: $REASON"
+echo "╚══════════════════════════════════════╝"
 
 case "$TARGET" in
-  clean)
-    clean_server
-    ;;
-  api)
-    ensure_env_files
-    sync_packages
-    sync_prisma
-    build_api
-    sync_api
-    remote_build_api
-    recreate_api
-    ;;
-  web)
-    ensure_env_files
-    sync_packages
-    sync_prisma
-    build_web
-    sync_web
-    remote_build_web
-    recreate_web
-    ;;
-  gateway)
-    ensure_env_files
-    build_gateway
-    remote_build_gateway
-    recreate_gateway
-    ;;
+  api)     step_api ;;
+  gateway) step_gateway ;;
+  web)     step_web ;;
   all)
-    ensure_env_files
-    sync_packages
-    sync_prisma
-    build_api
-    build_web
-    sync_api
-    sync_web
-    remote_build_api
-    remote_build_web
-    recreate_api
-    recreate_web
+    step_api
+    step_gateway
+    step_web
     ;;
   *)
-    echo "Usage: $0 [api|web|gateway|all|clean]"
+    echo "Unknown target: $TARGET. Use api|web|gateway|all"
     exit 1
     ;;
 esac
 
+# ── 5. Health checks ───────────────────────────────────────────────────────
+log "Health checks..."
+sleep 3
+HTTP=$(curl -s -o /dev/null -w "%{http_code}" https://api.myorbisvoice.com/health 2>/dev/null || echo "000")
+if [[ "$HTTP" == "200" ]]; then
+  ok "API health: 200"
+else
+  fail "API health check failed: HTTP $HTTP"
+fi
+
+WEB=$(curl -s -o /dev/null -w "%{http_code}" https://app.myorbisvoice.com 2>/dev/null || echo "000")
+if [[ "$WEB" == "200" ]]; then
+  ok "Web: 200"
+else
+  echo "   ⚠ Web returned HTTP $WEB (may still be starting)"
+fi
+
+# ── 6. Post-deploy snapshot ────────────────────────────────────────────────
+log "Post-deploy snapshot..."
+docker exec umoja-postgres pg_dump -U voiceautomation -d voiceautomation -F c \
+  > "backups/db_${STAMP}_post_${TARGET}.dump" 2>/dev/null && ok "Post snapshot: backups/db_${STAMP}_post_${TARGET}.dump"
+
 echo ""
-echo "=== Done ==="
-echo "  App: https://app.myorbisvoice.com"
-echo "  API: https://api.myorbisvoice.com/health"
+echo "═══════════════════════════════════════"
+echo "  Deploy complete: $TARGET"
+echo "  App:     https://app.myorbisvoice.com"
+echo "  API:     https://api.myorbisvoice.com/health"
+echo "  Reason:  $REASON"
+echo "═══════════════════════════════════════"
+echo ""
+echo "  Next: hard-refresh the browser (Ctrl+Shift+R) and verify manually."

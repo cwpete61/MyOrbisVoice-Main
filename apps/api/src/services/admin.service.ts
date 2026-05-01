@@ -57,7 +57,12 @@ export async function getTenantDetail(tenantId: string) {
     },
   })
   if (!tenant) throw new AppError('NOT_FOUND', 'Tenant not found', 404)
-  return tenant
+  return {
+    ...tenant,
+    storageQuotaBytes:         tenant.storageQuotaBytes         != null ? String(tenant.storageQuotaBytes)         : null,
+    storageUsedBytes:          String(tenant.storageUsedBytes),
+    storagePreviousQuotaBytes: tenant.storagePreviousQuotaBytes != null ? String(tenant.storagePreviousQuotaBytes) : null,
+  }
 }
 
 export async function adminUpdateTenant(tenantId: string, adminUserId: string, data: z.infer<typeof adminUpdateTenantSchema>) {

@@ -50,7 +50,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         <main className="flex-1 overflow-auto">
-          <div className="max-w-4xl mx-auto px-8 py-8">
+          <div className="w-full px-8 py-8">
             {children}
           </div>
         </main>

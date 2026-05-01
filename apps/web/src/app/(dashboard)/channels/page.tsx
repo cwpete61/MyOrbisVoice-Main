@@ -11,7 +11,18 @@ interface ChannelConfig {
   forwardingNumber?: string
   transferNumber?: string
   businessHours?: BusinessHours
+  voiceName?: string
 }
+
+const VOICE_OPTIONS = [
+  { value: 'Zephyr',  label: 'Zephyr',  gender: 'Female', style: 'Bright & clear' },
+  { value: 'Despina', label: 'Despina', gender: 'Female', style: 'Smooth & polished' },
+  { value: 'Aoede',   label: 'Aoede',   gender: 'Female', style: 'Warm & breezy' },
+  { value: 'Charon',  label: 'Charon',  gender: 'Male',   style: 'Deep & authoritative' },
+  { value: 'Fenrir',  label: 'Fenrir',  gender: 'Male',   style: 'Warm & approachable' },
+  { value: 'Puck',    label: 'Puck',    gender: 'Male',   style: 'Upbeat & conversational' },
+  { value: 'Sulafat', label: 'Sulafat', gender: 'Neutral', style: 'Warm & even' },
+]
 
 interface Channel {
   id: string; channelType: string; isEnabled: boolean
@@ -330,7 +341,7 @@ export default function ChannelsPage() {
 
       <div className="grid grid-cols-3 gap-4 mb-8">
         {(channels ?? []).map((c) => (
-          <button key={c.id} onClick={() => { setSelected(c); setMessage('') }}
+          <button key={c.id} onClick={() => { setSelected(prev => prev?.id === c.id ? null : c); setMessage('') }}
             className={`text-left p-5 rounded-xl border transition-all ${selected?.id === c.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600'}`}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{CHANNEL_LABELS[c.channelType]?.label}</span>
@@ -342,16 +353,69 @@ export default function ChannelsPage() {
       </div>
 
       {selected && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 max-w-xl space-y-5">
+        <>
+          {/* Backdrop — click outside panel to close */}
+          <div className="fixed inset-0 z-10" onClick={() => setSelected(null)} />
+
+          <div className="relative z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 max-w-xl space-y-5">
 
           {/* Header */}
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{CHANNEL_LABELS[selected.channelType]?.label}</h2>
-            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-              <input type="checkbox" checked={selected.isEnabled}
-                onChange={(e) => setSelected({ ...selected, isEnabled: e.target.checked })} className="rounded" />
-              Enabled
-            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                <input type="checkbox" checked={selected.isEnabled}
+                  onChange={(e) => setSelected({ ...selected, isEnabled: e.target.checked })} className="rounded" />
+                Enabled
+              </label>
+              <button
+                onClick={() => setSelected(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                aria-label="Close"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M3 3l10 10M13 3L3 13" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Voice selection */}
+          <div>
+            <label className={lbl}>Agent voice</label>
+            <div className="grid grid-cols-1 gap-2">
+              {VOICE_OPTIONS.map((v) => {
+                const active = (cfg.voiceName ?? 'Fenrir') === v.value
+                return (
+                  <button
+                    key={v.value}
+                    type="button"
+                    onClick={() => setConfig('voiceName', v.value)}
+                    className="flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-all"
+                    style={{
+                      borderColor: active ? 'oklch(55% 0.11 193)' : 'var(--border-subtle)',
+                      background:  active ? 'oklch(55% 0.11 193 / 0.08)' : 'var(--surface-raised)',
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium" style={{ color: active ? 'oklch(45% 0.11 193)' : 'var(--text-primary)' }}>
+                        {v.label}
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{v.style}</span>
+                    </div>
+                    <span
+                      className="text-xs px-1.5 py-0.5 rounded font-medium"
+                      style={{
+                        background: v.gender === 'Female' ? 'oklch(75% 0.08 340 / 0.15)' : v.gender === 'Male' ? 'oklch(60% 0.12 240 / 0.15)' : 'oklch(65% 0.05 180 / 0.15)',
+                        color:      v.gender === 'Female' ? 'oklch(45% 0.1 340)' : v.gender === 'Male' ? 'oklch(40% 0.12 240)' : 'oklch(40% 0.07 180)',
+                      }}
+                    >
+                      {v.gender}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           {/* Greeting mode */}
@@ -433,7 +497,8 @@ export default function ChannelsPage() {
               onDelete={handleDeleteNumber}
             />
           )}
-        </div>
+          </div>
+        </>
       )}
     </div>
   )

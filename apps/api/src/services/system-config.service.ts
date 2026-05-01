@@ -58,6 +58,10 @@ export async function getSystemSettings(): Promise<{
   google: { clientId: string | null; clientSecret: boolean; redirectUri: string | null }
   stripe: { secretKey: boolean; webhookSecret: boolean }
   twilio: { accountSid: string | null; authToken: boolean; phoneNumber: string | null }
+  reoon: { apiKey: boolean; mode: string }
+  bunny: { apiKey: boolean; storageZone: string | null; cdnHostname: string | null; storageRegion: string; storagePassword: boolean }
+  storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
+  openai: { apiKey: boolean; model: string }
 }> {
   const rows = await prisma.systemConfig.findMany({
     where: {
@@ -66,6 +70,11 @@ export async function getSystemSettings(): Promise<{
           'google_client_id', 'google_client_secret', 'google_oauth_redirect_uri',
           'stripe_secret_key', 'stripe_webhook_secret',
           'twilio_account_sid', 'twilio_auth_token', 'twilio_phone_number',
+          'reoon_api_key', 'reoon_mode',
+          'bunny_api_key', 'bunny_storage_zone', 'bunny_storage_password',
+          'bunny_cdn_hostname', 'bunny_storage_region',
+          'storage_default_quota_gb', 'storage_warning_threshold_pct', 'storage_retention_days',
+          'openai_api_key', 'openai_model',
         ],
       },
     },
@@ -73,24 +82,49 @@ export async function getSystemSettings(): Promise<{
   const get = (key: string) => rows.find(r => r.key === key) ?? null
 
   const googleClientId = get('google_client_id')
-  const redirectUri = get('google_oauth_redirect_uri')
+  const redirectUri    = get('google_oauth_redirect_uri')
 
   return {
     google: {
-      clientId: googleClientId ? googleClientId.value : (process.env['GOOGLE_CLIENT_ID'] || null),
+      clientId:     googleClientId ? googleClientId.value : (process.env['GOOGLE_CLIENT_ID'] || null),
       clientSecret: !!(get('google_client_secret') || process.env['GOOGLE_CLIENT_SECRET']),
-      redirectUri: redirectUri?.value ?? DEFAULT_REDIRECT_URI,
+      redirectUri:  redirectUri?.value ?? DEFAULT_REDIRECT_URI,
     },
     stripe: {
-      secretKey: !!(get('stripe_secret_key') || process.env['STRIPE_SECRET_KEY']),
-      webhookSecret: !!(get('stripe_webhook_secret') || process.env['STRIPE_WEBHOOK_SECRET']),
+      secretKey:     !!(get('stripe_secret_key')     || process.env['STRIPE_SECRET_KEY']),
+      webhookSecret: !!(get('stripe_webhook_secret')  || process.env['STRIPE_WEBHOOK_SECRET']),
     },
     twilio: {
-      accountSid: get('twilio_account_sid')?.value ?? (process.env['TWILIO_ACCOUNT_SID'] || null),
-      authToken: !!(get('twilio_auth_token') || process.env['TWILIO_AUTH_TOKEN']),
+      accountSid:  get('twilio_account_sid')?.value ?? (process.env['TWILIO_ACCOUNT_SID'] || null),
+      authToken:   !!(get('twilio_auth_token')       || process.env['TWILIO_AUTH_TOKEN']),
       phoneNumber: get('twilio_phone_number')?.value ?? (process.env['TWILIO_PHONE_NUMBER'] || null),
     },
+    reoon: {
+      apiKey: !!(get('reoon_api_key') || process.env['REOON_API_KEY']),
+      mode:   get('reoon_mode')?.value ?? process.env['REOON_MODE'] ?? 'power',
+    },
+    bunny: {
+      apiKey:          !!(get('bunny_api_key')          || process.env['BUNNY_API_KEY']),
+      storageZone:     get('bunny_storage_zone')?.value    ?? (process.env['BUNNY_STORAGE_ZONE']     || null),
+      cdnHostname:     get('bunny_cdn_hostname')?.value    ?? (process.env['BUNNY_CDN_HOSTNAME']     || null),
+      storageRegion:   get('bunny_storage_region')?.value  ?? (process.env['BUNNY_STORAGE_REGION']   || 'ny'),
+      storagePassword: !!(get('bunny_storage_password')    || process.env['BUNNY_STORAGE_PASSWORD']),
+    },
+    storage: {
+      defaultQuotaGb:         parseInt(get('storage_default_quota_gb')?.value        ?? '1'),
+      warningThresholdPct:    parseInt(get('storage_warning_threshold_pct')?.value   ?? '90'),
+      retentionDays:          get('storage_retention_days')?.value ? parseInt(get('storage_retention_days')!.value) : null,
+    },
+    openai: {
+      apiKey: !!(get('openai_api_key') || process.env['OPENAI_API_KEY']),
+      model:  get('openai_model')?.value ?? process.env['OPENAI_MODEL'] ?? 'gpt-4o-mini',
+    },
   }
+}
+
+export async function getOpenAiApiKey(): Promise<string | null> {
+  const dbKey = await getConfigValue('openai_api_key')
+  return dbKey || process.env['OPENAI_API_KEY'] || null
 }
 
 // Used by google.service.ts — reads DB first, falls back to env

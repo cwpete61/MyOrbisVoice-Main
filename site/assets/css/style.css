@@ -261,7 +261,7 @@ nav {
 footer {
   background: var(--bg-2); border-top: 1px solid var(--border); padding: 64px 0 32px;
 }
-.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 48px; }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 48px; }
 .footer-brand p { font-size: .9rem; margin-top: 14px; max-width: 260px; }
 .footer-col h4 { font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-subtle); margin-bottom: 16px; }
 .footer-col a { display: block; font-size: .9rem; color: var(--text-muted); padding: 4px 0; transition: var(--transition); }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import Link from 'next/link'
 import { apiFetch, useApi } from '@/hooks/useApi'
 
 interface Contact {
@@ -12,6 +13,10 @@ interface Contact {
   phoneE164: string | null
   source: string
   createdAt: string
+  optedOutSms: boolean
+  optedOutVoice: boolean
+  optedOutEmail: boolean
+  emailStatus: string | null
 }
 
 interface ContactList {
@@ -274,7 +279,7 @@ export default function ContactsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
-                {['Name', 'Email', 'Phone', 'Source', 'Added', ''].map((h) => (
+                {['Name', 'Email', 'Phone', 'Status', 'Source', 'Added', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{h}</th>
                 ))}
               </tr>
@@ -283,10 +288,26 @@ export default function ContactsPage() {
               {contacts.map((c, i) => (
                 <tr key={c.id} style={{ borderBottom: i < contacts.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
                   <td className="px-4 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {c.fullName ?? ([c.firstName, c.lastName].filter(Boolean).join(' ') || '—')}
+                    <Link href={`/contacts/${c.id}`} className="hover:underline">
+                      {c.fullName ?? ([c.firstName, c.lastName].filter(Boolean).join(' ') || '—')}
+                    </Link>
                   </td>
-                  <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>{c.email ?? '—'}</td>
+                  <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
+                    <span>{c.email ?? '—'}</span>
+                    {c.emailStatus === 'invalid' && <span className="ml-1 text-xs text-red-500">✕</span>}
+                    {c.emailStatus === 'valid' && <span className="ml-1 text-xs text-green-500">✓</span>}
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{c.phoneE164 ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1 flex-wrap">
+                      {c.optedOutSms   && <span className="px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700">SMS out</span>}
+                      {c.optedOutVoice && <span className="px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700">Voice out</span>}
+                      {c.optedOutEmail && <span className="px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700">Email out</span>}
+                      {!c.optedOutSms && !c.optedOutVoice && !c.optedOutEmail && (
+                        <span className="px-1.5 py-0.5 rounded text-xs bg-green-50 text-green-700">Active</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">
                     <span className="badge" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>{c.source}</span>
                   </td>

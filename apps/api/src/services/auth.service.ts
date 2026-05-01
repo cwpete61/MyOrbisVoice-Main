@@ -5,6 +5,7 @@ import { hashToken, generateSecureToken, AppError, toSlug } from '@voiceautomati
 import type { RoleKey } from '@voiceautomation/types'
 import { getOrCreateStripeCustomer } from './stripe.service.js'
 import { syncEntitlementsFromPlan } from './entitlement.service.js'
+import { attributeTenant } from './affiliate.service.js'
 
 const SALT_ROUNDS = 12
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -63,6 +64,11 @@ export async function signupUser(data: {
   const plan = await prisma.plan.findFirst({ where: { code: planCode, isActive: true } })
   if (plan) {
     await syncEntitlementsFromPlan(tenant.id, plan.id).catch(() => { /* non-fatal */ })
+  }
+
+  // Wire referral attribution (non-fatal)
+  if (data.affiliateCode) {
+    await attributeTenant(tenant.id, data.affiliateCode).catch(() => {})
   }
 
   const tokens = await issueTokens(user.id, user.email, tenant.id, 'tenant_owner', false)

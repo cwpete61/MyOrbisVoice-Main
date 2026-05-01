@@ -18,7 +18,9 @@ export function AdminNav() {
     {
       section: 'Management',
       items: [
-        { href: '/admin/tenants', label: 'Tenants', icon: <TenantsIcon /> },
+        { href: '/admin/tenants',     label: 'Tenants',     icon: <TenantsIcon /> },
+        { href: '/admin/affiliates',  label: 'Affiliates',  icon: <AffiliatesIcon /> },
+        { href: '/admin/twilio-logs', label: 'Twilio Call Logs', icon: <CallLogsIcon /> },
       ],
     },
     {
@@ -100,6 +102,24 @@ function TenantsIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M2 14V6l6-4 6 4v8" /><path d="M6 14v-4h4v4" />
+    </svg>
+  )
+}
+
+function CallLogsIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 2h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
+      <path d="M5 6h6M5 8.5h4M5 11h3" />
+    </svg>
+  )
+}
+
+function AffiliatesIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="4" cy="8" r="2" /><circle cx="12" cy="4" r="2" /><circle cx="12" cy="12" r="2" />
+      <path d="M6 7.5l4-2M6 8.5l4 2" />
     </svg>
   )
 }
