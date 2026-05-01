@@ -1110,6 +1110,9 @@ Phase 5+: Only connect Gemini Live once the local session flow is verified.
 - [x] Git tag: `disaster-backup-20260501` — aligns with snapshot `db_20260501_044937_hardening-complete.dump`
 - [x] Stale files removed: `client_secret_*.json`, `plan.md`, `WORKING_STATE.md`, `docker-compose.yml` (root), `infrustructure/` (typo duplicate)
 
+**⚠️ PENDING — Do this next session:**
+- [ ] Re-download the Google OAuth client secret JSON from Google Cloud Console and store it securely off-repo (1Password / Bitwarden). The file `client_secret_548023119687-734aljh9786uh1k85kv0506coob25rje.apps.googleusercontent.com.json` was deleted from the repo root as a security cleanup. The credentials are still live and stored in the DB — but the raw JSON file should be kept in a secure offline location in case the Google OAuth connection ever needs to be re-established from scratch. Get it from: Google Cloud Console → project `myorbisvoice` → APIs & Services → Credentials → OAuth 2.0 Client IDs → Download JSON.
+
 **Known Deploy Pitfalls (additions):**
 | Pitfall | What Happens | Fix |
 |---|---|---|
