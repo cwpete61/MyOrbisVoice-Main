@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { HELP_CONTENT, type HelpArticle, type HelpSection } from '@/lib/helpContent'
 import { HelpTemplateBlock } from '@/components/HelpTemplateBlock'
+import { WebsiteChecker } from '@/components/WebsiteChecker'
 
 function Icon({ d, size = 15 }: { d: string; size?: number }) {
   return (
@@ -25,9 +26,11 @@ function ArticleView({ article }: { article: HelpArticle }) {
   return (
     <div className="max-w-2xl">
       <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{article.title}</h1>
-      <p className="text-sm mb-8" style={{ color: 'var(--text-secondary)' }}>{article.summary}</p>
+      <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>{article.summary}</p>
 
-      <div className="space-y-5 mb-8">
+      {article.id === 'integrations-twilio-website' && <WebsiteChecker />}
+
+      <div className="space-y-5 mb-8 mt-6">
         {article.steps.map((step, i) => (
           <div key={i} className="flex gap-3">
             <StepNumber n={i + 1} />

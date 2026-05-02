@@ -5,6 +5,7 @@ import { requireTenantContext } from '../middleware/rbac.js'
 import * as googleService from '../services/google.service.js'
 import * as twilioService from '../services/twilio.service.js'
 import * as geminiService from '../services/gemini-integration.service.js'
+import { checkWebsite } from '../services/website-check.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { getEnv } from '@voiceautomation/config'
 
@@ -153,6 +154,19 @@ router.post('/integrations/google/send-email', async (req, res, next) => {
     if (!to || !subject || !body) throw new AppError('VALIDATION_ERROR', 'to, subject, and body are required', 422)
     await googleService.sendGmailEmail(tenantId, { to, subject, body, isHtml })
     res.json({ data: { sent: true } })
+  } catch (err) { next(err) }
+})
+
+// Twilio approval pre-flight: audit a website for the elements Twilio looks for
+// during 10DLC and Voice Integrity review (HTTPS, Privacy Policy, Terms, SMS clause, etc.)
+router.post('/integrations/website-check', async (req, res, next) => {
+  try {
+    const { url } = req.body as { url?: string }
+    if (!url || typeof url !== 'string' || url.length < 4 || url.length > 500) {
+      throw new AppError('VALIDATION_ERROR', 'A valid url string is required', 422)
+    }
+    const result = await checkWebsite(url)
+    res.json({ data: result })
   } catch (err) { next(err) }
 })
 
