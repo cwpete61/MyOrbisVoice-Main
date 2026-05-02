@@ -1689,3 +1689,116 @@ Items below are confirmed product requirements. Implement them in order of depen
 - Web Push: store `PushSubscription` objects per user in a new `PushSubscription` DB table; use `web-push` npm package to send
 - FCM integration deferred until mobile app is built; design the notification dispatch service to be provider-agnostic from day one
 - All notification sends must be non-blocking — failure to notify must never fail the call session itself
+
+---
+
+### 13. Admin / Support Help Section — comprehensive operator guide
+
+**What:** A dedicated help center for **platform admins and support staff** (separate from the tenant-facing `/help` we already shipped). Covers every admin function with step-by-step processes, expected outcomes, troubleshooting paths, and **screenshots of each UI element** so support can confidently walk customers through fixes without having to navigate the system themselves first.
+
+**Audience:** OrbisVoice platform admins (us) and any support staff we hire. Lives at `/admin/help` (admin route, not exposed to tenants).
+
+**Required structure for every help article:**
+
+Each article follows this template so support staff get consistent, actionable info:
+
+1. **What this feature does** — 1-2 sentence summary of purpose
+2. **Where to find it** — exact navigation path with screenshot of the entry point
+3. **Step-by-step procedure** — numbered list, with a screenshot at every step that has a UI to click
+4. **What success looks like** — screenshot of the expected end state
+5. **Common issues** — bulleted list of things that go wrong, with screenshots of each error state and the fix
+6. **Audit log signature** — what action name(s) appear in `AuditLog` after this operation completes (so support can verify in the audit table)
+
+**Screenshot pattern (critical):**
+
+Every help article must have **placeholder slots for screenshots** even before they're captured. Pattern:
+
+```markdown
+### Step 3 — Click the Suspend button
+[SCREENSHOT: tenant-detail-suspend-button.png — top-right of the tenant detail page, red button labeled "Suspend"]
+
+The button is in the top-right next to "Enter as tenant →"...
+```
+
+This way the article reads correctly even before screenshots are captured, and we have a precise list of every screenshot we need. Screenshots live in `apps/web/public/admin-help/<article-id>/<step>.png`. The renderer falls back to a labeled placeholder box if a screenshot file is missing.
+
+**Articles to cover (initial scope — all features as of 2026-05-02):**
+
+**Tenant management**
+- View tenant list, search, filter by status (TRIAL / ACTIVE / SUSPENDED / PAST_DUE)
+- Tenant detail page — read every field, what each means
+- Suspend / restore a tenant — when to use, audit trail
+- Rename a tenant
+- Enter as tenant (impersonation / support mode) — how to enter, what changes, how to exit, audit policy
+- **Grant a plan tier (Stripe-bypass) — internal testing only**
+- Revoke admin grant
+- Delete a tenant — destructive, when allowed
+- View members of a tenant
+- Storage tier assignment + manual quota overrides
+
+**Plan management**
+- View Plans list, accordion behavior
+- Edit a plan's entitlements (the integer/boolean fields)
+- Add Stripe price IDs to plans
+- Set / change plan price displayed to customers
+- Mark a plan inactive (no longer purchasable)
+
+**Billing operations (Stripe)**
+- Find a customer's Stripe customer ID + open in Stripe dashboard
+- Read the Subscription audit trail — what each `billing.*` action means
+- Manually sync entitlements after a Stripe-side change
+- Switch between Stripe test mode / live mode (which keys to update where)
+- Stripe webhook event types we listen for + what each does
+
+**Twilio operations**
+- Connect a tenant's Twilio account — Account SID / Auth Token / Phone Number
+- Verify the Twilio webhook signature is enforced
+- Diagnose why a tenant's outbound calls aren't connecting
+- Diagnose why SMS isn't being delivered (10DLC approval check, Brand state, Campaign state)
+- Read the Twilio compliance flags on the tenant detail page
+
+**Voice gateway / call diagnostics**
+- Find a specific Conversation by ID, phone number, or contact name
+- Read transcripts and summaries
+- Listen to recordings (where they live, how to retrieve them from Bunny)
+- Diagnose a "call dropped" complaint
+- Diagnose a "the agent didn't say X" complaint — pulling the prompt stack that was active
+
+**Affiliate operations**
+- Approve / reject an affiliate application
+- View commission ledger
+- Process a payout request manually
+- Pause / disable an affiliate
+- Read the affiliate audit trail
+
+**Integrations**
+- Reconnect a tenant's Google account
+- Diagnose Google Calendar booking failures
+- Reconnect a tenant's Twilio if their auth token rotated
+- Reconnect Stripe (rare — usually handled via webhook)
+
+**System settings (super-admin)**
+- Update encrypted secrets in System Settings (Stripe / Twilio / Google / OpenAI / Bunny / Reoon / SMTP)
+- Rotate AUTH_SECRET (process for handling re-encryption of stored secrets)
+- View system-wide audit log
+- View system-wide usage metrics
+
+**Each one of the above gets its own article with the 6-section template.**
+
+**Screenshot capture workflow:**
+
+When we build this:
+1. The renderer falls back to a "[ Screenshot: filename — description ]" placeholder box if the image file is missing
+2. We can ship the help section in two waves: first wave = all text + all placeholder boxes (works immediately for support staff). Second wave = capture every screenshot using a real test environment, drop them into the right paths.
+3. Screenshot capture script (optional): a Puppeteer script in `apps/e2e/scripts/capture-admin-help-screenshots.ts` that logs in as admin, navigates each documented page, and saves screenshots at the named paths. Maintains parity with the doc whenever the UI changes.
+
+**Architecture notes:**
+
+- New help content data structure: `apps/web/src/lib/adminHelpContent.ts` — same shape as `helpContent.ts` but with extended schema for screenshot slots
+- New page: `apps/web/src/app/(admin)/admin/help/page.tsx` — admin-only route (`requirePlatformAdmin`)
+- New `<ScreenshotSlot>` component: renders the image if file exists, otherwise a styled placeholder box with the filename and description so the gap is obvious
+- Same URL hash deep-linking pattern as `/help` so "I'll show you exactly where to click" links from internal Slack / email work
+
+**Why this matters:**
+
+As the platform grows, we will not always be the only people doing support. Support staff, contractors, and (eventually) hired agents need to navigate every admin function without ramp-up time. Without this, every weird customer issue becomes a fire drill where someone has to learn the system on the fly. With it, support is a checklist exercise.
