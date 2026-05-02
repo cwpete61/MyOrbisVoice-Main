@@ -41,7 +41,7 @@ ssh "$SERVER" "
   docker cp $REMOTE/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/. \
     myorbisvoice-gateway:/app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/
 "
-ok "Prisma client pushed to api + gateway containers"
+ok "Prisma client pushed to api + gateway containers (commit happens in step_api/step_gateway)"
 
 # ── 2b. Sync extra node_modules that may not be in the container image ────────
 log "Syncing extra node_modules to server..."
@@ -59,11 +59,15 @@ fi
 
 # ── 3. Service steps ───────────────────────────────────────────────────────
 step_api() {
-  log "API — build → sync → inject → restart..."
+  log "API — build → sync → inject → commit-to-image → restart..."
   pnpm --filter @voiceautomation/api build 2>&1 | grep -E "error TS|^>" || true
   rsync -az --delete "$REPO_ROOT/apps/api/dist/" "$SERVER:$REMOTE/apps/api/dist/"
   rsync -az "$REPO_ROOT/prisma/schema.prisma" "$SERVER:$REMOTE/prisma/schema.prisma"
   ssh "$SERVER" "docker cp $REMOTE/apps/api/dist/. myorbisvoice-api:/app/apps/api/dist/ && docker cp $REMOTE/prisma/schema.prisma myorbisvoice-api:/app/prisma/schema.prisma"
+  # CRITICAL: commit the running container back into the image so force-recreate doesn't revert code.
+  # Without this, any subsequent `docker compose up --force-recreate` (e.g. after env changes) reverts
+  # to the original image and loses everything we just injected via docker cp.
+  ssh "$SERVER" "docker commit myorbisvoice-api myorbisvoice-api:latest" >/dev/null && ok "Image updated"
   ssh "$SERVER" "docker restart myorbisvoice-api"
   sleep 5
   # Verify API started
@@ -80,10 +84,11 @@ step_api() {
 }
 
 step_gateway() {
-  log "Gateway — build → sync → inject → restart..."
+  log "Gateway — build → sync → inject → commit-to-image → restart..."
   pnpm --filter @voiceautomation/voice-gateway build 2>&1 | grep -E "error TS|^>" || true
   rsync -az --delete "$REPO_ROOT/apps/voice-gateway/dist/" "$SERVER:$REMOTE/apps/voice-gateway/dist/"
   ssh "$SERVER" "docker cp $REMOTE/apps/voice-gateway/dist/. myorbisvoice-gateway:/app/apps/voice-gateway/dist/"
+  ssh "$SERVER" "docker commit myorbisvoice-gateway myorbisvoice-gateway:latest" >/dev/null && ok "Image updated"
   ssh "$SERVER" "docker restart myorbisvoice-gateway"
   sleep 5
   RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-gateway --tail=5 2>&1")
@@ -98,12 +103,21 @@ step_gateway() {
 }
 
 step_web() {
-  log "Web — build → sync → WIPE stale chunks → inject → restart..."
-  pnpm --filter @voiceautomation/web build 2>&1 | grep -E "Error|Failed|^>" || true
+  log "Web — build → sync → WIPE stale chunks → inject → commit-to-image → restart..."
+  # CRITICAL: catch real build errors. The grep filter has missed "Failed to compile." in the past.
+  WEB_BUILD_OUT=$(pnpm --filter @voiceautomation/web build 2>&1)
+  if echo "$WEB_BUILD_OUT" | grep -qE "Failed to compile|error TS"; then
+    echo "$WEB_BUILD_OUT" | tail -30
+    fail "Web build failed — fix TypeScript errors before deploying"
+  fi
   rsync -az --delete "$REPO_ROOT/apps/web/.next/" "$SERVER:$REMOTE/apps/web/.next/"
   # CRITICAL: wipe stale static chunks before injecting — old chunk hashes cause client crashes
   ssh "$SERVER" "docker exec myorbisvoice-web sh -c 'rm -rf /app/apps/web/.next/static'"
   ssh "$SERVER" "docker cp $REMOTE/apps/web/.next/. myorbisvoice-web:/app/apps/web/.next/"
+  # Commit the cp'd state AND fix the image's CMD (the original myorbisvoice-web:latest had `tail -f /dev/null` baked in
+  # as a placeholder — we override via compose's `command:` directive but if anyone removes that override,
+  # web silently won't start. Bake the correct CMD into the image so it's self-sufficient).
+  ssh "$SERVER" "docker commit --change='CMD [\"pnpm\", \"--filter\", \"@voiceautomation/web\", \"start\"]' myorbisvoice-web myorbisvoice-web:latest" >/dev/null && ok "Image updated (incl. CMD fix)"
   ssh "$SERVER" "docker restart myorbisvoice-web"
   sleep 5
   RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-web --tail=5 2>&1")
