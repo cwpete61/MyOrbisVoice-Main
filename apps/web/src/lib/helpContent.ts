@@ -1,6 +1,19 @@
 export type HelpStep = {
   title: string
   body: string
+  /** Optional copy-paste template that auto-fills from tenant business data.
+   *  Placeholders supported: [CLIENT BUSINESS NAME], [CLIENT WEBSITE URL],
+   *  [CLIENT EMAIL], [CLIENT PHONE NUMBER], [CLIENT ADDRESS], [CLIENT TWILIO NUMBER].
+   *  Anything in [BRACKETS] not in that list stays as a placeholder for the user. */
+  template?: {
+    label: string
+    content: string
+  }
+  /** Optional one-click destination — usually a deep link into Twilio Console. */
+  link?: {
+    label: string
+    href: string
+  }
 }
 
 export type HelpArticle = {
@@ -357,30 +370,263 @@ export const HELP_CONTENT: HelpSection[] = [
       },
       {
         id: 'integrations-twilio-approval',
-        title: 'Twilio Carrier Approvals: 10DLC, A2P, CNAM & STIR/SHAKEN',
-        summary: 'Outbound calls and SMS require carrier approval before they will deliver. Here is exactly what to register and how long each takes.',
+        title: 'Twilio Carrier Approvals — Overview & Timeline',
+        summary: 'Outbound calls and SMS require carrier approval before they will deliver. Read this overview first, then follow the linked detailed guides for each step.',
         steps: [
-          { title: 'Why approvals exist', body: 'US carriers (Verizon, AT&T, T-Mobile, etc.) and federal regulators require all business-grade voice and SMS senders to be verified. Without these registrations, your outbound calls show as "Spam Likely" and your SMS messages get filtered or rejected. Inbound calls do not require any of this — they work the moment you set the webhook URL above.' },
-          { title: 'Inbound voice — no approval needed', body: 'Buy a Twilio number, set its voice webhook to the URL shown above, and inbound calls reach your AI agent immediately. Skip the rest of this article if you only need inbound.' },
-          { title: 'Outbound voice — STIR/SHAKEN attestation', body: 'STIR/SHAKEN is a federally mandated caller-ID verification standard. Twilio handles the attestation automatically for numbers you purchased through them, so most users get this for free. Verify it is active in Twilio: Voice → Calling → Trust Hub. If your numbers were ported from another carrier, you may need to file the trust profile manually. Approval is typically same-day.' },
-          { title: 'Outbound voice — CNAM registration (optional but recommended)', body: 'CNAM is the "Caller Name" string that displays on the recipient\'s phone instead of just the number. To set it, go to Twilio Console → Phone Numbers → your number → CNAM Lookup, and submit your business name. Approval takes 1–3 business days. Cost: ~$1.25/month per number. Without CNAM, your number shows up as "Wireless Caller" or just the digits.' },
-          { title: 'SMS — 10DLC registration (REQUIRED for US SMS)', body: '10DLC ("10-Digit Long Code") is the framework US carriers require for any business sending SMS from a regular phone number. Without 10DLC, your SMS will be heavily filtered or rejected outright. Register in Twilio: Messaging → Regulatory Compliance → US A2P 10DLC.' },
-          { title: '10DLC step 1 — Register your Brand', body: 'Provide your legal business name, EIN/Tax ID, business address, website, and primary contact. Twilio submits this to The Campaign Registry (TCR). Brand approval: typically 1–2 business days. Cost: $4 one-time registration fee.' },
-          { title: '10DLC step 2 — Create a Campaign', body: 'A "campaign" describes how you will use SMS. Pick a use case (Customer Care, Marketing, 2FA, etc.), describe your message flow, and provide sample messages. Campaign approval: 1–4 weeks (this is the slow step — varies by carrier). Cost: ~$10/month per campaign + $0.0025–$0.005 per message depending on tier.' },
-          { title: '10DLC step 3 — Assign your number(s) to the campaign', body: 'Once both Brand and Campaign are approved, link your phone number(s) to the campaign in Twilio Console → Messaging → Senders. SMS sending becomes operational immediately after assignment.' },
-          { title: 'Toll-free SMS — alternative to 10DLC', body: 'If you have a toll-free number (1-8XX), you go through Toll-Free Verification instead of 10DLC. Submit at Messaging → Regulatory Compliance → Toll-Free Verification. Approval: typically 2–5 business days. Often faster than 10DLC, but rates per message are higher.' },
-          { title: 'International SMS', body: 'Each country has its own approval flow (e.g. UK requires sender ID registration, India requires DLT registration). If you plan to send SMS internationally, contact Twilio support for country-specific requirements before purchasing numbers in that region.' },
-          { title: 'How to check approval status in OrbisVoice', body: 'Currently approval status lives in your Twilio Console (not yet surfaced in OrbisVoice). Go to Messaging → Regulatory Compliance to see Brand/Campaign state. We will add a status indicator to the Phone Numbers page in a future release.' },
+          { title: 'Why approvals exist', body: 'US carriers (Verizon, AT&T, T-Mobile) and federal regulators require all business voice and SMS senders to be verified. Without registration, outbound calls show as "Spam Likely" and SMS messages get silently dropped. Inbound calls do not require any of this — they work the moment you set the webhook URL.' },
+          { title: 'The 6 phases of Twilio onboarding', body: 'Phase 1: Collect business info. Phase 2: Verify your website meets Twilio\'s requirements. Phase 3: Set up the Twilio account and Trust Hub. Phase 4: Submit A2P 10DLC Brand + Campaign for SMS, and Voice Integrity for outbound calls. Phase 5: Wait for approval (1–4 weeks). Phase 6: Connect approved numbers to OrbisVoice.' },
+          { title: 'Realistic timeline', body: 'Inbound voice: same-day. Outbound voice (STIR/SHAKEN + CNAM): 1–5 days. SMS via 10DLC: Brand approval 1–2 days, Campaign approval 1–4 weeks (this is the slow step — driven by carrier review queues, not Twilio). Toll-free SMS: 2–5 days, faster than 10DLC but pricier per-message.' },
+          { title: 'Cost overview', body: 'Brand registration: $4 one-time. Campaign: ~$10/month per campaign + $0.0025–$0.005 per SMS. Toll-free verification: free, but per-message cost is higher. CNAM caller-ID: ~$1.25/month per number. Voice Integrity is free.' },
+          { title: 'What you need before starting', body: 'Read the next article ("Step 1: Business Information") to gather everything in advance. Trying to fill in Twilio forms while hunting for your EIN slows everyone down — collect the info first, paste it in once.', link: { label: 'Open: Step 1 — Business Information', href: '#integrations-twilio-business-info' } },
+          { title: 'Quick path for inbound only', body: 'If you only need inbound calls (no outbound, no SMS), you can skip every approval. Buy a Twilio number, set its Voice webhook to https://api.myorbisvoice.com/api/webhooks/twilio/voice, connect to OrbisVoice. Done in 5 minutes. The rest of these articles only matter for outbound voice or SMS.' },
         ],
         tips: [
-          'Start the 10DLC Brand registration the same day you buy your first Twilio number — the 1–4 week wait runs in parallel with everything else you set up.',
-          'For testing while 10DLC is pending, register your own personal phone numbers as "verified caller IDs" in Twilio — Twilio lets you SMS verified numbers without 10DLC.',
-          'Outbound voice typically works with no approval beyond what Twilio does automatically — only SMS has the long approval wait.',
+          'Start the 10DLC Brand registration the same day you buy your first Twilio number — the 1–4 week Campaign wait runs in parallel with everything else you set up.',
+          'For testing while 10DLC is pending, register your own phone numbers as "verified caller IDs" in Twilio. Verified numbers can receive SMS without 10DLC.',
+          'Outbound voice approval is much faster than SMS. If timeline matters, prioritize voice setup first.',
         ],
         warnings: [
-          'Sending SMS without 10DLC registration will result in messages being silently dropped by carriers. You will see "delivered" in Twilio logs but recipients will never receive the message.',
-          'Do not exaggerate your SMS volume on the campaign registration — under-declaring is fine, over-declaring triggers expensive higher-tier rates.',
-          'Brand registration uses your business EIN. Sole proprietors with no EIN must register as a sole-prop brand which has stricter throughput limits.',
+          'Sending SMS without 10DLC registration → messages silently dropped by carriers. Twilio logs will show "delivered" but recipients never receive the text.',
+          'Do not exaggerate SMS volume on campaign registration — under-declaring is fine, over-declaring triggers expensive higher-tier rates.',
+          'Brand registration uses your business EIN. Sole proprietors with no EIN register as a sole-prop brand, which has stricter throughput limits.',
+        ],
+      },
+      {
+        id: 'integrations-twilio-business-info',
+        title: 'Twilio Approval — Step 1: Business Information',
+        summary: 'Collect this information before opening Twilio. Mismatches between what you submit and your public business records cause delays and rejections.',
+        steps: [
+          { title: 'Required information', body: 'You will need: Legal Business Name, DBA / Brand Name, EIN (Employer ID Number), Business Type (LLC, Corp, Sole Prop, etc.), Industry, Website URL, Business Address, Business Phone, Business Email, and an Authorized Representative (Name, Title, Email, Phone).' },
+          { title: 'The "matching" rule (most important)', body: 'Twilio cross-references your submitted info against public records and IRS data. The Legal Business Name, EIN, address, and website MUST match what is on file with the IRS and your state business registration. A small mismatch (e.g. "Acme LLC" vs "Acme, LLC") can fail the review.' },
+          { title: 'Where to find your EIN', body: 'On your IRS confirmation letter (CP 575), prior business tax returns, or your state business registration filing. If you cannot find it, the IRS Business & Specialty Tax Line (1-800-829-4933) will tell you over the phone after verifying your identity.' },
+          { title: 'Authorized Representative', body: 'A real person at your business who can answer questions if Twilio or carriers follow up. Cannot be the SaaS provider (us). Use a real corporate email, not a personal Gmail. Use a real phone number that someone will actually answer.' },
+          { title: 'Sole proprietors with no EIN', body: 'You can still register as a sole-prop brand using your SSN, but throughput limits are lower (~50 SMS/day at the lowest tier vs 4,500/day for full brands). For real volume, get an EIN — it is free at irs.gov/ein and takes 15 minutes.' },
+          { title: 'After you have all the info', body: 'Move to Step 2 — Website Compliance. Twilio audits your website during review, so it must meet specific requirements before you submit.', link: { label: 'Open: Step 2 — Website Compliance', href: '#integrations-twilio-website' } },
+        ],
+        warnings: [
+          'Mismatched business name between Twilio submission and IRS/state records is the #1 cause of rejection. Double-check the legal name exactly.',
+          'Do not use a personal Gmail address as the business email. Carriers flag personal-domain submissions as suspicious.',
+        ],
+      },
+      {
+        id: 'integrations-twilio-website',
+        title: 'Twilio Approval — Step 2: Website Compliance',
+        summary: 'Twilio audits your website during 10DLC and Voice Integrity review. Your site must be live, secure, and contain specific elements before you submit.',
+        steps: [
+          { title: 'What Twilio looks for', body: 'During review, Twilio (and the carriers via TCR) actually visit your website. They check for: HTTPS (secure connection), a clear description of your business, contact information, a Privacy Policy with a specific SMS clause, Terms & Conditions with SMS terms, and — if you collect phone numbers — an opt-in consent checkbox.' },
+          { title: 'Required pages', body: 'Home page (clear description of what you do). About page or business description. Contact page with visible phone, email, and address or service area. Privacy Policy. Terms & Conditions.' },
+          { title: 'Required HTTPS', body: 'Your site must use https://, not http://. Most modern hosting (Wix, Squarespace, Webflow, Wordpress with SSL plugin) gives you this free. If your site is still on http://, fix this first — Twilio rejects http:// sites for Voice Integrity automatically.' },
+          { title: 'SMS consent checkbox on every form that collects phone numbers', body: 'On contact forms, booking forms, signup forms — anywhere a customer types their mobile number — you need a checkbox with specific language. See the next article for the exact text to copy.', link: { label: 'Open: Step 3 — Copy-paste templates', href: '#integrations-twilio-templates' } },
+          { title: 'Privacy Policy needs a specific SMS section', body: 'Your existing Privacy Policy is not enough — Twilio specifically requires language saying mobile information will not be shared with third parties or affiliates. Use the exact template in Step 3.' },
+          { title: 'Terms & Conditions needs SMS terms', body: 'Same idea — you need a specific SMS Terms section saying message frequency, opt-out method, and that consent is not a condition of purchase.' },
+          { title: 'For Voice Integrity (outbound calls)', body: 'Twilio also requires: a functioning HTTPS website, an EIN or DUNS number, a valid US business address, and an authorized representative with a valid US phone number. The website check is more lenient for voice than SMS, but still done.' },
+        ],
+        tips: [
+          'If your site is on Wix, Squarespace, or Webflow, you can add Privacy Policy and Terms & Conditions pages from their built-in templates — most have a one-click "add legal page" feature.',
+          'The SMS section in your Privacy Policy is what carriers reject most. Copy our template verbatim — do not paraphrase it.',
+        ],
+        warnings: [
+          'Sites with no Privacy Policy will fail SMS approval immediately. Even a placeholder is required.',
+          'Sites that don\'t mention mobile/SMS in the Privacy Policy will fail too. The privacy policy needs an explicit "we don\'t share mobile data" clause.',
+        ],
+      },
+      {
+        id: 'integrations-twilio-templates',
+        title: 'Twilio Approval — Step 3: Copy-Paste Templates',
+        summary: 'Ready-to-paste consent checkbox, Privacy Policy section, and Terms & Conditions section. We will auto-fill your business name and contact info into the templates.',
+        steps: [
+          { title: 'How these templates work', body: 'Each block below has placeholders like [CLIENT BUSINESS NAME] that we automatically fill in with your tenant settings. Click "Copy" on each block — the version you copy is fully filled in. Anything still in [BRACKETS] is something you need to fill in manually because we don\'t have it on file.' },
+          {
+            title: 'SMS consent checkbox',
+            body: 'Add this checkbox to every form that collects phone numbers. Must be UNCHECKED by default, separate from any "I agree to Terms" checkbox.',
+            template: {
+              label: 'SMS consent checkbox',
+              content: 'I agree to receive SMS text messages from [CLIENT BUSINESS NAME] about appointment scheduling, appointment reminders, service updates, customer support, and follow-up communications. Message frequency varies. Message and data rates may apply. Reply STOP to opt out. Reply HELP for help. Consent is not a condition of purchase. See our Privacy Policy and Terms & Conditions.',
+            },
+          },
+          {
+            title: 'Privacy Policy — SMS section',
+            body: 'Add this section to your Privacy Policy. The exact language about not sharing mobile data is what Twilio looks for.',
+            template: {
+              label: 'Privacy Policy SMS section',
+              content: 'SMS Communications\n\nWhen you provide your mobile phone number and opt in to SMS communications, [CLIENT BUSINESS NAME] may send you text messages related to appointment scheduling, appointment reminders, service updates, customer support, and follow-up communications.\n\nMessage frequency varies based on your interaction with our business. Message and data rates may apply. You may opt out at any time by replying STOP. For assistance, reply HELP or contact us at [CLIENT EMAIL] or [CLIENT PHONE NUMBER].\n\nNo mobile information will be shared with third parties or affiliates for marketing or promotional purposes. All text messaging originator opt-in data and consent information will not be shared with any third parties.',
+            },
+          },
+          {
+            title: 'Terms & Conditions — SMS section',
+            body: 'Add this section to your Terms & Conditions.',
+            template: {
+              label: 'Terms & Conditions SMS section',
+              content: 'SMS Terms & Conditions\n\nBy opting in to receive SMS messages from [CLIENT BUSINESS NAME], you agree to receive text messages related to appointment scheduling, appointment reminders, service updates, customer support, and follow-up communications.\n\nMessage frequency varies. Message and data rates may apply.\n\nYou may opt out at any time by replying STOP. After you reply STOP, we may send one final confirmation message to confirm that you have been unsubscribed. You may reply HELP for assistance or contact us at [CLIENT EMAIL] or [CLIENT PHONE NUMBER].\n\nConsent to receive SMS messages is not a condition of purchasing any goods or services. Wireless carriers are not liable for delayed or undelivered messages.',
+            },
+          },
+          { title: 'After you update your website', body: 'Wait for the changes to deploy/publish. Visit your live URL and verify the checkbox appears on contact/booking forms, and the new SMS sections appear in your Privacy Policy and Terms pages. Then move to Step 4.', link: { label: 'Open: Step 4 — Twilio campaign forms', href: '#integrations-twilio-campaign-forms' } },
+        ],
+        tips: [
+          'Do not pre-check the consent checkbox. Pre-checked = automatic rejection.',
+          'Keep the SMS consent checkbox separate from the "I agree to Terms" checkbox. Two distinct boxes.',
+          'The checkbox text must include the phrase "SMS" or "text messages" — Twilio searches for these exact words.',
+        ],
+        warnings: [
+          'Do NOT add language about sharing mobile data with partners, affiliates, vendors, or marketing companies. Twilio\'s Messaging Policy prohibits transferring SMS consent to third parties — including this language is automatic rejection.',
+        ],
+      },
+      {
+        id: 'integrations-twilio-campaign-forms',
+        title: 'Twilio Approval — Step 4: A2P Campaign Form Language',
+        summary: 'Exact text to paste into the Twilio A2P 10DLC Campaign registration forms. Copy each block, paste into the matching field in Twilio.',
+        steps: [
+          { title: 'When you reach this step', body: 'You will be in Twilio Console → Messaging → Regulatory Compliance → US A2P 10DLC. After Brand approval (1–2 days), you create a Campaign. The Campaign asks for several text fields with strict requirements — single-word answers like "Marketing" cause rejection.' },
+          {
+            title: 'Campaign description (use case)',
+            body: 'Paste this into the Campaign Description field. Twilio requires a thorough explanation, not a single word.',
+            template: {
+              label: 'Campaign description',
+              content: 'This campaign sends SMS messages from [CLIENT BUSINESS NAME] to customers and prospects who have opted in through our website form, booking form, inbound SMS, phone call, or customer support interaction. Messages include appointment confirmations, appointment reminders, rescheduling notices, service updates, customer support follow-ups, and direct responses to customer inquiries. Messages are sent only to recipients who provide consent, and recipients can opt out at any time by replying STOP.',
+            },
+          },
+          {
+            title: 'Message Flow / Opt-in Description',
+            body: 'Paste this into the Message Flow field. Must be 40–2049 characters and list ALL the ways someone can opt in.',
+            template: {
+              label: 'Message flow',
+              content: 'End users opt in by visiting [CLIENT WEBSITE URL] and submitting a contact or booking form that asks for their mobile phone number. The form includes an unchecked SMS consent checkbox that states: "I agree to receive SMS text messages from [CLIENT BUSINESS NAME] about appointment scheduling, appointment reminders, service updates, customer support, and follow-up communications. Message frequency varies. Message and data rates may apply. Reply STOP to opt out. Reply HELP for help. Consent is not a condition of purchase." End users may also opt in by texting START to [CLIENT TWILIO NUMBER] or by requesting SMS follow-up during a phone call or customer support interaction. Privacy Policy and Terms & Conditions are linked on the form and in the website footer.',
+            },
+          },
+          { title: 'Sample messages — overview', body: 'Twilio asks for 2–5 sample messages. Each must include your business name, use [BRACKETS] for variable content like dates, and end with HELP/STOP language. Use the four templates below as a starting set.' },
+          {
+            title: 'Sample message 1 — Appointment confirmation',
+            body: 'Paste as the first sample message in your Twilio campaign.',
+            template: {
+              label: 'Sample 1 — Confirmation',
+              content: '[CLIENT BUSINESS NAME]: Your appointment is confirmed for [DATE] at [TIME]. Reply C to confirm, R to reschedule, HELP for help, or STOP to opt out.',
+            },
+          },
+          {
+            title: 'Sample message 2 — Reminder',
+            body: 'Paste as the second sample message.',
+            template: {
+              label: 'Sample 2 — Reminder',
+              content: '[CLIENT BUSINESS NAME]: Reminder, your appointment is scheduled for tomorrow at [TIME]. Reply R to reschedule, HELP for help, or STOP to opt out.',
+            },
+          },
+          {
+            title: 'Sample message 3 — Customer service follow-up',
+            body: 'Paste as the third sample message.',
+            template: {
+              label: 'Sample 3 — Follow-up',
+              content: '[CLIENT BUSINESS NAME]: Thanks for contacting us. We received your request about [SERVICE]. A team member will follow up shortly. Reply HELP for help or STOP to opt out.',
+            },
+          },
+          {
+            title: 'Sample message 4 — Service update',
+            body: 'Paste as the fourth sample message.',
+            template: {
+              label: 'Sample 4 — Service update',
+              content: '[CLIENT BUSINESS NAME]: Your service request for [SERVICE] has been updated. Please call [CLIENT PHONE NUMBER] with questions. Reply HELP for help or STOP to opt out.',
+            },
+          },
+          {
+            title: 'Required keyword auto-responses',
+            body: 'Twilio also asks for opt-in / opt-out / help responses. Paste each into the matching field.',
+            template: {
+              label: 'Opt-in (when user texts START)',
+              content: '[CLIENT BUSINESS NAME]: You\'re subscribed to receive recurring appointment, support, and service update texts. Msg frequency varies. Msg & data rates may apply. Reply HELP for help or STOP to opt out.',
+            },
+          },
+          {
+            title: 'Opt-out response',
+            body: 'Goes in the STOP keyword response field.',
+            template: {
+              label: 'Opt-out (STOP)',
+              content: '[CLIENT BUSINESS NAME]: You have been unsubscribed and will no longer receive SMS messages from us. Reply START to resubscribe.',
+            },
+          },
+          {
+            title: 'HELP response',
+            body: 'Goes in the HELP keyword response field.',
+            template: {
+              label: 'Help response',
+              content: '[CLIENT BUSINESS NAME]: Help is available at [CLIENT PHONE NUMBER] or [CLIENT EMAIL]. Reply STOP to opt out.',
+            },
+          },
+        ],
+        tips: [
+          'Sample messages must MATCH the campaign description. If you say "appointment reminders" in the description, the samples need to look like reminders.',
+          'Use [BRACKETS] for any variable content (dates, times, service names) — Twilio specifically expects this format.',
+          'Every sample needs your business name as the prefix. No exceptions.',
+        ],
+      },
+      {
+        id: 'integrations-twilio-voice-language',
+        title: 'Twilio Approval — Voice Integrity Use Case Language',
+        summary: 'Text to paste during Voice Integrity / SHAKEN/STIR / phone-number trust review. Outbound voice approval is faster than SMS but still requires this submission.',
+        steps: [
+          { title: 'Where you use this', body: 'Twilio Console → Trust Hub → Voice Integrity → Submit. Twilio asks for a "use case description" — paste the template below. This is a critical field — vague answers (like "business calls") get rejected.' },
+          {
+            title: 'Voice Integrity use case description',
+            body: 'Paste into the use case / calling description field.',
+            template: {
+              label: 'Voice Integrity use case',
+              content: '[CLIENT BUSINESS NAME] uses Twilio Programmable Voice to place and receive business calls for appointment scheduling, customer support, service follow-up, missed-call response, and customer-requested callbacks. Calls are made only for legitimate business purposes to customers, prospects, or contacts who requested communication or have an existing business relationship with [CLIENT BUSINESS NAME]. The phone numbers are owned and controlled by [CLIENT BUSINESS NAME] and are not used for deceptive calling, caller ID spoofing, third-party lead generation, or unrelated campaigns.',
+            },
+          },
+          { title: 'If Twilio asks about the SaaS platform', body: 'They sometimes ask "what software is involved?" Use this answer — it positions YOU as the sender of record (correct), not OrbisVoice.', template: { label: 'SaaS platform disclosure', content: 'OrbisVoice provides the software used by [CLIENT BUSINESS NAME] to manage calls, SMS messages, appointment scheduling, and customer follow-up. [CLIENT BUSINESS NAME] is the sender of record and controls its own customer communications, phone numbers, opt-in records, and business messaging use case.' } },
+          { title: 'Optional: CNAM (Caller Name) registration', body: 'After Voice Integrity approval, you can register CNAM at: Twilio Console → Phone Numbers → your number → CNAM Lookup. This makes your business name show on the recipient\'s caller ID instead of "Wireless Caller". ~$1.25/month per number, 1–3 day approval.' },
+        ],
+      },
+      {
+        id: 'integrations-twilio-prohibited',
+        title: 'Twilio Approval — Words and Use Cases to Avoid',
+        summary: 'Specific phrases and use cases that trigger automatic rejection. Avoid these in your Twilio submission forms.',
+        steps: [
+          { title: 'Phrases that cause rejection', body: 'Avoid: "Cold outreach", "Lead generation", "Purchased list", "Affiliate campaign", "Third-party marketing", "Mass texting", "Automated sales blasts", "Get rich quick". Even if you do generate leads or send marketing, these literal words flag your submission for stricter review or rejection.' },
+          { title: 'Use cases that fail SHAFT screening', body: 'SHAFT = Sex, Hate, Alcohol, Firearms, Tobacco. Carriers reject SMS campaigns related to: Adult content, hate speech / discrimination, alcohol sales, firearms sales, tobacco / vape products, cannabis / CBD (even where legal), gambling, lottery, prize draws.' },
+          { title: 'High-risk financial categories', body: 'These industries face stricter approval (often outright rejection): Debt relief, credit repair, payday loans, loan offers, high-risk financial services. Even if your SMS use case is legitimate within these industries, expect a longer review and possibly multiple rejections.' },
+          { title: 'How to describe legitimate marketing', body: 'If you ARE doing marketing, describe it as: "Customer notifications", "Service updates", "Appointment communications", "Customer-initiated follow-up". Do not describe it as "marketing" if the actual use is service-oriented.' },
+          { title: 'What to do if your use case is borderline', body: 'For SHAFT-adjacent industries (e.g. legal cannabis dispensary), Twilio offers special programs through their Compliance team — contact Twilio Sales BEFORE submitting a campaign. Submitting cold gets rejected; the Compliance team can guide you to the right product.' },
+        ],
+        warnings: [
+          'Lying about your use case to get approval = account ban. Carriers monitor actual SMS content; if the messages don\'t match the description, your campaign gets revoked and the carriers may blacklist your business across all carriers.',
+        ],
+      },
+      {
+        id: 'integrations-twilio-console-links',
+        title: 'Twilio Console — Direct Links to Every Step',
+        summary: 'One-click destinations into Twilio for each step of the approval workflow. Avoid hunting through the Twilio dashboard menus.',
+        steps: [
+          { title: 'Twilio main login', body: 'Start here if you do not yet have a Twilio account, or to log in.', link: { label: 'Open Twilio Console →', href: 'https://console.twilio.com/' } },
+          { title: 'Trust Hub — Business Profile (the foundation)', body: 'Required before A2P 10DLC and Voice Integrity. Submit your business info here first. Approval: 1–2 business days.', link: { label: 'Open Trust Hub →', href: 'https://console.twilio.com/us1/account/trust-hub/customer-profiles' } },
+          { title: 'Phone Numbers — Buy a number', body: 'Purchase SMS-capable and/or voice-capable numbers. Local numbers (recommended for most): ~$1.15/month. Toll-free: ~$2/month.', link: { label: 'Open Phone Numbers →', href: 'https://console.twilio.com/us1/develop/phone-numbers/manage/search' } },
+          { title: 'Messaging Services (required for A2P 10DLC)', body: 'Create a Messaging Service before registering an A2P Brand. Numbers must be assigned to a Messaging Service to send via 10DLC.', link: { label: 'Open Messaging Services →', href: 'https://console.twilio.com/us1/develop/sms/services' } },
+          { title: 'A2P 10DLC — Brand registration', body: 'Step 1 of 10DLC. Register your business as a Brand with The Campaign Registry. Cost: $4 one-time. Approval: 1–2 days.', link: { label: 'Open A2P Brand registration →', href: 'https://console.twilio.com/us1/develop/sms/regulatory-compliance/a2p-10dlc/brands' } },
+          { title: 'A2P 10DLC — Campaign registration', body: 'Step 2 of 10DLC. Create a campaign describing your SMS use case. Cost: ~$10/month + per-message fees. Approval: 1–4 weeks.', link: { label: 'Open A2P Campaign registration →', href: 'https://console.twilio.com/us1/develop/sms/regulatory-compliance/a2p-10dlc/campaigns' } },
+          { title: 'Toll-free Verification (alternative to 10DLC)', body: 'If you have a toll-free number (1-8XX), submit Toll-Free Verification instead of 10DLC. Faster (2–5 days) but pricier per message.', link: { label: 'Open Toll-Free Verification →', href: 'https://console.twilio.com/us1/develop/sms/regulatory-compliance/toll-free-verification' } },
+          { title: 'Voice Integrity (for outbound calls)', body: 'Submit your Trust Product for Voice Integrity to attest your outbound calls and reduce "Spam Likely" labels. Required for outbound calling at scale.', link: { label: 'Open Voice Integrity →', href: 'https://console.twilio.com/us1/develop/voice/manage/voice-integrity' } },
+          { title: 'CNAM (Caller Name) registration', body: 'Optional. Sets your business name as the displayed caller ID on recipient phones. ~$1.25/month per number. 1–3 day approval.', link: { label: 'Open CNAM Lookup →', href: 'https://console.twilio.com/us1/develop/phone-numbers/manage/incoming' } },
+          { title: 'Verified Caller IDs (for testing while 10DLC pends)', body: 'Add your own personal phone numbers as verified caller IDs. Verified numbers can receive SMS without 10DLC — useful for testing.', link: { label: 'Open Verified Caller IDs →', href: 'https://console.twilio.com/us1/develop/phone-numbers/manage/verified' } },
+          { title: 'API Keys (for connecting to OrbisVoice)', body: 'After approvals are done, create an API Key to connect Twilio to OrbisVoice (better than using your main Auth Token).', link: { label: 'Open API Keys →', href: 'https://console.twilio.com/us1/account/keys-credentials/api-keys' } },
+        ],
+        tips: [
+          'Bookmark Trust Hub and the A2P Campaign pages — you will visit them many times during the approval cycle.',
+          'If a link above fails, Twilio occasionally rebuilds these pages. Search the Twilio Console for the section name and let us know so we can update.',
+        ],
+      },
+      {
+        id: 'integrations-twilio-checklist',
+        title: 'Twilio Approval — Pre-Submission Checklist',
+        summary: 'Verify all 21 items before submitting your A2P 10DLC Campaign. This checklist mirrors what Twilio and the carriers check during review.',
+        steps: [
+          { title: 'Why this checklist exists', body: 'Most rejection reasons fall into the same handful of issues. Going through this list before submitting catches them — saving you the 1–4 week wait that comes with a rejection-then-resubmit cycle.' },
+          { title: 'Business identity', body: '☐ Business name on submission matches your EIN / state filing exactly\n☐ Authorized representative is a real person at your business\n☐ Business email uses a corporate domain, not personal Gmail / Yahoo / Outlook' },
+          { title: 'Website fundamentals', body: '☐ Site is live (not under construction, not 404, not "coming soon")\n☐ Site uses https:// (secure)\n☐ Home page clearly explains what the business does\n☐ Contact page exists with visible phone, email, and address' },
+          { title: 'Privacy and Terms pages', body: '☐ Privacy Policy is published and linked in footer\n☐ Privacy Policy includes the SMS Communications section (see Step 3 templates)\n☐ Privacy Policy says mobile data is NOT shared with third parties or affiliates\n☐ Terms & Conditions is published and linked in footer\n☐ Terms & Conditions includes SMS Terms section (see Step 3 templates)' },
+          { title: 'SMS opt-in checkbox', body: '☐ Visible on every form that collects phone numbers\n☐ NOT pre-checked by default\n☐ Names your business by name\n☐ Includes the words "SMS" or "text messages"\n☐ Says "Message frequency varies"\n☐ Says "Message and data rates may apply"\n☐ Includes "Reply STOP" and "Reply HELP" language\n☐ Separate from any "I agree to Terms" checkbox' },
+          { title: 'Twilio campaign forms', body: '☐ Campaign description is detailed (not single words like "marketing")\n☐ Sample messages all start with your business name\n☐ Sample messages match the campaign description\n☐ No prohibited phrases (cold outreach, purchased list, etc.)' },
+          { title: 'Test BEFORE going live', body: '☐ Text START from your phone → confirm you receive the opt-in auto-response\n☐ Text STOP from your phone → confirm you receive the opt-out confirmation\n☐ Text HELP from your phone → confirm you receive the help response' },
+        ],
+        tips: [
+          'Print this checklist (or take screenshots) and check items off as you complete them. The checklist UI for tracking this in OrbisVoice is on our roadmap but not built yet.',
         ],
       },
     ],

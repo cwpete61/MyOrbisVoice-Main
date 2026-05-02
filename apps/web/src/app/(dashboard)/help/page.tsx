@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { HELP_CONTENT, type HelpArticle, type HelpSection } from '@/lib/helpContent'
+import { HelpTemplateBlock } from '@/components/HelpTemplateBlock'
 
 function Icon({ d, size = 15 }: { d: string; size?: number }) {
   return (
@@ -32,7 +33,24 @@ function ArticleView({ article }: { article: HelpArticle }) {
             <StepNumber n={i + 1} />
             <div className="flex-1">
               <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{step.title}</p>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{step.body}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--text-secondary)' }}>{step.body}</p>
+              {step.template && (
+                <HelpTemplateBlock label={step.template.label} content={step.template.content} />
+              )}
+              {step.link && (
+                <a
+                  href={step.link.href}
+                  target={step.link.href.startsWith('http') ? '_blank' : undefined}
+                  rel={step.link.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
+                  style={{ background: 'oklch(55% 0.11 193 / 0.12)', color: 'oklch(40% 0.13 193)', textDecoration: 'none', border: '1px solid oklch(55% 0.11 193 / 0.3)' }}
+                >
+                  {step.link.label}
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 3l5 5-5 5" />
+                  </svg>
+                </a>
+              )}
             </div>
           </div>
         ))}
