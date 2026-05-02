@@ -858,6 +858,49 @@ This makes rollback trivial: `git checkout phase-N-start`.
 4. If migration state is ahead of the dump, run `pnpm prisma migrate resolve --rolled-back <migration_name>` for each rolled-back migration.
 5. Restart services and run the E2E suite: `pnpm --filter @voiceautomation/e2e test`.
 
+### Verified backup restore procedure (TESTED 2026-05-02)
+
+**IMPORTANT:** Production runs PostgreSQL 16. The local `umoja-postgres` runs PG 15, which **cannot** read PG 16 custom-format dumps. Restore tests must use a PG 16 instance.
+
+This procedure has been run end-to-end and confirmed working — row counts of every critical table matched exactly between prod and the restored copy.
+
+```bash
+# 1. Take a fresh prod dump
+DUMP=backups/restore-test/prod_$(date +%Y%m%d_%H%M%S).dump
+mkdir -p backups/restore-test
+ssh root@147.93.183.4 'docker exec myorbisvoice-postgres pg_dump -U voiceautomation -d voiceautomation -F c' > "$DUMP"
+
+# 2. Spin up a temporary PG 16 container on a non-conflicting port
+docker run -d --name pg16-restore-test \
+  -e POSTGRES_USER=voiceautomation \
+  -e POSTGRES_PASSWORD=test \
+  -e POSTGRES_DB=voiceautomation_restore_test \
+  -p 5433:5432 \
+  postgres:16-alpine
+
+# 3. Wait for it to be ready
+for i in {1..15}; do
+  docker exec pg16-restore-test pg_isready -U voiceautomation 2>&1 | grep -q "accepting" && break
+  sleep 1
+done
+
+# 4. Restore
+docker cp "$DUMP" pg16-restore-test:/tmp/restore.dump
+docker exec pg16-restore-test pg_restore -U voiceautomation -d voiceautomation_restore_test --no-owner --no-acl /tmp/restore.dump
+
+# 5. Verify row counts match prod
+for t in Tenant TenantMember User Plan RoleDefinition Conversation Contact Appointment SystemConfig BusinessProfile; do
+  PROD=$(ssh root@147.93.183.4 "docker exec myorbisvoice-postgres psql -U voiceautomation -d voiceautomation -t -c 'SELECT COUNT(*) FROM \"$t\"'" | tr -d ' \r\n')
+  RESTORED=$(docker exec pg16-restore-test psql -U voiceautomation -d voiceautomation_restore_test -t -c "SELECT COUNT(*) FROM \"$t\"" | tr -d ' \r\n')
+  [ "$PROD" = "$RESTORED" ] && echo "✅ $t: $PROD" || echo "❌ $t: prod=$PROD restored=$RESTORED"
+done
+
+# 6. Cleanup
+docker rm -f pg16-restore-test
+```
+
+**Run this monthly** (or before any major schema change) to confirm backups remain restorable.
+
 ### Recovery protocol — bad migration
 
 1. Identify the migration name from `pnpm prisma migrate status`.
