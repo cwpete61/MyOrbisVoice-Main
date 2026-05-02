@@ -51,19 +51,19 @@ That rule must hold across all implementation decisions.
 ### Marketing
 - host: Spaceship
 - domain: `myorbisvoice.com`
+- live document root: `/home/palucuidzi/myorbisvoice.com/`
 - FTP host: `server43.shared.spaceship.host` (FTPS explicit on port 21, AUTH TLS required)
-- FTP users available (both tested 2026-05-02):
-  - `MyOrbisVoice@myorbisvoice.com` — current `~/.netrc` user
-  - `MyOrbisVoice@377ee9cb-5afb-4a2e-aed8-ca3464387273-internalonly.spacecharged.site` — staging
+- **Active FTP user:** `deploy@myorbisvoice.com` — chroot remapped to the actual web root (`/home/palucuidzi/myorbisvoice.com/` directly), so uploads publish straight to live.
 - Password: stored in `~/.netrc` (mode 600), **never** in this file or git
 - Deploy command: `./infrastructure/scripts/deploy-marketing.sh`
+- Verified end-to-end 2026-05-02: full 11-file marketing site deploys publish to `https://myorbisvoice.com/*` immediately. Twilio website-check passes 7/7.
 
-> ⚠️ **Open question (2026-05-02):** Files uploaded via either FTP account land in the chrooted FTP home directory but **do not** appear at `https://myorbisvoice.com`. The live site's `last-modified` header didn't change after deploy, and a probe file was 404 at every common doc-root path. Need to confirm in the Spaceship dashboard:
-> 1. Is there a **primary cPanel FTP user** (not the per-domain virtual users) with access to the actual document root?
-> 2. Does the Spaceship UI have a **"Publish to Live"** step that copies from these FTP accounts to the served site?
-> 3. Is `myorbisvoice.com` actually served from this Spaceship account, or from somewhere else (DNS misroute)?
->
-> The deploy script and credentials work — they just point at storage that isn't web-served. Update `~/.netrc` host/user once the right target is identified.
+**How the remapping was fixed (2026-05-02):** Spaceship's cPanel by default chroots each FTP user to a subfolder named after the user (e.g. `deploy@myorbisvoice.com` → `/myorbisvoice.com/deploy/`). The user remapped this in cPanel so the chroot points directly at `/myorbisvoice.com/` — no `/deploy/` subfolder. If this FTP account ever gets recreated, repeat the remapping or contact Spaceship support to confirm the chroot path.
+
+**Other FTP files in `docs/`** (kept for reference, NOT actively used):
+  - `MyOrbisVoice@myorbisvoice.com.coreftp` — older per-domain account, chrooted to wrong path
+  - `MyOrbisVoice@377ee9cb-...spacecharged.site.coreftp` — staging/preview account
+  - `palucuidzi.coreftp` / `palucuidzi@myorbisvoice.com.coreftp` — master/admin accounts
 
 ### Application
 - host: Contabo
