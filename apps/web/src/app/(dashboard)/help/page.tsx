@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { HELP_CONTENT, type HelpArticle, type HelpSection } from '@/lib/helpContent'
 import { HelpTemplateBlock } from '@/components/HelpTemplateBlock'
+import { HelpScreenshot } from '@/components/HelpScreenshot'
 import { WebsiteChecker } from '@/components/WebsiteChecker'
 
 function Icon({ d, size = 15 }: { d: string; size?: number }) {
@@ -37,6 +38,9 @@ function ArticleView({ article }: { article: HelpArticle }) {
             <div className="flex-1">
               <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{step.title}</p>
               <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--text-secondary)' }}>{step.body}</p>
+              {step.screenshots?.map((s, j) => (
+                <HelpScreenshot key={j} filename={s.filename} caption={s.caption} />
+              ))}
               {step.template && (
                 <HelpTemplateBlock label={step.template.label} content={step.template.content} />
               )}
