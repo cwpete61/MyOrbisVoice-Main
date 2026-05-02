@@ -1802,3 +1802,87 @@ When we build this:
 **Why this matters:**
 
 As the platform grows, we will not always be the only people doing support. Support staff, contractors, and (eventually) hired agents need to navigate every admin function without ramp-up time. Without this, every weird customer issue becomes a fire drill where someone has to learn the system on the fly. With it, support is a checklist exercise.
+
+---
+
+### 14. Automated Help Center Screenshot Capture (Playwright)
+
+**What:** A repeatable, scripted system that logs into the live app via headless browser, navigates through every screenshot slot defined in `helpContent.ts` and `adminHelpContent.ts`, captures the real UI, and saves PNGs to the matching paths. Run it once → all 65 tenant + 15 admin screenshots auto-populate. Re-run anytime the UI changes → all screenshots refresh.
+
+**Why automation, not AI image generation:** AI-generated images (DALL-E, Flux, Midjourney) invent UI that does not match production. For instructional screenshots that say "click the teal Publish button at the bottom-right," the user must see the EXACT button at the EXACT location — generated approximations actively confuse readers. Help center images must come from the real app, captured deterministically.
+
+**Command interface:**
+
+```bash
+pnpm capture-screenshots                      # all (tenant + admin)
+pnpm capture-screenshots --tenant             # tenant help only (~65)
+pnpm capture-screenshots --admin              # admin help only (~15)
+pnpm capture-screenshots --section dna        # single section by id
+pnpm capture-screenshots --filename foo.png   # single file by name (debug)
+pnpm capture-screenshots --diff               # capture + visual-diff vs prior commit (regression test)
+```
+
+**Architecture:**
+
+- **Script location:** `apps/e2e/scripts/capture-screenshots.ts`
+- **Dependency:** `playwright` + `@playwright/test` (already used by the e2e suite, so no new dependency tax)
+- **Auth flow:** logs in once as `admin@myorbisvoice.com`, persists cookies. For tenant-side screenshots, uses the **admin grant-plan** flow to upgrade a fixed test tenant to whatever tier each screenshot needs.
+- **Schema extension:** each `screenshot` entry in `helpContent.ts` / `adminHelpContent.ts` gets optional capture metadata:
+  ```typescript
+  screenshots?: Array<{
+    filename: string
+    caption: string
+    capture?: {
+      url: string                        // page to navigate to (relative or absolute)
+      selector?: string                  // optional CSS selector to crop to (full page if omitted)
+      setup?: Array<{ action: 'click' | 'type' | 'wait'; selector?: string; value?: string }>
+      authAs?: 'admin' | 'tenant'        // default 'tenant'
+      tier?: string                      // grant this plan to test tenant before capturing
+      viewport?: { width: number; height: number }  // default 1280x800
+      fullPage?: boolean                 // default false
+    }
+  }>
+  ```
+- **Seed data:** a dedicated "screenshots-demo" tenant with rich seed data (multiple Business DNA versions, prompts, agents enabled, channels configured, a few conversations, contacts, and a sample campaign). Lets us capture screenshots that depend on data existing — list views, detail pages, populated tables.
+- **Output paths:** `apps/web/public/help-screenshots/<filename>.png` (tenant) and `apps/web/public/admin-help-screenshots/<filename>.png` (admin).
+- **Failure handling:** if a selector doesn't match or a page returns an error, the script logs the failure and continues — does not block on a single broken screenshot. Final summary lists what failed and why so we can fix metadata or add seed data.
+
+**Visual regression bonus:**
+
+Same script doubles as a visual regression test. Add `--diff` flag → captures into a temp dir, pixel-diffs against the existing PNGs, posts a side-by-side report. Lets us catch unintended UI changes before they ship.
+
+**Lint check (CI):**
+
+Add a CI step that fails if `helpContent.ts` references a screenshot filename that:
+1. Has no matching capture metadata, AND
+2. Has no PNG file at the expected path
+
+This prevents "ghost" screenshot references from accumulating without ever being captured.
+
+**Effort estimate:**
+
+| Phase | Time |
+|---|---|
+| Schema extension for capture metadata | ~30 min |
+| Add capture metadata to existing 80 screenshot entries | ~2 hours |
+| Build the Playwright script + auth + tenant-grant integration | ~1.5 hours |
+| Create the screenshots-demo tenant seed (Prisma seed script extension) | ~1 hour |
+| First end-to-end run + debugging (selectors, timing, modal states) | ~1.5 hours |
+| **Total** | **~6 hours** |
+
+After this, the cost per UI change is one command. The cost per new help article is 3 lines of capture metadata.
+
+**Dependencies / prerequisites:**
+
+- Build this **AFTER** the upcoming tenant feature testing sprint. Reason: the test sprint will surface UI bugs that need fixing first. Capturing screenshots against a buggy UI = wasted effort. Order is: test → fix bugs → capture screenshots once UI is stable.
+- Requires the admin grant-plan feature (✅ already shipped — backlog #13's prerequisite is in place).
+
+**What this does NOT solve:**
+
+- Screenshots that depend on Stripe checkout pages (those are Stripe-hosted iframes — would need to capture them manually or use Stripe test mode in a separate flow).
+- Twilio Console deep-link screenshots (Twilio's site is third-party — separate manual capture pass with the @myorbisvoice.com Twilio account).
+- Any screenshot showing real customer data (we capture against the demo tenant only, so this is structurally avoided).
+
+**Why this matters:**
+
+A help center with stale or missing screenshots erodes user trust and increases support load. Manual screenshot maintenance scales linearly with article count and inversely with how often the UI changes — both metrics that get worse as the product matures. Automating the capture flips the cost curve: more articles + more UI changes both become essentially free in maintenance terms.
