@@ -24,8 +24,12 @@ interface StripeInvoice {
 }
 
 interface StripeCheckoutSession {
+  id?: string
+  mode?: 'subscription' | 'payment' | 'setup'
   metadata?: Record<string, string> | null
   subscription?: string | { id: string } | null
+  payment_intent?: string | { id: string } | null
+  amount_total?: number | null
 }
 
 export async function getOrCreateStripeCustomer(tenantId: string): Promise<string> {
@@ -61,14 +65,17 @@ export async function createCheckoutSession(
   const stripe = getStripe()
   const customerId = await getOrCreateStripeCustomer(tenantId)
 
+  const isOneTime = plan.interval === 'ONE_TIME'
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
-    mode: 'subscription',
+    mode: isOneTime ? 'payment' : 'subscription',
     line_items: [{ price: plan.stripePriceId, quantity: 1 }],
     success_url: `${env.APP_BASE_URL}/billing?session_id={CHECKOUT_SESSION_ID}&status=success`,
     cancel_url: `${env.APP_BASE_URL}/billing?status=cancelled`,
     metadata: { tenantId, planCode },
-    subscription_data: { metadata: { tenantId, planCode } },
+    ...(isOneTime
+      ? { payment_intent_data: { metadata: { tenantId, planCode } } }
+      : { subscription_data: { metadata: { tenantId, planCode } } }),
   })
 
   if (!session.url) throw new AppError('INTERNAL_ERROR', 'Failed to create checkout session', 500)
@@ -135,6 +142,33 @@ async function handleCheckoutCompleted(session: StripeCheckoutSession) {
   const planCode = session.metadata?.planCode
   if (!tenantId || !planCode) return
 
+  // One-time payment (LTD) — no subscription, sync entitlements directly from plan
+  if (session.mode === 'payment') {
+    const plan = await prisma.plan.findFirst({ where: { code: planCode } })
+    if (!plan) return
+    const { syncEntitlementsFromPlan } = await import('./entitlement.service.js')
+    await syncEntitlementsFromPlan(tenantId, plan.id)
+    writeAuditLog({ actorType: 'SYSTEM', action: 'billing.checkout_completed', tenantId, metadataJson: { planCode, mode: 'payment', amountTotal: session.amount_total } }).catch(() => null)
+
+    // Record affiliate conversion (one-time payment counts as a conversion)
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, referredByCode: true } })
+    if (tenant?.referredByCode) {
+      const paymentIntentId = typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id ?? session.id ?? ''
+      const { recordConversion } = await import('./affiliate.service.js')
+      await recordConversion({
+        referralCode:        tenant.referredByCode,
+        tenantId,
+        subscriptionId:      paymentIntentId,
+        conversionType:      'one_time',
+        conversionValueCents: session.amount_total ?? 0,
+      }).catch(() => {})
+    }
+    return
+  }
+
+  // Recurring subscription path
   const subscriptionId = typeof session.subscription === 'string'
     ? session.subscription
     : (session.subscription as { id: string } | null)?.id ?? null
