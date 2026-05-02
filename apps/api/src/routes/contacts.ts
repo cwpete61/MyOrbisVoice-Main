@@ -57,10 +57,24 @@ router.post('/contacts', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+const updateSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName:  z.string().min(1).optional(),
+  fullName:  z.string().min(1).optional(),
+  email:     z.string().email().optional(),
+  phoneE164: z.string().regex(/^\+[1-9]\d{7,14}$/, 'Must be E.164 format').optional(),
+  source:    z.string().optional(),
+})
+
 router.patch('/contacts/:id', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    await contactService.updateContact(tenantId, req.params.id!, req.body as Record<string, string>)
+    const parsed = updateSchema.safeParse(req.body)
+    if (!parsed.success) {
+      res.status(422).json({ errors: parsed.error.issues.map(i => ({ code: 'VALIDATION_ERROR', message: i.message })) })
+      return
+    }
+    await contactService.updateContact(tenantId, req.params.id!, parsed.data)
     const updated = await contactService.getContact(tenantId, req.params.id!)
     res.json({ data: updated })
   } catch (err) { next(err) }

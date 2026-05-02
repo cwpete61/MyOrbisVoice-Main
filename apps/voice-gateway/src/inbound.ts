@@ -6,6 +6,7 @@ import { generateSummary, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
 import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
 import { getGeminiApiKey } from './lib/gemini-key.js'
+import { sendCallNotificationEmail } from './services/notify.service.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
 
@@ -137,8 +138,9 @@ export async function handleInboundCall(ws: WebSocket) {
         : Promise.resolve(null),
     ])
 
-    const channelCfgJson = (channelCfgRow?.configJson as Record<string, unknown> | null) ?? {}
-    const voiceName = (channelCfgJson['voiceName'] as string | undefined) || 'Fenrir'
+    const channelCfgJson  = (channelCfgRow?.configJson as Record<string, unknown> | null) ?? {}
+    const voiceName       = (channelCfgJson['voiceName']       as string  | undefined) || 'Fenrir'
+    const agentSpeaksFirst = channelCfgJson['agentSpeaksFirst'] !== false  // default true
 
     const dnaSnap = dna ? {
       identityJson:    dna.identityJson,
@@ -169,10 +171,25 @@ export async function handleInboundCall(ws: WebSocket) {
       }
     }
 
+    // Build greeting trigger using business name from DNA if available
+    const identityJson = dna?.identityJson as Record<string, unknown> | null | undefined
+    const businessName = (identityJson?.['businessName'] as string | undefined)
+      || (identityJson?.['name'] as string | undefined)
+      || 'this business'
+
+    // Fire call notification email — non-blocking
+    sendCallNotificationEmail({ tenantId, channelType: 'INBOUND' }).catch(() => {})
+
     gemini = openGeminiLiveSession(systemPrompt, {
       onReady() {
-        gemini?.sendText('The phone just connected. Greet the caller warmly and ask how you can help.')
-        console.log('[inbound] sent opening greeting prompt to Gemini')
+        if (agentSpeaksFirst) {
+          gemini?.sendText(
+            `A call has just connected to ${businessName}. ` +
+            `You must speak immediately — do not wait for the caller. ` +
+            `Open with your professional greeting now.`
+          )
+          console.log(`[inbound] agent speaks first — greeting sent for "${businessName}"`)
+        }
         resetSilenceTimer()
       },
       onAudioChunk(chunk) {

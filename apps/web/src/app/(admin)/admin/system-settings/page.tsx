@@ -5,12 +5,13 @@ import { apiFetchRaw, useApi } from '@/hooks/useApi'
 
 interface SystemSettings {
   google: { clientId: string | null; clientSecret: boolean; redirectUri: string | null }
-  stripe: { secretKey: boolean; webhookSecret: boolean }
+  stripe: { secretKey: boolean; publishableKey: string | null; webhookSecret: boolean }
   twilio: { accountSid: string | null; authToken: boolean; phoneNumber: string | null }
   reoon: { apiKey: boolean; mode: string }
   bunny: { apiKey: boolean; storageZone: string | null; cdnHostname: string | null; storageRegion: string; storagePassword: boolean }
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
+  smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
 }
 
 interface TierConfig {
@@ -155,17 +156,18 @@ export default function SystemSettingsPage() {
   }
 
   // Stripe form state
-  const [s, setS] = useState({ secretKey: '', webhookSecret: '' })
+  const [s, setS] = useState({ secretKey: '', publishableKey: '', webhookSecret: '' })
   const [sSaving, setSSaving] = useState(false)
   async function saveStripe(e: React.FormEvent) {
     e.preventDefault()
     const body: Record<string, string> = {}
     if (s.secretKey) body['secretKey'] = s.secretKey
+    if (s.publishableKey) body['publishableKey'] = s.publishableKey
     if (s.webhookSecret) body['webhookSecret'] = s.webhookSecret
     if (!Object.keys(body).length) { showToast('error', 'Enter at least one field.'); return }
     setSSaving(true)
     const ok = await saveSection('stripe', body, 'Stripe')
-    if (ok) setS({ secretKey: '', webhookSecret: '' })
+    if (ok) setS({ secretKey: '', publishableKey: '', webhookSecret: '' })
     setSSaving(false)
   }
 
@@ -253,6 +255,8 @@ export default function SystemSettingsPage() {
   // OpenAI form state
   const [oa, setOa] = useState({ apiKey: '', model: '' })
   const [oaSaving, setOaSaving] = useState(false)
+  const [smtp, setSmtp] = useState({ host: '', port: '587', user: '', password: '', from: '' })
+  const [smtpSaving, setSmtpSaving] = useState(false)
   async function saveOpenAi(e: React.FormEvent) {
     e.preventDefault()
     const body: Record<string, string> = {}
@@ -290,6 +294,20 @@ export default function SystemSettingsPage() {
     const ok = await saveSection('twilio', body, 'Twilio')
     if (ok) setT({ accountSid: '', authToken: '', phoneNumber: '' })
     setTSaving(false)
+  }
+
+  async function saveSmtp(e: React.FormEvent) {
+    e.preventDefault()
+    setSmtpSaving(true)
+    const body: Record<string, string> = {}
+    if (smtp.host)     body['host']     = smtp.host
+    if (smtp.port)     body['port']     = smtp.port
+    if (smtp.user)     body['user']     = smtp.user
+    if (smtp.password) body['password'] = smtp.password
+    if (smtp.from)     body['from']     = smtp.from
+    await saveSection('smtp', body, 'SMTP')
+    setSmtp({ host: '', port: '587', user: '', password: '', from: '' })
+    setSmtpSaving(false)
   }
 
   const google = data?.google
@@ -433,6 +451,7 @@ export default function SystemSettingsPage() {
 
             <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <StatusRow label="Secret Key" value={!!stripe?.secretKey} isSecret />
+              <StatusRow label="Publishable Key" value={stripe?.publishableKey ?? null} />
               <StatusRow label="Webhook Secret" value={!!stripe?.webhookSecret} isSecret />
             </div>
 
@@ -443,6 +462,11 @@ export default function SystemSettingsPage() {
                   <label className={labelCls}>Secret Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
                   <input type="password" className={inputCls} value={s.secretKey} onChange={e => setS(p => ({ ...p, secretKey: e.target.value }))}
                     placeholder="sk_live_… or sk_test_…" autoComplete="new-password" />
+                </div>
+                <div>
+                  <label className={labelCls}>Publishable Key</label>
+                  <input type="text" className={inputCls} value={s.publishableKey} onChange={e => setS(p => ({ ...p, publishableKey: e.target.value }))}
+                    placeholder="pk_live_… or pk_test_…" autoComplete="off" />
                 </div>
                 <div>
                   <label className={labelCls}>Webhook Secret <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
@@ -807,6 +831,49 @@ export default function SystemSettingsPage() {
           </div>
         </>
       )}
+
+      {/* ── SMTP / Email ── */}
+      <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+        <CardHeader
+          title="SMTP / Transactional Email"
+          subtitle="Sends call notification emails to tenants. Use a dedicated sending subdomain (e.g. notify.myorbisvoice.com). Compatible with SendGrid, Postmark, Mailgun, or any SMTP provider."
+          configured={!!(data?.smtp?.host && data?.smtp?.user && data?.smtp?.password)}
+        />
+        <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+          <StatusRow label="Host"     value={data?.smtp?.host ?? null} />
+          <StatusRow label="Port"     value={String(data?.smtp?.port ?? 587)} />
+          <StatusRow label="User"     value={data?.smtp?.user ?? null} />
+          <StatusRow label="Password" value={!!data?.smtp?.password} isSecret />
+          <StatusRow label="From"     value={data?.smtp?.from ?? null} />
+        </div>
+        <form onSubmit={saveSmtp} className="px-6 py-5 space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2">
+              <label className={labelCls}>SMTP Host</label>
+              <input className={inputCls} value={smtp.host} onChange={e => setSmtp(p => ({ ...p, host: e.target.value }))} placeholder="smtp.sendgrid.net" autoComplete="off" />
+            </div>
+            <div>
+              <label className={labelCls}>Port</label>
+              <input className={inputCls} value={smtp.port} onChange={e => setSmtp(p => ({ ...p, port: e.target.value }))} placeholder="587" autoComplete="off" />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>SMTP Username</label>
+            <input className={inputCls} value={smtp.user} onChange={e => setSmtp(p => ({ ...p, user: e.target.value }))} placeholder="apikey" autoComplete="off" />
+          </div>
+          <div>
+            <label className={labelCls}>SMTP Password / API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+            <input className={inputCls} type="password" value={smtp.password} onChange={e => setSmtp(p => ({ ...p, password: e.target.value }))} placeholder="••••••••" autoComplete="new-password" />
+          </div>
+          <div>
+            <label className={labelCls}>From Address</label>
+            <input className={inputCls} type="email" value={smtp.from} onChange={e => setSmtp(p => ({ ...p, from: e.target.value }))} placeholder="notify@myorbisvoice.com" autoComplete="off" />
+          </div>
+          <button type="submit" disabled={smtpSaving} className="btn-primary">
+            {smtpSaving ? 'Saving…' : 'Save SMTP settings'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

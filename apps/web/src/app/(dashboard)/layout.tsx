@@ -1,12 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { AuthGuard } from '@/components/AuthGuard'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { SidebarNav } from '@/components/SidebarNav'
 import { SignOutButton } from '@/components/SignOutButton'
 import { SidebarUserBadge } from '@/components/SidebarUserBadge'
 import { NotificationBell } from '@/components/NotificationBell'
+import { TenantIdBadge } from '@/components/TenantIdBadge'
+import { getImpersonationInfo, endImpersonation } from '@/lib/auth'
+import { apiFetch } from '@/hooks/useApi'
 
 function SidebarContents({ onNav }: { onNav?: () => void }) {
   return (
@@ -41,6 +45,35 @@ function SidebarContents({ onNav }: { onNav?: () => void }) {
         <SignOutButton />
       </div>
     </>
+  )
+}
+
+function ImpersonationBanner() {
+  const router = useRouter()
+  const [info, setInfo] = useState<{ tenantName: string; sessionId: string } | null>(null)
+
+  useEffect(() => { setInfo(getImpersonationInfo()) }, [])
+
+  if (!info) return null
+
+  async function exit() {
+    try {
+      await apiFetch(`/api/admin/impersonation/${info!.sessionId}/end`, { method: 'POST', body: '{}' })
+    } catch { /* non-fatal */ }
+    endImpersonation()
+    router.push('/admin/tenants')
+  }
+
+  return (
+    <div
+      className="flex items-center justify-between px-4 py-2 text-xs font-medium flex-shrink-0"
+      style={{ background: 'oklch(30% 0.12 45)', color: 'oklch(92% 0.06 75)', borderBottom: '1px solid oklch(40% 0.14 45)' }}
+    >
+      <span>Support mode — acting as <strong>{info.tenantName}</strong>. All actions are audit-logged.</span>
+      <button onClick={exit} className="px-2 py-0.5 rounded text-xs font-semibold" style={{ background: 'oklch(45% 0.16 45)', color: 'white' }}>
+        Exit support mode
+      </button>
+    </div>
   )
 }
 
@@ -80,6 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* ── Main area ───────────────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          <ImpersonationBanner />
 
           {/* Mobile top bar */}
           <header
@@ -120,6 +154,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-sidebar)' }}
           >
             <div className="flex items-center gap-2">
+              <TenantIdBadge />
               <NotificationBell />
               <ThemeToggle />
             </div>

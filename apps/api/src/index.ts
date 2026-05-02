@@ -34,8 +34,11 @@ app.use(
 // Stripe webhook — must receive raw body for signature verification, mounted before express.json()
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), webhooksRouter)
 
+// Serve uploaded files (logos, etc.) directly
+app.use('/uploads', express.static(process.env['UPLOADS_DIR'] ?? '/app/uploads'))
+
 // Body parsing for all other routes
-app.use(express.json({ limit: '1mb' }))
+app.use(express.json({ limit: '4mb' }))
 app.use(express.urlencoded({ extended: true }))
 
 const rateLimitResponse = { errors: [{ code: 'RATE_LIMITED', message: 'Too many requests, please slow down' }] }
@@ -45,7 +48,7 @@ app.use(
   '/api/auth',
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: env.NODE_ENV === 'development' ? 300 : 30,
+    max: env.NODE_ENV === 'development' ? 300 : 60,
     standardHeaders: true,
     legacyHeaders: false,
     message: rateLimitResponse,

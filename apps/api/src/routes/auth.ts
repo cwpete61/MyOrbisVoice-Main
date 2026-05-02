@@ -16,6 +16,33 @@ const signupSchema = z.object({
   affiliateCode: z.string().optional(),
 })
 
+const affiliateSignupSchema = z.object({
+  username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, 'Username may only contain letters, numbers, and underscores'),
+  email: z.string().email(),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+})
+
+router.post('/affiliate-signup', async (req, res, next) => {
+  try {
+    const parsed = affiliateSignupSchema.safeParse(req.body)
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string[]> = {}
+      for (const issue of parsed.error.issues) {
+        const key = issue.path.join('.') || 'root'
+        fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message]
+      }
+      throw new AppError('VALIDATION_ERROR', 'Invalid input', 422, fieldErrors)
+    }
+    const result = await authService.affiliateSignupUser(parsed.data)
+    writeAuditLog({ actorType: 'USER', actorUserId: result.user.id, action: 'auth.signup', targetType: 'User', targetId: result.user.id, metadataJson: { email: result.user.email, affiliateSignup: true, ip: req.ip } }).catch(e => console.error('[audit] write failed:', e))
+    res.status(201).json({ data: result })
+  } catch (err) {
+    next(err)
+  }
+})
+
 const loginSchema = z.object({
   login: z.string().min(1, 'Username or email is required'),
   password: z.string().min(1),
@@ -33,7 +60,7 @@ router.post('/signup', async (req, res, next) => {
       throw new AppError('VALIDATION_ERROR', 'Invalid input', 422, fieldErrors)
     }
     const result = await authService.signupUser(parsed.data)
-    writeAuditLog({ actorType: 'USER', actorUserId: result.user.id, action: 'auth.signup', targetType: 'User', targetId: result.user.id, metadataJson: { email: result.user.email, ip: req.ip } }).catch(() => null)
+    writeAuditLog({ actorType: 'USER', actorUserId: result.user.id, action: 'auth.signup', targetType: 'User', targetId: result.user.id, metadataJson: { email: result.user.email, ip: req.ip } }).catch(e => console.error('[audit] write failed:', e))
     res.status(201).json({ data: result })
   } catch (err) {
     next(err)
@@ -47,11 +74,11 @@ router.post('/login', async (req, res, next) => {
       throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
     }
     const result = await authService.loginUser(parsed.data)
-    writeAuditLog({ actorType: 'USER', actorUserId: result.user.id, action: 'auth.login', targetType: 'User', targetId: result.user.id, metadataJson: { ip: req.ip, userAgent: req.headers['user-agent'] } }).catch(() => null)
+    writeAuditLog({ actorType: 'USER', actorUserId: result.user.id, action: 'auth.login', targetType: 'User', targetId: result.user.id, metadataJson: { ip: req.ip, userAgent: req.headers['user-agent'] } }).catch(e => console.error('[audit] write failed:', e))
     res.json({ data: result })
   } catch (err) {
     // Log failed login attempts (non-fatal)
-    writeAuditLog({ actorType: 'SYSTEM', action: 'auth.login_failed', metadataJson: { login: req.body?.login, ip: req.ip } }).catch(() => null)
+    writeAuditLog({ actorType: 'SYSTEM', action: 'auth.login_failed', metadataJson: { login: req.body?.login, ip: req.ip } }).catch(e => console.error('[audit] write failed:', e))
     next(err)
   }
 })
@@ -75,7 +102,7 @@ router.post('/logout', async (req, res, next) => {
     if (refreshToken && typeof refreshToken === 'string') {
       await authService.logoutUser(refreshToken)
     }
-    writeAuditLog({ actorType: 'USER', action: 'auth.logout', metadataJson: { ip: req.ip } }).catch(() => null)
+    writeAuditLog({ actorType: 'USER', action: 'auth.logout', metadataJson: { ip: req.ip } }).catch(e => console.error('[audit] write failed:', e))
     res.json({ data: { success: true } })
   } catch (err) {
     next(err)
@@ -116,7 +143,7 @@ router.post('/me/change-password', authenticate, async (req, res, next) => {
     const parsed = changePasswordSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid input', 422)
     await authService.changePassword(req.user!.id, parsed.data.currentPassword, parsed.data.newPassword)
-    writeAuditLog({ actorType: 'USER', actorUserId: req.user!.id, action: 'auth.password_changed', targetType: 'User', targetId: req.user!.id, metadataJson: { ip: req.ip } }).catch(() => null)
+    writeAuditLog({ actorType: 'USER', actorUserId: req.user!.id, action: 'auth.password_changed', targetType: 'User', targetId: req.user!.id, metadataJson: { ip: req.ip } }).catch(e => console.error('[audit] write failed:', e))
     res.json({ data: { ok: true } })
   } catch (err) { next(err) }
 })

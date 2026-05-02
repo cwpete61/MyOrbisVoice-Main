@@ -277,7 +277,7 @@
         this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } })
         this.audioCtx    = new AudioContext({ sampleRate: 16000 })
         const source     = this.audioCtx.createMediaStreamSource(this.mediaStream)
-        this.processor   = this.audioCtx.createScriptProcessor(4096, 1, 1)
+        this.processor   = this.audioCtx.createScriptProcessor(512, 1, 1)
 
         this.processor.onaudioprocess = (e) => {
           if (!this.ws || !this.recording) return
@@ -332,7 +332,7 @@
 
       // Start the flush timer if it isn't running
       if (!this._flushTimer) {
-        this._flushTimer = setInterval(() => this._flushAudio(), 60)
+        this._flushTimer = setInterval(() => this._flushAudio(), 20)
       }
     }
 

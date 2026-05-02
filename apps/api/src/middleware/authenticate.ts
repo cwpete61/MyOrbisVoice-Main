@@ -30,6 +30,8 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
       currentTenantId: payload.tenantId,
       roleKey: payload.roleKey,
       isPlatformRole: payload.isPlatformRole,
+      impersonatedBy: payload.impersonatedBy,
+      impersonationSessionId: payload.impersonationSessionId,
     }
     next()
   } catch {

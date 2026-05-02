@@ -1155,13 +1155,13 @@ Phase 5+: Only connect Gemini Live once the local session flow is verified.
 ---
 
 ### Auth
-- **AUTH_SECRET:** `[REDACTED-AUTH-SECRET]`
-- **N8N_ENCRYPTION_KEY:** `[REDACTED-AUTH-SECRET]`
+- **AUTH_SECRET:** *(stored in .env.prod on server — do not put here)*
+- **N8N_ENCRYPTION_KEY:** *(stored in .env.prod on server — do not put here)*
 
 ---
 
 ### OpenAI
-- **API Key:** `sk-proj-[REDACTED]`
+- **API Key:** *(enter via Admin → System Settings → OpenAI card — never store here)*
 - **Default model:** `gpt-4o-mini`
 - **Used for:** call summaries, agent reasoning, campaign assistance, email enrichment
 - **Enter via:** Admin → System Settings → OpenAI card (stored encrypted in DB)
@@ -1171,7 +1171,7 @@ Phase 5+: Only connect Gemini Live once the local session flow is verified.
 ### Google OAuth (myorbisvoice project)
 - **Project ID:** `myorbisvoice`
 - **Client ID:** `548023119687-734aljh9786uh1k85kv0506coob25rje.apps.googleusercontent.com`
-- **Client Secret:** `GOCSPX-[REDACTED]`
+- **Client Secret:** *(enter via Admin → System Settings → Google OAuth card — never store here)*
 - **Auth URI:** `https://accounts.google.com/o/oauth2/auth`
 - **Token URI:** `https://oauth2.googleapis.com/token`
 - **Correct Redirect URI:** `https://api.myorbisvoice.com/api/integrations/google/callback`
@@ -1184,15 +1184,15 @@ Phase 5+: Only connect Gemini Live once the local session flow is verified.
 ---
 
 ### Reoon Email Verifier
-- **API Key:** `[REDACTED-REOON-KEY]`
+- **API Key:** *(enter via Admin → System Settings → Reoon card — never store here)*
 - **Mode:** `power`
 - **Enter via:** Admin → System Settings → Reoon card
 
 ---
 
 ### Bunny.net Storage & Streaming
-- **API Key (short):** `[REDACTED-BUNNY-SHORT]`
-- **API Key (long/full):** `[REDACTED-BUNNY-LONG]`
+- **API Key (short):** *(enter via Admin → System Settings → Bunny.net card — never store here)*
+- **API Key (long/full):** *(enter via Admin → System Settings → Bunny.net card — never store here)*
 - **Storage Zone:** `orbisvoice`
 - **Storage Password:** *(stored encrypted in DB — retrieve from Admin → System Settings → Bunny.net card)*
 - **CDN Hostname:** `OrbisVoice.b-cdn.net`
@@ -1221,6 +1221,19 @@ Phase 5+: Only connect Gemini Live once the local session flow is verified.
 - **Webhook endpoint to register:** `https://api.myorbisvoice.com/api/webhooks/stripe`
 - **Enter via:** Admin → System Settings → Stripe card
 
+### Stripe Products & Pricing
+
+| Plan | Code | Price | Interval | DB key |
+|---|---|---|---|---|
+| LTD (Lifetime Deal) | `ltd` | $497 one-time | ONE_TIME | `STRIPE_PRICE_LTD` |
+| Basic | `basic_monthly` | $197/month | MONTHLY | `STRIPE_PRICE_BASIC` |
+| Pro | `pro_monthly` | $497/month | MONTHLY | `STRIPE_PRICE_PRO` |
+| Premier | `premier_monthly` | $997/month | MONTHLY | `STRIPE_PRICE_PREMIER` |
+| Enterprise | `enterprise_monthly` | $1,997/month | MONTHLY | `STRIPE_PRICE_ENTERPRISE` |
+
+**LTD notes:** One-time payment, 100 units max. Create as a one-time price in Stripe (not recurring).
+**Price IDs:** Once created in Stripe, update each plan's `stripePriceId` in the DB via seed or direct SQL.
+
 ---
 
 ### Gemini Live (Google AI)
@@ -1239,3 +1252,251 @@ Teal swatch — 6 shades light to deep:
 - `#158484` — Teal 4
 - `#0f7070` — Teal 5
 - `#0a5c5c` — Teal 6 (darkest)
+
+---
+
+## Future Features Backlog
+
+Items below are confirmed product requirements. Implement them in order of dependency and phase fit. Do not skip or reorder without reviewing the impact on tenant isolation, entitlement gating, and audit requirements.
+
+---
+
+### 1. Admin Full Tenant Access (Impersonation / Support Mode)
+
+**What:** Platform admins must be able to enter any tenant's account from the admin dashboard to configure settings, troubleshoot issues, or act on behalf of the tenant during support.
+
+**Requirements:**
+- Admin dashboard tenant detail page gets an "Enter as tenant" / "Support mode" button
+- Clicking it issues a scoped impersonation token tied to that tenantId, with a short TTL (e.g. 15 minutes)
+- All actions taken during impersonation are audit-logged with `actingAdminId` + `impersonatedTenantId`
+- A visible banner must appear in the app while in impersonation mode (e.g. "Support mode — acting as Tenant X")
+- Exiting support mode revokes the impersonation token immediately
+- Impersonation sessions must be logged: start, end, and every write action performed during the session
+- Tenant users must never be able to impersonate other tenants
+
+**Architecture notes:**
+- Extend JWT payload with `impersonatedBy: adminUserId` and `impersonation: true` flag
+- RBAC middleware must respect this flag for read/write routing
+- Audit log model must accept `actingAdminId` as an optional field on sensitive writes
+
+---
+
+### 2. Agent Always Speaks First
+
+**What:** When a call connects (inbound or widget), the AI agent must open the conversation immediately — the caller should never hear silence waiting for the human to speak first.
+
+**Requirements:**
+- On session start, inject a "greeting trigger" into the Gemini Live session before any user audio arrives
+- The greeting content comes from the tenant's active Business DNA (identity.greeting or similar field) and the agent's prompt
+- This must work for both Twilio inbound calls and widget sessions
+- Configurable per channel: admin/tenant can toggle "agent speaks first" on each channel config
+
+**Architecture notes:**
+- Voice gateway `inbound.ts` and `widget.ts` session init must send an initial text turn to Gemini immediately after the session is established
+- Do not wait for STT input — send a synthetic user turn (e.g. `[CALL_CONNECTED]`) to trigger the greeting
+- The greeting prompt layer should be part of the Layer 3 channel overlay in the prompt stack
+
+---
+
+### 3. Reduce Agent Response Latency
+
+**What:** The gap between the caller finishing speaking and the agent beginning to respond is too long. Needs investigation and reduction.
+
+**Requirements:**
+- Profile the full latency chain: STT end-of-utterance detection → Gemini response start → TTS first audio byte → Twilio playback
+- Identify whether the bottleneck is in VAD (voice activity detection), Gemini streaming, or audio chunking
+- Target: first agent audio byte within 800ms of caller silence
+- Solutions to evaluate:
+  - Reduce VAD silence threshold in Twilio Media Streams
+  - Enable Gemini streaming and begin playback on first audio chunk rather than waiting for completion
+  - Pre-warm Gemini sessions before calls arrive (keep a pool of idle sessions)
+  - Reduce audio chunk size for lower buffering delay
+
+**Architecture notes:**
+- All latency improvements must be in `apps/voice-gateway`
+- Do not change prompt content to achieve latency wins — that is a separate concern
+- Log latency metrics per session to `Conversation.metadataJson` for ongoing monitoring
+
+---
+
+### 4. Conversations Page — Bulk Actions, Download, Search, Filters, Sort
+
+**What:** The conversations list needs production-grade data management capabilities.
+
+**Requirements:**
+- **Select boxes:** checkbox on each row, plus a "select all on page" checkbox in the header
+- **Bulk delete:** delete selected conversations (soft-delete preferred; hard-delete only if explicitly configured)
+- **Download:** download selected conversations as a ZIP containing:
+  - A CSV or JSON metadata file (date, duration, channel, outcome, summary)
+  - The matching audio file (MP3 from Bunny storage) for each conversation that has a recording
+  - The transcript JSON for each conversation that has one
+- **Search:** full-text search across contact name, phone number, and summary text
+- **Filters:** filter by channel type (INBOUND / OUTBOUND / WIDGET), status (COMPLETED / MISSED / FAILED / OPEN), date range, recording presence
+- **Sort:** sort by date (default: newest first), duration, status
+
+**Architecture notes:**
+- Download endpoint: `POST /api/conversations/export` — accepts array of conversation IDs, returns a signed URL to a pre-built ZIP in Bunny storage
+- ZIP is built server-side (Node.js `archiver` or similar), uploaded to Bunny, and the signed URL is returned to the browser
+- Search uses PostgreSQL full-text index on `summaryText` + `Contact.fullName` + `Contact.phoneE164`
+- Filters and sort are query parameters on `GET /api/conversations`
+- Bulk delete must be audit-logged
+
+---
+
+### 5. Channel Availability Controlled by Tier — Admin-Configured
+
+**What:** Which channels a tenant can enable (widget, inbound, outbound) must be determined by the tier they are on. Tier feature flags are configured by platform admins, not hardcoded.
+
+**Requirements:**
+- Admin tier configuration card (in admin dashboard) gets a set of feature toggle switches:
+  - Widget enabled
+  - Inbound receptionist enabled
+  - Outbound caller enabled
+  - (Extensible for future channels)
+- These switches are stored as plan entitlements (already exist as `widget_enabled`, `inbound_enabled`, `outbound_enabled`)
+- The tenant's channel configuration page must read entitlements and disable/lock channels the tenant's tier does not include
+- Locked channels show a "Not available on your plan — upgrade to unlock" message with a link to billing
+- Admin can override entitlements per tenant individually (manual override already partially exists)
+
+**Architecture notes:**
+- Entitlement keys `widget_enabled`, `inbound_enabled`, `outbound_enabled` are already in the schema and seed
+- Admin plan editor needs a UI to edit these boolean entitlements per plan
+- Channel config page must call `GET /api/entitlements` and gate each channel card accordingly
+
+---
+
+### 6. Tooltips Throughout the App
+
+**What:** Add contextual tooltips to form fields, buttons, configuration options, and status indicators across all tenant and admin pages.
+
+**Requirements:**
+- Tooltips should appear on hover (desktop) or tap (mobile) for any non-obvious field or control
+- Priority areas: Business DNA section labels, agent configuration fields, channel config options, billing entitlement labels, admin storage tier controls
+- Tooltip content should be concise (1–2 sentences max) and written in plain language
+- Implement a reusable `<Tooltip>` component in `packages/ui` that accepts `content` and `children` props
+- Use a lightweight library (e.g. Floating UI / `@floating-ui/react`) or a pure CSS approach — avoid heavy dependencies
+
+**Architecture notes:**
+- `Tooltip` component lives in `packages/ui/src/Tooltip.tsx`
+- Tooltip content strings can be co-located with each page/component — no need for a separate i18n system at this stage
+- Ensure tooltips do not obscure critical UI elements and are keyboard-accessible (show on focus as well as hover)
+
+---
+
+### 7. Full Help Section
+
+**What:** A comprehensive in-app help system covering every feature and function in the product.
+
+**Requirements:**
+- Accessible from a persistent help icon/button in the top bar or sidebar footer
+- Organised by section matching the sidebar navigation (Dashboard, Business DNA, Prompts, Agents, Channels, Integrations, Billing, etc.)
+- Each article covers: what the feature does, how to configure it, common mistakes, and what happens if it is misconfigured
+- Search within the help section
+- Help content is stored as markdown files in the repo under `docs/help/` and rendered in-app
+- Admins can update help content by editing markdown files — no CMS required at this stage
+- Future: contextual help links from individual pages/fields that open the relevant help article directly
+
+**Architecture notes:**
+- Help articles live at `docs/help/<section>/<article>.md`
+- In-app help page at `/help` renders the article tree and a search index built from the markdown at build time
+- Use `next-mdx-remote` or similar for rendering markdown in Next.js
+- Help is tenant-facing only; admin-specific help articles can be added under `docs/help/admin/`
+
+---
+
+### 8. Phone Usage Section
+
+**What:** Tenants need visibility into their phone number usage (minutes used, calls made, SMS sent). Admins configure the limits as part of the tier settings.
+
+**Requirements (tenant-facing):**
+- Usage dashboard card or dedicated `/usage` page showing:
+  - Minutes used this billing period vs. quota (`minutes_per_month` entitlement)
+  - Number of inbound calls, outbound calls, SMS sent this period
+  - Visual progress bar for minutes consumed
+  - History chart (last 3–6 months)
+- Quota warning when usage reaches 80% and 95% of limit
+
+**Requirements (admin-facing):**
+- Tier configuration card in admin gets a `minutes_per_month` field (already exists as an entitlement key)
+- Admin can set per-tenant minute overrides from the tenant detail page
+- Usage data is read from the `Conversation` table (count + duration) and `SmsLog` table
+
+**Architecture notes:**
+- New API endpoint: `GET /api/usage/summary` — returns current period usage aggregates for the authed tenant
+- Usage data is computed from existing `Conversation` and future `SmsLog` records — no separate usage ledger needed initially
+- Entitlement key `minutes_per_month` already exists; enforce it at the gateway layer when a new call session starts
+
+---
+
+### 9. Finish Google Integration
+
+**What:** The Google OAuth flow is built but several downstream features are incomplete.
+
+**Outstanding items:**
+- [ ] Gmail send — agent must be able to send follow-up emails from the connected Google mailbox after a call
+- [ ] Calendar read — fetch real availability from Google Calendar for appointment booking (freebusy already implemented; wire it to the booking flow end-to-end)
+- [ ] Calendar write — create, update, and cancel Google Calendar events from appointment actions
+- [ ] Token refresh reliability — verify auto-refresh works under load and on token expiry edge cases
+- [ ] Reconnect flow — tenant can reconnect Google without losing existing calendar/email config
+- [ ] Test the full OAuth callback → connected state → disconnect → reconnect cycle manually
+- [ ] Surface the connected Google email address in the agent's prompt context so it can reference the mailbox
+
+**Architecture notes:**
+- `getAuthenticatedGoogleClient()` already handles token refresh — verify it handles concurrent requests safely
+- Gmail send uses the Gmail API `users.messages.send` method on the authenticated client
+- All Google actions must be audit-logged
+
+---
+
+### 10. Calendar Integrations — Coming Soon Placeholder
+
+**What:** Future calendar integrations beyond Google (Outlook/Microsoft 365, Calendly, Cal.com) should be visible in the integrations page with a "Coming soon" state to set expectations.
+
+**Requirements:**
+- Integrations page shows cards for: Google Calendar (active), Outlook Calendar (coming soon), Calendly (coming soon), Cal.com (coming soon)
+- Coming soon cards are visually distinct (muted, locked icon, "Coming soon" badge)
+- Clicking a coming soon card shows a brief description of what the integration will do
+- No backend work required for the placeholder cards
+
+---
+
+### 11. Logo Upload — Profile and Placeholders
+
+**What:** Tenants should be able to upload their business logo, which then appears throughout the app wherever a brand placeholder currently exists.
+
+**Requirements:**
+- Logo upload field in workspace settings (`/settings`) or business profile
+- Accepted formats: PNG, JPG, SVG — max 2MB
+- Uploaded logo stored in Bunny storage under `tenants/{tenantId}/logo`
+- Logo URL stored in `BusinessProfile.logoUrl` (add field to schema)
+- Logo displays in:
+  - The sidebar brand area (replacing or alongside the "MyOrbisVoice" wordmark for tenant users)
+  - The profile/settings page header
+  - Any tenant-facing email templates (future)
+  - Widget session UI (future)
+- Admin can see the uploaded logo on the tenant detail page
+
+**Architecture notes:**
+- Upload endpoint: `POST /api/business-profile/logo` — multipart/form-data, returns the stored URL
+- Validate file type and size server-side before uploading to Bunny
+- Logo URL must be publicly accessible (no auth required) since it appears in widget and email contexts
+
+---
+
+### 12. New Conversation Notifications — Push, Desktop, In-App
+
+**What:** When a new conversation (call or chat) comes in, the tenant should be notified on their phone, desktop, and within the app in real time.
+
+**Requirements:**
+- **In-app:** Real-time badge/count on the Conversations nav item; a toast notification in the top bar when a new call arrives
+- **Desktop (browser push):** Web Push notification via the Push API + Service Worker — shows caller ID, channel type, and time
+- **Mobile push:** When mobile app is built, integrate with FCM (Firebase Cloud Messaging) or APNs for iOS/Android push
+- Notifications are per-tenant — a tenant only receives notifications for their own conversations
+- Tenants can configure notification preferences (all calls, missed only, none) in settings
+- Notification must fire on `Conversation` creation (status = OPEN) and on `Conversation` status change to MISSED
+
+**Architecture notes:**
+- In-app real-time: use a Server-Sent Events (SSE) stream at `GET /api/events/stream` or a WebSocket channel for push to the browser
+- Web Push: store `PushSubscription` objects per user in a new `PushSubscription` DB table; use `web-push` npm package to send
+- FCM integration deferred until mobile app is built; design the notification dispatch service to be provider-agnostic from day one
+- All notification sends must be non-blocking — failure to notify must never fail the call session itself

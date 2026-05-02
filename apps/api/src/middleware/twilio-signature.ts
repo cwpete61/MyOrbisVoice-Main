@@ -4,11 +4,11 @@ import { getTwilioAuthToken } from '../services/twilio.service.js'
 import { prisma } from '../lib/prisma.js'
 
 // Validate X-Twilio-Signature using the per-tenant auth token.
-// Signature enforcement is OFF by default — set TWILIO_ENFORCE_SIG=true to hard-reject invalid signatures.
-// Without enforcement, invalid signatures are logged as warnings but the call proceeds.
-// This allows the call flow to be verified before locking down security.
+// Enforcement is ON by default. Set TWILIO_ENFORCE_SIG=false only in local development.
+// Only runs on /webhooks/twilio/* paths — passes all other routes through immediately.
 export async function validateTwilioWebhook(req: Request, res: Response, next: NextFunction) {
-  const enforce = process.env['TWILIO_ENFORCE_SIG'] === 'true'
+  if (!req.path.startsWith('/webhooks/twilio')) { next(); return }
+  const enforce = process.env['TWILIO_ENFORCE_SIG'] !== 'false'
 
   const signature = req.headers['x-twilio-signature'] as string | undefined
 

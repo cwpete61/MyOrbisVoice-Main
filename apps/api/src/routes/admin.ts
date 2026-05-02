@@ -136,6 +136,7 @@ router.patch('/system-settings/google', async (req, res, next) => {
 
 const stripeSettingsSchema = z.object({
   secretKey: z.string().min(1).optional(),
+  publishableKey: z.string().min(1).optional(),
   webhookSecret: z.string().min(1).optional(),
 })
 
@@ -143,10 +144,11 @@ router.patch('/system-settings/stripe', async (req, res, next) => {
   try {
     const parsed = stripeSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
-    const { secretKey, webhookSecret } = parsed.data
+    const { secretKey, publishableKey, webhookSecret } = parsed.data
     const userId = req.user!.id
 
     if (secretKey) await systemConfig.setConfigValue('stripe_secret_key', secretKey, true, userId)
+    if (publishableKey) await systemConfig.setConfigValue('stripe_publishable_key', publishableKey, false, userId)
     if (webhookSecret) await systemConfig.setConfigValue('stripe_webhook_secret', webhookSecret, true, userId)
 
     await writeAuditLog({
@@ -379,7 +381,163 @@ router.post('/tenants/:tenantId/storage-tier', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-// Twilio event logs — all tenants or filtered by tenantId
+// ── Plan management ────────────────────────────────────────────────────────────
+
+router.get('/plans', async (_req, res, next) => {
+  try {
+    const plans = await prisma.plan.findMany({
+      include: { entitlements: { orderBy: { key: 'asc' } } },
+      orderBy: { name: 'asc' },
+    })
+    res.json({ data: plans })
+  } catch (err) { next(err) }
+})
+
+const updateEntitlementSchema = z.object({
+  updates: z.array(z.object({
+    key:          z.string(),
+    booleanValue: z.boolean().nullable().optional(),
+    integerValue: z.number().int().nullable().optional(),
+    stringValue:  z.string().nullable().optional(),
+  })),
+})
+
+router.patch('/plans/:planId/entitlements', async (req, res, next) => {
+  try {
+    const { planId } = req.params as { planId: string }
+    const { updates } = validate(updateEntitlementSchema, req.body)
+    const userId = req.user!.id
+
+    for (const u of updates) {
+      await prisma.planEntitlement.updateMany({
+        where: { planId, key: u.key },
+        data: {
+          ...(u.booleanValue !== undefined ? { booleanValue: u.booleanValue } : {}),
+          ...(u.integerValue !== undefined ? { integerValue: u.integerValue } : {}),
+          ...(u.stringValue  !== undefined ? { stringValue:  u.stringValue  } : {}),
+        },
+      })
+    }
+
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'admin.plan.entitlements_updated',
+      targetType: 'Plan', targetId: planId,
+      metadataJson: { keys: updates.map(u => u.key) },
+    })
+
+    const plan = await prisma.plan.findUnique({
+      where: { id: planId },
+      include: { entitlements: { orderBy: { key: 'asc' } } },
+    })
+    res.json({ data: plan })
+  } catch (err) { next(err) }
+})
+
+// ── SMTP / Email settings ──────────────────────────────────────────────────────
+const smtpSettingsSchema = z.object({
+  host:     z.string().min(1).optional(),
+  port:     z.union([z.number(), z.string()]).transform(v => parseInt(String(v), 10)).pipe(z.number().int().min(1).max(65535)).optional(),
+  user:     z.string().min(1).optional(),
+  password: z.string().min(1).optional(),
+  from:     z.string().min(1).optional(),
+})
+
+router.patch('/system-settings/smtp', async (req, res, next) => {
+  try {
+    const parsed = smtpSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const { host, port, user, password, from } = parsed.data
+    const userId = req.user!.id
+
+    if (host)     await systemConfig.setConfigValue('smtp_host',     host,           false, userId)
+    if (port)     await systemConfig.setConfigValue('smtp_port',     String(port),   false, userId)
+    if (user)     await systemConfig.setConfigValue('smtp_user',     user,           false, userId)
+    if (password) await systemConfig.setConfigValue('smtp_password', password,       true,  userId)
+    if (from)     await systemConfig.setConfigValue('smtp_from',     from,           false, userId)
+
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.smtp.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
+// ── Impersonation ──────────────────────────────────────────────────────────────
+
+router.post('/tenants/:tenantId/impersonate', async (req, res, next) => {
+  try {
+    const { tenantId } = req.params as { tenantId: string }
+    const adminUserId = req.user!.id
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      include: { members: { where: { isOwner: true }, include: { user: true }, take: 1 } },
+    })
+    if (!tenant) throw new AppError('NOT_FOUND', 'Tenant not found', 404)
+
+    const session = await prisma.impersonationSession.create({
+      data: { adminUserId, tenantId, assumedRoleKey: 'tenant_owner' },
+    })
+
+    await writeAuditLog({
+      actorType: 'ADMIN',
+      actorUserId: adminUserId,
+      action: 'impersonation.started',
+      targetType: 'Tenant',
+      targetId: tenantId,
+      metadataJson: { impersonationSessionId: session.id },
+    })
+
+    // Issue a short-lived impersonation token (15 min)
+    const ownerUser = tenant.members[0]?.user
+    const { signAccessToken } = await import('../lib/jwt.js')
+    const token = signAccessToken({
+      sub: ownerUser?.id ?? adminUserId,
+      email: ownerUser?.email ?? req.user!.email,
+      tenantId,
+      roleKey: 'tenant_owner',
+      isPlatformRole: false,
+      impersonatedBy: adminUserId,
+      impersonationSessionId: session.id,
+    })
+
+    res.json({ data: { token, sessionId: session.id, tenantName: tenant.displayName } })
+  } catch (err) { next(err) }
+})
+
+router.post('/impersonation/:sessionId/end', async (req, res, next) => {
+  try {
+    const { sessionId } = req.params as { sessionId: string }
+    const adminUserId = req.user!.id
+
+    const session = await prisma.impersonationSession.findUnique({ where: { id: sessionId } })
+    if (!session) throw new AppError('NOT_FOUND', 'Session not found', 404)
+
+    await prisma.impersonationSession.update({
+      where: { id: sessionId },
+      data: { endedAt: new Date() },
+    })
+
+    await writeAuditLog({
+      actorType: 'ADMIN',
+      actorUserId: adminUserId,
+      action: 'impersonation.ended',
+      targetType: 'Tenant',
+      targetId: session.tenantId,
+      metadataJson: { impersonationSessionId: sessionId },
+    })
+
+    res.json({ data: { ended: true } })
+  } catch (err) { next(err) }
+})
+
+// ── Twilio event logs — all tenants or filtered by tenantId
 router.get('/twilio-logs', async (req, res, next) => {
   try {
     const { tenantId, direction, eventType, limit = '50', offset = '0' } = req.query as Record<string, string>

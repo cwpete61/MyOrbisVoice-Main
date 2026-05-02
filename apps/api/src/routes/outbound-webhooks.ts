@@ -2,6 +2,7 @@ import { Router, type IRouter } from 'express'
 import { asyncHandler } from '../lib/async-handler.js'
 import { buildOutboundTwiml, handleOutboundStatus } from '../services/outbound.service.js'
 import { getTwilioAuthToken } from '../services/twilio.service.js'
+import { startCallRecording } from '../services/twilio-inbound.service.js'
 import { logTwilioEvent } from '../lib/twilio-log.js'
 import { prisma } from '../lib/prisma.js'
 
@@ -26,6 +27,8 @@ router.post('/webhooks/twilio/outbound/twiml', asyncHandler(async (req, res) => 
     }
     twiml = await buildOutboundTwiml(resolvedTenantId, cId ?? '', attemptId ?? '')
     if (resolvedTenantId) {
+      // Start recording immediately — same pattern as inbound
+      if (CallSid) startCallRecording(CallSid, resolvedTenantId).catch(() => null)
       await logTwilioEvent({
         tenantId: resolvedTenantId, callSid: CallSid, direction: 'OUTBOUND',
         eventType: 'dispatch', callStatus: 'initiated', fromNumber: From, toNumber: To,

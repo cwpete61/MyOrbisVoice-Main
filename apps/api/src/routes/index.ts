@@ -14,9 +14,12 @@ import { widgetRouter } from './widget.js'
 import { phoneNumbersRouter } from './phone-numbers.js'
 import contactsRouter from './contacts.js'
 import campaignsRouter from './campaigns.js'
+import outboundCampaignsRouter from './outbound-campaigns.js'
 import affiliateRouter from './affiliate.js'
+import staffRouter from './staff.js'
 import conversationsRouter from './conversations.js'
 import notificationsRouter from './notifications.js'
+import dashboardRouter from './dashboard.js'
 import { twilioInboundRouter } from './twilio-inbound.js'
 import { outboundWebhooksRouter } from './outbound-webhooks.js'
 import { validateTwilioWebhook } from '../middleware/twilio-signature.js'
@@ -26,7 +29,6 @@ const router: IRouter = Router()
 router.use('/', healthRouter)
 router.use('/api/auth', authRouter)
 // Twilio webhooks — public (no auth). Signature-validated. Must precede auth-gated /api routers.
-// Mounted at /api so router-internal paths (/webhooks/twilio/voice etc.) resolve correctly.
 router.use('/api', validateTwilioWebhook, twilioInboundRouter)
 router.use('/api', validateTwilioWebhook, outboundWebhooksRouter)
 router.use('/api', billingRouter)       // before auth-gated routers — contains public /billing/plans
@@ -42,8 +44,11 @@ router.use('/api', appointmentsRouter)
 router.use('/api', phoneNumbersRouter)
 router.use('/api', contactsRouter)
 router.use('/api', campaignsRouter)
+router.use('/api', outboundCampaignsRouter)
 router.use('/', affiliateRouter)
+router.use('/api', staffRouter)
 router.use('/api', conversationsRouter)
 router.use('/api', notificationsRouter)
+router.use('/api', dashboardRouter)
 
 export default router

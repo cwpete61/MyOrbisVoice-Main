@@ -9,20 +9,26 @@ interface Agent {
   promptVersion: { id: string; name: string; status: string } | null
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  ORCHESTRATOR: 'Orchestrator', APPOINTMENT: 'Appointment', SALES: 'Sales',
-  CUSTOMER_SERVICE: 'Customer Service', MARKETING: 'Marketing',
-  ASSISTANT: 'Assistant', SECRETARY: 'Secretary',
+const ROLE_META: Record<string, { label: string; icon: string; desc: string }> = {
+  ORCHESTRATOR:    { label: 'Orchestrator',    icon: '🎯', desc: 'Coordinates all other agents and manages handoffs' },
+  APPOINTMENT:     { label: 'Appointment',     icon: '📅', desc: 'Books, reschedules, and cancels appointments' },
+  SALES:           { label: 'Sales',           icon: '💼', desc: 'Qualifies leads and drives conversions' },
+  CUSTOMER_SERVICE:{ label: 'Customer Service',icon: '🎧', desc: 'Handles support queries and escalations' },
+  MARKETING:       { label: 'Marketing',       icon: '📣', desc: 'Runs campaigns and follow-up sequences' },
+  ASSISTANT:       { label: 'Assistant',       icon: '🤖', desc: 'General-purpose assistant for any task' },
+  SECRETARY:       { label: 'Secretary',       icon: '📋', desc: 'Manages schedule, notes, and admin tasks' },
 }
-
-const inputCls = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500'
-const labelCls = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'
 
 export default function AgentsPage() {
   const { data: agents, loading, error, reload } = useApi<Agent[]>('/api/agents')
   const [selected, setSelected] = useState<Agent | null>(null)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  function showToast(type: 'success' | 'error', text: string) {
+    setToast({ type, text })
+    setTimeout(() => setToast(null), 4000)
+  }
 
   async function saveAgent() {
     if (!selected) return
@@ -31,79 +37,171 @@ export default function AgentsPage() {
       const updated = await apiFetch<Agent>(`/api/agents/${selected.agentRoleType}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          displayName: selected.displayName,
-          isEnabled: selected.isEnabled,
+          displayName:   selected.displayName,
+          isEnabled:     selected.isEnabled,
           modelProvider: selected.modelProvider,
-          modelName: selected.modelName,
+          modelName:     selected.modelName,
         }),
       })
       setSelected(updated)
       await reload()
-      setMessage('Agent saved.')
-    } catch (err) { setMessage(err instanceof Error ? err.message : 'Failed') }
+      showToast('success', 'Agent saved.')
+    } catch (err) { showToast('error', err instanceof Error ? err.message : 'Failed') }
     finally { setSaving(false) }
   }
 
-  if (loading) return <div className="p-8 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
-  if (error) return <div className="p-8 text-sm text-red-500">{error}</div>
+  if (loading) return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-7 w-32 rounded-lg" style={{ background: 'var(--border-subtle)' }} />
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        {[...Array(6)].map((_, i) => <div key={i} className="h-24 rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }} />)}
+      </div>
+    </div>
+  )
+
+  if (error) return <div className="alert-error">{error}</div>
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Agents</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Configure each AI agent role for your workspace</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Agents</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+          Configure each AI agent role for your workspace.
+        </p>
+      </div>
 
-      {message && <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-400">{message}</div>}
+      {toast && <div className={toast.type === 'success' ? 'alert-success' : 'alert-error'}>{toast.text}</div>}
 
-      <div className="flex gap-6">
-        <div className="w-56 shrink-0 space-y-1">
-          {(agents ?? []).map((a) => (
-            <button key={a.id} onClick={() => setSelected(a)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm ${selected?.id === a.id ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-              <span className="block">{ROLE_LABELS[a.agentRoleType] ?? a.agentRoleType}</span>
-              <span className={`text-xs ${a.isEnabled ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                {a.isEnabled ? '● enabled' : '○ disabled'}
-              </span>
-            </button>
-          ))}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Agent cards */}
+        <div className="lg:col-span-1 grid grid-cols-1 gap-3 content-start">
+          {(agents ?? []).map((a) => {
+            const meta = ROLE_META[a.agentRoleType] ?? { label: a.agentRoleType, icon: '🤖', desc: '' }
+            const isSelected = selected?.id === a.id
+            return (
+              <button
+                key={a.id}
+                onClick={() => setSelected(a)}
+                className="text-left rounded-xl p-4 transition-all"
+                style={{
+                  background: isSelected ? 'oklch(19% 0.04 193 / 0.5)' : 'var(--surface-raised)',
+                  border: isSelected ? '1px solid oklch(55% 0.14 193 / 0.5)' : '1px solid var(--border-subtle)',
+                }}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg leading-none">{meta.icon}</span>
+                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{meta.label}</span>
+                  </div>
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={a.isEnabled
+                      ? { background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }
+                      : { background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }
+                    }
+                  >
+                    {a.isEnabled ? 'On' : 'Off'}
+                  </span>
+                </div>
+                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{meta.desc}</p>
+              </button>
+            )
+          })}
         </div>
 
-        {selected && (
-          <div className="flex-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">{ROLE_LABELS[selected.agentRoleType]}</h2>
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                <input type="checkbox" checked={selected.isEnabled}
-                  onChange={(e) => setSelected({ ...selected, isEnabled: e.target.checked })}
-                  className="rounded" />
-                Enabled
-              </label>
+        {/* Detail panel */}
+        <div className="lg:col-span-2">
+          {!selected ? (
+            <div
+              className="rounded-xl h-full min-h-64 flex flex-col items-center justify-center gap-2"
+              style={{ background: 'var(--surface-raised)', border: '1px dashed var(--border-subtle)' }}
+            >
+              <span className="text-2xl">🤖</span>
+              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Select an agent to configure it</p>
             </div>
-            <div>
-              <label className={labelCls}>Display name</label>
-              <input value={selected.displayName} onChange={(e) => setSelected({ ...selected, displayName: e.target.value })}
-                className={inputCls} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelCls}>Model provider</label>
-                <input value={selected.modelProvider} onChange={(e) => setSelected({ ...selected, modelProvider: e.target.value })}
-                  className={inputCls} />
+          ) : (
+            <div
+              className="rounded-xl p-6 space-y-5"
+              style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl">{ROLE_META[selected.agentRoleType]?.icon ?? '🤖'}</span>
+                  <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {ROLE_META[selected.agentRoleType]?.label ?? selected.agentRoleType}
+                  </h2>
+                </div>
+                {/* Toggle */}
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    {selected.isEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                  <div
+                    onClick={() => setSelected({ ...selected, isEnabled: !selected.isEnabled })}
+                    className="relative w-9 h-5 rounded-full transition-colors cursor-pointer"
+                    style={{ background: selected.isEnabled ? 'oklch(55% 0.14 193)' : 'var(--border-subtle)' }}
+                  >
+                    <div
+                      className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
+                      style={{ transform: selected.isEnabled ? 'translateX(18px)' : 'translateX(2px)' }}
+                    />
+                  </div>
+                </label>
               </div>
-              <div>
-                <label className={labelCls}>Model name</label>
-                <input value={selected.modelName} onChange={(e) => setSelected({ ...selected, modelName: e.target.value })}
-                  className={inputCls} />
+
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="label">Display name</label>
+                  <input
+                    className="input"
+                    value={selected.displayName}
+                    onChange={(e) => setSelected({ ...selected, displayName: e.target.value })}
+                    placeholder="e.g. Aria"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Model provider</label>
+                    <input
+                      className="input"
+                      value={selected.modelProvider}
+                      onChange={(e) => setSelected({ ...selected, modelProvider: e.target.value })}
+                      placeholder="openai"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Model name</label>
+                    <input
+                      className="input"
+                      value={selected.modelName}
+                      onChange={(e) => setSelected({ ...selected, modelName: e.target.value })}
+                      placeholder="gpt-4o-mini"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {selected.promptVersion && (
+                <div
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg"
+                  style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)' }}
+                >
+                  <span className="text-sm">📝</span>
+                  <div>
+                    <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{selected.promptVersion.name}</p>
+                    <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{selected.promptVersion.status}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2">
+                <button onClick={saveAgent} disabled={saving} className="btn-primary">
+                  {saving ? 'Saving…' : 'Save agent'}
+                </button>
               </div>
             </div>
-            {selected.promptVersion && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">Bound prompt: {selected.promptVersion.name} ({selected.promptVersion.status})</p>
-            )}
-            <button onClick={saveAgent} disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
-              {saving ? 'Saving…' : 'Save agent'}
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

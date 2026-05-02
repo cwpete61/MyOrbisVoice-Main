@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useApi, apiFetchRaw } from '@/hooks/useApi'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useApi, apiFetchRaw, apiFetch } from '@/hooks/useApi'
+
+interface Contact { firstName: string | null; lastName: string | null; email: string | null; phoneE164: string | null }
 
 interface Conversation {
   id: string
@@ -14,34 +16,58 @@ interface Conversation {
   transcriptRef: string | null
   transcriptJson: TranscriptEntry[] | null
   recordingStatus: string | null
+  contact: Contact | null
 }
 
-interface ConversationsResponse {
-  items: Conversation[]
-  total: number
-}
+interface ConversationsResponse { items: Conversation[]; total: number }
+type TranscriptEntry = { role: 'user' | 'assistant'; text: string; timestamp: number }
 
-const CHANNEL_LABELS: Record<string, string> = {
-  WIDGET: 'Widget',
-  INBOUND: 'Phone',
-  OUTBOUND: 'Outbound',
-}
-
+const CHANNEL_LABELS: Record<string, string> = { WIDGET: 'Widget', INBOUND: 'Phone', OUTBOUND: 'Outbound' }
 const CHANNEL_COLORS: Record<string, string> = {
-  WIDGET:   'oklch(55% 0.11 193)',
-  INBOUND:  'oklch(55% 0.14 140)',
+  WIDGET: 'oklch(55% 0.11 193)',
+  INBOUND: 'oklch(55% 0.14 140)',
   OUTBOUND: 'oklch(55% 0.12 260)',
 }
+const STATUS_OPTS = ['', 'COMPLETED', 'MISSED', 'FAILED', 'OPEN']
 
-type TranscriptEntry = { role: 'user' | 'assistant'; text: string; timestamp: number }
+function contactName(c: Contact | null): string {
+  if (!c) return ''
+  const name = [c.firstName, c.lastName].filter(Boolean).join(' ')
+  return name || c.email || c.phoneE164 || ''
+}
+
+function formatDuration(start: string, end: string | null) {
+  if (!end) return '—'
+  const secs = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000)
+  if (secs < 60) return `${secs}s`
+  return `${Math.floor(secs / 60)}m ${secs % 60}s`
+}
 
 export default function ConversationsPage() {
   const [selected, setSelected] = useState<Conversation | null>(null)
   const [channelFilter, setChannelFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [hasRecording, setHasRecording] = useState('')
+  const [sortBy, setSortBy] = useState('startedAt')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(1)
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null)
   const [recordingLoading, setRecordingLoading] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const limit = 20
+
+  // Debounce search
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    searchTimeout.current = setTimeout(() => { setSearch(searchInput); setPage(1) }, 350)
+    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current) }
+  }, [searchInput])
 
   useEffect(() => {
     setRecordingUrl(null)
@@ -49,64 +75,144 @@ export default function ConversationsPage() {
     let objectUrl: string | null = null
     setRecordingLoading(true)
     apiFetchRaw(`/api/conversations/${selected.id}/recording`)
-      .then(r => {
-        if (!r.ok) throw new Error('not found')
-        return r.blob()
-      })
-      .then(blob => {
-        objectUrl = URL.createObjectURL(blob)
-        setRecordingUrl(objectUrl)
-      })
+      .then(r => { if (!r.ok) throw new Error('not found'); return r.blob() })
+      .then(blob => { objectUrl = URL.createObjectURL(blob); setRecordingUrl(objectUrl) })
       .catch(() => setRecordingUrl(null))
       .finally(() => setRecordingLoading(false))
     return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
   }, [selected?.id])
-  const limit = 20
 
-  const params = new URLSearchParams({ limit: String(limit), offset: String((page - 1) * limit) })
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String((page - 1) * limit),
+    sortBy,
+    sortDir,
+  })
   if (channelFilter) params.set('channelType', channelFilter)
+  if (statusFilter) params.set('status', statusFilter)
+  if (search) params.set('search', search)
+  if (hasRecording) params.set('hasRecording', hasRecording)
 
-  const { data, loading } = useApi<ConversationsResponse>(`/api/conversations?${params}`)
+  const { data, loading, reload } = useApi<ConversationsResponse>(`/api/conversations?${params}`)
   const conversations = data?.items ?? []
   const total = data?.total ?? 0
 
+  function showToast(type: 'success' | 'error', text: string) {
+    setToast({ type, text })
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  const allPageChecked = conversations.length > 0 && conversations.every(c => checkedIds.has(c.id))
+
+  function toggleAll() {
+    if (allPageChecked) {
+      setCheckedIds(prev => { const n = new Set(prev); conversations.forEach(c => n.delete(c.id)); return n })
+    } else {
+      setCheckedIds(prev => { const n = new Set(prev); conversations.forEach(c => n.add(c.id)); return n })
+    }
+  }
+
+  function toggleOne(id: string) {
+    setCheckedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  }
+
+  async function bulkDelete() {
+    if (checkedIds.size === 0) return
+    if (!confirm(`Delete ${checkedIds.size} conversation${checkedIds.size > 1 ? 's' : ''}? This cannot be undone.`)) return
+    setDeleting(true)
+    try {
+      await apiFetch('/api/conversations', { method: 'DELETE', body: JSON.stringify({ ids: [...checkedIds] }) })
+      setCheckedIds(new Set())
+      if (selected && checkedIds.has(selected.id)) setSelected(null)
+      await reload()
+      showToast('success', `Deleted ${checkedIds.size} conversation${checkedIds.size > 1 ? 's' : ''}.`)
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   let transcript: TranscriptEntry[] = []
   if (selected?.transcriptJson && Array.isArray(selected.transcriptJson)) {
-    transcript = selected.transcriptJson
+    transcript = selected.transcriptJson as TranscriptEntry[]
   } else if (selected?.transcriptRef) {
     try { transcript = JSON.parse(selected.transcriptRef) } catch { /* ignore */ }
   }
 
-  function formatDuration(start: string, end: string | null) {
-    if (!end) return '—'
-    const secs = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000)
-    if (secs < 60) return `${secs}s`
-    return `${Math.floor(secs / 60)}m ${secs % 60}s`
-  }
-
   return (
-    <div className="p-8 max-w-6xl">
-      <h1 className="text-2xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Conversations</h1>
-      <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
+    <div className="max-w-6xl">
+      <h1 className="text-xl font-semibold mb-1 tracking-tight" style={{ color: 'var(--text-primary)' }}>Conversations</h1>
+      <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
         Transcripts and summaries from widget, inbound, and outbound sessions.
       </p>
 
-      {/* Filters */}
-      <div className="flex gap-2 mb-5">
-        {['', 'WIDGET', 'INBOUND', 'OUTBOUND'].map((ch) => (
-          <button
-            key={ch}
-            onClick={() => { setChannelFilter(ch); setPage(1) }}
-            className="px-3 py-1.5 text-xs rounded-lg border transition-colors"
-            style={
-              channelFilter === ch
-                ? { background: 'oklch(55% 0.11 193)', borderColor: 'oklch(55% 0.11 193)', color: '#fff' }
-                : { background: 'var(--surface-raised)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }
-            }
-          >
-            {ch || 'All channels'}
+      {toast && <div className={`mb-4 ${toast.type === 'success' ? 'alert-success' : 'alert-error'}`}>{toast.text}</div>}
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {/* Search */}
+        <div className="relative flex-1 min-w-48">
+          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5l3 3"/>
+          </svg>
+          <input
+            className="input pl-7 text-xs"
+            placeholder="Search summary, contact name, phone…"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+          />
+        </div>
+
+        {/* Channel filter */}
+        <select
+          className="input text-xs w-auto"
+          value={channelFilter}
+          onChange={e => { setChannelFilter(e.target.value); setPage(1) }}
+        >
+          <option value="">All channels</option>
+          <option value="WIDGET">Widget</option>
+          <option value="INBOUND">Phone</option>
+          <option value="OUTBOUND">Outbound</option>
+        </select>
+
+        {/* Status filter */}
+        <select
+          className="input text-xs w-auto"
+          value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
+        >
+          {STATUS_OPTS.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
+        </select>
+
+        {/* Recording filter */}
+        <select
+          className="input text-xs w-auto"
+          value={hasRecording}
+          onChange={e => { setHasRecording(e.target.value); setPage(1) }}
+        >
+          <option value="">All recordings</option>
+          <option value="true">Has recording</option>
+          <option value="false">No recording</option>
+        </select>
+
+        {/* Sort */}
+        <select
+          className="input text-xs w-auto"
+          value={`${sortBy}:${sortDir}`}
+          onChange={e => { const [by, dir] = e.target.value.split(':'); setSortBy(by!); setSortDir(dir as 'asc' | 'desc'); setPage(1) }}
+        >
+          <option value="startedAt:desc">Newest first</option>
+          <option value="startedAt:asc">Oldest first</option>
+          <option value="status:asc">Status A→Z</option>
+        </select>
+
+        {/* Bulk delete */}
+        {checkedIds.size > 0 && (
+          <button onClick={bulkDelete} disabled={deleting} className="btn-danger text-xs">
+            {deleting ? 'Deleting…' : `Delete ${checkedIds.size}`}
           </button>
-        ))}
+        )}
       </div>
 
       <div className="flex gap-5">
@@ -115,40 +221,70 @@ export default function ConversationsPage() {
           {loading ? (
             <div className="text-sm py-8 text-center" style={{ color: 'var(--text-tertiary)' }}>Loading…</div>
           ) : conversations.length === 0 ? (
-            <div className="text-sm py-8 text-center" style={{ color: 'var(--text-tertiary)' }}>No conversations yet.</div>
+            <div className="text-sm py-8 text-center" style={{ color: 'var(--text-tertiary)' }}>No conversations found.</div>
           ) : (
             <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-subtle)' }}>
+              {/* Header row with select-all */}
+              <div
+                className="flex items-center gap-3 px-4 py-2 text-xs"
+                style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={allPageChecked}
+                  onChange={toggleAll}
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                />
+                <span style={{ color: 'var(--text-tertiary)' }}>
+                  {checkedIds.size > 0 ? `${checkedIds.size} selected` : `${total} conversation${total !== 1 ? 's' : ''}`}
+                </span>
+              </div>
+
               {conversations.map((c, i) => (
                 <div
                   key={c.id}
-                  onClick={() => setSelected(c)}
-                  className="px-4 py-3 cursor-pointer transition-colors"
+                  className="flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors"
                   style={{
                     background: selected?.id === c.id ? 'var(--surface-sunken)' : 'var(--surface-raised)',
                     borderTop: i > 0 ? '1px solid var(--border-subtle)' : undefined,
                   }}
+                  onClick={() => setSelected(c)}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className="text-xs font-semibold px-1.5 py-0.5 rounded"
-                      style={{ background: CHANNEL_COLORS[c.channelType] + '22', color: CHANNEL_COLORS[c.channelType] }}
-                    >
-                      {CHANNEL_LABELS[c.channelType]}
-                    </span>
-                    <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                      {new Date(c.startedAt).toLocaleString()}
-                    </span>
-                    <span className="text-xs ml-auto" style={{ color: 'var(--text-tertiary)' }}>
-                      {formatDuration(c.startedAt, c.endedAt)}
-                    </span>
+                  <input
+                    type="checkbox"
+                    checked={checkedIds.has(c.id)}
+                    onChange={(e) => { e.stopPropagation(); toggleOne(c.id) }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-3.5 h-3.5 flex-shrink-0 mt-1"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span
+                        className="text-xs font-semibold px-1.5 py-0.5 rounded"
+                        style={{ background: CHANNEL_COLORS[c.channelType] + '22', color: CHANNEL_COLORS[c.channelType] }}
+                      >
+                        {CHANNEL_LABELS[c.channelType]}
+                      </span>
+                      {contactName(c.contact) && (
+                        <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
+                          {contactName(c.contact)}
+                        </span>
+                      )}
+                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                        {new Date(c.startedAt).toLocaleString()}
+                      </span>
+                      <span className="text-xs ml-auto" style={{ color: 'var(--text-tertiary)' }}>
+                        {formatDuration(c.startedAt, c.endedAt)}
+                      </span>
+                    </div>
+                    {c.summaryText ? (
+                      <p className="text-sm line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
+                        {c.summaryText}
+                      </p>
+                    ) : (
+                      <p className="text-sm italic" style={{ color: 'var(--text-tertiary)' }}>No summary</p>
+                    )}
                   </div>
-                  {c.summaryText ? (
-                    <p className="text-sm line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
-                      {c.summaryText}
-                    </p>
-                  ) : (
-                    <p className="text-sm italic" style={{ color: 'var(--text-tertiary)' }}>No summary</p>
-                  )}
                 </div>
               ))}
             </div>
@@ -195,20 +331,20 @@ export default function ConversationsPage() {
               >
                 {CHANNEL_LABELS[selected.channelType]}
               </span>
-              <button
-                onClick={() => setSelected(null)}
-                className="text-xs"
-                style={{ color: 'var(--text-tertiary)' }}
-              >
-                ✕
-              </button>
+              <button onClick={() => setSelected(null)} className="text-xs" style={{ color: 'var(--text-tertiary)' }}>✕</button>
             </div>
 
-            <div className="mb-3 space-y-1">
+            <div className="mb-3 space-y-0.5">
+              {contactName(selected.contact) && (
+                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{contactName(selected.contact)}</div>
+              )}
               <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                 {new Date(selected.startedAt).toLocaleString()}
                 {selected.endedAt && ` · ${formatDuration(selected.startedAt, selected.endedAt)}`}
               </div>
+              <span className="badge capitalize text-xs" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>
+                {selected.status?.toLowerCase()}
+              </span>
             </div>
 
             {/* Recording player */}
@@ -220,16 +356,9 @@ export default function ConversationsPage() {
                   </svg>
                   Recording
                 </div>
-                {recordingLoading && (
-                  <div className="text-xs py-2" style={{ color: 'var(--text-tertiary)' }}>Loading…</div>
-                )}
+                {recordingLoading && <div className="text-xs py-2" style={{ color: 'var(--text-tertiary)' }}>Loading…</div>}
                 {!recordingLoading && recordingUrl && (
-                  <audio
-                    ref={audioRef}
-                    src={recordingUrl}
-                    controls
-                    style={{ width: '100%', height: '36px', accentColor: 'oklch(55% 0.11 193)' }}
-                  />
+                  <audio ref={audioRef} src={recordingUrl} controls style={{ width: '100%', height: '36px', accentColor: 'oklch(55% 0.11 193)' }} />
                 )}
                 {!recordingLoading && !recordingUrl && (
                   <div className="text-xs py-2" style={{ color: 'var(--text-tertiary)' }}>Recording not available yet.</div>
@@ -249,7 +378,9 @@ export default function ConversationsPage() {
                 <div className="text-xs font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Transcript</div>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {transcript.map((entry, i) => (
-                    <div key={i} className={`text-xs p-2 rounded-lg ${entry.role === 'user' ? 'text-right' : ''}`}
+                    <div
+                      key={i}
+                      className={`text-xs p-2 rounded-lg ${entry.role === 'user' ? 'text-right' : ''}`}
                       style={{
                         background: entry.role === 'user' ? 'oklch(55% 0.11 193 / 0.15)' : 'var(--surface-sunken)',
                         color: 'var(--text-secondary)',

@@ -21,7 +21,9 @@ function decryptSecret(stored: string, key: string): string {
   return dec.update(Buffer.from(encHex, 'hex')).toString('utf8') + dec.final('utf8')
 }
 
-const SECRET_KEY = process.env['AUTH_SECRET'] ?? 'fallback-key'
+const _authSecret = process.env['AUTH_SECRET']
+if (!_authSecret) throw new Error('AUTH_SECRET env var is required')
+const SECRET_KEY: string = _authSecret
 
 export async function saveTwilioCredentials(tenantId: string, accountSid: string, authToken: string) {
   const encrypted = encryptSecret(authToken, SECRET_KEY)

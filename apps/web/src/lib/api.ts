@@ -46,6 +46,13 @@ export async function apiSignup(username: string, email: string, password: strin
   })
 }
 
+export async function apiAffiliateSignup(username: string, email: string, password: string, firstName?: string, lastName?: string) {
+  return apiCall<{ user: unknown } & AuthTokens>('/api/auth/affiliate-signup', {
+    method: 'POST',
+    body: { username, email, password, ...(firstName ? { firstName } : {}), ...(lastName ? { lastName } : {}) },
+  })
+}
+
 export async function apiRefresh(refreshToken: string) {
   return apiCall<AuthTokens>('/api/auth/refresh', {
     method: 'POST',

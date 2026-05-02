@@ -10,6 +10,7 @@ import { getGeminiApiKey } from './lib/gemini-key.js'
 type ClientMsg =
   | { type: 'audio'; data: string }   // base64-encoded PCM16 audio chunk
   | { type: 'text'; text: string }    // text input fallback
+  | { type: 'mic_stop' }              // user released mic — signal explicit end-of-turn to Gemini
   | { type: 'end' }                   // caller hung up
 
 // Message types sent to the browser widget
@@ -86,10 +87,34 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     }
   } catch { /* fallback to platform key */ }
 
-  // 3. Open Gemini Live session
+  // 3. Resolve voice name — draft config takes precedence over channel config
+  const draftMeta = session.metadataJson as Record<string, unknown> | null
+  let voiceName = (draftMeta?.['voiceName'] as string | undefined) ?? undefined
+  if (!voiceName && session.channelConfigId) {
+    try {
+      const channelCfg = await prisma.channelConfig.findUnique({
+        where: { id: session.channelConfigId },
+        select: { configJson: true },
+      })
+      const cfgJson = channelCfg?.configJson as Record<string, unknown> | null
+      voiceName = (cfgJson?.['voiceName'] as string | undefined) ?? undefined
+    } catch { /* fallback to Gemini default */ }
+  }
+  voiceName = voiceName ?? 'Fenrir'
+
+  // 4. Open Gemini Live session
+  const identityJson = dna?.['identityJson'] as Record<string, unknown> | null | undefined
+  const businessName = (identityJson?.['businessName'] as string | undefined)
+    || (identityJson?.['name'] as string | undefined)
+    || 'this business'
+
   const gemini = openGeminiLiveSession(systemPrompt, {
     onReady() {
-      gemini.sendText('The visitor just opened the voice widget. Greet them warmly and ask how you can help.')
+      gemini.sendText(
+        `A visitor just opened the voice chat widget for ${businessName}. ` +
+        `You must speak immediately — do not wait for the visitor. ` +
+        `Open with your professional greeting now.`
+      )
     },
     onAudioChunk(chunk) {
       send(ws, { type: 'audio', data: chunk.toString('base64') })
@@ -100,6 +125,10 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     onTranscriptDelta(role, text) {
       transcript.push({ role, text, timestamp: Date.now() })
       send(ws, { type: 'transcript', role, text })
+      // Also send in draft-studio format so the live preview panel can display turns
+      if (draftMeta?.['isDraft']) {
+        ws.send(JSON.stringify({ type: 'transcript_delta', speaker: role === 'user' ? 'You' : 'Agent', text }))
+      }
     },
     onTurnComplete() {
       send(ws, { type: 'turn_complete' })
@@ -113,16 +142,19 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
       await finalize('FAILED')
       ws.close()
     },
-  }, tenantGeminiKey)
+  }, tenantGeminiKey, voiceName)
 
   send(ws, { type: 'ready' })
 
-  // 4. Relay browser → Gemini
+  // 5. Relay browser → Gemini
   ws.on('message', (raw) => {
     try {
       const msg: ClientMsg = JSON.parse(raw.toString('utf8'))
       if (msg.type === 'audio') {
         gemini.sendAudio(Buffer.from(msg.data, 'base64'))
+      } else if (msg.type === 'mic_stop') {
+        // Explicit end-of-turn — bypass VAD and tell Gemini the user is done speaking
+        gemini.signalTurnComplete()
       } else if (msg.type === 'text') {
         gemini.sendText(msg.text)
       } else if (msg.type === 'end') {

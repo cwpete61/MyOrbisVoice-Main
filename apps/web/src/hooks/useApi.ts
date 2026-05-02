@@ -42,7 +42,7 @@ export async function apiFetchRaw(path: string, options: RequestInit = {}): Prom
     ...options,
     headers: buildHeaders(token, extraHeaders),
   })
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     const newToken = await tryRefresh()
     if (!newToken) { redirectToLogin(); throw new Error('Session expired') }
     return fetch(`${API_BASE}${path}`, { ...options, headers: buildHeaders(newToken, extraHeaders) })
@@ -59,8 +59,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     headers: buildHeaders(token, extraHeaders),
   })
 
-  // Auto-refresh on 401 (expired token) or 403 (stale token with missing tenantId), then retry once
-  if (res.status === 401 || res.status === 403) {
+  // Auto-refresh on 401 (expired token) then retry once. 403 is a permission error, not a session error.
+  if (res.status === 401) {
     const newToken = await tryRefresh()
     if (!newToken) {
       redirectToLogin()
@@ -77,6 +77,32 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   const json = (await res.json()) as { data?: T; errors?: { code: string; message: string }[] }
   if (!res.ok) throw new Error(json.errors?.[0]?.message ?? 'Request failed')
+  return json.data as T
+}
+
+// Upload a native file as raw binary — no base64, Content-Type set to the file's mime type
+export async function apiUploadFile<T>(path: string, _fieldName: string, file: File): Promise<T> {
+  const token = getAccessToken()
+  const headers: Record<string, string> = { 'Content-Type': file.type }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: file })
+
+  if (res.status === 401) {
+    const newToken = await tryRefresh()
+    if (!newToken) { redirectToLogin(); throw new Error('Session expired') }
+    const retry = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type, Authorization: `Bearer ${newToken}` },
+      body: file,
+    })
+    const retryJson = (await retry.json()) as { data?: T; errors?: { code: string; message: string }[] }
+    if (!retry.ok) throw new Error(retryJson.errors?.[0]?.message ?? 'Upload failed')
+    return retryJson.data as T
+  }
+
+  const json = (await res.json()) as { data?: T; errors?: { code: string; message: string }[] }
+  if (!res.ok) throw new Error(json.errors?.[0]?.message ?? 'Upload failed')
   return json.data as T
 }
 

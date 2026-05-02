@@ -145,4 +145,15 @@ router.delete('/integrations/google', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Send email via connected Google mailbox
+router.post('/integrations/google/send-email', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    const { to, subject, body, isHtml } = req.body as { to: string; subject: string; body: string; isHtml?: boolean }
+    if (!to || !subject || !body) throw new AppError('VALIDATION_ERROR', 'to, subject, and body are required', 422)
+    await googleService.sendGmailEmail(tenantId, { to, subject, body, isHtml })
+    res.json({ data: { sent: true } })
+  } catch (err) { next(err) }
+})
+
 export default router

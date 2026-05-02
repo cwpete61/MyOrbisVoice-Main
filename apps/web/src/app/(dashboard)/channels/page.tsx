@@ -12,6 +12,7 @@ interface ChannelConfig {
   transferNumber?: string
   businessHours?: BusinessHours
   voiceName?: string
+  agentSpeaksFirst?: boolean
 }
 
 const VOICE_OPTIONS = [
@@ -416,6 +417,27 @@ export default function ChannelsPage() {
                 )
               })}
             </div>
+          </div>
+
+          {/* Agent speaks first */}
+          <div className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)' }}>
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Agent speaks first</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Agent delivers the opening greeting immediately when the session starts, without waiting for the caller to speak.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={cfg.agentSpeaksFirst !== false}
+              onClick={() => setConfig('agentSpeaksFirst', !(cfg.agentSpeaksFirst !== false))}
+              className="relative flex-shrink-0 w-10 h-6 rounded-full transition-colors ml-4"
+              style={{ background: cfg.agentSpeaksFirst !== false ? 'oklch(55% 0.11 193)' : 'var(--border-subtle)' }}
+            >
+              <span
+                className="absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform"
+                style={{ left: cfg.agentSpeaksFirst !== false ? '22px' : '2px' }}
+              />
+            </button>
           </div>
 
           {/* Greeting mode */}

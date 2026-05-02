@@ -6,12 +6,19 @@ import { AppError } from '@voiceautomation/shared'
 export async function createWidgetSession(tenantId: string, opts: {
   remoteIp?: string
   userAgent?: string
+  draftConfig?: { voiceName: string | null; avatarId: string | null; channelType: string; isDraft: boolean }
 }) {
-  // Check widget channel is enabled
+  const isDraft = !!opts.draftConfig
+
+  // For draft test sessions, look up the channel but don't require it to be enabled
+  const channelType = opts.draftConfig?.channelType ?? 'WIDGET'
   const channel = await prisma.channelConfig.findFirst({
-    where: { tenantId, channelType: 'WIDGET', isEnabled: true },
+    where: { tenantId, channelType: channelType as 'WIDGET' | 'INBOUND' | 'OUTBOUND', ...(isDraft ? {} : { isEnabled: true }) },
   })
-  if (!channel) throw new AppError('FORBIDDEN', 'Widget channel is not enabled for this tenant', 403)
+  if (!isDraft && !channel) throw new AppError('FORBIDDEN', 'Widget channel is not enabled for this tenant', 403)
+  if (isDraft && !channel) {
+    // Channel may not exist yet — that's fine for testing, create session without channel binding
+  }
 
   // Load active Business DNA snapshot (store all JSON sections as-is)
   const dna = await prisma.businessDNA.findFirst({
@@ -45,6 +52,10 @@ export async function createWidgetSession(tenantId: string, opts: {
     complianceJson:  dna.complianceJson,
   } : Prisma.JsonNull
 
+  const draftMeta: Prisma.InputJsonValue | typeof Prisma.JsonNull = opts.draftConfig
+    ? (opts.draftConfig as unknown as Prisma.InputJsonValue)
+    : Prisma.JsonNull
+
   const session = await prisma.widgetSession.create({
     data: {
       tenant:          { connect: { id: tenantId } },
@@ -52,13 +63,15 @@ export async function createWidgetSession(tenantId: string, opts: {
       expiresAt,
       remoteIp:        opts.remoteIp ?? null,
       userAgent:       opts.userAgent ?? null,
-      channelConfigId: channel.id,
+      ...(channel ? { channelConfigId: channel.id } : {}),
       businessDNASnapshotJson: dnaSnashot,
       promptSnapshotJson: prompts as unknown as Prisma.InputJsonValue,
+      // draftConfig stored in metadataJson so gateway can read ephemeral overrides
+      ...(opts.draftConfig ? { metadataJson: draftMeta } : {}),
     },
   })
 
-  return { sessionToken: token, expiresAt, sessionId: session.id }
+  return { sessionToken: token, expiresAt, sessionId: session.id, isDraft: isDraft }
 }
 
 export async function resolveWidgetSession(token: string) {

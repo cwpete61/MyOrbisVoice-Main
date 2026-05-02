@@ -281,6 +281,34 @@ export async function getAuthenticatedGoogleClient(tenantId: string) {
   return client
 }
 
+export async function sendGmailEmail(tenantId: string, params: {
+  to: string
+  subject: string
+  body: string
+  isHtml?: boolean
+}): Promise<void> {
+  const client = await getAuthenticatedGoogleClient(tenantId)
+  const gmail  = google.gmail({ version: 'v1', auth: client })
+
+  const contentType = params.isHtml ? 'text/html' : 'text/plain'
+  const rawEmail = [
+    `To: ${params.to}`,
+    `Subject: ${params.subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: ${contentType}; charset=utf-8`,
+    '',
+    params.body,
+  ].join('\r\n')
+
+  const encoded = Buffer.from(rawEmail)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+
+  await gmail.users.messages.send({ userId: 'me', requestBody: { raw: encoded } })
+}
+
 // Simple AES-256-GCM encryption using AUTH_SECRET as key material
 function getEncryptionKey(): Buffer {
   return crypto.createHash('sha256').update(process.env['AUTH_SECRET'] ?? '').digest()
@@ -310,4 +338,143 @@ function decryptTokens(encoded: string): Record<string, unknown> {
   } catch {
     return {}
   }
+}
+
+// ── Per-staff member Google OAuth ────────────────────────────────────────────
+
+export async function startStaffGoogleOAuth(tenantId: string, staffMemberId: string, actorUserId: string): Promise<{ url: string }> {
+  const state = crypto.randomBytes(24).toString('hex')
+  const oauthMeta = { oauthState: state, oauthInitiatedBy: actorUserId, staffMemberId, oauthStartedAt: new Date().toISOString() }
+
+  // Create a fresh GOOGLE connection owned by this tenant, labeled for the staff member
+  const staff = await prisma.staffMember.findFirst({ where: { id: staffMemberId, tenantId } })
+  if (!staff) throw new AppError('NOT_FOUND', 'Staff member not found', 404)
+
+  // If staff already has a connection, reuse and reset it
+  if (staff.integrationConnectionId) {
+    await prisma.integrationConnection.update({
+      where: { id: staff.integrationConnectionId },
+      data: { status: 'NOT_CONNECTED', metadataJson: oauthMeta },
+    })
+  } else {
+    const conn = await prisma.integrationConnection.create({
+      data: {
+        tenantId,
+        provider: 'GOOGLE',
+        label: `Staff: ${staff.name}`,
+        status: 'NOT_CONNECTED',
+        metadataJson: oauthMeta,
+      },
+    })
+    await prisma.staffMember.update({ where: { id: staffMemberId }, data: { integrationConnectionId: conn.id } })
+  }
+
+  const client = await buildOAuthClient()
+  const url = client.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: REQUIRED_SCOPES, state })
+  await writeAuditLog({ tenantId, actorType: 'USER', actorUserId, action: 'staff.google.oauth_started', targetType: 'StaffMember', targetId: staffMemberId })
+  return { url }
+}
+
+export async function handleStaffGoogleCallback(code: string, state: string): Promise<{ tenantId: string; staffMemberId: string; email: string }> {
+  const connection = await prisma.integrationConnection.findFirst({
+    where: { provider: 'GOOGLE', metadataJson: { path: ['oauthState'], equals: state } },
+  })
+  if (!connection?.tenantId) throw new AppError('BAD_REQUEST', 'Invalid OAuth state', 400)
+
+  const meta = connection.metadataJson as Record<string, string>
+  const staffMemberId = meta['staffMemberId']
+  if (!staffMemberId) throw new AppError('BAD_REQUEST', 'State does not reference a staff member', 400)
+
+  const tenantId = connection.tenantId
+  const client = await buildOAuthClient()
+  let tokens: Auth.Credentials
+  try {
+    const resp = await client.getToken(code)
+    tokens = resp.tokens as Auth.Credentials
+  } catch {
+    await prisma.integrationConnection.update({ where: { id: connection.id }, data: { status: 'ERROR' } })
+    throw new AppError('BAD_GATEWAY', 'Failed to exchange authorization code with Google', 502)
+  }
+
+  client.setCredentials(tokens)
+  const oauth2 = google.oauth2({ version: 'v2', auth: client })
+  const userInfo = await oauth2.userinfo.get()
+  const email = userInfo.data.email ?? ''
+
+  const calendarClient = google.calendar({ version: 'v3', auth: client })
+  let calendarIds: string[] = []
+  try {
+    const calList = await calendarClient.calendarList.list()
+    calendarIds = (calList.data.items ?? []).map(c => c.id ?? '').filter(Boolean)
+  } catch { /* non-fatal */ }
+
+  const primaryCalendarId = calendarIds.find(id => id === email) ?? calendarIds[0] ?? null
+
+  const secretRef = await prisma.secretRef.upsert({
+    where: { ownerType_ownerId_secretType_label: { ownerType: 'INTEGRATION', ownerId: connection.id, secretType: 'google_oauth_tokens', label: 'primary' } },
+    create: { ownerType: 'INTEGRATION', ownerId: connection.id, secretType: 'google_oauth_tokens', label: 'primary', provider: 'local', externalRef: encryptTokens(tokens), rotationStatus: 'VALID', lastValidatedAt: new Date() },
+    update: { externalRef: encryptTokens(tokens), rotationStatus: 'VALID', lastValidatedAt: new Date() },
+  })
+
+  await prisma.$transaction(async (tx) => {
+    await tx.integrationConnection.update({
+      where: { id: connection.id },
+      data: { status: 'CONNECTED', externalEmail: email, lastVerifiedAt: new Date(), metadataJson: { staffMemberId, secretRefId: secretRef.id } },
+    })
+    await tx.googleConnectionDetail.upsert({
+      where: { integrationConnectionId: connection.id },
+      create: { integrationConnectionId: connection.id, mailboxEmail: email, grantedScopesJson: REQUIRED_SCOPES, calendarIdsJson: calendarIds, tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null },
+      update: { mailboxEmail: email, calendarIdsJson: calendarIds, tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null },
+    })
+    await tx.staffMember.update({
+      where: { id: staffMemberId },
+      data: { email: email || undefined, calendarId: primaryCalendarId },
+    })
+  })
+
+  await writeAuditLog({ tenantId, actorType: 'SYSTEM', action: 'staff.google.connected', targetType: 'StaffMember', targetId: staffMemberId, metadataJson: { email, calendarCount: calendarIds.length } })
+  return { tenantId, staffMemberId, email }
+}
+
+export async function disconnectStaffGoogle(tenantId: string, staffMemberId: string, actorUserId: string): Promise<void> {
+  const staff = await prisma.staffMember.findFirst({ where: { id: staffMemberId, tenantId } })
+  if (!staff?.integrationConnectionId) return
+
+  const connId = staff.integrationConnectionId
+  try {
+    const ref = await prisma.secretRef.findFirst({ where: { ownerType: 'INTEGRATION', ownerId: connId, secretType: 'google_oauth_tokens' } })
+    const tokens = decryptTokens(ref?.externalRef ?? '')
+    if (typeof tokens['access_token'] === 'string') {
+      const client = await buildOAuthClient()
+      await client.revokeToken(tokens['access_token'] as string).catch(() => {})
+    }
+  } catch { /* non-fatal */ }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.googleConnectionDetail.deleteMany({ where: { integrationConnectionId: connId } })
+    await tx.secretRef.deleteMany({ where: { ownerType: 'INTEGRATION', ownerId: connId } })
+    await tx.integrationConnection.delete({ where: { id: connId } })
+    await tx.staffMember.update({ where: { id: staffMemberId }, data: { integrationConnectionId: null, calendarId: null } })
+  })
+
+  await writeAuditLog({ tenantId, actorType: 'USER', actorUserId, action: 'staff.google.disconnected', targetType: 'StaffMember', targetId: staffMemberId })
+}
+
+export async function getAuthenticatedGoogleClientByConnectionId(connectionId: string) {
+  const ref = await prisma.secretRef.findFirst({ where: { ownerType: 'INTEGRATION', ownerId: connectionId, secretType: 'google_oauth_tokens' } })
+  if (!ref?.externalRef) throw new AppError('NOT_FOUND', 'Google credentials not found — reconnect required', 404)
+
+  const config = await getGoogleConfig()
+  if (!config) throw new AppError('CONFIGURATION_ERROR', 'Google OAuth not configured', 503)
+
+  const client = new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri)
+  const tokens = decryptTokens(ref.externalRef) as Auth.Credentials
+  client.setCredentials(tokens)
+
+  if (tokens.expiry_date && Date.now() > (tokens.expiry_date as number) - 5 * 60 * 1000) {
+    const { credentials } = await client.refreshAccessToken()
+    client.setCredentials(credentials)
+    await prisma.secretRef.update({ where: { id: ref.id }, data: { externalRef: encryptTokens(credentials), lastValidatedAt: new Date() } })
+  }
+  return client
 }

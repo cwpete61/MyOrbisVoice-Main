@@ -44,6 +44,10 @@ export default function IntegrationsPage() {
   const [geminiKey, setGeminiKey] = useState('')
   const [geminiSaving, setGeminiSaving] = useState(false)
 
+  // Gmail test send
+  const [gmailTest, setGmailTest] = useState({ to: '', subject: 'Test from OrbisVoice', body: 'This is a test email sent from your connected Google agent mailbox.' })
+  const [gmailSending, setGmailSending] = useState(false)
+
   function showToast(type: 'success' | 'error', text: string) {
     setToast({ type, text })
     setTimeout(() => setToast(null), 5000)
@@ -130,6 +134,19 @@ export default function IntegrationsPage() {
     finally { setGeminiSaving(false) }
   }
 
+  async function sendTestEmail() {
+    if (!gmailTest.to || !gmailTest.subject || !gmailTest.body) return
+    setGmailSending(true)
+    try {
+      await apiFetch('/api/integrations/google/send-email', {
+        method: 'POST',
+        body: JSON.stringify({ to: gmailTest.to, subject: gmailTest.subject, body: gmailTest.body }),
+      })
+      showToast('success', `Test email sent to ${gmailTest.to}`)
+    } catch (err) { showToast('error', err instanceof Error ? err.message : 'Failed to send') }
+    finally { setGmailSending(false) }
+  }
+
   async function disconnectGemini() {
     if (!confirm('Remove Gemini API key? Voice sessions will fall back to the platform key if one is configured.')) return
     try {
@@ -212,6 +229,25 @@ export default function IntegrationsPage() {
               )}
             </div>
           </div>
+          {/* Gmail test send — only when connected */}
+          {google.status === 'CONNECTED' && (
+            <div className="px-6 py-5 space-y-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Send a test email</p>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Verify your agent mailbox can send by dispatching a test message from the connected account.</p>
+              <div className="space-y-2">
+                <input value={gmailTest.to} onChange={(e) => setGmailTest({ ...gmailTest, to: e.target.value })}
+                  className={inp} type="email" placeholder="Recipient email" />
+                <input value={gmailTest.subject} onChange={(e) => setGmailTest({ ...gmailTest, subject: e.target.value })}
+                  className={inp} placeholder="Subject" />
+                <textarea value={gmailTest.body} onChange={(e) => setGmailTest({ ...gmailTest, body: e.target.value })}
+                  className={inp} rows={3} placeholder="Message body" />
+              </div>
+              <button onClick={sendTestEmail} disabled={gmailSending || !gmailTest.to} className="btn-secondary text-sm">
+                {gmailSending ? 'Sending…' : 'Send test email'}
+              </button>
+            </div>
+          )}
+
           <div className="px-6 py-3.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Connect a dedicated Google account for your agent — not your personal or registration email. Required scopes: Gmail Send, Gmail Read, Google Calendar. Tokens are encrypted at rest and never displayed.</p>
           </div>
@@ -386,6 +422,64 @@ export default function IntegrationsPage() {
           </div>
         </div>
       )}
+
+      {/* ── Coming Soon: Calendar Integrations ─────────────────────────── */}
+      <div>
+        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>More integrations — coming soon</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            {
+              name: 'Outlook Calendar',
+              desc: 'Sync appointments with Microsoft 365 and Outlook calendar accounts.',
+              icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="4" width="20" height="16" rx="2" fill="#0078D4" />
+                  <path d="M8 4v16M2 10h6M8 10h14" stroke="white" strokeWidth="1.5" />
+                  <rect x="10" y="12" width="4" height="4" fill="white" opacity="0.7" />
+                </svg>
+              ),
+            },
+            {
+              name: 'Calendly',
+              desc: 'Route bookings through your Calendly event types and availability rules.',
+              icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" fill="#006BFF" />
+                  <path d="M12 7v5l3 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ),
+            },
+            {
+              name: 'Cal.com',
+              desc: 'Open-source scheduling — connect self-hosted or Cal.com cloud accounts.',
+              icon: (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="4" width="18" height="17" rx="2" fill="#111827" />
+                  <path d="M8 2v4M16 2v4M3 10h18" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="8" cy="15" r="1.5" fill="#6EE7B7" />
+                  <circle cx="12" cy="15" r="1.5" fill="#6EE7B7" />
+                  <circle cx="16" cy="15" r="1.5" fill="#6EE7B7" />
+                </svg>
+              ),
+            },
+          ].map((item) => (
+            <div key={item.name} className="rounded-xl opacity-60" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+              <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--surface-overlay)' }}>
+                    {item.icon}
+                  </div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
+                </div>
+                <span className="badge" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>Coming soon</span>
+              </div>
+              <div className="px-5 py-4">
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* ── API Integration (Coming Soon) ───────────────────────────────── */}
       <div className="rounded-xl opacity-60" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>

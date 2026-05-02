@@ -5,7 +5,7 @@ import { hashToken, generateSecureToken, AppError, toSlug } from '@voiceautomati
 import type { RoleKey } from '@voiceautomation/types'
 import { getOrCreateStripeCustomer } from './stripe.service.js'
 import { syncEntitlementsFromPlan } from './entitlement.service.js'
-import { attributeTenant } from './affiliate.service.js'
+import { attributeTenant, applyForAffiliate } from './affiliate.service.js'
 
 const SALT_ROUNDS = 12
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -59,8 +59,8 @@ export async function signupUser(data: {
   // Create Stripe customer eagerly so billing flows work immediately
   await getOrCreateStripeCustomer(tenant.id).catch(() => { /* non-fatal — customer created on first checkout */ })
 
-  // Sync entitlements from the selected plan, defaulting to starter
-  const planCode = data.selectedPlanCode ?? 'starter_monthly'
+  // Sync entitlements from the selected plan, defaulting to free tier
+  const planCode = data.selectedPlanCode ?? 'free'
   const plan = await prisma.plan.findFirst({ where: { code: planCode, isActive: true } })
   if (plan) {
     await syncEntitlementsFromPlan(tenant.id, plan.id).catch(() => { /* non-fatal */ })
@@ -73,6 +73,32 @@ export async function signupUser(data: {
 
   const tokens = await issueTokens(user.id, user.email, tenant.id, 'tenant_owner', false)
   return { user: sanitizeUser(user), tenant: sanitizeTenant(tenant), ...tokens }
+}
+
+export async function affiliateSignupUser(data: {
+  username: string
+  email: string
+  password: string
+  firstName?: string
+  lastName?: string
+}) {
+  const [existingEmail, existingUsername] = await Promise.all([
+    prisma.user.findUnique({ where: { email: data.email } }),
+    prisma.user.findUnique({ where: { username: data.username } }),
+  ])
+  if (existingEmail) throw new AppError('CONFLICT', 'Email already in use', 409)
+  if (existingUsername) throw new AppError('CONFLICT', 'Username already taken', 409)
+
+  const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS)
+  const user = await prisma.user.create({
+    data: { email: data.email, username: data.username, passwordHash, firstName: data.firstName ?? null, lastName: data.lastName ?? null },
+  })
+
+  // Create the affiliate account in PENDING state
+  await applyForAffiliate(user.id)
+
+  const tokens = await issueTokens(user.id, user.email, null, 'affiliate', false)
+  return { user: sanitizeUser(user), ...tokens }
 }
 
 export async function loginUser(data: { login: string; password: string }) {
@@ -102,11 +128,21 @@ export async function loginUser(data: { login: string; password: string }) {
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
 
   const membership = user.tenantMemberships[0]
-  const tenantId = membership?.tenantId ?? null
-  const roleKey = (membership?.roleDefinition?.key ?? 'tenant_staff') as RoleKey
-  const isPlatformRole = membership?.roleDefinition?.isPlatformRole ?? false
+  let tenantId = membership?.tenantId ?? null
+  let roleKey = (membership?.roleDefinition?.key ?? 'tenant_staff') as RoleKey
+  let isPlatformRole = membership?.roleDefinition?.isPlatformRole ?? false
 
-const tokens = await issueTokens(user.id, user.email, tenantId, roleKey, isPlatformRole)
+  // Affiliate-only users have no tenant membership — detect via AffiliateAccount
+  if (!membership) {
+    const affiliateAccount = await prisma.affiliateAccount.findUnique({ where: { userId: user.id } })
+    if (affiliateAccount) {
+      roleKey = 'affiliate'
+      tenantId = null
+      isPlatformRole = false
+    }
+  }
+
+  const tokens = await issueTokens(user.id, user.email, tenantId, roleKey, isPlatformRole)
   return { user: sanitizeUser(user), tenantId, roleKey, ...tokens }
 }
 

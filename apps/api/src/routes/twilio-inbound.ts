@@ -29,9 +29,9 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
     const channel = (phone as any).tenant?.channelConfigs?.[0] ?? null
     const profile = (phone as any).tenant?.businessProfile ?? null
 
-    logCallStart({ tenantId: phone.tenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To }).catch(() => null)
-    startCallRecording(CallSid, phone.tenantId).catch(() => null)
-    logTwilioEvent({ tenantId: phone.tenantId, callSid: CallSid, direction: 'INBOUND', eventType: 'inbound_received', fromNumber: From, toNumber: To, callStatus: 'ringing' }).catch(() => null)
+    logCallStart({ tenantId: phone.tenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To }).catch(e => console.error('[twilio] logCallStart failed:', e))
+    startCallRecording(CallSid, phone.tenantId).catch(e => console.error('[twilio] startCallRecording failed:', e))
+    logTwilioEvent({ tenantId: phone.tenantId, callSid: CallSid, direction: 'INBOUND', eventType: 'inbound_received', fromNumber: From, toNumber: To, callStatus: 'ringing' }).catch(e => console.error('[twilio] logTwilioEvent failed:', e))
 
     const cfg = (channel?.configJson ?? {}) as Record<string, any>
     twiml = buildInboundTwiml({
@@ -119,7 +119,7 @@ router.post('/webhooks/twilio/sms', asyncHandler(async (req, res) => {
 router.post('/webhooks/twilio/sms-status', asyncHandler(async (req, res) => {
   const { MessageSid, MessageStatus, ErrorCode } = req.body as Record<string, string>
   if (MessageSid && MessageStatus) {
-    updateDeliveryStatus(MessageSid, MessageStatus, ErrorCode).catch(() => null)
+    updateDeliveryStatus(MessageSid, MessageStatus, ErrorCode).catch(e => console.error('[sms] updateDeliveryStatus failed:', e))
   }
   res.sendStatus(204)
 }))

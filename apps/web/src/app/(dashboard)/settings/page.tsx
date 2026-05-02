@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { apiFetch, useApi } from '@/hooks/useApi'
+import { useState, useEffect, useRef } from 'react'
+import { apiFetch, apiUploadFile, useApi } from '@/hooks/useApi'
 
 interface Tenant {
   id: string
@@ -43,6 +43,69 @@ interface BusinessProfile {
   postalCode: string | null
   country: string | null
   fallbackNotificationEmail: string | null
+}
+
+function LogoUpload({ currentUrl, onUploaded }: { currentUrl: string | null; onUploaded: (url: string) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleFile(file: File) {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      setError('Unsupported type. Use PNG, JPG, or WebP.')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Logo must be under 2 MB.')
+      return
+    }
+    setError(null)
+    setUploading(true)
+    try {
+      const res = await apiUploadFile<{ logoUrl: string }>('/api/business-profile/logo', 'logo', file)
+      onUploaded(res.logoUrl)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div>
+      <label className="label">Logo</label>
+      <div className="flex items-center gap-4">
+        <div
+          className="w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
+          style={{ background: 'var(--surface-base)', border: '1px solid var(--border-subtle)' }}
+        >
+          {currentUrl
+            ? <img src={currentUrl} alt="Logo" className="w-full h-full object-contain" />
+            : <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>No logo</span>
+          }
+        </div>
+        <div className="space-y-1">
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+            className="btn-secondary text-sm"
+          >
+            {uploading ? 'Uploading…' : currentUrl ? 'Replace logo' : 'Upload logo'}
+          </button>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>PNG, JPG, SVG, or WebP — max 2 MB</p>
+          {error && <p className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</p>}
+        </div>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
+      />
+    </div>
+  )
 }
 
 interface FieldConfig {
@@ -245,6 +308,13 @@ export default function SettingsPage() {
         saving={saving === 'profile'}
         saveLabel="Save profile"
       >
+        <LogoUpload
+          currentUrl={profileForm.logoUrl ?? null}
+          onUploaded={(url) => {
+            setProfileForm((p) => ({ ...p, logoUrl: url }))
+            showToast('success', 'Logo uploaded.')
+          }}
+        />
         {PROFILE_FIELDS.map((f) => (
           <FormField
             key={f.key}

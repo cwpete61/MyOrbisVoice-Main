@@ -2,7 +2,9 @@ import crypto from 'crypto'
 import { prisma } from '../lib/prisma.js'
 
 const ALG = 'aes-256-gcm'
-const SECRET_KEY = process.env['AUTH_SECRET'] ?? 'fallback-key'
+const _authSecret = process.env['AUTH_SECRET']
+if (!_authSecret) throw new Error('AUTH_SECRET env var is required')
+const SECRET_KEY: string = _authSecret
 
 function encrypt(plain: string): string {
   const k   = crypto.scryptSync(SECRET_KEY, 'gemini-salt', 32)

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, PlanInterval } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -6,9 +6,11 @@ const prisma = new PrismaClient()
 // Stripe price IDs are optional — set them in .env before re-running seed
 const env = process.env as Record<string, string | undefined>
 const STRIPE_PRICE_IDS: Record<string, string | null> = {
-  starter_monthly: env['STRIPE_PRICE_STARTER_MONTHLY'] ?? null,
-  pro_monthly: env['STRIPE_PRICE_PRO_MONTHLY'] ?? null,
-  enterprise_monthly: env['STRIPE_PRICE_ENTERPRISE_MONTHLY'] ?? null,
+  ltd:               env['STRIPE_PRICE_LTD']        ?? null,
+  basic_monthly:     env['STRIPE_PRICE_BASIC']       ?? null,
+  pro_monthly:       env['STRIPE_PRICE_PRO']         ?? null,
+  premier_monthly:   env['STRIPE_PRICE_PREMIER']     ?? null,
+  enterprise_monthly: env['STRIPE_PRICE_ENTERPRISE'] ?? null,
 }
 
 async function main() {
@@ -36,10 +38,72 @@ async function main() {
 
   const plans = [
     {
-      code: 'starter_monthly',
-      name: 'Starter',
-      description: 'Up to 1 channel, 500 minutes/month',
+      code: 'free',
+      name: 'Free',
+      description: 'Free tier — widget voice agent, 20 min/month',
       interval: 'MONTHLY' as const,
+      priceCents: 0,
+      entitlements: [
+        { key: 'widget_enabled',         valueType: 'BOOLEAN' as const, booleanValue: true  },
+        { key: 'inbound_enabled',        valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'outbound_enabled',       valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'sms_enabled',            valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'max_phone_numbers',      valueType: 'INTEGER' as const, integerValue: 0     },
+        { key: 'max_concurrent_calls',   valueType: 'INTEGER' as const, integerValue: 1     },
+        { key: 'max_channels',           valueType: 'INTEGER' as const, integerValue: 1     },
+        { key: 'max_agents',             valueType: 'INTEGER' as const, integerValue: 1     },
+        { key: 'max_seats',              valueType: 'INTEGER' as const, integerValue: 1     },
+        { key: 'max_contacts',           valueType: 'INTEGER' as const, integerValue: 100   },
+        { key: 'minutes_per_month',      valueType: 'INTEGER' as const, integerValue: 20    },
+        { key: 'data_retention_months',  valueType: 'INTEGER' as const, integerValue: 1     },
+        { key: 'max_locations',          valueType: 'INTEGER' as const, integerValue: 1     },
+        { key: 'agent_handoff_enabled',  valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'department_routing',     valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'agent_scheduling',       valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'escalation_rules',       valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'vip_caller_recognition', valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'agent_assignment',       valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'live_call_monitoring',   valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'call_takeover',          valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'multi_location',         valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'desktop_app',            valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'mobile_app',             valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'campaigns_enabled',      valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'affiliate_enabled',      valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'webhooks_enabled',       valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'push_notifications',     valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'manager_dashboard',      valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'agent_performance',      valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'sentiment_analysis',     valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'conversion_tracking',    valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'multi_calendar_booking', valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'compliance_mode',        valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'audit_log_export',       valueType: 'BOOLEAN' as const, booleanValue: false },
+        { key: 'priority_support',       valueType: 'BOOLEAN' as const, booleanValue: false },
+      ],
+    },
+    {
+      code: 'ltd',
+      name: 'LTD',
+      description: 'Lifetime Deal — one-time payment, $497. Limited to 100 units.',
+      interval: 'ONE_TIME' as PlanInterval,
+      priceCents: 49700,
+      entitlements: [
+        { key: 'max_channels', valueType: 'INTEGER' as const, integerValue: 3 },
+        { key: 'max_agents', valueType: 'INTEGER' as const, integerValue: 7 },
+        { key: 'minutes_per_month', valueType: 'INTEGER' as const, integerValue: 2000 },
+        { key: 'widget_enabled', valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'inbound_enabled', valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'outbound_enabled', valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'affiliate_enabled', valueType: 'BOOLEAN' as const, booleanValue: false },
+      ],
+    },
+    {
+      code: 'basic_monthly',
+      name: 'Basic',
+      description: '$197/month — entry-level plan',
+      interval: 'MONTHLY' as const,
+      priceCents: 19700,
       entitlements: [
         { key: 'max_channels', valueType: 'INTEGER' as const, integerValue: 1 },
         { key: 'max_agents', valueType: 'INTEGER' as const, integerValue: 2 },
@@ -53,8 +117,9 @@ async function main() {
     {
       code: 'pro_monthly',
       name: 'Pro',
-      description: 'All channels, 2,000 minutes/month',
+      description: '$497/month — all channels, full feature set',
       interval: 'MONTHLY' as const,
+      priceCents: 49700,
       entitlements: [
         { key: 'max_channels', valueType: 'INTEGER' as const, integerValue: 3 },
         { key: 'max_agents', valueType: 'INTEGER' as const, integerValue: 7 },
@@ -66,18 +131,77 @@ async function main() {
       ],
     },
     {
-      code: 'enterprise_monthly',
-      name: 'Enterprise',
-      description: 'Unlimited channels, 10,000 minutes/month, affiliate portal',
+      code: 'premier_monthly',
+      name: 'Premier',
+      description: '$997/month — high-volume, priority support',
       interval: 'MONTHLY' as const,
+      priceCents: 99700,
       entitlements: [
-        { key: 'max_channels', valueType: 'INTEGER' as const, integerValue: 99 },
-        { key: 'max_agents', valueType: 'INTEGER' as const, integerValue: 99 },
-        { key: 'minutes_per_month', valueType: 'INTEGER' as const, integerValue: 10000 },
+        { key: 'max_channels', valueType: 'INTEGER' as const, integerValue: 5 },
+        { key: 'max_agents', valueType: 'INTEGER' as const, integerValue: 7 },
+        { key: 'minutes_per_month', valueType: 'INTEGER' as const, integerValue: 5000 },
         { key: 'widget_enabled', valueType: 'BOOLEAN' as const, booleanValue: true },
         { key: 'inbound_enabled', valueType: 'BOOLEAN' as const, booleanValue: true },
         { key: 'outbound_enabled', valueType: 'BOOLEAN' as const, booleanValue: true },
         { key: 'affiliate_enabled', valueType: 'BOOLEAN' as const, booleanValue: true },
+      ],
+    },
+    {
+      code: 'enterprise_monthly',
+      name: 'Enterprise',
+      description: '$1,997/month — full platform, unlimited scale, white-glove support',
+      interval: 'MONTHLY' as const,
+      priceCents: 199700,
+      entitlements: [
+        // ── Channels ──────────────────────────────────────────────
+        { key: 'widget_enabled',           valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'inbound_enabled',          valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'outbound_enabled',         valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'sms_enabled',              valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'max_phone_numbers',        valueType: 'INTEGER' as const, integerValue: 10 },
+        { key: 'max_concurrent_calls',     valueType: 'INTEGER' as const, integerValue: 20 },
+        { key: 'max_channels',             valueType: 'INTEGER' as const, integerValue: 10 },
+        // ── Agents & Staff ────────────────────────────────────────
+        { key: 'max_agents',               valueType: 'INTEGER' as const, integerValue: 7 },
+        { key: 'max_seats',                valueType: 'INTEGER' as const, integerValue: 15 },
+        { key: 'max_contacts',             valueType: 'INTEGER' as const, integerValue: 999999 },
+        { key: 'agent_handoff_enabled',    valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'department_routing',       valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'agent_scheduling',         valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'escalation_rules',         valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'vip_caller_recognition',   valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'agent_assignment',         valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'live_call_monitoring',     valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'call_takeover',            valueType: 'BOOLEAN' as const, booleanValue: true },
+        // ── Locations ─────────────────────────────────────────────
+        { key: 'multi_location',           valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'max_locations',            valueType: 'INTEGER' as const, integerValue: 10 },
+        // ── Apps ──────────────────────────────────────────────────
+        { key: 'mobile_app',               valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'desktop_app',              valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'push_notifications',       valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'manager_dashboard',        valueType: 'BOOLEAN' as const, booleanValue: true },
+        // ── Data & Reporting ──────────────────────────────────────
+        { key: 'minutes_per_month',        valueType: 'INTEGER' as const, integerValue: 20000 },
+        { key: 'data_retention_months',    valueType: 'INTEGER' as const, integerValue: 12 },
+        { key: 'recording_storage_gb',     valueType: 'INTEGER' as const, integerValue: 100 },
+        { key: 'max_campaigns',            valueType: 'INTEGER' as const, integerValue: 999 },
+        { key: 'sentiment_analysis',       valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'agent_performance',        valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'audit_log_export',         valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'conversion_tracking',      valueType: 'BOOLEAN' as const, booleanValue: true },
+        // ── Integrations ──────────────────────────────────────────
+        { key: 'webhooks_enabled',         valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'api_access',               valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'affiliate_enabled',        valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'campaigns_enabled',        valueType: 'BOOLEAN' as const, booleanValue: true },
+        // ── Branding ──────────────────────────────────────────────
+        { key: 'white_label',              valueType: 'BOOLEAN' as const, booleanValue: true },
+        // ── Compliance & Support ──────────────────────────────────
+        { key: 'compliance_mode',          valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'sla_guarantee',            valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'onboarding_assistance',    valueType: 'BOOLEAN' as const, booleanValue: true },
+        { key: 'priority_support',         valueType: 'BOOLEAN' as const, booleanValue: true },
       ],
     },
   ]

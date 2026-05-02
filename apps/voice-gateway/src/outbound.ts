@@ -2,7 +2,7 @@ import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
-import { generateSummary } from './services/summary.service.js'
+import { generateSummary, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
 import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
 import { getGeminiApiKey } from './lib/gemini-key.js'
@@ -51,12 +51,27 @@ export async function handleOutboundCall(ws: WebSocket) {
 
   const transcript: TranscriptEntry[] = []
   let gemini: ReturnType<typeof openGeminiLiveSession> | null = null
-  let silenceTimer: ReturnType<typeof setTimeout> | null = null
+
+  // Accumulate streaming deltas into complete turns before pushing to transcript
+  let userBuffer  = ''
+  let agentBuffer = ''
+  let lastRole: 'user' | 'assistant' | null = null
+
+  function flushBuffer(role: 'user' | 'assistant') {
+    const text = role === 'user' ? userBuffer.trim() : agentBuffer.trim()
+    if (text) {
+      transcript.push({ role, text, timestamp: Date.now() })
+    }
+    if (role === 'user') userBuffer = ''
+    else agentBuffer = ''
+  }
+
   let userSpoke = false
+  let silenceWatchdog: ReturnType<typeof setTimeout> | null = null
 
   // If the called party never responds within 45s, hang up (voicemail fallback / no answer)
   function startSilenceWatchdog() {
-    silenceTimer = setTimeout(() => {
+    silenceWatchdog = setTimeout(() => {
       if (!userSpoke) {
         console.log('[outbound] silence watchdog — no user response, hanging up')
         hangUpCall(callSid, tenantId)
@@ -104,6 +119,7 @@ export async function handleOutboundCall(ws: WebSocket) {
 
   function stopInCallSilenceTimer() {
     if (inCallSilenceTimer) { clearTimeout(inCallSilenceTimer); inCallSilenceTimer = null }
+    if (silenceWatchdog)    { clearTimeout(silenceWatchdog);    silenceWatchdog = null }
   }
 
   async function initSession(params: Record<string, string>) {
@@ -129,13 +145,21 @@ export async function handleOutboundCall(ws: WebSocket) {
       } catch { /* non-fatal */ }
     }
 
-    const [dna, prompts] = await Promise.all([
+    // Load active DNA, published prompts, and outbound channel config
+    const [dna, prompts, outboundChannel] = await Promise.all([
       prisma.businessDNA.findFirst({ where: { tenantId, isActive: true } }),
       prisma.promptVersion.findMany({
         where: { tenantId, status: 'PUBLISHED', scope: { in: ['TENANT', 'CHANNEL', 'ROLE'] } },
         select: { id: true, scope: true, channelType: true, agentRoleType: true, content: true },
       }),
+      prisma.channelConfig.findFirst({
+        where: { tenantId, channelType: 'OUTBOUND' },
+        select: { configJson: true },
+      }),
     ])
+
+    const channelCfgJson = (outboundChannel?.configJson as Record<string, unknown> | null) ?? {}
+    const voiceName      = (channelCfgJson['voiceName'] as string | undefined) || 'Fenrir'
 
     const dnaSnap = dna ? {
       identityJson:    dna.identityJson,
@@ -151,6 +175,16 @@ export async function handleOutboundCall(ws: WebSocket) {
 
     const systemPrompt = resolveSystemPrompt(prompts as any[], dnaSnap)
 
+    // Build greeting from DNA business name + campaign description
+    const identityJson  = dna?.identityJson as Record<string, unknown> | null | undefined
+    const businessName  = (identityJson?.['businessName'] as string | undefined)
+      || (identityJson?.['name'] as string | undefined)
+      || 'our company'
+
+    const greeting = campaignDescription
+      ? `The outbound call just connected on behalf of ${businessName}. Introduce yourself warmly and explain: ${campaignDescription}. Be concise and friendly — speak immediately.`
+      : `The outbound call just connected on behalf of ${businessName}. Introduce yourself warmly and explain why you're calling. Be concise and friendly — speak immediately.`
+
     // Look up tenant Gemini API key; fall back to platform env key
     const geminiConn = await prisma.integrationConnection.findFirst({
       where: { tenantId, provider: 'GEMINI', status: 'CONNECTED' },
@@ -163,10 +197,6 @@ export async function handleOutboundCall(ws: WebSocket) {
         try { tenantGeminiKey = getGeminiApiKey(enc) ?? undefined } catch { /* fallback */ }
       }
     }
-
-    const greeting = campaignDescription
-      ? `The call just connected. Introduce yourself warmly and explain: ${campaignDescription}. Be concise and friendly.`
-      : `The call just connected. Introduce yourself warmly and explain why you're calling. Be concise and friendly.`
 
     gemini = openGeminiLiveSession(systemPrompt, {
       onReady() {
@@ -181,11 +211,17 @@ export async function handleOutboundCall(ws: WebSocket) {
         clearTwilioAudio()
       },
       onTranscriptDelta(role, text) {
-        transcript.push({ role, text, timestamp: Date.now() })
+        // If the speaker switches, flush the previous speaker's buffer first
+        if (lastRole && lastRole !== role) {
+          flushBuffer(lastRole)
+        }
+        lastRole = role
+
         if (role === 'user') {
+          userBuffer += (userBuffer ? ' ' : '') + text
           if (!userSpoke) {
             userSpoke = true
-            if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null }
+            if (silenceWatchdog) { clearTimeout(silenceWatchdog); silenceWatchdog = null }
           }
           resetInCallSilenceTimer()
           if (GOODBYE_PATTERN.test(text)) {
@@ -193,9 +229,16 @@ export async function handleOutboundCall(ws: WebSocket) {
             stopInCallSilenceTimer()
             setTimeout(() => hangUpCall(callSid, tenantId), 2000)
           }
+        } else {
+          agentBuffer += (agentBuffer ? ' ' : '') + text
         }
       },
       onTurnComplete() {
+        // Agent finished speaking — flush the completed agent turn
+        if (agentBuffer.trim()) flushBuffer('assistant')
+        // Also flush any pending user turn
+        if (userBuffer.trim()) flushBuffer('user')
+        lastRole = null
         console.log('[outbound] Gemini turn complete')
       },
       async onClose() {
@@ -208,7 +251,7 @@ export async function handleOutboundCall(ws: WebSocket) {
         await finalize('FAILED')
         ws.close()
       },
-    }, tenantGeminiKey)
+    }, tenantGeminiKey, voiceName)
 
     initialized = true
     console.log('[outbound] session ready, Gemini connecting…')
@@ -216,15 +259,28 @@ export async function handleOutboundCall(ws: WebSocket) {
 
   async function finalize(status: 'COMPLETED' | 'FAILED') {
     try {
+      // Flush any incomplete turn buffers
+      if (userBuffer.trim())  flushBuffer('user')
+      if (agentBuffer.trim()) flushBuffer('assistant')
+
       if (status === 'COMPLETED' && transcript.length > 0) {
-        const summary = await generateSummary(transcript)
-        await persistConversation({
+        const cleaned     = await cleanTranscript(transcript)
+        const summary     = await generateSummary(cleaned)
+        const conversationId = await persistConversation({
           tenantId,
           sessionId: callSid,
-          transcript,
+          transcript: cleaned,
           summary,
           channelType: 'OUTBOUND',
         })
+
+        // Link conversation back to the OutboundCallAttempt
+        if (attemptId && conversationId) {
+          await prisma.outboundCallAttempt.updateMany({
+            where: { id: attemptId },
+            data:  { conversationId },
+          }).catch(err => console.warn('[outbound] could not link conversationId:', err))
+        }
       }
     } catch (err) {
       console.error('[outbound] finalize error:', err)

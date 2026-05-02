@@ -23,6 +23,7 @@ export type GeminiSessionCallbacks = {
 export type GeminiSession = {
   sendAudio: (pcm16: Buffer) => void
   sendText: (text: string) => void
+  signalTurnComplete: () => void  // explicit end-of-turn — bypasses VAD silence wait
   close: () => void
 }
 
@@ -64,7 +65,7 @@ export function openGeminiLiveSession(
               start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',
               end_of_speech_sensitivity:   'END_SENSITIVITY_HIGH',
               prefix_padding_ms:           20,
-              silence_duration_ms:         400,
+              silence_duration_ms:         100,  // 100ms — explicit mic_stop signal is the primary trigger
             },
           },
           input_audio_transcription:  {},
@@ -161,6 +162,14 @@ export function openGeminiLiveSession(
           turns: [{ role: 'user', parts: [{ text }] }],
           turn_complete: true,
         },
+      }))
+    },
+
+    signalTurnComplete() {
+      if (!ws || ws.readyState !== 1) return
+      // Send an empty realtime_input with activity_end to tell Gemini the user stopped speaking
+      ws.send(JSON.stringify({
+        realtime_input: { activity_end: {} },
       }))
     },
 

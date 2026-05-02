@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { apiFetch, apiFetchRaw, useApi } from '@/hooks/useApi'
+import { useState, useEffect, useRef } from 'react'
+import { apiFetch, apiFetchRaw, apiUploadFile, useApi } from '@/hooks/useApi'
 import { getTokenPayload } from '@/lib/auth'
 
 interface UserMe {
@@ -54,6 +54,33 @@ interface ProfilePageProps {
 export function ProfilePage({ showBilling = false }: ProfilePageProps) {
   const { data: meData, loading: meLoading, reload } = useApi<UserMe>('/api/auth/me')
   const { data: billingData } = useApi<BillingData>(showBilling ? '/api/billing/subscription' : '')
+  const { data: logoData, reload: reloadLogo } = useApi<{ logoUrl: string | null }>('/api/business-profile/logo')
+
+  // Logo upload
+  const logoFileRef = useRef<HTMLInputElement>(null)
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoError, setLogoError] = useState<string | null>(null)
+
+  async function handleLogoFile(file: File) {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      setLogoError('Unsupported type. Use PNG, JPG, or WebP.')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('Logo must be under 2 MB.')
+      return
+    }
+    setLogoError(null)
+    setLogoUploading(true)
+    try {
+      await apiUploadFile('/api/business-profile/logo', 'logo', file)
+      reloadLogo()
+    } catch (err) {
+      setLogoError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setLogoUploading(false)
+    }
+  }
 
   // Profile form
   const [firstName, setFirstName] = useState('')
@@ -148,14 +175,39 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Manage your account details and security.</p>
       </div>
 
-      {/* Avatar + identity summary */}
+      {/* Identity summary — logo replaces initials avatar */}
       <div className="rounded-xl px-6 py-5 flex items-center gap-5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0"
-          style={{ background: 'oklch(55% 0.11 193 / 0.18)', color: 'oklch(72% 0.12 193)' }}
+        {/* Avatar / logo */}
+        <button
+          type="button"
+          title={logoUploading ? 'Uploading…' : 'Click to upload logo'}
+          disabled={logoUploading}
+          onClick={() => logoFileRef.current?.click()}
+          className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0 group"
+          style={logoData?.logoUrl ? { border: '1px solid var(--border-subtle)' } : { background: 'oklch(55% 0.11 193 / 0.18)' }}
         >
-          {initials}
-        </div>
+          {logoData?.logoUrl
+            ? <img src={logoData.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+            : <span className="text-xl font-bold" style={{ color: 'oklch(72% 0.12 193)' }}>{initials}</span>
+          }
+          {/* Hover overlay */}
+          <span className="absolute inset-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ background: 'oklch(0% 0 0 / 0.45)' }}>
+            {logoUploading
+              ? <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            }
+          </span>
+        </button>
+
+        <input
+          ref={logoFileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLogoFile(f) }}
+        />
+
         <div>
           <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>
             {[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.username || user?.email}
@@ -167,6 +219,10 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
               {membership.tenantName ? ` · ${membership.tenantName}` : ''}
             </span>
           )}
+          <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
+            {logoUploading ? 'Uploading…' : 'Click the logo to upload or replace it'}
+          </p>
+          {logoError && <p className="text-xs mt-1" style={{ color: 'var(--color-error)' }}>{logoError}</p>}
         </div>
       </div>
 

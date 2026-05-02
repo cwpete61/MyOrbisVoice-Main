@@ -27,12 +27,29 @@ router.post('/public/widget/session', asyncHandler(async (req, res) => {
   res.json({ data: result })
 }))
 
-// Authenticated endpoint — dashboard can also create a test session
+// Authenticated endpoint — dashboard creates a live session
 router.post('/widget/session', authenticate, requireTenantContext, asyncHandler(async (req, res) => {
   const tenantId = (req as any).user?.currentTenantId as string
   const result = await createWidgetSession(tenantId, {
     remoteIp: req.ip,
     userAgent: req.headers['user-agent'],
+  })
+  res.json({ data: result })
+}))
+
+// Draft test-session — carries ephemeral config (voiceName, avatarId) without saving to DB.
+// Gateway reads draftConfig from the session record and uses it instead of channel config.
+router.post('/widget/draft-session', authenticate, requireTenantContext, asyncHandler(async (req, res) => {
+  const tenantId = (req as any).user?.currentTenantId as string
+  const { voiceName, avatarId, channelType } = req.body as {
+    voiceName?: string
+    avatarId?: string
+    channelType?: string
+  }
+  const result = await createWidgetSession(tenantId, {
+    remoteIp: req.ip,
+    userAgent: req.headers['user-agent'],
+    draftConfig: { voiceName: voiceName ?? null, avatarId: avatarId ?? null, channelType: channelType ?? 'WIDGET', isDraft: true },
   })
   res.json({ data: result })
 }))

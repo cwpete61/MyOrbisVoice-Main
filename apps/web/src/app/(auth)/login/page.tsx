@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { apiLogin } from '@/lib/api'
-import { setTokens, clearTokens, isPlatformAdmin } from '@/lib/auth'
+import { setTokens, clearTokens, isPlatformAdmin, getTokenPayload } from '@/lib/auth'
 import { PasswordInput } from '@/components/PasswordInput'
 
 export default function LoginPage() {
@@ -22,7 +22,10 @@ export default function LoginPage() {
     try {
       const result = await apiLogin(loginId, loginPw)
       setTokens(result.accessToken, result.refreshToken)
-      router.push(isPlatformAdmin() ? '/admin' : '/dashboard')
+      const payload = getTokenPayload()
+      if (isPlatformAdmin()) router.push('/admin')
+      else if (payload?.roleKey === 'affiliate') router.push('/affiliate-portal/dashboard')
+      else router.push('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid credentials.')
     } finally {

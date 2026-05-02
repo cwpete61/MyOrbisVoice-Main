@@ -38,9 +38,11 @@ router.get('/business-dna/:id', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+const dnaBodySchema = z.object({}).passthrough()
+
 router.post('/business-dna', async (req, res, next) => {
   try {
-    const body = req.body as Record<string, unknown>
+    const body = validate(dnaBodySchema, req.body)
     const dna = await dnaService.createDNADraft(req.user!.currentTenantId!, body)
     res.status(201).json({ data: dna })
   } catch (err) { next(err) }
@@ -48,7 +50,7 @@ router.post('/business-dna', async (req, res, next) => {
 
 router.patch('/business-dna/:id', async (req, res, next) => {
   try {
-    const body = req.body as Record<string, unknown>
+    const body = validate(dnaBodySchema, req.body)
     const dna = await dnaService.updateDNADraft(req.user!.currentTenantId!, req.params['id']!, body)
     res.json({ data: dna })
   } catch (err) { next(err) }

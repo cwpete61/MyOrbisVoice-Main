@@ -56,25 +56,27 @@ const DEFAULT_REDIRECT_URI = process.env['GOOGLE_OAUTH_REDIRECT_URI']
 
 export async function getSystemSettings(): Promise<{
   google: { clientId: string | null; clientSecret: boolean; redirectUri: string | null }
-  stripe: { secretKey: boolean; webhookSecret: boolean }
+  stripe: { secretKey: boolean; publishableKey: string | null; webhookSecret: boolean }
   twilio: { accountSid: string | null; authToken: boolean; phoneNumber: string | null }
   reoon: { apiKey: boolean; mode: string }
   bunny: { apiKey: boolean; storageZone: string | null; cdnHostname: string | null; storageRegion: string; storagePassword: boolean }
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
+  smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
 }> {
   const rows = await prisma.systemConfig.findMany({
     where: {
       key: {
         in: [
           'google_client_id', 'google_client_secret', 'google_oauth_redirect_uri',
-          'stripe_secret_key', 'stripe_webhook_secret',
+          'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret',
           'twilio_account_sid', 'twilio_auth_token', 'twilio_phone_number',
           'reoon_api_key', 'reoon_mode',
           'bunny_api_key', 'bunny_storage_zone', 'bunny_storage_password',
           'bunny_cdn_hostname', 'bunny_storage_region',
           'storage_default_quota_gb', 'storage_warning_threshold_pct', 'storage_retention_days',
           'openai_api_key', 'openai_model',
+          'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from',
         ],
       },
     },
@@ -91,8 +93,9 @@ export async function getSystemSettings(): Promise<{
       redirectUri:  redirectUri?.value ?? DEFAULT_REDIRECT_URI,
     },
     stripe: {
-      secretKey:     !!(get('stripe_secret_key')     || process.env['STRIPE_SECRET_KEY']),
-      webhookSecret: !!(get('stripe_webhook_secret')  || process.env['STRIPE_WEBHOOK_SECRET']),
+      secretKey:      !!(get('stripe_secret_key')      || process.env['STRIPE_SECRET_KEY']),
+      publishableKey: get('stripe_publishable_key')?.value || process.env['STRIPE_PUBLISHABLE_KEY'] || null,
+      webhookSecret:  !!(get('stripe_webhook_secret')  || process.env['STRIPE_WEBHOOK_SECRET']),
     },
     twilio: {
       accountSid:  get('twilio_account_sid')?.value ?? (process.env['TWILIO_ACCOUNT_SID'] || null),
@@ -118,6 +121,13 @@ export async function getSystemSettings(): Promise<{
     openai: {
       apiKey: !!(get('openai_api_key') || process.env['OPENAI_API_KEY']),
       model:  get('openai_model')?.value ?? process.env['OPENAI_MODEL'] ?? 'gpt-4o-mini',
+    },
+    smtp: {
+      host:     get('smtp_host')?.value     ?? (process.env['SMTP_HOST']     || null),
+      port:     parseInt(get('smtp_port')?.value ?? process.env['SMTP_PORT'] ?? '587'),
+      user:     get('smtp_user')?.value     ?? (process.env['SMTP_USER']     || null),
+      password: !!(get('smtp_password')     || process.env['SMTP_PASSWORD']),
+      from:     get('smtp_from')?.value     ?? (process.env['SMTP_FROM']     || null),
     },
   }
 }

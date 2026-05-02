@@ -13,9 +13,9 @@ export function getRefreshToken(): string | null {
   return localStorage.getItem(REFRESH_TOKEN_KEY)
 }
 
-export function setTokens(accessToken: string, refreshToken: string): void {
+export function setTokens(accessToken: string, refreshToken: string | null): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+  if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
 }
 
 export function clearTokens(): void {
@@ -40,4 +40,24 @@ export function getTokenPayload(): { roleKey?: string; isPlatformRole?: boolean 
 
 export function isPlatformAdmin(): boolean {
   return getTokenPayload()?.isPlatformRole === true
+}
+
+export function getImpersonationInfo(): { tenantName: string; sessionId: string } | null {
+  if (typeof window === 'undefined') return null
+  const sessionId  = sessionStorage.getItem('impersonation_session_id')
+  const tenantName = sessionStorage.getItem('impersonation_tenant_name')
+  if (!sessionId || !tenantName) return null
+  return { sessionId, tenantName }
+}
+
+export function endImpersonation(): void {
+  const adminToken = sessionStorage.getItem('impersonation_admin_token')
+  sessionStorage.removeItem('impersonation_session_id')
+  sessionStorage.removeItem('impersonation_tenant_name')
+  sessionStorage.removeItem('impersonation_admin_token')
+  if (adminToken) {
+    localStorage.setItem('va_access_token', adminToken)
+  } else {
+    localStorage.removeItem('va_access_token')
+  }
 }
