@@ -9,6 +9,7 @@ import { SignOutButton } from '@/components/SignOutButton'
 import { SidebarUserBadge } from '@/components/SidebarUserBadge'
 import { NotificationBell } from '@/components/NotificationBell'
 import { TenantIdBadge } from '@/components/TenantIdBadge'
+import { TierBadge } from '@/components/TierBadge'
 import { getImpersonationInfo, endImpersonation } from '@/lib/auth'
 import { apiFetch } from '@/hooks/useApi'
 
@@ -142,7 +143,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>MyOrbisVoice</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              <TierBadge />
               <NotificationBell />
               <ThemeToggle />
             </div>
@@ -154,6 +156,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-sidebar)' }}
           >
             <div className="flex items-center gap-2">
+              <TierBadge />
               <TenantIdBadge />
               <NotificationBell />
               <ThemeToggle />
