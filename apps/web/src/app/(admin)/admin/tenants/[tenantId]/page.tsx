@@ -105,6 +105,30 @@ export default function AdminTenantDetailPage() {
     finally { setSaving(false) }
   }
 
+  const [grantPlanCode, setGrantPlanCode] = useState('')
+  const [grantSaving, setGrantSaving]     = useState(false)
+  async function grantPlan() {
+    if (!grantPlanCode) return
+    setGrantSaving(true)
+    try {
+      await apiFetch(`/api/admin/tenants/${tenantId}/grant-plan`, { method: 'POST', body: JSON.stringify({ planCode: grantPlanCode }) })
+      await reload()
+      showToast('success', `Plan '${grantPlanCode}' granted (Stripe bypassed).`)
+      setGrantPlanCode('')
+    } catch (err) { showToast('error', err instanceof Error ? err.message : 'Grant failed') }
+    finally { setGrantSaving(false) }
+  }
+  async function revokePlan() {
+    if (!confirm('Revoke admin-granted plan and reset entitlements to Free? Real Stripe subscriptions are not affected.')) return
+    setGrantSaving(true)
+    try {
+      await apiFetch(`/api/admin/tenants/${tenantId}/revoke-plan`, { method: 'POST', body: '{}' })
+      await reload()
+      showToast('success', 'Admin grant revoked. Entitlements reset to Free tier.')
+    } catch (err) { showToast('error', err instanceof Error ? err.message : 'Revoke failed') }
+    finally { setGrantSaving(false) }
+  }
+
   async function enterAsTenant() {
     setImpersonating(true)
     try {
@@ -204,6 +228,44 @@ export default function AdminTenantDetailPage() {
               Rename
             </button>
           </div>
+        </Card>
+
+        {/* Plan / Tier — Admin Grant (bypasses Stripe) */}
+        <Card title="Plan / Tier (Admin Grant — Bypasses Stripe)">
+          <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>
+            Grant this tenant any tier&apos;s entitlements without going through Stripe checkout. Real Stripe subscriptions are NOT affected.
+            Use for internal feature testing only — every grant is audit-logged.
+          </p>
+          <div className="flex gap-2 mb-3">
+            <select
+              value={grantPlanCode}
+              onChange={(e) => setGrantPlanCode(e.target.value)}
+              className="input flex-1 text-xs"
+            >
+              <option value="">Select a plan to grant…</option>
+              <option value="free">Free</option>
+              <option value="basic_monthly">Basic ($197/mo)</option>
+              <option value="pro_monthly">Pro ($497/mo)</option>
+              <option value="premier_monthly">Premier ($997/mo)</option>
+              <option value="enterprise_monthly">Enterprise ($1,997/mo)</option>
+              <option value="ltd">LTD ($497 lifetime)</option>
+            </select>
+            <button
+              onClick={grantPlan}
+              disabled={grantSaving || !grantPlanCode}
+              className="btn-primary text-xs"
+            >
+              {grantSaving ? 'Working…' : 'Grant'}
+            </button>
+          </div>
+          <button
+            onClick={revokePlan}
+            disabled={grantSaving}
+            className="btn-ghost text-xs w-full"
+            style={{ borderColor: 'oklch(55% 0.14 25 / 0.4)', color: 'oklch(60% 0.18 25)' }}
+          >
+            Revoke admin grant → reset to Free tier
+          </button>
         </Card>
 
         {/* Activity */}

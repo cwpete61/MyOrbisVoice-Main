@@ -96,6 +96,85 @@ router.post('/tenants/:tenantId/restore', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Admin grant-plan — bypasses Stripe entirely. Used for internal testing of
+// tier-gated features without creating real Stripe subscriptions or processing
+// payments. Audit-logged so it is never invisible.
+router.post('/tenants/:tenantId/grant-plan', async (req, res, next) => {
+  try {
+    const tenantId = req.params['tenantId']!
+    const { planCode } = req.body as { planCode?: string }
+    if (!planCode) throw new AppError('VALIDATION_ERROR', 'planCode is required', 422)
+
+    const plan = await prisma.plan.findFirst({ where: { code: planCode, isActive: true } })
+    if (!plan) throw new AppError('NOT_FOUND', `Plan '${planCode}' not found or inactive`, 404)
+
+    // Cancel any existing admin-granted subs (stripeSubscriptionId is null on those)
+    await prisma.subscription.updateMany({
+      where: { tenantId, stripeSubscriptionId: null, status: 'ACTIVE' },
+      data: { status: 'CANCELED', canceledAt: new Date() },
+    })
+
+    // Create the new admin-granted subscription record
+    const sub = await prisma.subscription.create({
+      data: {
+        tenantId,
+        planId: plan.id,
+        stripeSubscriptionId: null,  // null = admin-granted (no Stripe involvement)
+        status: 'ACTIVE',
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: null,  // open-ended for admin grants
+      },
+    })
+
+    // Sync entitlements from the granted plan
+    const { syncEntitlementsFromPlan } = await import('../services/entitlement.service.js')
+    await syncEntitlementsFromPlan(tenantId, plan.id)
+
+    writeAuditLog({
+      actorType: 'USER',
+      actorUserId: req.user!.id,
+      action: 'admin.plan_granted',
+      tenantId,
+      targetType: 'Subscription',
+      targetId: sub.id,
+      metadataJson: { planCode, planName: plan.name, granted_by: req.user!.email },
+    }).catch(e => console.error('[audit]', e))
+
+    res.json({ data: { subscription: sub, plan: { code: plan.code, name: plan.name } } })
+  } catch (err) { next(err) }
+})
+
+// Admin revoke-plan — cancels admin-granted sub, resets entitlements to free tier.
+// Does NOT touch real Stripe subscriptions (those have non-null stripeSubscriptionId).
+router.post('/tenants/:tenantId/revoke-plan', async (req, res, next) => {
+  try {
+    const tenantId = req.params['tenantId']!
+
+    // Cancel any active admin-granted subs (Stripe subs untouched)
+    const canceled = await prisma.subscription.updateMany({
+      where: { tenantId, stripeSubscriptionId: null, status: 'ACTIVE' },
+      data: { status: 'CANCELED', canceledAt: new Date() },
+    })
+
+    // Reset entitlements back to free tier
+    const freePlan = await prisma.plan.findFirst({ where: { code: 'free', isActive: true } })
+    if (freePlan) {
+      const { syncEntitlementsFromPlan } = await import('../services/entitlement.service.js')
+      await syncEntitlementsFromPlan(tenantId, freePlan.id)
+    }
+
+    writeAuditLog({
+      actorType: 'USER',
+      actorUserId: req.user!.id,
+      action: 'admin.plan_revoked',
+      tenantId,
+      metadataJson: { canceledCount: canceled.count, reset_to: 'free', revoked_by: req.user!.email },
+    }).catch(e => console.error('[audit]', e))
+
+    res.json({ data: { canceled: canceled.count, reset_to: 'free' } })
+  } catch (err) { next(err) }
+})
+
 // System Settings
 router.get('/system-settings', async (_req, res, next) => {
   try {
