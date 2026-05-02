@@ -928,6 +928,139 @@ docker rm -f pg16-restore-test
 2. Run `pnpm install` to restore the previous dependency tree.
 3. Verify the build passes: `pnpm --filter @voiceautomation/api build` and `pnpm --filter @voiceautomation/web build`.
 
+### Rollback procedure — bad deploy broke production
+
+**Symptoms:** site returns 500/502, login flow broken, blank pages, console errors after a deploy. You need to revert to last-known-good state in <5 minutes.
+
+**Pre-flight (always do this first):**
+```bash
+# Capture the broken state for later debugging — DO NOT skip
+ssh root@147.93.183.4 'docker logs myorbisvoice-api --tail=200' > /tmp/broken_api_$(date +%s).log
+ssh root@147.93.183.4 'docker logs myorbisvoice-web --tail=200' > /tmp/broken_web_$(date +%s).log
+```
+
+**Step 1 — Identify the last known good commit:**
+```bash
+git log --oneline -10                                # see recent deploys
+git tag -l                                            # see tagged checkpoints
+# Permanent rollback anchors (always present):
+#   pre-stabilization-20260502  — clean state, post-stabilization sweep
+#   disaster-backup-20260501    — pre-hardening snapshot
+```
+
+**Step 2 — Roll the working tree back to that commit:**
+```bash
+LAST_GOOD=pre-stabilization-20260502        # or any commit hash from step 1
+git checkout "$LAST_GOOD"
+```
+
+**Step 3 — Rebuild and redeploy ONLY the affected services:**
+```bash
+# Identify which apps changed since the rollback target
+git diff --name-only HEAD master | awk -F/ '{print $2}' | sort -u
+# Rebuild + deploy only those (saves 5+ minutes vs deploying everything)
+pnpm --filter @voiceautomation/api build
+./infrastructure/scripts/deploy.sh api "rollback to $LAST_GOOD"
+# (repeat for web/gateway as needed)
+```
+
+**Step 4 — Verify the rollback worked:**
+```bash
+curl -s https://api.myorbisvoice.com/health | grep -q '"status":"ok"' && echo OK
+curl -s -o /dev/null -w "%{http_code}\n" https://app.myorbisvoice.com/login        # expect 200
+ssh root@147.93.183.4 'docker logs myorbisvoice-api --tail=20'    # expect "listening on" with no errors
+```
+
+**Step 5 — Return to master and fix forward:**
+```bash
+git checkout master
+# Open a new branch to fix the bug. Do NOT redeploy from master until tests pass.
+```
+
+**⚠️ Note on Docker image rollback:** Images are tagged `:latest` only — there is no built-image version history. The procedure above rebuilds from source rather than retagging an old image. If you need image-level rollback (faster, no rebuild), it must be added to `deploy.sh` as a future improvement (tag the previous `:latest` as `:rollback` before overwriting).
+
+### Rollback procedure — config files wiped or corrupted
+
+**Symptoms:** containers won't start, env vars missing, compose syntax error after editing.
+
+**Step 1 — Restore from the most recent DR snapshot:**
+```bash
+# Find the most recent DR snapshot
+LATEST_DR=$(ls -td backups/dr-* | head -1)
+echo "Restoring from $LATEST_DR"
+
+# Compose file
+ssh root@147.93.183.4 'cp /opt/myorbisvoice/infrastructure/docker/docker-compose.prod.yml{,.broken.bak}'
+scp "$LATEST_DR/compose.prod.docker.yml" \
+    root@147.93.183.4:/opt/myorbisvoice/infrastructure/docker/docker-compose.prod.yml
+
+# Env file
+ssh root@147.93.183.4 'cp /opt/myorbisvoice/infrastructure/docker/.env.prod{,.broken.bak}'
+scp "$LATEST_DR/env.prod.docker" \
+    root@147.93.183.4:/opt/myorbisvoice/infrastructure/docker/.env.prod
+ssh root@147.93.183.4 'chmod 600 /opt/myorbisvoice/infrastructure/docker/.env.prod'
+```
+
+**Step 2 — Bring services back up:**
+```bash
+ssh root@147.93.183.4 'cd /opt/myorbisvoice/infrastructure/docker && \
+  docker compose -f docker-compose.prod.yml --env-file .env.prod up -d'
+```
+
+**Step 3 — Verify:**
+```bash
+curl -s https://api.myorbisvoice.com/health
+ssh root@147.93.183.4 'docker ps --filter name=myorbisvoice --format "{{.Names}} {{.Status}}"'
+```
+
+### Rollback procedure — database corrupted or wrong data deployed
+
+Use the verified restore procedure documented above. **Always test the restore in the PG16 sandbox container first**, then if confirmed working, restore to prod:
+
+**Step 1 — Stop write traffic:**
+```bash
+ssh root@147.93.183.4 'docker stop myorbisvoice-api myorbisvoice-gateway'
+```
+
+**Step 2 — Pick a dump (most recent good one):**
+```bash
+ssh root@147.93.183.4 'docker exec myorbisvoice-db-backup ls -lt /backups/ | head -10'
+# Note the filename you want: e.g. db_20260502_084359.dump
+```
+
+**Step 3 — Restore in place:**
+```bash
+DUMP=db_20260502_084359.dump  # ← change to the one you picked
+ssh root@147.93.183.4 "docker exec myorbisvoice-db-backup cat /backups/$DUMP" | \
+  ssh root@147.93.183.4 'docker exec -i myorbisvoice-postgres pg_restore \
+    -U voiceautomation -d voiceautomation --clean --if-exists --no-owner --no-acl'
+```
+
+**Step 4 — Verify schema state:**
+```bash
+ssh root@147.93.183.4 'docker exec myorbisvoice-postgres psql -U voiceautomation -d voiceautomation \
+  -c "SELECT count(*) FROM \"Tenant\"; SELECT count(*) FROM \"User\"; SELECT count(*) FROM \"Conversation\";"'
+```
+
+**Step 5 — Resume traffic:**
+```bash
+ssh root@147.93.183.4 'docker start myorbisvoice-api myorbisvoice-gateway'
+sleep 6 && curl -s https://api.myorbisvoice.com/health
+```
+
+### Quick reference — canonical paths
+
+These are the only files in production that should be edited. Everything else is generated or deprecated:
+
+| Asset | Path |
+|---|---|
+| Compose file | `/opt/myorbisvoice/infrastructure/docker/docker-compose.prod.yml` |
+| Env file | `/opt/myorbisvoice/infrastructure/docker/.env.prod` |
+| Caddy reverse proxy | `/opt/myorbisvoice/infrastructure/caddy/Caddyfile` |
+| Daily DB backups | volume `myorbisvoice_db_backups` (mounted at `/backups/` inside `myorbisvoice-db-backup`) |
+| Local DR snapshots | `backups/dr-YYYYMMDD_HHMMSS/` (gitignored) |
+| Last-known-good git tags | `pre-stabilization-20260502`, `disaster-backup-20260501` |
+
 ### What to back up beyond the database
 
 | Asset | Location | How |
