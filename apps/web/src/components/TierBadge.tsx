@@ -8,13 +8,14 @@ type Subscription = {
   plan?: { code: string; name: string } | null
 } | null
 
+// All tiers use the brand turquoise/teal palette (hue 193). Intensity scales with tier.
 const TIER_STYLE: Record<string, { bg: string; text: string; ring: string; label: string }> = {
-  free:               { bg: 'oklch(95% 0.02 270 / 0.5)',    text: 'oklch(40% 0.02 270)',  ring: 'oklch(85% 0.02 270)',  label: 'Free' },
-  basic_monthly:      { bg: 'oklch(96% 0.06 220 / 0.6)',    text: 'oklch(40% 0.15 220)',  ring: 'oklch(80% 0.10 220)',  label: 'Basic' },
-  pro_monthly:        { bg: 'oklch(95% 0.07 145 / 0.6)',    text: 'oklch(40% 0.15 145)',  ring: 'oklch(75% 0.12 145)',  label: 'Pro' },
-  premier_monthly:    { bg: 'oklch(94% 0.08 60 / 0.6)',     text: 'oklch(40% 0.16 60)',   ring: 'oklch(78% 0.14 60)',   label: 'Premier' },
-  enterprise_monthly: { bg: 'oklch(93% 0.06 320 / 0.6)',    text: 'oklch(40% 0.18 320)',  ring: 'oklch(75% 0.14 320)',  label: 'Enterprise' },
-  ltd:                { bg: 'oklch(94% 0.10 80 / 0.7)',     text: 'oklch(35% 0.18 80)',   ring: 'oklch(72% 0.16 80)',   label: 'LTD' },
+  free:               { bg: 'oklch(95% 0.04 193 / 0.5)',    text: 'oklch(40% 0.09 193)',  ring: 'oklch(80% 0.07 193)',  label: 'Free' },
+  basic_monthly:      { bg: 'oklch(94% 0.07 193 / 0.7)',    text: 'oklch(38% 0.11 193)',  ring: 'oklch(72% 0.10 193)',  label: 'Basic' },
+  pro_monthly:        { bg: 'oklch(90% 0.10 193 / 0.8)',    text: 'oklch(35% 0.13 193)',  ring: 'oklch(60% 0.13 193)',  label: 'Pro' },
+  premier_monthly:    { bg: 'oklch(82% 0.13 193 / 0.85)',   text: 'oklch(20% 0.04 193)',  ring: 'oklch(50% 0.14 193)',  label: 'Premier' },
+  enterprise_monthly: { bg: 'oklch(70% 0.14 193)',          text: 'oklch(15% 0.02 193)',  ring: 'oklch(40% 0.13 193)',  label: 'Enterprise' },
+  ltd:                { bg: 'oklch(55% 0.13 193)',          text: 'oklch(98% 0.01 193)',  ring: 'oklch(30% 0.10 193)',  label: 'LTD' },
 }
 
 const FALLBACK = TIER_STYLE['free']!
