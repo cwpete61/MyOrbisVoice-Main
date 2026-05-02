@@ -28,6 +28,7 @@ export function AdminNav() {
       section: 'Account',
       items: [
         { href: '/admin/profile', label: 'Profile', icon: <UserIcon /> },
+        { href: '/admin/help',    label: 'Help',    icon: <HelpIcon /> },
       ],
     },
   ]
@@ -130,6 +131,16 @@ function AffiliatesIcon() {
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="4" cy="8" r="2" /><circle cx="12" cy="4" r="2" /><circle cx="12" cy="12" r="2" />
       <path d="M6 7.5l4-2M6 8.5l4 2" />
+    </svg>
+  )
+}
+
+function HelpIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="6.5" />
+      <path d="M6 6a2 2 0 1 1 3 1.5c-.5.4-1 .7-1 1.5" />
+      <circle cx="8" cy="11.5" r="0.5" fill="currentColor" />
     </svg>
   )
 }
