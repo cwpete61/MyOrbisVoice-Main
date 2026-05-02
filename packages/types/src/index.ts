@@ -64,6 +64,8 @@ export interface TokenPayload {
   tenantId: string | null
   roleKey: RoleKey
   isPlatformRole: boolean
+  impersonatedBy?: string        // adminUserId when in impersonation mode
+  impersonationSessionId?: string
   iat?: number
   exp?: number
 }
@@ -78,6 +80,8 @@ export interface AuthUser {
   currentTenantId: string | null
   roleKey: RoleKey
   isPlatformRole: boolean
+  impersonatedBy?: string
+  impersonationSessionId?: string
 }
 
 // Standard API response envelope

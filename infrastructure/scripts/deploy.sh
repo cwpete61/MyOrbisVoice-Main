@@ -43,12 +43,27 @@ ssh "$SERVER" "
 "
 ok "Prisma client pushed to api + gateway containers"
 
+# ── 2b. Sync extra node_modules that may not be in the container image ────────
+log "Syncing extra node_modules to server..."
+NODEMAILER_LOCAL="$REPO_ROOT/node_modules/.pnpm/nodemailer@8.0.7/node_modules/nodemailer"
+if [[ -d "$NODEMAILER_LOCAL" ]]; then
+  rsync -az "$NODEMAILER_LOCAL/" "$SERVER:$REMOTE/extra_modules/nodemailer/"
+  ssh "$SERVER" "
+    docker exec myorbisvoice-api   mkdir -p /app/node_modules/nodemailer
+    docker cp $REMOTE/extra_modules/nodemailer/. myorbisvoice-api:/app/node_modules/nodemailer/
+    docker exec myorbisvoice-gateway mkdir -p /app/node_modules/nodemailer
+    docker cp $REMOTE/extra_modules/nodemailer/. myorbisvoice-gateway:/app/node_modules/nodemailer/
+  "
+  ok "nodemailer synced to api + gateway containers"
+fi
+
 # ── 3. Service steps ───────────────────────────────────────────────────────
 step_api() {
   log "API — build → sync → inject → restart..."
   pnpm --filter @voiceautomation/api build 2>&1 | grep -E "error TS|^>" || true
   rsync -az --delete "$REPO_ROOT/apps/api/dist/" "$SERVER:$REMOTE/apps/api/dist/"
-  ssh "$SERVER" "docker cp $REMOTE/apps/api/dist/. myorbisvoice-api:/app/apps/api/dist/"
+  rsync -az "$REPO_ROOT/prisma/schema.prisma" "$SERVER:$REMOTE/prisma/schema.prisma"
+  ssh "$SERVER" "docker cp $REMOTE/apps/api/dist/. myorbisvoice-api:/app/apps/api/dist/ && docker cp $REMOTE/prisma/schema.prisma myorbisvoice-api:/app/prisma/schema.prisma"
   ssh "$SERVER" "docker restart myorbisvoice-api"
   sleep 5
   # Verify API started
