@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 
 interface PhoneNumber {
@@ -45,6 +45,21 @@ export default function PhoneNumbersPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
+  const [maxAllowed, setMaxAllowed] = useState<number | null>(null)
+
+  // Fetch entitlement so we can show "X of Y used" + disable the Add button at cap
+  useEffect(() => {
+    apiFetch<Record<string, boolean | number>>('/api/entitlements')
+      .then(e => {
+        const v = e?.['max_phone_numbers']
+        setMaxAllowed(typeof v === 'number' ? v : 0)
+      })
+      .catch(() => setMaxAllowed(0))
+  }, [])
+
+  const used   = numbers?.length ?? 0
+  const atCap  = maxAllowed !== null && used >= maxAllowed
+  const noPlan = maxAllowed === 0
 
   const [form, setForm] = useState({
     e164Number: '+1',
@@ -134,8 +149,28 @@ export default function PhoneNumbersPage() {
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
             Manage your Twilio numbers for inbound and outbound calling.
           </p>
+          {maxAllowed !== null && (
+            <p className="text-xs mt-1.5" style={{ color: atCap ? 'oklch(55% 0.18 25)' : 'var(--text-tertiary)' }}>
+              <strong>{used} of {maxAllowed}</strong> phone numbers used
+              {atCap && ' — plan limit reached'}
+            </p>
+          )}
         </div>
-        <button onClick={startAdd} className="btn-primary text-sm px-4 py-2">+ Add number</button>
+        <button
+          onClick={startAdd}
+          disabled={atCap}
+          title={
+            atCap
+              ? noPlan
+                ? 'Your plan does not include phone numbers. Upgrade to add a phone line.'
+                : `Plan limit reached: ${used} of ${maxAllowed} used. Upgrade your plan or contact support.`
+              : '+ Add number'
+          }
+          className="btn-primary text-sm px-4 py-2"
+          style={atCap ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+        >
+          + Add number
+        </button>
       </div>
 
       {/* Webhook reference card */}

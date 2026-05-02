@@ -5,6 +5,7 @@ import { requireTenantContext } from '../middleware/rbac.js'
 import { asyncHandler } from '../lib/async-handler.js'
 import { prisma } from '../lib/prisma.js'
 import { AppError } from '@voiceautomation/shared'
+import { checkEntitlement } from '../services/entitlement.service.js'
 
 const router: IRouter = Router()
 
@@ -22,13 +23,30 @@ router.use(authenticate, requireTenantContext)
 
 router.get('/phone-numbers', asyncHandler(async (req, res) => {
   const tenantId = req.user!.currentTenantId!
-  const numbers  = await prisma.phoneNumber.findMany({ where: { tenantId }, orderBy: { createdAt: 'asc' } })
-  res.json({ data: numbers })
+  const [numbers, maxAllowed] = await Promise.all([
+    prisma.phoneNumber.findMany({ where: { tenantId }, orderBy: { createdAt: 'asc' } }),
+    checkEntitlement(tenantId, 'max_phone_numbers'),
+  ])
+  res.json({ data: numbers, meta: { used: numbers.length, max: typeof maxAllowed === 'number' ? maxAllowed : 0 } })
 }))
 
 router.post('/phone-numbers', asyncHandler(async (req, res) => {
   const tenantId = req.user!.currentTenantId!
   const body     = phoneSchema.parse(req.body)
+
+  // Enforce plan cap on number of phone lines
+  const maxAllowed = await checkEntitlement(tenantId, 'max_phone_numbers')
+  const max = typeof maxAllowed === 'number' ? maxAllowed : 0
+  const currentCount = await prisma.phoneNumber.count({ where: { tenantId } })
+  if (currentCount >= max) {
+    throw new AppError(
+      'FORBIDDEN',
+      max === 0
+        ? 'Your plan does not include phone numbers. Upgrade to add a phone line.'
+        : `Plan limit reached: you have ${currentCount} of ${max} phone numbers. Upgrade your plan or contact support to request more.`,
+      403,
+    )
+  }
 
   const existing = await prisma.phoneNumber.findUnique({ where: { e164Number: body.e164Number } })
   if (existing) throw new AppError('CONFLICT', 'This number is already registered', 409)
