@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { HELP_CONTENT, type HelpArticle, type HelpSection } from '@/lib/helpContent'
 
 function Icon({ d, size = 15 }: { d: string; size?: number }) {
@@ -87,6 +87,25 @@ export default function HelpPage() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(
     Object.fromEntries(HELP_CONTENT.map(s => [s.id, true]))
   )
+
+  // Deep-link support: if URL has #article-id, open that article on mount
+  // (also responds to in-page hash changes — e.g. nav from another tab)
+  useEffect(() => {
+    function applyHash() {
+      const hash = window.location.hash.slice(1)
+      if (!hash) return
+      for (const section of HELP_CONTENT) {
+        if (section.articles.some(a => a.id === hash)) {
+          setActiveArticleId(hash)
+          setExpandedSections(prev => ({ ...prev, [section.id]: true }))
+          return
+        }
+      }
+    }
+    applyHash()
+    window.addEventListener('hashchange', applyHash)
+    return () => window.removeEventListener('hashchange', applyHash)
+  }, [])
 
   const filtered = useMemo(() => {
     if (!search.trim()) return HELP_CONTENT

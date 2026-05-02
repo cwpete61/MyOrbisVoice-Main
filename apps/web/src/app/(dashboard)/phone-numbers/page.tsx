@@ -249,8 +249,32 @@ export default function PhoneNumbersPage() {
         <div className="text-sm py-8 text-center rounded-xl border" style={{ color: 'var(--text-tertiary)', borderColor: 'var(--border-subtle)' }}>
           No phone numbers yet. Add one to enable inbound calling.
         </div>
-      ) : (
-        <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-subtle)' }}>
+      ) : null}
+
+      {/* Help link — points to the Twilio setup section of the help center.
+          Pulse animation draws attention to the right place to start. */}
+      <a
+        href="/help#integrations-twilio"
+        className="block mt-4 px-4 py-3 rounded-xl text-center text-sm font-semibold animate-pulse-help"
+        style={{
+          background: 'oklch(55% 0.20 25 / 0.08)',
+          border: '2px solid oklch(60% 0.22 25)',
+          color: 'oklch(50% 0.22 25)',
+          textDecoration: 'none',
+        }}
+      >
+        ⚠ Need help configuring Twilio? Read the step-by-step guide →
+      </a>
+      <style jsx>{`
+        @keyframes pulse-help {
+          0%, 100% { opacity: 1; box-shadow: 0 0 0 0 oklch(60% 0.22 25 / 0.4); }
+          50%      { opacity: 0.85; box-shadow: 0 0 0 6px oklch(60% 0.22 25 / 0); }
+        }
+        .animate-pulse-help { animation: pulse-help 2s ease-in-out infinite; }
+      `}</style>
+
+      {list.length > 0 && (
+        <div className="rounded-xl border overflow-hidden mt-4" style={{ borderColor: 'var(--border-subtle)' }}>
           {list.map((n, i) => (
             <div
               key={n.id}
