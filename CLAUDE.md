@@ -51,6 +51,10 @@ That rule must hold across all implementation decisions.
 ### Marketing
 - host: Spaceship
 - domain: `myorbisvoice.com`
+- FTP host: `server43.shared.spaceship.host` (FTPS explicit on port 21)
+- FTP user: `MyOrbisVoice@377ee9cb-5afb-4a2e-aed8-ca3464387273-internalonly.spacecharged.site` (staging — confirm live target before next deploy)
+- Password: stored in `~/.netrc` (mode 600), **never** in this file or git
+- Deploy command: `./infrastructure/scripts/deploy-marketing.sh`
 
 ### Application
 - host: Contabo

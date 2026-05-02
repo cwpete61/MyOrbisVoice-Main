@@ -22,6 +22,11 @@ prisma/migrations/dev.db
 *.swp
 .claude/
 
+# Credentials (never commit)
+.netrc
+*.netrc
+docs/*.coreftp
+
 # OS
 .DS_Store
 Thumbs.db
