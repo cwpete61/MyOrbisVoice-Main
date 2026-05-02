@@ -251,11 +251,11 @@ export default function PhoneNumbersPage() {
         </div>
       ) : null}
 
-      {/* Help link — points to the Twilio setup section of the help center.
-          Pulse animation draws attention to the right place to start. */}
+      {/* Help link — points to the Twilio setup + approval section of the help center.
+          Pulse animation draws attention because outbound + SMS require carrier approval. */}
       <a
-        href="/help#integrations-twilio"
-        className="block mt-4 px-4 py-3 rounded-xl text-center text-sm font-semibold animate-pulse-help"
+        href="/help#integrations-twilio-approval"
+        className="block mt-4 px-4 py-4 rounded-xl animate-pulse-help"
         style={{
           background: 'oklch(55% 0.20 25 / 0.08)',
           border: '2px solid oklch(60% 0.22 25)',
@@ -263,14 +263,27 @@ export default function PhoneNumbersPage() {
           textDecoration: 'none',
         }}
       >
-        ⚠ Need help configuring Twilio? Read the step-by-step guide →
+        <div className="flex items-start gap-3">
+          <span className="text-xl flex-shrink-0 leading-none mt-0.5">⚠</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold mb-1">
+              Important: Outbound calling and SMS require Twilio carrier approval
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: 'oklch(45% 0.18 25)' }}>
+              Inbound calls work immediately, but <strong>outbound voice</strong> needs CNAM/STIR-SHAKEN registration
+              and <strong>SMS</strong> requires 10DLC / A2P registration with the carriers.
+              These approvals can take 1–4 weeks. Click here for the full step-by-step setup
+              and approval guide → <span style={{ textDecoration: 'underline' }}>Read it before going live</span>
+            </p>
+          </div>
+        </div>
       </a>
       <style jsx>{`
         @keyframes pulse-help {
           0%, 100% { opacity: 1; box-shadow: 0 0 0 0 oklch(60% 0.22 25 / 0.4); }
-          50%      { opacity: 0.85; box-shadow: 0 0 0 6px oklch(60% 0.22 25 / 0); }
+          50%      { opacity: 0.92; box-shadow: 0 0 0 8px oklch(60% 0.22 25 / 0); }
         }
-        .animate-pulse-help { animation: pulse-help 2s ease-in-out infinite; }
+        .animate-pulse-help { animation: pulse-help 2.5s ease-in-out infinite; }
       `}</style>
 
       {list.length > 0 && (
