@@ -337,6 +337,7 @@ model Tenant {
   stripeCustomerRef      StripeCustomerRef?
   subscriptions          Subscription[]
   phoneNumbers           PhoneNumber[]
+  twilioSubaccount       TenantTwilioSubaccount?
   contacts               Contact[]
   conversations          Conversation[]
   appointments           Appointment[]
@@ -613,18 +614,47 @@ model Subscription {
 }
 
 model PhoneNumber {
-  id               String   @id @default(uuid())
-  tenantId         String
-  twilioNumberSid  String?
-  e164Number       String   @unique
-  displayLabel     String?
-  isInboundEnabled Boolean  @default(false)
-  isOutboundEnabled Boolean @default(false)
-  isSmsEnabled     Boolean  @default(false)
-  forwardingTarget String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                   String    @id @default(uuid())
+  tenantId             String
+  twilioNumberSid      String?
+  twilioSubaccountSid  String?   // null = on master account; populated once subaccount exists
+  e164Number           String    @unique
+  displayLabel         String?
+  monthlyPriceCents    Int?      // captured at purchase time so we can show it without re-querying Twilio
+  isInboundEnabled     Boolean   @default(false)
+  isOutboundEnabled    Boolean   @default(false)
+  isSmsEnabled         Boolean   @default(false)
+  forwardingTarget     String?
+  // Cancellation grace period — when set, number is marked for release at this time.
+  // Background job (or check-on-fetch) releases it when reached.
+  releaseScheduledAt   DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  tenant               Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+// One row per tenant — created lazily on the tenant's FIRST number purchase.
+// Stores the Twilio subaccount SID + encrypted subaccount auth token.
+// Numbers, brands, billing in Twilio are scoped to this subaccount.
+model TenantTwilioSubaccount {
+  id                          String    @id @default(uuid())
+  tenantId                    String    @unique
+  twilioSubaccountSid         String    @unique
+  encryptedSubaccountAuthToken String
+  status                      TwilioSubaccountStatus @default(ACTIVE)
+  // Set when tenant cancels their subscription. After cancellationGraceUntil
+  // expires we release all the subaccount's resources and close it.
+  cancellationGraceUntil      DateTime?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+  tenant                      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+enum TwilioSubaccountStatus {
+  ACTIVE
+  PENDING_CLOSURE   // grace period running
+  CLOSED            // closed on Twilio's side
+  SUSPENDED         // platform-side suspension (abuse, etc.)
 }
 
 model Contact {
