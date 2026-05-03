@@ -26,7 +26,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Overview',
     items: [
-      { href: '/dashboard', label: 'Dashboard', icon: <Icon d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z" /> },
+      { href: '/dashboard',  label: 'Dashboard',  icon: <Icon d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z" /> },
+      { href: '/onboarding', label: 'Get Started', icon: <Icon d="M8 1.5l1.8 4 4.4.4-3.3 3 1 4.3L8 11l-3.9 2.2 1-4.3-3.3-3 4.4-.4z" /> },
     ],
   },
   {

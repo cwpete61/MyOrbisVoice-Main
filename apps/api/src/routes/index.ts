@@ -20,6 +20,7 @@ import staffRouter from './staff.js'
 import conversationsRouter from './conversations.js'
 import notificationsRouter from './notifications.js'
 import dashboardRouter from './dashboard.js'
+import onboardingRouter from './onboarding.js'
 import { twilioInboundRouter } from './twilio-inbound.js'
 import { outboundWebhooksRouter } from './outbound-webhooks.js'
 import { validateTwilioWebhook } from '../middleware/twilio-signature.js'
@@ -50,5 +51,6 @@ router.use('/api', staffRouter)
 router.use('/api', conversationsRouter)
 router.use('/api', notificationsRouter)
 router.use('/api', dashboardRouter)
+router.use('/api', onboardingRouter)
 
 export default router

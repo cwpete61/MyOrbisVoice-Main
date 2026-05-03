@@ -40,7 +40,7 @@ function SignupForm() {
     try {
       const result = await apiSignup(username, email, password, businessName, refCode)
       setTokens(result.accessToken, result.refreshToken)
-      router.push('/dashboard')
+      router.push('/onboarding')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign up failed. Please try again.')
     } finally {
