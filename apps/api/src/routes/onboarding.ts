@@ -14,17 +14,18 @@ const router: IRouter = Router()
 router.use(authenticate, requireTenantContext)
 
 interface OnboardingStep {
-  key:         'profile' | 'dna' | 'agent' | 'channel' | 'number'
+  key:         'profile' | 'dna' | 'agent' | 'channel' | 'number' | 'a2p'
   label:       string
   description: string
   href:        string
   completed:   boolean
+  optional?:   boolean
 }
 
 router.get('/onboarding/status', asyncHandler(async (req, res) => {
   const tenantId = req.user!.currentTenantId!
 
-  const [businessProfile, activeDNA, receptionist, inboundChannel, phoneCount] = await Promise.all([
+  const [businessProfile, activeDNA, receptionist, inboundChannel, phoneCount, a2pApp] = await Promise.all([
     prisma.businessProfile.findFirst({
       where:  { tenantId },
       select: { brandName: true, businessHoursJson: true, addressLine1: true },
@@ -45,6 +46,10 @@ router.get('/onboarding/status', asyncHandler(async (req, res) => {
       select: { isEnabled: true, promptVersionId: true },
     }),
     prisma.phoneNumber.count({ where: { tenantId } }),
+    prisma.tenantA2PApplication.findUnique({
+      where:  { tenantId },
+      select: { status: true },
+    }),
   ])
 
   // Profile is "done" once brand name is set AND hours are configured
@@ -57,6 +62,10 @@ router.get('/onboarding/status', asyncHandler(async (req, res) => {
   const channelDone = !!inboundChannel?.isEnabled
   // Number is "done" once at least one number is purchased
   const numberDone  = phoneCount > 0
+  // A2P is "done" once the application has been submitted (or approved).
+  // DRAFT and missing both count as not-done. REJECTED counts as not-done so
+  // tenant returns to fix issues.
+  const a2pDone     = a2pApp?.status === 'SUBMITTED' || a2pApp?.status === 'APPROVED'
 
   const steps: OnboardingStep[] = [
     { key: 'profile', label: 'Business Profile', description: 'Set your business name, hours, and contact details so the agent knows who it is representing.', href: '/settings',         completed: profileDone },
@@ -64,16 +73,23 @@ router.get('/onboarding/status', asyncHandler(async (req, res) => {
     { key: 'agent',   label: 'Receptionist',     description: 'Pick a voice and tune the receptionist agent that will answer your calls.',                    href: '/agents',           completed: agentDone },
     { key: 'channel', label: 'Inbound Channel',  description: 'Enable the inbound receptionist channel and bind your published prompt.',                       href: '/channels',         completed: channelDone },
     { key: 'number',  label: 'Phone Number',     description: 'Get a number for your business. Search by area code and purchase in one click.',                href: '/phone-numbers',    completed: numberDone },
+    { key: 'a2p',     label: 'SMS Compliance',   description: 'Register your business for A2P 10DLC so your AI agent can send SMS at full carrier throughput. Required if you plan to use SMS.', href: '/a2p',              completed: a2pDone, optional: true },
   ]
 
+  // completedCount counts ALL steps that are done (including optional ones)
+  // for progress-bar display. allComplete only requires REQUIRED steps so a
+  // tenant who skips an optional step (e.g. A2P, if they aren't using SMS)
+  // still sees "you are all set."
   const completedCount = steps.filter(s => s.completed).length
+  const requiredSteps  = steps.filter(s => !s.optional)
+  const allRequiredDone = requiredSteps.every(s => s.completed)
 
   res.json({
     data: {
       steps,
       completedCount,
       totalCount:  steps.length,
-      allComplete: completedCount === steps.length,
+      allComplete: allRequiredDone,
     },
   })
 }))

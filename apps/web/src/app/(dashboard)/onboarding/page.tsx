@@ -4,11 +4,12 @@ import Link from 'next/link'
 import { useApi } from '@/hooks/useApi'
 
 interface OnboardingStep {
-  key:         'profile' | 'dna' | 'agent' | 'channel' | 'number'
+  key:         'profile' | 'dna' | 'agent' | 'channel' | 'number' | 'a2p'
   label:       string
   description: string
   href:        string
   completed:   boolean
+  optional?:   boolean
 }
 
 interface OnboardingStatus {
@@ -107,7 +108,14 @@ export default function OnboardingPage() {
             </div>
             <div className="flex-1">
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{step.label}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{step.label}</h3>
+                  {step.optional && !step.completed && (
+                    <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>
+                      Optional
+                    </span>
+                  )}
+                </div>
                 {step.completed && (
                   <span className="text-xs font-medium" style={{ color: 'oklch(45% 0.16 193)' }}>Complete</span>
                 )}
