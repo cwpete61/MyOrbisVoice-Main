@@ -1,18 +1,25 @@
 import type { Request, Response, NextFunction } from 'express'
 import twilio from 'twilio'
 import { getTwilioAuthToken } from '../services/twilio.service.js'
-import { prisma } from '../lib/prisma.js'
 
-// Validate X-Twilio-Signature using the per-tenant auth token.
-// Enforcement is ON by default. Set TWILIO_ENFORCE_SIG=false only in local development.
-// Only runs on /webhooks/twilio/* paths — passes all other routes through immediately.
+/**
+ * Validate X-Twilio-Signature using the platform's master Twilio auth token.
+ *
+ * In the managed-Twilio model (2026-05-02 onward), all tenants share one
+ * master Twilio account so signature validation needs only one auth token —
+ * no per-tenant lookup required. Falls back to the TWILIO_AUTH_TOKEN env var
+ * if SystemConfig isn't yet populated.
+ *
+ * Enforcement is ON by default. Set TWILIO_ENFORCE_SIG=false only in local dev.
+ * Only runs on /webhooks/twilio/* paths — passes all other routes through.
+ */
 export async function validateTwilioWebhook(req: Request, res: Response, next: NextFunction) {
   if (!req.path.startsWith('/webhooks/twilio')) { next(); return }
   const enforce = process.env['TWILIO_ENFORCE_SIG'] !== 'false'
 
   const signature = req.headers['x-twilio-signature'] as string | undefined
 
-  // No signature at all — only reject in enforce mode (likely a non-Twilio request)
+  // No signature at all — only reject in enforce mode
   if (!signature) {
     if (enforce) {
       return res.status(403).type('text/xml').send('<Response><Hangup/></Response>')
@@ -21,28 +28,15 @@ export async function validateTwilioWebhook(req: Request, res: Response, next: N
     return next()
   }
 
-  // Determine which auth token to use for validation
-  let authToken: string | null = null
-
-  const toNumber = req.body?.To as string | undefined
-  if (toNumber) {
-    try {
-      const phone = await prisma.phoneNumber.findFirst({
-        where: { e164Number: toNumber },
-        select: { tenantId: true },
-      })
-      if (phone) {
-        authToken = await getTwilioAuthToken(phone.tenantId)
-      }
-    } catch { /* fall through to platform key */ }
-  }
+  // Platform master auth token — same for all tenants
+  let authToken = await getTwilioAuthToken()
+  if (!authToken) authToken = process.env['TWILIO_AUTH_TOKEN'] ?? null
 
   if (!authToken) {
-    authToken = process.env['TWILIO_AUTH_TOKEN'] ?? null
-  }
-
-  if (!authToken) {
-    console.warn('[twilio-sig] No auth token available for signature validation — passing through')
+    console.warn('[twilio-sig] No platform Twilio auth token configured — cannot validate signature')
+    if (enforce) {
+      return res.status(403).type('text/xml').send('<Response><Hangup/></Response>')
+    }
     return next()
   }
 
@@ -57,7 +51,6 @@ export async function validateTwilioWebhook(req: Request, res: Response, next: N
     if (enforce) {
       return res.status(403).type('text/xml').send('<Response><Hangup/></Response>')
     }
-    // Log the mismatch but don't block — helps diagnose URL config issues
   }
 
   next()

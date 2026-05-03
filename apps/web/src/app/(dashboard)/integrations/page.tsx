@@ -36,9 +36,7 @@ export default function IntegrationsPage() {
   const [connecting, setConnecting] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  // Twilio form state
-  const [twilioForm, setTwilioForm] = useState({ accountSid: '', authToken: '' })
-  const [twilioSaving, setTwilioSaving] = useState(false)
+  // (Twilio is platform-managed in the new model — no per-tenant form needed)
 
   // Gemini form state
   const [geminiKey, setGeminiKey] = useState('')
@@ -95,29 +93,8 @@ export default function IntegrationsPage() {
     finally { setConnecting(false) }
   }
 
-  async function saveTwilio() {
-    if (!twilioForm.accountSid || !twilioForm.authToken) return
-    setTwilioSaving(true)
-    try {
-      await apiFetch('/api/integrations/twilio', {
-        method: 'POST',
-        body: JSON.stringify({ accountSid: twilioForm.accountSid, authToken: twilioForm.authToken }),
-      })
-      setTwilioForm({ accountSid: '', authToken: '' })
-      showToast('success', 'Twilio credentials saved.')
-      reload()
-    } catch (err) { showToast('error', err instanceof Error ? err.message : 'Failed') }
-    finally { setTwilioSaving(false) }
-  }
-
-  async function disconnectTwilio() {
-    if (!confirm('Disconnect Twilio? Inbound calls will stop routing to the AI agent.')) return
-    try {
-      await apiFetch('/api/integrations/twilio', { method: 'DELETE' })
-      showToast('success', 'Twilio disconnected.')
-      reload()
-    } catch { showToast('error', 'Failed to disconnect Twilio') }
-  }
+  // saveTwilio / disconnectTwilio removed — Twilio is platform-managed in the new model.
+  // Numbers are requested via the Phone Numbers page; admins provision them.
 
   async function saveGemini() {
     if (!geminiKey.trim()) return
@@ -254,8 +231,8 @@ export default function IntegrationsPage() {
         </div>
       )}
 
-      {/* ── Twilio ─────────────────────────────────────────────────────── */}
-      {!loading && twilio && (
+      {/* ── Twilio (managed by OrbisVoice — no tenant action required) ── */}
+      {!loading && (
         <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
           <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             <div className="flex items-center gap-3">
@@ -265,82 +242,30 @@ export default function IntegrationsPage() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Twilio</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Inbound calls · Outbound calls · SMS</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Twilio (Voice & SMS)</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Inbound calls · Outbound calls · SMS — managed by OrbisVoice</p>
               </div>
             </div>
-            <span className="badge" style={{ background: twilioStyle.bg, color: twilioStyle.text }}>{twilioStyle.label}</span>
+            <span className="badge" style={{ background: 'oklch(95% 0.07 145 / 0.6)', color: 'oklch(40% 0.15 145)' }}>Managed</span>
           </div>
 
-          <div className="px-6 py-5 space-y-4">
-            {twilio.status === 'CONNECTED' && (
-              <dl className="space-y-2">
-                <div className="flex items-center gap-6">
-                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>Account SID</dt>
-                  <dd className="text-sm font-mono" style={{ color: 'var(--text-primary)' }}>{twilio.accountSid}</dd>
-                </div>
-                <div className="flex items-center gap-6">
-                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>Auth Token</dt>
-                  <dd className="text-sm" style={{ color: 'var(--text-tertiary)' }}>••••••••••••••••••••••••••••••••</dd>
-                </div>
-                {twilio.lastVerifiedAt && (
-                  <div className="flex items-center gap-6">
-                    <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>Saved</dt>
-                    <dd className="text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(twilio.lastVerifiedAt).toLocaleString()}</dd>
-                  </div>
-                )}
-              </dl>
-            )}
-
-            {/* Webhook URLs — always visible so they can be copied into Twilio */}
-            <div className="p-4 rounded-lg space-y-2" style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)' }}>
-              <p className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                Paste these into Twilio → Phone Numbers → Voice Configuration
-              </p>
-              {[
-                { label: 'Voice webhook',   value: 'https://api.myorbisvoice.com/api/webhooks/twilio/voice'  },
-                { label: 'Status callback', value: 'https://api.myorbisvoice.com/api/webhooks/twilio/status' },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex items-center gap-2">
-                  <span className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>{label}</span>
-                  <code className="text-xs font-mono flex-1 truncate px-2 py-1 rounded" style={{ background: 'var(--surface-base)', color: 'var(--text-primary)' }}>{value}</code>
-                  <button onClick={() => navigator.clipboard.writeText(value)}
-                    className="text-xs px-2 py-1 rounded" style={{ background: 'var(--surface-raised)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
-                    Copy
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Credentials form */}
-            <div className="space-y-3 pt-2">
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                {twilio.status === 'CONNECTED' ? 'Rotate credentials' : 'Connect Twilio'}
-              </p>
-              <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Account SID</label>
-                <input value={twilioForm.accountSid} onChange={(e) => setTwilioForm({ ...twilioForm, accountSid: e.target.value })}
-                  className={inp} placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
-              </div>
-              <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Auth Token</label>
-                <input type="password" value={twilioForm.authToken} onChange={(e) => setTwilioForm({ ...twilioForm, authToken: e.target.value })}
-                  className={inp} placeholder="Your Twilio auth token" autoComplete="new-password" />
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button onClick={saveTwilio} disabled={twilioSaving || !twilioForm.accountSid || !twilioForm.authToken} className="btn-primary">
-                  {twilioSaving ? 'Saving…' : twilio.status === 'CONNECTED' ? 'Rotate' : 'Save credentials'}
-                </button>
-                {twilio.status === 'CONNECTED' && (
-                  <button onClick={disconnectTwilio} className="btn-danger">Disconnect</button>
-                )}
-              </div>
-            </div>
+          <div className="px-6 py-5 space-y-3">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              You don&apos;t need to create or connect a Twilio account.
+              OrbisVoice runs all voice and SMS through our master Twilio account, and we
+              assign phone numbers directly to your tenant from our pool.
+            </p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              To request a phone number, go to{' '}
+              <a href="/phone-numbers" style={{ color: 'oklch(55% 0.11 193)', textDecoration: 'underline' }}>Phone Numbers</a>.
+              Your monthly minutes / SMS quota is set by your plan tier — see{' '}
+              <a href="/billing" style={{ color: 'oklch(55% 0.11 193)', textDecoration: 'underline' }}>Billing</a>.
+            </p>
           </div>
 
           <div className="px-6 py-3.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              Auth token is encrypted at rest and never displayed. Find your credentials at console.twilio.com → Account → API keys & tokens.
+              All voice / SMS billing is included in your OrbisVoice subscription. No separate Twilio account required.
             </p>
           </div>
         </div>

@@ -1,99 +1,100 @@
-import crypto from 'crypto'
+/**
+ * Twilio service — managed model.
+ *
+ * As of 2026-05-02, OrbisVoice owns a single master Twilio account
+ * (LightBox SEO, account SID stored in SystemConfig). All tenants share
+ * this account: numbers are bought by the platform and assigned to
+ * tenants via the admin UI; tenants never connect their own Twilio.
+ *
+ * The legacy per-tenant TwilioConnectionDetail table is preserved for
+ * historical data but no longer written to. All Twilio API calls and
+ * webhook signature validations route through the platform credentials
+ * stored in SystemConfig (keys: twilio_account_sid / twilio_auth_token /
+ * twilio_phone_number).
+ *
+ * The functions in this module keep their original signatures (some
+ * accept a tenantId argument) for backwards compatibility with callers
+ * that haven't been migrated yet — but they all return the SAME platform
+ * credentials regardless of tenantId.
+ */
 import { prisma } from '../lib/prisma.js'
+import { getConfigValue } from './system-config.service.js'
 
-const ALG = 'aes-256-gcm'
-
-function encryptSecret(plain: string, key: string): string {
-  const k   = crypto.scryptSync(key, 'twilio-salt', 32)
-  const iv  = crypto.randomBytes(12)
-  const cip = crypto.createCipheriv(ALG, k, iv)
-  const enc = Buffer.concat([cip.update(plain, 'utf8'), cip.final()])
-  const tag = cip.getAuthTag()
-  return [iv.toString('hex'), tag.toString('hex'), enc.toString('hex')].join('.')
+/**
+ * Returns the platform's master Twilio credentials, or null if either
+ * key isn't yet configured in SystemConfig.
+ */
+export async function getPlatformTwilioCredentials(): Promise<{ accountSid: string; authToken: string } | null> {
+  const [accountSid, authToken] = await Promise.all([
+    getConfigValue('twilio_account_sid'),
+    getConfigValue('twilio_auth_token'),
+  ])
+  if (!accountSid || !authToken) return null
+  return { accountSid, authToken }
 }
 
-function decryptSecret(stored: string, key: string): string {
-  const [ivHex, tagHex, encHex] = stored.split('.')
-  if (!ivHex || !tagHex || !encHex) throw new Error('Invalid stored secret')
-  const k   = crypto.scryptSync(key, 'twilio-salt', 32)
-  const dec = crypto.createDecipheriv(ALG, k, Buffer.from(ivHex, 'hex'))
-  dec.setAuthTag(Buffer.from(tagHex, 'hex'))
-  return dec.update(Buffer.from(encHex, 'hex')).toString('utf8') + dec.final('utf8')
+/**
+ * Returns an instantiated Twilio client using the platform's master
+ * credentials. Throws if the platform Twilio isn't configured.
+ *
+ * Lazy-imported so the twilio package isn't required when we just
+ * need to read or validate signatures.
+ */
+export async function getPlatformTwilioClient() {
+  const creds = await getPlatformTwilioCredentials()
+  if (!creds) throw new Error('Platform Twilio credentials not configured (SystemConfig: twilio_account_sid / twilio_auth_token)')
+  const Twilio = (await import('twilio')).default
+  return Twilio(creds.accountSid, creds.authToken)
 }
 
-const _authSecret = process.env['AUTH_SECRET']
-if (!_authSecret) throw new Error('AUTH_SECRET env var is required')
-const SECRET_KEY: string = _authSecret
-
-export async function saveTwilioCredentials(tenantId: string, accountSid: string, authToken: string) {
-  const encrypted = encryptSecret(authToken, SECRET_KEY)
-
-  const existing = await prisma.integrationConnection.findFirst({
-    where: { tenantId, provider: 'TWILIO' },
-    include: { twilioDetail: true },
-  })
-
-  if (existing) {
-    await prisma.integrationConnection.update({
-      where: { id: existing.id },
-      data: { status: 'CONNECTED', externalAccountId: accountSid, lastVerifiedAt: new Date() },
-    })
-    if (existing.twilioDetail) {
-      await prisma.twilioConnectionDetail.update({
-        where: { id: existing.twilioDetail.id },
-        data: { accountSid, encryptedAuthToken: encrypted },
-      })
-    } else {
-      await prisma.twilioConnectionDetail.create({
-        data: { integrationConnectionId: existing.id, accountSid, encryptedAuthToken: encrypted },
-      })
-    }
-  } else {
-    await prisma.integrationConnection.create({
-      data: {
-        tenantId, provider: 'TWILIO', status: 'CONNECTED',
-        label: 'Twilio', externalAccountId: accountSid, lastVerifiedAt: new Date(),
-        twilioDetail: { create: { accountSid, encryptedAuthToken: encrypted } },
-      },
-    })
-  }
+/**
+ * Returns the platform Twilio auth token. The tenantId arg is accepted
+ * for backwards compatibility but ignored — all tenants share the same
+ * platform account.
+ */
+export async function getTwilioAuthToken(_tenantId?: string): Promise<string | null> {
+  const creds = await getPlatformTwilioCredentials()
+  return creds?.authToken ?? null
 }
 
-export async function getTwilioConnection(tenantId: string) {
-  const conn = await prisma.integrationConnection.findFirst({
-    where: { tenantId, provider: 'TWILIO' },
-    include: { twilioDetail: true },
-  })
-  if (!conn || conn.status !== 'CONNECTED') {
-    return { status: 'NOT_CONNECTED', accountSid: null, lastVerifiedAt: null }
+/**
+ * Returns the platform connection state. Same shape as the legacy
+ * per-tenant version. The tenantId arg is accepted for backwards compat.
+ */
+export async function getTwilioConnection(_tenantId?: string) {
+  const creds = await getPlatformTwilioCredentials()
+  if (!creds) {
+    return { status: 'NOT_CONNECTED' as const, accountSid: null, lastVerifiedAt: null }
   }
   return {
-    status:         conn.status,
-    accountSid:     conn.twilioDetail?.accountSid ?? null,
-    lastVerifiedAt: conn.lastVerifiedAt,
+    status: 'CONNECTED' as const,
+    accountSid: creds.accountSid,
+    lastVerifiedAt: new Date(),
   }
 }
 
+/**
+ * @deprecated Tenants no longer save their own Twilio credentials in the
+ * managed model. This stub remains so legacy code paths don't crash, but
+ * it is now a no-op. Platform credentials are managed via Admin → System
+ * Settings → Twilio.
+ */
+export async function saveTwilioCredentials(_tenantId: string, _accountSid: string, _authToken: string) {
+  console.warn('[twilio.service] saveTwilioCredentials() is deprecated in the managed model — no-op.')
+  return
+}
+
+/**
+ * @deprecated In the managed model there is no per-tenant Twilio
+ * connection to disconnect. Stubbed for backwards compatibility.
+ */
 export async function disconnectTwilio(tenantId: string) {
+  console.warn('[twilio.service] disconnectTwilio() is deprecated in the managed model — clearing only legacy per-tenant rows.')
+  // Clean up any legacy per-tenant rows (so the migration leaves the table empty over time)
   const conn = await prisma.integrationConnection.findFirst({
     where: { tenantId, provider: 'TWILIO' },
   })
   if (!conn) return
-  await prisma.integrationConnection.update({
-    where: { id: conn.id },
-    data: { status: 'NOT_CONNECTED', externalAccountId: null, lastVerifiedAt: null },
-  })
-  await prisma.twilioConnectionDetail.deleteMany({
-    where: { integrationConnectionId: conn.id },
-  })
-}
-
-export async function getTwilioAuthToken(tenantId: string): Promise<string | null> {
-  const conn = await prisma.integrationConnection.findFirst({
-    where: { tenantId, provider: 'TWILIO' },
-    include: { twilioDetail: true },
-  })
-  const enc = conn?.twilioDetail?.encryptedAuthToken
-  if (!enc) return null
-  try { return decryptSecret(enc, SECRET_KEY) } catch { return null }
+  await prisma.twilioConnectionDetail.deleteMany({ where: { integrationConnectionId: conn.id } })
+  await prisma.integrationConnection.delete({ where: { id: conn.id } })
 }

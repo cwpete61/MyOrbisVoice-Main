@@ -45,28 +45,13 @@ router.get('/integrations', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-// Save Twilio credentials (write-only — auth token is encrypted at rest)
-router.post('/integrations/twilio', async (req, res, next) => {
-  try {
-    const tenantId = req.user!.currentTenantId!
-    const { accountSid, authToken } = req.body as { accountSid?: string; authToken?: string }
-    if (!accountSid || !authToken) {
-      res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'accountSid and authToken are required' }] })
-      return
-    }
-    await twilioService.saveTwilioCredentials(tenantId, accountSid.trim(), authToken.trim())
-    res.json({ data: { ok: true } })
-  } catch (err) { next(err) }
-})
-
-// Disconnect Twilio
-router.delete('/integrations/twilio', async (req, res, next) => {
-  try {
-    const tenantId = req.user!.currentTenantId!
-    await twilioService.disconnectTwilio(tenantId)
-    res.json({ data: { ok: true } })
-  } catch (err) { next(err) }
-})
+// REMOVED in managed-Twilio model (2026-05-02):
+//   POST   /api/integrations/twilio   — tenants no longer save their own credentials
+//   DELETE /api/integrations/twilio   — there's nothing to disconnect; platform owns the account
+//
+// All tenant Twilio access now flows through platform credentials in SystemConfig
+// (see Admin → System Settings → Twilio). The GET /api/integrations endpoint above
+// still works — it returns the platform's connection state, same shape as before.
 
 // Save Gemini API key (write-only — encrypted at rest)
 router.post('/integrations/gemini', async (req, res, next) => {
