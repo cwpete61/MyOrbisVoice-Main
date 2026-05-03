@@ -547,6 +547,32 @@ router.patch('/system-settings/smtp', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+const geminiSettingsSchema = z.object({
+  apiKey: z.string().min(1).optional(),
+  model:  z.string().min(1).optional(),
+})
+
+router.patch('/system-settings/gemini', async (req, res, next) => {
+  try {
+    const parsed = geminiSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const userId = req.user!.id
+
+    if (parsed.data.apiKey) await systemConfig.setConfigValue('gemini_api_key', parsed.data.apiKey, true,  userId)
+    if (parsed.data.model)  await systemConfig.setConfigValue('gemini_model',   parsed.data.model,  false, userId)
+
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.gemini.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
 const pricingSettingsSchema = z.object({
   overageMarkupPct: z.coerce.number().min(0).max(1000),
 })

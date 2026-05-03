@@ -13,6 +13,7 @@ interface SystemSettings {
   openai: { apiKey: boolean; model: string }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
+  gemini: { apiKey: boolean; model: string }
 }
 
 interface TierConfig {
@@ -260,6 +261,8 @@ export default function SystemSettingsPage() {
   const [smtpSaving, setSmtpSaving] = useState(false)
   const [pricing, setPricing] = useState({ overageMarkupPct: '' })
   const [pricingSaving, setPricingSaving] = useState(false)
+  const [gem, setGem] = useState({ apiKey: '', model: '' })
+  const [gemSaving, setGemSaving] = useState(false)
   async function saveOpenAi(e: React.FormEvent) {
     e.preventDefault()
     const body: Record<string, string> = {}
@@ -297,6 +300,18 @@ export default function SystemSettingsPage() {
     const ok = await saveSection('twilio', body, 'Twilio')
     if (ok) setT({ accountSid: '', authToken: '', phoneNumber: '' })
     setTSaving(false)
+  }
+
+  async function saveGemini(e: React.FormEvent) {
+    e.preventDefault()
+    setGemSaving(true)
+    const body: Record<string, string> = {}
+    if (gem.apiKey) body['apiKey'] = gem.apiKey
+    if (gem.model)  body['model']  = gem.model
+    if (Object.keys(body).length === 0) { showToast('error', 'Enter an API key or model.'); setGemSaving(false); return }
+    const ok = await saveSection('gemini', body, 'Gemini')
+    if (ok) setGem({ apiKey: '', model: '' })
+    setGemSaving(false)
   }
 
   async function savePricing(e: React.FormEvent) {
@@ -449,6 +464,61 @@ export default function SystemSettingsPage() {
               </div>
               <button type="submit" disabled={oaSaving} className="btn-primary">
                 {oaSaving ? 'Saving…' : 'Save OpenAI credentials'}
+              </button>
+            </form>
+          </div>
+
+          {/* ── Gemini ── */}
+          <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <CardHeader
+              title="Gemini Live"
+              subtitle="Platform-wide Gemini API key used for real-time voice sessions on every channel (widget, inbound, outbound). Get your key at aistudio.google.com → Get API Key. Free-tier keys without GCP billing expire periodically — enable billing on the project for a durable key."
+              configured={!!data?.gemini?.apiKey}
+            />
+
+            <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <StatusRow label="API Key" value={!!data?.gemini?.apiKey} isSecret />
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>Active model</p>
+                  <p className="text-xs font-mono mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                    {data?.gemini?.model ?? 'gemini-2.5-flash-native-audio-latest'}
+                  </p>
+                </div>
+                <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>
+                  Live audio
+                </span>
+              </div>
+              <div className="rounded-lg px-4 py-3 text-xs space-y-1" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>
+                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Used for</p>
+                <ul className="space-y-0.5 list-disc list-inside" style={{ color: 'var(--text-tertiary)' }}>
+                  <li>Real-time voice sessions on the inbound receptionist</li>
+                  <li>Outbound campaign agent calls</li>
+                  <li>Browser widget voice chat</li>
+                </ul>
+              </div>
+            </div>
+
+            <form onSubmit={saveGemini} className="px-6 py-5 space-y-4">
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                API key is stored encrypted. Leave blank to keep the current value. Updates apply on the next voice session — no container restart needed.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelCls}>API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                  <input type="password" className={inputCls} value={gem.apiKey}
+                    onChange={e => setGem(p => ({ ...p, apiKey: e.target.value }))}
+                    placeholder="AIza…" autoComplete="new-password" />
+                </div>
+                <div>
+                  <label className={labelCls}>Model override <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span></label>
+                  <input type="text" className={inputCls} value={gem.model}
+                    onChange={e => setGem(p => ({ ...p, model: e.target.value }))}
+                    placeholder={data?.gemini?.model ?? 'gemini-2.5-flash-native-audio-latest'} />
+                </div>
+              </div>
+              <button type="submit" disabled={gemSaving} className="btn-primary">
+                {gemSaving ? 'Saving…' : 'Save Gemini credentials'}
               </button>
             </form>
           </div>

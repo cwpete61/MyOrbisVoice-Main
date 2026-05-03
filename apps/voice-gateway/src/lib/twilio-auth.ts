@@ -41,3 +41,7 @@ export async function getTwilioAuthToken(_tenantId?: string): Promise<string | n
 export async function getTwilioAccountSid(): Promise<string | null> {
   return readSystemConfig('twilio_account_sid')
 }
+
+export async function getPlatformGeminiKey(): Promise<string | null> {
+  return readSystemConfig('gemini_api_key')
+}

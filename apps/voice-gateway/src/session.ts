@@ -4,7 +4,7 @@ import { resolveSystemPrompt } from './lib/prompt-resolver.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { generateSummary } from './services/summary.service.js'
 import { persistConversation, markSessionFailed, type TranscriptEntry } from './services/conversation.service.js'
-import { getGeminiApiKey } from './lib/gemini-key.js'
+import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 
 // Message types sent from the browser widget
 type ClientMsg =
@@ -86,6 +86,7 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
       if (enc) tenantGeminiKey = getGeminiApiKey(enc) ?? undefined
     }
   } catch { /* fallback to platform key */ }
+  const effectiveGeminiKey = await resolveGeminiApiKey(tenantGeminiKey)
 
   // 3. Resolve voice name — draft config takes precedence over channel config
   const draftMeta = session.metadataJson as Record<string, unknown> | null
@@ -142,7 +143,7 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
       await finalize('FAILED')
       ws.close()
     },
-  }, tenantGeminiKey, voiceName)
+  }, effectiveGeminiKey, voiceName)
 
   send(ws, { type: 'ready' })
 

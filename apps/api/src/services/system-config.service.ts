@@ -64,6 +64,7 @@ export async function getSystemSettings(): Promise<{
   openai: { apiKey: boolean; model: string }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
+  gemini: { apiKey: boolean; model: string }
 }> {
   const rows = await prisma.systemConfig.findMany({
     where: {
@@ -79,6 +80,7 @@ export async function getSystemSettings(): Promise<{
           'openai_api_key', 'openai_model',
           'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from',
           'overage_markup_percent',
+          'gemini_api_key', 'gemini_model',
         ],
       },
     },
@@ -133,6 +135,10 @@ export async function getSystemSettings(): Promise<{
     },
     pricing: {
       overageMarkupPct: Number(get('overage_markup_percent')?.value ?? '0') || 0,
+    },
+    gemini: {
+      apiKey: !!(get('gemini_api_key') || process.env['GEMINI_API_KEY']),
+      model:  get('gemini_model')?.value ?? process.env['GEMINI_LIVE_MODEL'] ?? 'gemini-2.5-flash-native-audio-latest',
     },
   }
 }

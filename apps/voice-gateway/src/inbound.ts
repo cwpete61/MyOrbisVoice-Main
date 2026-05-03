@@ -5,7 +5,7 @@ import { openGeminiLiveSession } from './services/gemini.service.js'
 import { generateSummary, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
 import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
-import { getGeminiApiKey } from './lib/gemini-key.js'
+import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 import { sendCallNotificationEmail } from './services/notify.service.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
@@ -164,6 +164,7 @@ export async function handleInboundCall(ws: WebSocket) {
         } catch { /* fallback to platform key */ }
       }
     }
+    const effectiveGeminiKey = await resolveGeminiApiKey(tenantGeminiKey)
 
     // Build greeting trigger using business name from DNA if available
     const identityJson = dna?.identityJson as Record<string, unknown> | null | undefined
@@ -229,7 +230,7 @@ export async function handleInboundCall(ws: WebSocket) {
         await finalize('FAILED')
         ws.close()
       },
-    }, tenantGeminiKey, voiceName)
+    }, effectiveGeminiKey, voiceName)
 
     initialized = true
     console.log('[inbound] session ready, Gemini connecting…')
