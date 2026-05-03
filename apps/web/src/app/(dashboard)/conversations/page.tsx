@@ -58,6 +58,8 @@ export default function ConversationsPage() {
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null)
   const [recordingLoading, setRecordingLoading] = useState(false)
+  const [emailDraft, setEmailDraft] = useState<{ to: string; subject: string; body: string } | null>(null)
+  const [emailSending, setEmailSending] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const limit = 20
@@ -114,6 +116,37 @@ export default function ConversationsPage() {
 
   function toggleOne(id: string) {
     setCheckedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  }
+
+  function openFollowupEmail() {
+    if (!selected) return
+    const name = [selected.contact?.firstName, selected.contact?.lastName].filter(Boolean).join(' ') || ''
+    const greeting = name ? `Hi ${name},` : 'Hi,'
+    const summaryLine = selected.summaryText ? `\n\n${selected.summaryText}` : ''
+    setEmailDraft({
+      to:      selected.contact?.email ?? '',
+      subject: 'Following up on our call',
+      body:    `${greeting}\n\nThanks for taking the time to speak with us today.${summaryLine}\n\nLet me know if there's anything else you need.\n\nBest,`,
+    })
+  }
+
+  async function sendFollowupEmail() {
+    if (!emailDraft) return
+    if (!emailDraft.to || !emailDraft.subject.trim() || !emailDraft.body.trim()) {
+      showToast('error', 'To, subject, and body are all required.')
+      return
+    }
+    setEmailSending(true)
+    try {
+      await apiFetch('/api/integrations/google/send-email', {
+        method: 'POST',
+        body: JSON.stringify(emailDraft),
+      })
+      showToast('success', `Email sent to ${emailDraft.to}.`)
+      setEmailDraft(null)
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Send failed — check that Google is connected in Integrations.')
+    } finally { setEmailSending(false) }
   }
 
   async function bulkDelete() {
@@ -347,6 +380,18 @@ export default function ConversationsPage() {
               </span>
             </div>
 
+            <button
+              onClick={openFollowupEmail}
+              className="w-full mb-4 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-2"
+              style={{ background: 'var(--surface-overlay)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="3" width="12" height="10" rx="1" />
+                <path d="M2 4l6 5 6-5" />
+              </svg>
+              Send follow-up email
+            </button>
+
             {/* Recording player */}
             {selected.recordingStatus === 'stored' && (
               <div className="mb-4">
@@ -402,6 +447,72 @@ export default function ConversationsPage() {
           </div>
         )}
       </div>
+
+      {/* Follow-up email compose modal */}
+      {emailDraft && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'oklch(15% 0.02 270 / 0.6)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setEmailDraft(null) }}
+        >
+          <div
+            className="w-full max-w-lg rounded-xl p-5 space-y-4"
+            style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Send follow-up email</h3>
+              <button onClick={() => setEmailDraft(null)} className="text-sm" style={{ color: 'var(--text-tertiary)' }}>✕</button>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              Sends from your connected Google account. Make sure Google is connected in <a href="/integrations" className="underline">Integrations</a>.
+            </p>
+            <div>
+              <label className="label">To</label>
+              <input
+                type="email"
+                className="input"
+                value={emailDraft.to}
+                onChange={(e) => setEmailDraft({ ...emailDraft, to: e.target.value })}
+                placeholder="contact@example.com"
+              />
+            </div>
+            <div>
+              <label className="label">Subject</label>
+              <input
+                className="input"
+                value={emailDraft.subject}
+                onChange={(e) => setEmailDraft({ ...emailDraft, subject: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Message</label>
+              <textarea
+                className="input font-mono text-xs"
+                rows={10}
+                value={emailDraft.body}
+                onChange={(e) => setEmailDraft({ ...emailDraft, body: e.target.value })}
+              />
+            </div>
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setEmailDraft(null)}
+                disabled={emailSending}
+                className="text-sm px-3 py-1.5 rounded-lg"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendFollowupEmail}
+                disabled={emailSending}
+                className="btn-primary text-sm"
+              >
+                {emailSending ? 'Sending…' : 'Send email'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
