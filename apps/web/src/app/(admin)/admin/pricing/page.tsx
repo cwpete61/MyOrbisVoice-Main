@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { apiFetchRaw, useApi } from '@/hooks/useApi'
 
 interface Entitlement {
@@ -239,15 +239,15 @@ export default function PricingMatrixPage() {
             </tr>
           </thead>
           <tbody>
-            {groups.map((group, gi) => (
-              <tbody key={group.name}>
+            {groups.map((group) => (
+              <Fragment key={group.name}>
                 <tr style={{ background: 'var(--surface-sunken)' }}>
                   <td colSpan={orderedPlans.length + 1} className="px-5 py-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
                     {group.name}
                   </td>
                 </tr>
                 {group.fields.map(field => (
-                  <tr key={field.key} style={{ borderTop: gi === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
+                  <tr key={field.key}>
                     <td className="px-5 py-3 sticky left-0 z-10" style={{ background: 'var(--surface-raised)', borderTop: '1px solid var(--border-subtle)' }}>
                       <p style={{ color: 'var(--text-primary)' }}>{field.label}</p>
                       {field.unit && <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{field.unit}</p>}
@@ -293,7 +293,7 @@ export default function PricingMatrixPage() {
                     })}
                   </tr>
                 ))}
-              </tbody>
+              </Fragment>
             ))}
           </tbody>
         </table>
