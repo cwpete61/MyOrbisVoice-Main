@@ -57,6 +57,111 @@ router.post('/contacts', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// POST /api/contacts/import — bulk import from CSV.
+// Body: { csv: "firstName,lastName,email,phone\nJane,Doe,jane@x.com,+1...\n..." }
+// Header row required. Recognized columns (case-insensitive, any subset):
+//   firstName, lastName, fullName, email, phone (or phoneE164)
+// Returns { created, skipped, errors }. skipped = rows failing validation;
+// errors = first 10 row-level errors with row number for fixing.
+router.post('/contacts/import', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    const { csv } = z.object({ csv: z.string().min(10).max(2_000_000) }).parse(req.body)
+
+    // Light-weight CSV parser — handles quoted values + escaped quotes,
+    // doesn't depend on a library. Sufficient for typical contact lists.
+    const parseCsv = (input: string): string[][] => {
+      const rows: string[][] = []
+      let row: string[] = []
+      let cell = ''
+      let inQuotes = false
+      for (let i = 0; i < input.length; i++) {
+        const c = input[i]
+        if (inQuotes) {
+          if (c === '"' && input[i + 1] === '"') { cell += '"'; i++; continue }
+          if (c === '"') { inQuotes = false; continue }
+          cell += c
+        } else {
+          if (c === '"') { inQuotes = true; continue }
+          if (c === ',') { row.push(cell); cell = ''; continue }
+          if (c === '\n' || c === '\r') {
+            if (cell !== '' || row.length > 0) { row.push(cell); rows.push(row); row = []; cell = '' }
+            if (c === '\r' && input[i + 1] === '\n') i++
+            continue
+          }
+          cell += c
+        }
+      }
+      if (cell !== '' || row.length > 0) { row.push(cell); rows.push(row) }
+      return rows
+    }
+
+    const rows = parseCsv(csv.trim())
+    if (rows.length < 2) {
+      res.status(422).json({ errors: [{ code: 'VALIDATION_ERROR', message: 'CSV needs a header row plus at least one data row.' }] })
+      return
+    }
+
+    const headers = rows[0]!.map(h => h.trim().toLowerCase().replace(/_/g, ''))
+    const colIdx = (...names: string[]) => {
+      for (const n of names) {
+        const i = headers.indexOf(n.toLowerCase())
+        if (i >= 0) return i
+      }
+      return -1
+    }
+    const idx = {
+      firstName: colIdx('firstname', 'first', 'first name'),
+      lastName:  colIdx('lastname', 'last', 'last name'),
+      fullName:  colIdx('fullname', 'name', 'full name'),
+      email:     colIdx('email', 'e-mail'),
+      phone:     colIdx('phone', 'phonee164', 'phone number', 'mobile', 'tel'),
+    }
+
+    if (idx.firstName === -1 && idx.fullName === -1 && idx.email === -1 && idx.phone === -1) {
+      res.status(422).json({ errors: [{ code: 'VALIDATION_ERROR', message: 'CSV must include at least one of: firstName, fullName, email, phone.' }] })
+      return
+    }
+
+    let created = 0, skipped = 0
+    const errors: { row: number; reason: string }[] = []
+
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i]!
+      const get = (j: number) => j >= 0 && j < r.length ? (r[j] ?? '').trim() : ''
+      const data: Record<string, string> = {}
+      const fn = get(idx.firstName); if (fn) data['firstName'] = fn
+      const ln = get(idx.lastName);  if (ln) data['lastName']  = ln
+      const fu = get(idx.fullName);  if (fu) data['fullName']  = fu
+      const em = get(idx.email);     if (em) data['email']     = em
+      let ph = get(idx.phone)
+      if (ph) {
+        // Normalize: strip non-digits except leading +. Add +1 to bare 10-digit US numbers.
+        const cleaned = ph.replace(/[^\d+]/g, '')
+        ph = cleaned.startsWith('+') ? cleaned : (cleaned.length === 10 ? `+1${cleaned}` : `+${cleaned}`)
+        data['phoneE164'] = ph
+      }
+      data['source'] = 'csv_import'
+
+      const validated = createSchema.safeParse(data)
+      if (!validated.success) {
+        skipped++
+        if (errors.length < 10) errors.push({ row: i + 1, reason: validated.error.issues[0]?.message ?? 'invalid' })
+        continue
+      }
+      try {
+        await contactService.createContact(tenantId, validated.data)
+        created++
+      } catch (e) {
+        skipped++
+        if (errors.length < 10) errors.push({ row: i + 1, reason: e instanceof Error ? e.message : 'create failed' })
+      }
+    }
+
+    res.json({ data: { created, skipped, errors } })
+  } catch (err) { next(err) }
+})
+
 const updateSchema = z.object({
   firstName: z.string().min(1).optional(),
   lastName:  z.string().min(1).optional(),

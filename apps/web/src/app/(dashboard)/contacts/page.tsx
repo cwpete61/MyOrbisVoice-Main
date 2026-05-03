@@ -45,6 +45,7 @@ export default function ContactsPage() {
   // CSV import state
   const fileRef = useRef<HTMLInputElement>(null)
   const [csvRows, setCsvRows] = useState<Array<{ firstName: string; lastName: string; email: string; phoneE164: string }>>([])
+  const [rawCsv, setRawCsv]   = useState<string>('')
   const [showImport, setShowImport] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ ok: number; failed: number } | null>(null)
@@ -97,13 +98,17 @@ export default function ContactsPage() {
     }).filter(r => r.firstName || r.email || r.phoneE164)
   }
 
+  // Hold raw CSV text for the new bulk endpoint instead of pre-parsing
+  // client-side row-by-row.
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
     reader.onload = (ev) => {
-      const rows = parseCsv(ev.target?.result as string)
+      const text = ev.target?.result as string
+      const rows = parseCsv(text)
       setCsvRows(rows)
+      setRawCsv(text)
       setShowImport(true)
       setImportResult(null)
     }
@@ -111,27 +116,21 @@ export default function ContactsPage() {
   }
 
   async function runImport() {
+    if (!rawCsv) return
     setImporting(true)
     setImportResult(null)
-    let ok = 0; let failed = 0
-    for (const row of csvRows) {
-      try {
-        await apiFetch('/api/contacts', {
-          method: 'POST',
-          body: JSON.stringify({
-            firstName: row.firstName || undefined,
-            lastName:  row.lastName  || undefined,
-            email:     row.email     || undefined,
-            phoneE164: row.phoneE164 || undefined,
-            source:    'import',
-          }),
-        })
-        ok++
-      } catch { failed++ }
+    try {
+      const result = await apiFetch<{ created: number; skipped: number; errors: { row: number; reason: string }[] }>(
+        '/api/contacts/import',
+        { method: 'POST', body: JSON.stringify({ csv: rawCsv }) },
+      )
+      setImportResult({ ok: result.created, failed: result.skipped })
+      if (result.created > 0) reload()
+    } catch (err) {
+      setImportResult({ ok: 0, failed: csvRows.length })
+    } finally {
+      setImporting(false)
     }
-    setImportResult({ ok, failed })
-    setImporting(false)
-    if (ok > 0) reload()
   }
 
   async function deleteContact(id: string) {
@@ -165,7 +164,7 @@ export default function ContactsPage() {
             <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
               Import CSV — {csvRows.length} row{csvRows.length !== 1 ? 's' : ''} detected
             </h2>
-            <button onClick={() => { setShowImport(false); setCsvRows([]); setImportResult(null); if (fileRef.current) fileRef.current.value = '' }}
+            <button onClick={() => { setShowImport(false); setCsvRows([]); setRawCsv(''); setImportResult(null); if (fileRef.current) fileRef.current.value = '' }}
               className="text-xs" style={{ color: 'var(--text-tertiary)' }}>✕ Close</button>
           </div>
 
