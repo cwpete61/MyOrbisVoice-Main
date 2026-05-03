@@ -10,18 +10,31 @@ import { sendCallNotificationEmail } from './services/notify.service.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
 
-async function hangUpCall(callSid: string, _tenantId: string) {
+// Hangs up an in-progress call by POSTing Status=completed.
+// Under managed Twilio, the call resource lives on the tenant's subaccount,
+// so the URL path must use the subaccount sid — but auth uses MASTER token
+// because subaccounts inherit master's credentials for write operations.
+// `ownerAccountSid` should be the subaccount sid Twilio gave us in the
+// Media Stream start event.
+async function hangUpCall(callSid: string, ownerAccountSid: string | null) {
   try {
-    const { getTwilioAccountSid, getTwilioAuthToken } = await import('./lib/twilio-auth.js')
-    const [accountSid, authToken] = await Promise.all([getTwilioAccountSid(), getTwilioAuthToken()])
-    if (!accountSid || !authToken) return
-    const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64')
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls/${callSid}.json`
-    await fetch(url, {
+    const { getTwilioAuthToken } = await import('./lib/twilio-auth.js')
+    const authToken = await getTwilioAuthToken()
+    if (!ownerAccountSid || !authToken) {
+      console.warn('[inbound] hangup skipped — missing accountSid or authToken')
+      return
+    }
+    const credentials = Buffer.from(`${ownerAccountSid}:${authToken}`).toString('base64')
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${ownerAccountSid}/Calls/${callSid}.json`
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Authorization': `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'Status=completed',
     })
+    if (!res.ok) {
+      console.warn(`[inbound] hangup failed ${res.status}: ${await res.text().catch(() => '')}`)
+      return
+    }
     console.log(`[inbound] hung up call ${callSid}`)
   } catch (err) {
     console.error('[inbound] hangup error:', err)
@@ -31,7 +44,7 @@ async function hangUpCall(callSid: string, _tenantId: string) {
 // Twilio Media Stream message shapes
 type TwilioMsg =
   | { event: 'connected'; protocol: string; version: string }
-  | { event: 'start';     start: { streamSid: string; callSid: string; customParameters: Record<string, string> } }
+  | { event: 'start';     start: { streamSid: string; callSid: string; accountSid?: string; customParameters: Record<string, string> } }
   | { event: 'media';     media: { track: string; chunk: string; timestamp: string; payload: string } }
   | { event: 'stop';      stop: { accountSid: string; callSid: string } }
 
@@ -42,6 +55,7 @@ export async function handleInboundCall(ws: WebSocket) {
   let callSid    = ''
   let tenantId   = ''
   let channelConfigId = ''
+  let ownerAccountSid: string | null = null
   let initialized = false
 
   const transcript: TranscriptEntry[] = []
@@ -97,7 +111,7 @@ export async function handleInboundCall(ws: WebSocket) {
       gemini.sendText('The caller has been silent for 10 seconds. Politely ask if they are still there and need assistance.')
       silenceTimer = setTimeout(() => {
         console.log('[inbound] 20s silence — hanging up')
-        hangUpCall(callSid, tenantId)
+        hangUpCall(callSid, ownerAccountSid)
         setTimeout(() => gemini?.close(), 500)
       }, 10_000)
     }, 10_000)
@@ -206,7 +220,7 @@ export async function handleInboundCall(ws: WebSocket) {
           if (GOODBYE_PATTERN.test(text)) {
             console.log('[inbound] goodbye detected — hanging up')
             stopSilenceTimer()
-            setTimeout(() => hangUpCall(callSid, tenantId), 2000)
+            setTimeout(() => hangUpCall(callSid, ownerAccountSid), 2000)
           }
         } else {
           agentBuffer += (agentBuffer ? ' ' : '') + text
@@ -236,7 +250,10 @@ export async function handleInboundCall(ws: WebSocket) {
     console.log('[inbound] session ready, Gemini connecting…')
   }
 
+  let finalized = false
   async function finalize(status: 'COMPLETED' | 'FAILED') {
+    if (finalized) return
+    finalized = true
     try {
       // Flush any incomplete turn buffers before persisting
       if (userBuffer.trim())  flushBuffer('user')
@@ -252,8 +269,10 @@ export async function handleInboundCall(ws: WebSocket) {
           summary,
           channelType: 'INBOUND',
         })
+        console.log(`[inbound] conversation persisted callSid=${callSid} turns=${transcript.length}`)
+      } else {
+        console.log(`[inbound] finalize ${status} — transcript len=${transcript.length}, not persisting`)
       }
-      // No widgetSession to update for inbound calls — CallLog is updated via status webhook
     } catch (err) {
       console.error('[inbound] finalize error:', err)
     }
@@ -266,6 +285,7 @@ export async function handleInboundCall(ws: WebSocket) {
       if (msg.event === 'start') {
         streamSid = msg.start.streamSid
         callSid   = msg.start.callSid
+        ownerAccountSid = msg.start.accountSid ?? null
         await initSession(msg.start.customParameters)
         return
       }
@@ -288,14 +308,18 @@ export async function handleInboundCall(ws: WebSocket) {
     }
   })
 
-  ws.on('close', () => {
+  ws.on('close', async () => {
     console.log('[inbound] WebSocket closed')
     stopSilenceTimer()
     gemini?.close()
+    // Belt-and-suspenders: if Gemini's onClose hasn't fired (e.g. it never
+    // connected, or the close event was lost), persist what we have anyway.
+    await finalize('COMPLETED')
   })
 
-  ws.on('error', (err) => {
+  ws.on('error', async (err) => {
     console.error('[inbound] WebSocket error:', err.message)
     gemini?.close()
+    await finalize('FAILED')
   })
 }

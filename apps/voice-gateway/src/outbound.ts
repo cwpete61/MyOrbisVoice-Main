@@ -9,18 +9,28 @@ import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
 
-async function hangUpCall(callSid: string, _tenantId: string) {
+// `ownerAccountSid` is the subaccount sid that owns this call resource —
+// captured from Twilio's Media Stream `start` event. Master credentials
+// authenticate, but the URL path must use the owner sid or Twilio 404s.
+async function hangUpCall(callSid: string, ownerAccountSid: string | null) {
   try {
-    const { getTwilioAccountSid, getTwilioAuthToken } = await import('./lib/twilio-auth.js')
-    const [accountSid, authToken] = await Promise.all([getTwilioAccountSid(), getTwilioAuthToken()])
-    if (!accountSid || !authToken) return
-    const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64')
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls/${callSid}.json`
-    await fetch(url, {
+    const { getTwilioAuthToken } = await import('./lib/twilio-auth.js')
+    const authToken = await getTwilioAuthToken()
+    if (!ownerAccountSid || !authToken) {
+      console.warn('[outbound] hangup skipped — missing accountSid or authToken')
+      return
+    }
+    const credentials = Buffer.from(`${ownerAccountSid}:${authToken}`).toString('base64')
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${ownerAccountSid}/Calls/${callSid}.json`
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Authorization': `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'Status=completed',
     })
+    if (!res.ok) {
+      console.warn(`[outbound] hangup failed ${res.status}: ${await res.text().catch(() => '')}`)
+      return
+    }
     console.log(`[outbound] hung up call ${callSid}`)
   } catch (err) {
     console.error('[outbound] hangup error:', err)
@@ -29,7 +39,7 @@ async function hangUpCall(callSid: string, _tenantId: string) {
 
 type TwilioMsg =
   | { event: 'connected'; protocol: string; version: string }
-  | { event: 'start';     start: { streamSid: string; callSid: string; customParameters: Record<string, string> } }
+  | { event: 'start';     start: { streamSid: string; callSid: string; accountSid?: string; customParameters: Record<string, string> } }
   | { event: 'media';     media: { track: string; chunk: string; timestamp: string; payload: string } }
   | { event: 'stop';      stop: { accountSid: string; callSid: string } }
 
@@ -41,6 +51,7 @@ export async function handleOutboundCall(ws: WebSocket) {
   let tenantId        = ''
   let attemptId       = ''
   let campaignId      = ''
+  let ownerAccountSid: string | null = null
   let initialized     = false
 
   const transcript: TranscriptEntry[] = []
@@ -68,7 +79,7 @@ export async function handleOutboundCall(ws: WebSocket) {
     silenceWatchdog = setTimeout(() => {
       if (!userSpoke) {
         console.log('[outbound] silence watchdog — no user response, hanging up')
-        hangUpCall(callSid, tenantId)
+        hangUpCall(callSid, ownerAccountSid)
         setTimeout(() => gemini?.close(), 500)
       }
     }, 45_000)
@@ -105,7 +116,7 @@ export async function handleOutboundCall(ws: WebSocket) {
       gemini.sendText('The person has been silent for 10 seconds. Politely ask if they are still there.')
       inCallSilenceTimer = setTimeout(() => {
         console.log('[outbound] 20s silence — hanging up')
-        hangUpCall(callSid, tenantId)
+        hangUpCall(callSid, ownerAccountSid)
         setTimeout(() => gemini?.close(), 500)
       }, 10_000)
     }, 10_000)
@@ -222,7 +233,7 @@ export async function handleOutboundCall(ws: WebSocket) {
           if (GOODBYE_PATTERN.test(text)) {
             console.log('[outbound] goodbye detected — hanging up')
             stopInCallSilenceTimer()
-            setTimeout(() => hangUpCall(callSid, tenantId), 2000)
+            setTimeout(() => hangUpCall(callSid, ownerAccountSid), 2000)
           }
         } else {
           agentBuffer += (agentBuffer ? ' ' : '') + text
@@ -252,7 +263,10 @@ export async function handleOutboundCall(ws: WebSocket) {
     console.log('[outbound] session ready, Gemini connecting…')
   }
 
+  let finalized = false
   async function finalize(status: 'COMPLETED' | 'FAILED') {
+    if (finalized) return
+    finalized = true
     try {
       // Flush any incomplete turn buffers
       if (userBuffer.trim())  flushBuffer('user')
@@ -276,6 +290,9 @@ export async function handleOutboundCall(ws: WebSocket) {
             data:  { conversationId },
           }).catch(err => console.warn('[outbound] could not link conversationId:', err))
         }
+        console.log(`[outbound] conversation persisted callSid=${callSid} turns=${transcript.length}`)
+      } else {
+        console.log(`[outbound] finalize ${status} — transcript len=${transcript.length}, not persisting`)
       }
     } catch (err) {
       console.error('[outbound] finalize error:', err)
@@ -289,6 +306,7 @@ export async function handleOutboundCall(ws: WebSocket) {
       if (msg.event === 'start') {
         streamSid = msg.start.streamSid
         callSid   = msg.start.callSid
+        ownerAccountSid = msg.start.accountSid ?? null
         await initSession(msg.start.customParameters)
         return
       }
@@ -311,14 +329,16 @@ export async function handleOutboundCall(ws: WebSocket) {
     }
   })
 
-  ws.on('close', () => {
+  ws.on('close', async () => {
     console.log('[outbound] WebSocket closed')
     stopInCallSilenceTimer()
     gemini?.close()
+    await finalize('COMPLETED')
   })
 
-  ws.on('error', (err) => {
+  ws.on('error', async (err) => {
     console.error('[outbound] WebSocket error:', err.message)
     gemini?.close()
+    await finalize('FAILED')
   })
 }
