@@ -101,6 +101,8 @@ enum AppointmentStatus {
 enum MessageChannel {
   EMAIL
   SMS
+  MMS
+  WHATSAPP
   VOICE
 }
 
@@ -794,6 +796,9 @@ model MessageLog {
   providerMessageId String?
   deliveryStatus    String?
   segmentCount      Int?
+  mediaCount        Int?
+  billedCents       Int?
+  twilioCostCents   Int?
   errorCode         String?
   sentAt            DateTime?
   deliveredAt       DateTime?

@@ -547,6 +547,30 @@ router.patch('/system-settings/smtp', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+const pricingSettingsSchema = z.object({
+  overageMarkupPct: z.coerce.number().min(0).max(1000),
+})
+
+router.patch('/system-settings/pricing', async (req, res, next) => {
+  try {
+    const parsed = pricingSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const userId = req.user!.id
+
+    await systemConfig.setConfigValue('overage_markup_percent', String(parsed.data.overageMarkupPct), false, userId)
+
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.pricing.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { overageMarkupPct: parsed.data.overageMarkupPct },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
 // ── Impersonation ──────────────────────────────────────────────────────────────
 
 router.post('/tenants/:tenantId/impersonate', async (req, res, next) => {

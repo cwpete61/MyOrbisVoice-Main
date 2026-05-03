@@ -63,6 +63,7 @@ export async function getSystemSettings(): Promise<{
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
+  pricing: { overageMarkupPct: number }
 }> {
   const rows = await prisma.systemConfig.findMany({
     where: {
@@ -77,6 +78,7 @@ export async function getSystemSettings(): Promise<{
           'storage_default_quota_gb', 'storage_warning_threshold_pct', 'storage_retention_days',
           'openai_api_key', 'openai_model',
           'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from',
+          'overage_markup_percent',
         ],
       },
     },
@@ -128,6 +130,9 @@ export async function getSystemSettings(): Promise<{
       user:     get('smtp_user')?.value     ?? (process.env['SMTP_USER']     || null),
       password: !!(get('smtp_password')     || process.env['SMTP_PASSWORD']),
       from:     get('smtp_from')?.value     ?? (process.env['SMTP_FROM']     || null),
+    },
+    pricing: {
+      overageMarkupPct: Number(get('overage_markup_percent')?.value ?? '0') || 0,
     },
   }
 }

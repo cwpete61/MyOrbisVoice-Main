@@ -2,23 +2,53 @@
 
 import { useApi } from '@/hooks/useApi'
 
+interface ChannelUsage {
+  sent: number
+  received: number
+  included: number
+  overage: number
+  ratePerMessageCents: number
+}
+
+interface VoiceUsage {
+  included: number
+  overage: number
+  ratePerMinuteCents: number
+}
+
 interface UsageSummary {
   periodStart: string
   minutesUsed: number
   minutesQuota: number | null
   callCounts: { inbound: number; outbound: number; widget: number; total: number }
+  messaging: { sms: ChannelUsage; mms: ChannelUsage; whatsapp: ChannelUsage }
+  voice: VoiceUsage
+  overageCharges: {
+    smsCents: number
+    mmsCents: number
+    whatsappCents: number
+    voiceCents: number
+    totalCents: number
+    markupPct: number
+  }
   history: { month: string; minutes: number; calls: number }[]
 }
 
-function ProgressBar({ value, max }: { value: number; max: number | null }) {
-  if (!max) return null
+function ProgressBar({ value, max, unit = 'min' }: { value: number; max: number | null; unit?: string }) {
+  if (!max) {
+    return (
+      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+        {value.toLocaleString()} {unit} used — no quota set on your plan
+      </p>
+    )
+  }
   const pct = Math.min(100, Math.round((value / max) * 100))
   const color = pct >= 95 ? 'oklch(55% 0.18 25)' : pct >= 80 ? 'oklch(60% 0.16 75)' : 'oklch(55% 0.11 193)'
   return (
     <div>
       <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
-        <span>{value.toLocaleString()} min used</span>
-        <span>{pct}% of {max.toLocaleString()} min</span>
+        <span>{value.toLocaleString()} {unit} used</span>
+        <span>{pct}% of {max.toLocaleString()} {unit}</span>
       </div>
       <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-sunken)' }}>
         <div
@@ -26,11 +56,46 @@ function ProgressBar({ value, max }: { value: number; max: number | null }) {
           style={{ width: `${pct}%`, background: color }}
         />
       </div>
-      {pct >= 80 && (
-        <p className="text-xs mt-1" style={{ color: pct >= 95 ? 'oklch(55% 0.18 25)' : 'oklch(60% 0.16 75)' }}>
-          {pct >= 95
-            ? 'You are almost at your limit. Upgrade to avoid interruptions.'
-            : 'You are at 80%+ of your monthly call minutes.'}
+    </div>
+  )
+}
+
+function formatCents(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`
+}
+
+function ChannelCard({
+  label, sent, received, included, overage, ratePerMessageCents,
+}: { label: string; sent: number; received: number; included: number; overage: number; ratePerMessageCents: number }) {
+  const overageCents = overage * ratePerMessageCents
+  return (
+    <div className="rounded-lg p-4 space-y-3" style={{ background: 'var(--surface-sunken)', border: '1px solid var(--border-subtle)' }}>
+      <div className="flex items-baseline justify-between">
+        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{label}</p>
+        <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+          {ratePerMessageCents}¢ per overage msg
+        </p>
+      </div>
+      <ProgressBar value={sent} max={included || null} unit="msg" />
+      <div className="grid grid-cols-3 gap-2 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+        <div>
+          <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{sent}</p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>sent</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{received}</p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>received</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold" style={{ color: overage > 0 ? 'oklch(55% 0.18 25)' : 'var(--text-primary)' }}>
+            {overage}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>overage</p>
+        </div>
+      </div>
+      {overageCents > 0 && (
+        <p className="text-xs" style={{ color: 'oklch(55% 0.18 25)' }}>
+          Projected overage: {formatCents(overageCents)}
         </p>
       )}
     </div>
@@ -42,7 +107,7 @@ export default function UsagePage() {
 
   if (loading) {
     return (
-      <div className="space-y-3 animate-pulse max-w-3xl">
+      <div className="space-y-3 animate-pulse max-w-4xl">
         {[200, 140, 300].map(w => (
           <div key={w} className="h-5 rounded" style={{ width: `${w}px`, background: 'var(--border-subtle)' }} />
         ))}
@@ -54,30 +119,28 @@ export default function UsagePage() {
 
   const period = new Date(data.periodStart).toLocaleString('en-US', { month: 'long', year: 'numeric' })
   const histMax = Math.max(1, ...data.history.map(h => h.minutes))
+  const totalOverage = data.overageCharges.totalCents
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Phone Usage</h1>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Usage</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Call minutes and volume for {period}.
+          Voice and messaging activity for {period}.
         </p>
       </div>
 
-      {/* Current period */}
+      {/* Voice */}
       <div className="rounded-xl p-6 space-y-5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--text-tertiary)' }}>
-            This billing period — {period}
+        <div className="flex items-baseline justify-between">
+          <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
+            Voice — {period}
           </p>
-          <ProgressBar value={data.minutesUsed} max={data.minutesQuota} />
-          {!data.minutesQuota && (
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {data.minutesUsed.toLocaleString()} minutes used — no quota set on your plan
-            </p>
-          )}
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            {data.voice.ratePerMinuteCents}¢ per overage min
+          </p>
         </div>
-
+        <ProgressBar value={data.minutesUsed} max={data.minutesQuota} unit="min" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           {[
             { label: 'Total calls', value: data.callCounts.total },
@@ -93,10 +156,50 @@ export default function UsagePage() {
         </div>
       </div>
 
+      {/* Messaging breakdown */}
+      <div className="rounded-xl p-6 space-y-5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+        <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
+          Messaging — {period}
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <ChannelCard label="SMS" {...data.messaging.sms} />
+          <ChannelCard label="MMS" {...data.messaging.mms} />
+          <ChannelCard label="WhatsApp" {...data.messaging.whatsapp} />
+        </div>
+      </div>
+
+      {/* Projected overage charges */}
+      {totalOverage > 0 && (
+        <div className="rounded-xl p-6 space-y-3" style={{ background: 'oklch(98% 0.02 75)', border: '1px solid oklch(85% 0.10 75)' }}>
+          <p className="text-sm font-semibold" style={{ color: 'oklch(35% 0.16 75)' }}>
+            Projected overage charges this period
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {[
+              { label: 'SMS',      cents: data.overageCharges.smsCents },
+              { label: 'MMS',      cents: data.overageCharges.mmsCents },
+              { label: 'WhatsApp', cents: data.overageCharges.whatsappCents },
+              { label: 'Voice',    cents: data.overageCharges.voiceCents },
+              { label: 'Total',    cents: data.overageCharges.totalCents, bold: true },
+            ].map(({ label, cents, bold }) => (
+              <div key={label}>
+                <p className="text-xl font-bold" style={{ color: bold ? 'oklch(45% 0.18 25)' : 'var(--text-primary)' }}>
+                  {formatCents(cents)}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{label}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            Charges are projections based on usage so far this period. Final amounts post on your next invoice.
+          </p>
+        </div>
+      )}
+
       {/* 6-month history chart */}
       <div className="rounded-xl p-6" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
         <p className="text-xs font-semibold uppercase tracking-wide mb-4" style={{ color: 'var(--text-tertiary)' }}>
-          Last 6 months
+          Voice — last 6 months
         </p>
         <div className="flex items-end gap-3 h-32">
           {data.history.map((h) => {

@@ -84,31 +84,26 @@ router.get('/conversations', asyncHandler(async (req, res) => {
   res.json({ data: { items, total } })
 }))
 
-// GET /api/usage/summary — phone usage for current billing period
+// GET /api/usage/summary — usage for current billing period (voice + SMS/MMS/WhatsApp)
 router.get('/usage/summary', asyncHandler(async (req, res) => {
   const tenantId = (req as any).user?.currentTenantId as string
 
-  // Current month window
   const now = new Date()
   const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-  const periodEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+  const periodEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
 
-  // Aggregate conversation counts and call minutes
   const [inbound, outbound, widget] = await Promise.all([
     prisma.conversation.aggregate({
-      where: { tenantId, channelType: 'INBOUND', startedAt: { gte: periodStart, lt: periodEnd } },
-      _count: { id: true },
-      _sum:   { recordingDurationSecs: true },
+      where: { tenantId, channelType: 'INBOUND',  startedAt: { gte: periodStart, lt: periodEnd } },
+      _count: { id: true }, _sum: { recordingDurationSecs: true },
     }),
     prisma.conversation.aggregate({
       where: { tenantId, channelType: 'OUTBOUND', startedAt: { gte: periodStart, lt: periodEnd } },
-      _count: { id: true },
-      _sum:   { recordingDurationSecs: true },
+      _count: { id: true }, _sum: { recordingDurationSecs: true },
     }),
     prisma.conversation.aggregate({
-      where: { tenantId, channelType: 'WIDGET', startedAt: { gte: periodStart, lt: periodEnd } },
-      _count: { id: true },
-      _sum:   { recordingDurationSecs: true },
+      where: { tenantId, channelType: 'WIDGET',   startedAt: { gte: periodStart, lt: periodEnd } },
+      _count: { id: true }, _sum: { recordingDurationSecs: true },
     }),
   ])
 
@@ -117,27 +112,87 @@ router.get('/usage/summary', asyncHandler(async (req, res) => {
     + (widget._sum.recordingDurationSecs ?? 0)
   const minutesUsed = Math.ceil(totalSecs / 60)
 
-  // Get quota from entitlements
-  const quotaEnt = await prisma.tenantEntitlement.findFirst({
-    where: { tenantId, key: 'minutes_per_month' },
-    select: { integerValue: true },
-  })
-  const minutesQuota = quotaEnt?.integerValue ?? null
+  // Messaging counts — outbound only counts toward overage; inbound is informational
+  const [sms, mms, wa] = await Promise.all([
+    prisma.messageLog.groupBy({
+      by: ['direction'],
+      where: { tenantId, channel: 'SMS', createdAt: { gte: periodStart, lt: periodEnd } },
+      _count: { id: true },
+    }),
+    prisma.messageLog.groupBy({
+      by: ['direction'],
+      where: { tenantId, channel: 'MMS', createdAt: { gte: periodStart, lt: periodEnd } },
+      _count: { id: true },
+    }),
+    prisma.messageLog.groupBy({
+      by: ['direction'],
+      where: { tenantId, channel: 'WHATSAPP', createdAt: { gte: periodStart, lt: periodEnd } },
+      _count: { id: true },
+    }),
+  ])
 
-  // Last 6 months history
+  const countByDir = (rows: { direction: string; _count: { id: number } }[]) => ({
+    sent:     rows.find(r => r.direction === 'OUTBOUND')?._count.id ?? 0,
+    received: rows.find(r => r.direction === 'INBOUND')?._count.id ?? 0,
+  })
+  const smsCounts = countByDir(sms)
+  const mmsCounts = countByDir(mms)
+  const waCounts  = countByDir(wa)
+
+  // Entitlements — quotas + per-unit overage rates (already merged via TenantEntitlement override → PlanEntitlement)
+  const ents = await prisma.tenantEntitlement.findMany({
+    where: { tenantId },
+    select: { key: true, integerValue: true, booleanValue: true },
+  })
+  const intVal = (key: string, fallback = 0) =>
+    ents.find(e => e.key === key)?.integerValue ?? fallback
+
+  const quotas = {
+    voiceMinutes:        intVal('minutes_per_month', 0),
+    sms:                 intVal('included_sms_per_month', 0),
+    mms:                 intVal('included_mms_per_month', 0),
+    whatsapp:            intVal('included_whatsapp_per_month', 0),
+  }
+  const rates = {
+    smsOverageCents:      intVal('sms_overage_per_message_cents', 0),
+    mmsOverageCents:      intVal('mms_overage_per_message_cents', 0),
+    whatsappOverageCents: intVal('whatsapp_overage_per_message_cents', 0),
+    voiceOverageCents:    intVal('voice_overage_per_minute_cents', 0),
+  }
+
+  // Apply platform-wide markup (system-settings)
+  const markupRow = await prisma.systemConfig.findUnique({ where: { key: 'overage_markup_percent' } })
+  const markupPct = Number(markupRow?.value ?? 0) || 0
+  const m = (cents: number) => Math.round(cents * (1 + markupPct / 100))
+
+  const smsOver  = Math.max(0, smsCounts.sent - quotas.sms)
+  const mmsOver  = Math.max(0, mmsCounts.sent - quotas.mms)
+  const waOver   = Math.max(0, waCounts.sent  - quotas.whatsapp)
+  const minOver  = Math.max(0, minutesUsed    - quotas.voiceMinutes)
+
+  const overageCharges = {
+    smsCents:      smsOver * m(rates.smsOverageCents),
+    mmsCents:      mmsOver * m(rates.mmsOverageCents),
+    whatsappCents: waOver  * m(rates.whatsappOverageCents),
+    voiceCents:    minOver * m(rates.voiceOverageCents),
+  }
+  const totalOverageCents =
+    overageCharges.smsCents + overageCharges.mmsCents +
+    overageCharges.whatsappCents + overageCharges.voiceCents
+
+  // 6-month voice history
   const history: { month: string; minutes: number; calls: number }[] = []
   for (let i = 5; i >= 0; i--) {
     const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1))
     const to   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i + 1, 1))
     const agg  = await prisma.conversation.aggregate({
       where: { tenantId, startedAt: { gte: from, lt: to } },
-      _count: { id: true },
-      _sum:   { recordingDurationSecs: true },
+      _count: { id: true }, _sum: { recordingDurationSecs: true },
     })
     history.push({
-      month: from.toISOString().slice(0, 7),
+      month:   from.toISOString().slice(0, 7),
       minutes: Math.ceil((agg._sum.recordingDurationSecs ?? 0) / 60),
-      calls: agg._count.id,
+      calls:   agg._count.id,
     })
   }
 
@@ -145,12 +200,27 @@ router.get('/usage/summary', asyncHandler(async (req, res) => {
     data: {
       periodStart: periodStart.toISOString(),
       minutesUsed,
-      minutesQuota,
+      minutesQuota: quotas.voiceMinutes || null,
       callCounts: {
         inbound:  inbound._count.id,
         outbound: outbound._count.id,
         widget:   widget._count.id,
         total:    inbound._count.id + outbound._count.id + widget._count.id,
+      },
+      messaging: {
+        sms:      { ...smsCounts, included: quotas.sms,      overage: smsOver, ratePerMessageCents: m(rates.smsOverageCents) },
+        mms:      { ...mmsCounts, included: quotas.mms,      overage: mmsOver, ratePerMessageCents: m(rates.mmsOverageCents) },
+        whatsapp: { ...waCounts,  included: quotas.whatsapp, overage: waOver,  ratePerMessageCents: m(rates.whatsappOverageCents) },
+      },
+      voice: {
+        included: quotas.voiceMinutes,
+        overage:  minOver,
+        ratePerMinuteCents: m(rates.voiceOverageCents),
+      },
+      overageCharges: {
+        ...overageCharges,
+        totalCents: totalOverageCents,
+        markupPct,
       },
       history,
     },

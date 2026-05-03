@@ -12,6 +12,7 @@ interface SystemSettings {
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
+  pricing: { overageMarkupPct: number }
 }
 
 interface TierConfig {
@@ -257,6 +258,8 @@ export default function SystemSettingsPage() {
   const [oaSaving, setOaSaving] = useState(false)
   const [smtp, setSmtp] = useState({ host: '', port: '587', user: '', password: '', from: '' })
   const [smtpSaving, setSmtpSaving] = useState(false)
+  const [pricing, setPricing] = useState({ overageMarkupPct: '' })
+  const [pricingSaving, setPricingSaving] = useState(false)
   async function saveOpenAi(e: React.FormEvent) {
     e.preventDefault()
     const body: Record<string, string> = {}
@@ -294,6 +297,15 @@ export default function SystemSettingsPage() {
     const ok = await saveSection('twilio', body, 'Twilio')
     if (ok) setT({ accountSid: '', authToken: '', phoneNumber: '' })
     setTSaving(false)
+  }
+
+  async function savePricing(e: React.FormEvent) {
+    e.preventDefault()
+    if (pricing.overageMarkupPct === '') { showToast('error', 'Enter a markup percentage.'); return }
+    setPricingSaving(true)
+    const ok = await saveSection('pricing', { overageMarkupPct: pricing.overageMarkupPct }, 'Pricing')
+    if (ok) setPricing({ overageMarkupPct: '' })
+    setPricingSaving(false)
   }
 
   async function saveSmtp(e: React.FormEvent) {
@@ -871,6 +883,44 @@ export default function SystemSettingsPage() {
           </div>
           <button type="submit" disabled={smtpSaving} className="btn-primary">
             {smtpSaving ? 'Saving…' : 'Save SMTP settings'}
+          </button>
+        </form>
+      </div>
+
+      {/* ── Overage Pricing ─────────────────────────────────────────────────── */}
+      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+        <CardHeader
+          title="Overage Pricing"
+          subtitle="Platform-wide markup applied on top of each plan's overage rates (SMS, MMS, WhatsApp, voice). Set to 0 for plan rates as-is. Increase to widen platform margin without editing every plan."
+          configured={(data?.pricing?.overageMarkupPct ?? 0) > 0}
+        />
+        <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+          <StatusRow label="Current markup" value={`${data?.pricing?.overageMarkupPct ?? 0}%`} />
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            Example — if a plan's SMS overage rate is 5¢ and markup is 20%, tenants are billed 6¢ per overage SMS.
+          </p>
+        </div>
+        <form onSubmit={savePricing} className="px-6 py-5 space-y-4">
+          <div>
+            <label className={labelCls}>Markup Percentage</label>
+            <div className="flex items-center gap-2">
+              <input
+                className={inputCls}
+                type="number"
+                min="0"
+                max="1000"
+                step="1"
+                value={pricing.overageMarkupPct}
+                onChange={e => setPricing({ overageMarkupPct: e.target.value })}
+                placeholder={String(data?.pricing?.overageMarkupPct ?? 0)}
+                autoComplete="off"
+                style={{ width: '120px' }}
+              />
+              <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>%</span>
+            </div>
+          </div>
+          <button type="submit" disabled={pricingSaving} className="btn-primary">
+            {pricingSaving ? 'Saving…' : 'Save markup'}
           </button>
         </form>
       </div>
