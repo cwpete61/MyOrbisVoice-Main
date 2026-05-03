@@ -74,10 +74,24 @@ const ENTITLEMENT_META: Record<string, { label: string; section: string; type: '
   sla_guarantee:          { label: 'SLA Guarantee (99.9%)',        section: 'Compliance & Support', type: 'boolean' },
   onboarding_assistance:  { label: 'Onboarding Assistance',        section: 'Compliance & Support', type: 'boolean' },
   priority_support:       { label: 'Priority Support',             section: 'Compliance & Support', type: 'boolean' },
+  // ── Pricing & Quotas (managed Twilio model) ────────────────────────────
+  // Inclusions: how much of each channel is included in the plan's monthly fee.
+  // Overage cents: per-unit charge applied when usage exceeds the inclusion.
+  // All values stored as cents (integer) to avoid float math.
+  phone_number_monthly_cost_cents:   { label: 'Phone Number Monthly Cost',        section: 'Pricing & Quotas', type: 'integer', unit: '¢/number' },
+  included_sms_per_month:            { label: 'SMS Included / Month',             section: 'Pricing & Quotas', type: 'integer', unit: 'msg' },
+  sms_overage_per_message_cents:     { label: 'SMS Overage Rate',                 section: 'Pricing & Quotas', type: 'integer', unit: '¢/msg' },
+  included_mms_per_month:            { label: 'MMS Included / Month',             section: 'Pricing & Quotas', type: 'integer', unit: 'msg' },
+  mms_overage_per_message_cents:     { label: 'MMS Overage Rate',                 section: 'Pricing & Quotas', type: 'integer', unit: '¢/msg' },
+  included_whatsapp_per_month:       { label: 'WhatsApp Included / Month',        section: 'Pricing & Quotas', type: 'integer', unit: 'msg' },
+  whatsapp_overage_per_message_cents:{ label: 'WhatsApp Overage Rate',            section: 'Pricing & Quotas', type: 'integer', unit: '¢/msg' },
+  voice_overage_per_minute_cents:    { label: 'Voice Overage Rate',               section: 'Pricing & Quotas', type: 'integer', unit: '¢/min' },
+  whatsapp_enabled:                  { label: 'WhatsApp Channel',                 section: 'Channels',         type: 'boolean' },
+  mms_enabled:                       { label: 'MMS Channel',                      section: 'Channels',         type: 'boolean' },
 }
 
 const SECTION_ORDER = [
-  'Channels', 'Agents & Staff', 'Locations', 'Apps',
+  'Channels', 'Pricing & Quotas', 'Agents & Staff', 'Locations', 'Apps',
   'Data & Reporting', 'Integrations', 'Branding', 'Compliance & Support',
 ]
 
