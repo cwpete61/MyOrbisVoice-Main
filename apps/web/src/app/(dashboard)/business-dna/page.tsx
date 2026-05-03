@@ -13,16 +13,25 @@ interface DNADetail {
   complianceJson: Record<string, unknown>
 }
 
-const SECTIONS: { key: keyof Omit<DNADetail, 'id' | 'version' | 'isActive'>; label: string; icon: string }[] = [
-  { key: 'identityJson',   label: 'Identity',    icon: '🏢' },
-  { key: 'servicesJson',   label: 'Services',    icon: '🛠️' },
-  { key: 'pricingJson',    label: 'Pricing',     icon: '💰' },
-  { key: 'operationsJson', label: 'Operations',  icon: '⚙️' },
-  { key: 'salesJson',      label: 'Sales',       icon: '💼' },
-  { key: 'appointmentJson',label: 'Appointments',icon: '📅' },
-  { key: 'supportJson',    label: 'Support',     icon: '🎧' },
-  { key: 'languageJson',   label: 'Language',    icon: '🗣️' },
-  { key: 'complianceJson', label: 'Compliance',  icon: '⚖️' },
+const SECTIONS: { key: keyof Omit<DNADetail, 'id' | 'version' | 'isActive'>; label: string; icon: string; description: string }[] = [
+  { key: 'identityJson',    label: 'Identity',    icon: '🏢',
+    description: 'Your business name, mission, brand voice, and what you do at a glance. The agent uses this to introduce itself and frame every conversation.' },
+  { key: 'servicesJson',    label: 'Services',    icon: '🛠️',
+    description: 'What you offer — products, services, packages. Be specific. The agent quotes from this when callers ask "what do you do?" or "do you offer X?".' },
+  { key: 'pricingJson',     label: 'Pricing',     icon: '💰',
+    description: 'How much things cost and what discounts/promotions apply. Include enough detail that the agent can answer pricing questions without escalating.' },
+  { key: 'operationsJson',  label: 'Operations',  icon: '⚙️',
+    description: 'How your business runs day-to-day: hours, locations, service areas, lead times, payment terms. The agent references this for logistical questions.' },
+  { key: 'salesJson',       label: 'Sales',       icon: '💼',
+    description: 'Your qualifying questions, ideal-customer rules, and the workflow for converting a caller into a booked customer.' },
+  { key: 'appointmentJson', label: 'Appointments',icon: '📅',
+    description: 'Booking rules: how long appointments take, what info to collect, what days/times are available, when to escalate to a human.' },
+  { key: 'supportJson',     label: 'Support',     icon: '🎧',
+    description: 'How to handle complaints, refunds, and angry customers. Include the boundary where the agent should hand off to a human.' },
+  { key: 'languageJson',    label: 'Language',    icon: '🗣️',
+    description: 'Tone, voice, vocabulary preferences. Phrases the agent should always or never use. Languages it should respond to.' },
+  { key: 'complianceJson',  label: 'Compliance',  icon: '⚖️',
+    description: 'Legal and regulatory rules the agent must follow — disclosures, recording notices, opt-out language, industry-specific compliance (HIPAA, GDPR, etc.).' },
 ]
 
 export default function BusinessDNAPage() {
@@ -210,6 +219,15 @@ export default function BusinessDNAPage() {
               </div>
 
               <div className="p-4">
+                {(() => {
+                  const sectionMeta = SECTIONS.find(s => s.key === activeSection)
+                  return sectionMeta?.description ? (
+                    <p className="text-xs mb-3 px-3 py-2 rounded-lg" style={{ color: 'var(--text-secondary)', background: 'var(--surface-overlay)' }}>
+                      <span className="mr-1">{sectionMeta.icon}</span>
+                      {sectionMeta.description}
+                    </p>
+                  ) : null
+                })()}
                 <textarea
                   value={editValue}
                   onChange={(e) => { setEditValue(e.target.value); setJsonError('') }}

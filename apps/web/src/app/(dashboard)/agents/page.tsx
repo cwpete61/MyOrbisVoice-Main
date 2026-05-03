@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { Tooltip } from '@/components/Tooltip'
 
 interface Agent {
   id: string; agentRoleType: string; displayName: string
@@ -151,7 +152,9 @@ export default function AgentsPage() {
 
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="label">Display name</label>
+                  <label className="label flex items-center">
+                    <Tooltip content="The name your agent uses when introducing itself on calls (e.g. 'Hi, this is Aria from Acme'). Pick something friendly and easy to hear over the phone.">Display name</Tooltip>
+                  </label>
                   <input
                     className="input"
                     value={selected.displayName}
@@ -161,7 +164,9 @@ export default function AgentsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="label">Model provider</label>
+                    <label className="label flex items-center">
+                      <Tooltip content="Which AI provider routes this agent's reasoning. Default 'openai' — only change if you know what you're doing.">Model provider</Tooltip>
+                    </label>
                     <input
                       className="input"
                       value={selected.modelProvider}
@@ -170,7 +175,9 @@ export default function AgentsPage() {
                     />
                   </div>
                   <div>
-                    <label className="label">Model name</label>
+                    <label className="label flex items-center">
+                      <Tooltip content="The specific model used for this agent's text reasoning (summaries, follow-ups, decisions). Voice itself is always Gemini Live, set on the channel.">Model name</Tooltip>
+                    </label>
                     <input
                       className="input"
                       value={selected.modelName}

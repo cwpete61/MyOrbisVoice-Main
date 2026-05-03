@@ -11,6 +11,36 @@ import { sendToTenant as sendPushToTenant } from './services/push.service.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
 
+// Returns true when the tenant's voice minutes this period exceed
+// `minutes_per_month` × HARD_CAP_MULTIPLIER. Beyond this point we refuse
+// new sessions to prevent runaway charges (e.g. payment-failed tenants
+// that keep dialing in). Below the cap, calls go through and overage
+// bills normally via Stripe.
+const HARD_CAP_MULTIPLIER = 1.5
+async function isOverHardCap(tenantId: string): Promise<boolean> {
+  try {
+    const ent = await prisma.tenantEntitlement.findFirst({
+      where:  { tenantId, key: 'minutes_per_month' },
+      select: { integerValue: true },
+    })
+    const quota = ent?.integerValue ?? 0
+    if (quota <= 0) return false  // no quota = no cap (e.g. enterprise unlimited)
+
+    const now = new Date()
+    const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    const periodEnd   = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+    const agg = await prisma.conversation.aggregate({
+      where: { tenantId, startedAt: { gte: periodStart, lt: periodEnd } },
+      _sum:  { recordingDurationSecs: true },
+    })
+    const minutesUsed = Math.ceil((agg._sum.recordingDurationSecs ?? 0) / 60)
+    return minutesUsed >= Math.ceil(quota * HARD_CAP_MULTIPLIER)
+  } catch (err) {
+    console.error('[inbound] hard-cap check failed, allowing call:', err)
+    return false  // fail-open so a DB blip doesn't block calls
+  }
+}
+
 // Hangs up an in-progress call by POSTing Status=completed.
 // Under managed Twilio, the call resource lives on the tenant's subaccount,
 // so the URL path must use the subaccount sid — but auth uses MASTER token
@@ -135,6 +165,17 @@ export async function handleInboundCall(ws: WebSocket) {
 
     if (!tenantId) {
       console.error('[inbound] missing tenantId in stream params')
+      ws.close()
+      return
+    }
+
+    // Hard-cap: refuse new calls when this tenant is already 1.5x past its
+    // monthly minutes quota. Below the cap, calls go through and overage
+    // bills via Stripe — the cap only kicks in for runaway usage (e.g.
+    // payment failed and they kept calling). 1.5x grace ensures we don't
+    // cut anyone off mid-conversation right on the boundary.
+    if (await isOverHardCap(tenantId)) {
+      console.warn(`[inbound] tenant ${tenantId} blocked — over voice minutes hard cap`)
       ws.close()
       return
     }
