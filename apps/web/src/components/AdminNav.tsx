@@ -21,7 +21,6 @@ export function AdminNav() {
         { href: '/admin/tenants',     label: 'Tenants',     icon: <TenantsIcon /> },
         { href: '/admin/plans',       label: 'Plans',       icon: <PlansIcon /> },
         { href: '/admin/pricing',     label: 'Pricing',     icon: <PricingIcon /> },
-        { href: '/admin/affiliates',  label: 'Affiliates',  icon: <AffiliatesIcon /> },
         { href: '/admin/twilio-logs', label: 'Twilio Call Logs', icon: <CallLogsIcon /> },
       ],
     },

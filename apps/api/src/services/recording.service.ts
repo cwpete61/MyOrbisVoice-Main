@@ -1,28 +1,13 @@
 import { prisma } from '../lib/prisma.js'
-import { scryptSync, createDecipheriv } from 'crypto'
 import * as bunny from './bunny.service.js'
 import { maybeCreateStorageNotification } from './notification.service.js'
+import { getPlatformTwilioCredentials } from './twilio.service.js'
 
-function decryptTwilioToken(stored: string): string {
-  const SECRET_KEY = process.env['AUTH_SECRET'] ?? ''
-  const [ivHex, tagHex, encHex] = stored.split('.')
-  if (!ivHex || !tagHex || !encHex) throw new Error('Invalid token format')
-  const k = scryptSync(SECRET_KEY, 'twilio-salt', 32)
-  const dec = createDecipheriv('aes-256-gcm', k, Buffer.from(ivHex, 'hex'))
-  dec.setAuthTag(Buffer.from(tagHex, 'hex'))
-  return dec.update(Buffer.from(encHex, 'hex')).toString('utf8') + dec.final('utf8')
-}
-
-async function getTwilioCredentials(tenantId: string): Promise<{ accountSid: string; authToken: string } | null> {
-  const conn = await prisma.integrationConnection.findFirst({
-    where: { tenantId, provider: 'TWILIO', status: 'CONNECTED' },
-    include: { twilioDetail: true },
-  })
-  if (!conn?.twilioDetail?.accountSid || !conn.twilioDetail.encryptedAuthToken) return null
-  try {
-    const authToken = decryptTwilioToken(conn.twilioDetail.encryptedAuthToken)
-    return { accountSid: conn.twilioDetail.accountSid, authToken }
-  } catch { return null }
+// Managed Twilio: every tenant routes through the platform master account.
+// The recording URL Twilio sends back is on master, so master credentials
+// are correct for fetching the audio.
+async function getTwilioCredentials(_tenantId: string): Promise<{ accountSid: string; authToken: string } | null> {
+  return getPlatformTwilioCredentials()
 }
 
 export interface TwilioRecordingPayload {

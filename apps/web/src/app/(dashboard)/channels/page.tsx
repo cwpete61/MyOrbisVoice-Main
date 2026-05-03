@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { apiFetch, useApi } from '@/hooks/useApi'
 
 interface BusinessHours {
@@ -158,26 +159,7 @@ function ContactPicker({ value, onChange }: { value: string; onChange: (v: strin
   )
 }
 
-function PhoneNumbersPanel({ numbers, onAdd, onDelete }: {
-  numbers: PhoneNumber[]
-  onAdd: (draft: { e164Number: string; displayLabel: string; twilioNumberSid: string }) => Promise<void>
-  onDelete: (id: string) => Promise<void>
-}) {
-  const [adding, setAdding] = useState(false)
-  const [draft, setDraft]   = useState({ e164Number: '', displayLabel: '', twilioNumberSid: '' })
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg]       = useState('')
-
-  async function addNumber() {
-    setSaving(true); setMsg('')
-    try {
-      await onAdd(draft)
-      setDraft({ e164Number: '', displayLabel: '', twilioNumberSid: '' })
-      setAdding(false)
-    } catch (err) { setMsg(err instanceof Error ? err.message : 'Failed') }
-    finally { setSaving(false) }
-  }
-
+function PhoneNumbersPanel({ numbers }: { numbers: PhoneNumber[] }) {
   return (
     <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-3">
       <div className="flex items-center justify-between">
@@ -185,16 +167,14 @@ function PhoneNumbersPanel({ numbers, onAdd, onDelete }: {
           <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Phone Numbers</h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Numbers Twilio routes to this receptionist</p>
         </div>
-        <button onClick={() => setAdding(true)}
+        <Link href="/phone-numbers"
           className="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
-          + Add number
-        </button>
+          Manage in Phone Numbers →
+        </Link>
       </div>
 
-      {msg && <p className="text-xs text-red-500">{msg}</p>}
-
       {numbers.length === 0
-        ? <p className="text-xs text-gray-400 dark:text-gray-500 py-3 text-center">No phone numbers yet.</p>
+        ? <p className="text-xs text-gray-400 dark:text-gray-500 py-3 text-center">No phone numbers yet — search and purchase one in <Link href="/phone-numbers" className="text-blue-600 hover:underline">Phone Numbers</Link>.</p>
         : (
           <div className="space-y-2">
             {numbers.map((n) => (
@@ -203,36 +183,10 @@ function PhoneNumbersPanel({ numbers, onAdd, onDelete }: {
                   <span className={mono}>{n.e164Number}</span>
                   {n.displayLabel && <span className="ml-2 text-xs text-gray-500">{n.displayLabel}</span>}
                 </div>
-                <button onClick={() => onDelete(n.id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
               </div>
             ))}
           </div>
         )}
-
-      {adding && (
-        <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 space-y-3">
-          <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Add phone number</h4>
-          <div>
-            <label className={lbl}>E.164 number <span className="text-gray-400 font-normal">(e.g. +18005551234)</span></label>
-            <input value={draft.e164Number} onChange={(e) => setDraft({ ...draft, e164Number: e.target.value })} className={inp} placeholder="+18005551234" />
-          </div>
-          <div>
-            <label className={lbl}>Display label <span className="text-gray-400 font-normal">(optional)</span></label>
-            <input value={draft.displayLabel} onChange={(e) => setDraft({ ...draft, displayLabel: e.target.value })} className={inp} placeholder="Main reception line" />
-          </div>
-          <div>
-            <label className={lbl}>Twilio Number SID <span className="text-gray-400 font-normal">(optional)</span></label>
-            <input value={draft.twilioNumberSid} onChange={(e) => setDraft({ ...draft, twilioNumberSid: e.target.value })} className={inp} placeholder="PNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
-          </div>
-          <div className="flex gap-2">
-            <button onClick={addNumber} disabled={saving || !draft.e164Number}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-            <button onClick={() => setAdding(false)} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">Cancel</button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -305,25 +259,6 @@ export default function ChannelsPage() {
       setMessage('Channel saved.')
     } catch (err) { setMessage(err instanceof Error ? err.message : 'Failed') }
     finally { setSaving(false) }
-  }
-
-  async function handleAddNumber(draft: { e164Number: string; displayLabel: string; twilioNumberSid: string }) {
-    await apiFetch('/api/phone-numbers', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...draft,
-        displayLabel:    draft.displayLabel    || null,
-        twilioNumberSid: draft.twilioNumberSid || null,
-        isInboundEnabled: true,
-      }),
-    })
-    await reloadNumbers()
-  }
-
-  async function handleDeleteNumber(id: string) {
-    if (!confirm('Remove this phone number?')) return
-    await apiFetch(`/api/phone-numbers/${id}`, { method: 'DELETE' })
-    await reloadNumbers()
   }
 
   if (loading) return <div className="p-8 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
@@ -513,11 +448,7 @@ export default function ChannelsPage() {
           </button>
 
           {selected.channelType === 'INBOUND' && (
-            <PhoneNumbersPanel
-              numbers={phoneNumbers ?? []}
-              onAdd={handleAddNumber}
-              onDelete={handleDeleteNumber}
-            />
+            <PhoneNumbersPanel numbers={phoneNumbers ?? []} />
           )}
           </div>
         </>

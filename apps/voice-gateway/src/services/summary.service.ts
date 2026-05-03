@@ -52,26 +52,31 @@ export async function generateSummary(transcript: TranscriptEntry[]): Promise<st
   if (transcript.length === 0) return 'No conversation.'
   const apiKey = await getOpenAiKey()
   if (!apiKey) return 'Summary unavailable (no OpenAI key configured).'
-  const openai = new OpenAI({ apiKey })
 
-  const text = transcript
-    .map(e => `${e.role === 'user' ? 'Caller' : 'Agent'}: ${e.text}`)
-    .join('\n')
+  try {
+    const openai = new OpenAI({ apiKey })
+    const text = transcript
+      .map(e => `${e.role === 'user' ? 'Caller' : 'Agent'}: ${e.text}`)
+      .join('\n')
 
-  const model = await getOpenAiModel()
-  const res = await openai.chat.completions.create({
-    model,
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You summarize call transcripts in 2-3 sentences. Focus on: what the caller needed, what was resolved or promised, and any next steps. Be factual and concise.',
-      },
-      { role: 'user', content: text },
-    ],
-    max_tokens: 200,
-    temperature: 0.2,
-  })
+    const model = await getOpenAiModel()
+    const res = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You summarize call transcripts in 2-3 sentences. Focus on: what the caller needed, what was resolved or promised, and any next steps. Be factual and concise.',
+        },
+        { role: 'user', content: text },
+      ],
+      max_tokens: 200,
+      temperature: 0.2,
+    })
 
-  return res.choices[0]?.message?.content?.trim() ?? 'Summary unavailable.'
+    return res.choices[0]?.message?.content?.trim() ?? 'Summary unavailable.'
+  } catch (err) {
+    console.error('[summary] generation failed:', err)
+    return 'Summary unavailable (generation error).'
+  }
 }

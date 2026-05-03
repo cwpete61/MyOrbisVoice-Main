@@ -9,17 +9,11 @@ import { getGeminiApiKey } from './lib/gemini-key.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
 
-async function hangUpCall(callSid: string, tenantId: string) {
+async function hangUpCall(callSid: string, _tenantId: string) {
   try {
-    const conn = await prisma.integrationConnection.findFirst({
-      where: { tenantId, provider: 'TWILIO', status: 'CONNECTED' },
-      include: { twilioDetail: true },
-    })
-    if (!conn?.twilioDetail?.accountSid) return
-    const { getTwilioAuthToken } = await import('./lib/twilio-auth.js')
-    const authToken = await getTwilioAuthToken(tenantId)
-    if (!authToken) return
-    const accountSid = conn.twilioDetail.accountSid
+    const { getTwilioAccountSid, getTwilioAuthToken } = await import('./lib/twilio-auth.js')
+    const [accountSid, authToken] = await Promise.all([getTwilioAccountSid(), getTwilioAuthToken()])
+    if (!accountSid || !authToken) return
     const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64')
     const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls/${callSid}.json`
     await fetch(url, {
