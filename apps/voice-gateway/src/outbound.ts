@@ -14,13 +14,15 @@ const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have
 // authenticate, but the URL path must use the owner sid or Twilio 404s.
 async function hangUpCall(callSid: string, ownerAccountSid: string | null) {
   try {
-    const { getTwilioAuthToken } = await import('./lib/twilio-auth.js')
-    const authToken = await getTwilioAuthToken()
-    if (!ownerAccountSid || !authToken) {
-      console.warn('[outbound] hangup skipped — missing accountSid or authToken')
+    const { getTwilioAccountSid, getTwilioAuthToken } = await import('./lib/twilio-auth.js')
+    const [masterSid, masterToken] = await Promise.all([getTwilioAccountSid(), getTwilioAuthToken()])
+    if (!ownerAccountSid || !masterSid || !masterToken) {
+      console.warn('[outbound] hangup skipped — missing master creds or owner sid')
       return
     }
-    const credentials = Buffer.from(`${ownerAccountSid}:${authToken}`).toString('base64')
+    // Authenticate as master (basic-auth SID must match the token's owner);
+    // subaccount sid goes in the URL path. Master can manage subaccount calls.
+    const credentials = Buffer.from(`${masterSid}:${masterToken}`).toString('base64')
     const url = `https://api.twilio.com/2010-04-01/Accounts/${ownerAccountSid}/Calls/${callSid}.json`
     const res = await fetch(url, {
       method: 'POST',
