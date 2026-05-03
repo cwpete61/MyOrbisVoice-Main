@@ -43,6 +43,23 @@ function decrypt(stored: string): string {
 }
 
 /**
+ * Look up a subaccount's decrypted auth token by its Twilio SID.
+ * Used by the webhook signature middleware: when a webhook arrives,
+ * its AccountSid form field tells us which subaccount Twilio signed
+ * the request with — we need that subaccount's token to validate.
+ * Returns null if the SID isn't a known subaccount or status isn't ACTIVE.
+ */
+export async function getSubaccountAuthTokenBySid(subaccountSid: string): Promise<string | null> {
+  const sub = await prisma.tenantTwilioSubaccount.findUnique({ where: { twilioSubaccountSid: subaccountSid } })
+  if (!sub || sub.status !== 'ACTIVE') return null
+  try {
+    return decrypt(sub.encryptedSubaccountAuthToken)
+  } catch {
+    return null
+  }
+}
+
+/**
  * Get the tenant's existing subaccount, or create one if it doesn't exist.
  * Idempotent — safe to call repeatedly.
  *

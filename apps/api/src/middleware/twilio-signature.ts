@@ -1,17 +1,25 @@
 import type { Request, Response, NextFunction } from 'express'
 import twilio from 'twilio'
 import { getTwilioAuthToken } from '../services/twilio.service.js'
+import { getSubaccountAuthTokenBySid } from '../services/twilio-subaccount.service.js'
 
 /**
- * Validate X-Twilio-Signature using the platform's master Twilio auth token.
+ * Validate X-Twilio-Signature.
  *
- * In the managed-Twilio model (2026-05-02 onward), all tenants share one
- * master Twilio account so signature validation needs only one auth token —
- * no per-tenant lookup required. Falls back to the TWILIO_AUTH_TOKEN env var
- * if SystemConfig isn't yet populated.
+ * In the managed-Twilio model every tenant has its own subaccount under the
+ * platform master. Twilio signs each webhook with the auth token of the
+ * account that owns the resource that triggered it — so a call to a
+ * tenant-purchased number is signed with that tenant's SUBACCOUNT token,
+ * not master's. We therefore validate in this order:
+ *
+ *   1. Try the master auth token (for webhooks that aren't subaccount-scoped,
+ *      and for backwards compat).
+ *   2. If that fails, look at the AccountSid form field in the webhook body
+ *      to identify which subaccount sent it, decrypt that subaccount's token,
+ *      and try again.
  *
  * Enforcement is ON by default. Set TWILIO_ENFORCE_SIG=false only in local dev.
- * Only runs on /webhooks/twilio/* paths — passes all other routes through.
+ * Only runs on /webhooks/twilio/* paths.
  */
 export async function validateTwilioWebhook(req: Request, res: Response, next: NextFunction) {
   if (!req.path.startsWith('/webhooks/twilio')) { next(); return }
@@ -19,7 +27,6 @@ export async function validateTwilioWebhook(req: Request, res: Response, next: N
 
   const signature = req.headers['x-twilio-signature'] as string | undefined
 
-  // No signature at all — only reject in enforce mode
   if (!signature) {
     if (enforce) {
       return res.status(403).type('text/xml').send('<Response><Hangup/></Response>')
@@ -28,30 +35,31 @@ export async function validateTwilioWebhook(req: Request, res: Response, next: N
     return next()
   }
 
-  // Platform master auth token — same for all tenants
-  let authToken = await getTwilioAuthToken()
-  if (!authToken) authToken = process.env['TWILIO_AUTH_TOKEN'] ?? null
-
-  if (!authToken) {
-    console.warn('[twilio-sig] No platform Twilio auth token configured — cannot validate signature')
-    if (enforce) {
-      return res.status(403).type('text/xml').send('<Response><Hangup/></Response>')
-    }
-    return next()
-  }
+  let masterToken = await getTwilioAuthToken()
+  if (!masterToken) masterToken = process.env['TWILIO_AUTH_TOKEN'] ?? null
 
   const protocol = req.headers['x-forwarded-proto'] ?? (req.secure ? 'https' : 'http')
   const host     = req.headers['host'] ?? ''
   const url      = `${protocol}://${host}${req.originalUrl}`
+  const body     = (req.body ?? {}) as Record<string, string>
 
-  const valid = twilio.validateRequest(authToken, signature, url, req.body ?? {})
+  // Step 1: try master token
+  if (masterToken && twilio.validateRequest(masterToken, signature, url, body)) {
+    return next()
+  }
 
-  if (!valid) {
-    console.warn('[twilio-sig] Invalid signature from', req.ip, 'url:', url)
-    if (enforce) {
-      return res.status(403).type('text/xml').send('<Response><Hangup/></Response>')
+  // Step 2: try the subaccount token if the form body identifies a subaccount
+  const accountSid = body['AccountSid']
+  if (accountSid && accountSid.startsWith('AC')) {
+    const subToken = await getSubaccountAuthTokenBySid(accountSid)
+    if (subToken && twilio.validateRequest(subToken, signature, url, body)) {
+      return next()
     }
   }
 
+  console.warn('[twilio-sig] Invalid signature from', req.ip, 'url:', url, 'accountSid:', accountSid ?? '(none)')
+  if (enforce) {
+    return res.status(403).type('text/xml').send('<Response><Hangup/></Response>')
+  }
   next()
 }
