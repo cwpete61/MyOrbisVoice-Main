@@ -8,6 +8,7 @@ import {
 } from 'recharts'
 import { useApi } from '@/hooks/useApi'
 import { OnboardingBanner } from '@/components/OnboardingBanner'
+import { EnableNotificationsBanner } from '@/components/EnableNotificationsBanner'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -159,6 +160,7 @@ export default function DashboardPage() {
       </div>
 
       <OnboardingBanner />
+      <EnableNotificationsBanner />
 
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
