@@ -95,10 +95,15 @@ export async function startCallRecording(callSid: string, tenantId: string) {
     const recording = await client.calls(callSid).recordings.create({
       recordingStatusCallback:       `${API_BASE}/api/webhooks/twilio/recording`,
       recordingStatusCallbackMethod: 'POST',
+      // Explicit event list — without this Twilio's default behavior is
+      // inconsistent for calls connected via <Connect><Stream> (which is
+      // every AI call). 'completed' is what triggers our handler to fetch
+      // the audio and upload to Bunny.
+      recordingStatusCallbackEvent:  ['completed'],
     })
-    console.log(`[inbound] recording started for ${callSid}: ${recording.sid}`)
+    console.log(`[recording] started for ${callSid}: ${recording.sid}`)
   } catch (err) {
-    console.error('[inbound] startCallRecording error:', err)
+    console.error('[recording] startCallRecording error:', err)
   }
 }
 

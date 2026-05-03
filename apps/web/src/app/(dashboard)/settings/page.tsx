@@ -324,6 +324,150 @@ export default function SettingsPage() {
           />
         ))}
       </Section>
+
+      <MembersSection onToast={showToast} />
     </div>
+  )
+}
+
+interface Member {
+  id:        string
+  isOwner:   boolean
+  createdAt: string
+  user:      {
+    id: string; email: string; username: string;
+    firstName: string | null; lastName: string | null;
+    status: string; lastLoginAt: string | null;
+  }
+  roleDefinition: { key: string; name: string }
+}
+
+function MembersSection({ onToast }: { onToast: (t: 'success' | 'error', text: string) => void }) {
+  const { data, loading, reload } = useApi<Member[]>('/api/tenants/current/members')
+  const [adding, setAdding] = useState(false)
+  const [draft, setDraft]   = useState({ email: '', roleKey: 'tenant_staff' })
+  const [saving, setSaving] = useState(false)
+
+  async function addMember() {
+    if (!draft.email) { onToast('error', 'Enter an email.'); return }
+    setSaving(true)
+    try {
+      await apiFetch('/api/tenants/current/members', {
+        method: 'POST',
+        body: JSON.stringify(draft),
+      })
+      onToast('success', 'Member added.')
+      setDraft({ email: '', roleKey: 'tenant_staff' })
+      setAdding(false)
+      reload()
+    } catch (err) {
+      onToast('error', err instanceof Error ? err.message : 'Failed to add member.')
+    } finally { setSaving(false) }
+  }
+
+  async function removeMember(userId: string, displayName: string) {
+    if (!confirm(`Remove ${displayName} from this workspace?`)) return
+    try {
+      await apiFetch(`/api/tenants/current/members/${userId}`, { method: 'DELETE' })
+      onToast('success', 'Member removed.')
+      reload()
+    } catch (err) {
+      onToast('error', err instanceof Error ? err.message : 'Failed to remove member.')
+    }
+  }
+
+  return (
+    <section>
+      <div className="mb-5 flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Team members</h2>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            Invite teammates to share access to this workspace. They must sign up first; then add them here by email.
+          </p>
+        </div>
+        {!adding && (
+          <button onClick={() => setAdding(true)} className="btn-primary text-sm">
+            + Add member
+          </button>
+        )}
+      </div>
+
+      <div className="rounded-xl divide-y" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', borderColor: 'var(--border-subtle)' }}>
+        {adding && (
+          <div className="p-5 space-y-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="md:col-span-2">
+                <label className="label">Email</label>
+                <input
+                  type="email"
+                  className="input"
+                  value={draft.email}
+                  onChange={e => setDraft(p => ({ ...p, email: e.target.value }))}
+                  placeholder="teammate@example.com"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="label">Role</label>
+                <select
+                  className="input"
+                  value={draft.roleKey}
+                  onChange={e => setDraft(p => ({ ...p, roleKey: e.target.value }))}
+                >
+                  <option value="tenant_owner">Owner — full control</option>
+                  <option value="tenant_manager">Manager — config + members</option>
+                  <option value="tenant_staff">Staff — day-to-day use</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={addMember} disabled={saving} className="btn-primary text-sm">
+                {saving ? 'Adding…' : 'Add'}
+              </button>
+              <button onClick={() => { setAdding(false); setDraft({ email: '', roleKey: 'tenant_staff' }) }} className="text-sm px-3 py-1.5 rounded-lg" style={{ color: 'var(--text-secondary)' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {loading && <div className="p-5 text-sm" style={{ color: 'var(--text-tertiary)' }}>Loading…</div>}
+
+        {!loading && data && data.length === 0 && (
+          <div className="p-5 text-sm text-center" style={{ color: 'var(--text-tertiary)' }}>
+            No members yet.
+          </div>
+        )}
+
+        {!loading && data && data.map((m) => {
+          const name = [m.user.firstName, m.user.lastName].filter(Boolean).join(' ') || m.user.username
+          return (
+            <div key={m.id} className="p-5 flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{name}</p>
+                  {m.isOwner && (
+                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'oklch(96% 0.05 75)', color: 'oklch(35% 0.16 75)' }}>Owner</span>
+                  )}
+                </div>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                  {m.user.email} · {m.roleDefinition.name}
+                  {m.user.lastLoginAt && ` · last login ${new Date(m.user.lastLoginAt).toLocaleDateString()}`}
+                </p>
+              </div>
+              {!m.isOwner && (
+                <button
+                  onClick={() => removeMember(m.user.id, name)}
+                  className="text-xs px-3 py-1.5 rounded-lg"
+                  style={{ color: 'oklch(45% 0.18 25)', background: 'transparent', border: '1px solid oklch(85% 0.10 25)' }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </section>
   )
 }
