@@ -1,19 +1,21 @@
 import twilio from 'twilio'
 import { prisma } from '../lib/prisma.js'
-import { getTwilioAuthToken } from './twilio.service.js'
+import { getSubaccountClient } from './twilio-subaccount.service.js'
 import { getEnv } from '@voiceautomation/config'
 
 const GW_WS_BASE = process.env['GATEWAY_WS_URL'] ?? 'wss://gateway.myorbisvoice.com'
 
-async function getTwilioClient(tenantId: string) {
-  const conn = await prisma.integrationConnection.findFirst({
-    where: { tenantId, provider: 'TWILIO', status: 'CONNECTED' },
-    include: { twilioDetail: true },
-  })
-  if (!conn?.twilioDetail?.accountSid) throw new Error('Twilio not connected for tenant')
-  const authToken = await getTwilioAuthToken(tenantId)
-  if (!authToken) throw new Error('Could not decrypt Twilio auth token')
-  return { client: twilio(conn.twilioDetail.accountSid, authToken), accountSid: conn.twilioDetail.accountSid }
+// Managed Twilio: every tenant has a subaccount under the platform master.
+// Outbound calls dial from the subaccount so usage and recordings are
+// isolated per tenant.
+async function getTwilioClient(tenantId: string): Promise<{ client: ReturnType<typeof twilio>; accountSid: string }> {
+  const client = await getSubaccountClient(tenantId)
+  // getSubaccountClient already provisions the subaccount and returns a Twilio
+  // instance bound to it. The accountSid is the subaccount sid; we look it up
+  // for status callbacks and logging.
+  const sub = await prisma.tenantTwilioSubaccount.findUnique({ where: { tenantId } })
+  if (!sub) throw new Error('Twilio subaccount not provisioned for tenant')
+  return { client, accountSid: sub.twilioSubaccountSid }
 }
 
 async function getFromNumber(tenantId: string): Promise<string | null> {

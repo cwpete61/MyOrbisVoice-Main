@@ -1,5 +1,6 @@
 import twilio from 'twilio'
 import { prisma } from '../lib/prisma.js'
+import { getSubaccountClient } from './twilio-subaccount.service.js'
 import { AppError } from '@voiceautomation/shared'
 
 const GW_WS_BASE = process.env['GATEWAY_WS_URL'] ?? 'wss://gateway.myorbisvoice.com'
@@ -85,41 +86,17 @@ export function buildInboundTwiml(opts: {
   return response.toString()
 }
 
-function decryptTwilioToken(stored: string): string {
-  const { scryptSync, createDecipheriv } = require('crypto')
-  const SECRET_KEY = process.env['AUTH_SECRET'] ?? ''
-  const [ivHex, tagHex, encHex] = stored.split('.')
-  if (!ivHex || !tagHex || !encHex) throw new Error('Invalid token format')
-  const k = scryptSync(SECRET_KEY, 'twilio-salt', 32)
-  const dec = createDecipheriv('aes-256-gcm', k, Buffer.from(ivHex, 'hex'))
-  dec.setAuthTag(Buffer.from(tagHex, 'hex'))
-  return dec.update(Buffer.from(encHex, 'hex')).toString('utf8') + dec.final('utf8')
-}
-
+// Managed Twilio: the call lives on the tenant's subaccount, so the recording
+// must be created against that subaccount's client. getSubaccountClient
+// provisions the subaccount lazily if it doesn't exist yet.
 export async function startCallRecording(callSid: string, tenantId: string) {
   try {
-    const conn = await prisma.integrationConnection.findFirst({
-      where: { tenantId, provider: 'TWILIO', status: 'CONNECTED' },
-      include: { twilioDetail: true },
+    const client = await getSubaccountClient(tenantId)
+    const recording = await client.calls(callSid).recordings.create({
+      recordingStatusCallback:       `${API_BASE}/api/webhooks/twilio/recording`,
+      recordingStatusCallbackMethod: 'POST',
     })
-    if (!conn?.twilioDetail?.accountSid) return
-    const encToken = conn.twilioDetail.encryptedAuthToken
-    if (!encToken) return
-    let authToken: string
-    try { authToken = decryptTwilioToken(encToken) } catch { return }
-    const accountSid = conn.twilioDetail.accountSid
-    const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64')
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls/${callSid}/Recordings.json`
-    const body = new URLSearchParams({
-      RecordingStatusCallback: `${API_BASE}/api/webhooks/twilio/recording`,
-      RecordingStatusCallbackMethod: 'POST',
-    })
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Authorization': `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
-    })
-    console.log(`[inbound] recording started for ${callSid}: ${res.status}`)
+    console.log(`[inbound] recording started for ${callSid}: ${recording.sid}`)
   } catch (err) {
     console.error('[inbound] startCallRecording error:', err)
   }

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express'
 import { asyncHandler } from '../lib/async-handler.js'
 import { buildOutboundTwiml, handleOutboundStatus } from '../services/outbound.service.js'
-import { getTwilioAuthToken } from '../services/twilio.service.js'
+import { getPlatformTwilioCredentials } from '../services/twilio.service.js'
 import { startCallRecording } from '../services/twilio-inbound.service.js'
 import { logTwilioEvent } from '../lib/twilio-log.js'
 import { prisma } from '../lib/prisma.js'
@@ -94,20 +94,14 @@ router.post('/webhooks/twilio/outbound/amd', asyncHandler(async (req, res) => {
 
   if (isVoicemail && CallSid && resolvedTenantId) {
     try {
-      const conn = await prisma.integrationConnection.findFirst({
-        where: { tenantId: resolvedTenantId, provider: 'TWILIO', status: 'CONNECTED' },
-        include: { twilioDetail: true },
-      })
-      if (conn?.twilioDetail?.accountSid) {
-        const authToken = await getTwilioAuthToken(resolvedTenantId)
-        if (authToken) {
-          const creds = Buffer.from(`${conn.twilioDetail.accountSid}:${authToken}`).toString('base64')
-          await fetch(`https://api.twilio.com/2010-04-01/Accounts/${conn.twilioDetail.accountSid}/Calls/${CallSid}.json`, {
-            method: 'POST',
-            headers: { Authorization: `Basic ${creds}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'Status=completed',
-          })
-        }
+      const platformCreds = await getPlatformTwilioCredentials()
+      if (platformCreds) {
+        const creds = Buffer.from(`${platformCreds.accountSid}:${platformCreds.authToken}`).toString('base64')
+        await fetch(`https://api.twilio.com/2010-04-01/Accounts/${platformCreds.accountSid}/Calls/${CallSid}.json`, {
+          method: 'POST',
+          headers: { Authorization: `Basic ${creds}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'Status=completed',
+        })
       }
       if (attemptId) {
         await prisma.outboundCallAttempt.update({
