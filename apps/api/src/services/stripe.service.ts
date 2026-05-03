@@ -123,6 +123,9 @@ export async function handleStripeWebhook(rawBody: Buffer, signature: string): P
     case 'checkout.session.completed':
       await handleCheckoutCompleted(event.data.object as StripeCheckoutSession)
       break
+    case 'invoice.created':
+      await handleInvoiceCreated(event.data.object as StripeInvoice & { id: string; customer: string | { id: string }; period_start: number; period_end: number })
+      break
     case 'invoice.paid':
       await handleInvoicePaid(event.data.object as StripeInvoice)
       break
@@ -195,6 +198,69 @@ async function handleCheckoutCompleted(session: StripeCheckoutSession) {
       conversionValueCents: amountCents,
     }).catch(() => {})
   }
+}
+
+// Stripe creates an invoice in 'draft' status ~1 hour before charging the
+// tenant. We hook that moment to push overage line items so they appear on
+// the about-to-finalize invoice. Idempotent — we tag each item with a
+// metadata key so re-running on the same invoice doesn't double-charge.
+async function handleInvoiceCreated(invoice: StripeInvoice & { id: string; customer: string | { id: string }; period_start: number; period_end: number }) {
+  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+  if (!customerId) return
+
+  // Resolve tenant
+  const ref = await prisma.stripeCustomerRef.findFirst({ where: { stripeCustomerId: customerId }, select: { tenantId: true } })
+  if (!ref) return
+
+  // Compute overage for the period this invoice covers
+  const periodStart = new Date(invoice.period_start * 1000)
+  const periodEnd   = new Date(invoice.period_end   * 1000)
+  const { computeOverageForPeriod } = await import('./overage.service.js')
+  const breakdown = await computeOverageForPeriod(ref.tenantId, periodStart, periodEnd)
+
+  if (breakdown.lines.length === 0) {
+    writeAuditLog({ actorType: 'SYSTEM', action: 'billing.overage_invoice_skipped', tenantId: ref.tenantId, metadataJson: { invoiceId: invoice.id, reason: 'no overage' } }).catch(() => null)
+    return
+  }
+
+  // Idempotency: tag each item so re-running on the same invoice is safe.
+  // Stripe's API doesn't have an "upsert" for invoice items, so we instead
+  // list existing items on the invoice and skip channels we've already
+  // posted.
+  const stripe = getStripe()
+  const existing = await stripe.invoiceItems.list({ customer: customerId, limit: 100 })
+  const alreadyTagged = new Set(
+    existing.data
+      .filter(i => i.invoice === invoice.id && i.metadata?.['overage_invoice_id'] === invoice.id)
+      .map(i => i.metadata?.['overage_channel'])
+      .filter(Boolean),
+  )
+
+  let postedCount = 0
+  for (const line of breakdown.lines) {
+    if (alreadyTagged.has(line.channel)) continue
+    await stripe.invoiceItems.create({
+      customer:    customerId,
+      invoice:     invoice.id,
+      amount:      line.amountCents,
+      currency:    'usd',
+      description: line.description,
+      metadata:    {
+        tenant_id:          ref.tenantId,
+        overage_invoice_id: invoice.id,
+        overage_channel:    line.channel,
+        overage_units:      String(line.units),
+        markup_pct:         String(breakdown.markupPct),
+      },
+    })
+    postedCount++
+  }
+
+  writeAuditLog({
+    actorType: 'SYSTEM', action: 'billing.overage_invoice_items_posted',
+    tenantId: ref.tenantId,
+    metadataJson: { invoiceId: invoice.id, postedCount, totalCents: breakdown.totalCents, channels: breakdown.lines.map(l => l.channel) },
+  }).catch(() => null)
 }
 
 async function handleInvoicePaid(invoice: StripeInvoice) {
