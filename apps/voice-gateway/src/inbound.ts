@@ -7,6 +7,7 @@ import { persistConversation, type TranscriptEntry } from './services/conversati
 import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 import { sendCallNotificationEmail } from './services/notify.service.js'
+import { sendToTenant as sendPushToTenant } from './services/push.service.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
 
@@ -192,6 +193,14 @@ export async function handleInboundCall(ws: WebSocket) {
 
     // Fire call notification email — non-blocking
     sendCallNotificationEmail({ tenantId, channelType: 'INBOUND' }).catch(() => {})
+    // Fire push to every browser/device subscribed by tenant members. Best-effort —
+    // never blocks the call from connecting if push fails for some reason.
+    sendPushToTenant(tenantId, {
+      title: `Inbound call — ${businessName}`,
+      body:  'Click to open the conversation.',
+      url:   '/conversations',
+      tag:   `call-${callSid}`,
+    }).catch(() => {})
 
     gemini = openGeminiLiveSession(systemPrompt, {
       onReady() {
