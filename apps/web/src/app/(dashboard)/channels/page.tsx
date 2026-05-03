@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { Tooltip } from '@/components/Tooltip'
 
 interface BusinessHours {
   [day: string]: { open: string; close: string; closed: boolean }
@@ -318,7 +319,9 @@ export default function ChannelsPage() {
 
           {/* Voice selection */}
           <div>
-            <label className={lbl}>Agent voice</label>
+            <label className={lbl + ' flex items-center'}>
+              <Tooltip content="The voice your AI agent uses on every call. Pick one that matches your brand — you can change it anytime; takes effect on the next call.">Agent voice</Tooltip>
+            </label>
             <div className="grid grid-cols-1 gap-2">
               {VOICE_OPTIONS.map((v) => {
                 const active = (cfg.voiceName ?? 'Fenrir') === v.value
@@ -377,7 +380,9 @@ export default function ChannelsPage() {
 
           {/* Greeting mode */}
           <div>
-            <label className={lbl}>Greeting mode</label>
+            <label className={lbl + ' flex items-center'}>
+              <Tooltip content="A short word or phrase describing the tone of your agent's opening — passed into the prompt as guidance.">Greeting mode</Tooltip>
+            </label>
             <input value={selected.greetingMode ?? ''} onChange={(e) => setSelected({ ...selected, greetingMode: e.target.value || null })}
               className={inp} placeholder="e.g. friendly, formal, professional" />
             <p className="mt-1 text-xs text-gray-400">Sets the tone of the agent's opening message</p>
@@ -385,13 +390,17 @@ export default function ChannelsPage() {
 
           {/* Escalation mode + transfer number */}
           <div>
-            <label className={lbl}>Escalation mode</label>
+            <label className={lbl + ' flex items-center'}>
+              <Tooltip content="When the agent decides a caller needs a human (e.g. complex complaint, refund request), this controls how it hands off.">Escalation mode</Tooltip>
+            </label>
             <input value={selected.escalationMode ?? ''} onChange={(e) => setSelected({ ...selected, escalationMode: e.target.value || null })}
               className={inp} placeholder="e.g. escalate-to-human" />
           </div>
 
           <div>
-            <label className={lbl}>Transfer / escalation number</label>
+            <label className={lbl + ' flex items-center'}>
+              <Tooltip content="The phone number the AI dials and bridges the caller to when escalating. Should be a number that's reliably answered during business hours.">Transfer / escalation number</Tooltip>
+            </label>
             <ContactPicker
               value={cfg.transferNumber ?? ''}
               onChange={(v) => setConfig('transferNumber', v || undefined)}
@@ -406,7 +415,9 @@ export default function ChannelsPage() {
                 <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">After-hours</h3>
 
                 <div>
-                  <label className={lbl}>After-hours behaviour</label>
+                  <label className={lbl + ' flex items-center'}>
+                    <Tooltip content="What happens when a call comes in outside the business hours you set below. Voicemail, forward to a person, or just answer normally with the AI.">After-hours behaviour</Tooltip>
+                  </label>
                   <select value={selected.afterHoursMode ?? ''}
                     onChange={(e) => setSelected({ ...selected, afterHoursMode: e.target.value || null })}
                     className={inp}>
@@ -418,7 +429,9 @@ export default function ChannelsPage() {
 
                 {selected.afterHoursMode === 'forward' && (
                   <div>
-                    <label className={lbl}>Forward calls to</label>
+                    <label className={lbl + ' flex items-center'}>
+                      <Tooltip content="The phone where after-hours calls are sent. Usually a personal mobile or an answering service.">Forward calls to</Tooltip>
+                    </label>
                     <ContactPicker
                       value={cfg.forwardingNumber ?? ''}
                       onChange={(v) => setConfig('forwardingNumber', v || undefined)}
