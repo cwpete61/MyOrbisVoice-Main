@@ -136,9 +136,14 @@ step_web() {
     fail "Web build failed — fix TypeScript errors before deploying"
   fi
   rsync -az --delete "$REPO_ROOT/apps/web/.next/" "$SERVER:$REMOTE/apps/web/.next/"
+  # public/ contains static assets served at the root path (sw.js, favicon,
+  # help-screenshots/, etc.). Next.js serves these from /app/apps/web/public/
+  # — they aren't part of the .next/ build output, so we have to sync them
+  # separately.
+  rsync -az --delete "$REPO_ROOT/apps/web/public/" "$SERVER:$REMOTE/apps/web/public/"
   # CRITICAL: wipe stale static chunks before injecting — old chunk hashes cause client crashes
   ssh "$SERVER" "docker exec myorbisvoice-web sh -c 'rm -rf /app/apps/web/.next/static'"
-  ssh "$SERVER" "docker cp $REMOTE/apps/web/.next/. myorbisvoice-web:/app/apps/web/.next/"
+  ssh "$SERVER" "docker cp $REMOTE/apps/web/.next/. myorbisvoice-web:/app/apps/web/.next/ && docker exec myorbisvoice-web mkdir -p /app/apps/web/public && docker cp $REMOTE/apps/web/public/. myorbisvoice-web:/app/apps/web/public/"
   # Commit the cp'd state AND fix the image's CMD (the original myorbisvoice-web:latest had `tail -f /dev/null` baked in
   # as a placeholder — we override via compose's `command:` directive but if anyone removes that override,
   # web silently won't start. Bake the correct CMD into the image so it's self-sufficient).
