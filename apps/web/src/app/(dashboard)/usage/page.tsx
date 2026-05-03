@@ -1,6 +1,7 @@
 'use client'
 
 import { useApi } from '@/hooks/useApi'
+import { Tooltip } from '@/components/Tooltip'
 
 interface ChannelUsage {
   sent: number
@@ -80,17 +81,23 @@ function ChannelCard({
       <div className="grid grid-cols-3 gap-2 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
         <div>
           <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{sent}</p>
-          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>sent</p>
+          <p className="text-xs flex items-center" style={{ color: 'var(--text-tertiary)' }}>
+            <Tooltip content="Outbound messages your agent or campaigns sent this period. Counts toward your included quota.">sent</Tooltip>
+          </p>
         </div>
         <div>
           <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{received}</p>
-          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>received</p>
+          <p className="text-xs flex items-center" style={{ color: 'var(--text-tertiary)' }}>
+            <Tooltip content="Inbound messages from your contacts. Free — does not count toward your quota.">received</Tooltip>
+          </p>
         </div>
         <div>
           <p className="text-lg font-bold" style={{ color: overage > 0 ? 'oklch(55% 0.18 25)' : 'var(--text-primary)' }}>
             {overage}
           </p>
-          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>overage</p>
+          <p className="text-xs flex items-center" style={{ color: 'var(--text-tertiary)' }}>
+            <Tooltip content="Messages sent above your included monthly quota. Each one is billed on your next invoice at the per-message rate shown above.">overage</Tooltip>
+          </p>
         </div>
       </div>
       {overageCents > 0 && (
@@ -133,11 +140,11 @@ export default function UsagePage() {
       {/* Voice */}
       <div className="rounded-xl p-6 space-y-5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
         <div className="flex items-baseline justify-between">
-          <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
-            Voice — {period}
+          <p className="text-sm font-semibold uppercase tracking-wide flex items-center" style={{ color: 'var(--text-tertiary)' }}>
+            <Tooltip content="Total minutes across inbound, outbound, and widget calls this billing period. Rounded up to the next minute per call.">Voice — {period}</Tooltip>
           </p>
-          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-            {data.voice.ratePerMinuteCents}¢ per overage min
+          <p className="text-xs flex items-center" style={{ color: 'var(--text-tertiary)' }}>
+            <Tooltip content="Per-minute rate billed on your next invoice for any call minutes beyond your included quota.">{data.voice.ratePerMinuteCents}¢ per overage min</Tooltip>
           </p>
         </div>
         <ProgressBar value={data.minutesUsed} max={data.minutesQuota} unit="min" />
@@ -171,8 +178,8 @@ export default function UsagePage() {
       {/* Projected overage charges */}
       {totalOverage > 0 && (
         <div className="rounded-xl p-6 space-y-3" style={{ background: 'oklch(98% 0.02 75)', border: '1px solid oklch(85% 0.10 75)' }}>
-          <p className="text-sm font-semibold" style={{ color: 'oklch(35% 0.16 75)' }}>
-            Projected overage charges this period
+          <p className="text-sm font-semibold flex items-center" style={{ color: 'oklch(35% 0.16 75)' }}>
+            <Tooltip content="Estimate of overage charges based on usage so far this period. The actual amount finalizes on your next Stripe invoice — usage between now and the period end can change it.">Projected overage charges this period</Tooltip>
           </p>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[

@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { apiFetchRaw, useApi } from '@/hooks/useApi'
+import { Tooltip } from '@/components/Tooltip'
 
 interface Entitlement {
   key: string
@@ -26,29 +27,41 @@ interface FieldDef {
   unit?: string
   twilioCostHint?: string
   group: 'Telephony' | 'Voice' | 'SMS' | 'MMS' | 'WhatsApp'
+  description: string
 }
 
 const FIELDS: FieldDef[] = [
   // Telephony / number rental
-  { key: 'phone_number_monthly_cost_cents', label: 'Number rental',          type: 'integer', unit: '¢/mo',  twilioCostHint: 'Twilio cost: $1.15/mo (US local), $2.00/mo (toll-free)', group: 'Telephony' },
+  { key: 'phone_number_monthly_cost_cents', label: 'Number rental',          type: 'integer', unit: '¢/mo',  twilioCostHint: 'Twilio cost: $1.15/mo (US local), $2.00/mo (toll-free)', group: 'Telephony',
+    description: 'Recurring monthly charge per phone number on this plan. Twilio bills us $1.15/mo for US local numbers, $2.00/mo for toll-free — set this above cost to make margin.' },
 
   // Voice
-  { key: 'minutes_per_month',               label: 'Voice minutes included', type: 'integer', unit: 'min',                                                                          group: 'Voice' },
-  { key: 'voice_overage_per_minute_cents',  label: 'Voice overage rate',     type: 'integer', unit: '¢/min', twilioCostHint: 'Twilio: $0.0085 in / $0.014 out / $0.022 toll-free', group: 'Voice' },
+  { key: 'minutes_per_month',               label: 'Voice minutes included', type: 'integer', unit: 'min',                                                                          group: 'Voice',
+    description: 'Voice call minutes included monthly across all channels (inbound, outbound, widget). Calls beyond this are charged at the overage rate below.' },
+  { key: 'voice_overage_per_minute_cents',  label: 'Voice overage rate',     type: 'integer', unit: '¢/min', twilioCostHint: 'Twilio: $0.0085 in / $0.014 out / $0.022 toll-free', group: 'Voice',
+    description: 'Per-minute charge for voice calls beyond the included quota. One flat rate covers all voice types — set high enough that toll-free calls (most expensive at $0.022/min from Twilio) still profit.' },
 
   // SMS
-  { key: 'included_sms_per_month',          label: 'SMS included',           type: 'integer', unit: 'msg',                                                                          group: 'SMS' },
-  { key: 'sms_overage_per_message_cents',   label: 'SMS overage rate',       type: 'integer', unit: '¢/msg', twilioCostHint: 'Twilio: ~$0.0083 + carrier fees',                    group: 'SMS' },
+  { key: 'included_sms_per_month',          label: 'SMS included',           type: 'integer', unit: 'msg',                                                                          group: 'SMS',
+    description: 'Standard SMS messages included per month. Outbound messages count; inbound replies are free.' },
+  { key: 'sms_overage_per_message_cents',   label: 'SMS overage rate',       type: 'integer', unit: '¢/msg', twilioCostHint: 'Twilio: ~$0.0083 + carrier fees',                    group: 'SMS',
+    description: 'Per-message charge for SMS beyond included quota. Twilio costs ~$0.0083 per segment plus carrier fees (~$0.003 average) — set above $0.011 to keep margin healthy.' },
 
   // MMS
-  { key: 'mms_enabled',                     label: 'MMS channel enabled',    type: 'boolean',                                                                                       group: 'MMS' },
-  { key: 'included_mms_per_month',          label: 'MMS included',           type: 'integer', unit: 'msg',                                                                          group: 'MMS' },
-  { key: 'mms_overage_per_message_cents',   label: 'MMS overage rate',       type: 'integer', unit: '¢/msg', twilioCostHint: 'Twilio: ~$0.022 + carrier fees',                     group: 'MMS' },
+  { key: 'mms_enabled',                     label: 'MMS channel enabled',    type: 'boolean',                                                                                       group: 'MMS',
+    description: 'Whether tenants on this plan can send MMS (image/video messages). Off by default for low tiers; on for Basic and above where margin is sufficient.' },
+  { key: 'included_mms_per_month',          label: 'MMS included',           type: 'integer', unit: 'msg',                                                                          group: 'MMS',
+    description: 'MMS messages included per month. Costs Twilio ~$0.022 per message vs ~$0.0083 for SMS, so quotas are typically smaller.' },
+  { key: 'mms_overage_per_message_cents',   label: 'MMS overage rate',       type: 'integer', unit: '¢/msg', twilioCostHint: 'Twilio: ~$0.022 + carrier fees',                     group: 'MMS',
+    description: 'Per-message overage rate for MMS. True cost runs ~$0.027/msg with carrier fees — keep at or above $0.07 to maintain ≥2.5x markup.' },
 
   // WhatsApp
-  { key: 'whatsapp_enabled',                  label: 'WhatsApp channel enabled', type: 'boolean',                                                                                  group: 'WhatsApp' },
-  { key: 'included_whatsapp_per_month',       label: 'WhatsApp included',        type: 'integer', unit: 'msg',                                                                    group: 'WhatsApp' },
-  { key: 'whatsapp_overage_per_message_cents',label: 'WhatsApp overage rate',    type: 'integer', unit: '¢/msg', twilioCostHint: 'Twilio: ~$0.005 + Meta conversation fees',     group: 'WhatsApp' },
+  { key: 'whatsapp_enabled',                  label: 'WhatsApp channel enabled', type: 'boolean',                                                                                  group: 'WhatsApp',
+    description: 'Whether tenants on this plan can send WhatsApp messages. Requires Meta Business account verification on the tenant side.' },
+  { key: 'included_whatsapp_per_month',       label: 'WhatsApp included',        type: 'integer', unit: 'msg',                                                                    group: 'WhatsApp',
+    description: 'WhatsApp messages included per month. Conversations and templates each count once when initiated.' },
+  { key: 'whatsapp_overage_per_message_cents',label: 'WhatsApp overage rate',    type: 'integer', unit: '¢/msg', twilioCostHint: 'Twilio: ~$0.005 + Meta conversation fees',     group: 'WhatsApp',
+    description: 'Per-message overage rate for WhatsApp. Twilio charges ~$0.005 plus Meta conversation fees (varies by use case: marketing $0.025, utility $0.005, auth $0.0145).' },
 ]
 
 // Order tiers cheapest → most expensive. Plans not in this list still render at the end.
@@ -249,7 +262,9 @@ export default function PricingMatrixPage() {
                 {group.fields.map(field => (
                   <tr key={field.key}>
                     <td className="px-5 py-3 sticky left-0 z-10" style={{ background: 'var(--surface-raised)', borderTop: '1px solid var(--border-subtle)' }}>
-                      <p style={{ color: 'var(--text-primary)' }}>{field.label}</p>
+                      <p className="flex items-center" style={{ color: 'var(--text-primary)' }}>
+                        <Tooltip content={field.description} side="right">{field.label}</Tooltip>
+                      </p>
                       {field.unit && <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{field.unit}</p>}
                       {field.twilioCostHint && <p className="text-xs italic mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{field.twilioCostHint}</p>}
                     </td>
