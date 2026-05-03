@@ -75,6 +75,7 @@ router.get('/conversations', asyncHandler(async (req, res) => {
         transcriptRef: true,
         transcriptJson: true,
         recordingStatus: true,
+        outcomeCode: true,
         contact: { select: { firstName: true, lastName: true, email: true, phoneE164: true } },
       },
     }),
@@ -268,6 +269,25 @@ router.get('/conversations/:id', asyncHandler(async (req, res) => {
   })
   if (!conv) { res.status(404).json({ error: 'Not found' }); return }
   res.json({ data: { ...conv, recordingSizeBytes: conv.recordingSizeBytes != null ? String(conv.recordingSizeBytes) : null } })
+}))
+
+// PATCH /api/conversations/:id — update tenant-editable fields (outcome tag,
+// notes). Lets a tenant disposition a call once they've reviewed it: was
+// it a booking? Did the lead qualify? Drives funnel reporting.
+router.patch('/conversations/:id', asyncHandler(async (req, res) => {
+  const tenantId = (req as any).user?.currentTenantId as string
+  const { outcomeCode } = z.object({
+    outcomeCode: z.string().max(40).nullable().optional(),
+  }).parse(req.body)
+
+  const existing = await prisma.conversation.findFirst({ where: { id: req.params.id, tenantId } })
+  if (!existing) { res.status(404).json({ error: 'Not found' }); return }
+
+  const updated = await prisma.conversation.update({
+    where: { id: existing.id },
+    data:  { outcomeCode: outcomeCode ?? null },
+  })
+  res.json({ data: { ...updated, recordingSizeBytes: updated.recordingSizeBytes != null ? String(updated.recordingSizeBytes) : null } })
 }))
 
 // DELETE /api/conversations — bulk soft-delete by IDs

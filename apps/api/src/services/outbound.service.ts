@@ -1,6 +1,7 @@
 import twilio from 'twilio'
 import { prisma } from '../lib/prisma.js'
 import { getSubaccountClient } from './twilio-subaccount.service.js'
+import { sendGmailEmail } from './google.service.js'
 import { getEnv } from '@voiceautomation/config'
 
 const GW_WS_BASE = process.env['GATEWAY_WS_URL'] ?? 'wss://gateway.myorbisvoice.com'
@@ -114,6 +115,14 @@ export async function handleOutboundStatus(attemptId: string, callStatus: string
   const attempt = await prisma.outboundCallAttempt.findUnique({ where: { id: attemptId } })
   if (!attempt) return
 
+  // Best-effort: when an outbound call doesn't connect, send a "we tried
+  // to reach you" follow-up email from the tenant's Gmail. Skip if the
+  // contact has no email or has opted out.
+  if (['busy', 'no_answer', 'failed'].includes(outcomeCode)) {
+    sendMissedCallEmail(attempt.tenantId, attempt.contactId, attempt.campaignId)
+      .catch(err => console.warn('[outbound] missed-call email failed:', (err as Error).message))
+  }
+
   const remaining = await prisma.outboundCallAttempt.count({
     where: { campaignId: attempt.campaignId, status: { in: ['PENDING', 'DIALING'] } },
   })
@@ -123,4 +132,40 @@ export async function handleOutboundStatus(attemptId: string, callStatus: string
       data:  { status: 'COMPLETED' },
     })
   }
+}
+
+async function sendMissedCallEmail(tenantId: string, contactId: string | null, campaignId: string) {
+  if (!contactId) return
+  const [contact, tenant, profile, campaign] = await Promise.all([
+    prisma.contact.findUnique({
+      where: { id: contactId },
+      select: { firstName: true, lastName: true, email: true, optedOutEmail: true },
+    }),
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { displayName: true } }),
+    prisma.businessProfile.findUnique({ where: { tenantId }, select: { brandName: true, fallbackNotificationEmail: true } }),
+    prisma.outboundCampaign.findUnique({ where: { id: campaignId }, select: { name: true, description: true } }),
+  ])
+  if (!contact?.email)        return
+  if (contact.optedOutEmail)  return
+
+  const businessName = profile?.brandName || tenant?.displayName || 'our team'
+  const name         = [contact.firstName, contact.lastName].filter(Boolean).join(' ')
+  const greeting     = name ? `Hi ${name},` : 'Hi,'
+  const reason       = campaign?.description ? campaign.description.split(/[.!?]/)[0] : 'follow up'
+
+  const html = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#222">
+      <p style="margin:0 0 12px">${greeting}</p>
+      <p style="margin:0 0 16px">We tried to reach you by phone today to ${reason} but didn't catch you. No worries — here's how to connect when it's a good time:</p>
+      ${profile?.fallbackNotificationEmail ? `<p style="margin:0 0 16px"><strong>Or reply here:</strong> ${profile.fallbackNotificationEmail}</p>` : ''}
+      <p style="margin:16px 0 0;color:#666;font-size:14px">Looking forward to chatting,<br>${businessName}</p>
+    </div>
+  `.trim()
+
+  await sendGmailEmail(tenantId, {
+    to:      contact.email,
+    subject: `We tried to reach you — ${businessName}`,
+    body:    html,
+    isHtml:  true,
+  })
 }

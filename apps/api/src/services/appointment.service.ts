@@ -2,7 +2,7 @@ import { google } from 'googleapis'
 import { prisma } from '../lib/prisma.js'
 import { writeAuditLog } from '../lib/audit.js'
 import { AppError } from '@voiceautomation/shared'
-import { getAuthenticatedGoogleClient } from './google.service.js'
+import { getAuthenticatedGoogleClient, sendGmailEmail } from './google.service.js'
 import type { Prisma } from '@prisma/client'
 
 const DEFAULT_SLOT_INCREMENT_MINUTES = 30
@@ -142,7 +142,64 @@ export async function createAppointment(tenantId: string, userId: string, data: 
     metadataJson: { googleEventId: event.data.id },
   })
 
+  // Best-effort: send a branded confirmation email from the tenant's own
+  // Gmail account, separate from Google Calendar's automatic invite. The
+  // calendar invite gets the meeting on the contact's calendar; this email
+  // is the human-tone touch ("we're looking forward to seeing you").
+  if (data.attendeeEmail) {
+    sendAppointmentConfirmationEmail(tenantId, {
+      to:               data.attendeeEmail,
+      appointmentType:  data.appointmentType,
+      startAt:          data.startAt,
+      endAt:            data.endAt,
+      timezone:         data.timezone,
+      location:         data.location,
+      notes:            data.notes,
+    }).catch(err => console.warn('[appointment] confirmation email failed:', (err as Error).message))
+  }
+
   return appointment
+}
+
+async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
+  to:              string
+  appointmentType?: string
+  startAt:         string
+  endAt:           string
+  timezone:        string
+  location?:       string
+  notes?:          string
+}) {
+  const [tenant, profile] = await Promise.all([
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { displayName: true } }),
+    prisma.businessProfile.findUnique({ where: { tenantId }, select: { brandName: true, fallbackNotificationEmail: true } }),
+  ])
+  const businessName = profile?.brandName || tenant?.displayName || 'our team'
+  const apptLabel    = opts.appointmentType || 'Appointment'
+  const start        = new Date(opts.startAt)
+  const dateStr      = start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: opts.timezone })
+  const timeStr      = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone, timeZoneName: 'short' })
+
+  const html = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#222">
+      <h2 style="color:#1a9898;margin:0 0 8px">${apptLabel} confirmed</h2>
+      <p style="color:#555;margin:0 0 20px">Thanks for booking with ${businessName}. Here are the details:</p>
+      <table style="width:100%;border-collapse:collapse;margin:0 0 20px">
+        <tr><td style="padding:8px 0;color:#888;width:120px;vertical-align:top">When</td><td style="color:#222"><strong>${dateStr}</strong><br>${timeStr}</td></tr>
+        ${opts.location ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Where</td><td style="color:#222">${opts.location}</td></tr>` : ''}
+        ${opts.notes    ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Notes</td><td style="color:#222">${opts.notes}</td></tr>`       : ''}
+      </table>
+      <p style="color:#666;font-size:14px;margin:0 0 8px">You'll also see this on your calendar — Google has added it automatically.</p>
+      ${profile?.fallbackNotificationEmail ? `<p style="color:#888;font-size:13px;margin:24px 0 0">Need to change something? Reply to this email or contact us at ${profile.fallbackNotificationEmail}.</p>` : ''}
+    </div>
+  `.trim()
+
+  await sendGmailEmail(tenantId, {
+    to:      opts.to,
+    subject: `${apptLabel} confirmed — ${dateStr}`,
+    body:    html,
+    isHtml:  true,
+  })
 }
 
 export async function rescheduleAppointment(tenantId: string, userId: string, appointmentId: string, data: {

@@ -8,6 +8,7 @@ import { SidebarNav } from '@/components/SidebarNav'
 import { SignOutButton } from '@/components/SignOutButton'
 import { SidebarUserBadge } from '@/components/SidebarUserBadge'
 import { NotificationBell } from '@/components/NotificationBell'
+import { TenantLogo } from '@/components/TenantLogo'
 import { TenantIdBadge } from '@/components/TenantIdBadge'
 import { TierBadge } from '@/components/TierBadge'
 import { getImpersonationInfo, endImpersonation } from '@/lib/auth'
@@ -19,15 +20,7 @@ function SidebarContents({ onNav }: { onNav?: () => void }) {
       {/* Brand */}
       <div className="px-4 py-5 flex items-center justify-between flex-shrink-0" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: 'oklch(55% 0.11 193)' }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <circle cx="7" cy="7" r="3" fill="oklch(10% 0.01 193)" />
-              <circle cx="7" cy="7" r="6" stroke="oklch(10% 0.01 193)" strokeOpacity="0.4" strokeWidth="1.5" />
-            </svg>
-          </div>
+          <TenantLogo />
           <span className="text-sm font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
             MyOrbisVoice
           </span>

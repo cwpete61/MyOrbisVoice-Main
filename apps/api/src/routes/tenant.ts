@@ -64,8 +64,13 @@ router.post('/business-profile/logo', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
     const ct = req.headers['content-type']?.split(';')[0]?.trim() ?? ''
-    const allowed: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }
-    if (!allowed[ct]) throw new AppError('VALIDATION_ERROR', 'Only PNG, JPG and WebP are allowed', 422)
+    const allowed: Record<string, string> = {
+      'image/png':     'png',
+      'image/jpeg':    'jpg',
+      'image/webp':    'webp',
+      'image/svg+xml': 'svg',
+    }
+    if (!allowed[ct]) throw new AppError('VALIDATION_ERROR', 'Only PNG, JPG, WebP, and SVG are allowed', 422)
 
     // Read raw body from stream
     const chunks: Buffer[] = []

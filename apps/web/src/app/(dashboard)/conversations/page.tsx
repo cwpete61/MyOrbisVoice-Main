@@ -16,8 +16,26 @@ interface Conversation {
   transcriptRef: string | null
   transcriptJson: TranscriptEntry[] | null
   recordingStatus: string | null
+  outcomeCode: string | null
   contact: Contact | null
 }
+
+// Tenant-editable disposition tags — what was the BUSINESS outcome of this call?
+// Distinct from `status` (technical: completed/missed/failed) and from
+// `outcomeCode` set by the system (e.g. `voicemail`, `busy`, `no_answer` for
+// outbound). A tenant can override outcomeCode on any conversation to one
+// of these tags so funnel reports group by real outcomes.
+const DISPOSITIONS: { value: string; label: string }[] = [
+  { value: '',                  label: '— No disposition —' },
+  { value: 'booked',             label: '✓ Booked / Sale' },
+  { value: 'qualified',          label: '◎ Qualified lead' },
+  { value: 'callback',           label: '↻ Callback requested' },
+  { value: 'not_interested',     label: '✕ Not interested' },
+  { value: 'wrong_number',       label: '⊘ Wrong number' },
+  { value: 'voicemail',          label: '🔉 Voicemail' },
+  { value: 'no_answer',          label: '— No answer' },
+  { value: 'spam',               label: '🚫 Spam / robocall' },
+]
 
 interface ConversationsResponse { items: Conversation[]; total: number }
 type TranscriptEntry = { role: 'user' | 'assistant'; text: string; timestamp: number }
@@ -116,6 +134,24 @@ export default function ConversationsPage() {
 
   function toggleOne(id: string) {
     setCheckedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  }
+
+  async function setDisposition(value: string) {
+    if (!selected) return
+    const newOutcome = value || null
+    // Optimistic UI
+    setSelected({ ...selected, outcomeCode: newOutcome })
+    try {
+      await apiFetch(`/api/conversations/${selected.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ outcomeCode: newOutcome }),
+      })
+      reload()
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to update disposition')
+      // Roll back
+      setSelected({ ...selected })
+    }
   }
 
   function openFollowupEmail() {
@@ -378,6 +414,25 @@ export default function ConversationsPage() {
               <span className="badge capitalize text-xs" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>
                 {selected.status?.toLowerCase()}
               </span>
+            </div>
+
+            <div className="mb-3">
+              <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>
+                Disposition
+              </label>
+              <select
+                value={selected.outcomeCode ?? ''}
+                onChange={(e) => setDisposition(e.target.value)}
+                className="w-full text-xs px-2 py-1.5 rounded-lg"
+                style={{ background: 'var(--surface-overlay)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
+              >
+                {DISPOSITIONS.map(d => (
+                  <option key={d.value} value={d.value}>{d.label}</option>
+                ))}
+              </select>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                Tag the business outcome — used in funnel reports.
+              </p>
             </div>
 
             <button

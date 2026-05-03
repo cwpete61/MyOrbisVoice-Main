@@ -52,8 +52,8 @@ function LogoUpload({ currentUrl, onUploaded }: { currentUrl: string | null; onU
   const [error, setError] = useState<string | null>(null)
 
   async function handleFile(file: File) {
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      setError('Unsupported type. Use PNG, JPG, or WebP.')
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(file.type)) {
+      setError('Unsupported type. Use PNG, JPG, WebP, or SVG.')
       return
     }
     if (file.size > 2 * 1024 * 1024) {
@@ -94,14 +94,14 @@ function LogoUpload({ currentUrl, onUploaded }: { currentUrl: string | null; onU
           >
             {uploading ? 'Uploading…' : currentUrl ? 'Replace logo' : 'Upload logo'}
           </button>
-          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>PNG, JPG, SVG, or WebP — max 2 MB</p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>PNG, JPG, WebP, or SVG — max 2 MB</p>
           {error && <p className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</p>}
         </div>
       </div>
       <input
         ref={fileRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml"
         className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
       />
