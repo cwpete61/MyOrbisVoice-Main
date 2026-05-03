@@ -691,4 +691,18 @@ router.get('/twilio-logs', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// GET /api/admin/errors — recent unhandled errors captured by the global
+// error handler. Sourced from AuditLog rows where action starts with
+// 'system.error.'. Newest first, capped at 200.
+router.get('/errors', async (_req, res, next) => {
+  try {
+    const errors = await prisma.auditLog.findMany({
+      where:   { action: { startsWith: 'system.error.' } },
+      orderBy: { createdAt: 'desc' },
+      take:    200,
+    })
+    res.json({ data: { items: errors, total: errors.length } })
+  } catch (err) { next(err) }
+})
+
 export default router

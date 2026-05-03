@@ -22,6 +22,7 @@ export function AdminNav() {
         { href: '/admin/plans',       label: 'Plans',       icon: <PlansIcon /> },
         { href: '/admin/pricing',     label: 'Pricing',     icon: <PricingIcon /> },
         { href: '/admin/twilio-logs', label: 'Twilio Call Logs', icon: <CallLogsIcon /> },
+        { href: '/admin/errors',      label: 'Errors',           icon: <ErrorsIcon /> },
       ],
     },
     {
@@ -141,6 +142,16 @@ function PricingIcon() {
       <path d="M9.5 1.5h-5L1.5 4.5l6.5 9 6.5-9z" />
       <path d="M1.5 4.5h13" />
       <path d="M5.5 4.5l2.5 9 2.5-9" />
+    </svg>
+  )
+}
+
+function ErrorsIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 1.5L1.5 13h13L8 1.5z" />
+      <line x1="8" y1="6" x2="8" y2="9.5" />
+      <circle cx="8" cy="11.5" r="0.5" fill="currentColor" />
     </svg>
   )
 }
