@@ -623,6 +623,7 @@ model PhoneNumber {
   e164Number           String    @unique
   displayLabel         String?
   monthlyPriceCents    Int?      // captured at purchase time so we can show it without re-querying Twilio
+  notes                String?   // tenant-facing free-text note for the number (e.g. "main reception")
   isInboundEnabled     Boolean   @default(false)
   isOutboundEnabled    Boolean   @default(false)
   isSmsEnabled         Boolean   @default(false)

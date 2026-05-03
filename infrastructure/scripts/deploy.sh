@@ -30,7 +30,7 @@ docker exec umoja-postgres pg_dump -U voiceautomation -d voiceautomation -F c \
 ssh "$SERVER" "docker exec myorbisvoice-postgres pg_dump -U voiceautomation -d voiceautomation -F c \
   > /var/backups/va/db_${STAMP}_pre_${TARGET}.dump" && ok "Prod DB snapshot saved"
 
-# ── 2. Prisma — always regenerate and push ─────────────────────────────────
+# ── 2. Prisma — regenerate client, sync schema, push to prod DB ─────────────
 log "Prisma client — regenerate and push to containers..."
 pnpm exec prisma generate --schema=prisma/schema.prisma 2>&1 | grep -E "Generated|error" || true
 rsync -az "$PRISMA_CLIENT/" \
@@ -42,6 +42,31 @@ ssh "$SERVER" "
     myorbisvoice-gateway:/app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/
 "
 ok "Prisma client pushed to api + gateway containers (commit happens in step_api/step_gateway)"
+
+# Sync the schema file once (used by `prisma db push` below AND mirrored to the
+# api container so /app/prisma/schema.prisma is current).
+log "Syncing schema.prisma to prod and applying to DB..."
+rsync -az "$REPO_ROOT/prisma/schema.prisma" "$SERVER:$REMOTE/prisma/schema.prisma"
+ssh "$SERVER" "docker cp $REMOTE/prisma/schema.prisma myorbisvoice-api:/app/prisma/schema.prisma"
+
+# Run `prisma db push` against the prod DB through the API container. The
+# container already has DATABASE_URL pointing at prod, so no env juggling.
+# `--accept-data-loss=false` (default) means destructive changes (dropped
+# columns, type narrowing, etc.) ABORT the deploy instead of silently losing
+# data — that's the safety we want. Additive changes (new column, new table,
+# new enum value) apply cleanly.
+PRISMA_BIN="/app/node_modules/.pnpm/prisma@5.22.0/node_modules/prisma/build/index.js"
+PUSH_OUT=$(ssh "$SERVER" "docker exec -w /app myorbisvoice-api node $PRISMA_BIN db push --schema=prisma/schema.prisma --skip-generate --accept-data-loss=false 2>&1" || echo "PUSH_FAILED")
+if echo "$PUSH_OUT" | grep -q "PUSH_FAILED\|destructive\|Could not\|Error:"; then
+  echo "$PUSH_OUT"
+  fail "prisma db push to prod failed — DESTRUCTIVE schema change detected, or DB unreachable. Investigate before retrying."
+fi
+if echo "$PUSH_OUT" | grep -qE "in sync|already in sync"; then
+  ok "Prod DB schema already in sync"
+else
+  echo "$PUSH_OUT" | grep -E "Applied|migration|Adding|change" | head -10 | sed 's/^/   /'
+  ok "Prod DB schema migrated"
+fi
 
 # ── 2b. Sync extra node_modules that may not be in the container image ────────
 log "Syncing extra node_modules to server..."
@@ -62,8 +87,8 @@ step_api() {
   log "API — build → sync → inject → commit-to-image → restart..."
   pnpm --filter @voiceautomation/api build 2>&1 | grep -E "error TS|^>" || true
   rsync -az --delete "$REPO_ROOT/apps/api/dist/" "$SERVER:$REMOTE/apps/api/dist/"
-  rsync -az "$REPO_ROOT/prisma/schema.prisma" "$SERVER:$REMOTE/prisma/schema.prisma"
-  ssh "$SERVER" "docker cp $REMOTE/apps/api/dist/. myorbisvoice-api:/app/apps/api/dist/ && docker cp $REMOTE/prisma/schema.prisma myorbisvoice-api:/app/prisma/schema.prisma"
+  # schema.prisma already synced + db pushed in the global Prisma section above
+  ssh "$SERVER" "docker cp $REMOTE/apps/api/dist/. myorbisvoice-api:/app/apps/api/dist/"
   # CRITICAL: commit the running container back into the image so force-recreate doesn't revert code.
   # Without this, any subsequent `docker compose up --force-recreate` (e.g. after env changes) reverts
   # to the original image and loses everything we just injected via docker cp.
