@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { apiFetch, apiUploadFile, useApi } from '@/hooks/useApi'
+import { PushNotificationToggle } from '@/components/PushNotificationToggle'
 
 interface Tenant {
   id: string
@@ -324,6 +325,18 @@ export default function SettingsPage() {
           />
         ))}
       </Section>
+
+      <section>
+        <div className="mb-5">
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Notifications</h2>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+            Per-device — enable on each browser you want to receive alerts on.
+          </p>
+        </div>
+        <div className="rounded-xl p-6" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+          <PushNotificationToggle />
+        </div>
+      </section>
 
       <MembersSection onToast={showToast} />
     </div>

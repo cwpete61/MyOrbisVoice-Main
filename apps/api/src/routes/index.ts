@@ -21,6 +21,8 @@ import conversationsRouter from './conversations.js'
 import notificationsRouter from './notifications.js'
 import dashboardRouter from './dashboard.js'
 import onboardingRouter from './onboarding.js'
+import a2pRouter from './a2p.js'
+import pushRouter from './push.js'
 import { twilioInboundRouter } from './twilio-inbound.js'
 import { outboundWebhooksRouter } from './outbound-webhooks.js'
 import { validateTwilioWebhook } from '../middleware/twilio-signature.js'
@@ -34,6 +36,7 @@ router.use('/api', validateTwilioWebhook, twilioInboundRouter)
 router.use('/api', validateTwilioWebhook, outboundWebhooksRouter)
 router.use('/api', billingRouter)       // before auth-gated routers — contains public /billing/plans
 router.use('/api', widgetRouter)        // contains public /public/widget/session
+router.use('/api', pushRouter)          // contains public /push/vapid-public-key — must precede tenantRouter
 router.use('/api', tenantRouter)
 router.use('/api', businessDNARouter)
 router.use('/api', promptsRouter)
@@ -52,5 +55,6 @@ router.use('/api', conversationsRouter)
 router.use('/api', notificationsRouter)
 router.use('/api', dashboardRouter)
 router.use('/api', onboardingRouter)
+router.use('/api', a2pRouter)
 
 export default router

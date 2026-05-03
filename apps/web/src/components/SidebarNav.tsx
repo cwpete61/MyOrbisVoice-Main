@@ -45,6 +45,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/integrations',   label: 'Integrations',   icon: <Icon d="M13 8a5 5 0 0 1-10 0M8 3v5m0 0-2-2m2 2 2-2" /> },
       { href: '/phone-numbers',  label: 'Phone Numbers',  icon: <Icon d="M4 2h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm4 10h.01M6 5h4M6 7h4M6 9h2" /> },
+      { href: '/a2p',            label: 'SMS Compliance',  icon: <Icon d="M3 4h10v6a1 1 0 0 1-1 1H7l-3 2V5a1 1 0 0 1 1-1zm2 3h6M5 9h4" /> },
       { href: '/appointments',  label: 'Appointments',  icon: <Icon d="M4 3h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm3 4h2M7 10h2M4 6h8" /> },
       { href: '/staff',         label: 'Staff Directory',  icon: <Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4 4a3 3 0 0 0-3-2h-1" /> },
       { href: '/contacts',      label: 'Contacts',      icon: <Icon d="M10 9a3 3 0 1 0-6 0M5 15a5 5 0 0 1 6 0M13 7a2 2 0 1 0-4 0M14 13a4 4 0 0 0-3-1" /> },

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useApi, apiFetch } from '@/hooks/useApi'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -21,6 +22,7 @@ interface Attempt {
   attemptNumber: number
   startedAt: string | null
   endedAt: string | null
+  conversationId: string | null
   contact: {
     id: string
     fullName: string | null
@@ -300,6 +302,17 @@ function CampaignDetail({
 
   const current = campaign ?? initial
 
+  // Live polling: when a campaign is RUNNING, refresh attempts every 5s so
+  // the user sees calls land without manually reloading.
+  useEffect(() => {
+    if (current.status !== 'RUNNING') return
+    const id = setInterval(() => {
+      reloadAttempts()
+      reloadCampaign()
+    }, 5000)
+    return () => clearInterval(id)
+  }, [current.status, reloadAttempts, reloadCampaign])
+
   async function doAction(action: 'start' | 'pause' | 'cancel') {
     setActing(action)
     try {
@@ -417,6 +430,28 @@ function CampaignDetail({
               {canPause  && <button onClick={() => doAction('pause')}  disabled={!!acting} className="btn-secondary text-sm">{acting === 'pause'  ? 'Pausing…' : '⏸ Pause'}</button>}
               {canCancel && <button onClick={() => doAction('cancel')} disabled={!!acting} className="btn-danger text-sm">{acting === 'cancel' ? 'Canceling…' : 'Cancel'}</button>}
             </div>
+          </div>
+        )}
+
+        {/* Progress bar — visible during and after a run */}
+        {totalAttempts > 0 && (
+          <div className="pt-2">
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <span>{completed + failed} of {totalAttempts} done</span>
+              <span>{Math.round(((completed + failed) / totalAttempts) * 100)}%</span>
+            </div>
+            <div className="h-2 rounded-full overflow-hidden bg-gray-100">
+              <div
+                className="h-full transition-all"
+                style={{
+                  width: `${((completed + failed) / totalAttempts) * 100}%`,
+                  background: current.status === 'RUNNING' ? 'oklch(55% 0.11 193)' : 'oklch(60% 0.11 193 / 0.5)',
+                }}
+              />
+            </div>
+            {current.status === 'RUNNING' && (
+              <p className="text-xs text-gray-400 mt-1">Live — refreshing every 5s</p>
+            )}
           </div>
         )}
 
@@ -548,6 +583,14 @@ function CampaignDetail({
                           {durationSecs != null ? `${durationSecs}s` : '—'}
                         </td>
                         <td className="px-4 py-3">
+                          {a.conversationId && (
+                            <Link
+                              href={`/conversations?id=${a.conversationId}`}
+                              className="text-xs text-blue-500 hover:text-blue-700 transition-colors mr-3"
+                            >
+                              View →
+                            </Link>
+                          )}
                           {a.status === 'PENDING' && ['DRAFT', 'PAUSED'].includes(current.status) && (
                             <button
                               onClick={() => removeContact(a.contact.id)}

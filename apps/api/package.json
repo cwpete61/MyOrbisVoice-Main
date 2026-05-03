@@ -26,6 +26,7 @@
     "nodemailer": "^8.0.7",
     "stripe": "^22.1.0",
     "twilio": "^6.0.0",
+    "web-push": "^3.6.7",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -36,6 +37,7 @@
     "@types/multer": "^2.1.0",
     "@types/node": "^20.14.0",
     "@types/nodemailer": "^8.0.0",
+    "@types/web-push": "^3.6.4",
     "tsx": "^4.15.0",
     "typescript": "^5.5.0"
   }
