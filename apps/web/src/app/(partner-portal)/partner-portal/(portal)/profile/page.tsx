@@ -3,21 +3,25 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 
+// AffiliateAccount shape from GET /api/affiliate/account
 type Account = {
   id: string
   status: string
   referralCode: string
-  commissionRatePct: number
-  payoutMethod: string | null
-  payoutDetails: Record<string, string> | null
-  notes: string | null
+  payoutMethodJson: { type?: string; [k: string]: unknown } | null
   createdAt: string
+}
+
+// AffiliateSettings — commission rate is program-wide, not per-account
+type Settings = {
+  commissionRatePct: number
 }
 
 const PAYOUT_METHODS = ['PayPal', 'Bank Transfer', 'Wise', 'Other']
 
 export default function AffiliateProfilePage() {
   const [account, setAccount] = useState<Account | null>(null)
+  const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -26,28 +30,35 @@ export default function AffiliateProfilePage() {
   const [details, setDetails] = useState('')
 
   useEffect(() => {
-    apiFetch<Account>('/api/affiliate/account')
-      .then(acc => {
-        setAccount(acc)
-        if (acc) {
-          setMethod(acc.payoutMethod ?? '')
-          setDetails(acc.payoutDetails ? JSON.stringify(acc.payoutDetails, null, 2) : '')
-        }
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+    Promise.all([
+      apiFetch<Account>('/api/affiliate/account').catch(() => null),
+      apiFetch<Settings>('/api/public/affiliate/settings').catch(() => null),
+    ]).then(([acc, sett]) => {
+      setAccount(acc)
+      setSettings(sett)
+      if (acc?.payoutMethodJson) {
+        const pmj = acc.payoutMethodJson
+        setMethod(typeof pmj.type === 'string' ? pmj.type : '')
+        // Strip the 'type' key, render the rest as a simple kv string for editing
+        const rest = Object.fromEntries(Object.entries(pmj).filter(([k]) => k !== 'type'))
+        setDetails(Object.keys(rest).length > 0 ? JSON.stringify(rest, null, 2) : '')
+      }
+      setLoading(false)
+    })
   }, [])
 
   async function save() {
     setSaving(true)
     try {
-      let parsedDetails: Record<string, string> | null = null
+      // Build the payoutMethodJson the API expects: { type, ...details }
+      let parsedDetails: Record<string, unknown> = {}
       if (details.trim()) {
         try { parsedDetails = JSON.parse(details) } catch { parsedDetails = { info: details.trim() } }
       }
+      const payload = method ? { type: method, ...parsedDetails } : null
       await apiFetch('/api/affiliate/payout-method', {
         method: 'PATCH',
-        body: JSON.stringify({ payoutMethod: method || null, payoutDetails: parsedDetails }),
+        body: JSON.stringify(payload),
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
@@ -78,7 +89,7 @@ export default function AffiliateProfilePage() {
           <Row label="Account ID" value={account.id.slice(0, 8) + '…'} mono />
           <Row label="Status" value={account.status} />
           <Row label="Referral Code" value={account.referralCode} mono />
-          <Row label="Commission Rate" value={account.commissionRatePct + '%'} />
+          {settings && <Row label="Commission Rate" value={settings.commissionRatePct + '%'} />}
           <Row label="Member Since" value={new Date(account.createdAt).toLocaleDateString()} />
         </div>
       </div>

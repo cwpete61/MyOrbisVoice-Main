@@ -3,23 +3,32 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 
+// Shape returned by GET /api/affiliate/account — see services/affiliate.service.ts
 type Account = {
   id: string
   status: string
   referralCode: string
-  commissionRatePct: number
-  pendingBalanceCents: number
-  approvedBalanceCents: number
-  lifetimeEarningsCents: number
+  totalEarnedCents: number
+  totalPaidCents: number
 }
 
+// Shape returned by GET /api/affiliate/stats — see services/affiliate.service.ts:getAffiliateStats
 type Stats = {
-  totalClicks: number
-  totalConversions: number
-  totalEarningsCents: number
-  pendingBalanceCents: number
-  approvedBalanceCents: number
-  conversionRate: number
+  clicks: number
+  conversions: number
+  pendingCents: number
+  approvedCents: number
+  holdCents: number
+  paidCents: number
+  reversedCents: number
+  totalEarnedCents: number
+}
+
+// Shape returned by GET /api/public/affiliate/settings (public, no auth)
+type Settings = {
+  programName: string
+  commissionRatePct: number
+  cookieDurationDays: number
 }
 
 function fmt(cents: number) {
@@ -39,6 +48,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 export default function AffiliateDashboardPage() {
   const [account, setAccount] = useState<Account | null>(null)
   const [stats, setStats] = useState<Stats | null>(null)
+  const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
   const [applying, setApplying] = useState(false)
 
@@ -48,11 +58,15 @@ export default function AffiliateDashboardPage() {
       const acc = await apiFetch<Account>('/api/affiliate/account')
       setAccount(acc)
       if (acc) {
-        const s = await apiFetch<Stats>('/api/affiliate/stats')
+        const [s, sett] = await Promise.all([
+          apiFetch<Stats>('/api/affiliate/stats'),
+          apiFetch<Settings>('/api/public/affiliate/settings').catch(() => null),
+        ])
         setStats(s)
+        setSettings(sett)
       }
     } catch {
-      // not yet an affiliate
+      // not yet a partner
     }
     setLoading(false)
   }
@@ -113,20 +127,29 @@ export default function AffiliateDashboardPage() {
 
       {stats && (
         <div className="grid grid-cols-2 gap-4 mb-8" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
-          <StatCard label="Lifetime Earnings" value={fmt(stats.totalEarningsCents)} />
-          <StatCard label="Pending Balance" value={fmt(stats.pendingBalanceCents)} sub="Awaiting approval" />
-          <StatCard label="Approved Balance" value={fmt(stats.approvedBalanceCents)} sub="Ready to request" />
-          <StatCard label="Total Clicks" value={stats.totalClicks.toString()} />
-          <StatCard label="Conversions" value={stats.totalConversions.toString()} />
-          <StatCard label="Conversion Rate" value={stats.conversionRate.toFixed(1) + '%'} />
+          <StatCard label="Lifetime Earnings" value={fmt(stats.totalEarnedCents ?? 0)} />
+          <StatCard label="Pending Balance" value={fmt(stats.pendingCents ?? 0)} sub="Awaiting approval" />
+          <StatCard label="Approved Balance" value={fmt(stats.approvedCents ?? 0)} sub="Ready to request" />
+          <StatCard label="Total Clicks" value={String(stats.clicks ?? 0)} />
+          <StatCard label="Conversions" value={String(stats.conversions ?? 0)} />
+          <StatCard
+            label="Conversion Rate"
+            value={
+              (stats.clicks ?? 0) > 0
+                ? (((stats.conversions ?? 0) / stats.clicks) * 100).toFixed(1) + '%'
+                : '—'
+            }
+          />
         </div>
       )}
 
-      <div className="rounded-xl p-5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-        <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-tertiary)' }}>YOUR COMMISSION RATE</p>
-        <p className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{account.commissionRatePct}%</p>
-        <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Recurring on every active subscription you refer</p>
-      </div>
+      {settings && (
+        <div className="rounded-xl p-5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+          <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-tertiary)' }}>YOUR COMMISSION RATE</p>
+          <p className="text-3xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{settings.commissionRatePct}%</p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Recurring on every active subscription you refer</p>
+        </div>
+      )}
     </div>
   )
 }

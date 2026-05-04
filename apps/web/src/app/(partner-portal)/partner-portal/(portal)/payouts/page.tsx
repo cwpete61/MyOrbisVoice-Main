@@ -3,15 +3,25 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 
+// AffiliateAccount shape — see services/affiliate.service.ts:getAffiliateAccount
 type Account = {
-  approvedBalanceCents: number
-  payoutMethod: string | null
-  payoutDetails: Record<string, string> | null
+  id: string
+  status: string
+  totalEarnedCents: number
+  totalPaidCents: number
+  payoutMethodJson: Record<string, string> | null
 }
 
+// Stats shape — used to compute the "approved balance" available for payout
+type Stats = {
+  approvedCents: number
+}
+
+// AffiliatePayoutRequest model fields
 type PayoutRequest = {
   id: string
-  requestedAmountCents: number
+  amountCents: number       // not "requestedAmountCents"
+  currency: string
   status: string
   requestedAt: string
   processedAt: string | null
@@ -30,16 +40,19 @@ function fmt(cents: number) { return '$' + (cents / 100).toFixed(2) }
 
 export default function PayoutsPage() {
   const [account, setAccount] = useState<Account | null>(null)
+  const [stats, setStats]   = useState<Stats | null>(null)
   const [requests, setRequests] = useState<PayoutRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [requesting, setRequesting] = useState(false)
 
   async function load() {
-    const [acc, reqs] = await Promise.all([
+    const [acc, st, reqs] = await Promise.all([
       apiFetch<Account>('/api/affiliate/account').catch(() => null),
+      apiFetch<Stats>('/api/affiliate/stats').catch(() => null),
       apiFetch<PayoutRequest[]>('/api/affiliate/payout/requests').catch(() => []),
     ])
     setAccount(acc)
+    setStats(st)
     setRequests(reqs ?? [])
     setLoading(false)
   }
@@ -59,7 +72,9 @@ export default function PayoutsPage() {
 
   if (loading) return <div className="text-sm pt-8" style={{ color: 'var(--text-tertiary)' }}>Loading…</div>
 
-  const canRequest = (account?.approvedBalanceCents ?? 0) > 0
+  const approvedBalanceCents = stats?.approvedCents ?? 0
+  const payoutMethodLabel = account?.payoutMethodJson?.['type'] ?? null
+  const canRequest = approvedBalanceCents > 0
 
   return (
     <div>
@@ -69,18 +84,18 @@ export default function PayoutsPage() {
       <div className="grid gap-4 mb-8" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
         <div className="rounded-xl p-5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
           <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>Available Balance</p>
-          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{fmt(account?.approvedBalanceCents ?? 0)}</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{fmt(approvedBalanceCents)}</p>
           <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Approved commissions only</p>
         </div>
 
         <div className="rounded-xl p-5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
           <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>Payout Method</p>
-          <p className="text-sm font-medium" style={{ color: account?.payoutMethod ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
-            {account?.payoutMethod ?? 'Not configured'}
+          <p className="text-sm font-medium" style={{ color: payoutMethodLabel ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+            {payoutMethodLabel ?? 'Not configured'}
           </p>
-          {account?.payoutDetails && (
+          {account?.payoutMethodJson && (
             <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-              {Object.entries(account.payoutDetails).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+              {Object.entries(account.payoutMethodJson).filter(([k]) => k !== 'type').map(([k, v]) => `${k}: ${v}`).join(' · ')}
             </p>
           )}
         </div>
@@ -93,7 +108,7 @@ export default function PayoutsPage() {
           className="px-5 py-2.5 rounded-lg text-sm font-semibold"
           style={{ background: canRequest ? 'var(--brand-primary)' : 'var(--surface-raised)', color: canRequest ? '#fff' : 'var(--text-tertiary)', border: canRequest ? 'none' : '1px solid var(--border-subtle)', cursor: canRequest ? 'pointer' : 'not-allowed' }}
         >
-          {requesting ? 'Submitting…' : `Request Payout of ${fmt(account?.approvedBalanceCents ?? 0)}`}
+          {requesting ? 'Submitting…' : `Request Payout of ${fmt(approvedBalanceCents)}`}
         </button>
         {!canRequest && (
           <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>You need approved commissions before requesting a payout.</p>
@@ -121,7 +136,7 @@ export default function PayoutsPage() {
                 return (
                   <tr key={r.id} style={{ background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
                     <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{new Date(r.requestedAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--text-primary)' }}>{fmt(r.requestedAmountCents)}</td>
+                    <td className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--text-primary)' }}>{fmt(r.amountCents ?? 0)}</td>
                     <td className="px-4 py-2.5">
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: style.bg, color: style.text }}>{style.label}</span>
                     </td>

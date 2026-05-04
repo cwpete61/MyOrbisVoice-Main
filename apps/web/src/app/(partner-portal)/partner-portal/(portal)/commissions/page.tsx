@@ -3,15 +3,24 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 
+// Shape returned by GET /api/affiliate/commissions — see services/affiliate.service.ts:getCommissions
+// Maps directly to the AffiliateCommission Prisma model with the joined affiliateConversion.
 type Commission = {
   id: string
-  amountCents: number
+  amountMinor: number       // not "amountCents" — the schema uses generic 'minor units'
+  currency: string
   status: string
-  description: string | null
-  earnedAt: string
   approvedAt: string | null
   paidAt: string | null
+  reversedAt: string | null
+  holdReason: string | null
   payoutRef: string | null
+  createdAt: string
+  affiliateConversion: {
+    conversionType: string
+    conversionValue: number | null
+    occurredAt: string
+  } | null
 }
 
 type PagedResult = {
@@ -74,9 +83,9 @@ export default function CommissionsPage() {
                   const style = STATUS_STYLE[c.status] ?? STATUS_STYLE['PENDING']!
                   return (
                     <tr key={c.id} style={{ background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{new Date(c.earnedAt).toLocaleDateString()}</td>
-                      <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{c.description ?? '—'}</td>
-                      <td className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--text-primary)' }}>{fmt(c.amountCents)}</td>
+                      <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{new Date(c.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{c.affiliateConversion?.conversionType ?? '—'}</td>
+                      <td className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--text-primary)' }}>{fmt(c.amountMinor ?? 0)}</td>
                       <td className="px-4 py-2.5">
                         <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: style.bg, color: style.text }}>{style.label}</span>
                       </td>
