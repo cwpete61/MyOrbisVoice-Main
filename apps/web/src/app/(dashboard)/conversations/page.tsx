@@ -78,6 +78,7 @@ export default function ConversationsPage() {
   const [recordingLoading, setRecordingLoading] = useState(false)
   const [emailDraft, setEmailDraft] = useState<{ to: string; subject: string; body: string } | null>(null)
   const [emailSending, setEmailSending] = useState(false)
+  const [pdfDownloading, setPdfDownloading] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const limit = 20
@@ -183,6 +184,46 @@ export default function ConversationsPage() {
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Send failed — check that Google is connected in Integrations.')
     } finally { setEmailSending(false) }
+  }
+
+  async function downloadPdf() {
+    if (!selected) return
+    setPdfDownloading(true)
+    try {
+      const res = await apiFetchRaw(`/api/conversations/${selected.id}/export.pdf`)
+      if (!res.ok) {
+        let msg = 'PDF export failed'
+        try {
+          const ct = res.headers.get('Content-Type') ?? ''
+          if (ct.includes('json')) {
+            const j = await res.json() as { error?: string; errors?: { message: string }[] }
+            msg = j.error ?? j.errors?.[0]?.message ?? msg
+          }
+        } catch { /* ignore */ }
+        throw new Error(msg)
+      }
+
+      // Pull filename from Content-Disposition if present, otherwise build one.
+      const cd = res.headers.get('Content-Disposition') ?? ''
+      const match = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)
+      const fallback = `conversation-${selected.id}-${(selected.startedAt ?? '').slice(0, 10)}.pdf`
+      const filename = match?.[1] ? decodeURIComponent(match[1]) : fallback
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      // Revoke after a tick — some browsers need the URL alive briefly
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'PDF export failed')
+    } finally {
+      setPdfDownloading(false)
+    }
   }
 
   async function bulkDelete() {
@@ -437,7 +478,7 @@ export default function ConversationsPage() {
 
             <button
               onClick={openFollowupEmail}
-              className="w-full mb-4 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-2"
+              className="w-full mb-2 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-2"
               style={{ background: 'var(--surface-overlay)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
             >
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -445,6 +486,19 @@ export default function ConversationsPage() {
                 <path d="M2 4l6 5 6-5" />
               </svg>
               Send follow-up email
+            </button>
+
+            <button
+              onClick={downloadPdf}
+              disabled={pdfDownloading}
+              className="w-full mb-4 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-2 disabled:opacity-60"
+              style={{ background: 'var(--surface-overlay)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 2v8m0 0L5 7m3 3l3-3" />
+                <path d="M3 12v1.5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5V12" />
+              </svg>
+              {pdfDownloading ? 'Generating PDF…' : 'Download PDF'}
             </button>
 
             {/* Recording player */}
