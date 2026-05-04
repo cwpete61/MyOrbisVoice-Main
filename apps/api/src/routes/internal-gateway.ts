@@ -241,8 +241,16 @@ router.post('/internal/gateway/tools/save-contact', async (req, res, next) => {
 
 // ---------- tool: book_appointment ----------
 
+// startsAtIso accepts any of:
+//   - UTC with Z suffix         (2026-05-04T13:30:00Z)
+//   - UTC offset                (2026-05-04T09:30:00-04:00)
+//   - Naive datetime            (2026-05-04T09:30:00)  → interpreted in the
+//                                tenant's timezone arg or America/New_York fallback
+// Zod's strict .datetime() rejected offset and naive forms, breaking real
+// bookings. The handler normalizes after parse.
 const bookSchema = z.object({
-  startsAtIso:     z.string().datetime(),
+  startsAtIso:     z.string().min(10).max(40)
+    .refine((s) => !Number.isNaN(new Date(s).getTime()), 'Invalid datetime'),
   durationMinutes: z.number().int().min(5).max(480),
   contactQuery:    z.string().min(1).max(200),
   notes:           z.string().max(2000).optional(),
