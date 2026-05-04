@@ -32,7 +32,16 @@ async function tryRefresh(): Promise<string | null> {
 
 function redirectToLogin() {
   clearTokens()
-  if (typeof window !== 'undefined') window.location.href = '/login'
+  if (typeof window === 'undefined') return
+  // Stay within the surface the user is on. A partner whose token expires
+  // while inside /partner-portal/* should go back to /partner-portal/login,
+  // not the tenant login screen. Same logic for any future portal routes.
+  const path = window.location.pathname
+  if (path.startsWith('/partner-portal')) {
+    window.location.href = '/partner-portal/login'
+  } else {
+    window.location.href = '/login'
+  }
 }
 
 export async function apiFetchRaw(path: string, options: RequestInit = {}): Promise<Response> {
