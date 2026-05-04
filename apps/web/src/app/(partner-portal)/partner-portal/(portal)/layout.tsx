@@ -26,7 +26,10 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
 
   function logout() {
     clearTokens()
-    router.push('/login')
+    // Stay within the partner-portal flow on logout — tenant login is a
+    // different surface. Partners shouldn't be dropped onto a screen that
+    // says "log in to your tenant account."
+    router.push('/partner-portal/login')
   }
 
   return (
