@@ -119,6 +119,28 @@ adminRouter.get('/affiliates/:id', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+adminRouter.get('/affiliate/platform-stats', async (req, res, next) => {
+  try {
+    const days = Math.max(1, Math.min(365, parseInt((req.query as Record<string, string>).days ?? '30') || 30))
+    res.json({ data: await affiliateService.getPlatformStats(days) })
+  } catch (err) { next(err) }
+})
+
+adminRouter.get('/affiliate/platform-daily', async (req, res, next) => {
+  try {
+    const days = Math.max(7, Math.min(90, parseInt((req.query as Record<string, string>).days ?? '30') || 30))
+    res.json({ data: await affiliateService.getPlatformDailyStats(days) })
+  } catch (err) { next(err) }
+})
+
+adminRouter.post('/affiliates/:id/regenerate-code', async (req, res, next) => {
+  try { res.json({ data: await affiliateService.regeneratePartnerCode(req.params.id!) }) } catch (err) { next(err) }
+})
+
+adminRouter.delete('/affiliates/:id', async (req, res, next) => {
+  try { await affiliateService.deletePartner(req.params.id!); res.sendStatus(204) } catch (err) { next(err) }
+})
+
 adminRouter.post('/affiliates/:id/approve',   async (req, res, next) => { try { res.json({ data: await affiliateService.approveAffiliate(req.params.id!) }) } catch (err) { next(err) } })
 adminRouter.post('/affiliates/:id/pause',      async (req, res, next) => { try { res.json({ data: await affiliateService.pauseAffiliate(req.params.id!) }) } catch (err) { next(err) } })
 adminRouter.post('/affiliates/:id/reactivate', async (req, res, next) => { try { res.json({ data: await affiliateService.reactivateAffiliate(req.params.id!) }) } catch (err) { next(err) } })

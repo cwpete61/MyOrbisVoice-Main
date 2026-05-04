@@ -334,6 +334,152 @@ export async function getPeriodStats(affiliateAccountId: string, days = 30) {
   }
 }
 
+// ── Platform-wide stats (admin dashboard) ────────────────────────────────────
+//
+// Aggregates everything across ALL partners. Used by the admin /admin/partners
+// page to surface KPIs, trends, and top performers in one screen.
+
+export async function getPlatformStats(periodDays = 30) {
+  const periodStart = new Date(Date.now() - periodDays * 86400_000)
+  const priorPeriodStart = new Date(Date.now() - 2 * periodDays * 86400_000)
+
+  const [
+    partnersByStatus,
+    clicksAllTime,    clicksPeriod,    clicksPriorPeriod,
+    conversionsAllTime, conversionsPeriod, conversionsPriorPeriod,
+    revenueAllTime, revenuePeriod,
+    commissionsByStatus,
+    commissionsPaidPeriod,
+    topByEarnings,
+  ] = await Promise.all([
+    prisma.affiliateAccount.groupBy({ by: ['status'], _count: true }),
+
+    prisma.affiliateClick.count(),
+    prisma.affiliateClick.count({ where: { createdAt: { gte: periodStart } } }),
+    prisma.affiliateClick.count({ where: { createdAt: { gte: priorPeriodStart, lt: periodStart } } }),
+
+    prisma.affiliateConversion.count(),
+    prisma.affiliateConversion.count({ where: { occurredAt: { gte: periodStart } } }),
+    prisma.affiliateConversion.count({ where: { occurredAt: { gte: priorPeriodStart, lt: periodStart } } }),
+
+    prisma.affiliateConversion.aggregate({ _sum: { conversionValue: true } }),
+    prisma.affiliateConversion.aggregate({
+      where: { occurredAt: { gte: periodStart } },
+      _sum: { conversionValue: true },
+    }),
+
+    prisma.affiliateCommission.groupBy({
+      by: ['status'],
+      _sum: { amountMinor: true },
+      _count: true,
+    }),
+
+    prisma.affiliateCommission.aggregate({
+      where: { status: 'PAID', paidAt: { gte: periodStart } },
+      _sum: { amountMinor: true },
+    }),
+
+    prisma.affiliateAccount.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: { totalEarnedCents: 'desc' },
+      take: 5,
+      include: { user: { select: { firstName: true, lastName: true, email: true } } },
+    }),
+  ])
+
+  const partnerCounts = Object.fromEntries(partnersByStatus.map(g => [g.status, g._count]))
+  const commCounts   = Object.fromEntries(commissionsByStatus.map(g => [g.status, { count: g._count, cents: g._sum.amountMinor ?? 0 }]))
+
+  function deltaPct(curr: number, prior: number): number | null {
+    if (prior === 0 && curr === 0) return null
+    if (prior === 0) return null  // avoid Infinity; show as new in UI
+    return ((curr - prior) / prior) * 100
+  }
+
+  return {
+    periodDays,
+    partners: {
+      total:    Object.values(partnerCounts).reduce((s, n) => s + (n as number), 0),
+      active:   partnerCounts['ACTIVE']   ?? 0,
+      pending:  partnerCounts['PENDING']  ?? 0,
+      paused:   partnerCounts['PAUSED']   ?? 0,
+      disabled: partnerCounts['DISABLED'] ?? 0,
+    },
+    clicks: {
+      allTime: clicksAllTime,
+      period:  clicksPeriod,
+      delta:   deltaPct(clicksPeriod, clicksPriorPeriod),
+    },
+    conversions: {
+      allTime: conversionsAllTime,
+      period:  conversionsPeriod,
+      delta:   deltaPct(conversionsPeriod, conversionsPriorPeriod),
+    },
+    conversionRate: {
+      allTime: clicksAllTime > 0 ? (conversionsAllTime / clicksAllTime) * 100 : 0,
+      period:  clicksPeriod  > 0 ? (conversionsPeriod  / clicksPeriod ) * 100 : 0,
+    },
+    revenueAttributedCents: {
+      allTime: revenueAllTime._sum.conversionValue ?? 0,
+      period:  revenuePeriod._sum.conversionValue  ?? 0,
+    },
+    commissions: {
+      pendingCents:   commCounts['PENDING']?.cents  ?? 0,
+      approvedCents:  commCounts['APPROVED']?.cents ?? 0,
+      holdCents:      commCounts['HOLD']?.cents     ?? 0,
+      paidCents:      commCounts['PAID']?.cents     ?? 0,
+      reversedCents:  commCounts['REVERSED']?.cents ?? 0,
+      paidPeriodCents: commissionsPaidPeriod._sum.amountMinor ?? 0,
+    },
+    topPartners: topByEarnings.map(p => ({
+      id:   p.id,
+      name: [p.user.firstName, p.user.lastName].filter(Boolean).join(' ') || p.user.email,
+      email: p.user.email,
+      referralCode:    p.referralCode,
+      totalEarnedCents: p.totalEarnedCents,
+      totalPaidCents:   p.totalPaidCents,
+    })),
+  }
+}
+
+export async function getPlatformDailyStats(days = 30) {
+  const since = new Date(Date.now() - days * 86400_000)
+  const [clicks, conversions] = await Promise.all([
+    prisma.$queryRaw<{ day: Date; n: bigint }[]>`
+      SELECT DATE_TRUNC('day', "createdAt") AS day, COUNT(*) AS n
+      FROM "AffiliateClick"
+      WHERE "createdAt" >= ${since}
+      GROUP BY 1 ORDER BY 1
+    `,
+    prisma.$queryRaw<{ day: Date; n: bigint }[]>`
+      SELECT DATE_TRUNC('day', "occurredAt") AS day, COUNT(*) AS n
+      FROM "AffiliateConversion"
+      WHERE "occurredAt" >= ${since}
+      GROUP BY 1 ORDER BY 1
+    `,
+  ])
+  return {
+    clicks:      clicks.map(r => ({ day: r.day.toISOString().slice(0, 10), value: Number(r.n) })),
+    conversions: conversions.map(r => ({ day: r.day.toISOString().slice(0, 10), value: Number(r.n) })),
+  }
+}
+
+// ── Per-partner admin actions (rotate code, delete) ──────────────────────────
+
+export async function regeneratePartnerCode(id: string) {
+  const newCode = await uniqueCode()
+  return prisma.affiliateAccount.update({
+    where: { id },
+    data: { referralCode: newCode },
+  })
+}
+
+export async function deletePartner(id: string) {
+  // Hard delete — cascades to clicks, conversions, commissions, payout requests
+  // via the `onDelete: Cascade` rules on those models.
+  return prisma.affiliateAccount.delete({ where: { id } })
+}
+
 export async function getDailyClickStats(affiliateAccountId: string, days = 30) {
   const since = new Date(Date.now() - days * 86400_000)
   const rows = await prisma.$queryRaw<{ day: string; clicks: bigint }[]>`

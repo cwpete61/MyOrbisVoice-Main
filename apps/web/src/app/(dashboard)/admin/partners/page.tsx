@@ -97,9 +97,14 @@ export default function AdminAffiliatesPage() {
     try {
       const res = await apiFetchRaw(`/api/admin/affiliates/${id}/${action}`, { method: 'POST' })
       if (!res.ok) throw new Error('Failed')
-      showToast('success', `Partner ${action}d.`)
+      // 'regenerate-code' has its own success message because "regenerate-coded" reads weird.
+      const msg = action === 'regenerate-code' ? 'Referral code rotated.' : `Partner ${action}d.`
+      showToast('success', msg)
       reloadAff()
-    } catch { showToast('error', `Failed to ${action} partner.`) }
+    } catch {
+      const msg = action === 'regenerate-code' ? 'Failed to rotate referral code.' : `Failed to ${action} partner.`
+      showToast('error', msg)
+    }
     finally { setWorking(null) }
   }
 
@@ -184,7 +189,7 @@ export default function AdminAffiliatesPage() {
   const settingsCurrent = { ...settings, ...settingsForm }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Partners</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Manage the partner program, commissions, and payouts</p>
@@ -192,11 +197,14 @@ export default function AdminAffiliatesPage() {
 
       {toast && <div className={toast.type === 'success' ? 'alert-success' : 'alert-error'}>{toast.text}</div>}
 
+      {/* ── Platform-wide KPI dashboard + trend chart + top performers ── */}
+      <PlatformDashboard />
+
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'var(--surface-overlay)', width: 'fit-content' }}>
         {(['affiliates', 'commissions', 'payouts', 'settings'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} style={TAB_STYLE(tab === t)}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'affiliates' ? 'Partners' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -259,6 +267,37 @@ export default function AdminAffiliatesPage() {
                             {a.status === 'ACTIVE'   && <button onClick={() => doAffAction(a.id, 'pause')}      disabled={!!working} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>Pause</button>}
                             {a.status === 'PAUSED'   && <button onClick={() => doAffAction(a.id, 'reactivate')} disabled={!!working} className="text-xs px-2 py-1 rounded" style={{ background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }}>Reactivate</button>}
                             {a.status !== 'DISABLED' && <button onClick={() => doAffAction(a.id, 'disable')}    disabled={!!working} className="text-xs px-2 py-1 rounded" style={{ background: 'oklch(13% 0.04 25)', color: 'oklch(68% 0.20 25)' }}>Disable</button>}
+                            <button
+                              onClick={() => {
+                                if (!confirm(`Regenerate referral code for ${userName(a.user)}?\n\nThe old code will stop working immediately. Existing tracked clicks/conversions on the old code stay attributed.`)) return
+                                doAffAction(a.id, 'regenerate-code')
+                              }}
+                              disabled={!!working}
+                              className="text-xs px-2 py-1 rounded"
+                              style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+                              title="Rotate the referral code (old links stop working)"
+                            >
+                              Rotate code
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`Permanently delete ${userName(a.user)}?\n\nThis cascades to ALL their clicks, conversions, commissions, and payout requests. Cannot be undone.`)) return
+                                setWorking(a.id + 'delete')
+                                try {
+                                  const res = await apiFetchRaw(`/api/admin/affiliates/${a.id}`, { method: 'DELETE' })
+                                  if (!res.ok) throw new Error('Failed')
+                                  showToast('success', `Partner ${userName(a.user)} deleted.`)
+                                  reloadAff()
+                                } catch { showToast('error', `Failed to delete ${userName(a.user)}.`) }
+                                finally { setWorking(null) }
+                              }}
+                              disabled={!!working}
+                              className="text-xs px-2 py-1 rounded"
+                              style={{ background: 'oklch(13% 0.04 25)', color: 'oklch(68% 0.20 25)' }}
+                              title="Permanently delete this partner and all their data"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -515,4 +554,234 @@ export default function AdminAffiliatesPage() {
       )}
     </div>
   )
+}
+
+// ─── Platform dashboard (KPI grid + 30-day chart + top performers) ────────────
+const TEAL = 'oklch(55% 0.11 193)'
+const TEAL_TINT = 'oklch(55% 0.11 193 / 0.10)'
+
+interface PlatformStats {
+  periodDays: number
+  partners: { total: number; active: number; pending: number; paused: number; disabled: number }
+  clicks: { allTime: number; period: number; delta: number | null }
+  conversions: { allTime: number; period: number; delta: number | null }
+  conversionRate: { allTime: number; period: number }
+  revenueAttributedCents: { allTime: number; period: number }
+  commissions: {
+    pendingCents: number; approvedCents: number; holdCents: number
+    paidCents: number; reversedCents: number; paidPeriodCents: number
+  }
+  topPartners: Array<{
+    id: string; name: string; email: string; referralCode: string
+    totalEarnedCents: number; totalPaidCents: number
+  }>
+}
+
+interface DailyStats {
+  clicks: Array<{ day: string; value: number }>
+  conversions: Array<{ day: string; value: number }>
+}
+
+function PlatformDashboard() {
+  const { data: stats, loading: statsLoading } = useApi<PlatformStats>('/api/admin/affiliate/platform-stats?days=30')
+  const { data: daily } = useApi<DailyStats>('/api/admin/affiliate/platform-daily?days=30')
+
+  if (statsLoading || !stats) {
+    return (
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="rounded-xl p-4 animate-pulse" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', height: 96 }} />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* KPI Grid */}
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))' }}>
+        <KPICard
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+          label="Total Partners"
+          value={stats.partners.total.toLocaleString()}
+          sub={`${stats.partners.active} active${stats.partners.pending > 0 ? ` · ${stats.partners.pending} pending` : ''}${stats.partners.paused > 0 ? ` · ${stats.partners.paused} paused` : ''}`}
+        />
+        <KPICard
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>}
+          label="Total Clicks (30d)"
+          value={stats.clicks.period.toLocaleString()}
+          sub={`${stats.clicks.allTime.toLocaleString()} all-time`}
+          delta={stats.clicks.delta}
+        />
+        <KPICard
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>}
+          label="Conversions (30d)"
+          value={stats.conversions.period.toLocaleString()}
+          sub={`${stats.conversionRate.period.toFixed(2)}% conversion rate`}
+          delta={stats.conversions.delta}
+        />
+        <KPICard
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>}
+          label="Revenue Attributed (30d)"
+          value={fmtMoney(stats.revenueAttributedCents.period)}
+          sub={`${fmtMoney(stats.revenueAttributedCents.allTime)} all-time`}
+        />
+        <KPICard
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>}
+          label="Commissions Owed"
+          value={fmtMoney(stats.commissions.pendingCents + stats.commissions.approvedCents + stats.commissions.holdCents)}
+          sub={`${fmtMoney(stats.commissions.approvedCents)} approved · ${fmtMoney(stats.commissions.pendingCents)} in hold`}
+        />
+        <KPICard
+          icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12H2"/><path d="M5 12V5h14v7"/><path d="M5 12v7h14v-7"/></svg>}
+          label="Paid Out (30d)"
+          value={fmtMoney(stats.commissions.paidPeriodCents)}
+          sub={`${fmtMoney(stats.commissions.paidCents)} all-time`}
+          variant="feature"
+        />
+      </div>
+
+      {/* Trend chart + Top performers */}
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)' }}>
+        <TrendChart daily={daily} />
+        <TopPerformers partners={stats.topPartners} />
+      </div>
+    </div>
+  )
+}
+
+function KPICard({ icon, label, value, sub, delta, variant = 'default' }: {
+  icon: React.ReactNode; label: string; value: string; sub?: string; delta?: number | null; variant?: 'default' | 'feature'
+}) {
+  const isFeature = variant === 'feature'
+  const deltaColor = delta == null ? null
+    : delta >= 0 ? 'oklch(60% 0.16 145)' : 'oklch(60% 0.20 25)'
+  const deltaArrow = delta == null ? '' : delta >= 0 ? '↑' : '↓'
+
+  return (
+    <div className="rounded-xl p-4" style={{
+      background: isFeature ? TEAL : 'var(--surface-raised)',
+      border: isFeature ? 'none' : '1px solid var(--border-subtle)',
+      boxShadow: isFeature ? '0 8px 24px oklch(55% 0.11 193 / 0.20)' : 'none',
+    }}>
+      <div className="flex items-start gap-2.5">
+        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: isFeature ? 'oklch(100% 0 0 / 0.18)' : TEAL_TINT, color: isFeature ? 'white' : TEAL }}>
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium" style={{ color: isFeature ? 'oklch(100% 0 0 / 0.85)' : 'var(--text-tertiary)' }}>{label}</p>
+          <p className="text-xl font-bold mt-0.5 tabular-nums truncate" style={{ color: isFeature ? 'white' : 'var(--text-primary)' }}>{value}</p>
+          <div className="flex items-baseline gap-2 mt-0.5 flex-wrap">
+            {sub && <p className="text-xs" style={{ color: isFeature ? 'oklch(100% 0 0 / 0.7)' : 'var(--text-tertiary)' }}>{sub}</p>}
+            {delta != null && (
+              <span className="text-xs font-semibold tabular-nums" style={{ color: deltaColor! }}>
+                {deltaArrow} {Math.abs(delta).toFixed(1)}%
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TrendChart({ daily }: { daily: DailyStats | null }) {
+  const days = daily?.clicks.length ?? 0
+  // Pad to 30 days even if some have no data, so the x-axis is consistent
+  const last30 = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(Date.now() - (29 - i) * 86400_000)
+    const dayKey = d.toISOString().slice(0, 10)
+    const click = daily?.clicks.find(c => c.day === dayKey)?.value ?? 0
+    const conv  = daily?.conversions.find(c => c.day === dayKey)?.value ?? 0
+    return { dayKey, click, conv }
+  })
+  const maxClick = Math.max(1, ...last30.map(d => d.click))
+  const maxConv  = Math.max(1, ...last30.map(d => d.conv))
+
+  return (
+    <div className="rounded-xl p-4 flex flex-col" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>30-day activity</p>
+        <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-sm" style={{ background: TEAL }} />Clicks
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-sm" style={{ background: 'oklch(60% 0.16 145)' }} />Conversions
+          </span>
+        </div>
+      </div>
+      <div className="flex items-end gap-1 flex-1" style={{ height: 120 }}>
+        {last30.map(d => {
+          const clickPct = (d.click / maxClick) * 100
+          const convPct  = (d.conv  / maxConv)  * 100
+          return (
+            <div key={d.dayKey} className="flex-1 flex flex-col items-center justify-end gap-0.5 group relative" style={{ height: '100%' }}>
+              {/* Tooltip */}
+              {(d.click > 0 || d.conv > 0) && (
+                <div className="absolute bottom-full mb-1 px-2 py-1 rounded text-xs whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  style={{ background: 'var(--surface-overlay)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}>
+                  {new Date(d.dayKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {' · '}{d.click} clicks{' · '}{d.conv} conv.
+                </div>
+              )}
+              <div className="w-full rounded-t-sm flex flex-col justify-end gap-0" style={{ height: '100%' }}>
+                <div style={{ height: `${clickPct}%`, background: TEAL, opacity: 0.85, borderRadius: '2px 2px 0 0' }} />
+                {d.conv > 0 && (
+                  <div style={{ height: `${convPct * 0.3}%`, background: 'oklch(60% 0.16 145)', minHeight: 2 }} />
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex justify-between text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
+        <span>{new Date(last30[0]!.dayKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+        <span>Today</span>
+      </div>
+      {days === 0 && <p className="text-xs text-center mt-3" style={{ color: 'var(--text-tertiary)' }}>No activity in the last 30 days yet.</p>}
+    </div>
+  )
+}
+
+function TopPerformers({ partners }: { partners: PlatformStats['topPartners'] }) {
+  const max = Math.max(1, ...partners.map(p => p.totalEarnedCents))
+  return (
+    <div className="rounded-xl p-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+      <p className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Top performers</p>
+      {partners.length === 0 ? (
+        <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>No active partners with earnings yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {partners.map((p, i) => {
+            const pct = (p.totalEarnedCents / max) * 100
+            const initials = p.name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase()).join('') || '?'
+            return (
+              <li key={p.id} className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  style={{ background: TEAL_TINT, color: TEAL }}>
+                  {initials}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
+                    <p className="text-xs font-bold tabular-nums" style={{ color: TEAL }}>{fmtMoney(p.totalEarnedCents)}</p>
+                  </div>
+                  <div className="h-1 rounded-full mt-1 overflow-hidden" style={{ background: 'var(--surface-overlay)' }}>
+                    <div className="h-full" style={{ width: `${pct}%`, background: TEAL }} />
+                  </div>
+                </div>
+                <span className="text-xs tabular-nums w-5 text-right" style={{ color: 'var(--text-tertiary)' }}>#{i + 1}</span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function fmtMoney(cents: number): string {
+  return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
