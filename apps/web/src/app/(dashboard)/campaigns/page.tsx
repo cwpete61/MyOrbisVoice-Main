@@ -29,6 +29,14 @@ interface Campaign {
   maxRetries: number
   retryIntervalHours: number
   isActive: boolean
+  enableVoice: boolean
+  enableSms: boolean
+  enableEmail: boolean
+  enableWhatsapp: boolean
+  smsBody: string | null
+  whatsappBody: string | null
+  emailSubject: string | null
+  emailBody: string | null
   createdAt: string
   template: { name: string; vertical: string } | null
   _count: { enrollments: number }
@@ -315,12 +323,12 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
 
-  const blankForm = { campaignType: 'FOLLOWUP_CUSTOMER_SERVICE', name: '', description: '', prompt: '', triggerTag: '', delayHours: 1, maxRetries: 2, retryIntervalHours: 24, isActive: false }
+  const blankForm = { campaignType: 'FOLLOWUP_CUSTOMER_SERVICE', name: '', description: '', prompt: '', triggerTag: '', delayHours: 1, maxRetries: 2, retryIntervalHours: 24, isActive: false, enableVoice: true, enableSms: false, enableEmail: false, enableWhatsapp: false, smsBody: '', whatsappBody: '', emailSubject: '', emailBody: '' }
   const [form, setForm] = useState(blankForm)
 
   function startEdit(c: Campaign) {
     setEditing(c)
-    setForm({ campaignType: c.campaignType, name: c.name, description: c.description ?? '', prompt: c.prompt, triggerTag: c.triggerTag, delayHours: c.delayHours, maxRetries: c.maxRetries, retryIntervalHours: c.retryIntervalHours, isActive: c.isActive })
+    setForm({ campaignType: c.campaignType, name: c.name, description: c.description ?? '', prompt: c.prompt, triggerTag: c.triggerTag, delayHours: c.delayHours, maxRetries: c.maxRetries, retryIntervalHours: c.retryIntervalHours, isActive: c.isActive, enableVoice: c.enableVoice, enableSms: c.enableSms, enableEmail: c.enableEmail, enableWhatsapp: c.enableWhatsapp, smsBody: c.smsBody ?? '', whatsappBody: c.whatsappBody ?? '', emailSubject: c.emailSubject ?? '', emailBody: c.emailBody ?? '' })
     setShowNew(false)
   }
 
@@ -331,7 +339,13 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
   }
 
   async function save() {
-    if (!form.name || !form.prompt || !form.triggerTag) { onMsg('error', 'Name, prompt, and trigger tag are required.'); return }
+    if (!form.name || !form.triggerTag) { onMsg('error', 'Name and trigger tag are required.'); return }
+    if (!form.enableVoice && !form.enableSms && !form.enableEmail && !form.enableWhatsapp) {
+      onMsg('error', 'Enable at least one channel (voice, SMS, email, or WhatsApp).'); return
+    }
+    if (form.enableVoice && !form.prompt) { onMsg('error', 'Voice prompt is required when voice is enabled.'); return }
+    if (form.enableSms   && !form.smsBody) { onMsg('error', 'SMS body is required when SMS is enabled.'); return }
+    if (form.enableEmail && (!form.emailSubject || !form.emailBody)) { onMsg('error', 'Email subject and body are required when email is enabled.'); return }
     setSaving(true)
     try {
       if (editing) {
@@ -432,15 +446,77 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
                   className={inp} placeholder="Brief description of what this campaign does" />
               </Field>
 
+              <Field label="Channels" hint="Pick which channels this campaign dispatches through. Each enabled channel sends independently when the trigger fires.">
+                <div className="grid grid-cols-2 gap-2">
+                  <ChannelToggle
+                    label="Voice call"
+                    sublabel="AI agent calls the contact"
+                    checked={form.enableVoice}
+                    onChange={v => setForm(f => ({ ...f, enableVoice: v }))}
+                  />
+                  <ChannelToggle
+                    label="SMS / Text"
+                    sublabel="Text message via Twilio"
+                    checked={form.enableSms}
+                    onChange={v => setForm(f => ({ ...f, enableSms: v }))}
+                  />
+                  <ChannelToggle
+                    label="Email"
+                    sublabel="Email via connected mailbox"
+                    checked={form.enableEmail}
+                    onChange={v => setForm(f => ({ ...f, enableEmail: v }))}
+                  />
+                  <ChannelToggle
+                    label="WhatsApp"
+                    sublabel="WhatsApp Business message"
+                    checked={form.enableWhatsapp}
+                    onChange={v => setForm(f => ({ ...f, enableWhatsapp: v }))}
+                    comingSoon
+                  />
+                </div>
+              </Field>
+
               <Field label="Trigger tag" hint="The contact tag that starts this campaign automatically.">
                 <input value={form.triggerTag} onChange={e => setForm(f => ({ ...f, triggerTag: e.target.value.toLowerCase().replace(/\s+/g, '-') }))}
                   className={inp} placeholder="post-procedure" />
               </Field>
 
-              <Field label="Agent prompt" hint="What the agent says on this call. Be specific about the purpose and tone.">
-                <textarea value={form.prompt} onChange={e => setForm(f => ({ ...f, prompt: e.target.value }))}
-                  className={inp} rows={6} placeholder="You are calling to follow up on the contact's recent visit…" />
-              </Field>
+              {form.enableVoice && (
+                <Field label="Voice prompt" hint="What the agent says on the call. Be specific about purpose and tone. Available variables: {firstName}, {fullName}, {businessName}, {businessPhone}, {appointmentDate}, {appointmentTime}.">
+                  <textarea value={form.prompt} onChange={e => setForm(f => ({ ...f, prompt: e.target.value }))}
+                    className={inp} rows={6} placeholder="You are calling to follow up on the contact's recent visit…" />
+                </Field>
+              )}
+
+              {form.enableSms && (
+                <Field label="SMS body" hint={`Plain text message. Use {firstName}, {businessName}, etc. ${form.smsBody.length}/1600 characters.`}>
+                  <textarea value={form.smsBody} onChange={e => setForm(f => ({ ...f, smsBody: e.target.value }))}
+                    className={inp} rows={3} maxLength={1600}
+                    placeholder="Hi {firstName}, this is {businessName} confirming your appointment. Reply STOP to opt out." />
+                </Field>
+              )}
+
+              {form.enableEmail && (
+                <>
+                  <Field label="Email subject" hint="Variables: {firstName}, {businessName}, {appointmentDate}, {appointmentTime}.">
+                    <input value={form.emailSubject} onChange={e => setForm(f => ({ ...f, emailSubject: e.target.value }))}
+                      className={inp} placeholder="Your appointment with {businessName} is confirmed" />
+                  </Field>
+                  <Field label="Email body" hint="HTML allowed. Same variables as the subject.">
+                    <textarea value={form.emailBody} onChange={e => setForm(f => ({ ...f, emailBody: e.target.value }))}
+                      className={inp} rows={6}
+                      placeholder={"Hi {firstName},\n\nWe're looking forward to seeing you on {appointmentDate} at {appointmentTime}.\n\n— The {businessName} team"} />
+                  </Field>
+                </>
+              )}
+
+              {form.enableWhatsapp && (
+                <Field label="WhatsApp message body" hint="WhatsApp dispatch is coming soon — content saved for when it launches.">
+                  <textarea value={form.whatsappBody} onChange={e => setForm(f => ({ ...f, whatsappBody: e.target.value }))}
+                    className={inp} rows={3} maxLength={4000}
+                    placeholder="Hi {firstName}! Your appointment with {businessName} is confirmed for {appointmentDate} at {appointmentTime}." />
+                </Field>
+              )}
 
               <div className="grid grid-cols-3 gap-4">
                 <Field label="Delay (hours)" hint="How long after the tag is applied before calling.">
@@ -556,6 +632,48 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
       {children}
       {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
     </div>
+  )
+}
+
+function ChannelToggle({
+  label, sublabel, checked, onChange, comingSoon,
+}: {
+  label: string
+  sublabel: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  comingSoon?: boolean
+}) {
+  const disabled = !!comingSoon
+  return (
+    <label
+      className={`flex items-start gap-2.5 p-3 rounded-lg border transition-colors ${
+        disabled
+          ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-70'
+          : checked
+            ? 'border-teal-500 bg-teal-50 cursor-pointer'
+            : 'border-gray-200 bg-white hover:border-gray-300 cursor-pointer'
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={disabled ? false : checked}
+        disabled={disabled}
+        onChange={e => onChange(e.target.checked)}
+        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:cursor-not-allowed"
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-medium text-gray-900">{label}</span>
+          {comingSoon && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">
+              Coming soon
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-gray-500 mt-0.5 leading-snug">{sublabel}</p>
+      </div>
+    </label>
   )
 }
 

@@ -158,7 +158,75 @@ export async function createAppointment(tenantId: string, userId: string | null,
     }).catch(err => console.warn('[appointment] confirmation email failed:', (err as Error).message))
   }
 
+  // Best-effort: enroll the contact into any active "appointment-reminder"
+  // campaign (trigger tag = `appointment-scheduled`). The scheduler fires
+  // these enrollments REMINDER_HOURS_BEFORE the appointment startAt.
+  if (data.contactId) {
+    enrollAppointmentReminder(tenantId, data.contactId, appointment.id, {
+      startAt:  data.startAt,
+      timezone: data.timezone,
+    }).catch(err => console.warn('[appointment] reminder enrollment failed:', (err as Error).message))
+  }
+
   return appointment
+}
+
+const REMINDER_HOURS_BEFORE = 24
+
+async function enrollAppointmentReminder(
+  tenantId: string,
+  contactId: string,
+  appointmentId: string,
+  appt: { startAt: string; timezone: string },
+): Promise<void> {
+  const campaign = await prisma.campaign.findFirst({
+    where: { tenantId, triggerTag: 'appointment-scheduled', isActive: true },
+  })
+  if (!campaign) return
+
+  const startDate = new Date(appt.startAt)
+  const reminderAt = new Date(startDate.getTime() - REMINDER_HOURS_BEFORE * 60 * 60 * 1000)
+
+  // Don't schedule a reminder for an appointment that's already <24h away —
+  // the contact would receive a confusing "tomorrow" message for today.
+  if (reminderAt.getTime() <= Date.now()) return
+
+  const channels: Array<'VOICE' | 'SMS' | 'EMAIL' | 'WHATSAPP'> = []
+  if (campaign.enableVoice)    channels.push('VOICE')
+  if (campaign.enableSms)      channels.push('SMS')
+  if (campaign.enableEmail)    channels.push('EMAIL')
+  if (campaign.enableWhatsapp) channels.push('WHATSAPP')
+
+  if (channels.length === 0) return
+
+  const apptDate = startDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: appt.timezone })
+  const apptTime = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: appt.timezone, timeZoneName: 'short' })
+
+  await Promise.all(channels.map(channel =>
+    prisma.campaignEnrollment.upsert({
+      where: { campaignId_contactId_channel: { campaignId: campaign.id, contactId, channel } },
+      update: {
+        status: 'PENDING',
+        triggerTag: 'appointment-scheduled',
+        triggeredAt: new Date(),
+        scheduledCallAt: reminderAt,
+        attemptCount: 0,
+        completedAt: null,
+        exitReason: null,
+        metaJson: { appointmentId, appointmentDate: apptDate, appointmentTime: apptTime },
+      },
+      create: {
+        tenantId,
+        campaignId: campaign.id,
+        contactId,
+        channel,
+        triggerTag: 'appointment-scheduled',
+        scheduledCallAt: reminderAt,
+        status: 'PENDING',
+        metaJson: { appointmentId, appointmentDate: apptDate, appointmentTime: apptTime },
+      },
+    })
+  ))
 }
 
 async function sendAppointmentConfirmationEmail(tenantId: string, opts: {

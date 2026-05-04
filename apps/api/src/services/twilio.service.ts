@@ -48,6 +48,41 @@ export async function getPlatformTwilioClient() {
 }
 
 /**
+ * Returns the platform's Twilio TEST credentials (for use against the
+ * Test API which simulates SMS/voice without real delivery). Used while
+ * A2P 10DLC approval is pending. Magic numbers like +15005550006
+ * (success) and +15005550001 (invalid) work against this client.
+ */
+export async function getPlatformTwilioTestCredentials(): Promise<{ accountSid: string; authToken: string } | null> {
+  const [accountSid, authToken] = await Promise.all([
+    getConfigValue('twilio_test_account_sid'),
+    getConfigValue('twilio_test_auth_token'),
+  ])
+  if (!accountSid || !authToken) return null
+  return { accountSid, authToken }
+}
+
+/**
+ * Returns an instantiated Twilio client in either 'live' or 'test'
+ * mode. Test mode uses the platform's Twilio Test Credentials and
+ * simulates SMS/voice without real delivery.
+ */
+export async function getTwilioClient(mode: 'live' | 'test') {
+  const creds = mode === 'test'
+    ? await getPlatformTwilioTestCredentials()
+    : await getPlatformTwilioCredentials()
+  if (!creds) {
+    throw new Error(
+      mode === 'test'
+        ? 'Twilio Test credentials not configured (SystemConfig: twilio_test_account_sid / twilio_test_auth_token)'
+        : 'Platform Twilio credentials not configured (SystemConfig: twilio_account_sid / twilio_auth_token)'
+    )
+  }
+  const Twilio = (await import('twilio')).default
+  return Twilio(creds.accountSid, creds.authToken)
+}
+
+/**
  * Returns the platform Twilio auth token. The tenantId arg is accepted
  * for backwards compatibility but ignored — all tenants share the same
  * platform account.

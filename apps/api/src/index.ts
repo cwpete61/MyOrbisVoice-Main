@@ -8,6 +8,7 @@ import routes from './routes/index.js'
 import { webhooksRouter } from './routes/webhooks.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { startTokenCleanupJob } from './jobs/token-cleanup.js'
+import { startCampaignScheduler } from './jobs/campaign-scheduler.js'
 
 const env = getEnv()
 const app: Express = express()
@@ -96,6 +97,7 @@ app.listen(PORT, () => {
   console.log(`[api] listening on http://localhost:${PORT}`)
   console.log(`[api] env: ${env.NODE_ENV}`)
   startTokenCleanupJob()
+  startCampaignScheduler()
 })
 
 export default app

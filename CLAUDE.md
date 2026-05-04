@@ -1310,6 +1310,48 @@ Phase 5+: Only connect Gemini Live once the local session flow is verified.
 | `closed=true` in `close()` before ws.close() | `onClose` never fires, summaries never generated | Remove `closed=true` from `close()` — let the ws event set it |
 | Caddy bcrypt hash with `$` in .env.prod | Docker Compose expands `$2a` as variable | Hardcode hash directly in Caddyfile, don't use env var |
 
+### Multi-channel campaign automation — 2026-05-04
+
+Tag-driven campaigns now fire across multiple channels independently. Email is fully live; SMS routes through master Twilio creds (testing only until A2P / toll-free); voice and WhatsApp are wired but parked behind documented backlog items (#15, #18).
+
+**Schema:**
+- [x] `Campaign.enableVoice / enableSms / enableEmail / enableWhatsapp` toggles
+- [x] `Campaign.smsBody / whatsappBody / emailSubject / emailBody` content fields
+- [x] `CampaignEnrollment.channel` (enum VOICE/SMS/EMAIL/WHATSAPP) + uniqueness `(campaignId, contactId, channel)` so each channel is its own enrollment row
+- [x] Migration applied to prod after manually dropping the legacy `(campaignId, contactId)` unique constraint
+
+**API:**
+- [x] [`applyTag()`](apps/api/src/services/campaign.service.ts) fans out one enrollment per enabled channel on the matched campaign — failure of one channel doesn't block the others
+- [x] [`apps/api/src/jobs/campaign-scheduler.ts`](apps/api/src/jobs/campaign-scheduler.ts) — 60-second poll, optimistic claim (PENDING → IN_PROGRESS guarded by `updateMany` count), per-channel dispatch, retry honouring `maxRetries` and `retryIntervalHours`, exit on success → COMPLETED
+- [x] Template substitution: `{firstName}`, `{lastName}`, `{fullName}`, `{email}`, `{phone}`, `{businessName}`, `{businessPhone}`, `{appointmentDate}`, `{appointmentTime}`. Unknown tokens left in place to surface missing-context bugs
+- [x] `dispatchEmail()` uses existing `sendGmailEmail()` (Google OAuth on the connected tenant mailbox)
+- [x] `dispatchSms()` uses `sendTestMessage()` with master creds (temporary — see backlog #16)
+- [x] `dispatchVoice()` is a stub returning FAILED with a clear note (see backlog #15)
+- [x] Auto-tag hook in [`/internal/gateway/tools/record-disposition`](apps/api/src/routes/internal-gateway.ts): outcome → tag map (`BOOKED`→`booked`, `CALLBACK_REQUESTED`→`callback-requested`, `INFO_REQUEST`→`info-requested`, `QUALIFIED_LEAD`→`qualified-lead`, `MISSED_CALL`→`missed-call`)
+- [x] Appointment-reminder hook in [`createAppointment()`](apps/api/src/services/appointment.service.ts): auto-enrolls into the `appointment-scheduled` campaign with `scheduledCallAt = startAt - 24h`. Skips reminders for appointments already <24h away.
+
+**Frontend:**
+- [x] Campaign form: 4 channel toggle cards (Voice / SMS / Email / WhatsApp), WhatsApp disabled with "Coming soon" badge
+- [x] Conditional content fields appear when their channel is enabled (voice prompt, SMS body, email subject + body, WhatsApp body)
+- [x] Save validation enforces "at least one channel" + required content per enabled channel
+
+**Default campaigns seeded for the test tenant** (all email-only at launch):
+- Booking Confirmation — tag `booked`, 0h delay
+- Day-Before Reminder — `appointment-scheduled` (auto-enrolled by `createAppointment`), 24h before
+- Callback Follow-Up — tag `callback-requested`, 4h delay
+- Missed-Call Follow-Up — tag `missed-call`, 0h delay
+
+**Verification:**
+- [x] Fired `applyTag('booked')` on a real test contact → enrollment created (channel=EMAIL, status=PENDING) → scheduler ticked at +60s → `sendGmailEmail()` succeeded → MessageLog row written (deliveryStatus=sent, providerMessageId=`19df25b3c0a42cb4`) → enrollment marked COMPLETED at 09:39:18 UTC
+- [x] Email landed in `crawford.peterson.sr@gmail.com` from connected mailbox `onbrandcopywriter@gmail.com`
+
+**Twilio Test Credentials infrastructure (also shipped today):**
+- [x] `Twilio Test Credentials` card in `Admin → System Settings` (encrypted storage)
+- [x] `Send Test SMS` panel below it — Mode=Live/Test, From, To, body, magic-number reference card
+- [x] `sendTestMessage()` in [sms.service.ts](apps/api/src/services/sms.service.ts) — bypasses tenant subaccounts, uses master live or test creds
+- [x] Code path verified end-to-end via direct service invocation against the prod container (returns `{ok:false, errorCode:UNKNOWN, errorMessage:"Twilio Test credentials not configured…"}` until creds are pasted)
+- [x] Toll-free verification submission package drafted at [docs/twilio-toll-free-verification.md](docs/twilio-toll-free-verification.md)
+
 ### Phase 1 notes
 - Existing ports 5432 and 6379 are occupied by other projects (umoja-postgres, umoja-redis). Phase 1 reuses these services. The voiceautomation DB was created on umoja-postgres with its own user/role.
 - Docker compose is set up for full-stack mode but dev workflow runs API/web natively via pnpm dev.
@@ -1886,3 +1928,85 @@ After this, the cost per UI change is one command. The cost per new help article
 **Why this matters:**
 
 A help center with stale or missing screenshots erodes user trust and increases support load. Manual screenshot maintenance scales linearly with article count and inversely with how often the UI changes — both metrics that get worse as the product matures. Automating the capture flips the cost curve: more articles + more UI changes both become essentially free in maintenance terms.
+
+---
+
+### 15. Voice dispatch for tag-driven campaigns
+
+**What:** Wire the campaign scheduler's `dispatchVoice()` to actually place outbound calls when a `Campaign` enrollment with `channel=VOICE` is due. Currently this path is a stub that marks enrollments FAILED with the note "voice dispatch from tag-driven campaigns not yet wired."
+
+**Why it isn't done yet:** `OutboundCallAttempt` belongs to `OutboundCampaign` (a separate, list-based campaign model), not to the tag-driven `Campaign` model. Reusing it requires either:
+- Extending `OutboundCallAttempt` with a polymorphic source (campaignId from either model), or
+- Building a parallel `CampaignVoiceCall` table for tag-driven voice dispatch, or
+- Bridging the two models so a tag-driven enrollment creates a synthetic OutboundCampaign run
+
+**Required behavior:**
+- When the scheduler picks a PENDING enrollment with `channel=VOICE`, the dispatch must:
+  1. Resolve the contact's `phoneE164` and the tenant's outbound caller-id (Twilio number assigned to the tenant subaccount)
+  2. Place a Twilio outbound call via the tenant subaccount, with TwiML pointing at the voice gateway's outbound entry point
+  3. Inject the campaign's `prompt` field as the agent's run-time prompt overlay (Layer 5 of the prompt stack — session context)
+  4. Honour `maxRetries` and `retryIntervalHours` on no-answer / busy / failed states
+  5. Record the call in `Conversation` with the enrollment id in `metadataJson` so the conversations page can show "campaign: Booking Confirmation"
+
+**Architecture notes:**
+- Voice gateway already supports outbound flows (see `apps/voice-gateway/src/outbound.ts`); the missing piece is the API endpoint that issues the call command to Twilio with the right callback URL pointing at the gateway
+- Use the same prompt-resolution path as inbound (Business DNA + agent role overlay + per-call campaign prompt overlay)
+- All voice events must produce a transcript + recording per the platform standard (`Conversation.transcriptJson`, `recordingRef`, `summaryText`)
+- The current SMS-only and email-only campaigns must keep working with no regressions when this lands
+
+**Why this matters:** Voice is the highest-conversion follow-up channel in this product. Email is good for confirmations; voice is good for callbacks, missed-call recovery, and re-engagement. The campaign system is structurally complete without it but operationally limited.
+
+---
+
+### 16. Move campaign SMS dispatch to per-tenant subaccount routing
+
+**What:** The campaign scheduler's `dispatchSms()` currently calls `sendTestMessage()` from `sms.service.ts`, which uses the **master** Twilio account credentials directly. This works for testing while A2P 10DLC is pending, but production SMS must route through each tenant's own Twilio subaccount.
+
+**Why it isn't done yet:** Tenant subaccount provisioning (`getSubaccountClient`) requires a complete onboarding step (subaccount created, phone number assigned, brand registration, A2P 10DLC campaign approval) that not every tenant has finished. Routing campaign SMS through `sendMessage()` (which uses subaccounts) would fail for tenants without subaccounts. Routing through master keeps things working for the validated test-tenant flow until subaccount onboarding is mandatory.
+
+**Required behavior:**
+- `dispatchSms()` calls `sendMessage()` with `tenantId`, `from=<tenantSubaccountPhone>`, `to=<contact.phoneE164>`, `body`
+- `sendMessage()` does opt-out gating, MessageLog persistence, and the actual Twilio send through the subaccount client
+- If a tenant has no subaccount or no assigned phone number, the enrollment should mark FAILED with a clear `exitReason="tenant has no SMS-capable phone number"`, not crash
+- WhatsApp follows the same pattern when the WhatsApp dispatcher graduates from "coming soon"
+
+**Pre-conditions before flipping:**
+- Toll-free verification approved on the master account (verified TFN can serve as the temporary platform-wide outbound number for tenants whose A2P isn't done) OR per-tenant A2P approved
+- Subaccount provisioning is part of mandatory onboarding (not optional)
+- Opt-out flows are tested end-to-end on the per-tenant path
+
+**Why this matters:** Compliance. Carrier-required A2P 10DLC registration is per-brand; the brand is the tenant's business, not OrbisVoice. Sending tenant traffic from the platform's master account would violate the registration model and risk all tenant traffic being blocked together. Subaccount routing isolates compliance state per-tenant.
+
+---
+
+### 17. Twilio testing path completion (in-flight)
+
+**Status:** The infrastructure is shipped; three real-delivery proofs are pending external dependencies.
+
+**Three testing paths (from 2026-05-04 evening session):**
+
+1. **Test Credentials + magic numbers** — code-path verified via direct service invocation. Pending: paste Test SID + Test Auth Token from `console.twilio.com → Account → API keys & tokens → Test Credentials` into `Admin → System Settings → Twilio Test Credentials`. Then run `Send Test SMS` with `mode=test` to see Twilio return a simulated success.
+
+2. **Toll-free number verification** — verification submission package drafted at `docs/twilio-toll-free-verification.md`. Pending: provision a toll-free number on the ISV master account, fill in the placeholders (LightBox SEO LLC EIN, business address, contact phone), submit verification form. ETA: 2–5 business days for approval.
+
+3. **International real-delivery** — pending a non-US phone number from the user. Once provided, run `Send Test SMS` with `mode=live` and the international `to=`; bypasses A2P entirely.
+
+**Why this matters:** Each path proves a different thing. Test Credentials prove the code path. Toll-free verification proves real US delivery without waiting on A2P. International proves end-to-end live delivery today. All three together = full confidence the SMS pipeline is production-ready the moment carrier registration lands.
+
+---
+
+### 18. WhatsApp dispatch (currently disabled in form)
+
+**What:** The campaign form already has a WhatsApp toggle (disabled with "Coming soon" badge), the schema persists `enableWhatsapp` and `whatsappBody`, the scheduler routes `channel=WHATSAPP` to `dispatchSms(channel='WHATSAPP')` which prefixes `whatsapp:` to the to/from numbers — the only missing piece is provisioning Twilio's WhatsApp Business API.
+
+**Required behavior:**
+- Provision a WhatsApp sender number through Twilio Console (separate from voice/SMS, requires Meta Business verification)
+- Drop the `comingSoon` flag on the WhatsApp `<ChannelToggle>` in the campaign form
+- The dispatch path already works once a `whatsapp:+E.164` sender exists in the platform config
+
+**Architecture notes:**
+- Inbound MessageLog already routes WhatsApp via `resolveChannel()` — both directions handled
+- Opt-out is per-channel (`Contact.optedOutWhatsapp` is separate from `optedOutSms`)
+- WhatsApp's 24-hour customer-care window restricts unsolicited sends to approved templates only — the campaign system's free-form `whatsappBody` only works for replies inside that window. Outside it, must use a pre-approved Twilio Content Template.
+
+**Why it matters:** WhatsApp is dominant outside the US for business messaging. International tenants will expect it.

@@ -1228,6 +1228,14 @@ model Campaign {
   isActive            Boolean          @default(false)
   exitOnReply         Boolean          @default(true)
   exitOnOptOut        Boolean          @default(true)
+  enableVoice         Boolean          @default(true)
+  enableSms           Boolean          @default(false)
+  enableEmail         Boolean          @default(false)
+  enableWhatsapp      Boolean          @default(false)
+  smsBody             String?
+  whatsappBody        String?
+  emailSubject        String?
+  emailBody           String?
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
   tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1238,12 +1246,15 @@ model Campaign {
   @@index([tenantId, triggerTag])
 }
 
-// Tracks each contact's journey through a campaign
+// Tracks each contact's journey through a campaign on a specific channel.
+// One row per (campaign, contact, channel) — a single trigger fan-outs into
+// up to 4 enrollments (one per enabled channel on the campaign).
 model CampaignEnrollment {
   id              String           @id @default(uuid())
   tenantId        String
   campaignId      String
   contactId       String
+  channel         EnrollmentChannel @default(VOICE)
   status          EnrollmentStatus @default(PENDING)
   triggerTag      String
   triggeredAt     DateTime         @default(now())
@@ -1259,9 +1270,17 @@ model CampaignEnrollment {
   campaign        Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contact         Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  @@unique([campaignId, contactId])
+  @@unique([campaignId, contactId, channel])
   @@index([tenantId, status])
   @@index([tenantId, scheduledCallAt])
+  @@index([status, scheduledCallAt])
+}
+
+enum EnrollmentChannel {
+  VOICE
+  SMS
+  EMAIL
+  WHATSAPP
 }
 
 // Immutable opt-out event log — one row per opt-out or opt-in event

@@ -13,6 +13,9 @@
  */
 import { prisma } from '../lib/prisma.js'
 import { getSubaccountClient } from './twilio-subaccount.service.js'
+import { getTwilioClient } from './twilio.service.js'
+import { getConfigValue } from './system-config.service.js'
+import { writeAuditLog } from '../lib/audit.js'
 import { getEnv } from '@voiceautomation/config'
 import * as optOut from './opt-out.service.js'
 import type { MessageChannel } from '@prisma/client'
@@ -189,4 +192,77 @@ export async function updateDeliveryStatus(providerMessageId: string, status: st
   }
 
   await prisma.messageLog.update({ where: { id: log.id }, data })
+}
+
+/**
+ * ── Admin-only ad-hoc test send ─────────────────────────────────────────────
+ * Uses MASTER platform credentials (live or test) directly — bypasses tenant
+ * subaccounts, opt-out checks, and MessageLog. Purpose: verify the code path
+ * end-to-end while A2P 10DLC approval is pending.
+ *
+ * Mode 'test' uses Twilio Test Credentials and works with magic numbers:
+ *   to=+15005550006 → success     to=+15005550001 → invalid number
+ *   to=+15005550009 → cannot route to=+15005550008 → queue full
+ * Reference: https://www.twilio.com/docs/iam/test-credentials
+ */
+export interface TestSendInput {
+  to: string                        // E.164 (or whatsapp:+E.164)
+  body: string
+  from?: string                     // E.164 — defaults to platform phone from SystemConfig
+  mode: 'live' | 'test'
+  actorUserId?: string
+}
+
+export interface TestSendResult {
+  ok: boolean
+  mode: 'live' | 'test'
+  to: string
+  from: string
+  messageSid: string | null
+  status: string | null
+  errorCode?: number | string
+  errorMessage?: string
+}
+
+export async function sendTestMessage(input: TestSendInput): Promise<TestSendResult> {
+  const to = input.to.trim()
+  const body = input.body
+  let from = input.from?.trim() ?? ''
+  if (!from) {
+    from = (await getConfigValue('twilio_phone_number')) ?? ''
+  }
+
+  if (!to)   return { ok: false, mode: input.mode, to, from, messageSid: null, status: 'failed', errorCode: 'INVALID_INPUT', errorMessage: 'to is required' }
+  if (!body) return { ok: false, mode: input.mode, to, from, messageSid: null, status: 'failed', errorCode: 'INVALID_INPUT', errorMessage: 'body is required' }
+  if (!from) return { ok: false, mode: input.mode, to, from, messageSid: null, status: 'failed', errorCode: 'INVALID_INPUT', errorMessage: 'from is required (or set platform phone in SystemConfig)' }
+
+  try {
+    const client = await getTwilioClient(input.mode)
+    const msg = await client.messages.create({ to, from, body })
+
+    await writeAuditLog({
+      actorType: input.actorUserId ? 'USER' : 'SYSTEM',
+      ...(input.actorUserId ? { actorUserId: input.actorUserId } : {}),
+      action: 'sms.test_sent',
+      targetType: 'TwilioMessage',
+      targetId: msg.sid,
+      metadataJson: { mode: input.mode, to, from, bodyLen: body.length, status: msg.status },
+    })
+
+    return { ok: true, mode: input.mode, to, from, messageSid: msg.sid, status: msg.status }
+  } catch (err: unknown) {
+    const e = err as { code?: number | string; message?: string }
+    const errorCode = e.code ?? 'UNKNOWN'
+    const errorMessage = e.message ?? 'Twilio send failed'
+
+    await writeAuditLog({
+      actorType: input.actorUserId ? 'USER' : 'SYSTEM',
+      ...(input.actorUserId ? { actorUserId: input.actorUserId } : {}),
+      action: 'sms.test_failed',
+      targetType: 'TwilioMessage',
+      metadataJson: { mode: input.mode, to, from, bodyLen: body.length, errorCode: String(errorCode), errorMessage },
+    })
+
+    return { ok: false, mode: input.mode, to, from, messageSid: null, status: 'failed', errorCode, errorMessage }
+  }
 }

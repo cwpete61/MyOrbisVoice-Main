@@ -394,6 +394,31 @@ router.post('/internal/gateway/tools/record-disposition', async (req, res, next)
       data:  { outcomeCode: data.outcomeCode },
     })
 
+    // Auto-tag the contact based on outcome — drives campaign enrollment.
+    // Outcomes that don't map to a tag (WRONG_NUMBER, SPAM, NO_ACTION) are no-ops.
+    const tagByOutcome: Record<string, string> = {
+      BOOKED:               'booked',
+      CALLBACK_REQUESTED:   'callback-requested',
+      INFO_REQUEST:         'info-requested',
+      QUALIFIED_LEAD:       'qualified-lead',
+      MISSED_CALL:          'missed-call',
+    }
+    const tagToApply = tagByOutcome[data.outcomeCode]
+    let autoTaggedCampaign: { id: string; name: string } | null = null
+
+    if (tagToApply && conv.contactId) {
+      try {
+        const { applyTag } = await import('../services/campaign.service.js')
+        const tagResult = await applyTag(tenantId, conv.contactId, tagToApply)
+        if (tagResult.enrolled && tagResult.campaign) {
+          autoTaggedCampaign = tagResult.campaign
+        }
+      } catch (err) {
+        // Non-fatal — outcome recording must succeed even if tag/enrollment fails
+        console.error('[record_disposition] auto-tag failed:', err)
+      }
+    }
+
     await writeAuditLog({
       tenantId,
       actorType:  'SYSTEM',
@@ -403,10 +428,12 @@ router.post('/internal/gateway/tools/record-disposition', async (req, res, next)
       metadataJson: {
         outcomeCode: data.outcomeCode,
         notes:       data.notes ?? null,
+        autoTag:     tagToApply ?? null,
+        enrolledCampaign: autoTaggedCampaign,
       },
     })
 
-    res.json({ data: { ok: true, conversationId: conv.id } })
+    res.json({ data: { ok: true, conversationId: conv.id, autoTag: tagToApply ?? null, enrolledCampaign: autoTaggedCampaign } })
   } catch (err) { next(err) }
 })
 

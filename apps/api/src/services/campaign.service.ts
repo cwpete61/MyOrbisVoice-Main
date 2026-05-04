@@ -15,6 +15,14 @@ export const createCampaignSchema = z.object({
   isActive:            z.boolean().default(false),
   exitOnReply:         z.boolean().default(true),
   exitOnOptOut:        z.boolean().default(true),
+  enableVoice:         z.boolean().default(true),
+  enableSms:           z.boolean().default(false),
+  enableEmail:         z.boolean().default(false),
+  enableWhatsapp:      z.boolean().default(false),
+  smsBody:             z.string().max(1600).optional().nullable(),
+  whatsappBody:        z.string().max(4000).optional().nullable(),
+  emailSubject:        z.string().max(200).optional().nullable(),
+  emailBody:           z.string().max(50000).optional().nullable(),
 })
 
 export const updateCampaignSchema = createCampaignSchema.partial()
@@ -106,28 +114,41 @@ export async function applyTag(tenantId: string, contactId: string, tag: string)
 
   const scheduledCallAt = new Date(Date.now() + campaign.delayHours * 60 * 60 * 1000)
 
-  const enrollment = await prisma.campaignEnrollment.upsert({
-    where: { campaignId_contactId: { campaignId: campaign.id, contactId } },
-    update: {
-      status: 'PENDING',
-      triggerTag: tag,
-      triggeredAt: new Date(),
-      scheduledCallAt,
-      attemptCount: 0,
-      completedAt: null,
-      exitReason: null,
-    },
-    create: {
-      tenantId,
-      campaignId: campaign.id,
-      contactId,
-      triggerTag: tag,
-      scheduledCallAt,
-      status: 'PENDING',
-    },
-  })
+  // Fan out one enrollment per enabled channel on the campaign.
+  // Each channel dispatches independently — one failing doesn't block the others.
+  const channels: Array<'VOICE' | 'SMS' | 'EMAIL' | 'WHATSAPP'> = []
+  if (campaign.enableVoice)    channels.push('VOICE')
+  if (campaign.enableSms)      channels.push('SMS')
+  if (campaign.enableEmail)    channels.push('EMAIL')
+  if (campaign.enableWhatsapp) channels.push('WHATSAPP')
 
-  return { enrolled: true, tag, campaign: { id: campaign.id, name: campaign.name }, enrollment }
+  if (channels.length === 0) return { enrolled: false, tag, reason: 'no_channels_enabled' }
+
+  const enrollments = await Promise.all(channels.map(channel =>
+    prisma.campaignEnrollment.upsert({
+      where: { campaignId_contactId_channel: { campaignId: campaign.id, contactId, channel } },
+      update: {
+        status: 'PENDING',
+        triggerTag: tag,
+        triggeredAt: new Date(),
+        scheduledCallAt,
+        attemptCount: 0,
+        completedAt: null,
+        exitReason: null,
+      },
+      create: {
+        tenantId,
+        campaignId: campaign.id,
+        contactId,
+        channel,
+        triggerTag: tag,
+        scheduledCallAt,
+        status: 'PENDING',
+      },
+    })
+  ))
+
+  return { enrolled: true, tag, campaign: { id: campaign.id, name: campaign.name }, enrollments }
 }
 
 export async function removeTag(tenantId: string, contactId: string, tag: string) {

@@ -271,6 +271,56 @@ router.patch('/system-settings/twilio', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+const twilioTestSettingsSchema = z.object({
+  accountSid: z.string().min(1).optional(),
+  authToken:  z.string().min(1).optional(),
+})
+
+router.patch('/system-settings/twilio-test', async (req, res, next) => {
+  try {
+    const parsed = twilioTestSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const { accountSid, authToken } = parsed.data
+    const userId = req.user!.id
+
+    if (accountSid) await systemConfig.setConfigValue('twilio_test_account_sid', accountSid, false, userId)
+    if (authToken)  await systemConfig.setConfigValue('twilio_test_auth_token', authToken, true, userId)
+
+    await writeAuditLog({
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.twilio_test.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
+const testSmsSchema = z.object({
+  to:   z.string().min(3).max(40),
+  body: z.string().min(1).max(1600),
+  from: z.string().min(3).max(40).optional(),
+  mode: z.enum(['live', 'test']).default('test'),
+})
+
+router.post('/test-sms', async (req, res, next) => {
+  try {
+    const parsed = testSmsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const { sendTestMessage } = await import('../services/sms.service.js')
+    const result = await sendTestMessage({
+      to:   parsed.data.to,
+      body: parsed.data.body,
+      ...(parsed.data.from ? { from: parsed.data.from } : {}),
+      mode: parsed.data.mode,
+      actorUserId: req.user!.id,
+    })
+    res.json({ data: result })
+  } catch (err) { next(err) }
+})
+
 const reoonSettingsSchema = z.object({
   apiKey: z.string().min(1).optional(),
   mode: z.enum(['quick', 'power']).optional(),

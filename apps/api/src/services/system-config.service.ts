@@ -58,6 +58,7 @@ export async function getSystemSettings(): Promise<{
   google: { clientId: string | null; clientSecret: boolean; redirectUri: string | null }
   stripe: { secretKey: boolean; publishableKey: string | null; webhookSecret: boolean }
   twilio: { accountSid: string | null; authToken: boolean; phoneNumber: string | null }
+  twilioTest: { accountSid: string | null; authToken: boolean }
   reoon: { apiKey: boolean; mode: string }
   bunny: { apiKey: boolean; storageZone: string | null; cdnHostname: string | null; storageRegion: string; storagePassword: boolean }
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
@@ -73,6 +74,7 @@ export async function getSystemSettings(): Promise<{
           'google_client_id', 'google_client_secret', 'google_oauth_redirect_uri',
           'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret',
           'twilio_account_sid', 'twilio_auth_token', 'twilio_phone_number',
+          'twilio_test_account_sid', 'twilio_test_auth_token',
           'reoon_api_key', 'reoon_mode',
           'bunny_api_key', 'bunny_storage_zone', 'bunny_storage_password',
           'bunny_cdn_hostname', 'bunny_storage_region',
@@ -105,6 +107,10 @@ export async function getSystemSettings(): Promise<{
       accountSid:  get('twilio_account_sid')?.value ?? (process.env['TWILIO_ACCOUNT_SID'] || null),
       authToken:   !!(get('twilio_auth_token')       || process.env['TWILIO_AUTH_TOKEN']),
       phoneNumber: get('twilio_phone_number')?.value ?? (process.env['TWILIO_PHONE_NUMBER'] || null),
+    },
+    twilioTest: {
+      accountSid:  get('twilio_test_account_sid')?.value ?? (process.env['TWILIO_TEST_ACCOUNT_SID'] || null),
+      authToken:   !!(get('twilio_test_auth_token')       || process.env['TWILIO_TEST_AUTH_TOKEN']),
     },
     reoon: {
       apiKey: !!(get('reoon_api_key') || process.env['REOON_API_KEY']),

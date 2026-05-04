@@ -7,6 +7,7 @@ interface SystemSettings {
   google: { clientId: string | null; clientSecret: boolean; redirectUri: string | null }
   stripe: { secretKey: boolean; publishableKey: string | null; webhookSecret: boolean }
   twilio: { accountSid: string | null; authToken: boolean; phoneNumber: string | null }
+  twilioTest: { accountSid: string | null; authToken: boolean }
   reoon: { apiKey: boolean; mode: string }
   bunny: { apiKey: boolean; storageZone: string | null; cdnHostname: string | null; storageRegion: string; storagePassword: boolean }
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
@@ -177,6 +178,24 @@ export default function SystemSettingsPage() {
   const [t, setT] = useState({ accountSid: '', authToken: '', phoneNumber: '' })
   const [tSaving, setTSaving] = useState(false)
 
+  // Twilio Test Credentials form state
+  const [tTest, setTTest] = useState({ accountSid: '', authToken: '' })
+  const [tTestSaving, setTTestSaving] = useState(false)
+
+  // Send Test SMS panel state
+  const [tSms, setTSms] = useState({ to: '+15005550006', from: '', body: 'OrbisVoice test message — magic number simulation.', mode: 'test' as 'live' | 'test' })
+  const [tSmsSending, setTSmsSending] = useState(false)
+  const [tSmsResult, setTSmsResult] = useState<null | {
+    ok: boolean
+    mode: string
+    to: string
+    from: string
+    messageSid: string | null
+    status: string | null
+    errorCode?: number | string
+    errorMessage?: string
+  }>(null)
+
   // Bunny form state
   const [b, setB] = useState({ apiKey: '', storageZone: '', storagePassword: '', cdnHostname: '', storageRegion: 'ny' })
   const [bSaving, setBSaving] = useState(false)
@@ -302,6 +321,50 @@ export default function SystemSettingsPage() {
     setTSaving(false)
   }
 
+  async function saveTwilioTest(e: React.FormEvent) {
+    e.preventDefault()
+    const body: Record<string, string> = {}
+    if (tTest.accountSid) body['accountSid'] = tTest.accountSid
+    if (tTest.authToken)  body['authToken']  = tTest.authToken
+    if (!Object.keys(body).length) { showToast('error', 'Enter at least one field.'); return }
+    setTTestSaving(true)
+    const ok = await saveSection('twilio-test', body, 'Twilio Test Credentials')
+    if (ok) setTTest({ accountSid: '', authToken: '' })
+    setTTestSaving(false)
+  }
+
+  async function sendTestSms(e: React.FormEvent) {
+    e.preventDefault()
+    if (!tSms.to || !tSms.body) { showToast('error', 'Enter a To number and message body.'); return }
+    setTSmsSending(true)
+    setTSmsResult(null)
+    try {
+      const res = await apiFetchRaw('/api/admin/test-sms', {
+        method: 'POST',
+        body: JSON.stringify({
+          to:   tSms.to,
+          body: tSms.body,
+          ...(tSms.from ? { from: tSms.from } : {}),
+          mode: tSms.mode,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        showToast('error', (json as { message?: string }).message ?? `HTTP ${res.status}`)
+      } else {
+        const data = (json as { data: NonNullable<typeof tSmsResult> }).data
+        setTSmsResult(data)
+        showToast(data.ok ? 'success' : 'error', data.ok
+          ? `Sent (${data.mode}) — SID ${data.messageSid?.slice(0, 10)}…`
+          : `Failed: ${data.errorMessage ?? data.errorCode}`)
+      }
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Send failed')
+    } finally {
+      setTSmsSending(false)
+    }
+  }
+
   async function saveGemini(e: React.FormEvent) {
     e.preventDefault()
     setGemSaving(true)
@@ -340,6 +403,7 @@ export default function SystemSettingsPage() {
   const google = data?.google
   const stripe = data?.stripe
   const twilio = data?.twilio
+  const twilioTest = data?.twilioTest
   const redirectUriDisplay = google?.redirectUri ?? 'https://api.myorbisvoice.com/api/integrations/google/callback'
 
   const inputCls = 'input font-mono text-sm'
@@ -909,6 +973,106 @@ export default function SystemSettingsPage() {
               <button type="submit" disabled={tSaving} className="btn-primary">
                 {tSaving ? 'Saving…' : 'Save Twilio credentials'}
               </button>
+            </form>
+          </div>
+
+          {/* ── Twilio Test Credentials ── */}
+          <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <CardHeader
+              title="Twilio Test Credentials"
+              subtitle="Twilio's Test API simulates SMS/voice without real delivery — used to verify the code path while A2P 10DLC approval is pending. Magic numbers (e.g. +15005550006) trigger specific responses. Find these in Twilio Console → Account → API keys & tokens → Test Credentials."
+              configured={!!(twilioTest?.accountSid && twilioTest?.authToken)}
+            />
+
+            <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <StatusRow label="Test Account SID" value={twilioTest?.accountSid ?? null} />
+              <StatusRow label="Test Auth Token" value={!!twilioTest?.authToken} isSecret />
+            </div>
+
+            <form onSubmit={saveTwilioTest} className="px-6 py-5 space-y-4">
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Leave blank to keep the current value. Test Auth Token is stored encrypted.</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelCls}>Test Account SID</label>
+                  <input className={inputCls} value={tTest.accountSid} onChange={e => setTTest(p => ({ ...p, accountSid: e.target.value }))}
+                    placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autoComplete="off" />
+                </div>
+                <div>
+                  <label className={labelCls}>Test Auth Token <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                  <input type="password" className={inputCls} value={tTest.authToken} onChange={e => setTTest(p => ({ ...p, authToken: e.target.value }))}
+                    placeholder="Enter test auth token" autoComplete="new-password" />
+                </div>
+              </div>
+              <button type="submit" disabled={tTestSaving} className="btn-primary">
+                {tTestSaving ? 'Saving…' : 'Save Twilio Test credentials'}
+              </button>
+            </form>
+          </div>
+
+          {/* ── Send Test SMS ── */}
+          <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <CardHeader
+              title="Send Test SMS"
+              subtitle="Ad-hoc tool to verify the SMS code path. Test mode uses Twilio Test Credentials and works with magic numbers without real delivery. Live mode hits your live Twilio account — A2P 10DLC must be approved for real US delivery."
+              configured={!!(twilio?.accountSid && twilio?.authToken)}
+            />
+
+            <form onSubmit={sendTestSms} className="px-6 py-5 space-y-4">
+              <div className="rounded-lg p-3 text-xs leading-relaxed" style={{ background: 'oklch(96% 0.04 80)', color: 'oklch(35% 0.10 60)', border: '1px solid oklch(85% 0.10 80)' }}>
+                <p className="font-semibold mb-1">Twilio magic numbers (test mode only)</p>
+                <ul className="space-y-0.5 font-mono">
+                  <li><code>+15005550006</code> — success (queued)</li>
+                  <li><code>+15005550001</code> — invalid number</li>
+                  <li><code>+15005550009</code> — cannot route (carrier filter)</li>
+                  <li><code>+15005550008</code> — queue full</li>
+                </ul>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                  <label className={labelCls}>Mode</label>
+                  <select className={inputCls} value={tSms.mode} onChange={e => setTSms(p => ({ ...p, mode: e.target.value as 'live' | 'test' }))}>
+                    <option value="test">Test (simulated)</option>
+                    <option value="live">Live (real send)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>From <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span></label>
+                  <input className={inputCls} value={tSms.from} onChange={e => setTSms(p => ({ ...p, from: e.target.value }))}
+                    placeholder={twilio?.phoneNumber ?? '+15551234567'} autoComplete="off" />
+                </div>
+                <div>
+                  <label className={labelCls}>To <span style={{ color: 'var(--text-tertiary)' }}>(E.164)</span></label>
+                  <input className={inputCls} value={tSms.to} onChange={e => setTSms(p => ({ ...p, to: e.target.value }))}
+                    placeholder="+15005550006" autoComplete="off" />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelCls}>Message body</label>
+                <textarea className={inputCls} value={tSms.body} onChange={e => setTSms(p => ({ ...p, body: e.target.value }))}
+                  rows={3} maxLength={1600} />
+                <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{tSms.body.length} / 1600 characters</p>
+              </div>
+
+              <button type="submit" disabled={tSmsSending} className="btn-primary">
+                {tSmsSending ? 'Sending…' : `Send ${tSms.mode === 'test' ? 'simulated' : 'LIVE'} SMS`}
+              </button>
+
+              {tSmsResult && (
+                <div className="rounded-lg p-3 text-xs font-mono leading-relaxed mt-2" style={{
+                  background: tSmsResult.ok ? 'oklch(96% 0.05 160)' : 'oklch(96% 0.05 25)',
+                  color:      tSmsResult.ok ? 'oklch(35% 0.12 160)' : 'oklch(40% 0.13 25)',
+                  border: `1px solid ${tSmsResult.ok ? 'oklch(80% 0.12 160)' : 'oklch(80% 0.12 25)'}`,
+                }}>
+                  <p><strong>{tSmsResult.ok ? '✓ Twilio accepted the request' : '✗ Twilio rejected the request'}</strong> ({tSmsResult.mode} mode)</p>
+                  <p>From: {tSmsResult.from} → To: {tSmsResult.to}</p>
+                  {tSmsResult.messageSid && <p>SID: {tSmsResult.messageSid}</p>}
+                  {tSmsResult.status     && <p>Status: {tSmsResult.status}</p>}
+                  {tSmsResult.errorCode  && <p>Error code: {String(tSmsResult.errorCode)}</p>}
+                  {tSmsResult.errorMessage && <p>Error: {tSmsResult.errorMessage}</p>}
+                </div>
+              )}
             </form>
           </div>
         </>
