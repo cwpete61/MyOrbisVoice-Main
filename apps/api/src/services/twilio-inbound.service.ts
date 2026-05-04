@@ -1,6 +1,7 @@
 import twilio from 'twilio'
 import { prisma } from '../lib/prisma.js'
 import { getSubaccountClient } from './twilio-subaccount.service.js'
+import { getPlatformTwilioClient } from './twilio.service.js'
 import { AppError } from '@voiceautomation/shared'
 
 const GW_WS_BASE = process.env['GATEWAY_WS_URL'] ?? 'wss://gateway.myorbisvoice.com'
@@ -86,12 +87,47 @@ export function buildInboundTwiml(opts: {
   return response.toString()
 }
 
-// Managed Twilio: the call lives on the tenant's subaccount, so the recording
-// must be created against that subaccount's client. getSubaccountClient
-// provisions the subaccount lazily if it doesn't exist yet.
-export async function startCallRecording(callSid: string, tenantId: string) {
+// Managed Twilio: the call lives on whichever account owns the inbound
+// number. For tenants with a provisioned subaccount, that's the subaccount;
+// for legacy / platform-owned numbers it's the master account directly.
+// Calling getSubaccountClient unconditionally was lazily creating empty
+// subaccounts and producing a client whose creds didn't own the call —
+// Twilio responded with 400 "Invalid parameter" (code 20001).
+//
+// We look up the PhoneNumber row for the call's `to` number; its
+// `twilioSubaccountSid` field tells us where the call lives. If null,
+// the recording must be created against the master client.
+export async function startCallRecording(callSid: string, tenantId: string, toNumber?: string) {
   try {
-    const client = await getSubaccountClient(tenantId)
+    let client: Awaited<ReturnType<typeof getSubaccountClient>>
+    let usedAccount: 'master' | 'subaccount' = 'master'
+
+    // Resolve which account owns the call. Prefer looking up by the
+    // dialed number when available, since one tenant could have numbers
+    // on different accounts (master + subaccount during migration).
+    let phone: { twilioSubaccountSid: string | null } | null = null
+    if (toNumber) {
+      phone = await prisma.phoneNumber.findFirst({
+        where: { e164Number: toNumber },
+        select: { twilioSubaccountSid: true },
+      })
+    }
+    if (!phone) {
+      // Fall back to: any phone owned by this tenant (best-effort)
+      phone = await prisma.phoneNumber.findFirst({
+        where: { tenantId },
+        select: { twilioSubaccountSid: true },
+      })
+    }
+
+    if (phone?.twilioSubaccountSid) {
+      client = await getSubaccountClient(tenantId)
+      usedAccount = 'subaccount'
+    } else {
+      client = await getPlatformTwilioClient()
+      usedAccount = 'master'
+    }
+
     const recording = await client.calls(callSid).recordings.create({
       recordingStatusCallback:       `${API_BASE}/api/webhooks/twilio/recording`,
       recordingStatusCallbackMethod: 'POST',
@@ -101,7 +137,7 @@ export async function startCallRecording(callSid: string, tenantId: string) {
       // the audio and upload to Bunny.
       recordingStatusCallbackEvent:  ['completed'],
     })
-    console.log(`[recording] started for ${callSid}: ${recording.sid}`)
+    console.log(`[recording] started for ${callSid} on ${usedAccount}: ${recording.sid}`)
   } catch (err) {
     console.error('[recording] startCallRecording error:', err)
   }

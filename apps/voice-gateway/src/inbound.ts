@@ -9,6 +9,7 @@ import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 import { sendCallNotificationEmail } from './services/notify.service.js'
 import { sendToTenant as sendPushToTenant } from './services/push.service.js'
 import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool } from './services/tools.js'
+import { hangUpTwilioCall } from './lib/twilio-call-control.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
 
@@ -42,39 +43,11 @@ async function isOverHardCap(tenantId: string): Promise<boolean> {
   }
 }
 
-// Hangs up an in-progress call by POSTing Status=completed.
-// Under managed Twilio, the call resource lives on the tenant's subaccount,
-// so the URL path must use the subaccount sid — but auth uses MASTER token
-// because subaccounts inherit master's credentials for write operations.
-// `ownerAccountSid` should be the subaccount sid Twilio gave us in the
-// Media Stream start event.
-async function hangUpCall(callSid: string, ownerAccountSid: string | null) {
-  try {
-    const { getTwilioAccountSid, getTwilioAuthToken } = await import('./lib/twilio-auth.js')
-    const [masterSid, masterToken] = await Promise.all([getTwilioAccountSid(), getTwilioAuthToken()])
-    if (!ownerAccountSid || !masterSid || !masterToken) {
-      console.warn('[inbound] hangup skipped — missing master creds or owner sid')
-      return
-    }
-    // Twilio basic-auth requires the AccountSid in the header to match the
-    // token's owner — so we authenticate as MASTER. The subaccount sid only
-    // appears in the URL path; master inherits write access to its
-    // subaccounts' calls.
-    const credentials = Buffer.from(`${masterSid}:${masterToken}`).toString('base64')
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${ownerAccountSid}/Calls/${callSid}.json`
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Authorization': `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'Status=completed',
-    })
-    if (!res.ok) {
-      console.warn(`[inbound] hangup failed ${res.status}: ${await res.text().catch(() => '')}`)
-      return
-    }
-    console.log(`[inbound] hung up call ${callSid}`)
-  } catch (err) {
-    console.error('[inbound] hangup error:', err)
-  }
+// Local alias for backwards-compatible call sites in this file. Real
+// implementation lives in lib/twilio-call-control.ts so it can be reused by
+// the hangup_call tool handler.
+function hangUpCall(callSid: string, ownerAccountSid: string | null) {
+  return hangUpTwilioCall(callSid, ownerAccountSid, 'inbound')
 }
 
 // Twilio Media Stream message shapes
@@ -122,6 +95,10 @@ export async function handleInboundCall(ws: WebSocket) {
       const mulaw   = pcm16ToMulaw(pcm8k)
       const payload = mulaw.toString('base64')
       ws.send(JSON.stringify({ event: 'media', streamSid, media: { payload } }))
+      // Agent audio counts as activity — caller is listening, not silent.
+      // Without this, a long agent reply (or multi-tool sequence) trips the
+      // watchdog right when the conversation is healthiest.
+      resetSilenceTimer()
     } catch (err) {
       console.error('[inbound] sendAudioToTwilio error:', err)
     }
@@ -133,7 +110,11 @@ export async function handleInboundCall(ws: WebSocket) {
     try { ws.send(JSON.stringify({ event: 'clear', streamSid })) } catch { /* ignore */ }
   }
 
-  // In-call silence watchdog: 10s → check-in prompt, 20s → hang up
+  // 30s check-in, 60s total before hangup — caller may be thinking.
+  // The timer resets on ANY audio activity (caller audio, agent audio) and
+  // on tool-call lifecycle events (model is "doing something" during a tool
+  // round-trip, even if the line is quiet). Earlier values of 10s/20s killed
+  // calls during natural pauses.
   let silenceTimer: ReturnType<typeof setTimeout> | null = null
   let checkinSent = false
 
@@ -142,15 +123,15 @@ export async function handleInboundCall(ws: WebSocket) {
     checkinSent = false
     silenceTimer = setTimeout(() => {
       if (!initialized || !gemini) return
-      console.log('[inbound] 10s silence — sending check-in')
+      console.log('[inbound] 30s silence — sending check-in')
       checkinSent = true
-      gemini.sendText('The caller has been silent for 10 seconds. Politely ask if they are still there and need assistance.')
+      gemini.sendText('The caller has been silent for 30 seconds. Politely ask if they are still there and need assistance.')
       silenceTimer = setTimeout(() => {
-        console.log('[inbound] 20s silence — hanging up')
+        console.log('[inbound] 60s silence — hanging up')
         hangUpCall(callSid, ownerAccountSid)
         setTimeout(() => gemini?.close(), 500)
-      }, 10_000)
-    }, 10_000)
+      }, 30_000)
+    }, 30_000)
   }
 
   function stopSilenceTimer() {
@@ -295,10 +276,15 @@ export async function handleInboundCall(ws: WebSocket) {
         console.log('[inbound] Gemini turn complete')
       },
       async onToolCall(call) {
+        // Tool round-trips happen while the line is quiet — count them as
+        // activity so the silence watchdog doesn't fire mid-tool.
+        resetSilenceTimer()
         try {
           const result = await executeTool(call.name, call.args, {
             tenantId,
             externalCallId: callSid,
+            callSid,
+            ownerAccountSid,
           })
           gemini?.sendToolResponse(call.id, call.name, result)
         } catch (err) {
@@ -307,6 +293,10 @@ export async function handleInboundCall(ws: WebSocket) {
             ok: false,
             error: (err as Error).message ?? 'Internal tool error',
           })
+        } finally {
+          // Reset again now that the response went back to Gemini — keeps
+          // the timer fresh while the model formulates its next reply.
+          resetSilenceTimer()
         }
       },
       async onClose() {
