@@ -32,10 +32,10 @@ Twilio's TFV form changes UI every few months. Field names below are stable; lay
 | **Business contact name** | Crawford Peterson Sr. |
 | **Business contact email** | crawford.peterson.sr@gmail.com |
 | **Business contact phone** | 929-497-7803 |
-| **Business type** | *(confirm: LLC / Sole Proprietor / Other — user said "NO EIN" so likely Sole Proprietor)* |
+| **Business type** | *(confirm: LLC / Inc / Other — having an EIN suggests a registered entity, not Sole Proprietor)* |
 | **Business industry** | Technology / SaaS |
-| **Business registration ID type** | *(SSN if Sole Proprietor; EIN if LLC/Corp — user said NO EIN, so SSN path)* |
-| **Business registration ID** | *(provide at submission time — SSN or EIN as appropriate)* |
+| **Business registration ID type** | EIN |
+| **Business registration ID** | *(EIN is on file — see project memory `project_legal_entity.md`. Not stored in committed docs.)* |
 
 ### Use Case
 
