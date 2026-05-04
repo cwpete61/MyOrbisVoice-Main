@@ -75,17 +75,10 @@ export function buildInboundTwiml(opts: {
     return response.toString()
   }
 
-  // Business hours — connect to the AI voice agent via Media Stream.
-  // noiseCancellation="krisp" enables Twilio's server-side Krisp noise
-  // cancellation on the caller's inbound audio, stripping background hiss /
-  // traffic / typing / wind / etc. before audio reaches our gateway. Quieter
-  // input → cleaner ASR → fewer Gemini Live confusions, and the agent doesn't
-  // get tricked by ambient sounds into thinking the caller spoke.
+  // Business hours — connect to the AI voice agent via Media Stream
   const connect = response.connect()
   const stream  = connect.stream({
     url: `${GW_WS_BASE}/ws/inbound`,
-    // @ts-expect-error twilio types are stale on this attribute (added in 2024)
-    noiseCancellation: 'krisp',
   })
   stream.parameter({ name: 'tenantId',        value: opts.tenantId })
   stream.parameter({ name: 'channelConfigId', value: opts.channelConfigId })
