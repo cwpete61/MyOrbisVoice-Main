@@ -47,8 +47,12 @@ export async function applyForAffiliate(userId: string) {
   const existing = await prisma.affiliateAccount.findUnique({ where: { userId } })
   if (existing) return existing
   const code = await uniqueCode()
+  // Auto-approve on application (decided 2026-05-04 — reverses earlier "vetted
+  // application" decision). Partners get an active referral link immediately
+  // and can start sending traffic. They still need to complete payout-account
+  // setup (Stripe Connect) before they can actually receive money.
   return prisma.affiliateAccount.create({
-    data: { userId, referralCode: code, status: 'PENDING' },
+    data: { userId, referralCode: code, status: 'ACTIVE' },
   })
 }
 

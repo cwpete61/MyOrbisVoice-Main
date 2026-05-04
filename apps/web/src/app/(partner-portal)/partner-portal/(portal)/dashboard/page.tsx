@@ -159,6 +159,109 @@ const I = {
   trophy:     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>,
 }
 
+// ─── Get-paid checklist ───────────────────────────────────────────────────────
+function GetPaidChecklist({
+  accountActive, approvedBalanceCents, minPayoutCents,
+  payoutMethodConnected, taxFormSubmitted,
+}: {
+  accountActive: boolean
+  approvedBalanceCents: number
+  minPayoutCents: number
+  payoutMethodConnected: boolean
+  taxFormSubmitted: boolean
+}) {
+  const reachedMin = approvedBalanceCents >= minPayoutCents
+  const items = [
+    {
+      done: accountActive,
+      title: 'Partner account active',
+      detail: accountActive ? 'You can start sharing your referral link.' : 'Application is being reviewed.',
+      action: null as { label: string; href: string } | null,
+    },
+    {
+      done: payoutMethodConnected,
+      title: 'Connect your payout account',
+      detail: payoutMethodConnected
+        ? 'Stripe payout account verified.'
+        : 'Coming soon — secure bank deposit via Stripe. We\'ll notify you when this is live.',
+      action: payoutMethodConnected ? null : null, // Will become actionable when Stripe Connect lands
+    },
+    {
+      done: taxFormSubmitted,
+      title: 'Submit tax info (W-9 / W-8BEN)',
+      detail: taxFormSubmitted
+        ? 'On file with Stripe — they\'ll mail you a 1099-NEC at year-end if you earn $600+.'
+        : 'Collected automatically when you connect your payout account.',
+      action: null,
+    },
+    {
+      done: reachedMin,
+      title: `Earn at least $${(minPayoutCents / 100).toFixed(0)} in approved commissions`,
+      detail: reachedMin
+        ? 'Minimum payout balance reached.'
+        : `Currently $${(approvedBalanceCents / 100).toFixed(2)} of $${(minPayoutCents / 100).toFixed(0)} needed.`,
+      action: null,
+    },
+  ]
+
+  // Once ALL items are complete, the checklist hides itself (clean dashboard for active earners)
+  if (items.every(i => i.done)) return null
+
+  return (
+    <section className="mb-10">
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
+      >
+        <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            What you need to get paid
+          </h2>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+            Complete these steps to start receiving commissions. You can earn referrals before completing them — payment just won&apos;t process until everything is checked.
+          </p>
+        </div>
+        <ul>
+          {items.map((item, i) => (
+            <li
+              key={item.title}
+              className="flex items-start gap-3 px-5 py-3"
+              style={{ borderTop: i > 0 ? '1px solid var(--border-subtle)' : undefined }}
+            >
+              {/* Checkmark / pending circle */}
+              <span
+                className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
+                style={{
+                  background: item.done ? TEAL : 'transparent',
+                  border: item.done ? 'none' : '1.5px solid var(--border-subtle)',
+                  color: 'white',
+                }}
+              >
+                {item.done && (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p
+                  className="text-sm font-medium"
+                  style={{ color: item.done ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: item.done ? 'line-through' : undefined }}
+                >
+                  {item.title}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                  {item.detail}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function PartnerDashboardPage() {
   const [account, setAccount]       = useState<Account | null>(null)
@@ -261,6 +364,16 @@ export default function PartnerDashboardPage() {
           <strong>Application under review.</strong> We'll notify you by email once your partner account is approved. You won't be able to track conversions until then.
         </div>
       )}
+
+      {/* Get-paid checklist — visible until ALL items are complete, then auto-hides.
+          Each item shows the partner exactly what's needed to receive a payout. */}
+      <GetPaidChecklist
+        accountActive={account.status === 'ACTIVE'}
+        approvedBalanceCents={allTime?.approvedCents ?? 0}
+        minPayoutCents={5000}
+        payoutMethodConnected={false /* TODO: from Stripe Connect status when wired */}
+        taxFormSubmitted={false /* TODO: from Stripe Connect KYC */}
+      />
 
       {/* Last 30 days */}
       <section className="mb-10">
