@@ -7,7 +7,7 @@ const EXP_LUT = [0, 132, 396, 924, 1980, 4092, 8316, 16764]
 
 export function encodeMulaw(pcm16: number): number {
   let sample = pcm16
-  let sign = (sample >> 8) & 0x80
+  const sign = (sample >> 8) & 0x80
   if (sign !== 0) sample = -sample
   if (sample > MULAW_CLIP) sample = MULAW_CLIP
   sample += MULAW_BIAS
@@ -22,7 +22,7 @@ export function decodeMulaw(mulaw: number): number {
   const sign     = mulaw & 0x80
   const exponent = (mulaw >> 4) & 0x07
   const mantissa = mulaw & 0x0f
-  let sample     = (EXP_LUT[exponent] ?? 0) + (mantissa << (exponent + 3))
+  const sample     = (EXP_LUT[exponent] ?? 0) + (mantissa << (exponent + 3))
   return sign !== 0 ? -sample : sample
 }
 

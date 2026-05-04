@@ -1,0 +1,60 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "root": true,
+  "files": {
+    "experimentalScannerIgnores": [
+      "claudecodeui",
+      "goose",
+      "impeccable",
+      "playwright",
+      "superpowers",
+      "arbor",
+      "distill",
+      "skills",
+      "jcodemunch-mcp",
+      "voiceautomation-project-root-regenerated",
+      "site",
+      "n8n",
+      "docs",
+      "backups",
+      "snapshots",
+      "images",
+      "infrastructure",
+      ".claude",
+      ".git",
+      "node_modules"
+    ],
+    "includes": [
+      "apps/api/src/**/*.ts",
+      "apps/voice-gateway/src/**/*.ts",
+      "apps/web/src/**/*.ts",
+      "apps/web/src/**/*.tsx",
+      "packages/*/src/**/*.ts",
+      "packages/*/src/**/*.tsx",
+      "!**/node_modules",
+      "!**/.next",
+      "!**/dist",
+      "!**/*.d.ts",
+      "!**/*.generated.ts"
+    ]
+  },
+  "formatter": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noConsole": "off"
+      },
+      "style": {
+        "useNodejsImportProtocol": "off"
+      },
+      "complexity": {
+        "noForEach": "off"
+      }
+    }
+  }
+}

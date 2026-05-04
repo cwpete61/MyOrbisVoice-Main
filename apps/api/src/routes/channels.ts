@@ -1,5 +1,5 @@
 import { Router, type IRouter } from 'express'
-import { z } from 'zod'
+import type { z } from 'zod'
 import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import * as channelService from '../services/channel.service.js'
