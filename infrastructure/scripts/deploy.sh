@@ -20,6 +20,39 @@ log()  { echo ""; echo "── $*"; }
 ok()   { echo "   ✓ $*"; }
 fail() { echo "   ✗ $*"; exit 1; }
 
+# Sync the three root workspace manifests to the prod host. Run once per
+# deploy. Subsequent ensure_deps calls assume these are present.
+sync_root_manifests() {
+  rsync -az "$REPO_ROOT/package.json"        "$SERVER:$REMOTE/package.json"
+  rsync -az "$REPO_ROOT/pnpm-lock.yaml"      "$SERVER:$REMOTE/pnpm-lock.yaml"
+  rsync -az "$REPO_ROOT/pnpm-workspace.yaml" "$SERVER:$REMOTE/pnpm-workspace.yaml"
+}
+
+# Keep a container's node_modules in sync with the current package.json by
+# injecting fresh manifests + running `pnpm install --prod` inside the container.
+# Idempotent: when nothing changed, pnpm exits in <1s. When new deps were added
+# (e.g. a recent `pnpm add foo` in apps/api), they install before the dist sync.
+# This is the post-incident fix for the pdfkit outage of 2026-05-04 — previously
+# the script only synced a hardcoded list of "extra modules" (nodemailer), so any
+# new dep silently broke the container on next restart.
+ensure_deps() {
+  local container="$1"   # e.g. myorbisvoice-api
+  local app_dir="$2"     # e.g. apps/api
+
+  log "Syncing manifests + ensuring deps for $container..."
+  rsync -az "$REPO_ROOT/$app_dir/package.json" "$SERVER:$REMOTE/$app_dir/package.json"
+
+  ssh "$SERVER" "
+    docker cp $REMOTE/package.json        $container:/app/package.json
+    docker cp $REMOTE/pnpm-lock.yaml      $container:/app/pnpm-lock.yaml
+    docker cp $REMOTE/pnpm-workspace.yaml $container:/app/pnpm-workspace.yaml
+    docker exec $container mkdir -p /app/$app_dir 2>/dev/null || true
+    docker cp $REMOTE/$app_dir/package.json $container:/app/$app_dir/package.json
+    docker exec -e NODE_ENV=production $container sh -c 'cd /app && pnpm install --prod 2>&1 | tail -5'
+  " || fail "ensure_deps failed for $container — check pnpm output above"
+  ok "Deps ensured for $container"
+}
+
 cd "$REPO_ROOT"
 
 # ── 1. Pre-deploy snapshot ─────────────────────────────────────────────────
@@ -68,24 +101,18 @@ else
   ok "Prod DB schema migrated"
 fi
 
-# ── 2b. Sync extra node_modules that may not be in the container image ────────
-log "Syncing extra node_modules to server..."
-NODEMAILER_LOCAL="$REPO_ROOT/node_modules/.pnpm/nodemailer@8.0.7/node_modules/nodemailer"
-if [[ -d "$NODEMAILER_LOCAL" ]]; then
-  rsync -az "$NODEMAILER_LOCAL/" "$SERVER:$REMOTE/extra_modules/nodemailer/"
-  ssh "$SERVER" "
-    docker exec myorbisvoice-api   mkdir -p /app/node_modules/nodemailer
-    docker cp $REMOTE/extra_modules/nodemailer/. myorbisvoice-api:/app/node_modules/nodemailer/
-    docker exec myorbisvoice-gateway mkdir -p /app/node_modules/nodemailer
-    docker cp $REMOTE/extra_modules/nodemailer/. myorbisvoice-gateway:/app/node_modules/nodemailer/
-  "
-  ok "nodemailer synced to api + gateway containers"
-fi
+# ── 2b. Sync workspace manifests to the host once. Per-container dependency
+#       installation happens inside step_api/step_gateway/step_web via the
+#       ensure_deps helper.
+log "Syncing workspace manifests to host..."
+sync_root_manifests
+ok "Manifests synced (package.json + pnpm-lock.yaml + pnpm-workspace.yaml)"
 
 # ── 3. Service steps ───────────────────────────────────────────────────────
 step_api() {
   log "API — build → sync → inject → commit-to-image → restart..."
   pnpm --filter @voiceautomation/api build 2>&1 | grep -E "error TS|^>" || true
+  ensure_deps myorbisvoice-api apps/api
   rsync -az --delete "$REPO_ROOT/apps/api/dist/" "$SERVER:$REMOTE/apps/api/dist/"
   # schema.prisma already synced + db pushed in the global Prisma section above
   ssh "$SERVER" "docker cp $REMOTE/apps/api/dist/. myorbisvoice-api:/app/apps/api/dist/"
@@ -111,6 +138,7 @@ step_api() {
 step_gateway() {
   log "Gateway — build → sync → inject → commit-to-image → restart..."
   pnpm --filter @voiceautomation/voice-gateway build 2>&1 | grep -E "error TS|^>" || true
+  ensure_deps myorbisvoice-gateway apps/voice-gateway
   rsync -az --delete "$REPO_ROOT/apps/voice-gateway/dist/" "$SERVER:$REMOTE/apps/voice-gateway/dist/"
   ssh "$SERVER" "docker cp $REMOTE/apps/voice-gateway/dist/. myorbisvoice-gateway:/app/apps/voice-gateway/dist/"
   ssh "$SERVER" "docker commit myorbisvoice-gateway myorbisvoice-gateway:latest" >/dev/null && ok "Image updated"
@@ -135,6 +163,7 @@ step_web() {
     echo "$WEB_BUILD_OUT" | tail -30
     fail "Web build failed — fix TypeScript errors before deploying"
   fi
+  ensure_deps myorbisvoice-web apps/web
   rsync -az --delete "$REPO_ROOT/apps/web/.next/" "$SERVER:$REMOTE/apps/web/.next/"
   # public/ contains static assets served at the root path (sw.js, favicon,
   # help-screenshots/, etc.). Next.js serves these from /app/apps/web/public/
