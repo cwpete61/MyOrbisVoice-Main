@@ -286,6 +286,8 @@ export async function sendGmailEmail(tenantId: string, params: {
   subject: string
   body: string
   isHtml?: boolean
+  contactId?: string
+  conversationId?: string
 }): Promise<void> {
   const client = await getAuthenticatedGoogleClient(tenantId)
   const gmail  = google.gmail({ version: 'v1', auth: client })
@@ -306,7 +308,39 @@ export async function sendGmailEmail(tenantId: string, params: {
     .replace(/\//g, '_')
     .replace(/=+$/, '')
 
-  await gmail.users.messages.send({ userId: 'me', requestBody: { raw: encoded } })
+  const sendResponse = await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: { raw: encoded },
+  })
+
+  // Log to MessageLog so the dashboard "follow-up emails sent" KPI sees this send.
+  // Non-fatal: if the lookup or write fails, the email itself is still successful.
+  try {
+    const conn = await prisma.integrationConnection.findFirst({
+      where: { tenantId, provider: 'GOOGLE' },
+      include: { googleDetail: true },
+    })
+    const sender = conn?.googleDetail?.mailboxEmail ?? 'unknown@gmail'
+
+    await prisma.messageLog.create({
+      data: {
+        tenantId,
+        contactId:         params.contactId ?? null,
+        conversationId:    params.conversationId ?? null,
+        channel:           'EMAIL',
+        direction:         'OUTBOUND',
+        sender,
+        recipient:         params.to,
+        subject:           params.subject,
+        bodyText:          params.body,
+        providerMessageId: sendResponse.data.id ?? null,
+        deliveryStatus:    'sent',
+        sentAt:            new Date(),
+      },
+    })
+  } catch (err) {
+    console.error('[google.service] MessageLog write failed:', err)
+  }
 }
 
 // Simple AES-256-GCM encryption using AUTH_SECRET as key material
