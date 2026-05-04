@@ -17,11 +17,21 @@ async function apiCall<T>(path: string, options: ApiCallOptions = {}): Promise<T
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   })
 
-  const json = (await res.json()) as { data?: T; errors?: { code: string; message: string }[] }
+  const json = (await res.json()) as { data?: T; errors?: { code: string; message: string; fieldErrors?: Record<string, string[]> }[] }
 
   if (!res.ok) {
-    const msg = json.errors?.[0]?.message ?? 'Request failed'
-    throw new Error(msg)
+    const err = json.errors?.[0]
+    // If the API returned per-field validation errors (VALIDATION_ERROR with
+    // fieldErrors), surface them in a readable format so the user knows
+    // exactly which field to fix instead of just seeing "Invalid input".
+    if (err?.fieldErrors && Object.keys(err.fieldErrors).length > 0) {
+      const lines: string[] = []
+      for (const [field, msgs] of Object.entries(err.fieldErrors)) {
+        for (const m of msgs) lines.push(`${field}: ${m}`)
+      }
+      throw new Error(lines.join(' • '))
+    }
+    throw new Error(err?.message ?? 'Request failed')
   }
 
   return json.data as T
