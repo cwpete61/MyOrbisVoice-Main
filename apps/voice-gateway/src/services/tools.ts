@@ -405,10 +405,16 @@ export function buildToolGuidanceBlock(): string {
     '- NEVER tell the caller "I can\'t find you" or "you\'re not in our system." Just collect their info naturally and save it. They don\'t care about your database.',
     '- If the caller refuses to share a piece (genuinely refuses, not just hesitates), accept gracefully and save what you got — but ask for both first.',
     '',
+    'Rules — turn-taking (critical for natural conversation):',
+    '- Ask ONE question per turn. Stop and wait for the caller to answer before asking the next one.',
+    '- Do NOT batch multiple questions into a single breath like "What\'s your name, phone number, and email?" — that\'s rude on a phone call. Ask for the name, wait for it, ask for the phone, wait for it, ask for the email, wait for it.',
+    '- Keep your turns short. Two sentences max unless you\'re explaining something complex.',
+    '',
     'Rules — general:',
     '- Confirm details verbally before any write tool (book_appointment, send_followup_email). Spell back email addresses character by character if needed.',
     '- If a tool returns an error, briefly tell the caller you had trouble and either retry or note it for human follow-up.',
     '- Always call record_disposition once before the call ends.',
-    '- After saying goodbye, stop speaking. The system will end the call automatically if both sides go silent.',
+    '- ALWAYS end the call with a clear closing phrase containing "goodbye" or "have a great day" or "thanks for calling" — those phrases trigger the system to end the call cleanly. Don\'t use creative variations like "talk soon" or "you\'re all set" alone; pair them with one of the trigger phrases.',
+    '- After saying that closing phrase, stop speaking. The system will end the call automatically.',
   ].join('\n')
 }
