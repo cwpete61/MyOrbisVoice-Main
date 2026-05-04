@@ -119,6 +119,37 @@ export const TOOL_DECLARATIONS = [
     },
   },
   {
+    name: 'save_contact',
+    description:
+      'Save the caller\'s details (full name, phone, email) to the contact database. ' +
+      'Call this once you have collected the caller\'s full name AND phone AND email. ' +
+      'Always pass everything you have — never skip a field you collected. ' +
+      'This is what feeds the campaign system, so it is required for every call where the caller stays on the line long enough to share contact info. ' +
+      'Safe to call multiple times: it upserts, so additional info enriches the existing record.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        full_name: {
+          type: 'STRING',
+          description: 'The caller\'s full name as stated. E.g. "Crawford Peterson".',
+        },
+        phone_e164: {
+          type: 'STRING',
+          description: 'Phone number in E.164 format if possible (e.g. "+14045551234"). If the caller gave a 10-digit US number, you may pass it as digits.',
+        },
+        email: {
+          type: 'STRING',
+          description: 'Email address as spoken (e.g. "alex@example.com"). Confirm spelling back to the caller before saving if unsure.',
+        },
+        notes: {
+          type: 'STRING',
+          description: 'Optional one-line note about why this contact called or what they want — used as audit context.',
+        },
+      },
+      required: ['full_name', 'phone_e164', 'email'],
+    },
+  },
+  {
     name: 'record_disposition',
     description:
       'Record the outcome of this call so the business can review it later. ' +
@@ -240,6 +271,38 @@ const handlers: Record<ToolName, ToolHandler> = {
     }
   },
 
+  async save_contact(args, ctx) {
+    const fullName  = String(args['full_name']  ?? '').trim()
+    const phoneE164 = String(args['phone_e164'] ?? '').trim()
+    const email     = String(args['email']      ?? '').trim()
+    const notes     = args['notes'] ? String(args['notes']) : undefined
+
+    if (!fullName && !phoneE164 && !email) {
+      return { ok: false, error: 'At least one of full_name, phone_e164, or email is required' }
+    }
+    if (!phoneE164 && !email) {
+      return { ok: false, error: 'Need at least phone or email to save a contact (preferably both)' }
+    }
+
+    const result = await callApi<{
+      ok: boolean; contactId: string; created: boolean
+      fullName: string | null; phoneE164: string | null; email: string | null
+    }>(
+      '/api/internal/gateway/tools/save-contact',
+      ctx.tenantId,
+      { fullName: fullName || undefined, phoneE164: phoneE164 || undefined, email: email || undefined, notes },
+    )
+    if (!result.ok) return { ok: false, error: result.error }
+    return {
+      ok:         true,
+      contact_id: result.data.contactId,
+      created:    result.data.created,
+      message:    result.data.created
+        ? 'New contact saved.'
+        : 'Existing contact updated with the latest info.',
+    }
+  },
+
   async send_followup_email(args, ctx) {
     const contactQuery = String(args['contact_id_or_phone'] ?? '').trim()
     const subject      = String(args['subject']             ?? '').trim()
@@ -327,15 +390,23 @@ export async function executeTool(
 export function buildToolGuidanceBlock(): string {
   return [
     '--- Tools available ---',
-    'You have four tools you may call during this conversation. Use them when appropriate; do not announce them.',
+    'You have five tools you may call during this conversation. Use them when appropriate; do not announce them.',
     '',
-    '1. lookup_contact(query) — Search for an existing customer by phone, email, or name. Call this when the caller says they\'ve interacted with the business before, before booking, or before sending an email.',
-    '2. book_appointment(starts_at_iso, duration_minutes, contact_phone_or_email, notes?, appointment_type?, timezone?) — Book on the business calendar. Only call AFTER you have explicit confirmation of date, time, duration, and a way to identify the contact (phone or email).',
-    '3. send_followup_email(contact_id_or_phone, subject, body) — Send a follow-up email from the business\'s Gmail. Only call when the caller asks for something in writing. Never invent an email address.',
-    '4. record_disposition(outcome_code, notes?) — Record the call outcome near the end of the conversation. Allowed codes: BOOKED, QUALIFIED_LEAD, NOT_QUALIFIED, INFO_REQUEST, COMPLAINT, CALLBACK_REQUESTED, WRONG_NUMBER, SPAM, NO_ACTION.',
+    '1. lookup_contact(query) — Search for an existing customer by phone, email, or name. Call this once early when the caller has shared a phone or email so you can recognise returning customers.',
+    '2. save_contact(full_name, phone_e164, email, notes?) — Save the caller\'s contact details to the database. ALWAYS call this after collecting the caller\'s full name, phone, AND email. Required on every call. Feeds campaigns and follow-up.',
+    '3. book_appointment(starts_at_iso, duration_minutes, contact_phone_or_email, notes?, appointment_type?, timezone?) — Book on the business calendar. Only after explicit confirmation of date, time, duration, and contact info.',
+    '4. send_followup_email(contact_id_or_phone, subject, body) — Send a follow-up email from the business\'s Gmail. Only call when the caller asks for something in writing.',
+    '5. record_disposition(outcome_code, notes?) — Record the call outcome near the end of the conversation. Allowed codes: BOOKED, QUALIFIED_LEAD, NOT_QUALIFIED, INFO_REQUEST, COMPLAINT, CALLBACK_REQUESTED, WRONG_NUMBER, SPAM, NO_ACTION.',
     '',
-    'Rules:',
-    '- Confirm details verbally before any write tool (book_appointment, send_followup_email).',
+    'Rules — contact capture (mandatory):',
+    '- ALWAYS collect the caller\'s full name AND phone number AND email address. All three. Never settle for one or the other.',
+    '- If the caller has already given you a phone OR an email, ask for the other one too. Phrasing: "Can I also grab your [email/phone] in case we need to follow up?"',
+    '- Call save_contact as soon as you have all three. Don\'t wait until the end of the call.',
+    '- NEVER tell the caller "I can\'t find you" or "you\'re not in our system." Just collect their info naturally and save it. They don\'t care about your database.',
+    '- If the caller refuses to share a piece (genuinely refuses, not just hesitates), accept gracefully and save what you got — but ask for both first.',
+    '',
+    'Rules — general:',
+    '- Confirm details verbally before any write tool (book_appointment, send_followup_email). Spell back email addresses character by character if needed.',
     '- If a tool returns an error, briefly tell the caller you had trouble and either retry or note it for human follow-up.',
     '- Always call record_disposition once before the call ends.',
     '- After saying goodbye, stop speaking. The system will end the call automatically if both sides go silent.',

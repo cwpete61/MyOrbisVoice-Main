@@ -133,6 +133,112 @@ router.post('/internal/gateway/tools/lookup-contact', async (req, res, next) => 
   } catch (err) { next(err) }
 })
 
+// ---------- tool: save_contact ----------
+
+// Upsert a contact captured live during a call. The agent collects full name,
+// phone, and email from every caller, then calls this tool. Match by phone
+// first (more reliable than email for inbound calls), then email. If neither
+// matches, create. Existing fields are not overwritten with empty values —
+// missing fields fill in, non-empty fields are preserved unless the agent
+// passed a different non-empty value.
+//
+// The `agentConfirmedAt` timestamp is always bumped — this is the signal
+// downstream campaigns (and the contacts page) use to know this contact was
+// verified by a live human voice, not scraped.
+const saveContactSchema = z.object({
+  fullName:  z.string().max(200).optional(),
+  phoneE164: z.string().max(40).optional(),
+  email:     z.string().email().max(200).optional(),
+  notes:     z.string().max(2000).optional(),
+}).refine(d => Boolean(d.phoneE164 || d.email), {
+  message: 'Provide phoneE164 or email (or both — both is preferred)',
+})
+
+function normalizePhone(input: string): string | null {
+  const digits = input.replace(/[^\d+]/g, '')
+  if (!/^\+?\d{7,}$/.test(digits)) return null
+  if (digits.startsWith('+')) return digits
+  if (digits.length === 10) return `+1${digits}`
+  return `+${digits}`
+}
+
+router.post('/internal/gateway/tools/save-contact', async (req, res, next) => {
+  try {
+    const tenantId = (req as any).internalTenantId as string
+    const data = saveContactSchema.parse(req.body)
+
+    const phoneE164 = data.phoneE164 ? normalizePhone(data.phoneE164) ?? data.phoneE164 : null
+    const email     = data.email?.trim().toLowerCase() ?? null
+
+    // Match by phone first, then email
+    let existing = phoneE164
+      ? await prisma.contact.findFirst({ where: { tenantId, phoneE164 } })
+      : null
+    if (!existing && email) {
+      existing = await prisma.contact.findFirst({
+        where: { tenantId, email: { equals: email, mode: 'insensitive' } },
+      })
+    }
+
+    const now = new Date()
+    let contact
+    let created = false
+
+    if (existing) {
+      // Update only fields the caller verified that were missing or different.
+      // Never overwrite a non-empty existing value with empty.
+      const update: Record<string, unknown> = { agentConfirmedAt: now, updatedAt: now }
+      if (data.fullName && data.fullName !== existing.fullName) update['fullName'] = data.fullName
+      if (phoneE164    && phoneE164    !== existing.phoneE164)  update['phoneE164'] = phoneE164
+      if (email        && email        !== existing.email)      update['email'] = email
+      if (data.notes) {
+        const meta = (existing.metadataJson as Record<string, unknown> | null) ?? {}
+        const calls = Array.isArray(meta['callNotes']) ? (meta['callNotes'] as unknown[]) : []
+        update['metadataJson'] = { ...meta, callNotes: [...calls, { at: now.toISOString(), notes: data.notes }] }
+      }
+      contact = await prisma.contact.update({ where: { id: existing.id }, data: update })
+    } else {
+      contact = await prisma.contact.create({
+        data: {
+          tenantId,
+          fullName:         data.fullName ?? null,
+          phoneE164,
+          email,
+          source:           'voice_agent',
+          agentConfirmedAt: now,
+          emailStatus:      email ? 'unchecked' : null,
+          metadataJson:     data.notes ? { callNotes: [{ at: now.toISOString(), notes: data.notes }] } : undefined,
+        },
+      })
+      created = true
+    }
+
+    await writeAuditLog({
+      tenantId,
+      actorType:  'SYSTEM',
+      action:     created ? 'gateway.tool.save_contact.created' : 'gateway.tool.save_contact.updated',
+      targetType: 'Contact',
+      targetId:   contact.id,
+      metadataJson: {
+        fullName:  contact.fullName,
+        phoneE164: contact.phoneE164,
+        email:     contact.email,
+      },
+    })
+
+    res.json({
+      data: {
+        ok:        true,
+        contactId: contact.id,
+        created,
+        fullName:  contact.fullName,
+        phoneE164: contact.phoneE164,
+        email:     contact.email,
+      },
+    })
+  } catch (err) { next(err) }
+})
+
 // ---------- tool: book_appointment ----------
 
 const bookSchema = z.object({
