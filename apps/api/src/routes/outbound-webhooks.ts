@@ -28,7 +28,9 @@ router.post('/webhooks/twilio/outbound/twiml', asyncHandler(async (req, res) => 
     twiml = await buildOutboundTwiml(resolvedTenantId, cId ?? '', attemptId ?? '')
     if (resolvedTenantId) {
       // Start recording immediately — same pattern as inbound
-      if (CallSid) startCallRecording(CallSid, resolvedTenantId).catch(() => null)
+      // For outbound, From is the tenant's owned number — that's the
+      // PhoneNumber row whose subaccount status drives client selection.
+      if (CallSid) startCallRecording(CallSid, resolvedTenantId, From).catch(() => null)
       await logTwilioEvent({
         tenantId: resolvedTenantId, callSid: CallSid, direction: 'OUTBOUND',
         eventType: 'dispatch', callStatus: 'initiated', fromNumber: From, toNumber: To,

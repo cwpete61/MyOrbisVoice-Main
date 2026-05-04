@@ -23,6 +23,12 @@ export type ToolContext = {
   tenantId:        string
   conversationId?: string  // when known (widget); inbound uses externalCallId instead
   externalCallId?: string  // Twilio CallSid for inbound/outbound
+  // Populated for inbound/outbound voice sessions. Required by the
+  // hangup_call tool — it POSTs Status=completed to Twilio for this call.
+  // Widget sessions leave these undefined; hangup_call gracefully fails
+  // there because there is no Twilio call to terminate.
+  callSid?:         string
+  ownerAccountSid?: string | null
 }
 
 export type ToolResult = Record<string, unknown>
@@ -134,6 +140,23 @@ export const TOOL_DECLARATIONS = [
         },
       },
       required: ['outcome_code'],
+    },
+  },
+  {
+    name: 'hangup_call',
+    description:
+      'End the phone call. Call this AFTER you have said goodbye and the caller has acknowledged the close, ' +
+      'and AFTER record_disposition has been called. Do not call this mid-sentence or before goodbyes are exchanged. ' +
+      'Once called, the phone line will terminate within ~1 second.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        reason: {
+          type: 'STRING',
+          description: 'Optional short reason for ending the call, used in the audit log (e.g. "caller said goodbye", "caller declined").',
+        },
+      },
+      required: [],
     },
   },
 ] as const
@@ -286,6 +309,33 @@ const handlers: Record<ToolName, ToolHandler> = {
     if (!result.ok) return { ok: false, error: result.error }
     return { ok: true, conversation_id: result.data.conversationId, message: `Disposition recorded as ${outcomeCode}.` }
   },
+
+  async hangup_call(args, ctx) {
+    const reason = args['reason'] ? String(args['reason']) : undefined
+    // Lazy import avoids loading twilio-auth (and its prisma + AUTH_SECRET
+    // requirement) for widget sessions that never reach this handler.
+    const { hangUpTwilioCall } = await import('../lib/twilio-call-control.js')
+
+    if (!ctx.callSid || !ctx.ownerAccountSid) {
+      // Widget sessions and any context missing the Twilio identifiers can't
+      // end a call resource — there isn't one. Return a soft-fail so the
+      // model can move on instead of retrying.
+      console.warn(`[tools] hangup_call invoked without callSid/ownerAccountSid (tenant=${ctx.tenantId})`)
+      return {
+        ok: false,
+        error: 'No active phone call to terminate.',
+      }
+    }
+
+    const result = await hangUpTwilioCall(ctx.callSid, ctx.ownerAccountSid, 'tools.hangup_call')
+    if (!result.ok) {
+      return { ok: false, error: result.error ?? 'Hangup failed' }
+    }
+    if (reason) {
+      console.log(`[tools] hangup_call reason="${reason}" callSid=${ctx.callSid}`)
+    }
+    return { ok: true, message: 'Call ended.' }
+  },
 }
 
 // --- Public dispatcher -------------------------------------------------------
@@ -313,16 +363,18 @@ export async function executeTool(
 export function buildToolGuidanceBlock(): string {
   return [
     '--- Tools available ---',
-    'You have four tools you may call during this conversation. Use them when appropriate; do not announce them.',
+    'You have five tools you may call during this conversation. Use them when appropriate; do not announce them.',
     '',
     '1. lookup_contact(query) — Search for an existing customer by phone, email, or name. Call this when the caller says they\'ve interacted with the business before, before booking, or before sending an email.',
     '2. book_appointment(starts_at_iso, duration_minutes, contact_phone_or_email, notes?, appointment_type?, timezone?) — Book on the business calendar. Only call AFTER you have explicit confirmation of date, time, duration, and a way to identify the contact (phone or email).',
     '3. send_followup_email(contact_id_or_phone, subject, body) — Send a follow-up email from the business\'s Gmail. Only call when the caller asks for something in writing. Never invent an email address.',
     '4. record_disposition(outcome_code, notes?) — Record the call outcome near the end of the conversation. Allowed codes: BOOKED, QUALIFIED_LEAD, NOT_QUALIFIED, INFO_REQUEST, COMPLAINT, CALLBACK_REQUESTED, WRONG_NUMBER, SPAM, NO_ACTION.',
+    '5. hangup_call(reason?) — End the phone call. Call this AFTER saying goodbye when the conversation is naturally complete. Don\'t call it before the caller has acknowledged the close.',
     '',
     'Rules:',
     '- Confirm details verbally before any write tool (book_appointment, send_followup_email).',
     '- If a tool returns an error, briefly tell the caller you had trouble and either retry or note it for human follow-up.',
     '- Always call record_disposition once before the call ends.',
+    '- After saying goodbye and the caller has acknowledged, call hangup_call to terminate the line — do not stay silent waiting for them to hang up.',
   ].join('\n')
 }

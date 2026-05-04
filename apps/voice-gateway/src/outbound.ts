@@ -7,37 +7,14 @@ import { persistConversation, type TranscriptEntry } from './services/conversati
 import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool } from './services/tools.js'
+import { hangUpTwilioCall } from './lib/twilio-call-control.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
 
-// `ownerAccountSid` is the subaccount sid that owns this call resource —
-// captured from Twilio's Media Stream `start` event. Master credentials
-// authenticate, but the URL path must use the owner sid or Twilio 404s.
-async function hangUpCall(callSid: string, ownerAccountSid: string | null) {
-  try {
-    const { getTwilioAccountSid, getTwilioAuthToken } = await import('./lib/twilio-auth.js')
-    const [masterSid, masterToken] = await Promise.all([getTwilioAccountSid(), getTwilioAuthToken()])
-    if (!ownerAccountSid || !masterSid || !masterToken) {
-      console.warn('[outbound] hangup skipped — missing master creds or owner sid')
-      return
-    }
-    // Authenticate as master (basic-auth SID must match the token's owner);
-    // subaccount sid goes in the URL path. Master can manage subaccount calls.
-    const credentials = Buffer.from(`${masterSid}:${masterToken}`).toString('base64')
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${ownerAccountSid}/Calls/${callSid}.json`
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Authorization': `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'Status=completed',
-    })
-    if (!res.ok) {
-      console.warn(`[outbound] hangup failed ${res.status}: ${await res.text().catch(() => '')}`)
-      return
-    }
-    console.log(`[outbound] hung up call ${callSid}`)
-  } catch (err) {
-    console.error('[outbound] hangup error:', err)
-  }
+// Local alias matching the previous signature. Real implementation lives in
+// lib/twilio-call-control.ts so it can be reused by the hangup_call tool.
+function hangUpCall(callSid: string, ownerAccountSid: string | null) {
+  return hangUpTwilioCall(callSid, ownerAccountSid, 'outbound')
 }
 
 type TwilioMsg =
@@ -98,6 +75,8 @@ export async function handleOutboundCall(ws: WebSocket) {
       const mulaw   = pcm16ToMulaw(pcm8k)
       const payload = mulaw.toString('base64')
       ws.send(JSON.stringify({ event: 'media', streamSid, media: { payload } }))
+      // Agent audio counts as activity — caller listening is not silence.
+      resetInCallSilenceTimer()
     } catch (err) {
       console.error('[outbound] sendAudioToTwilio error:', err)
     }
@@ -108,21 +87,23 @@ export async function handleOutboundCall(ws: WebSocket) {
     try { ws.send(JSON.stringify({ event: 'clear', streamSid })) } catch { /* ignore */ }
   }
 
-  // In-call silence watchdog: 10s → check-in, 20s → hang up
+  // 30s check-in, 60s total before hangup — caller may be thinking.
+  // Resets on any audio activity (caller or agent) and on tool-call events.
+  // Earlier values of 10s/20s killed calls during natural pauses.
   let inCallSilenceTimer: ReturnType<typeof setTimeout> | null = null
 
   function resetInCallSilenceTimer() {
     if (inCallSilenceTimer) clearTimeout(inCallSilenceTimer)
     inCallSilenceTimer = setTimeout(() => {
       if (!initialized || !gemini) return
-      console.log('[outbound] 10s silence — sending check-in')
-      gemini.sendText('The person has been silent for 10 seconds. Politely ask if they are still there.')
+      console.log('[outbound] 30s silence — sending check-in')
+      gemini.sendText('The person has been silent for 30 seconds. Politely ask if they are still there.')
       inCallSilenceTimer = setTimeout(() => {
-        console.log('[outbound] 20s silence — hanging up')
+        console.log('[outbound] 60s silence — hanging up')
         hangUpCall(callSid, ownerAccountSid)
         setTimeout(() => gemini?.close(), 500)
-      }, 10_000)
-    }, 10_000)
+      }, 30_000)
+    }, 30_000)
   }
 
   function stopInCallSilenceTimer() {
@@ -256,10 +237,14 @@ export async function handleOutboundCall(ws: WebSocket) {
         console.log('[outbound] Gemini turn complete')
       },
       async onToolCall(call) {
+        // Tool round-trips count as activity — quiet line, but model is busy.
+        resetInCallSilenceTimer()
         try {
           const result = await executeTool(call.name, call.args, {
             tenantId,
             externalCallId: callSid,
+            callSid,
+            ownerAccountSid,
           })
           gemini?.sendToolResponse(call.id, call.name, result)
         } catch (err) {
@@ -268,6 +253,8 @@ export async function handleOutboundCall(ws: WebSocket) {
             ok: false,
             error: (err as Error).message ?? 'Internal tool error',
           })
+        } finally {
+          resetInCallSilenceTimer()
         }
       },
       async onClose() {

@@ -30,7 +30,7 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
     const profile = (phone as any).tenant?.businessProfile ?? null
 
     logCallStart({ tenantId: phone.tenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To }).catch(e => console.error('[twilio] logCallStart failed:', e))
-    startCallRecording(CallSid, phone.tenantId).catch(e => console.error('[twilio] startCallRecording failed:', e))
+    startCallRecording(CallSid, phone.tenantId, To).catch(e => console.error('[twilio] startCallRecording failed:', e))
     logTwilioEvent({ tenantId: phone.tenantId, callSid: CallSid, direction: 'INBOUND', eventType: 'inbound_received', fromNumber: From, toNumber: To, callStatus: 'ringing' }).catch(e => console.error('[twilio] logTwilioEvent failed:', e))
 
     const cfg = (channel?.configJson ?? {}) as Record<string, any>
