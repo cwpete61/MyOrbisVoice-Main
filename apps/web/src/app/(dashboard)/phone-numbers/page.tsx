@@ -163,6 +163,25 @@ export default function PhoneNumbersPage() {
 
       {toast && <div className="alert-success mt-4">{toast}</div>}
 
+      {/* Plan upgrade CTA — shown when the tenant is on a plan that includes 0 numbers.
+          This is the path out of the onboarding dead-end where step 5 (Phone Number)
+          is gated behind plan upgrade. Without this CTA, fresh signups have to find
+          /billing on their own. */}
+      {noPlan && (
+        <a
+          href="/billing"
+          className="block mt-4 px-4 py-3 rounded-xl text-sm font-medium"
+          style={{
+            background: 'oklch(55% 0.11 193 / 0.08)',
+            border: '1px solid oklch(55% 0.11 193 / 0.4)',
+            color: 'oklch(45% 0.13 193)',
+            textDecoration: 'none',
+          }}
+        >
+          🔓 <strong>Pick a plan to get a phone number →</strong> Your current plan doesn&apos;t include any. Upgrade to Basic ($197/mo, 1 number), Pro ($497/mo, 3 numbers), or higher.
+        </a>
+      )}
+
       {/* Twilio compliance banner — kept; still useful pointer to help center */}
       <a
         href="/help#integrations-twilio-approval"

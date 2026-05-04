@@ -2020,3 +2020,35 @@ A help center with stale or missing screenshots erodes user trust and increases 
 - WhatsApp's 24-hour customer-care window restricts unsolicited sends to approved templates only — the campaign system's free-form `whatsappBody` only works for replies inside that window. Outside it, must use a pre-approved Twilio Content Template.
 
 **Why it matters:** WhatsApp is dominant outside the US for business messaging. International tenants will expect it.
+
+---
+
+### 19. Outbound voice carrier reputation — defer to v1.1
+
+**Status:** Deferred 2026-05-04. Outbound voice dispatch from tag-driven campaigns is fully wired and structurally verified, but **calls are silently rejected by carrier signaling layer with `busy` in 0 seconds** before reaching the recipient device — even with the recipient number in the user's contacts. Confirmed across two different from-numbers (`+14043830220` Atlanta and `+19296403810` NYC), so it's not the specific number, it's an upstream filtering pattern.
+
+**What's verified working:**
+- Twilio accepts the outbound API request (real Call SID returned)
+- Status webhook fires back to our handler
+- Bridge correctly propagates outcome → CampaignEnrollment status
+- Master vs subaccount Twilio client picked correctly based on `PhoneNumber.twilioSubaccountSid`
+- Synchronous dispatch failures bubble up cleanly (no enrollments stuck in IN_PROGRESS)
+
+**Suspected root causes (in priority order):**
+1. **STIR/SHAKEN attestation low/missing** — fresh Twilio numbers without proper attestation get blocked by Verizon/AT&T/T-Mobile spam filters. This is the most common explanation for the exact 0-second `busy` pattern we observed.
+2. **Master Twilio account voice trust score** — newly-set-up account with no completed registrations may have outbound calling restrictions until reputation builds.
+3. **Carrier-side anti-spam** (Verizon Call Filter, AT&T Active Armor, T-Mobile Scam Shield) blocking at the network edge before the call reaches device or contacts.
+
+**Likely fixes (require external wait or paid registration — needs explicit user direction):**
+- A2P 10DLC approval (already pending Twilio approval) — improves overall account voice rep too
+- CNAM registration on the from-number (~$1/mo) — sets the displayed caller name, helps carriers treat the call as legitimate
+- Twilio Trust Hub: Customer Profile + Voice Brand registration — formal process, takes days
+- Wait for organic reputation to build (low-volume legitimate traffic over weeks)
+
+**Why deferring is the right call for v1:**
+- Target verticals (dental, legal, home services, fitness, beauty) primarily use INBOUND voice (verified working end-to-end). Outbound voice campaigns are an advanced workflow most v1 customers won't reach immediately.
+- Email campaigns are verified end-to-end TODAY (real Gmail dispatch via OAuth) — that's the immediate follow-up channel.
+- SMS campaigns are wired and waiting on the same A2P approval.
+- Day A2P clears, voice reputation almost certainly improves and these calls start ringing through with no further code changes.
+
+**Open item:** unauthorized purchase of `+19296403810` (Twilio SID `PN8cdda6a103...`) on 2026-05-04 is on the master account costing $1.15/mo. **Held pending user decision** — release or keep for future testing. See `feedback_no_unauthorized_purchases.md` in memory.
