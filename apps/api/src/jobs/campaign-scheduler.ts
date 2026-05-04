@@ -147,13 +147,80 @@ async function dispatchSms(enrollment: EnrollmentWithRels, ctx: DispatchContext,
   }
 }
 
-async function dispatchVoice(enrollment: EnrollmentWithRels): Promise<{ ok: boolean; error?: string }> {
-  // Voice dispatch from tag-driven Campaign is not yet wired to the outbound
-  // caller (OutboundCallAttempt belongs to OutboundCampaign — a separate
-  // model). For now mark these enrollments FAILED with a clear note so they
-  // surface in the UI; the outbound-call wiring is a follow-up task.
-  void enrollment
-  return { ok: false, error: 'voice dispatch from tag-driven campaigns not yet wired (see scheduler stub)' }
+async function dispatchVoice(enrollment: EnrollmentWithRels): Promise<{ ok: boolean; deferred?: boolean; error?: string }> {
+  // Voice dispatch bridges into the existing OutboundCampaign infrastructure:
+  //   1. Get-or-create a "bridge" OutboundCampaign whose audienceJson points
+  //      back at this tag-driven Campaign (so we don't recreate per call).
+  //   2. Insert one OutboundCallAttempt for this contact, with enrollmentId
+  //      set so the status webhook can propagate the call outcome back.
+  //   3. Call dispatchPendingCalls() — this places the Twilio call and
+  //      transitions the attempt PENDING → DIALING.
+  //   4. Return deferred=true so the scheduler leaves the enrollment in
+  //      IN_PROGRESS until the Twilio status webhook resolves it.
+  const phone = enrollment.contact.phoneE164
+  if (!phone) return { ok: false, error: 'contact has no phone number' }
+
+  try {
+    const bridgeCampaign = await getOrCreateVoiceBridgeCampaign(enrollment.campaign)
+
+    const attempt = await prisma.outboundCallAttempt.create({
+      data: {
+        tenantId:     enrollment.tenantId,
+        campaignId:   bridgeCampaign.id,
+        contactId:    enrollment.contactId,
+        enrollmentId: enrollment.id,
+        status:       'PENDING',
+        attemptNumber: enrollment.attemptCount + 1,
+      },
+    })
+    void attempt
+
+    const { dispatchPendingCalls } = await import('../services/outbound.service.js')
+    await dispatchPendingCalls(enrollment.tenantId, bridgeCampaign.id)
+
+    return { ok: true, deferred: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'voice dispatch failed' }
+  }
+}
+
+/**
+ * Lazily creates an OutboundCampaign that mirrors a tag-driven Campaign.
+ * The campaign's `description` is set to the tag-driven Campaign's `prompt`
+ * so the voice gateway uses the right context for the greeting (the gateway
+ * reads `campaign.description` and folds it into the agent's opening prompt).
+ *
+ * audienceJson stores the bridge marker: { kind, sourceCampaignId } — used
+ * to find the bridge campaign on subsequent enrollments without creating
+ * duplicates. We store this in audienceJson rather than adding a column
+ * because OutboundCampaign already has the field and tag-driven bridges
+ * never use it for actual audience data.
+ */
+async function getOrCreateVoiceBridgeCampaign(sourceCampaign: Campaign): Promise<{ id: string }> {
+  // Find an existing bridge for this source campaign (using JSON path query)
+  const existing = await prisma.outboundCampaign.findFirst({
+    where: {
+      tenantId: sourceCampaign.tenantId,
+      audienceJson: { path: ['kind'], equals: 'tag_driven_bridge' },
+      AND: { audienceJson: { path: ['sourceCampaignId'], equals: sourceCampaign.id } },
+    },
+    select: { id: true },
+  })
+  if (existing) return existing
+
+  return prisma.outboundCampaign.create({
+    data: {
+      tenantId:    sourceCampaign.tenantId,
+      name:        `[bridge] ${sourceCampaign.name}`,
+      description: sourceCampaign.prompt,
+      status:      'RUNNING',
+      audienceJson: {
+        kind: 'tag_driven_bridge',
+        sourceCampaignId: sourceCampaign.id,
+      },
+    },
+    select: { id: true },
+  })
 }
 
 async function dispatchOne(enrollment: EnrollmentWithRels): Promise<void> {
@@ -166,13 +233,20 @@ async function dispatchOne(enrollment: EnrollmentWithRels): Promise<void> {
 
   const ctx = await buildContext(enrollment)
 
-  let result: { ok: boolean; error?: string }
+  let result: { ok: boolean; deferred?: boolean; error?: string }
   switch (enrollment.channel) {
     case 'EMAIL':    result = await dispatchEmail(enrollment, ctx); break
     case 'SMS':      result = await dispatchSms(enrollment, ctx, 'SMS'); break
     case 'WHATSAPP': result = await dispatchSms(enrollment, ctx, 'WHATSAPP'); break
     case 'VOICE':    result = await dispatchVoice(enrollment); break
     default:         result = { ok: false, error: `unknown channel: ${enrollment.channel}` }
+  }
+
+  if (result.ok && result.deferred) {
+    // Dispatch was placed but final outcome lives in another lifecycle (e.g.
+    // a Twilio status webhook for a voice call). Leave the enrollment in
+    // IN_PROGRESS — that lifecycle will mark it COMPLETED or FAILED.
+    return
   }
 
   if (result.ok) {

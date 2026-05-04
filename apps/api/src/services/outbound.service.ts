@@ -112,8 +112,17 @@ export async function handleOutboundStatus(attemptId: string, callStatus: string
   })
 
   // Check if campaign is now fully complete
-  const attempt = await prisma.outboundCallAttempt.findUnique({ where: { id: attemptId } })
+  const attempt = await prisma.outboundCallAttempt.findUnique({
+    where: { id: attemptId },
+    include: { enrollment: { include: { campaign: true } } },
+  })
   if (!attempt) return
+
+  // Propagate the call outcome back to the tag-driven CampaignEnrollment
+  // (if this attempt was created by the campaign scheduler's voice bridge).
+  if (attempt.enrollmentId && attempt.enrollment) {
+    await propagateAttemptOutcomeToEnrollment(attempt.enrollment, outcomeCode)
+  }
 
   // Best-effort: when an outbound call doesn't connect, send a "we tried
   // to reach you" follow-up email from the tenant's Gmail. Skip if the
@@ -167,5 +176,50 @@ async function sendMissedCallEmail(tenantId: string, contactId: string | null, c
     subject: `We tried to reach you — ${businessName}`,
     body:    html,
     isHtml:  true,
+  })
+}
+
+/**
+ * Bridges an outbound-call outcome back to the tag-driven CampaignEnrollment
+ * that triggered the call. Honours the source Campaign's maxRetries — if the
+ * call didn't connect and retries remain, the enrollment goes back to PENDING
+ * with scheduledCallAt set to now + retryIntervalHours.
+ */
+async function propagateAttemptOutcomeToEnrollment(
+  enrollment: {
+    id: string
+    attemptCount: number
+    campaign: { maxRetries: number; retryIntervalHours: number }
+  },
+  outcomeCode: string,
+): Promise<void> {
+  const isAnswered = outcomeCode === 'answered'
+
+  if (isAnswered) {
+    await prisma.campaignEnrollment.update({
+      where: { id: enrollment.id },
+      data:  { status: 'COMPLETED', completedAt: new Date() },
+    })
+    return
+  }
+
+  // Failure path — retry if attempts remain, else FAILED.
+  // attemptCount was already incremented by the scheduler at claim time.
+  if (enrollment.attemptCount >= enrollment.campaign.maxRetries) {
+    await prisma.campaignEnrollment.update({
+      where: { id: enrollment.id },
+      data:  {
+        status:     'FAILED',
+        exitReason: `voice call ${outcomeCode}; max retries reached`,
+        completedAt: new Date(),
+      },
+    })
+    return
+  }
+
+  const retryAt = new Date(Date.now() + enrollment.campaign.retryIntervalHours * 60 * 60 * 1000)
+  await prisma.campaignEnrollment.update({
+    where: { id: enrollment.id },
+    data:  { status: 'PENDING', scheduledCallAt: retryAt },
   })
 }

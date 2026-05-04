@@ -1144,12 +1144,18 @@ model OutboundCallAttempt {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   conversationId    String?
+  // Optional back-reference to a tag-driven Campaign enrollment when the
+  // outbound call was triggered by the campaign scheduler. The webhook
+  // outcome handler propagates the call result back to this enrollment.
+  enrollmentId      String?
   campaign          OutboundCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact           Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
   conversation      Conversation?     @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  enrollment        CampaignEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
 
   @@index([campaignId, status])
+  @@index([enrollmentId])
 }
 
 model SystemConfig {
@@ -1269,6 +1275,7 @@ model CampaignEnrollment {
   tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaign        Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contact         Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  voiceAttempts   OutboundCallAttempt[]
 
   @@unique([campaignId, contactId, channel])
   @@index([tenantId, status])
