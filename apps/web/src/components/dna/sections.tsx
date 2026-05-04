@@ -17,6 +17,7 @@ import {
   ObjectList, HoursGrid, KeyValueMap, UnrecognizedFields,
   type ObjectFieldSchema,
 } from './inputs'
+import { GenerateWithAi } from './generate-with-ai'
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Type helpers — JSONB is loose; we always validate the shape we read.
@@ -28,6 +29,11 @@ export interface SectionProps {
   value: DNASection
   onChange: (next: DNASection) => void
   disabled?: boolean
+  /**
+   * The Identity section's saved values, passed in from the page so other
+   * sections can pre-fill the AI-assist seed (businessName, industry, tone).
+   */
+  identitySnapshot?: DNASection
 }
 
 function asString(v: unknown): string {
@@ -62,6 +68,11 @@ function patch(value: DNASection, partial: Record<string, unknown>): DNASection 
   return { ...value, ...partial }
 }
 
+/** Small row that hosts the "Generate with AI" pill above a section's fields. */
+function AiAssistRow({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-center justify-end">{children}</div>
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
  * Identity
  * Schema: { businessName, tagline, shortDescription, elevatorPitch, tone,
@@ -87,6 +98,16 @@ const VOICE_OPTIONS = [
 export function IdentitySection({ value, onChange, disabled }: SectionProps) {
   return (
     <div className="space-y-4">
+      {!disabled && (
+        <AiAssistRow>
+          <GenerateWithAi
+            section="identity"
+            currentValue={value}
+            identitySnapshot={value}
+            onApply={(generated) => onChange({ ...value, ...generated })}
+          />
+        </AiAssistRow>
+      )}
       <TextField
         label="Business name"
         value={asString(value['businessName'])}
@@ -278,9 +299,21 @@ const TIMEZONE_OPTIONS = [
   { value: 'UTC',                 label: 'UTC' },
 ]
 
-export function OperationsSection({ value, onChange, disabled }: SectionProps) {
+export function OperationsSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
   return (
     <div className="space-y-4">
+      {!disabled && (
+        <AiAssistRow>
+          <GenerateWithAi
+            section="operations"
+            currentValue={value}
+            identitySnapshot={identitySnapshot}
+            // Operations only generates afterHoursBehavior — preserve every
+            // other key (timezone, businessHours, holidays, etc.).
+            onApply={(generated) => onChange({ ...value, ...generated })}
+          />
+        </AiAssistRow>
+      )}
       <Select
         label="Timezone"
         value={asString(value['timezone'])}
@@ -326,9 +359,19 @@ export function OperationsSection({ value, onChange, disabled }: SectionProps) {
 
 const KNOWN_SALES = ['qualificationCriteria', 'discoveryQuestions', 'demoFlow', 'objectionHandling']
 
-export function SalesSection({ value, onChange, disabled }: SectionProps) {
+export function SalesSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
   return (
     <div className="space-y-4">
+      {!disabled && (
+        <AiAssistRow>
+          <GenerateWithAi
+            section="sales"
+            currentValue={value}
+            identitySnapshot={identitySnapshot}
+            onApply={(generated) => onChange({ ...value, ...generated })}
+          />
+        </AiAssistRow>
+      )}
       <StringList
         label="Qualification criteria"
         values={asStringArray(value['qualificationCriteria'])}
@@ -387,9 +430,19 @@ const APPOINTMENT_TYPE_SCHEMA: ObjectFieldSchema[] = [
   { key: 'description', label: 'Description', type: 'textarea', rows: 2, placeholder: 'What happens during this appointment.' },
 ]
 
-export function AppointmentSection({ value, onChange, disabled }: SectionProps) {
+export function AppointmentSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
   return (
     <div className="space-y-4">
+      {!disabled && (
+        <AiAssistRow>
+          <GenerateWithAi
+            section="appointment"
+            currentValue={value}
+            identitySnapshot={identitySnapshot}
+            onApply={(generated) => onChange({ ...value, ...generated })}
+          />
+        </AiAssistRow>
+      )}
       <NumberField
         label="Default duration"
         value={asNumber(value['defaultDuration'], 30)}
@@ -445,9 +498,19 @@ const COMMON_ISSUE_SCHEMA: ObjectFieldSchema[] = [
   { key: 'fix',   label: 'Fix',   type: 'textarea', rows: 3, placeholder: 'Direct them to billing@... or offer to email a copy.' },
 ]
 
-export function SupportSection({ value, onChange, disabled }: SectionProps) {
+export function SupportSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
   return (
     <div className="space-y-4">
+      {!disabled && (
+        <AiAssistRow>
+          <GenerateWithAi
+            section="support"
+            currentValue={value}
+            identitySnapshot={identitySnapshot}
+            onApply={(generated) => onChange({ ...value, ...generated })}
+          />
+        </AiAssistRow>
+      )}
       <ObjectList
         label="Common issues"
         values={asObjectArray(value['commonIssues'])}
@@ -507,9 +570,19 @@ const LANGUAGE_OPTIONS = [
   { value: 'Italian',    label: 'Italian' },
 ]
 
-export function LanguageSection({ value, onChange, disabled }: SectionProps) {
+export function LanguageSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
   return (
     <div className="space-y-4">
+      {!disabled && (
+        <AiAssistRow>
+          <GenerateWithAi
+            section="language"
+            currentValue={value}
+            identitySnapshot={identitySnapshot}
+            onApply={(generated) => onChange({ ...value, ...generated })}
+          />
+        </AiAssistRow>
+      )}
       <Select
         label="Primary language"
         value={asString(value['primaryLanguage'])}

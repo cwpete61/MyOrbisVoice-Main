@@ -503,6 +503,13 @@ export default function BusinessDNAPage() {
                     value={formValue}
                     onChange={setSectionValue}
                     disabled={readOnly}
+                    // When editing the Identity section itself, pass the live
+                    // form value so AI-assist seed reflects unsaved edits.
+                    identitySnapshot={
+                      activeSection === 'identityJson'
+                        ? formValue
+                        : (selected.identityJson as Record<string, unknown> | undefined)
+                    }
                   />
                 )}
               </div>
