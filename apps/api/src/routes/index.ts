@@ -43,6 +43,7 @@ router.use('/api', billingRouter)       // before auth-gated routers — contain
 router.use('/api', widgetRouter)        // contains public /public/widget/session
 router.use('/api', pushRouter)          // contains public /push/vapid-public-key — must precede tenantRouter
 router.use('/api', integrationsRouter)  // contains public /integrations/google/callback — must precede tenantRouter
+router.use('/', affiliateRouter)        // contains public /api/public/track/click — must precede tenantRouter; also has user-scoped (non-tenant) routes for affiliates who don't have a tenant
 router.use('/api', tenantRouter)
 router.use('/api', businessDNARouter)
 router.use('/api', promptsRouter)
@@ -54,7 +55,6 @@ router.use('/api', phoneNumbersRouter)
 router.use('/api', contactsRouter)
 router.use('/api', campaignsRouter)
 router.use('/api', outboundCampaignsRouter)
-router.use('/', affiliateRouter)
 router.use('/api', staffRouter)
 router.use('/api', conversationsRouter)
 router.use('/api', notificationsRouter)

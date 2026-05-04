@@ -40,8 +40,11 @@ router.get('/integrations/google/callback', async (req, res, next) => {
   }
 })
 
-// All routes below this point require authentication
-router.use(authenticate, requireTenantContext)
+// All routes below this point require authentication.
+// Scoped to /integrations specifically so this middleware doesn't eat
+// /api/* requests destined for other routers mounted after this one
+// (caused affiliate/apply to 403 with "No tenant context" before the fix).
+router.use('/integrations', authenticate, requireTenantContext)
 
 function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
   const result = schema.safeParse(data)

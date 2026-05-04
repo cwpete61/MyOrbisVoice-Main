@@ -1,13 +1,20 @@
 import { Router, type IRouter } from 'express'
 import { authenticate } from '../middleware/authenticate.js'
-import { requireTenantContext, requirePlatformAdmin } from '../middleware/rbac.js'
+import { requirePlatformAdmin } from '../middleware/rbac.js'
 import * as affiliateService from '../services/affiliate.service.js'
 
 const router: IRouter = Router()
 
-// ── Tenant affiliate portal ───────────────────────────────────────────────────
+// ── Affiliate-portal routes (USER-scoped, not tenant-scoped) ──────────────────
+// All endpoints below operate on req.user.id and the affiliate account that
+// belongs to that user. Affiliates do NOT have a tenant — they're standalone
+// users who refer prospects. So requireTenantContext is wrong here; just
+// authenticate is correct.
+//
+// Naming `tenantRouter` is historical — kept only so the mounting paths below
+// don't churn. The router itself is user-scoped.
 const tenantRouter: IRouter = Router()
-tenantRouter.use(authenticate, requireTenantContext)
+tenantRouter.use(authenticate)
 
 tenantRouter.post('/affiliate/apply', async (req, res, next) => {
   try { res.json({ data: await affiliateService.applyForAffiliate(req.user!.id) }) } catch (err) { next(err) }
@@ -160,8 +167,11 @@ publicRouter.get('/affiliate/settings', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-router.use('/api', tenantRouter)
-router.use('/api/admin', adminRouter)
+// Order matters — Express tries mounts in declaration order. The most-specific
+// (and unauthenticated) /api/public mount must come first so it doesn't get
+// caught by tenantRouter's authenticate middleware. Same for /api/admin.
 router.use('/api/public', publicRouter)
+router.use('/api/admin', adminRouter)
+router.use('/api', tenantRouter)
 
 export default router
