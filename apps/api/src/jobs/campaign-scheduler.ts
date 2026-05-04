@@ -173,10 +173,22 @@ async function dispatchVoice(enrollment: EnrollmentWithRels): Promise<{ ok: bool
         attemptNumber: enrollment.attemptCount + 1,
       },
     })
-    void attempt
 
     const { dispatchPendingCalls } = await import('../services/outbound.service.js')
     await dispatchPendingCalls(enrollment.tenantId, bridgeCampaign.id)
+
+    // dispatchPendingCalls swallows per-call Twilio errors and marks attempts
+    // FAILED with outcomeCode='dispatch_error: <detail>' rather than throwing.
+    // Re-read the attempt — if Twilio rejected it synchronously, surface the
+    // failure right away (no webhook will arrive). Otherwise the call is in
+    // flight and the webhook will resolve the enrollment later.
+    const post = await prisma.outboundCallAttempt.findUnique({
+      where:  { id: attempt.id },
+      select: { status: true, outcomeCode: true, providerCallId: true },
+    })
+    if (post && post.status === 'FAILED') {
+      return { ok: false, error: post.outcomeCode ?? 'dispatch failed' }
+    }
 
     return { ok: true, deferred: true }
   } catch (err) {

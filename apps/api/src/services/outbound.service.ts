@@ -1,29 +1,28 @@
 import twilio from 'twilio'
 import { prisma } from '../lib/prisma.js'
 import { getSubaccountClient } from './twilio-subaccount.service.js'
+import { getPlatformTwilioClient } from './twilio.service.js'
 import { sendGmailEmail } from './google.service.js'
 import { getEnv } from '@voiceautomation/config'
 
 const GW_WS_BASE = process.env['GATEWAY_WS_URL'] ?? 'wss://gateway.myorbisvoice.com'
 
-// Managed Twilio: every tenant has a subaccount under the platform master.
-// Outbound calls dial from the subaccount so usage and recordings are
-// isolated per tenant.
-async function getTwilioClient(tenantId: string): Promise<{ client: ReturnType<typeof twilio>; accountSid: string }> {
-  const client = await getSubaccountClient(tenantId)
-  // getSubaccountClient already provisions the subaccount and returns a Twilio
-  // instance bound to it. The accountSid is the subaccount sid; we look it up
-  // for status callbacks and logging.
-  const sub = await prisma.tenantTwilioSubaccount.findUnique({ where: { tenantId } })
-  if (!sub) throw new Error('Twilio subaccount not provisioned for tenant')
-  return { client, accountSid: sub.twilioSubaccountSid }
+// Phone numbers can live on either the master Twilio account (twilioSubaccountSid
+// null) or on the tenant's subaccount. Outbound calls must be initiated by
+// whichever account owns the number — Twilio rejects with error 21210 otherwise.
+// This helper picks the right client based on the number's ownership.
+async function getTwilioClientForPhone(phone: { tenantId: string; twilioSubaccountSid: string | null }): Promise<ReturnType<typeof twilio>> {
+  if (phone.twilioSubaccountSid) {
+    return getSubaccountClient(phone.tenantId)
+  }
+  return getPlatformTwilioClient()
 }
 
-async function getFromNumber(tenantId: string): Promise<string | null> {
-  const phone = await prisma.phoneNumber.findFirst({
+async function getOutboundPhoneRecord(tenantId: string) {
+  return prisma.phoneNumber.findFirst({
     where: { tenantId, isOutboundEnabled: true },
+    select: { id: true, e164Number: true, tenantId: true, twilioSubaccountSid: true },
   })
-  return phone?.e164Number ?? null
 }
 
 export async function dispatchPendingCalls(tenantId: string, campaignId: string) {
@@ -35,9 +34,10 @@ export async function dispatchPendingCalls(tenantId: string, campaignId: string)
   })
   if (pending.length === 0) return
 
-  const { client } = await getTwilioClient(tenantId)
-  const fromNumber  = await getFromNumber(tenantId)
-  if (!fromNumber) throw new Error('No outbound-enabled phone number configured')
+  const phoneRecord = await getOutboundPhoneRecord(tenantId)
+  if (!phoneRecord) throw new Error('No outbound-enabled phone number configured')
+  const fromNumber = phoneRecord.e164Number
+  const client = await getTwilioClientForPhone(phoneRecord)
 
   for (const attempt of pending) {
     const toNumber = attempt.contact.phoneE164
@@ -68,9 +68,12 @@ export async function dispatchPendingCalls(tenantId: string, campaignId: string)
         data: { status: 'DIALING', providerCallId: call.sid, startedAt: new Date() },
       })
     } catch (err) {
+      const e = err as { code?: number | string; message?: string; moreInfo?: string }
+      const errMsg = `${e.code ?? 'UNKNOWN'}: ${e.message ?? 'unknown error'}`
+      console.error(`[outbound] dispatch failed for attempt=${attempt.id}: ${errMsg}`)
       await prisma.outboundCallAttempt.update({
         where: { id: attempt.id },
-        data: { status: 'FAILED', outcomeCode: 'dispatch_error', endedAt: new Date() },
+        data:  { status: 'FAILED', outcomeCode: `dispatch_error: ${errMsg}`.slice(0, 200), endedAt: new Date() },
       })
     }
   }
