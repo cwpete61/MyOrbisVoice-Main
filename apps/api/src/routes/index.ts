@@ -42,13 +42,13 @@ router.use('/api', internalGatewayRouter)
 router.use('/api', billingRouter)       // before auth-gated routers — contains public /billing/plans
 router.use('/api', widgetRouter)        // contains public /public/widget/session
 router.use('/api', pushRouter)          // contains public /push/vapid-public-key — must precede tenantRouter
+router.use('/api', integrationsRouter)  // contains public /integrations/google/callback — must precede tenantRouter
 router.use('/api', tenantRouter)
 router.use('/api', businessDNARouter)
 router.use('/api', promptsRouter)
 router.use('/api', agentsRouter)
 router.use('/api', channelsRouter)
 router.use('/api/admin', adminRouter)
-router.use('/api', integrationsRouter)
 router.use('/api', appointmentsRouter)
 router.use('/api', phoneNumbersRouter)
 router.use('/api', contactsRouter)
