@@ -40,6 +40,15 @@ tenantRouter.get('/affiliate/stats', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+tenantRouter.get('/affiliate/stats/period', async (req, res, next) => {
+  try {
+    const account = await affiliateService.getAffiliateAccount(req.user!.id)
+    if (!account) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'No affiliate account' }] }); return }
+    const days = Math.max(1, Math.min(365, parseInt((req.query as Record<string, string>).days ?? '30') || 30))
+    res.json({ data: await affiliateService.getPeriodStats(account.id, days) })
+  } catch (err) { next(err) }
+})
+
 tenantRouter.get('/affiliate/stats/daily', async (req, res, next) => {
   try {
     const account = await affiliateService.getAffiliateAccount(req.user!.id)

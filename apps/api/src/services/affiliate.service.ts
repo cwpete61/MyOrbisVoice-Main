@@ -224,6 +224,44 @@ export async function getAffiliateStats(affiliateAccountId: string) {
   }
 }
 
+/**
+ * Period-scoped stats for the partner dashboard's "Last N days" panel.
+ * Returns the same shape as getAffiliateStats() but only counts events
+ * (clicks, conversions, commissions) created within the trailing window.
+ *
+ * Conversion rate is computed as conversions/clicks; both 0 returns 0.
+ */
+export async function getPeriodStats(affiliateAccountId: string, days = 30) {
+  const since = new Date(Date.now() - days * 86400_000)
+  const [clicks, conversions, commissions] = await Promise.all([
+    prisma.affiliateClick.count({
+      where: { affiliateAccountId, createdAt: { gte: since } },
+    }),
+    prisma.affiliateConversion.count({
+      where: { affiliateAccountId, occurredAt: { gte: since } },
+    }),
+    prisma.affiliateCommission.groupBy({
+      by: ['status'],
+      where: { affiliateAccountId, createdAt: { gte: since } },
+      _sum: { amountMinor: true },
+      _count: true,
+    }),
+  ])
+  const byStatus = Object.fromEntries(
+    commissions.map(r => [r.status, { count: r._count, cents: r._sum.amountMinor ?? 0 }])
+  )
+  return {
+    days,
+    clicks,
+    conversions,
+    conversionRate: clicks > 0 ? (conversions / clicks) * 100 : 0,
+    pendingCents:     byStatus['PENDING']?.cents  ?? 0,
+    approvedCents:    byStatus['APPROVED']?.cents ?? 0,
+    paidCents:        byStatus['PAID']?.cents     ?? 0,
+    totalEarnedCents: Object.values(byStatus).reduce((s, v) => s + (v as { cents: number }).cents, 0),
+  }
+}
+
 export async function getDailyClickStats(affiliateAccountId: string, days = 30) {
   const since = new Date(Date.now() - days * 86400_000)
   const rows = await prisma.$queryRaw<{ day: string; clicks: bigint }[]>`
