@@ -153,10 +153,10 @@ export const TOOL_DECLARATIONS = [
       properties: {
         reason: {
           type: 'STRING',
-          description: 'Optional short reason for ending the call, used in the audit log (e.g. "caller said goodbye", "caller declined").',
+          description: 'Short reason for ending the call, used in the audit log (e.g. "caller said goodbye", "caller declined", "complete").',
         },
       },
-      required: [],
+      required: ['reason'],
     },
   },
 ] as const
