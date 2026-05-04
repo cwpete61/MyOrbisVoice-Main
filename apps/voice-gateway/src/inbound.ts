@@ -300,12 +300,27 @@ export async function handleInboundCall(ws: WebSocket) {
         }
       },
       async onClose() {
+        // When Gemini's WebSocket closes (normal goodbye, agent hangup, OR
+        // unexpected 1008/policy error), we MUST also tear down the Twilio
+        // side of the call. Otherwise the gateway-side WS to Twilio stays
+        // open with no audio, and the caller hears dead silence until they
+        // manually hang up. Two-step:
+        //   1. hangUpCall — POST Status=completed to Twilio's REST API,
+        //      ending the phone call immediately from Twilio's side.
+        //   2. ws.close — end our own WebSocket to Twilio so Twilio resumes
+        //      executing the rest of the TwiML (which is empty after the
+        //      <Stream>, so it falls through to hangup).
+        // Both are idempotent and safe to call even if the call is already
+        // ending for another reason.
         stopSilenceTimer()
+        hangUpCall(callSid, ownerAccountSid)
         await finalize('COMPLETED')
+        ws.close()
       },
       async onError(err) {
         console.error('[inbound] Gemini error:', err.message)
         stopSilenceTimer()
+        hangUpCall(callSid, ownerAccountSid)
         await finalize('FAILED')
         ws.close()
       },
