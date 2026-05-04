@@ -48,6 +48,16 @@ That rule must hold across all implementation decisions.
 
 ## Hosting and domains
 
+### ⚠️ Isolation boundary — non-myorbisvoice containers are OFF-LIMITS
+
+The Contabo server (`147.93.183.4`) hosts multiple unrelated app stacks. **Only touch myorbisvoice resources.** Specifically:
+
+- ✅ Allowed: any container named `myorbisvoice-*`, paths under `/opt/myorbisvoice/`
+- ❌ Off-limits: `bps_zf-*` containers (BPS Zero Fees), paths under `/opt/bps_zf/` (except the shared Caddyfile — see fragility note below), `/opt/zf_bps/`, `/opt/zerofees/`, `applightboxseocom-*`, `zerofees-*`, `yt_transcriber-*`, anything else not prefixed `myorbisvoice-`.
+- Never restart, exec into, copy files into, or modify environment of containers outside the myorbisvoice stack.
+
+**Known fragility — shared Caddyfile.** The public-facing Caddy (`bps_zf-caddy-1`, ports 80/443) currently mounts `/opt/bps_zf/caddy/Caddyfile`, and that file holds host directives for **both** stacks (bpszerofees AND myorbisvoice). If the myorbisvoice deploy ever overwrites this file again (as happened on 2026-04-29), bpszerofees breaks. Long-term fix: move myorbisvoice's host blocks to its own Caddyfile and run a separate myorbisvoice-caddy on a different port behind a frontmost Caddy. Short-term: any change to that file must keep both stacks' host blocks. Pre-change backup convention: `/opt/bps_zf/caddy/Caddyfile.before-<reason>.<date>` before edits.
+
 ### Marketing
 - host: Spaceship
 - domain: `myorbisvoice.com`
