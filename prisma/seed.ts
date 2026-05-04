@@ -22,7 +22,7 @@ async function main() {
     { key: 'tenant_owner', name: 'Tenant Owner', isPlatformRole: false },
     { key: 'tenant_manager', name: 'Tenant Manager', isPlatformRole: false },
     { key: 'tenant_staff', name: 'Tenant Staff', isPlatformRole: false },
-    { key: 'affiliate', name: 'Affiliate', isPlatformRole: false },
+    { key: 'affiliate', name: 'Partner', isPlatformRole: false },
   ]
 
   for (const role of roles) {

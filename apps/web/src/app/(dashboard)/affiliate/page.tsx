@@ -154,7 +154,7 @@ export default function AffiliatePage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            {settings?.programName ?? 'Affiliate Program'}
+            {settings?.programName ?? 'Partner Program'}
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
             {settings?.programDescription ?? 'Earn commission by referring new customers.'}
@@ -164,7 +164,7 @@ export default function AffiliatePage() {
           <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg"
             style={{ background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }}>
             <span className="w-1.5 h-1.5 rounded-full bg-current" />
-            Active affiliate
+            Active partner
           </div>
         )}
       </div>
@@ -199,7 +199,7 @@ export default function AffiliatePage() {
           </div>
           {settings?.termsUrl && (
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              By applying you agree to the <a href={settings.termsUrl} target="_blank" rel="noopener" style={{ color: 'oklch(72% 0.12 193)' }}>Affiliate Terms</a>.
+              By applying you agree to the <a href={settings.termsUrl} target="_blank" rel="noopener" style={{ color: 'oklch(72% 0.12 193)' }}>Partner Terms</a>.
             </p>
           )}
           <button onClick={apply} disabled={applying} className="btn-primary">
@@ -507,7 +507,7 @@ export default function AffiliatePage() {
                 <a href={settings.termsUrl} target="_blank" rel="noopener"
                   className="inline-flex items-center gap-1.5 text-xs"
                   style={{ color: 'oklch(72% 0.12 193)' }}>
-                  View affiliate terms →
+                  View partner terms →
                 </a>
               )}
             </div>

@@ -97,9 +97,9 @@ export default function AdminAffiliatesPage() {
     try {
       const res = await apiFetchRaw(`/api/admin/affiliates/${id}/${action}`, { method: 'POST' })
       if (!res.ok) throw new Error('Failed')
-      showToast('success', `Affiliate ${action}d.`)
+      showToast('success', `Partner ${action}d.`)
       reloadAff()
-    } catch { showToast('error', `Failed to ${action} affiliate.`) }
+    } catch { showToast('error', `Failed to ${action} partner.`) }
     finally { setWorking(null) }
   }
 
@@ -186,8 +186,8 @@ export default function AdminAffiliatesPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Affiliates</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Manage the affiliate program, commissions, and payouts</p>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Partners</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Manage the partner program, commissions, and payouts</p>
       </div>
 
       {toast && <div className={toast.type === 'success' ? 'alert-success' : 'alert-error'}>{toast.text}</div>}
@@ -218,12 +218,12 @@ export default function AdminAffiliatesPage() {
           {affError   && <div className="alert-error">{affError}</div>}
 
           {!affLoading && affiliateData && (
-            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{affiliateData.total} affiliates</p>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{affiliateData.total} partners</p>
           )}
 
           {affiliateData && affiliateData.items.length === 0 && (
             <div className="py-16 text-center rounded-xl" style={{ border: '1px dashed var(--border-subtle)' }}>
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No affiliates{statusFilter ? ` with status ${statusFilter}` : ''} yet.</p>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No partners{statusFilter ? ` with status ${statusFilter}` : ''} yet.</p>
             </div>
           )}
 
@@ -232,7 +232,7 @@ export default function AdminAffiliatesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
-                    {['Affiliate', 'Code', 'Status', 'Clicks', 'Conv.', 'Earned', 'Paid', 'Joined', 'Actions'].map(h => (
+                    {['Partner', 'Code', 'Status', 'Clicks', 'Conv.', 'Earned', 'Paid', 'Joined', 'Actions'].map(h => (
                       <th key={h} className="px-3 py-3 text-left text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{h}</th>
                     ))}
                   </tr>
@@ -310,7 +310,7 @@ export default function AdminAffiliatesPage() {
                           else setSelectedIds(new Set())
                         }} />
                     </th>
-                    {['Affiliate', 'Type', 'Amount', 'Status', 'Date', 'Actions'].map(h => (
+                    {['Partner', 'Type', 'Amount', 'Status', 'Date', 'Actions'].map(h => (
                       <th key={h} className="px-3 py-3 text-left text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{h}</th>
                     ))}
                   </tr>

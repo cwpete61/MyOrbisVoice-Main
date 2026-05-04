@@ -21,7 +21,7 @@ const ENTITLEMENT_LABELS: Record<string, string> = {
   widget_enabled:     'Website widget',
   inbound_enabled:    'Inbound receptionist',
   outbound_enabled:   'Outbound caller',
-  affiliate_enabled:  'Affiliate portal',
+  affiliate_enabled:  'Partner portal',
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string }> = {

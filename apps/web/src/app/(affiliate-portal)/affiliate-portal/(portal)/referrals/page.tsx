@@ -69,7 +69,7 @@ export default function ReferralsPage() {
         </div>
       ) : (
         <div className="rounded-xl p-5 mb-8 text-sm" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
-          Your affiliate account must be approved before you can access your referral link.
+          Your partner account must be approved before you can access your referral link.
         </div>
       )}
 

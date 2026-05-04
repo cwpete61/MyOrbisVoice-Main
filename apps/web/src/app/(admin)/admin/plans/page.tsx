@@ -64,7 +64,7 @@ const ENTITLEMENT_META: Record<string, { label: string; section: string; type: '
   // Integrations
   webhooks_enabled:       { label: 'Webhooks / Zapier',            section: 'Integrations',         type: 'boolean' },
   api_access:             { label: 'Direct API Access',            section: 'Integrations',         type: 'boolean' },
-  affiliate_enabled:      { label: 'Affiliate Portal',             section: 'Integrations',         type: 'boolean' },
+  affiliate_enabled:      { label: 'Partner Portal',               section: 'Integrations',         type: 'boolean' },
   campaigns_enabled:      { label: 'Campaigns',                    section: 'Integrations',         type: 'boolean' },
   // Branding
   white_label:            { label: 'White Label / Custom Branding', section: 'Branding',            type: 'boolean' },

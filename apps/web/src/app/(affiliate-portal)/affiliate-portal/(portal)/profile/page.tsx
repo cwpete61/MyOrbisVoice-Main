@@ -62,7 +62,7 @@ export default function AffiliateProfilePage() {
   if (!account) {
     return (
       <div className="text-sm pt-8" style={{ color: 'var(--text-tertiary)' }}>
-        No affiliate account found. Apply from the Dashboard.
+        No partner account found. Apply from the Dashboard.
       </div>
     )
   }

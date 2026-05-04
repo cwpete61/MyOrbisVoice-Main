@@ -118,10 +118,10 @@ export default function SystemSettingsPage() {
       headers: { 'Content-Type': 'application/json' },
     })
     const json = await res.json() as { errors?: { message: string }[] }
-    if (!res.ok) { showToast('error', json.errors?.[0]?.message ?? 'Failed to save affiliate settings'); setAffSaving(false); return }
+    if (!res.ok) { showToast('error', json.errors?.[0]?.message ?? 'Failed to save partner program settings'); setAffSaving(false); return }
     setAff({})
     reloadAff()
-    showToast('success', 'Affiliate settings saved.')
+    showToast('success', 'Partner program settings saved.')
     setAffSaving(false)
   }
 
@@ -849,11 +849,11 @@ export default function SystemSettingsPage() {
             </form>
           </div>
 
-          {/* ── Affiliate Program ── */}
+          {/* ── Partner Program ── */}
           <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
             <CardHeader
-              title="Affiliate Program"
-              subtitle="Controls commission rate, cookie tracking duration, and payout thresholds for the affiliate program."
+              title="Partner Program"
+              subtitle="Controls commission rate, cookie tracking duration, and payout thresholds for the partner program."
               configured={!!affSettings}
             />
 
@@ -914,7 +914,7 @@ export default function SystemSettingsPage() {
                   <input className={inputCls}
                     value={affVal('programName') ?? ''}
                     onChange={e => setAff(p => ({ ...p, programName: e.target.value }))}
-                    placeholder="Affiliate Program" />
+                    placeholder="Partner Program" />
                 </div>
                 <div>
                   <label className={labelCls}>Terms URL <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span></label>
@@ -932,7 +932,7 @@ export default function SystemSettingsPage() {
                   placeholder="Earn commission by referring new customers." />
               </div>
               <button type="submit" disabled={affSaving} className="btn-primary">
-                {affSaving ? 'Saving…' : 'Save affiliate settings'}
+                {affSaving ? 'Saving…' : 'Save partner program settings'}
               </button>
             </form>
           </div>

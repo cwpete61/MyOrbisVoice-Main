@@ -26,7 +26,7 @@ export default function AffiliateLoginPage() {
       if (payload?.roleKey === 'affiliate' || payload?.isPlatformRole) {
         router.push('/affiliate-portal/dashboard')
       } else {
-        setError('This account is not an affiliate partner. Log in to the main app instead.')
+        setError('This account is not a partner account. Log in to the main app instead.')
         clearTokens()
       }
     } catch (err) {
@@ -55,7 +55,7 @@ export default function AffiliateLoginPage() {
 
         <div className="rounded-2xl p-8" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Partner login</h1>
-          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>Sign in to your affiliate account.</p>
+          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>Sign in to your partner account.</p>
 
           {error && <div className="alert-error mb-5">{error}</div>}
 
