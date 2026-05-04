@@ -8,14 +8,10 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
     "@prisma/client": "5.22.0",
-    "@voiceautomation/shared": "workspace:*",
-    "@voiceautomation/types": "workspace:*",
     "dotenv": "^16.4.5",
     "nodemailer": "^8.0.7",
     "openai": "^4.52.7",
-    "twilio": "^6.0.0",
     "web-push": "^3.6.7",
     "ws": "^8.18.0",
     "zod": "^3.23.8"
