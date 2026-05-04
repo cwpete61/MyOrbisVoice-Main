@@ -24,7 +24,7 @@ export default function LoginPage() {
       setTokens(result.accessToken, result.refreshToken)
       const payload = getTokenPayload()
       if (isPlatformAdmin()) router.push('/admin')
-      else if (payload?.roleKey === 'affiliate') router.push('/affiliate-portal/dashboard')
+      else if (payload?.roleKey === 'affiliate') router.push('/partner-portal/dashboard')
       else router.push('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid credentials.')

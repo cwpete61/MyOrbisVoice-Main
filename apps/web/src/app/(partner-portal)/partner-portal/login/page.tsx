@@ -24,7 +24,7 @@ export default function AffiliateLoginPage() {
       setTokens(result.accessToken, result.refreshToken)
       const payload = getTokenPayload()
       if (payload?.roleKey === 'affiliate' || payload?.isPlatformRole) {
-        router.push('/affiliate-portal/dashboard')
+        router.push('/partner-portal/dashboard')
       } else {
         setError('This account is not a partner account. Log in to the main app instead.')
         clearTokens()
@@ -91,7 +91,7 @@ export default function AffiliateLoginPage() {
 
           <p className="text-center mt-6 text-sm" style={{ color: 'var(--text-tertiary)' }}>
             New partner?{' '}
-            <Link href="/affiliate-portal/signup" className="font-semibold" style={{ color: 'oklch(55% 0.11 193)' }}>
+            <Link href="/partner-portal/signup" className="font-semibold" style={{ color: 'oklch(55% 0.11 193)' }}>
               Create an account
             </Link>
           </p>

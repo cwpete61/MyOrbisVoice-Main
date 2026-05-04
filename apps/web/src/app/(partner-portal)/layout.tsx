@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { getTokenPayload, isAuthenticated } from '@/lib/auth'
 
-const PUBLIC_PATHS = ['/affiliate-portal/login', '/affiliate-portal/signup']
+const PUBLIC_PATHS = ['/partner-portal/login', '/partner-portal/signup']
 
 export default function AffiliatePortalRootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -13,7 +13,7 @@ export default function AffiliatePortalRootLayout({ children }: { children: Reac
   useEffect(() => {
     if (PUBLIC_PATHS.includes(pathname)) return
     if (!isAuthenticated()) {
-      router.replace('/affiliate-portal/login')
+      router.replace('/partner-portal/login')
       return
     }
     const payload = getTokenPayload()

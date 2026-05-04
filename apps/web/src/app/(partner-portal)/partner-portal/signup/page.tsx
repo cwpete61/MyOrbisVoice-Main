@@ -30,7 +30,7 @@ export default function AffiliateSignupPage() {
         form.lastName || undefined,
       )
       setTokens(result.accessToken, result.refreshToken)
-      router.push('/affiliate-portal/dashboard')
+      router.push('/partner-portal/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed. Please try again.')
     } finally {
@@ -124,7 +124,7 @@ export default function AffiliateSignupPage() {
 
           <p className="text-center mt-4 text-sm" style={{ color: 'var(--text-tertiary)' }}>
             Already have an account?{' '}
-            <Link href="/affiliate-portal/login" className="font-semibold" style={{ color: 'oklch(55% 0.11 193)' }}>
+            <Link href="/partner-portal/login" className="font-semibold" style={{ color: 'oklch(55% 0.11 193)' }}>
               Sign in
             </Link>
           </p>
