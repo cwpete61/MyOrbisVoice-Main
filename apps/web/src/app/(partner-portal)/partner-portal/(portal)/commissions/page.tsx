@@ -15,6 +15,8 @@ type Commission = {
   reversedAt: string | null
   holdReason: string | null
   payoutRef: string | null
+  eligibleAt: string         // when 30-day hold ends (or createdAt for renewals)
+  scheduledPayoutDate: string | null  // next 1st-or-15th >= eligibleAt, biz-day-adjusted
   createdAt: string
   affiliateConversion: {
     conversionType: string
@@ -75,12 +77,15 @@ export default function CommissionsPage() {
                   <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Description</th>
                   <th className="text-right px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Amount</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Status</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Pays on</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Paid</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((c, i) => {
                   const style = STATUS_STYLE[c.status] ?? STATUS_STYLE['PENDING']!
+                  // "Pays on" only shows if not yet paid. Once paid, the Paid column tells the story.
+                  const showsPaysOn = c.status !== 'PAID' && c.status !== 'REVERSED' && c.scheduledPayoutDate
                   return (
                     <tr key={c.id} style={{ background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
                       <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{new Date(c.createdAt).toLocaleDateString()}</td>
@@ -88,6 +93,9 @@ export default function CommissionsPage() {
                       <td className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--text-primary)' }}>{fmt(c.amountMinor ?? 0)}</td>
                       <td className="px-4 py-2.5">
                         <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: style.bg, color: style.text }}>{style.label}</span>
+                      </td>
+                      <td className="px-4 py-2.5" style={{ color: 'var(--text-tertiary)' }}>
+                        {showsPaysOn ? new Date(c.scheduledPayoutDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                       </td>
                       <td className="px-4 py-2.5" style={{ color: 'var(--text-tertiary)' }}>
                         {c.paidAt ? new Date(c.paidAt).toLocaleDateString() : '—'}

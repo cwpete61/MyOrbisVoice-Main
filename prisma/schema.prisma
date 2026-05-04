@@ -1014,6 +1014,15 @@ model AffiliateCommission {
   approvedAt           DateTime?
   paidAt               DateTime?
   payoutRef            String?
+  // Holdback policy fields (added 2026-05-04 PM):
+  // - eligibleAt: when 30-day hold ends (= conversion date + 30 days for first
+  //   subscriptions and one-time payments; = conversion date itself for
+  //   recurring renewals which skip the hold).
+  // - scheduledPayoutDate: next 1st/15th >= eligibleAt, business-day-adjusted
+  //   forward (Sat→Mon, Sun→Mon). The auto-payout scheduler picks up
+  //   commissions where scheduledPayoutDate <= today AND status='APPROVED'.
+  eligibleAt           DateTime          @default(now())
+  scheduledPayoutDate  DateTime?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
   affiliateConversion  AffiliateConversion @relation(fields: [affiliateConversionId], references: [id], onDelete: Cascade)
@@ -1021,6 +1030,7 @@ model AffiliateCommission {
   tenant               Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([affiliateAccountId, status])
+  @@index([scheduledPayoutDate, status])
 }
 
 model AuditLog {

@@ -48,6 +48,8 @@ type Commission = {
   status: string
   createdAt: string
   paidAt: string | null
+  eligibleAt: string
+  scheduledPayoutDate: string | null
   affiliateConversion: {
     conversionType: string
     conversionValue: number | null
@@ -162,15 +164,20 @@ const I = {
 // ─── Get-paid checklist ───────────────────────────────────────────────────────
 function GetPaidChecklist({
   accountActive, approvedBalanceCents, minPayoutCents,
-  payoutMethodConnected, taxFormSubmitted,
+  payoutMethodConnected, taxFormSubmitted, nextPayoutCommission,
 }: {
   accountActive: boolean
   approvedBalanceCents: number
   minPayoutCents: number
   payoutMethodConnected: boolean
   taxFormSubmitted: boolean
+  nextPayoutCommission: { scheduledPayoutDate: string | null } | null
 }) {
   const reachedMin = approvedBalanceCents >= minPayoutCents
+  const nextPayoutDateStr = nextPayoutCommission?.scheduledPayoutDate
+    ? new Date(nextPayoutCommission.scheduledPayoutDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : null
+
   const items = [
     {
       done: accountActive,
@@ -197,9 +204,11 @@ function GetPaidChecklist({
     {
       done: reachedMin,
       title: `Earn at least $${(minPayoutCents / 100).toFixed(0)} in approved commissions`,
-      detail: reachedMin
-        ? 'Minimum payout balance reached.'
-        : `Currently $${(approvedBalanceCents / 100).toFixed(2)} of $${(minPayoutCents / 100).toFixed(0)} needed.`,
+      detail: nextPayoutDateStr
+        ? `Currently $${(approvedBalanceCents / 100).toFixed(2)} of $${(minPayoutCents / 100).toFixed(0)} needed. Next scheduled payout: ${nextPayoutDateStr}.`
+        : reachedMin
+          ? 'Minimum payout balance reached. Next payout fires on the 1st or 15th.'
+          : `Currently $${(approvedBalanceCents / 100).toFixed(2)} of $${(minPayoutCents / 100).toFixed(0)} needed. Commissions clear after a 30-day hold and pay on the 1st or 15th of each month.`,
       action: null,
     },
   ]
@@ -373,6 +382,7 @@ export default function PartnerDashboardPage() {
         minPayoutCents={5000}
         payoutMethodConnected={false /* TODO: from Stripe Connect status when wired */}
         taxFormSubmitted={false /* TODO: from Stripe Connect KYC */}
+        nextPayoutCommission={recent.find(c => c.status !== 'PAID' && c.status !== 'REVERSED' && c.scheduledPayoutDate) ?? null}
       />
 
       {/* Last 30 days */}

@@ -143,6 +143,68 @@ export async function attributeTenant(tenantId: string, referralCode: string) {
   })
 }
 
+// ── Holdback / payout-schedule helpers ───────────────────────────────────────
+//
+// Policy (decided 2026-05-04 PM):
+// - First-subscription commissions get a 30-day hold (covers refund window).
+// - Recurring renewal commissions skip the hold (customer already proved out).
+// - Payouts run on the 1st and 15th of each month.
+// - If 1st/15th lands on Sat/Sun, the payout date moves FORWARD to the next
+//   business day (Stripe ACH only runs business days anyway).
+//
+// FIRST_SUBSCRIPTION conversion types (30-day hold applies):
+//   subscription_started, subscription_renewed_v2 (treated as a new sub),
+//   one_time_payment, anything not matching the SKIP_HOLD list below.
+// SKIP_HOLD types (immediately eligible, no 30-day delay):
+//   subscription_renewed
+const HOLD_DAYS = 30
+const SKIP_HOLD_CONVERSION_TYPES = ['subscription_renewed']
+
+/**
+ * For a given conversion, computes when the resulting commission becomes
+ * eligible (= 30-day hold ends) and on which date it will actually be paid
+ * (= next 1st-or-15th >= eligibility, business-day-adjusted).
+ *
+ * Pure function — no DB, no time-of-day fuzziness. occurredAt is treated as
+ * UTC midnight of that calendar day for hold math.
+ */
+export function computeEligibilityAndPayoutDate(conversionType: string, occurredAt: Date): {
+  eligibleAt: Date
+  scheduledPayoutDate: Date
+} {
+  const skipHold = SKIP_HOLD_CONVERSION_TYPES.includes(conversionType)
+  const eligibleAt = skipHold
+    ? new Date(occurredAt)
+    : new Date(occurredAt.getTime() + HOLD_DAYS * 86400_000)
+
+  const scheduledPayoutDate = computeNextPayoutDate(eligibleAt)
+  return { eligibleAt, scheduledPayoutDate }
+}
+
+/**
+ * Returns the next 1st-or-15th-of-month that's >= fromDate, adjusted FORWARD
+ * to the next business day if it lands on a weekend.
+ */
+export function computeNextPayoutDate(fromDate: Date): Date {
+  const candidate = new Date(Date.UTC(fromDate.getUTCFullYear(), fromDate.getUTCMonth(), fromDate.getUTCDate()))
+  // Find the next 1st or 15th >= candidate
+  while (true) {
+    const day = candidate.getUTCDate()
+    if (day === 1 || day === 15) break
+    if (day < 15) {
+      candidate.setUTCDate(15)
+      continue
+    }
+    // day > 15 → jump to the 1st of next month
+    candidate.setUTCMonth(candidate.getUTCMonth() + 1, 1)
+  }
+  // Business-day adjustment: Sat (6) → Mon, Sun (0) → Mon
+  const dow = candidate.getUTCDay()
+  if (dow === 6) candidate.setUTCDate(candidate.getUTCDate() + 2)
+  else if (dow === 0) candidate.setUTCDate(candidate.getUTCDate() + 1)
+  return candidate
+}
+
 // ── Conversion recording ──────────────────────────────────────────────────────
 
 export async function recordConversion(opts: {
@@ -180,14 +242,20 @@ export async function recordConversion(opts: {
   }
 
   if (amountMinor > 0) {
+    const { eligibleAt, scheduledPayoutDate } = computeEligibilityAndPayoutDate(
+      opts.conversionType,
+      conversion.occurredAt,
+    )
     await prisma.affiliateCommission.create({
       data: {
         affiliateConversionId: conversion.id,
         affiliateAccountId:    account.id,
         tenantId:              opts.tenantId,
         amountMinor,
-        currency: 'usd',
-        status:   'PENDING',
+        currency:              'usd',
+        status:                'PENDING',
+        eligibleAt,
+        scheduledPayoutDate,
       },
     })
     await prisma.affiliateAccount.update({
