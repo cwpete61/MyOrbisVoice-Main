@@ -25,17 +25,17 @@ Twilio's TFV form changes UI every few months. Field names below are stable; lay
 
 | Field | Value |
 |---|---|
-| **Business name** | [LEGAL ENTITY NAME — NOT YET CONFIRMED, DO NOT GUESS] |
+| **Business name** | MyOrbisVoice |
 | **Doing-business-as (DBA)** | OrbisVoice |
 | **Business website** | https://myorbisvoice.com |
-| **Business address** | *(use the [LEGAL ENTITY NAME — NOT YET CONFIRMED, DO NOT GUESS] business address)* |
+| **Business address** | 716 Washington St, Suite 2, Allentown, PA 18102 |
 | **Business contact name** | Crawford Peterson Sr. |
 | **Business contact email** | crawford.peterson.sr@gmail.com |
-| **Business contact phone** | *(your direct number)* |
-| **Business type** | LLC |
+| **Business contact phone** | 929-497-7803 |
+| **Business type** | *(confirm: LLC / Sole Proprietor / Other — user said "NO EIN" so likely Sole Proprietor)* |
 | **Business industry** | Technology / SaaS |
-| **Business registration ID type** | EIN |
-| **Business registration ID** | *([LEGAL ENTITY NAME — NOT YET CONFIRMED, DO NOT GUESS] EIN)* |
+| **Business registration ID type** | *(SSN if Sole Proprietor; EIN if LLC/Corp — user said NO EIN, so SSN path)* |
+| **Business registration ID** | *(provide at submission time — SSN or EIN as appropriate)* |
 
 ### Use Case
 
