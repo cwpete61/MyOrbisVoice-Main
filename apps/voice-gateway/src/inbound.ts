@@ -8,6 +8,7 @@ import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 import { sendCallNotificationEmail } from './services/notify.service.js'
 import { sendToTenant as sendPushToTenant } from './services/push.service.js'
+import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool } from './services/tools.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
 
@@ -208,7 +209,12 @@ export async function handleInboundCall(ws: WebSocket) {
       complianceJson:  dna.complianceJson,
     } : null
 
-    const systemPrompt = resolveSystemPrompt(prompts as any[], dnaSnap)
+    const systemPrompt = resolveSystemPrompt(
+      prompts as any[],
+      dnaSnap,
+      'INBOUND',
+      buildToolGuidanceBlock(),
+    )
 
     // Look up tenant's Gemini API key; fall back to platform env key
     const geminiConn = await prisma.integrationConnection.findFirst({
@@ -288,6 +294,21 @@ export async function handleInboundCall(ws: WebSocket) {
         lastRole = null
         console.log('[inbound] Gemini turn complete')
       },
+      async onToolCall(call) {
+        try {
+          const result = await executeTool(call.name, call.args, {
+            tenantId,
+            externalCallId: callSid,
+          })
+          gemini?.sendToolResponse(call.id, call.name, result)
+        } catch (err) {
+          console.error(`[inbound] tool ${call.name} failed:`, err)
+          gemini?.sendToolResponse(call.id, call.name, {
+            ok: false,
+            error: (err as Error).message ?? 'Internal tool error',
+          })
+        }
+      },
       async onClose() {
         stopSilenceTimer()
         await finalize('COMPLETED')
@@ -298,7 +319,7 @@ export async function handleInboundCall(ws: WebSocket) {
         await finalize('FAILED')
         ws.close()
       },
-    }, effectiveGeminiKey, voiceName)
+    }, { apiKeyOverride: effectiveGeminiKey, voiceName, tools: [...TOOL_DECLARATIONS] })
 
     initialized = true
     console.log('[inbound] session ready, Gemini connecting…')

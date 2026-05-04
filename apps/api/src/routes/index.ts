@@ -25,6 +25,7 @@ import a2pRouter from './a2p.js'
 import pushRouter from './push.js'
 import { twilioInboundRouter } from './twilio-inbound.js'
 import { outboundWebhooksRouter } from './outbound-webhooks.js'
+import internalGatewayRouter from './internal-gateway.js'
 import { validateTwilioWebhook } from '../middleware/twilio-signature.js'
 
 const router: IRouter = Router()
@@ -34,6 +35,9 @@ router.use('/api/auth', authRouter)
 // Twilio webhooks — public (no auth). Signature-validated. Must precede auth-gated /api routers.
 router.use('/api', validateTwilioWebhook, twilioInboundRouter)
 router.use('/api', validateTwilioWebhook, outboundWebhooksRouter)
+// Internal gateway tool endpoints — protected by shared-secret middleware,
+// not the standard auth/RBAC stack. Mounted before auth-gated routers.
+router.use('/api', internalGatewayRouter)
 router.use('/api', billingRouter)       // before auth-gated routers — contains public /billing/plans
 router.use('/api', widgetRouter)        // contains public /public/widget/session
 router.use('/api', pushRouter)          // contains public /push/vapid-public-key — must precede tenantRouter

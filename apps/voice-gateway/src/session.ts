@@ -5,6 +5,7 @@ import { openGeminiLiveSession } from './services/gemini.service.js'
 import { generateSummary } from './services/summary.service.js'
 import { persistConversation, markSessionFailed, type TranscriptEntry } from './services/conversation.service.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
+import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool } from './services/tools.js'
 
 // Message types sent from the browser widget
 type ClientMsg =
@@ -67,7 +68,7 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     ? (session.promptSnapshotJson as any[])
     : []
   const dna = session.businessDNASnapshotJson as Record<string, any> | null
-  const systemPrompt = resolveSystemPrompt(prompts, dna)
+  const systemPrompt = resolveSystemPrompt(prompts, dna, 'WIDGET', buildToolGuidanceBlock())
 
   const transcript: TranscriptEntry[] = []
   let conversationId: string | undefined
@@ -134,6 +135,21 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     onTurnComplete() {
       send(ws, { type: 'turn_complete' })
     },
+    async onToolCall(call) {
+      try {
+        const result = await executeTool(call.name, call.args, {
+          tenantId:       session.tenantId,
+          conversationId: conversationId,
+        })
+        gemini.sendToolResponse(call.id, call.name, result)
+      } catch (err) {
+        console.error(`[session] tool ${call.name} failed:`, err)
+        gemini.sendToolResponse(call.id, call.name, {
+          ok: false,
+          error: (err as Error).message ?? 'Internal tool error',
+        })
+      }
+    },
     async onClose() {
       await finalize('COMPLETED')
     },
@@ -143,7 +159,7 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
       await finalize('FAILED')
       ws.close()
     },
-  }, effectiveGeminiKey, voiceName)
+  }, { apiKeyOverride: effectiveGeminiKey, voiceName, tools: [...TOOL_DECLARATIONS] })
 
   send(ws, { type: 'ready' })
 

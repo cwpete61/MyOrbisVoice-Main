@@ -6,6 +6,7 @@ import { generateSummary, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
 import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
+import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool } from './services/tools.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
 
@@ -180,7 +181,12 @@ export async function handleOutboundCall(ws: WebSocket) {
       complianceJson:  dna.complianceJson,
     } : null
 
-    const systemPrompt = resolveSystemPrompt(prompts as any[], dnaSnap)
+    const systemPrompt = resolveSystemPrompt(
+      prompts as any[],
+      dnaSnap,
+      'OUTBOUND',
+      buildToolGuidanceBlock(),
+    )
 
     // Build greeting from DNA business name + campaign description
     const identityJson  = dna?.identityJson as Record<string, unknown> | null | undefined
@@ -249,6 +255,21 @@ export async function handleOutboundCall(ws: WebSocket) {
         lastRole = null
         console.log('[outbound] Gemini turn complete')
       },
+      async onToolCall(call) {
+        try {
+          const result = await executeTool(call.name, call.args, {
+            tenantId,
+            externalCallId: callSid,
+          })
+          gemini?.sendToolResponse(call.id, call.name, result)
+        } catch (err) {
+          console.error(`[outbound] tool ${call.name} failed:`, err)
+          gemini?.sendToolResponse(call.id, call.name, {
+            ok: false,
+            error: (err as Error).message ?? 'Internal tool error',
+          })
+        }
+      },
       async onClose() {
         stopInCallSilenceTimer()
         await finalize('COMPLETED')
@@ -259,7 +280,7 @@ export async function handleOutboundCall(ws: WebSocket) {
         await finalize('FAILED')
         ws.close()
       },
-    }, effectiveGeminiKey, voiceName)
+    }, { apiKeyOverride: effectiveGeminiKey, voiceName, tools: [...TOOL_DECLARATIONS] })
 
     initialized = true
     console.log('[outbound] session ready, Gemini connecting…')

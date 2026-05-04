@@ -1,5 +1,4 @@
 import { env } from '../lib/env.js'
-import type { TranscriptEntry } from './conversation.service.js'
 
 // Gemini Live uses a WebSocket-based streaming API.
 // We connect server-side and relay audio chunks between the visitor's browser and Gemini.
@@ -10,12 +9,28 @@ const GEMINI_MODEL = process.env['GEMINI_LIVE_MODEL']
   ? `models/${process.env['GEMINI_LIVE_MODEL']}`
   : 'models/gemini-2.5-flash-native-audio-latest'
 
+// Gemini tool function declaration. The full schema lives in services/tools.ts;
+// we accept it here as a structural type so this file stays free of tool logic.
+export type GeminiFunctionDeclaration = {
+  name: string
+  description: string
+  parameters: Record<string, unknown>
+}
+
+export type GeminiToolCall = {
+  /** Stable id Gemini expects echoed back in the function_response. */
+  id:   string
+  name: string
+  args: Record<string, unknown>
+}
+
 export type GeminiSessionCallbacks = {
   onReady?: () => void
   onAudioChunk: (chunk: Buffer) => void
   onTranscriptDelta: (role: 'user' | 'assistant', text: string) => void
   onTurnComplete: () => void
   onInterrupted?: () => void  // model output was cut off by user speech
+  onToolCall?: (call: GeminiToolCall) => void
   onError: (err: Error) => void
   onClose: () => void
 }
@@ -24,16 +39,31 @@ export type GeminiSession = {
   sendAudio: (pcm16: Buffer) => void
   sendText: (text: string) => void
   signalTurnComplete: () => void  // explicit end-of-turn — bypasses VAD silence wait
+  /** Reply to a tool_call with a structured response. */
+  sendToolResponse: (id: string, name: string, response: Record<string, unknown>) => void
   close: () => void
+}
+
+export type OpenSessionOptions = {
+  apiKeyOverride?: string
+  voiceName?:      string
+  tools?:          GeminiFunctionDeclaration[]
 }
 
 export function openGeminiLiveSession(
   systemPrompt: string,
   callbacks: GeminiSessionCallbacks,
-  apiKeyOverride?: string,
+  apiKeyOrOpts?: string | OpenSessionOptions,
   voiceName?: string,
 ): GeminiSession {
-  const apiKey = apiKeyOverride ?? env.GEMINI_API_KEY
+  // Backwards-compat with the original positional signature
+  // (systemPrompt, callbacks, apiKeyOverride?, voiceName?). New callers can
+  // pass an OpenSessionOptions object as the 3rd arg to also supply tools.
+  const opts: OpenSessionOptions = typeof apiKeyOrOpts === 'object' && apiKeyOrOpts !== null
+    ? apiKeyOrOpts
+    : { apiKeyOverride: apiKeyOrOpts, voiceName }
+
+  const apiKey = opts.apiKeyOverride ?? env.GEMINI_API_KEY
   // Gemini Live WebSocket URL
   const url =
     `wss://${GEMINI_LIVE_HOST}/ws/google.ai.generativelanguage.${GEMINI_API_VERSION}.GenerativeService.BidiGenerateContent` +
@@ -49,29 +79,35 @@ export function openGeminiLiveSession(
     ws.on('open', () => {
       console.log('[gemini] WebSocket connected')
       // Send setup message with model and system prompt
-      ws!.send(JSON.stringify({
-        setup: {
-          model: GEMINI_MODEL,
-          generation_config: {
-            response_modalities: ['AUDIO'],
-            ...(voiceName ? { speech_config: { voice_config: { prebuilt_voice_config: { voice_name: voiceName } } } } : {}),
-          },
-          system_instruction: {
-            parts: [{ text: systemPrompt }],
-          },
-          realtime_input_config: {
-            automatic_activity_detection: {
-              disabled: false,
-              start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',
-              end_of_speech_sensitivity:   'END_SENSITIVITY_HIGH',
-              prefix_padding_ms:           20,
-              silence_duration_ms:         100,  // 100ms — explicit mic_stop signal is the primary trigger
-            },
-          },
-          input_audio_transcription:  {},
-          output_audio_transcription: {},
+      const setup: Record<string, unknown> = {
+        model: GEMINI_MODEL,
+        generation_config: {
+          response_modalities: ['AUDIO'],
+          ...(opts.voiceName ? { speech_config: { voice_config: { prebuilt_voice_config: { voice_name: opts.voiceName } } } } : {}),
         },
-      }))
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        realtime_input_config: {
+          automatic_activity_detection: {
+            disabled: false,
+            start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',
+            end_of_speech_sensitivity:   'END_SENSITIVITY_HIGH',
+            prefix_padding_ms:           20,
+            silence_duration_ms:         100,  // 100ms — explicit mic_stop signal is the primary trigger
+          },
+        },
+        input_audio_transcription:  {},
+        output_audio_transcription: {},
+      }
+
+      // Tools — only attach when the caller actually has any. Gemini accepts
+      // an array of tool blocks, each containing function_declarations.
+      if (opts.tools && opts.tools.length > 0) {
+        setup['tools'] = [{ function_declarations: opts.tools }]
+      }
+
+      ws!.send(JSON.stringify({ setup }))
     })
 
     ws.on('message', (raw: Buffer) => {
@@ -115,11 +151,22 @@ export function openGeminiLiveSession(
           callbacks.onTurnComplete()
         }
 
-        // Tool calls — reserved for Phase 5+
+        // Tool calls — Gemini Live emits these on `toolCall.functionCalls[]`.
         const toolCalls = msg?.toolCall?.functionCalls ?? []
         for (const call of toolCalls) {
-          // TODO Phase 5+: route tool calls to API
-          console.log('[gemini] tool call received:', call.name)
+          if (!callbacks.onToolCall) {
+            console.warn(`[gemini] tool call ${call?.name} ignored — no handler registered`)
+            continue
+          }
+          const id   = String(call?.id ?? '')
+          const name = String(call?.name ?? '')
+          const args = (call?.args && typeof call.args === 'object') ? call.args as Record<string, unknown> : {}
+          if (!id || !name) {
+            console.warn('[gemini] malformed tool_call (missing id or name):', call)
+            continue
+          }
+          console.log(`[gemini] tool call → ${name} (id=${id})`)
+          callbacks.onToolCall({ id, name, args })
         }
       } catch {
         // binary frame or non-JSON — ignore
@@ -170,6 +217,16 @@ export function openGeminiLiveSession(
       // Send an empty realtime_input with activity_end to tell Gemini the user stopped speaking
       ws.send(JSON.stringify({
         realtime_input: { activity_end: {} },
+      }))
+    },
+
+    sendToolResponse(id, name, response) {
+      if (!ws || ws.readyState !== 1) return
+      // Gemini Live expects: tool_response: { function_responses: [{ id, name, response }] }
+      ws.send(JSON.stringify({
+        tool_response: {
+          function_responses: [{ id, name, response }],
+        },
       }))
     },
 
