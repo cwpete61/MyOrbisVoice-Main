@@ -3,9 +3,17 @@ import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import { asyncHandler } from '../lib/async-handler.js'
 import { prisma } from '../lib/prisma.js'
+import { getDashboardKpis, kpiPeriodSchema } from '../services/dashboard.service.js'
 
 const router: IRouter = Router()
 router.use(authenticate, requireTenantContext)
+
+router.get('/dashboard/kpis', asyncHandler(async (req, res) => {
+  const tenantId = req.user!.currentTenantId!
+  const { period } = kpiPeriodSchema.parse({ period: req.query['period'] })
+  const data = await getDashboardKpis(tenantId, period)
+  res.json({ data })
+}))
 
 router.get('/dashboard/stats', asyncHandler(async (req, res) => {
   const tenantId = req.user!.currentTenantId!

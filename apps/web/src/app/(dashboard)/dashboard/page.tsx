@@ -6,7 +6,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { useApi } from '@/hooks/useApi'
+import { useApi, apiFetch } from '@/hooks/useApi'
 import { OnboardingBanner } from '@/components/OnboardingBanner'
 import { EnableNotificationsBanner } from '@/components/EnableNotificationsBanner'
 
@@ -44,6 +44,22 @@ interface DashboardData {
   subscription: SubscriptionInfo | null
 }
 
+type KpiPeriod = '7d' | '30d'
+
+interface DashboardKpis {
+  period: KpiPeriod
+  rangeStart: string
+  rangeEnd: string
+  totalCalls: number
+  inboundCalls: number
+  missedInboundCalls: number
+  missedCallRate: number
+  avgCallDurationSecs: number
+  appointmentsBooked: number
+  followupEmailsSent: number
+  topDispositions: Array<{ code: string; count: number }>
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtBytes(b: number) {
@@ -68,6 +84,31 @@ function callDuration(start: string, end: string | null) {
   const secs = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000)
   if (secs < 60) return `${secs}s`
   return `${Math.floor(secs / 60)}m ${secs % 60}s`
+}
+
+function fmtDurationSecs(secs: number) {
+  if (!secs || secs <= 0) return '0s'
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  if (m === 0) return `${s}s`
+  return `${m}m ${s}s`
+}
+
+// Match the disposition labels used on /conversations.
+const DISPOSITION_LABELS: Record<string, string> = {
+  booked:         'Booked',
+  qualified:      'Qualified',
+  callback:       'Callback',
+  not_interested: 'Not interested',
+  wrong_number:   'Wrong number',
+  voicemail:      'Voicemail',
+  no_answer:      'No answer',
+  spam:           'Spam',
+  interested:     'Interested',
+}
+
+function dispositionLabel(code: string): string {
+  return DISPOSITION_LABELS[code] ?? code.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
 const CHANNEL_COLOR: Record<string, string> = {
@@ -107,6 +148,201 @@ function KpiCard({ icon, label, value, sub }: { icon: string; label: string; val
   )
 }
 
+function MetricCard({
+  label, value, sub, children,
+}: {
+  label: string
+  value?: string | number
+  sub?: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div
+      className="rounded-xl p-5 flex flex-col gap-2 min-h-[140px]"
+      style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
+    >
+      <span
+        className="text-xs font-medium uppercase tracking-wide"
+        style={{ color: 'var(--text-tertiary)' }}
+      >
+        {label}
+      </span>
+      {value !== undefined && (
+        <p className="text-3xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          {typeof value === 'number' ? value.toLocaleString() : value}
+        </p>
+      )}
+      {sub && (
+        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{sub}</p>
+      )}
+      {children}
+    </div>
+  )
+}
+
+function KpiGrid({ data, period, onPeriodChange, loading, error }: {
+  data: DashboardKpis | null
+  period: KpiPeriod
+  onPeriodChange: (p: KpiPeriod) => void
+  loading: boolean
+  error: string | null
+}) {
+  // Empty when zero of everything that matters.
+  const isEmpty = !!data
+    && data.totalCalls === 0
+    && data.appointmentsBooked === 0
+    && data.followupEmailsSent === 0
+    && data.topDispositions.length === 0
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h2 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+          Operational KPIs
+        </h2>
+        <div
+          className="inline-flex rounded-lg overflow-hidden text-xs font-medium"
+          style={{ border: '1px solid var(--border-subtle)' }}
+          role="tablist"
+          aria-label="Period selector"
+        >
+          {(['7d', '30d'] as const).map(opt => {
+            const active = period === opt
+            return (
+              <button
+                key={opt}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onPeriodChange(opt)}
+                className="px-3 py-1.5 transition-colors"
+                style={{
+                  background: active ? 'oklch(55% 0.14 193)' : 'var(--surface-raised)',
+                  color:      active ? '#fff' : 'var(--text-secondary)',
+                }}
+              >
+                {opt === '7d' ? 'Last 7 days' : 'Last 30 days'}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {error && !data && (
+        <div
+          className="rounded-xl px-5 py-4 text-sm"
+          style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+        >
+          Could not load KPIs — {error}
+        </div>
+      )}
+
+      {loading && !data && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="h-[140px] rounded-xl animate-pulse"
+              style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
+            />
+          ))}
+        </div>
+      )}
+
+      {data && isEmpty && (
+        <div
+          className="rounded-xl px-5 py-10 text-center"
+          style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
+        >
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            No data yet — start handling calls
+          </p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+            Once your agent takes a call, KPIs for the {period === '7d' ? 'last 7 days' : 'last 30 days'} will appear here.
+          </p>
+        </div>
+      )}
+
+      {data && !isEmpty && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <MetricCard
+            label="Total calls"
+            value={data.totalCalls}
+            sub={`${period === '7d' ? '7-day' : '30-day'} total across all channels`}
+          />
+
+          <MetricCard
+            label="Missed call rate"
+            value={`${data.missedCallRate.toFixed(1)}%`}
+            sub={
+              data.inboundCalls === 0
+                ? 'No inbound calls in window'
+                : `${data.missedInboundCalls.toLocaleString()} of ${data.inboundCalls.toLocaleString()} inbound`
+            }
+          >
+            <div className="mt-1 h-2 rounded-full" style={{ background: 'var(--border-subtle)' }}>
+              <div
+                className="h-2 rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, Math.max(0, data.missedCallRate))}%`,
+                  background:
+                    data.missedCallRate >= 25 ? '#ef4444'
+                    : data.missedCallRate >= 10 ? '#f59e0b'
+                    : 'oklch(55% 0.14 193)',
+                }}
+              />
+            </div>
+          </MetricCard>
+
+          <MetricCard
+            label="Avg call duration"
+            value={fmtDurationSecs(data.avgCallDurationSecs)}
+            sub="Across calls with a recording"
+          />
+
+          <MetricCard
+            label="Appointments booked"
+            value={data.appointmentsBooked}
+            sub={`Created in the last ${period === '7d' ? '7' : '30'} days`}
+          />
+
+          <MetricCard
+            label="Follow-up emails sent"
+            value={data.followupEmailsSent}
+            sub="Outbound EMAIL messages logged in window"
+          />
+
+          <MetricCard label="Top 3 dispositions">
+            {data.topDispositions.length === 0 ? (
+              <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                No dispositions tagged yet
+              </p>
+            ) : (
+              <ul className="mt-1 space-y-1.5">
+                {data.topDispositions.map(d => (
+                  <li
+                    key={d.code}
+                    className="flex items-center justify-between text-sm"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    <span className="truncate">{dispositionLabel(d.code)}</span>
+                    <span
+                      className="ml-2 px-2 py-0.5 rounded text-xs font-medium"
+                      style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}
+                    >
+                      {d.count.toLocaleString()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </MetricCard>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
   if (!active || !payload?.length) return null
   return (
@@ -124,6 +360,22 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 
 export default function DashboardPage() {
   const { data: d, loading } = useApi<DashboardData>('/api/dashboard/stats')
+
+  const [kpiPeriod, setKpiPeriod] = useState<KpiPeriod>('7d')
+  const [kpiData, setKpiData] = useState<DashboardKpis | null>(null)
+  const [kpiLoading, setKpiLoading] = useState(true)
+  const [kpiError, setKpiError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setKpiLoading(true)
+    setKpiError(null)
+    apiFetch<DashboardKpis>(`/api/dashboard/kpis?period=${kpiPeriod}`)
+      .then(res => { if (!cancelled) setKpiData(res) })
+      .catch(err => { if (!cancelled) setKpiError(err instanceof Error ? err.message : 'Failed to load') })
+      .finally(() => { if (!cancelled) setKpiLoading(false) })
+    return () => { cancelled = true }
+  }, [kpiPeriod])
 
   if (loading || !d) {
     return (
@@ -169,6 +421,15 @@ export default function DashboardPage() {
         <KpiCard icon="📅" label="Appointments today" value={kpi.appointmentsToday} sub="scheduled & confirmed" />
         <KpiCard icon="👥" label="Total contacts" value={kpi.totalContacts} sub="in your database" />
       </div>
+
+      {/* Operational KPIs (period-windowed) */}
+      <KpiGrid
+        data={kpiData}
+        period={kpiPeriod}
+        onPeriodChange={setKpiPeriod}
+        loading={kpiLoading}
+        error={kpiError}
+      />
 
       {/* Chart + side panels */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
