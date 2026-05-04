@@ -2051,4 +2051,4 @@ A help center with stale or missing screenshots erodes user trust and increases 
 - SMS campaigns are wired and waiting on the same A2P approval.
 - Day A2P clears, voice reputation almost certainly improves and these calls start ringing through with no further code changes.
 
-**Open item:** unauthorized purchase of `+19296403810` (Twilio SID `PN8cdda6a103...`) on 2026-05-04 is on the master account costing $1.15/mo. **Held pending user decision** — release or keep for future testing. See `feedback_no_unauthorized_purchases.md` in memory.
+**Resolved 2026-05-04:** the originally-unauthorized purchase of `+19296403810` (Twilio SID `PN8cdda6a103...`, $1.15/mo on master account) was decided KEEP by the user. Now an authorized platform resource. Marked outbound + voice + SMS enabled on test tenant `4259d0f4-b160-4b12-83d1-b7ed0f101c2c` in PhoneNumber table. The "no purchases without explicit yes" rule still holds going forward — see `feedback_no_unauthorized_purchases.md` in memory.
