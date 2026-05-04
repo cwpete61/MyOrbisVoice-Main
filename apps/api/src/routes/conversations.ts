@@ -7,6 +7,7 @@ import { prisma } from '../lib/prisma.js'
 import { getBunnyConfig, storageHostForRegion } from '../services/bunny.service.js'
 import { writeAuditLog } from '../lib/audit.js'
 import { sendCallNotification } from '../services/email.service.js'
+import { streamConversationPdf } from '../services/conversation-pdf.service.js'
 
 const router: IRouter = Router()
 
@@ -346,6 +347,53 @@ router.get('/conversations/:id/recording', asyncHandler(async (req, res) => {
   }
 
   res.redirect(302, conv.recordingRef)
+}))
+
+// GET /api/conversations/:id/export.pdf — full conversation record as a PDF.
+// Streams the PDF — never buffers the whole document in memory.
+router.get('/conversations/:id/export.pdf', asyncHandler(async (req, res) => {
+  const tenantId = (req as any).user?.currentTenantId as string
+  const userId   = (req as any).user?.id as string | undefined
+  const conversationId = req.params.id!
+
+  // Pre-flight tenant scope check so we can return a clean 404 BEFORE we
+  // start streaming the PDF (once the headers go out we lose the ability
+  // to send a structured error response).
+  const exists = await prisma.conversation.findFirst({
+    where: { id: conversationId, tenantId },
+    select: { id: true, startedAt: true },
+  })
+  if (!exists) { res.status(404).json({ error: 'Not found' }); return }
+
+  const dateSlug = exists.startedAt.toISOString().slice(0, 10)
+  const filename = `conversation-${conversationId}-${dateSlug}.pdf`
+
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+  res.setHeader('Cache-Control', 'private, no-store')
+
+  // Audit log — fire-and-forget, never blocks the export
+  writeAuditLog({
+    tenantId,
+    actorType:    userId ? 'USER' : 'SYSTEM',
+    actorUserId:  userId,
+    action:       'conversation.exported',
+    targetType:   'Conversation',
+    targetId:     conversationId,
+    metadataJson: { format: 'pdf' },
+  }).catch(() => { /* non-fatal */ })
+
+  try {
+    await streamConversationPdf({ conversationId, tenantId }, res)
+  } catch (err) {
+    // If headers already went out we can't change status — just end the stream.
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'PDF generation failed' })
+      return
+    }
+    try { res.end() } catch { /* ignore */ }
+    console.error('[conversations] PDF export failed:', err)
+  }
 }))
 
 // GET /api/conversations/:id/transcript — structured transcript JSON
