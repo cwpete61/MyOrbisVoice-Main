@@ -18,9 +18,10 @@ export function AdminNav() {
     {
       section: 'Management',
       items: [
-        { href: '/admin/tenants',     label: 'Tenants',     icon: <TenantsIcon /> },
-        { href: '/admin/plans',       label: 'Plans',       icon: <PlansIcon /> },
-        { href: '/admin/pricing',     label: 'Pricing',     icon: <PricingIcon /> },
+        { href: '/admin/tenants',     label: 'Tenants',          icon: <TenantsIcon /> },
+        { href: '/admin/plans',       label: 'Plans',            icon: <PlansIcon /> },
+        { href: '/admin/pricing',     label: 'Pricing',          icon: <PricingIcon /> },
+        { href: '/admin/partners',    label: 'Partners',         icon: <AffiliatesIcon /> },
         { href: '/admin/twilio-logs', label: 'Twilio Call Logs', icon: <CallLogsIcon /> },
         { href: '/admin/errors',      label: 'Errors',           icon: <ErrorsIcon /> },
       ],
