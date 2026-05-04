@@ -15,5 +15,9 @@ export const env = {
   GEMINI_API_KEY: opt('GEMINI_API_KEY', 'GOOGLE_GEMINI_API_KEY'),
   OPENAI_API_KEY: opt('OPENAI_API_KEY'),
   AUTH_SECRET: req('AUTH_SECRET'),
+  // Used by the tool-calling registry to call API internal-gateway endpoints.
+  // Both vars must match what the API container has — see infra/.env.prod.
+  API_BASE_URL:            opt('API_BASE_URL') || 'http://localhost:4000',
+  GATEWAY_INTERNAL_TOKEN:  opt('GATEWAY_INTERNAL_TOKEN'),
   NODE_ENV: process.env['NODE_ENV'] ?? 'development',
 }

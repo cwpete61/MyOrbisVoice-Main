@@ -22,6 +22,7 @@ export function resolveSystemPrompt(
   prompts: PromptSnapshot[],
   dna: DNASnapshot | null,
   channelType = 'WIDGET',
+  toolGuidance?: string,
 ): string {
   const layers: string[] = []
 
@@ -59,6 +60,9 @@ export function resolveSystemPrompt(
     if (dna.complianceJson)  dnaLines.push(`Compliance: ${stringify(dna.complianceJson)}`)
     layers.push(dnaLines.join('\n'))
   }
+
+  // Layer 5 — tool guidance (when tools are available for this session)
+  if (toolGuidance) layers.push(toolGuidance)
 
   return layers.join('\n\n')
 }

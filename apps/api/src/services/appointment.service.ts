@@ -75,7 +75,7 @@ export async function searchAvailability(tenantId: string, params: SlotSearchPar
   return { slots, alternateSlots }
 }
 
-export async function createAppointment(tenantId: string, userId: string, data: {
+export async function createAppointment(tenantId: string, userId: string | null, data: {
   contactId?: string
   conversationId?: string
   appointmentType?: string
@@ -134,8 +134,8 @@ export async function createAppointment(tenantId: string, userId: string, data: 
 
   await writeAuditLog({
     tenantId,
-    actorType: 'USER',
-    actorUserId: userId,
+    actorType: userId ? 'USER' : 'SYSTEM',
+    actorUserId: userId ?? undefined,
     action: 'appointment.created',
     targetType: 'Appointment',
     targetId: appointment.id,
