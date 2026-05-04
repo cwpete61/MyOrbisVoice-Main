@@ -10,6 +10,37 @@ import { AppError } from '@voiceautomation/shared'
 import { getEnv } from '@voiceautomation/config'
 
 const router: IRouter = Router()
+
+// PUBLIC route — must be registered BEFORE the authenticate middleware below.
+// Google redirects the caller's browser here after consent with no auth headers
+// attached; OAuth's `state` parameter (validated inside handleGoogleCallback)
+// is what authenticates this request, not our JWT.
+router.get('/integrations/google/callback', async (req, res, next) => {
+  try {
+    const env = getEnv()
+    const { code, state, error } = req.query as Record<string, string>
+
+    if (error) {
+      res.redirect(`${env.APP_BASE_URL}/integrations?google=error&reason=${encodeURIComponent(error)}`)
+      return
+    }
+
+    if (!code || !state) {
+      res.redirect(`${env.APP_BASE_URL}/integrations?google=error&reason=missing_params`)
+      return
+    }
+
+    const { email } = await googleService.handleGoogleCallback(code, state)
+    res.redirect(`${env.APP_BASE_URL}/integrations?google=success&email=${encodeURIComponent(email)}`)
+  } catch (err) {
+    const env = getEnv()
+    const msg = err instanceof AppError ? err.message : 'oauth_failed'
+    res.redirect(`${env.APP_BASE_URL}/integrations?google=error&reason=${encodeURIComponent(msg)}`)
+    next // don't forward — we already responded
+  }
+})
+
+// All routes below this point require authentication
 router.use(authenticate, requireTenantContext)
 
 function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
@@ -83,32 +114,6 @@ router.post('/integrations/google/start', async (req, res, next) => {
     const { url, state } = await googleService.startGoogleOAuth(tenantId, userId)
     res.json({ data: { url, state } })
   } catch (err) { next(err) }
-})
-
-// OAuth callback — redirects browser to frontend with result
-router.get('/integrations/google/callback', async (req, res, next) => {
-  try {
-    const env = getEnv()
-    const { code, state, error } = req.query as Record<string, string>
-
-    if (error) {
-      res.redirect(`${env.APP_BASE_URL}/integrations?google=error&reason=${encodeURIComponent(error)}`)
-      return
-    }
-
-    if (!code || !state) {
-      res.redirect(`${env.APP_BASE_URL}/integrations?google=error&reason=missing_params`)
-      return
-    }
-
-    const { email } = await googleService.handleGoogleCallback(code, state)
-    res.redirect(`${env.APP_BASE_URL}/integrations?google=success&email=${encodeURIComponent(email)}`)
-  } catch (err) {
-    const env = getEnv()
-    const msg = err instanceof AppError ? err.message : 'oauth_failed'
-    res.redirect(`${env.APP_BASE_URL}/integrations?google=error&reason=${encodeURIComponent(msg)}`)
-    next // don't forward — we already responded
-  }
 })
 
 // Re-initiate Google OAuth for reconnect
