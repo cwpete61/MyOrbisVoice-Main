@@ -25,17 +25,17 @@ Twilio's TFV form changes UI every few months. Field names below are stable; lay
 
 | Field | Value |
 |---|---|
-| **Business name** | LightBox SEO LLC |
+| **Business name** | [LEGAL ENTITY NAME — NOT YET CONFIRMED, DO NOT GUESS] |
 | **Doing-business-as (DBA)** | OrbisVoice |
 | **Business website** | https://myorbisvoice.com |
-| **Business address** | *(use the LightBox SEO LLC business address)* |
+| **Business address** | *(use the [LEGAL ENTITY NAME — NOT YET CONFIRMED, DO NOT GUESS] business address)* |
 | **Business contact name** | Crawford Peterson Sr. |
 | **Business contact email** | crawford.peterson.sr@gmail.com |
 | **Business contact phone** | *(your direct number)* |
 | **Business type** | LLC |
 | **Business industry** | Technology / SaaS |
 | **Business registration ID type** | EIN |
-| **Business registration ID** | *(LightBox SEO LLC EIN)* |
+| **Business registration ID** | *([LEGAL ENTITY NAME — NOT YET CONFIRMED, DO NOT GUESS] EIN)* |
 
 ### Use Case
 
