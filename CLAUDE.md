@@ -1,5 +1,97 @@
 # CLAUDE.md
 
+## Autonomous operation rule — MANDATORY
+
+Bypass-permissions mode is on for this project. The agent has standing authorization to run tools without per-call prompts. **In exchange, the agent must self-verify every step before moving on.** This is not optional — it replaces the human "approve each tool" gate.
+
+After every meaningful action, before continuing to the next step, do all of the following:
+
+1. **Read back what you just changed.** If you wrote/edited a file, re-read the changed section. If you ran a command, read the actual output, not just the exit code.
+2. **Verify the code is correct.** Type-check, build, or lint where it applies. Confirm the change matches the intent — no truncated edits, no accidental duplicate blocks, no stale placeholders.
+3. **Check for errors.** Read logs, HTTP status codes, build output. Do not assume "no error message" means "success" — confirm the success signal explicitly.
+4. **Only then continue** to the next step.
+
+**Before any commit / push / deploy:** in addition to the above, run the project's build + type-check, scan the diff yourself for stray debug code, and confirm the change set is exactly the intended scope. If any check fails, stop and fix the underlying issue — do not bypass with `--no-verify` or rerun in a sleep loop.
+
+If a check is structurally impossible (e.g. a UI behavior that requires a browser), say so explicitly in the response rather than implying it was verified.
+
+This rule supersedes the default "ask before risky actions" prompt — autonomous operation is granted, but verification is the trade.
+
+## Bilingual content rule — MANDATORY
+
+The product is **bilingual English + Spanish**. Every time you generate, add, or edit user-facing content, ship both languages in the same change. Don't write English-only and "we'll translate later" — that's how the Spanish surface rots into a sub-product. The two versions ship together or neither ships.
+
+**What "user-facing content" means**:
+
+- Marketing site pages, sections, copy, headlines, button labels
+- Dashboard UI strings (nav labels, page titles, form labels, empty states, error messages, toast notifications, modal text, button labels, table headers)
+- Charts, infographics, mockup screenshots, illustrations — if they contain text, render or commit both an English and a Spanish version (e.g. `chart-en.svg` + `chart-es.svg`, or text-as-HTML over a language-neutral SVG so one swap covers both)
+- Email templates and SMS bodies
+- Help articles, tooltips, onboarding flows
+- Schema.org structured data (`description`, `name` of human-readable items)
+- `<title>`, meta descriptions, Open Graph + Twitter card tags
+- Audit log labels and admin-facing strings if a Spanish-speaking admin will see them
+
+**What stays English in both languages** (universal references — translating creates drift):
+
+- Brand: "MyOrbisVoice"
+- Provider names: Gemini, Google Calendar, Gmail, Stripe, Twilio, WhatsApp, Bunny, OpenAI
+- Voice names: Zephyr, Despina, Aoede, Charon, Fenrir, Puck, Sulafat
+- Plan names: Free, Basic, Pro, LTD, Premier, Enterprise
+- System codes / enum values: `BOOKED`, `CALLBACK_REQUESTED`, `MISSED_CALL`, `PENDING`, `APPROVED`, `HOLD`, `PAID`, `REVERSED`, `subscription_renewed`, `appointment-scheduled`, etc.
+- Template tokens: `{firstName}`, `{businessName}`, `{appointmentDate}`, etc.
+- URLs, paths, technical infrastructure terms (WebSocket, OAuth, CDN, JWT, API, SDK)
+- US tax form names: W-9, W-8BEN, 1099-NEC
+
+**Spanish style conventions** (established in the marketing site translation pass):
+
+- **Latin American Spanish** (broader audience than Spain Spanish)
+- **Informal "tú" form**, NOT "usted" — matches the SaaS-marketing voice
+- Reference file for tone: `site/es/index.html` — match its phrasing for repeated concepts
+- Currency stays in USD ($)
+
+**Where the two languages live**:
+
+- **Marketing site**: English at the apex (`myorbisvoice.com/<page>.html`), Spanish under `/es/` (`myorbisvoice.com/es/<page>.html`). Each page has a top-right toggle. Add `<link rel="alternate" hreflang="en">` + `<link rel="alternate" hreflang="es">` on both. Spanish pages set `<html lang="es">`. Asset paths in `/es/` files are `../assets/...`.
+- **Dashboard** (when i18n is wired): user-level locale on `User.preferredLocale`, a profile-page toggle, JSON dictionaries `en.json` + `es.json`, `t('key')` helper. Adding a new string means adding it to **both** dictionaries — never English-only.
+- **Legal pages** (Spanish versions of terms / privacy / cookies): include the disclaimer "La versión en inglés es la versión oficial y prevalece en caso de conflicto" at the top.
+
+**Verification before declaring "done"**:
+
+- New marketing page → both `site/<page>.html` and `site/es/<page>.html` exist, link to each other via the toggle, and round-trip cleanly.
+- New dashboard string → both `en.json` and `es.json` have the key.
+- Charts / graphics with text → both language versions exist OR the design uses HTML-text overlays that swap with the i18n system.
+
+If you're tempted to ship English-only "for now" — stop and translate first. The rule exists because the alternative is a Spanish surface that drifts, embarrasses Spanish-speaking customers, and accumulates work that's harder to do later than it would have been at write-time.
+
+### Enforcement — coverage scanner + auto-fill (use these, don't trust discipline)
+
+The bilingual rule above is mandatory **and** mechanically enforced by tooling so it can't be silently skipped. Use these every time you touch user-facing code:
+
+- **`pnpm i18n:check`** — scans every `.tsx` file for hardcoded English JSX text / `placeholder` / `aria-label` / `title` attributes that aren't wrapped in `t()`, AND reports keys present in `en.json` but missing from `es.json` (and vice versa). Exits non-zero if anything is missing. Required to pass before declaring any feature done.
+- **`pnpm i18n:check:quiet`** — same scan, summary only.
+- **`pnpm i18n:check:keys`** — dictionary-parity check only (faster).
+- **`pnpm i18n:fill`** — backfills missing `es.json` keys via OpenAI using the project's translation conventions. Reads `OPENAI_API_KEY` from env (get the key from `Admin → System Settings → OpenAI`). Run after editing `en.json`.
+- **`pnpm i18n:fill:dry`** — preview what would translate, no writes.
+
+**Required workflow when editing English copy or adding a new feature**:
+
+1. Edit `en.json` and/or wrap new strings in `t('key')`.
+2. Run `pnpm i18n:check`.
+3. If parity is missing: `OPENAI_API_KEY=sk-... pnpm i18n:fill` to backfill the Spanish, OR hand-translate.
+4. Review the auto-filled translations (machine-translation quality varies on idioms).
+5. Re-run `pnpm i18n:check`. Must exit 0 before commit.
+
+**Anti-patterns that fail the scanner**:
+- Hardcoded JSX text: `<button>Save</button>` → must be `<button>{t('actions.save')}</button>`.
+- `placeholder="Enter your name"` → must be `placeholder={t('common.namePlaceholder')}`.
+- New keys added to `en.json` without matching keys in `es.json`.
+- Forgot to wrap strings in shared components — components also count.
+
+**Scanner allow-list** (universal references that legitimately stay English in both languages, scanner treats them as clean): `MyOrbisVoice`, `OrbisVoice`, `Stripe` / `Twilio` / `Google` / `Gmail` / `Gemini` / `WhatsApp` / `Bunny` / `OpenAI`, voice names (`Zephyr`, `Despina`, etc.), plan names (`Free`, `Basic`, `Pro`, `LTD`, `Premier`, `Enterprise`), tax form names (`W-9`, `W-8BEN`, `1099-NEC`), and all-caps system enum codes. The allow-list lives in `scripts/i18n-coverage.ts` if you need to extend it.
+
+When in doubt: run `pnpm i18n:check`. The scanner is the source of truth — if it's clean, the i18n state is clean.
+
 ## gstack
 
 Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
