@@ -1,0 +1,42 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "apps/api": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "apps/voice-gateway": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "apps/web": {
+      "entry": ["src/app/**/page.tsx", "src/app/**/layout.tsx", "next.config.{js,mjs,ts}"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/*": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    }
+  },
+  "ignore": [
+    "claudecodeui/**",
+    "goose/**",
+    "impeccable/**",
+    "playwright/**",
+    "superpowers/**",
+    "arbor/**",
+    "distill/**",
+    "skills/**",
+    "jcodemunch-mcp/**",
+    "voiceautomation-project-root-regenerated/**",
+    "site/**",
+    "n8n/**",
+    "docs/**",
+    "backups/**",
+    "snapshots/**",
+    "infrastructure/**",
+    "scripts/**",
+    ".claude/**"
+  ],
+  "ignoreDependencies": ["@types/*"]
+}

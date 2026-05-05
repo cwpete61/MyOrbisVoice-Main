@@ -13,7 +13,12 @@
     "db:migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio --schema=prisma/schema.prisma",
-    "db:reset": "prisma migrate reset --schema=prisma/schema.prisma"
+    "db:reset": "prisma migrate reset --schema=prisma/schema.prisma",
+    "i18n:check": "tsx scripts/i18n-coverage.ts",
+    "i18n:check:quiet": "tsx scripts/i18n-coverage.ts --quiet",
+    "i18n:check:keys": "tsx scripts/i18n-coverage.ts --keys-only",
+    "i18n:fill": "tsx scripts/i18n-fill.ts",
+    "i18n:fill:dry": "tsx scripts/i18n-fill.ts --dry-run"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.14",
