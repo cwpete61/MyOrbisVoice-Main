@@ -10,25 +10,6 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ## 🔴 Pre-launch must-do (blocks first paying customer)
 
-### 1. Save the 4 Stripe live secrets to off-repo secret manager
-
-**What:** Save these 4 values to 1Password / Bitwarden / similar (not in repo, not in this file):
-
-- `sk_live_…` (Stripe secret key)
-- `pk_live_…` (Stripe publishable key)
-- `whsec_icvaOo…` (platform webhook signing secret — `elegant-wonder` destination)
-- `whsec_FIhui3rwXESnfsnggZVG8DZpJm3grmhY` (Connect webhook signing secret — `empowering-dream` destination)
-
-**Why:** All four are stored encrypted in `SystemConfig` via AES-256-GCM (key derived from `AUTH_SECRET`). If `AUTH_SECRET` ever rotates without the encrypted blob being decryptable first, they're gone. Off-repo backup is the recovery path.
-
-**Owner:** You (manual; one-time).
-
-**Verifies done when:** All 4 values exist in a password manager you control, with the label "MyOrbisVoice — Stripe Live" or similar.
-
-**ETA to do:** 5 minutes.
-
----
-
 ### 2. Submit Twilio toll-free verification
 
 **What:** Submit the package drafted at [docs/twilio-toll-free-verification.md](twilio-toll-free-verification.md) via the Twilio console.
@@ -128,4 +109,6 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 *(items move here with a date + what unblocked them)*
 
-— None yet —
+### 1. Save the 4 Stripe live secrets to off-repo secret manager — closed 2026-05-05
+
+All 4 values (`sk_live_…`, `pk_live_…`, `whsec_…` platform, `whsec_…` Connect) saved to the user's password manager during the launch-prep session on 2026-05-05. Verified preflight remained 8/8 green throughout. Recovery path now exists if AUTH_SECRET ever rotates.
