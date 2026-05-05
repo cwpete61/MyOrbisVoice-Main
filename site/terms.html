@@ -32,10 +32,15 @@
 </head>
 <body>
 
-<nav>
+<nav class="site-nav" aria-label="Main navigation">
   <div class="nav-inner">
-    <a href="index.html" class="nav-logo">
-      <div class="nav-logo-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="3.5" fill="#021a0e"/><circle cx="9" cy="9" r="7.5" stroke="#021a0e" stroke-opacity=".5" stroke-width="2"/></svg></div>
+    <a href="index.html" class="nav-logo" aria-label="MyOrbisVoice home">
+      <span class="nav-logo-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="3.5" fill="white"/>
+          <circle cx="9" cy="9" r="7.5" stroke="white" stroke-opacity="0.5" stroke-width="2"/>
+        </svg>
+      </span>
       MyOrbisVoice
     </a>
     <div class="nav-links">
@@ -43,26 +48,27 @@
       <a href="solutions.html">Solutions</a>
       <a href="how-it-works.html">How It Works</a>
       <a href="pricing.html">Pricing</a>
-      <a href="affiliate.html">Affiliate</a>
-      <a href="https://app.myorbisvoice.com/affiliate-portal/login">Partner Login</a>
     </div>
     <div class="nav-cta">
-      <a href="https://app.myorbisvoice.com/login" class="btn btn-ghost" style="padding:9px 20px">Log In</a>
-      <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary" style="padding:9px 20px">Start Free</a>
+      <a href="es/terms.html" class="lang-toggle" aria-label="Cambiar a español" hreflang="es"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>ES</a>
+      <a href="https://app.myorbisvoice.com/login" class="btn btn-ghost btn-sm">Log in</a>
+      <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-sm">Start free</a>
     </div>
-    <button class="nav-burger" id="nav-burger" aria-label="Menu">
-      <span></span><span></span><span></span>
+    <button class="nav-burger" id="nav-burger" aria-label="Open menu" aria-expanded="false">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="6" x2="19" y2="6"/><line x1="3" y1="11" x2="19" y2="11"/><line x1="3" y1="16" x2="19" y2="16"/>
+      </svg>
     </button>
   </div>
 </nav>
 <div class="nav-mobile" id="nav-mobile">
-  <a href="index.html">Home</a><a href="solutions.html">Solutions</a>
-  <a href="how-it-works.html">How It Works</a><a href="pricing.html">Pricing</a>
-  <a href="affiliate.html">Affiliate</a>
-  <a href="https://app.myorbisvoice.com/affiliate-portal/login">Partner Login</a>
-  <a href="https://app.myorbisvoice.com/affiliate-portal/signup">Join as Partner</a>
-  <a href="https://app.myorbisvoice.com/login" class="btn btn-ghost">Log In</a>
-  <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary">Start Free</a>
+  <a href="es/terms.html" class="lang-toggle" aria-label="Cambiar a español" hreflang="es" style="margin-bottom:8px;">🌐 Español</a>
+  <a href="index.html">Home</a>
+  <a href="solutions.html">Solutions</a>
+  <a href="how-it-works.html">How It Works</a>
+  <a href="pricing.html">Pricing</a>
+  <a href="https://app.myorbisvoice.com/login" class="btn btn-secondary">Log in</a>
+  <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary">Start free</a>
 </div>
 
 <div class="container">
@@ -175,7 +181,7 @@
     <p>You may terminate your account at any time by contacting us or using the account closure option in your dashboard.</p>
 
     <h2 id="governing-law">14. Governing Law</h2>
-    <p>These Terms are governed by the laws of the State of Georgia, United States, without regard to its conflict of law provisions. Any disputes arising under these Terms shall be resolved in the state or federal courts located in Fulton County, Georgia, and you consent to the personal jurisdiction of those courts.</p>
+    <p>These Terms are governed by the laws of the Commonwealth of Pennsylvania, United States, without regard to its conflict of law provisions. Any disputes arising under these Terms shall be resolved in the state or federal courts located in Lehigh County, Pennsylvania, and you consent to the personal jurisdiction of those courts.</p>
 
     <h2 id="changes">15. Changes to Terms</h2>
     <p>We may modify these Terms at any time. Material changes will be communicated via email or a prominent notice in the Service at least 14 days before taking effect. Continued use after the effective date constitutes acceptance of the updated Terms.</p>
@@ -185,7 +191,7 @@
     <ul>
       <li><strong>Email:</strong> <a href="mailto:admin@myorbisvoice.com">admin@myorbisvoice.com</a></li>
       <li><strong>Phone:</strong> 888-555-1212</li>
-      <li><strong>Location:</strong> Serving the Greater Atlanta, GA area</li>
+      <li><strong>Location:</strong> 716 Washington St, Suite 2, Allentown, PA 18102</li>
     </ul>
   </div>
 </div>
@@ -202,30 +208,30 @@
         <p>AI voice agents for businesses that never want to miss a call, a lead, or a booking.</p>
       </div>
       <div class="footer-col">
-        <h4>Product</h4>
+        <h5>Product</h5>
         <a href="solutions.html">Solutions</a>
         <a href="how-it-works.html">How It Works</a>
         <a href="pricing.html">Pricing</a>
-        <a href="affiliate.html">Affiliate</a>
+        <a href="partner.html">Partners</a>
       <a href="https://app.myorbisvoice.com/affiliate-portal/login">Partner Login</a>
       </div>
       <div class="footer-col">
-        <h4>Account</h4>
+        <h5>Account</h5>
         <a href="https://app.myorbisvoice.com/login">Log In</a>
         <a href="https://app.myorbisvoice.com/signup">Sign Up</a>
         <a href="https://app.myorbisvoice.com">Dashboard</a>
       </div>
       <div class="footer-col">
-        <h4>Legal</h4>
+        <h5>Legal</h5>
         <a href="privacy.html">Privacy Policy</a>
         <a href="terms.html">Terms of Service</a>
         <a href="cookies.html">Cookie Policy</a>
       </div>
       <div class="footer-col">
-        <h4>Contact</h4>
+        <h5>Contact</h5>
         <a href="mailto:admin@myorbisvoice.com">admin@myorbisvoice.com</a>
         <a href="tel:+18885551212">888-555-1212</a>
-        <span style="display:block;font-size:.9rem;color:var(--text-muted);padding:4px 0;">Serving the Greater<br>Atlanta, GA area</span>
+        <span style="display:block;font-size:.9rem;color:var(--text-muted);padding:4px 0;">716 Washington St, Suite 2<br>Allentown, PA 18102</span>
       </div>
     </div>
     <div class="footer-bottom">

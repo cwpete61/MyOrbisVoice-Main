@@ -3,8 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MyOrbisVoice — AI Voice Agents for Your Business</title>
-  <meta name="description" content="Deploy AI voice agents that answer calls, book appointments, and follow up automatically. No code required." />
+  <title>MyOrbisVoice — Conversational AI Voice Agents Powered by Gemini Live</title>
+  <meta name="description" content="MyOrbisVoice runs Gemini-powered voice agents on your business phone. Sub-second responses, real Google Calendar bookings, automatic SMS + email follow-up — across 7 vetted agent voices and 7 specialized roles. Real-time. Zero code." />
+  <meta name="keywords" content="AI voice agent, Gemini Live, AI receptionist, automated call answering, AI appointment booking, Twilio voice automation, conversational AI for SMB, Google Calendar AI booking, multi-channel campaign automation" />
+  <meta name="author" content="MyOrbisVoice" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://myorbisvoice.com/" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://myorbisvoice.com/" />
+  <meta property="og:title" content="MyOrbisVoice — AI Voice Agents That Actually Book Appointments" />
+  <meta property="og:description" content="Conversational AI agents on your business phone. Sub-second responses. Real calendar bookings. Multi-channel follow-up campaigns." />
+  <meta property="og:site_name" content="MyOrbisVoice" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="MyOrbisVoice — AI Voice Agents That Actually Book Appointments" />
+  <meta name="twitter:description" content="Conversational AI agents on your business phone. Sub-second responses. Real calendar bookings. Multi-channel follow-up campaigns." />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "MyOrbisVoice",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "description": "Conversational AI voice automation platform — answers inbound calls, runs the website voice widget, dispatches outbound campaigns across phone/SMS/email/WhatsApp, books real Google Calendar appointments. Powered by Gemini 2.5 Flash native-audio.",
+    "offers": {
+      "@type": "AggregateOffer", "priceCurrency": "USD",
+      "lowPrice": "197", "highPrice": "1997", "offerCount": "5"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "MyOrbisVoice",
+      "url": "https://myorbisvoice.com",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "716 Washington St, Suite 2",
+        "addressLocality": "Allentown", "addressRegion": "PA",
+        "postalCode": "18102", "addressCountry": "US"
+      }
+    }
+  }
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -12,16 +52,16 @@
 </head>
 <body>
 
-<!-- ── Nav ── -->
-<nav>
+<!-- ─── NAV ─────────────────────────────────────────────────────────── -->
+<nav class="site-nav" aria-label="Main navigation">
   <div class="nav-inner">
-    <a href="index.html" class="nav-logo">
-      <div class="nav-logo-icon">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <circle cx="9" cy="9" r="3.5" fill="#021a0e"/>
-          <circle cx="9" cy="9" r="7.5" stroke="#021a0e" stroke-opacity=".5" stroke-width="2"/>
+    <a href="index.html" class="nav-logo" aria-label="MyOrbisVoice home">
+      <span class="nav-logo-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="3.5" fill="white"/>
+          <circle cx="9" cy="9" r="7.5" stroke="white" stroke-opacity="0.5" stroke-width="2"/>
         </svg>
-      </div>
+      </span>
       MyOrbisVoice
     </a>
     <div class="nav-links">
@@ -29,14 +69,13 @@
       <a href="solutions.html">Solutions</a>
       <a href="how-it-works.html">How It Works</a>
       <a href="pricing.html">Pricing</a>
-      <a href="affiliate.html">Affiliate</a>
-      <a href="https://app.myorbisvoice.com/affiliate-portal/login">Partner Login</a>
     </div>
     <div class="nav-cta">
-      <a href="https://app.myorbisvoice.com/login" class="btn btn-ghost" style="padding:9px 20px">Log In</a>
-      <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary" style="padding:9px 20px">Start Free</a>
+      <a href="es/index.html" class="lang-toggle" aria-label="Cambiar a español" hreflang="es"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>ES</a>
+      <a href="https://app.myorbisvoice.com/login" class="btn btn-ghost btn-sm">Log in</a>
+      <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-sm">Start free</a>
     </div>
-    <button class="nav-burger" id="nav-burger" aria-label="Menu">
+    <button class="nav-burger" id="nav-burger" aria-label="Open menu" aria-expanded="false">
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <line x1="3" y1="6" x2="19" y2="6"/><line x1="3" y1="11" x2="19" y2="11"/><line x1="3" y1="16" x2="19" y2="16"/>
       </svg>
@@ -44,257 +83,811 @@
   </div>
 </nav>
 <div class="nav-mobile" id="nav-mobile">
+  <a href="es/index.html" class="lang-toggle" aria-label="Cambiar a español" hreflang="es" style="margin-bottom:8px;">🌐 Español</a>
   <a href="index.html">Home</a>
   <a href="solutions.html">Solutions</a>
   <a href="how-it-works.html">How It Works</a>
   <a href="pricing.html">Pricing</a>
-  <a href="affiliate.html">Affiliate</a>
-  <a href="https://app.myorbisvoice.com/affiliate-portal/login">Partner Login</a>
-  <a href="https://app.myorbisvoice.com/affiliate-portal/signup">Join as Partner</a>
-  <a href="https://app.myorbisvoice.com/login" class="btn btn-ghost">Log In</a>
-  <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary">Start Free</a>
+  <a href="https://app.myorbisvoice.com/login" class="btn btn-secondary">Log in</a>
+  <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary">Start free</a>
 </div>
 
-<!-- ── Hero ── -->
-<section class="hero">
-  <div class="hero-glow"></div>
+<main>
+
+<!-- ─── HERO ────────────────────────────────────────────────────────── -->
+<section class="hero" aria-labelledby="hero-heading">
   <div class="container">
-    <div class="hero-badge">
-      <svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="#22c55e"/></svg>
-      Now live — AI voice agents for every business
-    </div>
-    <h1>Your Business Never <span class="accent">Stops Answering</span></h1>
-    <p>Deploy AI voice agents that handle inbound calls, book appointments, and follow up with leads — 24/7, without hiring a single person.</p>
-    <div class="hero-cta">
-      <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-lg">Get started free</a>
-      <a href="how-it-works.html" class="btn btn-ghost btn-lg">See how it works</a>
-    </div>
-    <div class="hero-stats">
-      <div class="hero-stat"><strong>24/7</strong><span>Always on, never tired</span></div>
-      <div class="hero-stat"><strong>&lt; 60s</strong><span>Setup your first agent</span></div>
-      <div class="hero-stat"><strong>3 channels</strong><span>Web, Inbound & Outbound</span></div>
-      <div class="hero-stat"><strong>0 code</strong><span>No developers needed</span></div>
+    <div class="hero-grid">
+      <div>
+        <span class="hero-eyebrow">
+          <span class="pulse" aria-hidden="true"></span>
+          Powered by Gemini 2.5 Flash native-audio
+        </span>
+        <h1 id="hero-heading">The AI receptionist that actually <mark>books the appointment</mark>.</h1>
+        <p class="lead">
+          MyOrbisVoice answers your inbound calls in <strong>under one second</strong>, has a real conversation, books on your <strong>Google Calendar live</strong>, sends the confirmation email, and tags the contact for automated follow-up — all before the caller hangs up. Seven specialized agent roles. Seven curated voices. Three customer channels — <strong>website widget, inbound calls, and outbound campaigns</strong>. One platform.
+        </p>
+        <div class="hero-cta">
+          <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-lg">Start free trial</a>
+          <a href="how-it-works.html" class="btn btn-secondary btn-lg">See it in action</a>
+        </div>
+        <ul class="hero-stats" aria-label="At a glance">
+          <li class="hero-stat"><strong>&lt;1s</strong><span>Response latency</span></li>
+          <li class="hero-stat"><strong>7</strong><span>Agent roles</span></li>
+          <li class="hero-stat"><strong>4</strong><span>Auto-channel campaigns</span></li>
+          <li class="hero-stat"><strong>0</strong><span>Lines of code</span></li>
+        </ul>
+      </div>
+
+      <!-- Hero visual — live call mockup with full booking flow -->
+      <div class="hero-visual" aria-hidden="true">
+        <div class="hero-call">
+          <div class="hero-call-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </div>
+          <div class="hero-call-text">
+            <strong>Sarah (716) 555-0142</strong>
+            <span>Inbound · Lakewood Dental main line</span>
+          </div>
+          <span class="hero-call-status">● Live · 0:42</span>
+        </div>
+        <div class="hero-bubble">Hi Sarah, this is Lakewood Dental's assistant. I can absolutely get you booked for a new-patient cleaning. What day works for you this week?</div>
+        <div class="hero-bubble user">Tomorrow at 2 PM if you have it.</div>
+        <div class="hero-bubble">Tomorrow 2 PM is open with Dr. Lee. He's our newest hygienist and very gentle — perfect for a first visit. Should I lock that in?</div>
+        <div class="hero-bubble user">Yes please.</div>
+        <div class="hero-action">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Booked on Google Calendar · Confirmation email sent
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- ── Logos / Trust ── -->
-<section style="padding: 32px 0 64px; border-top: 1px solid var(--border);">
-  <div class="container" style="text-align:center;">
-    <p style="font-size:.82rem; letter-spacing:.08em; text-transform:uppercase; color:var(--text-subtle); margin-bottom:32px;">Powered by the world's leading AI platforms</p>
-    <div style="display:flex; justify-content:center; align-items:center; gap:48px; flex-wrap:wrap; opacity:.5; filter:grayscale(1);">
-      <span style="font-size:1.1rem; font-weight:700; color:var(--text);">Google Gemini</span>
-      <span style="font-size:1.1rem; font-weight:700; color:var(--text);">OpenAI</span>
-      <span style="font-size:1.1rem; font-weight:700; color:var(--text);">Twilio</span>
-      <span style="font-size:1.1rem; font-weight:700; color:var(--text);">Stripe</span>
-      <span style="font-size:1.1rem; font-weight:700; color:var(--text);">Google Calendar</span>
+<!-- ─── ARCHITECTURE DIAGRAM ────────────────────────────────────────── -->
+<section aria-labelledby="arch-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">How it's built</span>
+      <h2 id="arch-heading">One brain. Three customer channels — <span class="accent-dark">website widget, inbound calls, outbound campaigns</span>. Four automation outputs.</h2>
+      <p>MyOrbisVoice unifies every touchpoint customers have with your business. The same AI that answers the phone runs the website widget and orchestrates the follow-up — so context is never lost between channels.</p>
+    </div>
+
+    <div class="arch-diagram">
+      <!-- Dashed connector lines (3 inputs → brain, brain → 4 outputs).
+           preserveAspectRatio="none" lets the curves stretch with the diagram's
+           actual dimensions so the lines stay anchored to node positions. -->
+      <div class="arch-connector-layer" aria-hidden="true">
+        <svg viewBox="0 0 1000 480" preserveAspectRatio="none">
+          <!-- Inputs → brain (from left ~22% to brain ~38%) -->
+          <path d="M 230 80 C 320 80 340 220 400 240" />
+          <path d="M 230 240 C 320 240 360 240 400 240" />
+          <path d="M 230 400 C 320 400 340 260 400 240" />
+          <!-- Brain → outputs (from brain ~62% to right ~78%) -->
+          <path d="M 600 240 C 660 80 680 60 770 60" />
+          <path d="M 600 240 C 660 180 680 180 770 180" />
+          <path d="M 600 240 C 660 300 680 300 770 300" />
+          <path d="M 600 240 C 660 420 680 420 770 420" />
+        </svg>
+      </div>
+
+      <div class="arch-grid">
+        <!-- Inputs -->
+        <div class="arch-col">
+          <h4>Customer reaches you via</h4>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+            <div><strong>Inbound phone</strong><span>Twilio voice gateway</span></div>
+          </div>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+            <div><strong>Website widget</strong><span>Browser WebSocket</span></div>
+          </div>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            <div><strong>Outbound campaigns</strong><span>Tag-driven scheduler</span></div>
+          </div>
+        </div>
+
+        <!-- Brain -->
+        <div class="arch-brain">
+          <span class="arch-brain-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+              <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+            </svg>
+          </span>
+          <h3>MyOrbisVoice AI Engine</h3>
+          <p>Gemini 2.5 Flash native-audio<br>+ 5-layer prompt architecture<br>+ business DNA per tenant</p>
+          <span class="pill">7 agent roles · 7 voices</span>
+        </div>
+
+        <!-- Outputs -->
+        <div class="arch-col">
+          <h4>Then it automatically</h4>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+            <div><strong>Books appointment</strong><span>Live Google Calendar</span></div>
+          </div>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
+            <div><strong>Sends email</strong><span>Gmail OAuth, your address</span></div>
+          </div>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            <div><strong>Texts SMS / WhatsApp</strong><span>Per-tenant Twilio subaccount</span></div>
+          </div>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+            <div><strong>Tags contact</strong><span>Triggers next campaign</span></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- ── Features ── -->
+<!-- ─── PROMPT LAYERING — what makes it sound like YOUR business ─── -->
+<section class="section-soft" aria-labelledby="dna-heading">
+  <div class="container">
+    <div class="split">
+      <div class="split-text">
+        <span class="eyebrow">Business DNA</span>
+        <h2 id="dna-heading">Generic AI sounds generic. <span class="accent-dark">MyOrbisVoice sounds like you.</span></h2>
+        <p class="lead">
+          Most "AI receptionist" tools paste your business name into a generic script. MyOrbisVoice uses a five-layer prompt architecture that braids platform safety rules, your business DNA, the channel context, the agent's specialized role, and live session data into every response.
+        </p>
+        <ul class="bullets split-features">
+          <li><strong>Your services, pricing, hours, escalation rules</strong> — captured as structured data, versioned, published with one click.</li>
+          <li><strong>Per-channel personality</strong> — the widget agent flirts a bit, the inbound receptionist is warm and brisk, the outbound campaign agent stays under 30 seconds.</li>
+          <li><strong>Per-role specialization</strong> — appointment agents know your booking rules, sales agents know your pricing, customer-service agents know your refund policy.</li>
+          <li><strong>Compliance language baked in</strong> — prohibited phrases, mandatory disclaimers, opt-out keywords all enforced at the prompt layer.</li>
+        </ul>
+      </div>
+
+      <!-- 5-layer prompt visualization -->
+      <div>
+        <div class="prompt-stack">
+          <div class="prompt-layer l1">
+            <span class="prompt-layer-num">1</span>
+            <span class="label">Platform safety rules<br><span class="what">Don't lie · Don't promise · Defer to humans</span></span>
+          </div>
+          <div class="prompt-layer l2">
+            <span class="prompt-layer-num">2</span>
+            <span class="label">Your business DNA<br><span class="what">Identity · Services · Pricing · Hours · Rules</span></span>
+          </div>
+          <div class="prompt-layer l3">
+            <span class="prompt-layer-num">3</span>
+            <span class="label">Channel overlay<br><span class="what">Inbound vs. Widget vs. Outbound tone</span></span>
+          </div>
+          <div class="prompt-layer l4">
+            <span class="prompt-layer-num">4</span>
+            <span class="label">Agent role<br><span class="what">Appointment · Sales · Customer Service · Marketing</span></span>
+          </div>
+          <div class="prompt-layer l5">
+            <span class="prompt-layer-num">5</span>
+            <span class="label">Live session context<br><span class="what">Caller history · Time of day · Last 6 turns</span></span>
+          </div>
+        </div>
+        <p class="text-center mt-6" style="font-size:0.85rem;color:var(--text-muted);">
+          Five layers compile into one system prompt at the start of each call.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 7 VOICES ────────────────────────────────────────────────────── -->
+<section aria-labelledby="voices-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Pick your voice</span>
+      <h2 id="voices-heading">Seven curated agent voices. Choose one or run multiple.</h2>
+      <p>Different brand, different vibe. Switch the voice in one click — no re-recording, no voice-actor contracts, no studio time.</p>
+    </div>
+
+    <div class="voice-picker">
+      <div class="voice-chip">
+        <div class="voice-chip-name">Zephyr</div>
+        <div class="voice-chip-tone">Bright &amp; clear</div>
+        <span class="voice-chip-tag">Female</span>
+      </div>
+      <div class="voice-chip">
+        <div class="voice-chip-name">Despina</div>
+        <div class="voice-chip-tone">Smooth &amp; polished</div>
+        <span class="voice-chip-tag">Female</span>
+      </div>
+      <div class="voice-chip">
+        <div class="voice-chip-name">Aoede</div>
+        <div class="voice-chip-tone">Warm &amp; breezy</div>
+        <span class="voice-chip-tag">Female</span>
+      </div>
+      <div class="voice-chip">
+        <div class="voice-chip-name">Charon</div>
+        <div class="voice-chip-tone">Deep &amp; authoritative</div>
+        <span class="voice-chip-tag">Male</span>
+      </div>
+      <div class="voice-chip" style="border-color: var(--teal-3);">
+        <div class="voice-chip-name">Fenrir</div>
+        <div class="voice-chip-tone">Warm &amp; approachable</div>
+        <span class="voice-chip-tag" style="background: var(--teal-3); color: white;">Default</span>
+      </div>
+      <div class="voice-chip">
+        <div class="voice-chip-name">Puck</div>
+        <div class="voice-chip-tone">Upbeat &amp; conversational</div>
+        <span class="voice-chip-tag">Male</span>
+      </div>
+      <div class="voice-chip">
+        <div class="voice-chip-name">Sulafat</div>
+        <div class="voice-chip-tone">Warm &amp; even</div>
+        <span class="voice-chip-tag">Neutral</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 7 AGENT ROLES ───────────────────────────────────────────────── -->
+<section class="section-tinted" aria-labelledby="roles-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Specialized agents</span>
+      <h2 id="roles-heading">Seven role-specialized agents. Each one knows its job.</h2>
+      <p>MyOrbisVoice doesn't run one generic agent. It runs the right agent for the job — each with its own behavior, allowed actions, and handoff rules.</p>
+    </div>
+
+    <div class="card-grid">
+      <article class="card">
+        <div class="card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h6l3-9 3 18 3-9h5"/></svg></div>
+        <h3>Orchestrator</h3>
+        <p>Routes complex calls. Decides which specialist handles which question. The traffic controller for everything else.</p>
+      </article>
+      <article class="card">
+        <div class="card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <h3>Appointment</h3>
+        <p>Knows your hours, your booking rules, your buffer times. Books on Google Calendar with conflict checking, sends confirmation email + Calendar invite.</p>
+      </article>
+      <article class="card">
+        <div class="card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <h3>Sales</h3>
+        <p>Quotes prices, qualifies budget and timeline, books discovery calls. Hands off cleanly to a human closer when ready to sign.</p>
+      </article>
+      <article class="card">
+        <div class="card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 11 3 3L22 4"/></svg></div>
+        <h3>Customer Service</h3>
+        <p>Resolves common issues, processes refunds within policy, escalates outliers. Reads from your written rules — not a stale FAQ doc.</p>
+      </article>
+      <article class="card">
+        <div class="card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+        <h3>Marketing</h3>
+        <p>Runs outbound campaigns: re-engagement, recall, post-purchase check-ins. Drops the call gracefully if interest is low.</p>
+      </article>
+      <article class="card">
+        <div class="card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+        <h3>Assistant</h3>
+        <p>Answers general questions, takes messages, transfers calls to the right human, handles after-hours overflow without overpromising.</p>
+      </article>
+      <article class="card featured">
+        <div class="card-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <h3>Secretary</h3>
+        <p>The default front-desk role. Greets, qualifies, books, takes messages. The agent most small businesses live on day one.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ─── INDUSTRY-SPECIFIC SCENARIOS (with mini-conversations) ──────── -->
+<section aria-labelledby="industries-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Real scenarios</span>
+      <h2 id="industries-heading">What a MyOrbisVoice call actually sounds like in your industry.</h2>
+      <p>Every conversation below was generated from the actual prompt structure shipped in the platform — adapted to the vertical's typical caller patterns.</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="scenario">
+        <div class="scenario-header">
+          <span class="scenario-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6V4m0 2a2 2 0 1 0 0 4m0-4a2 2 0 1 1 0 4m-6 8a2 2 0 1 0 0-4m0 4a2 2 0 1 1 0-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 1 0 0-4m0 4a2 2 0 1 1 0-4m0 4v2m0-6V4"/></svg></span>
+          <strong>Dental practice</strong>
+        </div>
+        <p class="scenario-conversation">
+          <strong>Caller:</strong> "I think my crown came loose."<br>
+          <strong>Agent:</strong> "Oh, that's uncomfortable — let's get you in today. Dr. Lee has 3:30 open. Are you a current patient or first time?"
+        </p>
+        <div class="scenario-result">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Same-day emergency booked · saved a $400 patient
+        </div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-header">
+          <span class="scenario-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>
+          <strong>Law firm</strong>
+        </div>
+        <p class="scenario-conversation">
+          <strong>Caller:</strong> "I was in a car accident yesterday."<br>
+          <strong>Agent:</strong> "I'm so sorry — let me make sure you talk to the right attorney. I can book you a free 30-minute consult with our personal injury team. Tomorrow 11 AM or 2 PM?"
+        </p>
+        <div class="scenario-result">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Qualified consult booked · partner notified by SMS
+        </div>
+      </div>
+
+      <div class="scenario">
+        <div class="scenario-header">
+          <span class="scenario-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+          <strong>HVAC service</strong>
+        </div>
+        <p class="scenario-conversation">
+          <strong>Caller:</strong> "My furnace stopped working this morning."<br>
+          <strong>Agent:</strong> "Let's get a tech out. Are you on our maintenance plan? It's 28 degrees out — I can route this as a same-day emergency. What's your zip code?"
+        </p>
+        <div class="scenario-result">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Emergency dispatch booked · ETA texted to caller
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CAMPAIGN AUTOMATION ─────────────────────────────────────────── -->
+<section class="section-soft" aria-labelledby="campaign-heading">
+  <div class="container">
+    <div class="split">
+      <div>
+        <span class="eyebrow">Campaign automation</span>
+        <h2 id="campaign-heading">Tag a contact. <span class="accent-dark">Watch the right message fire.</span></h2>
+        <p class="lead">
+          Every call outcome auto-tags the contact. Every tag triggers a campaign. Every campaign fans out across phone, SMS, email, and WhatsApp — independently, on a schedule, with template substitution.
+        </p>
+        <p>Four campaigns ship pre-built and email-ready on day one:</p>
+        <ul class="bullets mt-4">
+          <li><strong>Booking Confirmation</strong> — fires instantly when a call ends with outcome <code>BOOKED</code>. "Hi {firstName}, your appointment with {businessName} is confirmed for {appointmentDate} at {appointmentTime}."</li>
+          <li><strong>Day-Before Reminder</strong> — fires 24 hours before any appointment.startAt. Auto-enrolled by the booking system.</li>
+          <li><strong>Callback Follow-Up</strong> — 4-hour delay after outcome <code>CALLBACK_REQUESTED</code>. Soft re-engagement.</li>
+          <li><strong>Missed-Call Follow-Up</strong> — instant when outcome is <code>MISSED_CALL</code>. "Sorry we missed you — here's a number to reach us back."</li>
+        </ul>
+      </div>
+
+      <!-- Dashboard mockup showing campaign in flight -->
+      <div class="dashboard-mockup">
+        <div class="dash-header">
+          <h4>Campaigns · last 30 days</h4>
+          <span>● Live</span>
+        </div>
+        <div class="dash-stats">
+          <div class="dash-stat">
+            <div class="dash-stat-label">Tags fired</div>
+            <div class="dash-stat-val">847</div>
+            <div class="dash-stat-delta">↑ 23% vs last 30d</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-label">Emails sent</div>
+            <div class="dash-stat-val">621</div>
+            <div class="dash-stat-delta">↑ 18%</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-label">Show rate</div>
+            <div class="dash-stat-val">94%</div>
+            <div class="dash-stat-delta">↑ 8 pts</div>
+          </div>
+        </div>
+        <div class="dash-rows">
+          <div class="dash-row">
+            <span class="dot"></span>
+            <strong>Sarah Mitchell</strong>
+            <span>booked → confirmation sent · 0:02s</span>
+          </div>
+          <div class="dash-row">
+            <span class="dot"></span>
+            <strong>James Park</strong>
+            <span>callback-requested → email queued for 2 PM</span>
+          </div>
+          <div class="dash-row">
+            <span class="dot"></span>
+            <strong>Maya Chen</strong>
+            <span>missed-call → SMS sent · 0:11s</span>
+          </div>
+          <div class="dash-row">
+            <span class="dot"></span>
+            <strong>Tom Reyes</strong>
+            <span>appointment-scheduled → reminder set for tomorrow 11 AM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── ROI CHART ───────────────────────────────────────────────────── -->
+<section aria-labelledby="roi-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The math</span>
+      <h2 id="roi-heading">A receptionist costs $40,000 a year. <span class="accent-dark">Pro is $5,964.</span></h2>
+      <p>Here's what twelve months of front-desk coverage actually costs in 2026.</p>
+    </div>
+
+    <div class="roi-chart">
+      <div class="roi-bars">
+        <div class="roi-bar">
+          <div class="roi-bar-fill expensive">$40,000</div>
+          <div class="roi-bar-label"><strong>Hire a receptionist</strong><span>$20/hr × 40 hrs × 50 weeks</span></div>
+        </div>
+        <div class="roi-bar">
+          <div class="roi-bar-fill cheap">$5,964</div>
+          <div class="roi-bar-label"><strong>MyOrbisVoice Pro</strong><span>$497/mo × 12 months</span></div>
+        </div>
+      </div>
+      <div class="roi-savings">
+        <strong>$34,036 saved every year</strong>
+        <span>And the AI works nights, weekends, holidays, and never takes vacation.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 5-YEAR SAVINGS + HOURS-COVERED CHARTS ───────────────────────── -->
+<section class="section-soft" aria-labelledby="savings-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The savings stack up · coverage stays full</span>
+      <h2 id="savings-heading">Year one is good. <span class="accent-dark">Year five is staggering.</span></h2>
+      <p>The receptionist gets a raise every year. MyOrbisVoice does not. Multiply the gap by five years and the case writes itself.</p>
+    </div>
+
+    <div class="savings-grid">
+      <!-- 5-year cumulative savings chart -->
+      <div class="savings-card">
+        <h3>5-year cumulative cost</h3>
+        <p class="savings-card-sub">A receptionist at $40K/yr versus MyOrbisVoice Pro at $5,964/yr, compounded over five years. The shaded area is your savings.</p>
+        <div class="savings-chart">
+          <svg viewBox="0 0 600 320" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="cum-title cum-desc">
+            <title id="cum-title">5-year cumulative cost: hire a receptionist vs MyOrbisVoice Pro</title>
+            <desc id="cum-desc">Receptionist climbs to $200,000 over 5 years. MyOrbisVoice Pro reaches $29,820. Total savings: $170,180.</desc>
+
+            <!-- Y-axis grid lines + labels -->
+            <line class="grid-line" x1="60" y1="50"  x2="560" y2="50"  />
+            <line class="grid-line" x1="60" y1="103" x2="560" y2="103" />
+            <line class="grid-line" x1="60" y1="155" x2="560" y2="155" />
+            <line class="grid-line" x1="60" y1="208" x2="560" y2="208" />
+            <line class="grid-line" x1="60" y1="260" x2="560" y2="260" />
+            <text class="axis-label" x="55" y="54"  text-anchor="end">$200K</text>
+            <text class="axis-label" x="55" y="107" text-anchor="end">$150K</text>
+            <text class="axis-label" x="55" y="159" text-anchor="end">$100K</text>
+            <text class="axis-label" x="55" y="212" text-anchor="end">$50K</text>
+            <text class="axis-label" x="55" y="264" text-anchor="end">$0</text>
+
+            <!-- X-axis labels -->
+            <text class="axis-label" x="60"  y="280" text-anchor="middle">Yr 0</text>
+            <text class="axis-label" x="160" y="280" text-anchor="middle">Yr 1</text>
+            <text class="axis-label" x="260" y="280" text-anchor="middle">Yr 2</text>
+            <text class="axis-label" x="360" y="280" text-anchor="middle">Yr 3</text>
+            <text class="axis-label" x="460" y="280" text-anchor="middle">Yr 4</text>
+            <text class="axis-label" x="560" y="280" text-anchor="middle">Yr 5</text>
+
+            <!-- Savings area (between receptionist line and Pro line) -->
+            <path class="area-savings"
+              d="M 60,260 L 160,218 L 260,176 L 360,134 L 460,92 L 560,50 L 560,229 L 460,235 L 360,241 L 260,247 L 160,254 L 60,260 Z" />
+
+            <!-- Receptionist line (climbs $40K/yr) -->
+            <polyline class="line-receptionist"
+              points="60,260 160,218 260,176 360,134 460,92 560,50" />
+            <!-- Pro line (climbs $5,964/yr — nearly flat at this scale) -->
+            <polyline class="line-pro"
+              points="60,260 160,254 260,247 360,241 460,235 560,229" />
+
+            <!-- Endpoint dots -->
+            <circle class="endpoint-dot receptionist" cx="560" cy="50"  r="5" />
+            <circle class="endpoint-dot pro"          cx="560" cy="229" r="5" />
+
+            <!-- Endpoint labels -->
+            <text class="endpoint-label receptionist" x="565" y="45" text-anchor="start">$200,000</text>
+            <text class="endpoint-label pro"          x="565" y="234" text-anchor="start">$29,820</text>
+          </svg>
+          <div class="legend">
+            <span><span class="legend-dot receptionist"></span>Hire a receptionist · $40K/yr</span>
+            <span><span class="legend-dot pro"></span>MyOrbisVoice Pro · $5,964/yr</span>
+          </div>
+        </div>
+        <div class="savings-card-headline">
+          <strong>$170,180 saved over 5 years</strong>
+          <span>Enough to hire 4 mid-level engineers for a year. Or just keep it.</span>
+        </div>
+      </div>
+
+      <!-- Hours-covered donut pair -->
+      <div class="savings-card">
+        <h3>Hours covered per week</h3>
+        <p class="savings-card-sub">A typical receptionist works a 40-hour week. Your business runs 168 hours a week. The gap is where missed calls live.</p>
+
+        <div class="donut-pair">
+          <div class="donut-cell">
+            <svg viewBox="0 0 200 200" role="img" aria-label="With a receptionist: 40 of 168 hours covered, 24 percent">
+              <circle class="donut-track" cx="100" cy="100" r="80" fill="none" stroke-width="22" />
+              <circle class="donut-fill" cx="100" cy="100" r="80" fill="none" stroke-width="22"
+                pathLength="100" stroke-dasharray="24 100" stroke-dashoffset="0"
+                transform="rotate(-90 100 100)" stroke-linecap="round" />
+              <text class="donut-num"     x="100" y="98"  text-anchor="middle">40</text>
+              <text class="donut-num-sub" x="100" y="115" text-anchor="middle">hrs/week</text>
+            </svg>
+            <p class="donut-label">With a receptionist</p>
+            <p class="donut-sub">24% of the week covered</p>
+          </div>
+
+          <div class="donut-cell">
+            <svg viewBox="0 0 200 200" role="img" aria-label="With MyOrbisVoice: 168 of 168 hours covered, 100 percent">
+              <circle class="donut-track" cx="100" cy="100" r="80" fill="none" stroke-width="22" />
+              <circle class="donut-fill" cx="100" cy="100" r="80" fill="none" stroke-width="22"
+                pathLength="100" stroke-dasharray="100 100" stroke-dashoffset="0"
+                transform="rotate(-90 100 100)" stroke-linecap="round" />
+              <text class="donut-num"     x="100" y="98"  text-anchor="middle">168</text>
+              <text class="donut-num-sub" x="100" y="115" text-anchor="middle">hrs/week</text>
+            </svg>
+            <p class="donut-label">With MyOrbisVoice</p>
+            <p class="donut-sub">100% of the week covered</p>
+          </div>
+        </div>
+
+        <div class="savings-card-headline">
+          <strong>4.2× more hours covered</strong>
+          <span>Including 2 AM emergencies, holiday weekends, and lunch hour.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── IMPACT NUMBERS ──────────────────────────────────────────────── -->
+<section class="section-tinted" aria-labelledby="impact-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">By the numbers</span>
+      <h2 id="impact-heading">What changes the day you turn it on.</h2>
+    </div>
+
+    <div class="impact-grid">
+      <div class="impact">
+        <strong>100<span class="unit">%</span></strong>
+        <span class="label">of calls answered</span>
+        <span class="sub">Including 2 AM, holidays, lunch hour</span>
+      </div>
+      <div class="impact">
+        <strong>&lt; 1<span class="unit">s</span></strong>
+        <span class="label">response latency</span>
+        <span class="sub">Gemini native-audio</span>
+      </div>
+      <div class="impact">
+        <strong>30<span class="unit">+</span></strong>
+        <span class="label">tag-driven workflows</span>
+        <span class="sub">Out of the box</span>
+      </div>
+      <div class="impact">
+        <strong>20<span class="unit">min</span></strong>
+        <span class="label">to first live call</span>
+        <span class="sub">Most customers, most days</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── COMPARISON TABLE ────────────────────────────────────────────── -->
+<section aria-labelledby="compare-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Why MyOrbisVoice</span>
+      <h2 id="compare-heading">Built for actual small businesses — not enterprises pretending to serve them.</h2>
+      <p>The "AI receptionist" market splits into toy-grade chatbots and enterprise call-center suites. We're the practical middle.</p>
+    </div>
+
+    <div class="compare">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Capability</th>
+            <th scope="col">Hire a receptionist</th>
+            <th scope="col">Generic answering service</th>
+            <th scope="col">Enterprise voice AI</th>
+            <th scope="col" class="us">MyOrbisVoice</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">24/7 coverage including nights &amp; weekends</th>
+            <td><span class="x">✗</span></td>
+            <td><span class="check">✓</span></td>
+            <td><span class="check">✓</span></td>
+            <td class="us"><span class="check">✓</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Books real Google Calendar appointments</th>
+            <td><span class="check">✓</span></td>
+            <td><span class="x">✗</span></td>
+            <td><span class="partial">Custom integration</span></td>
+            <td class="us"><span class="check">✓ Native, one-click</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Multi-channel campaigns (phone + SMS + email + WhatsApp)</th>
+            <td><span class="x">✗</span></td>
+            <td><span class="x">✗</span></td>
+            <td><span class="partial">Add-on product</span></td>
+            <td class="us"><span class="check">✓ Tag-driven, built-in</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Sub-second voice latency (Gemini native-audio)</th>
+            <td><span class="check">✓</span></td>
+            <td><span class="check">✓</span></td>
+            <td><span class="partial">Varies by vendor</span></td>
+            <td class="us"><span class="check">✓ Always</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Talks like your business via 5-layer prompt DNA</th>
+            <td><span class="check">✓</span></td>
+            <td><span class="x">✗ Reads from script</span></td>
+            <td><span class="partial">With consultants</span></td>
+            <td class="us"><span class="check">✓ Self-serve, plain English</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Live in under an hour, no developers</th>
+            <td><span class="x">✗</span></td>
+            <td><span class="check">✓</span></td>
+            <td><span class="x">✗ 3-6 month implementation</span></td>
+            <td class="us"><span class="check">✓ 20-minute median setup</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Transparent monthly pricing, no contract</th>
+            <td><span class="x">✗ ~$40K/yr salary</span></td>
+            <td><span class="check">✓</span></td>
+            <td><span class="x">✗ Quote-based</span></td>
+            <td class="us"><span class="check">✓ From $197/mo</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ─── PRICING TEASER ──────────────────────────────────────────────── -->
+<section class="section-soft" aria-labelledby="pricing-teaser-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Five plans, real numbers</span>
+      <h2 id="pricing-teaser-heading">Start free. Upgrade when your phone proves it deserves to.</h2>
+      <p>No per-seat licensing. No 3-year contracts. Cancel anytime.</p>
+    </div>
+
+    <div class="pricing-grid">
+      <div class="price-card">
+        <h3>Basic</h3>
+        <div class="price">$197<small>/mo</small></div>
+        <p class="price-desc">Solo practitioners who just need their phone answered.</p>
+        <ul>
+          <li>1 phone number</li>
+          <li>2 agents · 2 channels (inbound + widget)</li>
+          <li>500 voice minutes / month</li>
+          <li>1,000 contacts</li>
+          <li>Real-time transcripts &amp; recordings</li>
+        </ul>
+        <a href="https://app.myorbisvoice.com/signup" class="btn btn-secondary">Start free trial</a>
+      </div>
+
+      <div class="price-card popular">
+        <h3>Pro</h3>
+        <div class="price">$497<small>/mo</small></div>
+        <p class="price-desc">The plan most businesses actually live on.</p>
+        <ul>
+          <li>3 phone numbers</li>
+          <li>3 agents · all 3 channels (widget · inbound · outbound)</li>
+          <li>2,000 voice minutes / month</li>
+          <li>5,000 contacts</li>
+          <li>SMS + WhatsApp campaigns</li>
+          <li>Tag-driven automation</li>
+          <li>Webhooks &amp; API access</li>
+        </ul>
+        <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary">Start free trial</a>
+      </div>
+
+      <div class="price-card">
+        <h3>Premier</h3>
+        <div class="price">$997<small>/mo</small></div>
+        <p class="price-desc">Multi-location operations &amp; high-volume teams.</p>
+        <ul>
+          <li>5 phone numbers · 5 locations</li>
+          <li>All 7 agent roles</li>
+          <li>5,000 voice minutes / month</li>
+          <li>20,000 contacts</li>
+          <li>Sentiment analysis &amp; VIP recognition</li>
+          <li>Priority support</li>
+        </ul>
+        <a href="https://app.myorbisvoice.com/signup" class="btn btn-secondary">Start free trial</a>
+      </div>
+    </div>
+
+    <p class="text-center mt-6">
+      <a href="pricing.html" class="btn btn-ghost">See LTD lifetime deal &amp; Enterprise →</a>
+    </p>
+  </div>
+</section>
+
+<!-- ─── FINAL CTA ───────────────────────────────────────────────────── -->
 <section>
-  <div class="container">
-    <div class="section-header">
-      <span class="section-label">Why MyOrbisVoice</span>
-      <h2>Everything your front desk should do — <span class="accent">automated</span></h2>
-      <p>From the first ring to the follow-up email, your voice agents handle the entire customer journey without you lifting a finger.</p>
-    </div>
-    <div class="grid-3">
-      <div class="card">
-        <div class="card-icon">📞</div>
-        <h3>Answer Every Call</h3>
-        <p>Never miss a lead again. Your AI receptionist picks up instantly, qualifies callers, and routes them appropriately — day or night.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">📅</div>
-        <h3>Book Appointments</h3>
-        <p>Callers book directly on your Google Calendar during the call. Confirmations and reminders go out automatically.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">🌐</div>
-        <h3>Website Voice Widget</h3>
-        <p>Add a live voice agent to any website in minutes. Visitors talk to your AI, get answers, and convert — without filling out a form.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">📤</div>
-        <h3>Outbound Campaigns</h3>
-        <p>Re-engage cold leads, confirm appointments, or run follow-up campaigns at scale — your agents make the calls automatically.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">🧠</div>
-        <h3>Trained on Your Business</h3>
-        <p>Set your Business DNA once — services, pricing, policies, tone. Every agent speaks for your brand, not a generic script.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">📊</div>
-        <h3>Full Conversation Logs</h3>
-        <p>Every call transcribed and summarised. Know exactly what was said, what was booked, and what needs follow-up.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ── Channels preview ── -->
-<section style="background: var(--bg-2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-label">Three Channels</span>
-      <h2>Meet your customers <span class="accent">wherever they are</span></h2>
-    </div>
-    <div class="channel-tabs">
-      <button class="channel-tab active" data-tab="ch-widget">Website Widget</button>
-      <button class="channel-tab" data-tab="ch-inbound">Inbound Receptionist</button>
-      <button class="channel-tab" data-tab="ch-outbound">Outbound Caller</button>
-    </div>
-
-    <div class="channel-panel active" id="ch-widget">
-      <div>
-        <h3 style="font-size:1.5rem; margin-bottom:16px;">Turn website visitors into booked appointments</h3>
-        <p style="margin-bottom:24px;">Your widget agent answers questions in plain English, qualifies interest, and books directly on your calendar — without a form or a wait.</p>
-        <ul style="list-style:none; display:flex; flex-direction:column; gap:12px;">
-          <li style="display:flex;gap:10px;align-items:flex-start;font-size:.93rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:700;">✓</span> Real-time voice in the browser</li>
-          <li style="display:flex;gap:10px;align-items:flex-start;font-size:.93rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:700;">✓</span> Embed with one line of code</li>
-          <li style="display:flex;gap:10px;align-items:flex-start;font-size:.93rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:700;">✓</span> Books to Google Calendar instantly</li>
-        </ul>
-      </div>
-      <div class="card" style="min-height:220px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px;">
-        <div style="width:64px;height:64px;border-radius:50%;background:var(--green-dim);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:1.8rem;">🎙️</div>
-        <p style="text-align:center; font-size:.9rem;">Widget agent live on your site</p>
-        <a href="solutions.html" class="btn btn-outline">Learn more</a>
-      </div>
-    </div>
-
-    <div class="channel-panel" id="ch-inbound">
-      <div>
-        <h3 style="font-size:1.5rem; margin-bottom:16px;">A receptionist that never puts anyone on hold</h3>
-        <p style="margin-bottom:24px;">Connect your Twilio number and your AI receptionist handles every call — greets callers by context, qualifies them, books or forwards appropriately.</p>
-        <ul style="list-style:none; display:flex; flex-direction:column; gap:12px;">
-          <li style="display:flex;gap:10px;align-items:flex-start;font-size:.93rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:700;">✓</span> Answers within 1 ring</li>
-          <li style="display:flex;gap:10px;align-items:flex-start;font-size:.93rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:700;">✓</span> After-hours & overflow handling</li>
-          <li style="display:flex;gap:10px;align-items:flex-start;font-size:.93rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:700;">✓</span> Smart call routing & warm transfers</li>
-        </ul>
-      </div>
-      <div class="card" style="min-height:220px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px;">
-        <div style="width:64px;height:64px;border-radius:50%;background:var(--green-dim);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:1.8rem;">📞</div>
-        <p style="text-align:center; font-size:.9rem;">Inbound receptionist on your number</p>
-        <a href="solutions.html" class="btn btn-outline">Learn more</a>
-      </div>
-    </div>
-
-    <div class="channel-panel" id="ch-outbound">
-      <div>
-        <h3 style="font-size:1.5rem; margin-bottom:16px;">Reach leads before your competitors do</h3>
-        <p style="margin-bottom:24px;">Upload a list, set a script, and your outbound agent makes the calls — confirming appointments, following up on quotes, or reactivating dormant contacts.</p>
-        <ul style="list-style:none; display:flex; flex-direction:column; gap:12px;">
-          <li style="display:flex;gap:10px;align-items:flex-start;font-size:.93rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:700;">✓</span> Campaign scheduling & retry logic</li>
-          <li style="display:flex;gap:10px;align-items:flex-start;font-size:.93rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:700;">✓</span> Live result logging & transcripts</li>
-          <li style="display:flex;gap:10px;align-items:flex-start;font-size:.93rem;color:var(--text-muted);"><span style="color:var(--green);font-weight:700;">✓</span> SMS or email follow-up after each call</li>
-        </ul>
-      </div>
-      <div class="card" style="min-height:220px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px;">
-        <div style="width:64px;height:64px;border-radius:50%;background:var(--green-dim);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:1.8rem;">📤</div>
-        <p style="text-align:center; font-size:.9rem;">Outbound campaigns at scale</p>
-        <a href="solutions.html" class="btn btn-outline">Learn more</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ── Testimonials ── -->
-<section>
-  <div class="container">
-    <div class="section-header">
-      <span class="section-label">What customers say</span>
-      <h2>Businesses running on <span class="accent">voice agents</span></h2>
-    </div>
-    <div class="grid-3">
-      <div class="testimonial">
-        <p class="testimonial-text">"We went from missing 30% of inbound calls after hours to a 100% answer rate. Our bookings increased by 40% in the first month."</p>
-        <div class="testimonial-author">
-          <div class="testimonial-avatar">JR</div>
-          <div><div class="testimonial-name">James R.</div><div class="testimonial-role">Owner, Premier HVAC Services</div></div>
-        </div>
-      </div>
-      <div class="testimonial">
-        <p class="testimonial-text">"The website widget alone paid for itself. Visitors now talk to our agent, get a quote, and book — without us doing a thing."</p>
-        <div class="testimonial-author">
-          <div class="testimonial-avatar">ST</div>
-          <div><div class="testimonial-name">Sarah T.</div><div class="testimonial-role">Director, ClearSmile Dental</div></div>
-        </div>
-      </div>
-      <div class="testimonial">
-        <p class="testimonial-text">"Setup was shockingly fast. I had a voice agent answering calls in under an hour. The transcript summaries alone save me hours a week."</p>
-        <div class="testimonial-author">
-          <div class="testimonial-avatar">ML</div>
-          <div><div class="testimonial-name">Marcus L.</div><div class="testimonial-role">Founder, Apex Real Estate</div></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ── CTA ── -->
-<section style="padding: 48px 0 96px;">
   <div class="container">
     <div class="cta-banner">
-      <h2>Ready to put your phones on <span class="accent">autopilot?</span></h2>
-      <p>Join businesses already running 24/7 on AI voice agents. Free to start — no credit card required.</p>
-      <div class="btn-cta">
-        <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-lg">Start free today</a>
-        <a href="pricing.html" class="btn btn-ghost btn-lg">View pricing</a>
+      <h2>Stop missing customers. Start tomorrow.</h2>
+      <p>Sign up free. Connect your Google Calendar. Make your first AI call in under an hour. No credit card for the trial.</p>
+      <div class="hero-cta" style="justify-content: center;">
+        <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-lg">Start free trial</a>
+        <a href="how-it-works.html" class="btn btn-ghost btn-lg" style="color: rgba(255,255,255,0.95);">See how it works</a>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Footer ── -->
-<footer>
+</main>
+
+<!-- ─── FOOTER ──────────────────────────────────────────────────────── -->
+<footer class="site-footer" aria-label="Site footer">
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a href="index.html" class="nav-logo" style="display:inline-flex;">
-          <div class="nav-logo-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="3.5" fill="#021a0e"/><circle cx="9" cy="9" r="7.5" stroke="#021a0e" stroke-opacity=".5" stroke-width="2"/></svg></div>
+        <a href="index.html" class="nav-logo">
+          <span class="nav-logo-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+              <circle cx="9" cy="9" r="3.5" fill="white"/>
+              <circle cx="9" cy="9" r="7.5" stroke="white" stroke-opacity="0.5" stroke-width="2"/>
+            </svg>
+          </span>
           MyOrbisVoice
         </a>
-        <p>AI voice agents for businesses that never want to miss a call, a lead, or a booking.</p>
+        <p>Conversational AI voice automation for service businesses. Powered by Gemini 2.5 Flash native-audio. Built for the small business that wants enterprise-grade phone presence without the enterprise contract.</p>
+        <p style="font-size: 0.82rem; color: var(--text-subtle); margin-top: 16px;">
+          MyOrbisVoice<br>
+          716 Washington St, Suite 2<br>
+          Allentown, PA 18102
+        </p>
       </div>
+
       <div class="footer-col">
-        <h4>Product</h4>
+        <h5>Product</h5>
         <a href="solutions.html">Solutions</a>
         <a href="how-it-works.html">How It Works</a>
         <a href="pricing.html">Pricing</a>
-        <a href="affiliate.html">Affiliate</a>
-      <a href="https://app.myorbisvoice.com/affiliate-portal/login">Partner Login</a>
+        <a href="https://app.myorbisvoice.com/signup">Start free</a>
       </div>
+
       <div class="footer-col">
-        <h4>Account</h4>
-        <a href="https://app.myorbisvoice.com/login">Log In</a>
-        <a href="https://app.myorbisvoice.com/signup">Sign Up</a>
-        <a href="https://app.myorbisvoice.com">Dashboard</a>
+        <h5>Company</h5>
+        <a href="partner.html">Become a Partner</a>
+        <a href="https://app.myorbisvoice.com/partner-portal/login">Partner Login</a>
+        <a href="https://app.myorbisvoice.com/login">Customer Login</a>
       </div>
+
       <div class="footer-col">
-        <h4>Legal</h4>
-        <a href="privacy.html">Privacy Policy</a>
+        <h5>Legal</h5>
         <a href="terms.html">Terms of Service</a>
+        <a href="privacy.html">Privacy Policy</a>
         <a href="cookies.html">Cookie Policy</a>
       </div>
-      <div class="footer-col">
-        <h4>Contact</h4>
-        <a href="mailto:admin@myorbisvoice.com">admin@myorbisvoice.com</a>
-        <a href="tel:+18885551212">888-555-1212</a>
-        <span style="display:block;font-size:.9rem;color:var(--text-muted);padding:4px 0;">Serving the Greater<br>Atlanta, GA area</span>
-      </div>
     </div>
+
     <div class="footer-bottom">
-      <p>© 2026 MyOrbisVoice. All rights reserved.</p>
-      <p>Built with AI. Powered by humans.</p>
+      <span>© 2026 MyOrbisVoice. All rights reserved.</span>
+      <div class="footer-bottom-links">
+        <a href="terms.html">Terms</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="cookies.html">Cookies</a>
+      </div>
     </div>
   </div>
 </footer>
 
 <script src="assets/js/main.js"></script>
-<script src="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js"></script>
-<script>OrbisVoice.init({ publicKey: "ov_live_a1b2c3d4e5f6a7b8c9d0e1f2", businessName: "MyOrbisVoice" })</script>
 </body>
 </html>

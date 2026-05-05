@@ -1,272 +1,539 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>How It Works — MyOrbisVoice</title>
-  <meta name="description" content="Set up your AI voice agent in under an hour. See exactly how MyOrbisVoice works from signup to live calls." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How It Works — MyOrbisVoice AI Voice Setup in 20 Minutes</title>
+  <meta name="description" content="From signup to first live call in under an hour. See exactly how MyOrbisVoice connects your phone, calendar, and email — and how the 5-layer prompt engine teaches a Gemini agent to talk like your business." />
+  <meta name="keywords" content="AI voice agent setup, how AI receptionist works, Gemini Live integration, AI voice onboarding, business DNA prompt engineering, voice AI implementation" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://myorbisvoice.com/how-it-works.html" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://myorbisvoice.com/how-it-works.html" />
+  <meta property="og:title" content="How MyOrbisVoice Works — From Signup to Live Call in Under an Hour" />
+  <meta property="og:description" content="A four-step setup, a 5-layer prompt engine, and a Gemini-powered voice gateway. Here's everything happening under the hood." />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to set up MyOrbisVoice",
+    "description": "Set up an AI voice agent for your business in four steps.",
+    "step": [
+      { "@type": "HowToStep", "position": 1, "name": "Sign up and configure your Business DNA" },
+      { "@type": "HowToStep", "position": 2, "name": "Connect Google Calendar and Gmail" },
+      { "@type": "HowToStep", "position": 3, "name": "Pick your agent voice and roles" },
+      { "@type": "HowToStep", "position": 4, "name": "Forward your phone number and go live" }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
-<nav>
+
+<!-- ─── NAV ─────────────────────────────────────────────────────────── -->
+<nav class="site-nav" aria-label="Main navigation">
   <div class="nav-inner">
-    <a href="index.html" class="nav-logo"><div class="nav-logo-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="3.5" fill="#061818"/><circle cx="9" cy="9" r="7.5" stroke="#061818" stroke-opacity=".5" stroke-width="2"/></svg></div>MyOrbisVoice</a>
+    <a href="index.html" class="nav-logo" aria-label="MyOrbisVoice home">
+      <span class="nav-logo-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="3.5" fill="white"/>
+          <circle cx="9" cy="9" r="7.5" stroke="white" stroke-opacity="0.5" stroke-width="2"/>
+        </svg>
+      </span>
+      MyOrbisVoice
+    </a>
     <div class="nav-links">
-      <a href="index.html">Home</a><a href="solutions.html">Solutions</a><a href="how-it-works.html" class="active">How It Works</a><a href="pricing.html">Pricing</a><a href="affiliate.html">Affiliate</a>
-      <a href="https://app.myorbisvoice.com/affiliate-portal/login">Partner Login</a>
+      <a href="index.html">Home</a>
+      <a href="solutions.html">Solutions</a>
+      <a href="how-it-works.html" class="active">How It Works</a>
+      <a href="pricing.html">Pricing</a>
     </div>
     <div class="nav-cta">
-      <a href="https://app.myorbisvoice.com/login" class="btn btn-ghost" style="padding:9px 20px">Log In</a>
-      <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary" style="padding:9px 20px">Start Free</a>
+      <a href="es/how-it-works.html" class="lang-toggle" aria-label="Cambiar a español" hreflang="es"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>ES</a>
+      <a href="https://app.myorbisvoice.com/login" class="btn btn-ghost btn-sm">Log in</a>
+      <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-sm">Start free</a>
     </div>
-    <button class="nav-burger" id="nav-burger"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="19" y2="6"/><line x1="3" y1="11" x2="19" y2="11"/><line x1="3" y1="16" x2="19" y2="16"/></svg></button>
+    <button class="nav-burger" id="nav-burger" aria-label="Open menu" aria-expanded="false">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="6" x2="19" y2="6"/><line x1="3" y1="11" x2="19" y2="11"/><line x1="3" y1="16" x2="19" y2="16"/>
+      </svg>
+    </button>
   </div>
 </nav>
 <div class="nav-mobile" id="nav-mobile">
-  <a href="index.html">Home</a><a href="solutions.html">Solutions</a><a href="how-it-works.html">How It Works</a>
-  <a href="pricing.html">Pricing</a><a href="affiliate.html">Affiliate</a>
-  <a href="https://app.myorbisvoice.com/affiliate-portal/login">Partner Login</a>
-  <a href="https://app.myorbisvoice.com/affiliate-portal/signup">Join as Partner</a>
-  <a href="https://app.myorbisvoice.com/login" class="btn btn-ghost">Log In</a>
-  <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary">Start Free</a>
+  <a href="es/how-it-works.html" class="lang-toggle" aria-label="Cambiar a español" hreflang="es" style="margin-bottom:8px;">🌐 Español</a>
+  <a href="index.html">Home</a>
+  <a href="solutions.html">Solutions</a>
+  <a href="how-it-works.html">How It Works</a>
+  <a href="pricing.html">Pricing</a>
+  <a href="https://app.myorbisvoice.com/login" class="btn btn-secondary">Log in</a>
+  <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary">Start free</a>
 </div>
 
-<section class="hero" style="padding-bottom:64px;">
-  <div class="hero-glow"></div>
+<main>
+
+<!-- ─── PAGE HEADER ─────────────────────────────────────────────────── -->
+<section class="page-header" aria-labelledby="how-heading">
   <div class="container">
-    <span class="section-label">How It Works</span>
-    <h1>From signup to <span class="accent">live calls</span> in under an hour</h1>
-    <p>No developers. No complex integrations. Just answer a few questions and your AI voice agent is ready to go.</p>
+    <span class="eyebrow">Setup · architecture · what happens on every call</span>
+    <h1 id="how-heading">From signup to first live call in <mark>under an hour</mark>.</h1>
+    <p>No developer, no integration consultant, no eight-week onboarding. Here's the actual end-to-end of what MyOrbisVoice does the moment your number rings — and the four steps it takes to get there.</p>
   </div>
 </section>
 
-<!-- Setup steps -->
+<!-- ─── 4-STEP SETUP ────────────────────────────────────────────────── -->
+<section aria-labelledby="setup-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Setup in four steps</span>
+      <h2 id="setup-heading">Twenty minutes is the median. <span class="accent-dark">An hour is the slow path.</span></h2>
+      <p>Each step is self-serve. You'll never need to schedule a "configuration call" with our team to get live.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Sign up &amp; configure Business DNA</h3>
+        <p>Tell the platform who you are: your services, hours, pricing, escalation rules, prohibited language. Captured as structured data with one-click publish.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Connect Google &amp; Twilio</h3>
+        <p>OAuth into Gmail + Calendar in two clicks. Drop in your Twilio Account SID and Auth Token, or buy a number through us.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Pick voice &amp; roles</h3>
+        <p>Choose from seven curated voices. Enable the seven specialist agent roles you need. Most customers run with the Secretary role on day one and add the rest as they grow.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Forward your number, go live</h3>
+        <p>Set your business line to forward to the MyOrbisVoice number we provision. The next caller hears your AI agent in under one second of dial tone.</p>
+      </div>
+    </div>
+
+    <div class="text-center mt-6">
+      <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-lg">Start the setup now</a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── ARCHITECTURE ────────────────────────────────────────────────── -->
+<section class="section-soft" aria-labelledby="arch-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Under the hood</span>
+      <h2 id="arch-heading">One brain. Three customer channels — <span class="accent-dark">website widget, inbound calls, outbound campaigns</span>. Four automation outputs.</h2>
+      <p>MyOrbisVoice is built around a single AI engine that powers every channel. Your prompt configuration, your Business DNA, your role library — defined once, used everywhere.</p>
+    </div>
+
+    <div class="arch-diagram">
+      <!-- Dashed connector lines (3 inputs → brain, brain → 4 outputs) -->
+      <div class="arch-connector-layer" aria-hidden="true">
+        <svg viewBox="0 0 1000 480" preserveAspectRatio="none">
+          <path d="M 230 80 C 320 80 340 220 400 240" />
+          <path d="M 230 240 C 320 240 360 240 400 240" />
+          <path d="M 230 400 C 320 400 340 260 400 240" />
+          <path d="M 600 240 C 660 80 680 60 770 60" />
+          <path d="M 600 240 C 660 180 680 180 770 180" />
+          <path d="M 600 240 C 660 300 680 300 770 300" />
+          <path d="M 600 240 C 660 420 680 420 770 420" />
+        </svg>
+      </div>
+
+      <div class="arch-grid">
+        <!-- Inputs -->
+        <div class="arch-col">
+          <h4>Customer reaches you via</h4>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+            <div><strong>Inbound phone</strong><span>Twilio voice gateway</span></div>
+          </div>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+            <div><strong>Website widget</strong><span>Browser WebSocket</span></div>
+          </div>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            <div><strong>Outbound campaigns</strong><span>Tag-driven scheduler</span></div>
+          </div>
+        </div>
+
+        <!-- Brain -->
+        <div class="arch-brain">
+          <span class="arch-brain-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
+              <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+            </svg>
+          </span>
+          <h3>MyOrbisVoice AI Engine</h3>
+          <p>Gemini 2.5 Flash native-audio<br>+ 5-layer prompt architecture<br>+ Business DNA per tenant</p>
+          <span class="pill">7 agent roles · 7 voices</span>
+        </div>
+
+        <!-- Outputs -->
+        <div class="arch-col">
+          <h4>Then it automatically</h4>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+            <div><strong>Books appointment</strong><span>Live Google Calendar</span></div>
+          </div>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
+            <div><strong>Sends email</strong><span>Gmail OAuth, your address</span></div>
+          </div>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+            <div><strong>Texts SMS / WhatsApp</strong><span>Per-tenant Twilio subaccount</span></div>
+          </div>
+          <div class="arch-node">
+            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+            <div><strong>Tags contact</strong><span>Triggers next campaign</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── 5-LAYER PROMPT ENGINE ──────────────────────────────────────── -->
+<section aria-labelledby="prompt-heading">
+  <div class="container">
+    <div class="split">
+      <div class="split-text">
+        <span class="eyebrow">The prompt engine</span>
+        <h2 id="prompt-heading">Generic AI sounds generic. <span class="accent-dark">MyOrbisVoice sounds like you.</span></h2>
+        <p class="lead">
+          Most "AI receptionist" tools paste your business name into a generic script. MyOrbisVoice uses a five-layer prompt architecture that braids platform safety rules, your business DNA, the channel context, the agent's specialized role, and live session data into every response.
+        </p>
+        <ul class="bullets split-features">
+          <li><strong>Layer 1 — Platform safety rules.</strong> Don't lie. Don't promise outcomes. Defer to humans on legal and medical questions.</li>
+          <li><strong>Layer 2 — Your Business DNA.</strong> Identity, services, pricing, hours, escalation rules. Versioned. One-click publish.</li>
+          <li><strong>Layer 3 — Channel overlay.</strong> Inbound is warm and brisk. Widget is friendly and fast. Outbound stays under thirty seconds.</li>
+          <li><strong>Layer 4 — Agent role.</strong> Appointment specialists know booking rules. Sales agents know pricing. Customer service knows your refund policy.</li>
+          <li><strong>Layer 5 — Live session context.</strong> Caller history, time of day, last six turns. Compiled at the start of every call.</li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="prompt-stack">
+          <div class="prompt-layer l1">
+            <span class="prompt-layer-num">1</span>
+            <span class="label">Platform safety rules<br><span class="what">Don't lie · Don't promise · Defer to humans</span></span>
+          </div>
+          <div class="prompt-layer l2">
+            <span class="prompt-layer-num">2</span>
+            <span class="label">Your Business DNA<br><span class="what">Identity · Services · Pricing · Hours · Rules</span></span>
+          </div>
+          <div class="prompt-layer l3">
+            <span class="prompt-layer-num">3</span>
+            <span class="label">Channel overlay<br><span class="what">Inbound · Widget · Outbound tone</span></span>
+          </div>
+          <div class="prompt-layer l4">
+            <span class="prompt-layer-num">4</span>
+            <span class="label">Agent role<br><span class="what">Appointment · Sales · Service · Marketing</span></span>
+          </div>
+          <div class="prompt-layer l5">
+            <span class="prompt-layer-num">5</span>
+            <span class="label">Live session context<br><span class="what">Caller history · Time of day · Last 6 turns</span></span>
+          </div>
+        </div>
+        <p class="text-center mt-6" style="font-size:0.85rem;color:var(--text-muted);">
+          Five layers compile into one system prompt at the start of every session.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── ANATOMY OF A CALL ──────────────────────────────────────────── -->
+<section class="section-tinted" aria-labelledby="call-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Anatomy of a call</span>
+      <h2 id="call-heading">Six things happen in <span class="accent-dark">under one second</span>.</h2>
+      <p>From the moment the phone rings to the moment your agent says "hi" — here's the actual chain.</p>
+    </div>
+
+    <div class="prompt-stack" style="max-width:780px;margin:0 auto;">
+      <div class="prompt-layer l1">
+        <span class="prompt-layer-num">1</span>
+        <span class="label">Twilio routes the call to MyOrbisVoice<br><span class="what">~50ms · TwiML response with WebSocket URL</span></span>
+      </div>
+      <div class="prompt-layer l2">
+        <span class="prompt-layer-num">2</span>
+        <span class="label">Gateway resolves your tenant + prompt stack<br><span class="what">~80ms · DB lookup by phone number, prompt compile</span></span>
+      </div>
+      <div class="prompt-layer l3">
+        <span class="prompt-layer-num">3</span>
+        <span class="label">Gemini Live session opens<br><span class="what">~200ms · WebSocket to Gemini, session token issued</span></span>
+      </div>
+      <div class="prompt-layer l4">
+        <span class="prompt-layer-num">4</span>
+        <span class="label">First audio frames flow caller → AI<br><span class="what">~real-time · 16 kHz PCM, native streaming, no buffering</span></span>
+      </div>
+      <div class="prompt-layer l5">
+        <span class="prompt-layer-num">5</span>
+        <span class="label">Agent's first audio byte plays<br><span class="what">&lt;1s · Gemini native-audio response, streamed to caller</span></span>
+      </div>
+      <div class="prompt-layer l1">
+        <span class="prompt-layer-num">6</span>
+        <span class="label">Tool calls fire as the conversation unfolds<br><span class="what">live · Calendar lookups, bookings, tagging, transfers</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── WHAT YOU SEE AFTER THE CALL ────────────────────────────────── -->
+<section aria-labelledby="after-heading">
+  <div class="container">
+    <div class="split">
+      <div>
+        <span class="eyebrow">After the call</span>
+        <h2 id="after-heading">Every conversation is <span class="accent-dark">recorded, transcribed, summarized</span>.</h2>
+        <p class="lead">
+          The second a call ends, the gateway runs three pipelines in parallel: it fetches the recording from Twilio, post-processes the transcript through GPT-4o-mini to clean ASR artifacts, and generates a 2-3 sentence summary. All visible in your dashboard within 60 seconds.
+        </p>
+        <ul class="bullets split-features">
+          <li><strong>Audio playback</strong> — every call streamed via signed Bunny CDN URL, gated by tenant auth.</li>
+          <li><strong>Speaker-labeled transcript</strong> — turn-by-turn, timestamped, searchable. Stored as JSONB.</li>
+          <li><strong>AI-generated summary</strong> — 2-3 sentence outcome digest in <code>Conversation.summaryText</code>.</li>
+          <li><strong>Structured outcome code</strong> — <code>BOOKED</code>, <code>QUALIFIED_LEAD</code>, <code>MISSED_CALL</code>, etc. Drives the campaign router.</li>
+          <li><strong>Auto-tagging</strong> — outcome → tag → campaign enrollment. Customer is in your follow-up funnel before they put down the phone.</li>
+        </ul>
+      </div>
+
+      <!-- Conversation card mockup -->
+      <div class="dashboard-mockup">
+        <div class="dash-header">
+          <h4>Conversation #4127 · Sarah Mitchell</h4>
+          <span>● BOOKED</span>
+        </div>
+        <div class="dash-rows" style="margin-top:8px;">
+          <div class="dash-row">
+            <span class="dot"></span>
+            <strong>Duration</strong>
+            <span>2:14 · Inbound · Allentown line</span>
+          </div>
+          <div class="dash-row">
+            <span class="dot"></span>
+            <strong>Recording</strong>
+            <span>▶ ──────●─── 1:42 / 2:14</span>
+          </div>
+          <div class="dash-row">
+            <span class="dot"></span>
+            <strong>Outcome</strong>
+            <span>BOOKED · Tomorrow 2:00 PM with Dr. Lee</span>
+          </div>
+          <div class="dash-row">
+            <span class="dot"></span>
+            <strong>Auto-tagged</strong>
+            <span>booked → confirmation campaign fired (0:02s)</span>
+          </div>
+          <div class="dash-row">
+            <span class="dot"></span>
+            <strong>Summary</strong>
+            <span>"Sarah called for a new-patient cleaning. Booked tomorrow 2 PM with Dr. Lee. Confirmation email sent."</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── DATA &amp; SECURITY ──────────────────────────────────────────── -->
+<section class="section-soft" aria-labelledby="security-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Data &amp; security</span>
+      <h2 id="security-heading">Your data lives in your tenant. <span class="accent-dark">Period.</span></h2>
+      <p>MyOrbisVoice was built multi-tenant from day one — not retrofitted. Your prompts, your transcripts, your contacts are isolated at the database row level.</p>
+    </div>
+
+    <div class="feature-list">
+      <div class="feature">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div>
+          <h4>Tenant-isolated by default</h4>
+          <p>Every read and write goes through tenant-scoped middleware. Cross-tenant access is forbidden at the API layer, not just the UI.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div>
+          <h4>Secrets are write-only</h4>
+          <p>Twilio tokens, Stripe keys, Google refresh tokens — all encrypted at rest with AES-256-GCM. Never revealed in the UI, even to platform admins.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div>
+          <h4>Append-only audit log</h4>
+          <p>Every sensitive write is logged: prompt publishes, integration reconnects, impersonation events. No DELETE route exists at the API layer.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div>
+          <h4>OAuth, not passwords</h4>
+          <p>Gmail and Calendar connect via Google OAuth. We never see, store, or transmit your Google password. Standard scoped tokens, revocable any time.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div>
+          <h4>Daily DB backups, 30-day retention</h4>
+          <p>Automated PostgreSQL dumps. Regularly tested with full restore-and-verify procedure. We've done the disaster recovery drill so you don't have to.</p>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </div>
+        <div>
+          <h4>Internal-only orchestration</h4>
+          <p>Workflow infrastructure (n8n) runs on an internal-only network. Your customers never touch raw automation infrastructure — only the polished UI.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FAQ ─────────────────────────────────────────────────────────── -->
+<section aria-labelledby="faq-heading">
+  <div class="container container-narrow">
+    <div class="section-header">
+      <span class="eyebrow">Common questions</span>
+      <h2 id="faq-heading">What people ask before signing up.</h2>
+    </div>
+
+    <details class="faq-item">
+      <summary>How fast can I really get a live AI agent on my line?</summary>
+      <p>Most customers complete signup, Business DNA configuration, Google + Twilio connection, and number forwarding inside 20 minutes. The slow path — usually because the customer wants to fully fill out a multi-page Business DNA — is about an hour. There is no manual provisioning step on our side.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Do I need to keep my existing phone number?</summary>
+      <p>Yes. Your published business number stays exactly the same. We provision a Twilio number behind the scenes and you forward your existing number to it. Your customers see no change. If you want to port your existing number to Twilio, that's also supported but takes a few days for carrier release.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What does the agent actually know about my business?</summary>
+      <p>Whatever you put in your Business DNA: services, pricing, hours, escalation rules, prohibited language, language preferences, compliance disclaimers. It's a structured document — not a generic prompt blob — so you can edit any field and one-click republish without re-engineering anything.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Can I customize what the agent sounds like?</summary>
+      <p>Yes — choose from seven curated voices (Zephyr, Despina, Aoede, Charon, Fenrir, Puck, Sulafat). Each one has a different gender, tone, and pacing. Switch in one click — no voice-actor contracts, no studio time. Different channels can use different voices if you want.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What if the AI gets something wrong?</summary>
+      <p>Three layers of defense. First, the platform safety prompt (Layer 1) forbids the agent from making up facts or promising outcomes. Second, your Business DNA (Layer 2) defines escalation conditions — "if the caller asks about X, transfer to Y." Third, every call is recorded and transcribed, so you can review and tighten your DNA over time.</p>
+    </details>
+    <details class="faq-item">
+      <summary>What if my caller wants a human?</summary>
+      <p>The agent transfers cleanly. You configure who to transfer to — a specific phone number, a department, or a "let me take a message" fallback for after-hours. The handoff is announced ("transferring you now to Sarah") and uses live Twilio call control, not a hangup-and-callback.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Will the agent know what's on my Google Calendar?</summary>
+      <p>Yes. We pull live freebusy data from your connected calendar at the start of every appointment-booking conversation. The agent will only offer slots that are actually open, and writes the booked event back to your calendar with a Google Calendar invite to the customer.</p>
+    </details>
+    <details class="faq-item">
+      <summary>How are call costs billed?</summary>
+      <p>Voice minutes are bundled in your plan. Basic gets 500/month, Pro 2,000, Premier 5,000, Enterprise 20,000. Overages are billed at $0.18/min. Twilio routing fees are baked in — there's no separate Twilio bill. The AI compute (Gemini) cost is absorbed by us.</p>
+    </details>
+
+  </div>
+</section>
+
+<!-- ─── FINAL CTA ───────────────────────────────────────────────────── -->
 <section>
-  <div class="container">
-    <div style="max-width:780px; margin:0 auto;">
-      <div class="section-header" style="text-align:left; margin-bottom:48px;">
-        <span class="section-label">Setup</span>
-        <h2>Get your agent <span class="accent">configured</span></h2>
-      </div>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <div>
-            <h3>Create your account</h3>
-            <p>Sign up at app.myorbisvoice.com. Choose your plan and your workspace is ready in seconds. No credit card required to start.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div>
-            <h3>Set your Business DNA</h3>
-            <p>Tell your agent about your business — your services, pricing, hours, policies, and tone. This becomes the knowledge base for every conversation your agent has.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <div>
-            <h3>Configure your agents</h3>
-            <p>Choose which agent roles you need — receptionist, appointment setter, sales, customer service. Each role has a focused purpose and can be customised to your workflow.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">4</div>
-          <div>
-            <h3>Connect your channels</h3>
-            <p>Enable the website widget, link your Twilio phone number for inbound calls, or set up an outbound campaign. Each channel is activated independently — start with one and expand.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">5</div>
-          <div>
-            <h3>Connect Google Calendar</h3>
-            <p>Authorise your Google account and your agent can check availability and book appointments in real time — during the call, without human involvement.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">6</div>
-          <div>
-            <h3>Go live</h3>
-            <p>Embed the widget snippet on your site, point your phone number, or launch your first outbound campaign. Your agent is now answering, booking, and following up — around the clock.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Live call flow -->
-<section style="background:var(--bg-2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-label">During a call</span>
-      <h2>What happens <span class="accent">inside every conversation</span></h2>
-      <p>Each call follows an intelligent sequence — greeting, qualification, booking, and handoff — all handled by your agent in real time.</p>
-    </div>
-    <div class="grid-4">
-      <div class="card" style="text-align:center;">
-        <div style="font-size:2rem;margin-bottom:12px;">👋</div>
-        <h3 style="font-size:1rem; margin-bottom:8px;">Greet</h3>
-        <p style="font-size:.85rem;">The agent answers with your business name and a warm, natural greeting tailored to the context.</p>
-      </div>
-      <div class="card" style="text-align:center;">
-        <div style="font-size:2rem;margin-bottom:12px;">🎯</div>
-        <h3 style="font-size:1rem; margin-bottom:8px;">Qualify</h3>
-        <p style="font-size:.85rem;">It understands what the caller needs, asks relevant questions, and applies your qualification rules.</p>
-      </div>
-      <div class="card" style="text-align:center;">
-        <div style="font-size:2rem;margin-bottom:12px;">📅</div>
-        <h3 style="font-size:1rem; margin-bottom:8px;">Book</h3>
-        <p style="font-size:.85rem;">Checks real-time calendar availability and books the appointment directly — no callback needed.</p>
-      </div>
-      <div class="card" style="text-align:center;">
-        <div style="font-size:2rem;margin-bottom:12px;">📝</div>
-        <h3 style="font-size:1rem; margin-bottom:8px;">Log</h3>
-        <p style="font-size:.85rem;">Full transcript, AI summary, and outcome tag stored in your dashboard the moment the call ends.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Tech stack -->
-<section>
-  <div class="container">
-    <div class="section-header">
-      <span class="section-label">Under the hood</span>
-      <h2>Enterprise AI, <span class="accent">small business simplicity</span></h2>
-    </div>
-    <div class="grid-3">
-      <div class="card">
-        <div class="card-icon">🧠</div>
-        <h3>Gemini Live</h3>
-        <p>Real-time voice understanding and generation from Google. Natural, low-latency conversations that sound human.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">🤖</div>
-        <h3>GPT-4o-mini Reasoning</h3>
-        <p>OpenAI powers the agent's decision logic — understanding intent, applying your rules, and choosing the right action at each step.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">📞</div>
-        <h3>Twilio Communications</h3>
-        <p>Reliable voice and SMS infrastructure behind every inbound and outbound call. Carrier-grade reliability at any scale.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">📅</div>
-        <h3>Google Calendar</h3>
-        <p>Live availability checks and instant booking — no back-and-forth, no double bookings, no manual steps.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">🔐</div>
-        <h3>Bank-grade Security</h3>
-        <p>All credentials encrypted at rest. OAuth-only Google integration. Tenant data fully isolated. SOC-ready audit logs.</p>
-      </div>
-      <div class="card">
-        <div class="card-icon">⚡</div>
-        <h3>n8n Orchestration</h3>
-        <p>Workflow automation running behind every campaign, reminder, and follow-up — no manual triggers required.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FAQ -->
-<section style="background:var(--bg-2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
-  <div class="container">
-    <div class="section-header">
-      <span class="section-label">FAQ</span>
-      <h2>Common <span class="accent">questions</span></h2>
-    </div>
-    <div style="max-width:720px; margin:0 auto;">
-      <div class="faq-item">
-        <div class="faq-q">Do I need a developer to set this up? <span class="faq-icon">+</span></div>
-        <div class="faq-a">No. The entire setup happens inside your dashboard. If you want to add the website widget, you paste one line of code — that's the only technical step.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">Can the agent really book appointments on my calendar? <span class="faq-icon">+</span></div>
-        <div class="faq-a">Yes. Once you connect your Google Calendar via OAuth, your agent can check your real-time availability and book directly during the call. Confirmation emails go out automatically.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">What if the caller asks something my agent doesn't know? <span class="faq-icon">+</span></div>
-        <div class="faq-a">The agent is trained on your Business DNA but also has escalation rules. If it can't answer, it can take a message, book a callback, or warm-transfer to you — based on your configured preferences.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">How long does the voice agent actually sound natural? <span class="faq-icon">+</span></div>
-        <div class="faq-a">MyOrbisVoice uses Gemini Live for real-time voice, which produces natural, low-latency speech. Most callers won't know they're talking to an AI unless you tell them.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">Can I use my existing phone number? <span class="faq-icon">+</span></div>
-        <div class="faq-a">You can forward your existing number to your Twilio number, or port your number to Twilio. Either way, calls to your number get answered by your AI agent.</div>
-      </div>
-      <div class="faq-item">
-        <div class="faq-q">Is my customer data private? <span class="faq-icon">+</span></div>
-        <div class="faq-a">Yes. Your workspace data is fully isolated — no other customer can see or access your conversations, contacts, or configuration. All data is encrypted at rest.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section style="padding:48px 0 96px;">
   <div class="container">
     <div class="cta-banner">
-      <h2>See it for yourself in <span class="accent">60 minutes</span></h2>
-      <p>Create your free account, set up your Business DNA, and have your first agent live before lunch.</p>
-      <div class="btn-cta">
-        <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-lg">Get started free</a>
-        <a href="pricing.html" class="btn btn-ghost btn-lg">View pricing</a>
+      <h2>Ready to see it on your own line?</h2>
+      <p>Start the trial. Connect your Calendar. Forward your number. Make the first call yourself — most customers do this within thirty minutes of signup.</p>
+      <div class="hero-cta" style="justify-content: center;">
+        <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-lg">Start free trial</a>
+        <a href="pricing.html" class="btn btn-ghost btn-lg" style="color: rgba(255,255,255,0.95);">See pricing</a>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Footer ── -->
-<footer>
+</main>
+
+<!-- ─── FOOTER ──────────────────────────────────────────────────────── -->
+<footer class="site-footer" aria-label="Site footer">
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a href="index.html" class="nav-logo" style="display:inline-flex;">
-          <div class="nav-logo-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="3.5" fill="#021a0e"/><circle cx="9" cy="9" r="7.5" stroke="#021a0e" stroke-opacity=".5" stroke-width="2"/></svg></div>
+        <a href="index.html" class="nav-logo">
+          <span class="nav-logo-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+              <circle cx="9" cy="9" r="3.5" fill="white"/>
+              <circle cx="9" cy="9" r="7.5" stroke="white" stroke-opacity="0.5" stroke-width="2"/>
+            </svg>
+          </span>
           MyOrbisVoice
         </a>
-        <p>AI voice agents for businesses that never want to miss a call, a lead, or a booking.</p>
+        <p>Conversational AI voice automation for service businesses. Powered by Gemini 2.5 Flash native-audio. Built for the small business that wants enterprise-grade phone presence without the enterprise contract.</p>
+        <p style="font-size: 0.82rem; color: var(--text-subtle); margin-top: 16px;">
+          MyOrbisVoice<br>
+          716 Washington St, Suite 2<br>
+          Allentown, PA 18102
+        </p>
       </div>
+
       <div class="footer-col">
-        <h4>Product</h4>
+        <h5>Product</h5>
         <a href="solutions.html">Solutions</a>
         <a href="how-it-works.html">How It Works</a>
         <a href="pricing.html">Pricing</a>
-        <a href="affiliate.html">Affiliate</a>
-      <a href="https://app.myorbisvoice.com/affiliate-portal/login">Partner Login</a>
+        <a href="https://app.myorbisvoice.com/signup">Start free</a>
       </div>
+
       <div class="footer-col">
-        <h4>Account</h4>
-        <a href="https://app.myorbisvoice.com/login">Log In</a>
-        <a href="https://app.myorbisvoice.com/signup">Sign Up</a>
-        <a href="https://app.myorbisvoice.com">Dashboard</a>
+        <h5>Company</h5>
+        <a href="partner.html">Become a Partner</a>
+        <a href="https://app.myorbisvoice.com/partner-portal/login">Partner Login</a>
+        <a href="https://app.myorbisvoice.com/login">Customer Login</a>
       </div>
+
       <div class="footer-col">
-        <h4>Legal</h4>
-        <a href="privacy.html">Privacy Policy</a>
+        <h5>Legal</h5>
         <a href="terms.html">Terms of Service</a>
+        <a href="privacy.html">Privacy Policy</a>
         <a href="cookies.html">Cookie Policy</a>
       </div>
-      <div class="footer-col">
-        <h4>Contact</h4>
-        <a href="mailto:admin@myorbisvoice.com">admin@myorbisvoice.com</a>
-        <a href="tel:+18885551212">888-555-1212</a>
-        <span style="display:block;font-size:.9rem;color:var(--text-muted);padding:4px 0;">Serving the Greater<br>Atlanta, GA area</span>
-      </div>
     </div>
+
     <div class="footer-bottom">
-      <p>© 2026 MyOrbisVoice. All rights reserved.</p>
-      <p>Built with AI. Powered by humans.</p>
+      <span>© 2026 MyOrbisVoice. All rights reserved.</span>
+      <div class="footer-bottom-links">
+        <a href="terms.html">Terms</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="cookies.html">Cookies</a>
+      </div>
     </div>
   </div>
 </footer>
+
 <script src="assets/js/main.js"></script>
-<script src="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js"></script>
-<script>OrbisVoice.init({ publicKey: "ov_live_a1b2c3d4e5f6a7b8c9d0e1f2", businessName: "MyOrbisVoice" })</script>
 </body>
 </html>
