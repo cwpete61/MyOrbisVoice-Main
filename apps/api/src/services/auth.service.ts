@@ -187,10 +187,16 @@ export async function logoutUser(rawRefreshToken: string): Promise<void> {
   })
 }
 
-export async function updateProfile(userId: string, data: { firstName?: string; lastName?: string; username?: string }) {
+const SUPPORTED_LOCALES = ['en', 'es'] as const
+type Locale = typeof SUPPORTED_LOCALES[number]
+
+export async function updateProfile(userId: string, data: { firstName?: string; lastName?: string; username?: string; preferredLocale?: string }) {
   if (data.username) {
     const existing = await prisma.user.findFirst({ where: { username: data.username, NOT: { id: userId } } })
     if (existing) throw new AppError('CONFLICT', 'Username already taken', 409)
+  }
+  if (data.preferredLocale && !SUPPORTED_LOCALES.includes(data.preferredLocale as Locale)) {
+    throw new AppError('VALIDATION_ERROR', `preferredLocale must be one of: ${SUPPORTED_LOCALES.join(', ')}`, 422)
   }
   const user = await prisma.user.update({ where: { id: userId }, data })
   return sanitizeUser(user)
@@ -252,6 +258,7 @@ function sanitizeUser(user: {
   username: string | null
   firstName: string | null
   lastName: string | null
+  preferredLocale?: string
   status: string
   createdAt: Date
   lastLoginAt: Date | null
@@ -262,6 +269,7 @@ function sanitizeUser(user: {
     username: user.username,
     firstName: user.firstName,
     lastName: user.lastName,
+    preferredLocale: user.preferredLocale ?? 'en',
     status: user.status,
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
