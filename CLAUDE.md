@@ -1454,6 +1454,72 @@ Tag-driven campaigns now fire across multiple channels independently. Email is f
 - [x] Code path verified end-to-end via direct service invocation against the prod container (returns `{ok:false, errorCode:UNKNOWN, errorMessage:"Twilio Test credentials not configured…"}` until creds are pasted)
 - [x] Toll-free verification submission package drafted at [docs/twilio-toll-free-verification.md](docs/twilio-toll-free-verification.md)
 
+### Partner program completion + hardening sweep — 2026-05-05
+
+Long session. Eight feature commits, four backlog items closed, full repo cleanup. Tagged `partner-program-complete-20260505` as the known-good checkpoint.
+
+**Stripe Connect Express partner onboarding (Phase 8 close-out):**
+- [x] `AffiliateAccount.stripeConnectAccountId` field added (unique, indexed)
+- [x] `createConnectOnboardingLink` / `getConnectStatus` / `refreshConnectStatus` services
+- [x] Three API routes: `POST /api/affiliate/connect/onboard`, `GET /connect/status`, `POST /connect/refresh`
+- [x] Partner-portal Payouts page Connect Now button + status display + return-URL refresh effect
+- [x] Dashboard checklist Connect step wired to live status
+- [x] EN+ES i18n strings for the full Connect flow
+- [x] Verified end-to-end: bob@test.com completed real Stripe Express onboarding in test mode, returned with `payoutsEnabled: true`, `detailsSubmitted: true`, `chargesEnabled: true`
+
+**Three commission-lifecycle webhook handlers:**
+- [x] `charge.refunded` → reverses PENDING/APPROVED affiliate commissions, decrements `totalEarnedCents` for previously-credited APPROVED ones, flags PAID ones for manual claw-back via audit log
+- [x] `charge.dispute.created` → puts PENDING/APPROVED commissions on HOLD (not REVERSED — disputes can still be won)
+- [x] `account.updated` (Connect-scoped) → syncs `payoutMethodJson` snapshot when partner Connect account changes
+- [x] `findConversionForCharge` walks invoice→subscription chain OR matches `payment_intent` for one-time/LTD
+- [x] Audit actions: `affiliate.commission_reversed_refund`, `affiliate.commission_held_dispute`, `affiliate.connect_status_synced`
+
+**Stripe key infrastructure:**
+- [x] `bootStripeFromConfig()` — reads `stripe_secret_key`, `stripe_publishable_key`, `stripe_webhook_secret`, `stripe_webhook_secret_connect` from SystemConfig at API boot, hydrates `process.env`. Called from `index.ts` before `listen()` AND from the admin "save Stripe settings" endpoint so changes take effect with no container restart.
+- [x] Dual webhook signing secret support — Stripe Workbench locks "Events from" scope at destination creation, so we run two destinations (`elegant-wonder` for platform events, `empowering-dream` for Connect events) each with its own secret. `getWebhookSecrets()` returns both; `handleStripeWebhook` iterates and accepts the first that verifies. Forged signatures fail every secret and return 400.
+- [x] Admin UI exposes both webhook-secret fields with status indicators
+
+**Audit-log impersonation attribution:**
+- [x] `writeAuditLog` extended with `impersonationSessionId`
+- [x] New helper `writeAuditLogFromRequest(req, entry)` auto-attaches the session ID from `req.user`
+- [x] Swept 6 user-facing route files (admin, auth, conversations, a2p, phone-numbers, ai-assist) — 37 call sites migrated. Service-layer + webhook + voice-gateway audit calls intentionally NOT migrated (those run in system context, never under impersonation).
+- [x] Verified end-to-end: real ImpersonationSession + writeAuditLogFromRequest writes a row with the session ID attached
+
+**Per-turn agent latency telemetry (#3 from backlog):**
+- [x] T_userLastAudio + T_firstAgentAudio captured per turn on inbound calls
+- [x] Persisted to `Conversation.metadataJson.latency` as `{ turns, count, min, max, median, p95 }`
+- [x] Logged inline (`[inbound] turnaround: <N>ms`) and summarized at finalize
+- [x] Foundation for data-driven VAD tuning — no more blind silence_duration_ms changes
+
+**Channel-by-tier gating (#5 from backlog):**
+- [x] `/channels` page reads `/api/entitlements`, locks any channel card whose entitlement is false
+- [x] Locked card: muted styling, "Locked" badge, "Upgrade plan to unlock →" link to `/billing`
+- [x] EN+ES i18n strings
+
+**Tooltips on billing entitlements (#6 priority surfaces):**
+- [x] Each entitlement key on `/billing` now shows a hover tooltip with a 1-2 sentence plain-language explanation
+- [x] Covers all 7 current entitlement keys, EN+ES
+
+**Backlog audit + status reconciliation:**
+- [x] CLAUDE.md backlog rewritten with status legend (✅ DONE / 🟡 PARTIAL / ❌ TODO / 🔵 DEFERRED) and a snapshot table at the top
+- [x] Marked: 1 (impersonation), 2 (agent speaks first), 4 (conversations bulk), 5 (channel-by-tier), 7 (help), 8 (usage), 9 (Google integration), 10 (calendar placeholders), 11 (logo upload), 12 (notifications), 13 (admin help text) as ✅ DONE; 3 (latency) and 6 (tooltips) as 🟡 PARTIAL with documented next steps; 14 (Playwright screenshots) as 🔵 DEFERRED-BY-DESIGN per its own dependency on a feature-testing sprint
+
+**Repo cleanup + checkpoint:**
+- [x] Committed 71 files / 7,245 lines of accumulated work in 8 logical chunks: tooling (i18n scanner + knip), i18n surface-area pass, marketing site Spanish + chart overhaul, Stripe Connect onboarding, preferredLocale backend, lint cleanups (parseInt radix / Number.isNaN / unused vars / dead helpers), Stripe webhook + key infrastructure, CLAUDE.md policy additions
+- [x] Tag: `partner-program-complete-20260505` → `af5dab1d`
+- [x] Local DB dump (203K), prod DB dump (361K), DR snapshot (compose + env + caddy)
+- [x] DR restore test against PG16 sandbox: 14/15 tables matched exactly; AuditLog had 7 expected new rows from continuing prod traffic
+- [x] Knip dead-code pass — removed unused `@biomejs/biome` devDependency; flagged 36 unused exports + 35 unused types as service-layer surface intentionally exposed for future use, deferred individual deletion
+- [x] [docs/stripe-config.md](docs/stripe-config.md) — reconstruction-grade reference for the Stripe account (account ID, branding values, both webhook destinations, plan price mapping, ~1-hour worst-case rebuild checklist)
+- [x] i18n full-app scan — wrapped partner-portal signup, login, and profile pages (highest-impact customer-facing entry surfaces); EN+ES parity verified
+
+**External wait queues (no action — just tracking):**
+- Twilio A2P 10DLC approval (1-4 weeks queue)
+- Twilio toll-free verification (drafted, ready to submit, 2-5 business days post-submission)
+- Outbound voice carrier reputation (deferred to v1.1 per backlog #19)
+
+**End-of-session state:** prod healthy, working tree clean, no remaining TODO items the team can close without external signal. Ready for first paying customers.
+
 ### Phase 1 notes
 - Existing ports 5432 and 6379 are occupied by other projects (umoja-postgres, umoja-redis). Phase 1 reuses these services. The voiceautomation DB was created on umoja-postgres with its own user/role.
 - Docker compose is set up for full-stack mode but dev workflow runs API/web natively via pnpm dev.
