@@ -45,6 +45,66 @@ export async function sendEmail(opts: EmailOptions): Promise<void> {
   })
 }
 
+/** Welcome email fired once when a new tenant signs up. Steers them to the
+ *  three first-week wins: complete Business DNA, write the master prompt,
+ *  enable a channel. Non-fatal if SMTP isn't configured — the app still
+ *  signs them up successfully. */
+export async function sendWelcomeEmail(opts: {
+  to: string
+  firstName?: string | null
+  tenantName: string
+  appBaseUrl: string
+}) {
+  const greeting = opts.firstName ? `Hi ${opts.firstName},` : 'Hi there,'
+  const dashboardLink = `${opts.appBaseUrl}/dashboard`
+  const dnaLink       = `${opts.appBaseUrl}/business-dna`
+  const promptsLink   = `${opts.appBaseUrl}/prompts`
+  const channelsLink  = `${opts.appBaseUrl}/channels`
+
+  await sendEmail({
+    to: opts.to,
+    subject: `Welcome to MyOrbisVoice, ${opts.tenantName}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#222;line-height:1.5">
+        <h2 style="color:#1a9898;margin-bottom:4px">Welcome to MyOrbisVoice 👋</h2>
+        <p style="color:#666;margin-top:0;margin-bottom:24px">${opts.tenantName}</p>
+
+        <p>${greeting}</p>
+        <p>Your account is live. Three steps to get your AI receptionist talking to real callers this week:</p>
+
+        <ol style="padding-left:20px;margin:20px 0">
+          <li style="margin-bottom:14px">
+            <strong>Fill in your Business DNA</strong> — name, services, hours, escalation rules.
+            This is what your agent reads first on every call.
+            <br/><a href="${dnaLink}" style="color:#1a9898">${dnaLink}</a>
+          </li>
+          <li style="margin-bottom:14px">
+            <strong>Write your Master Prompt</strong> — describe your agent's persona, tone, and primary goal in plain language.
+            <br/><a href="${promptsLink}" style="color:#1a9898">${promptsLink}</a>
+          </li>
+          <li>
+            <strong>Enable a channel</strong> — start with the Website Widget; no Twilio setup needed.
+            <br/><a href="${channelsLink}" style="color:#1a9898">${channelsLink}</a>
+          </li>
+        </ol>
+
+        <a href="${dashboardLink}" style="display:inline-block;background:#1a9898;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:14px;margin-top:16px">
+          Open your dashboard →
+        </a>
+
+        <p style="color:#888;font-size:13px;margin-top:32px;border-top:1px solid #eee;padding-top:16px">
+          Questions? Reply to this email and we'll get back to you. The Help Center
+          (<a href="${opts.appBaseUrl}/help" style="color:#1a9898">${opts.appBaseUrl}/help</a>)
+          covers every feature with step-by-step guides.
+        </p>
+        <p style="color:#bbb;font-size:11px;margin-top:8px">
+          MyOrbisVoice · 716 Washington St Suite 2, Allentown PA 18102
+        </p>
+      </div>
+    `,
+  })
+}
+
 export async function sendCallNotification(opts: {
   to: string
   tenantName: string

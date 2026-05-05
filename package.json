@@ -19,7 +19,8 @@
     "i18n:check:keys": "tsx scripts/i18n-coverage.ts --keys-only",
     "i18n:fill": "tsx scripts/i18n-fill.ts",
     "i18n:fill:dry": "tsx scripts/i18n-fill.ts --dry-run",
-    "capture-screenshots": "tsx scripts/capture-screenshots.ts"
+    "capture-screenshots": "tsx scripts/capture-screenshots.ts",
+    "preflight": "tsx scripts/preflight.ts"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

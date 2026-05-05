@@ -61,6 +61,17 @@ router.post('/signup', async (req, res, next) => {
     }
     const result = await authService.signupUser(parsed.data)
     writeAuditLogFromRequest(req, { actorType: 'USER', actorUserId: result.user.id, action: 'auth.signup', targetType: 'User', targetId: result.user.id, metadataJson: { email: result.user.email, ip: req.ip } }).catch(e => console.error('[audit] write failed:', e))
+
+    // Welcome email — fire-and-forget, never block signup on SMTP issues
+    const { sendWelcomeEmail } = await import('../services/email.service.js')
+    const { getEnv } = await import('@voiceautomation/config')
+    sendWelcomeEmail({
+      to: result.user.email,
+      firstName: result.user.firstName,
+      tenantName: result.tenant.displayName,
+      appBaseUrl: getEnv().APP_BASE_URL,
+    }).catch(e => console.error('[welcome-email] send failed (non-fatal):', e?.message ?? e))
+
     res.status(201).json({ data: result })
   } catch (err) {
     next(err)
