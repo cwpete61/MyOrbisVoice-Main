@@ -331,6 +331,28 @@
       "rejected": "Rejected"
     }
   },
+  "partnerProfile": {
+    "title": "Profile",
+    "subtitle": "Your partner account details and payout preferences.",
+    "loading": "Loading…",
+    "noAccount": "No partner account found. Apply from the Dashboard.",
+    "accountInfoHeading": "ACCOUNT INFO",
+    "accountId": "Account ID",
+    "status": "Status",
+    "referralCode": "Referral Code",
+    "commissionRate": "Commission Rate",
+    "memberSince": "Member Since",
+    "payoutHeading": "PAYOUT PREFERENCES",
+    "payoutMethod": "Payout Method",
+    "selectMethod": "Select a method…",
+    "paymentDetails": "Payment Details",
+    "paymentDetailsHelp": "Email address, account number, or routing information for your chosen method.",
+    "paymentDetailsPlaceholder": "e.g. paypal@email.com or {\"email\":\"paypal@email.com\"}",
+    "saving": "Saving…",
+    "saved": "Saved ✓",
+    "savePreferences": "Save Preferences",
+    "saveFailed": "Save failed"
+  },
   "partnerLogin": {
     "brandSubtitle": "Partner Portal",
     "title": "Partner login",

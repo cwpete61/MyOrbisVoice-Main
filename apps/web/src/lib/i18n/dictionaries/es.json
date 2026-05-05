@@ -331,6 +331,28 @@
       "rejected": "Rechazado"
     }
   },
+  "partnerProfile": {
+    "title": "Perfil",
+    "subtitle": "Tus datos de partner y preferencias de pago.",
+    "loading": "Cargando…",
+    "noAccount": "No se encontró cuenta de partner. Solicítala desde el Panel.",
+    "accountInfoHeading": "INFORMACIÓN DE LA CUENTA",
+    "accountId": "ID de cuenta",
+    "status": "Estado",
+    "referralCode": "Código de referido",
+    "commissionRate": "Tasa de comisión",
+    "memberSince": "Miembro desde",
+    "payoutHeading": "PREFERENCIAS DE PAGO",
+    "payoutMethod": "Método de pago",
+    "selectMethod": "Selecciona un método…",
+    "paymentDetails": "Datos de pago",
+    "paymentDetailsHelp": "Correo, número de cuenta o información de ruteo para tu método elegido.",
+    "paymentDetailsPlaceholder": "ej. paypal@correo.com o {\"email\":\"paypal@correo.com\"}",
+    "saving": "Guardando…",
+    "saved": "Guardado ✓",
+    "savePreferences": "Guardar preferencias",
+    "saveFailed": "Falló al guardar"
+  },
   "partnerLogin": {
     "brandSubtitle": "Portal de Partners",
     "title": "Inicio de sesión para partners",
