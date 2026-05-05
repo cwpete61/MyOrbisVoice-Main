@@ -56,7 +56,7 @@ const DEFAULT_REDIRECT_URI = process.env['GOOGLE_OAUTH_REDIRECT_URI']
 
 export async function getSystemSettings(): Promise<{
   google: { clientId: string | null; clientSecret: boolean; redirectUri: string | null }
-  stripe: { secretKey: boolean; publishableKey: string | null; webhookSecret: boolean }
+  stripe: { secretKey: boolean; publishableKey: string | null; webhookSecret: boolean; webhookSecretConnect: boolean }
   twilio: { accountSid: string | null; authToken: boolean; phoneNumber: string | null }
   twilioTest: { accountSid: string | null; authToken: boolean }
   reoon: { apiKey: boolean; mode: string }
@@ -72,7 +72,7 @@ export async function getSystemSettings(): Promise<{
       key: {
         in: [
           'google_client_id', 'google_client_secret', 'google_oauth_redirect_uri',
-          'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret',
+          'stripe_secret_key', 'stripe_publishable_key', 'stripe_webhook_secret', 'stripe_webhook_secret_connect',
           'twilio_account_sid', 'twilio_auth_token', 'twilio_phone_number',
           'twilio_test_account_sid', 'twilio_test_auth_token',
           'reoon_api_key', 'reoon_mode',
@@ -102,6 +102,7 @@ export async function getSystemSettings(): Promise<{
       secretKey:      !!(get('stripe_secret_key')      || process.env['STRIPE_SECRET_KEY']),
       publishableKey: get('stripe_publishable_key')?.value || process.env['STRIPE_PUBLISHABLE_KEY'] || null,
       webhookSecret:  !!(get('stripe_webhook_secret')  || process.env['STRIPE_WEBHOOK_SECRET']),
+      webhookSecretConnect: !!(get('stripe_webhook_secret_connect') || process.env['STRIPE_WEBHOOK_SECRET_CONNECT']),
     },
     twilio: {
       accountSid:  get('twilio_account_sid')?.value ?? (process.env['TWILIO_ACCOUNT_SID'] || null),
@@ -124,9 +125,9 @@ export async function getSystemSettings(): Promise<{
       storagePassword: !!(get('bunny_storage_password')    || process.env['BUNNY_STORAGE_PASSWORD']),
     },
     storage: {
-      defaultQuotaGb:         parseInt(get('storage_default_quota_gb')?.value        ?? '1'),
-      warningThresholdPct:    parseInt(get('storage_warning_threshold_pct')?.value   ?? '90'),
-      retentionDays:          get('storage_retention_days')?.value ? parseInt(get('storage_retention_days')!.value) : null,
+      defaultQuotaGb:         parseInt(get('storage_default_quota_gb')?.value        ?? '1', 10),
+      warningThresholdPct:    parseInt(get('storage_warning_threshold_pct')?.value   ?? '90', 10),
+      retentionDays:          get('storage_retention_days')?.value ? parseInt(get('storage_retention_days')!.value, 10) : null,
     },
     openai: {
       apiKey: !!(get('openai_api_key') || process.env['OPENAI_API_KEY']),
@@ -134,7 +135,7 @@ export async function getSystemSettings(): Promise<{
     },
     smtp: {
       host:     get('smtp_host')?.value     ?? (process.env['SMTP_HOST']     || null),
-      port:     parseInt(get('smtp_port')?.value ?? process.env['SMTP_PORT'] ?? '587'),
+      port:     parseInt(get('smtp_port')?.value ?? process.env['SMTP_PORT'] ?? '587', 10),
       user:     get('smtp_user')?.value     ?? (process.env['SMTP_USER']     || null),
       password: !!(get('smtp_password')     || process.env['SMTP_PASSWORD']),
       from:     get('smtp_from')?.value     ?? (process.env['SMTP_FROM']     || null),

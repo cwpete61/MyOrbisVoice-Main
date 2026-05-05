@@ -217,18 +217,24 @@ const stripeSettingsSchema = z.object({
   secretKey: z.string().min(1).optional(),
   publishableKey: z.string().min(1).optional(),
   webhookSecret: z.string().min(1).optional(),
+  webhookSecretConnect: z.string().min(1).optional(),
 })
 
 router.patch('/system-settings/stripe', async (req, res, next) => {
   try {
     const parsed = stripeSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
-    const { secretKey, publishableKey, webhookSecret } = parsed.data
+    const { secretKey, publishableKey, webhookSecret, webhookSecretConnect } = parsed.data
     const userId = req.user!.id
 
     if (secretKey) await systemConfig.setConfigValue('stripe_secret_key', secretKey, true, userId)
     if (publishableKey) await systemConfig.setConfigValue('stripe_publishable_key', publishableKey, false, userId)
     if (webhookSecret) await systemConfig.setConfigValue('stripe_webhook_secret', webhookSecret, true, userId)
+    if (webhookSecretConnect) await systemConfig.setConfigValue('stripe_webhook_secret_connect', webhookSecretConnect, true, userId)
+
+    // Reload the Stripe client so the swap takes effect immediately, no restart
+    const { bootStripeFromConfig } = await import('../lib/stripe.js')
+    await bootStripeFromConfig().catch(() => null)
 
     await writeAuditLog({
       actorType: 'USER', actorUserId: userId,

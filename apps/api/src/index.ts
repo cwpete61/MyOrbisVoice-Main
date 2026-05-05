@@ -9,6 +9,7 @@ import { webhooksRouter } from './routes/webhooks.js'
 import { errorHandler } from './middleware/error-handler.js'
 import { startTokenCleanupJob } from './jobs/token-cleanup.js'
 import { startCampaignScheduler } from './jobs/campaign-scheduler.js'
+import { bootStripeFromConfig } from './lib/stripe.js'
 
 const env = getEnv()
 const app: Express = express()
@@ -93,11 +94,21 @@ app.use((_req, res) => {
 app.use(errorHandler)
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`[api] listening on http://localhost:${PORT}`)
-  console.log(`[api] env: ${env.NODE_ENV}`)
-  startTokenCleanupJob()
-  startCampaignScheduler()
-})
+async function start() {
+  // Hydrate Stripe keys from SystemConfig (admin UI) before any handler reads
+  // them. Falls through to env-var defaults if no DB row exists.
+  await bootStripeFromConfig().catch(err => {
+    console.error('[api] bootStripeFromConfig failed, falling back to env vars:', err?.message ?? err)
+  })
+
+  app.listen(PORT, () => {
+    console.log(`[api] listening on http://localhost:${PORT}`)
+    console.log(`[api] env: ${env.NODE_ENV}`)
+    startTokenCleanupJob()
+    startCampaignScheduler()
+  })
+}
+
+void start()
 
 export default app

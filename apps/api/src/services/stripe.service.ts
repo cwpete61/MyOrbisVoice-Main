@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.js'
-import { getStripe } from '../lib/stripe.js'
+import { getStripe, getWebhookSecrets } from '../lib/stripe.js'
 import { getEnv } from '@voiceautomation/config'
 import { AppError } from '@voiceautomation/shared'
 import { syncEntitlementsFromPlan } from './entitlement.service.js'
@@ -30,6 +30,31 @@ interface StripeCheckoutSession {
   subscription?: string | { id: string } | null
   payment_intent?: string | { id: string } | null
   amount_total?: number | null
+}
+
+interface StripeCharge {
+  id: string
+  amount: number
+  amount_refunded: number
+  payment_intent: string | null
+  invoice: string | null
+}
+
+interface StripeDispute {
+  id: string
+  charge: string | null
+  payment_intent: string | null
+  reason: string
+  status: string
+  amount: number
+}
+
+interface StripeConnectAccount {
+  id: string
+  details_submitted?: boolean
+  payouts_enabled?: boolean
+  charges_enabled?: boolean
+  requirements?: { disabled_reason?: string | null } | null
 }
 
 export async function getOrCreateStripeCustomer(tenantId: string): Promise<string> {
@@ -106,18 +131,25 @@ export async function getSubscription(tenantId: string) {
 }
 
 export async function handleStripeWebhook(rawBody: Buffer, signature: string): Promise<void> {
-  const env = getEnv()
-  if (!env.STRIPE_WEBHOOK_SECRET) throw new AppError('INTERNAL_ERROR', 'Webhook secret not configured', 500)
+  const secrets = getWebhookSecrets()
+  if (secrets.length === 0) throw new AppError('INTERNAL_ERROR', 'Webhook secret not configured', 500)
 
   const stripe = getStripe()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let event: { type: string; data: { object: any } }
+  let event: { type: string; data: { object: any } } | null = null
 
-  try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, env.STRIPE_WEBHOOK_SECRET)
-  } catch {
-    throw new AppError('BAD_REQUEST', 'Invalid webhook signature', 400)
+  // Try each configured signing secret. We run two destinations in Stripe
+  // (platform-events + Connect-events), each with its own secret. The first
+  // secret that verifies wins. If none verify, the request is forged.
+  for (const secret of secrets) {
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, secret)
+      break
+    } catch {
+      // Try next secret
+    }
   }
+  if (!event) throw new AppError('BAD_REQUEST', 'Invalid webhook signature', 400)
 
   switch (event.type) {
     case 'checkout.session.completed':
@@ -135,9 +167,170 @@ export async function handleStripeWebhook(rawBody: Buffer, signature: string): P
     case 'customer.subscription.deleted':
       await handleSubscriptionDeleted(event.data.object as StripeSub)
       break
+    case 'charge.refunded':
+      await handleChargeRefunded(event.data.object as StripeCharge)
+      break
+    case 'charge.dispute.created':
+      await handleChargeDisputeCreated(event.data.object as StripeDispute)
+      break
+    case 'account.updated':
+      await handleConnectAccountUpdated(event.data.object as StripeConnectAccount)
+      break
     default:
       break
   }
+}
+
+// ── Affiliate-commission impact handlers ─────────────────────────────────────
+//
+// The full chain we need to walk for refunds + disputes:
+//   charge → (invoice or payment_intent) → AffiliateConversion → commissions
+// AffiliateConversion.subscriptionId stores either the Stripe subscription ID
+// (for recurring) or the payment_intent ID (for one-time / LTD), so we look
+// up by both possible IDs and take the first hit.
+
+async function findConversionForCharge(charge: { invoice: string | null; payment_intent: string | null }): Promise<{ id: string } | null> {
+  const candidates: string[] = []
+  if (charge.payment_intent) candidates.push(charge.payment_intent)
+
+  if (charge.invoice) {
+    try {
+      const stripe = getStripe()
+      const inv = await stripe.invoices.retrieve(charge.invoice) as unknown as {
+        parent?: { subscription_details?: { subscription?: string | { id: string } | null } | null } | null
+        subscription?: string | { id: string } | null
+      }
+      const subRaw = inv.parent?.subscription_details?.subscription ?? inv.subscription ?? null
+      const subId = typeof subRaw === 'string' ? subRaw : subRaw?.id ?? null
+      if (subId) candidates.push(subId)
+    } catch {
+      // Invoice retrieval failed — fall back to payment_intent only
+    }
+  }
+
+  if (candidates.length === 0) return null
+  return prisma.affiliateConversion.findFirst({
+    where: { subscriptionId: { in: candidates } },
+    select: { id: true },
+  })
+}
+
+async function handleChargeRefunded(charge: StripeCharge) {
+  const conversion = await findConversionForCharge(charge)
+  if (!conversion) return
+
+  const commissions = await prisma.affiliateCommission.findMany({
+    where: { affiliateConversionId: conversion.id, status: { in: ['PENDING', 'APPROVED'] } },
+    select: { id: true, status: true, amountMinor: true, affiliateAccountId: true, tenantId: true },
+  })
+
+  for (const c of commissions) {
+    await prisma.affiliateCommission.update({ where: { id: c.id }, data: { status: 'REVERSED' } })
+    if (c.status === 'APPROVED') {
+      // APPROVED commissions had already been added to totalEarnedCents;
+      // PENDING ones never were. Decrement only what we previously credited.
+      await prisma.affiliateAccount.update({
+        where: { id: c.affiliateAccountId },
+        data:  { totalEarnedCents: { decrement: c.amountMinor } },
+      })
+    }
+  }
+
+  // Already-PAID commissions can't be un-paid here — Stripe transfers are
+  // one-way. Surface them in audit log so an admin can handle a manual
+  // claw-back or future-payout offset.
+  const paidCount = await prisma.affiliateCommission.count({
+    where: { affiliateConversionId: conversion.id, status: 'PAID' },
+  })
+
+  writeAuditLog({
+    actorType: 'SYSTEM',
+    action:    'affiliate.commission_reversed_refund',
+    metadataJson: {
+      chargeId: charge.id,
+      paymentIntentId: charge.payment_intent,
+      invoiceId: charge.invoice,
+      amountRefunded: charge.amount_refunded,
+      conversionId: conversion.id,
+      reversedCount: commissions.length,
+      paidCommissionsRequiringAdminAttention: paidCount,
+    },
+  }).catch(() => null)
+}
+
+async function handleChargeDisputeCreated(dispute: StripeDispute) {
+  if (!dispute.charge) return
+  // Retrieve the underlying charge so we can run the same lookup the refund
+  // handler uses.
+  let charge: { invoice: string | null; payment_intent: string | null } | null = null
+  try {
+    const stripe = getStripe()
+    const c = await stripe.charges.retrieve(dispute.charge) as unknown as {
+      invoice: string | null
+      payment_intent: string | null
+    }
+    charge = { invoice: c.invoice, payment_intent: c.payment_intent }
+  } catch {
+    return
+  }
+
+  const conversion = await findConversionForCharge(charge)
+  if (!conversion) return
+
+  const result = await prisma.affiliateCommission.updateMany({
+    where:  { affiliateConversionId: conversion.id, status: { in: ['PENDING', 'APPROVED'] } },
+    data:   { status: 'HOLD' },
+  })
+
+  writeAuditLog({
+    actorType: 'SYSTEM',
+    action:    'affiliate.commission_held_dispute',
+    metadataJson: {
+      disputeId: dispute.id,
+      chargeId: dispute.charge,
+      reason: dispute.reason,
+      status: dispute.status,
+      amount: dispute.amount,
+      conversionId: conversion.id,
+      heldCount: result.count,
+    },
+  }).catch(() => null)
+}
+
+async function handleConnectAccountUpdated(account: StripeConnectAccount) {
+  const affiliate = await prisma.affiliateAccount.findUnique({
+    where:  { stripeConnectAccountId: account.id },
+    select: { id: true },
+  })
+  if (!affiliate) return
+
+  await prisma.affiliateAccount.update({
+    where: { id: affiliate.id },
+    data: {
+      payoutMethodJson: {
+        type:             'stripe_connect_express',
+        connected:        true,
+        detailsSubmitted: !!account.details_submitted,
+        payoutsEnabled:   !!account.payouts_enabled,
+        chargesEnabled:   !!account.charges_enabled,
+        accountId:        account.id,
+        disabledReason:   account.requirements?.disabled_reason ?? null,
+        refreshedAt:      new Date().toISOString(),
+      } as never,
+    },
+  })
+
+  writeAuditLog({
+    actorType: 'SYSTEM',
+    action:    'affiliate.connect_status_synced',
+    metadataJson: {
+      accountId:        account.id,
+      affiliateAccountId: affiliate.id,
+      payoutsEnabled:   !!account.payouts_enabled,
+      detailsSubmitted: !!account.details_submitted,
+      disabledReason:   account.requirements?.disabled_reason ?? null,
+    },
+  }).catch(() => null)
 }
 
 async function handleCheckoutCompleted(session: StripeCheckoutSession) {
