@@ -5,7 +5,46 @@ articles automatically detect when an image exists and render it; otherwise
 they show a labeled placeholder box describing what the screenshot should
 depict.
 
-## How to capture screenshots
+## Two ways to capture screenshots
+
+### Option 1 — Automated via `pnpm capture-screenshots`
+
+Each screenshot slot in `apps/web/src/lib/helpContent.ts` can carry an optional
+`capture` block describing how to navigate Puppeteer to the right view:
+
+```ts
+screenshots: [{
+  filename: 'nav-channels.png',
+  caption: 'Sidebar Channels link highlighted',
+  capture: {
+    url: '/channels',
+    authAs: 'tenant',
+    selector: 'aside nav a[href="/channels"]',  // optional — element-only crop
+    setup: [{ action: 'wait', ms: 500 }],        // optional — clicks/typing/waits
+    viewport: { width: 1280, height: 800 },
+  },
+}]
+```
+
+Then run:
+
+```bash
+export E2E_TENANT_LOGIN_EMAIL=<test-tenant-email>
+export E2E_TENANT_LOGIN_PASSWORD=<password>
+export E2E_ADMIN_LOGIN_EMAIL=<admin-email>     # only needed for admin help captures
+export E2E_ADMIN_LOGIN_PASSWORD=<password>
+
+pnpm capture-screenshots                       # all annotated slots
+pnpm capture-screenshots --tenant              # only this folder
+pnpm capture-screenshots --admin               # only admin-help-screenshots
+pnpm capture-screenshots --filename foo.png    # one specific slot
+```
+
+The script logs in once per role, navigates to each slot, runs the setup
+steps if any, and writes the PNG. Slots without `capture` metadata are
+skipped — annotate them as feature testing surfaces UI bugs.
+
+### Option 2 — Manually
 
 1. Log in to the live tenant portal at https://app.myorbisvoice.com as a
    test tenant that has Pro or higher entitlements (so all features unlock)

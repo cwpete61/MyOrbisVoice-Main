@@ -17,11 +17,42 @@ export type HelpStep = {
   /** Optional screenshot slots. If a PNG exists at /help-screenshots/<filename>,
    *  the renderer shows the image. Otherwise it shows a labeled placeholder box
    *  describing what the screenshot should show. This lets articles ship before
-   *  screenshots are captured. */
+   *  screenshots are captured.
+   *
+   *  When `capture` is set, `pnpm capture-screenshots` (apps/e2e/src/scripts/
+   *  capture-screenshots.ts) drives Puppeteer through the steps and writes the
+   *  PNG to apps/web/public/help-screenshots/<filename>. Without `capture`,
+   *  the screenshot must be taken manually. */
   screenshots?: Array<{
     filename: string
     caption: string
+    capture?: ScreenshotCapture
   }>
+}
+
+/** Instructions for the automated screenshot-capture script.
+ *  Each entry tells Puppeteer how to navigate to and frame the target view. */
+export type ScreenshotCapture = {
+  /** Path or absolute URL. Path-only values resolve against the
+   *  app base URL (default https://app.myorbisvoice.com). */
+  url: string
+  /** Optional CSS selector — if set, screenshots only that element's
+   *  bounding box. If unset, screenshots the visible viewport. */
+  selector?: string
+  /** Setup steps to run before the screenshot (clicks, typing, waits). */
+  setup?: Array<
+    | { action: 'click'; selector: string }
+    | { action: 'type'; selector: string; value: string }
+    | { action: 'wait'; selector?: string; ms?: number }
+  >
+  /** Whether to capture the full scrollable page rather than the viewport.
+   *  Default false (viewport only — what the user actually sees). */
+  fullPage?: boolean
+  /** Override viewport size for this capture. Default 1280×800. */
+  viewport?: { width: number; height: number }
+  /** Auth context. 'tenant' = login as the test tenant; 'admin' = login as
+   *  the platform admin. Default 'tenant'. 'public' = no auth. */
+  authAs?: 'tenant' | 'admin' | 'public'
 }
 
 export type HelpArticle = {
@@ -68,7 +99,7 @@ export const HELP_CONTENT: HelpSection[] = [
         steps: [
           { title: 'Step 1 — Fill in Business DNA', body: 'Go to Business DNA in the sidebar. Complete at minimum: your business name, industry, primary service, operating hours, and one escalation condition. Publish the draft when ready.', screenshots: [{ filename: 'nav-business-dna.png', caption: 'Sidebar \'Business DNA\' link highlighted, in the Configure section' }] },
           { title: 'Step 2 — Write your Master Prompt', body: 'Go to Prompts. Create a new prompt with scope "Master". Describe your agent\'s persona, tone, and primary goal in plain language. Publish it.', screenshots: [{ filename: 'nav-prompts.png', caption: 'Sidebar \'Prompts\' link highlighted, in the Configure section' }] },
-          { title: 'Step 3 — Enable at least one channel', body: 'Go to Channels. Enable the Widget channel. You don\'t need Twilio for this — it works over your browser.', screenshots: [{ filename: 'nav-channels.png', caption: 'Sidebar \'Channels\' link highlighted; channels page showing the Widget toggle in the off position' }] },
+          { title: 'Step 3 — Enable at least one channel', body: 'Go to Channels. Enable the Widget channel. You don\'t need Twilio for this — it works over your browser.', screenshots: [{ filename: 'nav-channels.png', caption: 'Sidebar \'Channels\' link highlighted; channels page showing the Widget toggle in the off position', capture: { url: '/channels', authAs: 'tenant', viewport: { width: 1280, height: 800 } } }] },
           { title: 'Step 4 — Test in Agent Studio', body: 'Go to Agent Studio. Select the Widget tab. Pick a voice. Click "Start Test" and speak to your agent. Check that responses match your Business DNA.', screenshots: [{ filename: 'nav-agent-studio.png', caption: 'Sidebar \'Agent Studio\' link, plus the Agent Studio page with the \'Start Test\' button visible' }] },
           { title: 'Step 5 — Embed the widget', body: 'Go to Channels → Widget. Copy the embed snippet and paste it into the <head> of your website.', screenshots: [{ filename: 'channels-widget-embed-snippet.png', caption: 'Channels page with the Widget card expanded and the \'Copy Embed Code\' button visible' }] },
         ],
