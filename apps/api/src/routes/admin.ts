@@ -8,7 +8,7 @@ import { getEnv } from '@voiceautomation/config'
 import { prisma } from '../lib/prisma.js'
 import * as systemConfig from '../services/system-config.service.js'
 import * as storageTierSvc from '../services/storage-tier.service.js'
-import { writeAuditLog } from '../lib/audit.js'
+import { writeAuditLogFromRequest } from '../lib/audit.js'
 
 const router: IRouter = Router()
 router.use(authenticate, requirePlatformAdmin)
@@ -130,7 +130,7 @@ router.post('/tenants/:tenantId/grant-plan', async (req, res, next) => {
     const { syncEntitlementsFromPlan } = await import('../services/entitlement.service.js')
     await syncEntitlementsFromPlan(tenantId, plan.id)
 
-    writeAuditLog({
+    writeAuditLogFromRequest(req, {
       actorType: 'USER',
       actorUserId: req.user!.id,
       action: 'admin.plan_granted',
@@ -163,7 +163,7 @@ router.post('/tenants/:tenantId/revoke-plan', async (req, res, next) => {
       await syncEntitlementsFromPlan(tenantId, freePlan.id)
     }
 
-    writeAuditLog({
+    writeAuditLogFromRequest(req, {
       actorType: 'USER',
       actorUserId: req.user!.id,
       action: 'admin.plan_revoked',
@@ -200,7 +200,7 @@ router.patch('/system-settings/google', async (req, res, next) => {
     if (clientSecret) await systemConfig.setConfigValue('google_client_secret', clientSecret, true, userId)
     if (redirectUri) await systemConfig.setConfigValue('google_oauth_redirect_uri', redirectUri, false, userId)
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER',
       actorUserId: userId,
       action: 'system_settings.google.updated',
@@ -236,7 +236,7 @@ router.patch('/system-settings/stripe', async (req, res, next) => {
     const { bootStripeFromConfig } = await import('../lib/stripe.js')
     await bootStripeFromConfig().catch(() => null)
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.stripe.updated',
       targetType: 'SystemConfig',
@@ -265,7 +265,7 @@ router.patch('/system-settings/twilio', async (req, res, next) => {
     if (authToken) await systemConfig.setConfigValue('twilio_auth_token', authToken, true, userId)
     if (phoneNumber) await systemConfig.setConfigValue('twilio_phone_number', phoneNumber, false, userId)
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.twilio.updated',
       targetType: 'SystemConfig',
@@ -292,7 +292,7 @@ router.patch('/system-settings/twilio-test', async (req, res, next) => {
     if (accountSid) await systemConfig.setConfigValue('twilio_test_account_sid', accountSid, false, userId)
     if (authToken)  await systemConfig.setConfigValue('twilio_test_auth_token', authToken, true, userId)
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.twilio_test.updated',
       targetType: 'SystemConfig',
@@ -342,7 +342,7 @@ router.patch('/system-settings/reoon', async (req, res, next) => {
     if (apiKey) await systemConfig.setConfigValue('reoon_api_key', apiKey, true, userId)
     if (mode)   await systemConfig.setConfigValue('reoon_mode', mode, false, userId)
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.reoon.updated',
       targetType: 'SystemConfig',
@@ -369,7 +369,7 @@ router.patch('/system-settings/openai', async (req, res, next) => {
     if (apiKey) await systemConfig.setConfigValue('openai_api_key', apiKey, true, userId)
     if (model)  await systemConfig.setConfigValue('openai_model', model, false, userId)
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.openai.updated',
       targetType: 'SystemConfig',
@@ -402,7 +402,7 @@ router.patch('/system-settings/bunny', async (req, res, next) => {
     if (cdnHostname)     await systemConfig.setConfigValue('bunny_cdn_hostname',      cdnHostname,     false, userId)
     if (storageRegion)   await systemConfig.setConfigValue('bunny_storage_region',    storageRegion,   false, userId)
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.bunny.updated',
       targetType: 'SystemConfig',
@@ -431,7 +431,7 @@ router.patch('/system-settings/storage', async (req, res, next) => {
     if (warningThresholdPct !== undefined) await systemConfig.setConfigValue('storage_warning_threshold_pct',  String(warningThresholdPct), false, userId)
     if (retentionDays       !== undefined) await systemConfig.setConfigValue('storage_retention_days',         retentionDays ? String(retentionDays) : '', false, userId)
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.storage.updated',
       targetType: 'SystemConfig',
@@ -455,7 +455,7 @@ router.patch('/tenants/:tenantId/storage-quota', async (req, res, next) => {
       data:  { storageQuotaBytes: quotaGb !== null ? BigInt(quotaGb) * BigInt(1024 * 1024 * 1024) : null },
     })
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'admin.tenant.storage_quota_override',
       targetType: 'Tenant', targetId: tenantId,
@@ -488,7 +488,7 @@ router.patch('/storage-tiers/:tier', async (req, res, next) => {
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
     const userId = req.user!.id
     await storageTierSvc.updateTierConfig(tier, parsed.data, userId)
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'admin.storage_tier.updated',
       targetType: 'StorageTierConfig', targetId: tier,
@@ -506,7 +506,7 @@ router.post('/tenants/:tenantId/storage-tier', async (req, res, next) => {
     const { tier }     = z.object({ tier: z.enum(storageTierSvc.TIERS) }).parse(req.body)
     const userId       = req.user!.id
     const result       = await storageTierSvc.applyTierToTenant(tenantId!, tier)
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'admin.tenant.storage_tier_assigned',
       targetType: 'Tenant', targetId: tenantId,
@@ -554,7 +554,7 @@ router.patch('/plans/:planId/entitlements', async (req, res, next) => {
       })
     }
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'admin.plan.entitlements_updated',
       targetType: 'Plan', targetId: planId,
@@ -591,7 +591,7 @@ router.patch('/system-settings/smtp', async (req, res, next) => {
     if (password) await systemConfig.setConfigValue('smtp_password', password,       true,  userId)
     if (from)     await systemConfig.setConfigValue('smtp_from',     from,           false, userId)
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.smtp.updated',
       targetType: 'SystemConfig',
@@ -617,7 +617,7 @@ router.patch('/system-settings/gemini', async (req, res, next) => {
     if (parsed.data.apiKey) await systemConfig.setConfigValue('gemini_api_key', parsed.data.apiKey, true,  userId)
     if (parsed.data.model)  await systemConfig.setConfigValue('gemini_model',   parsed.data.model,  false, userId)
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.gemini.updated',
       targetType: 'SystemConfig',
@@ -641,7 +641,7 @@ router.patch('/system-settings/pricing', async (req, res, next) => {
 
     await systemConfig.setConfigValue('overage_markup_percent', String(parsed.data.overageMarkupPct), false, userId)
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.pricing.updated',
       targetType: 'SystemConfig',
@@ -670,7 +670,7 @@ router.post('/tenants/:tenantId/impersonate', async (req, res, next) => {
       data: { adminUserId, tenantId, assumedRoleKey: 'tenant_owner' },
     })
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'ADMIN',
       actorUserId: adminUserId,
       action: 'impersonation.started',
@@ -709,7 +709,7 @@ router.post('/impersonation/:sessionId/end', async (req, res, next) => {
       data: { endedAt: new Date() },
     })
 
-    await writeAuditLog({
+    await writeAuditLogFromRequest(req, {
       actorType: 'ADMIN',
       actorUserId: adminUserId,
       action: 'impersonation.ended',

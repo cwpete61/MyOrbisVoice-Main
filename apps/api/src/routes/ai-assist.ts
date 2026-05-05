@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import { AppError } from '@voiceautomation/shared'
-import { writeAuditLog } from '../lib/audit.js'
+import { writeAuditLogFromRequest } from '../lib/audit.js'
 import {
   generateDnaSection,
   type DnaSection,
@@ -49,7 +49,7 @@ router.post('/ai-assist/generate-dna-section', async (req, res, next) => {
     )
 
     // Audit on success only — failures already log via error handler.
-    void writeAuditLog({
+    void writeAuditLogFromRequest(req, {
       tenantId,
       actorType: 'USER',
       actorUserId: req.user!.id,

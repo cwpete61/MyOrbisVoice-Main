@@ -14,7 +14,7 @@ import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import { asyncHandler } from '../lib/async-handler.js'
 import { prisma } from '../lib/prisma.js'
-import { writeAuditLog } from '../lib/audit.js'
+import { writeAuditLogFromRequest } from '../lib/audit.js'
 import { AppError } from '@voiceautomation/shared'
 
 const router: IRouter = Router()
@@ -125,7 +125,7 @@ router.post('/a2p/submit', asyncHandler(async (req, res) => {
     data:  { status: 'SUBMITTED', submittedAt: new Date(), rejectionReason: null },
   })
 
-  writeAuditLog({
+  writeAuditLogFromRequest(req, {
     actorType: 'USER', actorUserId: userId, tenantId,
     action: 'a2p.submitted',
     targetType: 'TenantA2PApplication', targetId: updated.id,

@@ -5,7 +5,7 @@ import { requireTenantContext } from '../middleware/rbac.js'
 import { asyncHandler } from '../lib/async-handler.js'
 import { prisma } from '../lib/prisma.js'
 import { getBunnyConfig, storageHostForRegion } from '../services/bunny.service.js'
-import { writeAuditLog } from '../lib/audit.js'
+import { writeAuditLogFromRequest } from '../lib/audit.js'
 import { sendCallNotification } from '../services/email.service.js'
 import { streamConversationPdf } from '../services/conversation-pdf.service.js'
 
@@ -306,7 +306,7 @@ router.delete('/conversations', asyncHandler(async (req, res) => {
 
   await prisma.conversation.deleteMany({ where: { id: { in: ownedIds }, tenantId } })
 
-  await writeAuditLog({
+  await writeAuditLogFromRequest(req, {
     actorType: 'USER',
     actorUserId: userId,
     action: 'conversations.bulk_deleted',
@@ -373,7 +373,7 @@ router.get('/conversations/:id/export.pdf', asyncHandler(async (req, res) => {
   res.setHeader('Cache-Control', 'private, no-store')
 
   // Audit log — fire-and-forget, never blocks the export
-  writeAuditLog({
+  writeAuditLogFromRequest(req, {
     tenantId,
     actorType:    userId ? 'USER' : 'SYSTEM',
     actorUserId:  userId,

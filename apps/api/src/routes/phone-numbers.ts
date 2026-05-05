@@ -8,7 +8,7 @@ import { AppError } from '@voiceautomation/shared'
 import { checkEntitlement } from '../services/entitlement.service.js'
 import { ensureTenantSubaccount, getSubaccountClient } from '../services/twilio-subaccount.service.js'
 import { getPlatformTwilioClient } from '../services/twilio.service.js'
-import { writeAuditLog } from '../lib/audit.js'
+import { writeAuditLogFromRequest } from '../lib/audit.js'
 
 const router: IRouter = Router()
 router.use(authenticate, requireTenantContext)
@@ -199,7 +199,7 @@ router.post('/twilio/numbers/purchase', asyncHandler(async (req, res) => {
     },
   })
 
-  writeAuditLog({
+  writeAuditLogFromRequest(req, {
     actorType: 'USER',
     actorUserId: req.user!.id,
     action: 'phone_number.purchased',
@@ -264,7 +264,7 @@ router.delete('/phone-numbers/:id', asyncHandler(async (req, res) => {
 
   await prisma.phoneNumber.delete({ where: { id } })
 
-  writeAuditLog({
+  writeAuditLogFromRequest(req, {
     actorType: 'USER',
     actorUserId: req.user!.id,
     action: 'phone_number.released',
