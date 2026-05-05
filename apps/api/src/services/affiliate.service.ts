@@ -243,8 +243,14 @@ export async function updateAffiliateNotes(id: string, notes: string) {
 
 // ── Referral link ─────────────────────────────────────────────────────────────
 
-export async function getReferralLink(userId: string) {
-  const account = await prisma.affiliateAccount.findUniqueOrThrow({ where: { userId } })
+/** Returns the partner's referral link, or null if the user doesn't have a
+ *  partner account. Used by both the tenant dashboard (where most users
+ *  won't have one — the partner program is opt-in) and the partner portal.
+ *  Previously threw P2025 for non-partner users, which spammed the API
+ *  error log and produced 500s the frontend had to .catch() defensively. */
+export async function getReferralLink(userId: string): Promise<{ url: string; code: string } | null> {
+  const account = await prisma.affiliateAccount.findUnique({ where: { userId } })
+  if (!account) return null
   const appUrl = process.env.APP_URL ?? 'https://app.myorbisvoice.com'
   return {
     url:  `${appUrl}/r/${account.referralCode}`,

@@ -226,7 +226,22 @@ else
   echo "   ⚠ Web returned HTTP $WEB (may still be starting)"
 fi
 
-# ── 6. Post-deploy snapshot ────────────────────────────────────────────────
+# ── 6. Pre-flight verification gate ────────────────────────────────────────
+# Read-only check across every external integration + container health. If
+# this fails, something deeper than a 200 from /health is wrong (Stripe key
+# misconfigured, webhook secret missing, container crashed mid-boot, etc.)
+# and a real customer would hit it before we noticed.
+log "Pre-flight verification..."
+if pnpm preflight 2>&1 | tail -20; then
+  ok "Pre-flight: all checks green"
+else
+  echo ""
+  echo "  ⚠ Pre-flight detected an issue. Review output above."
+  echo "  ⚠ Deploy completed, but DO NOT open new customer signups until pre-flight is green."
+  echo "  ⚠ Run \`pnpm preflight\` again to re-check after fixing."
+fi
+
+# ── 7. Post-deploy snapshot ────────────────────────────────────────────────
 log "Post-deploy snapshot..."
 docker exec umoja-postgres pg_dump -U voiceautomation -d voiceautomation -F c \
   > "backups/db_${STAMP}_post_${TARGET}.dump" 2>/dev/null && ok "Post snapshot: backups/db_${STAMP}_post_${TARGET}.dump"
@@ -238,5 +253,8 @@ echo "  App:     https://app.myorbisvoice.com"
 echo "  API:     https://api.myorbisvoice.com/health"
 echo "  Reason:  $REASON"
 echo "═══════════════════════════════════════"
+echo ""
+echo "  Recommended: run \`pnpm smoke-test\` to verify the customer signup→onboarding flow."
+echo "  (Smoke test creates a disposable tenant per run; not in deploy.sh until cleanup endpoint exists.)"
 echo ""
 echo "  Next: hard-refresh the browser (Ctrl+Shift+R) and verify manually."
