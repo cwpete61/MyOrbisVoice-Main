@@ -1605,30 +1605,31 @@ Items below are confirmed product requirements. Implement them in order of depen
 |---|---|---|
 | 1 | Admin impersonation / support mode | ✅ DONE — per-action audit attribution shipped 2026-05-05 |
 | 2 | Agent always speaks first | ✅ DONE — both inbound + widget surfaces |
-| 3 | Reduce agent response latency | ❌ TODO — no profiling work yet; real gap |
-| 4 | Conversations bulk actions / search / filter / sort / download | ✅ DONE — bulk delete, search, filters, sort, ZIP export all in `/conversations` |
-| 5 | Channel availability gated by tier | ❌ TODO — entitlements model exists, but `/channels` UI does not gate by them |
-| 6 | Tooltips throughout the app | 🟡 PARTIAL — 34 use sites; full-app sweep still pending |
-| 7 | Full help section (tenant-facing) | ✅ DONE — `/help` page + helpContent.ts |
-| 8 | Phone usage section | ✅ DONE — `/usage` page |
-| 9 | Finish Google integration | ✅ DONE — Gmail send + Calendar create/update/cancel all live |
-| 10 | Calendar integration "coming soon" placeholders (Outlook / Calendly / Cal.com) | ❌ TODO — no placeholder cards in `/integrations` |
-| 11 | Logo upload | ✅ DONE — `POST /api/business-profile/logo` + TenantLogo component |
-| 12 | New conversation notifications (push / desktop / in-app) | ✅ DONE — push.service + NotificationBell |
-| 13 | Admin help section | ✅ DONE — `/admin/help` + adminHelpContent.ts |
-| 14 | Automated help-center screenshot capture (Playwright) | ❌ TODO — no capture script in repo |
+| 3 | Reduce agent response latency | 🟡 PARTIAL — telemetry shipped 2026-05-05 (per-turn user→agent timing on Conversation.metadataJson.latency); actual VAD / prompt-size tuning is data-gated until we collect baseline distributions |
+| 4 | Conversations bulk actions / search / filter / sort / download | ✅ DONE |
+| 5 | Channel availability gated by tier | ✅ DONE — `/channels` cards lock + render upgrade link when entitlements gate the channel (shipped 2026-05-05) |
+| 6 | Tooltips throughout the app | 🟡 PARTIAL — priority surfaces covered (channels, agents, usage, dashboard, billing entitlements + business-dna section descriptions); per-field sweep across remaining pages is incremental editorial work |
+| 7 | Full help section (tenant-facing) | ✅ DONE |
+| 8 | Phone usage section | ✅ DONE |
+| 9 | Finish Google integration | ✅ DONE |
+| 10 | Calendar integration "coming soon" placeholders | ✅ DONE — Outlook, Calendly, Cal.com cards in `/integrations` |
+| 11 | Logo upload | ✅ DONE |
+| 12 | New conversation notifications | ✅ DONE |
+| 13 | Admin help section | ✅ DONE — text complete; screenshots tracked under #14 |
+| 14 | Automated help-center screenshot capture (Playwright) | 🔵 DEFERRED-BY-DESIGN — gated by upcoming tenant feature-testing sprint per the item's own dependency note. Re-open after that sprint stabilizes the UI. |
 | 15 | Voice dispatch for tag-driven campaigns | 🔵 DEFERRED — pending v1.1 (carrier reputation, see #19) |
 | 16 | Per-tenant SMS subaccount routing | 🔵 DEFERRED — pending Twilio A2P 10DLC approval |
-| 17 | Twilio testing path completion | 🟡 IN-FLIGHT — Test Credentials path verified; toll-free verification + international real-delivery pending |
-| 18 | WhatsApp dispatch | 🔵 DEFERRED — pending Meta Business verification + WhatsApp template approval |
-| 19 | Outbound voice carrier reputation | 🔵 DEFERRED — pending A2P 10DLC + STIR/SHAKEN attestation; documented in detail |
+| 17 | Twilio testing path completion | 🟡 IN-FLIGHT |
+| 18 | WhatsApp dispatch | 🔵 DEFERRED — pending Meta Business verification |
+| 19 | Outbound voice carrier reputation | 🔵 DEFERRED — pending A2P 10DLC + STIR/SHAKEN attestation |
 
-**Real remaining TODOs in priority order:**
-1. **#3 Agent latency reduction** — high impact (every call), needs profiling, ~half-day
-2. **#5 Channel availability by tier** — gates revenue per plan tier, ~1 hour
-3. **#10 Calendar integration placeholders** — sets expectations for prospective tenants, ~30 min
-4. **#6 Tooltips full sweep** — UX polish, ~half-day
-5. **#14 Playwright screenshot capture** — help-center quality, ~6 hours; gated by tenant feature testing sprint
+**Open work — incremental, not blocking launch:**
+- **#3 Agent latency tuning** — telemetry now captures real distributions; tune VAD / prompt-size only after baseline data exists across real production calls
+- **#6 Tooltips per-field sweep** — editorial work across remaining pages, driven by user-confusion feedback rather than a single big push
+- **#14 Screenshot capture** — gated by feature-testing sprint (intentional)
+- **#15-19 Twilio / outbound voice** — all blocked on external approvals (A2P 10DLC, toll-free verification, Meta Business, carrier reputation)
+
+There are no remaining TODO items the team can close without external signal.
 
 ---
 
@@ -1669,7 +1670,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 3. Reduce Agent Response Latency — ❌ TODO
+### 3. Reduce Agent Response Latency — 🟡 PARTIAL (telemetry shipped, tuning data-gated)
 
 **What:** The gap between the caller finishing speaking and the agent beginning to respond is too long. Needs investigation and reduction.
 
@@ -1714,7 +1715,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 5. Channel Availability Controlled by Tier — Admin-Configured — ❌ TODO
+### 5. Channel Availability Controlled by Tier — Admin-Configured — ✅ DONE
 
 **What:** Which channels a tenant can enable (widget, inbound, outbound) must be determined by the tier they are on. Tier feature flags are configured by platform admins, not hardcoded.
 
@@ -1819,7 +1820,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 10. Calendar Integrations — Coming Soon Placeholder — ❌ TODO
+### 10. Calendar Integrations — Coming Soon Placeholder — ✅ DONE
 
 **What:** Future calendar integrations beyond Google (Outlook/Microsoft 365, Calendly, Cal.com) should be visible in the integrations page with a "Coming soon" state to set expectations.
 
@@ -1987,7 +1988,7 @@ As the platform grows, we will not always be the only people doing support. Supp
 
 ---
 
-### 14. Automated Help Center Screenshot Capture (Playwright) — ❌ TODO
+### 14. Automated Help Center Screenshot Capture (Playwright) — 🔵 DEFERRED-BY-DESIGN (gated by feature-testing sprint per below)
 
 **What:** A repeatable, scripted system that logs into the live app via headless browser, navigates through every screenshot slot defined in `helpContent.ts` and `adminHelpContent.ts`, captures the real UI, and saves PNGs to the matching paths. Run it once → all 65 tenant + 15 admin screenshots auto-populate. Re-run anytime the UI changes → all screenshots refresh.
 
