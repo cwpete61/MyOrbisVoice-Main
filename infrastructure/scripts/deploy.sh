@@ -241,6 +241,26 @@ else
   echo "  ⚠ Run \`pnpm preflight\` again to re-check after fixing."
 fi
 
+# ── 6b. Smoke test (opt-in via E2E_ADMIN_LOGIN_EMAIL) ─────────────────────
+# If admin credentials are present in the environment, run the customer-
+# journey smoke test (signup → onboarding → channels) and clean up the
+# disposable tenant afterward. Without admin creds we skip — better to not
+# run smoke than to run it and leak orphan @orbisvoice.test tenants every
+# deploy. Set E2E_ADMIN_LOGIN_EMAIL + E2E_ADMIN_LOGIN_PASSWORD in your
+# shell or .envrc to enable.
+if [[ -n "${E2E_ADMIN_LOGIN_EMAIL:-}" && -n "${E2E_ADMIN_LOGIN_PASSWORD:-}" ]]; then
+  log "Smoke test (customer signup → onboarding flow)..."
+  if pnpm smoke-test 2>&1 | tail -15; then
+    ok "Smoke test: all checks green"
+  else
+    echo ""
+    echo "  ⚠ Smoke test detected a regression in the customer signup flow."
+    echo "  ⚠ Review screenshots saved to /tmp/smoke-test-fail-*.png"
+  fi
+else
+  echo "   ⓘ Smoke test skipped — set E2E_ADMIN_LOGIN_EMAIL + E2E_ADMIN_LOGIN_PASSWORD to enable"
+fi
+
 # ── 7. Post-deploy snapshot ────────────────────────────────────────────────
 log "Post-deploy snapshot..."
 docker exec umoja-postgres pg_dump -U voiceautomation -d voiceautomation -F c \
@@ -254,7 +274,10 @@ echo "  API:     https://api.myorbisvoice.com/health"
 echo "  Reason:  $REASON"
 echo "═══════════════════════════════════════"
 echo ""
-echo "  Recommended: run \`pnpm smoke-test\` to verify the customer signup→onboarding flow."
-echo "  (Smoke test creates a disposable tenant per run; not in deploy.sh until cleanup endpoint exists.)"
-echo ""
+if [[ -z "${E2E_ADMIN_LOGIN_EMAIL:-}" ]]; then
+  echo "  Optional: set E2E_ADMIN_LOGIN_EMAIL + E2E_ADMIN_LOGIN_PASSWORD in your shell"
+  echo "  to enable automatic smoke-testing on every deploy. Until then, run manually:"
+  echo "      pnpm smoke-test"
+  echo ""
+fi
 echo "  Next: hard-refresh the browser (Ctrl+Shift+R) and verify manually."

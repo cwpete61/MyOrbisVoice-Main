@@ -163,6 +163,35 @@ async function main() {
     }) && allPassed
   }
 
+  // Clean up the disposable test tenant + user (and any leftover
+  // @orbisvoice.test rows from prior runs). Best-effort — if admin creds
+  // aren't available we just leave the tenant for periodic manual cleanup.
+  const adminEmail    = process.env['E2E_ADMIN_LOGIN_EMAIL']
+  const adminPassword = process.env['E2E_ADMIN_LOGIN_PASSWORD']
+  if (adminEmail && adminPassword) {
+    await step('Cleanup: delete @orbisvoice.test tenants via admin endpoint', async () => {
+      const apiUrl = (process.env['E2E_API_URL'] ?? BASE_URL.replace('app.', 'api.'))
+      const loginResp = await fetch(`${apiUrl}/api/auth/login`, {
+        method:  'POST',
+        headers: { 'content-type': 'application/json' },
+        body:    JSON.stringify({ login: adminEmail, password: adminPassword }),
+      })
+      if (!loginResp.ok) throw new Error(`admin login failed: ${loginResp.status}`)
+      const loginJson = await loginResp.json() as { data: { accessToken: string } }
+      const token = loginJson.data.accessToken
+      const cleanupResp = await fetch(`${apiUrl}/api/admin/test-tenants`, {
+        method:  'DELETE',
+        headers: { authorization: `Bearer ${token}` },
+      })
+      if (!cleanupResp.ok) throw new Error(`cleanup failed: ${cleanupResp.status}`)
+      const cleanupJson = await cleanupResp.json() as { data: { deletedTenantCount: number; deletedUserCount: number } }
+      return `removed ${cleanupJson.data.deletedTenantCount} test tenants + ${cleanupJson.data.deletedUserCount} users`
+    })
+  } else {
+    console.log('\x1b[33m⚠\x1b[0m Cleanup skipped — set E2E_ADMIN_LOGIN_EMAIL + E2E_ADMIN_LOGIN_PASSWORD to enable')
+    console.log('   Test tenant left behind:', testEmail)
+  }
+
   await browser.close()
 
   console.log()

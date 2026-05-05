@@ -780,4 +780,42 @@ router.get('/errors', async (_req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ── Disposable test-tenant cleanup ─────────────────────────────────────────
+// The smoke-test (scripts/smoke-test.ts) creates a fresh tenant on every run
+// using a @orbisvoice.test email. Without cleanup these accumulate. This
+// endpoint deletes every tenant whose registration email ends in that
+// reserved test-only domain. Cascade-deletes wipe TenantMember, BusinessProfile,
+// ChannelConfig, AgentProfile, etc. — Prisma's onDelete: Cascade rules cover
+// the full graph. Audit-logs the count.
+router.delete('/test-tenants', async (req, res, next) => {
+  try {
+    const before = await prisma.tenant.findMany({
+      where: { registrationEmail: { endsWith: '@orbisvoice.test' } },
+      select: { id: true, registrationEmail: true },
+    })
+    const result = await prisma.tenant.deleteMany({
+      where: { registrationEmail: { endsWith: '@orbisvoice.test' } },
+    })
+    // Also clean up the user accounts created with these tenants — they're
+    // disposable too. Tenant cascade handles TenantMember; Users created
+    // exclusively for these tenants are easy to spot via the same domain.
+    const userResult = await prisma.user.deleteMany({
+      where: { email: { endsWith: '@orbisvoice.test' } },
+    })
+
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.test_tenants_cleaned',
+      metadataJson: {
+        deletedTenantCount: result.count,
+        deletedUserCount:   userResult.count,
+        tenantEmails:       before.map(t => t.registrationEmail),
+      },
+    })
+
+    res.json({ data: { deletedTenantCount: result.count, deletedUserCount: userResult.count } })
+  } catch (err) { next(err) }
+})
+
 export default router
