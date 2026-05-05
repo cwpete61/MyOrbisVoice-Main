@@ -20,7 +20,8 @@
     "i18n:fill": "tsx scripts/i18n-fill.ts",
     "i18n:fill:dry": "tsx scripts/i18n-fill.ts --dry-run",
     "capture-screenshots": "tsx scripts/capture-screenshots.ts",
-    "preflight": "tsx scripts/preflight.ts"
+    "preflight": "tsx scripts/preflight.ts",
+    "smoke-test": "tsx scripts/smoke-test.ts"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
