@@ -44,7 +44,7 @@ tenantRouter.get('/affiliate/stats/period', async (req, res, next) => {
   try {
     const account = await affiliateService.getAffiliateAccount(req.user!.id)
     if (!account) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'No affiliate account' }] }); return }
-    const days = Math.max(1, Math.min(365, parseInt((req.query as Record<string, string>).days ?? '30') || 30))
+    const days = Math.max(1, Math.min(365, parseInt((req.query as Record<string, string>).days ?? '30', 10) || 30))
     res.json({ data: await affiliateService.getPeriodStats(account.id, days) })
   } catch (err) { next(err) }
 })
@@ -53,7 +53,7 @@ tenantRouter.get('/affiliate/stats/daily', async (req, res, next) => {
   try {
     const account = await affiliateService.getAffiliateAccount(req.user!.id)
     if (!account) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'No affiliate account' }] }); return }
-    const days = parseInt((req.query as Record<string, string>).days ?? '30')
+    const days = parseInt((req.query as Record<string, string>).days ?? '30', 10)
     const [clicks, conversions] = await Promise.all([
       affiliateService.getDailyClickStats(account.id, days),
       affiliateService.getDailyConversionStats(account.id, days),
@@ -67,7 +67,7 @@ tenantRouter.get('/affiliate/commissions', async (req, res, next) => {
     const account = await affiliateService.getAffiliateAccount(req.user!.id)
     if (!account) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'No affiliate account' }] }); return }
     const { page, limit } = req.query as Record<string, string>
-    res.json({ data: await affiliateService.getCommissions(account.id, parseInt(page ?? '1'), parseInt(limit ?? '20')) })
+    res.json({ data: await affiliateService.getCommissions(account.id, parseInt(page ?? '1', 10), parseInt(limit ?? '20', 10)) })
   } catch (err) { next(err) }
 })
 
@@ -96,17 +96,123 @@ tenantRouter.get('/affiliate/payout/requests', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ── Stripe Connect Express — payout account onboarding ───────────────────────
+
+/** Start (or resume) the Stripe Express onboarding flow.
+ *  Body: { returnUrl, refreshUrl } — both should point at the partner-portal.
+ *  Returns the Stripe-hosted URL the browser should open. */
+tenantRouter.post('/affiliate/connect/onboard', async (req, res, next) => {
+  try {
+    const { returnUrl, refreshUrl } = req.body as { returnUrl?: string; refreshUrl?: string }
+    if (!returnUrl || !refreshUrl) {
+      res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'returnUrl and refreshUrl are required' }] }); return
+    }
+    res.json({ data: await affiliateService.createConnectOnboardingLink(req.user!.id, { returnUrl, refreshUrl }) })
+  } catch (err: unknown) {
+    if (err instanceof Error) res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: err.message }] })
+    else next(err)
+  }
+})
+
+/** Read the cached Connect status (no Stripe round-trip). */
+tenantRouter.get('/affiliate/connect/status', async (req, res, next) => {
+  try {
+    res.json({ data: await affiliateService.getConnectStatus(req.user!.id) })
+  } catch (err) { next(err) }
+})
+
+/** Force-refresh the status from Stripe — call after the partner returns from
+ *  Stripe-hosted onboarding so the dashboard reflects their new state. */
+tenantRouter.post('/affiliate/connect/refresh', async (req, res, next) => {
+  try {
+    res.json({ data: await affiliateService.refreshConnectStatus(req.user!.id) })
+  } catch (err: unknown) {
+    if (err instanceof Error) res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: err.message }] })
+    else next(err)
+  }
+})
+
+// ── Custom Links (partner-owned named slugs) ──────────────────────────────────
+
+tenantRouter.get('/affiliate/custom-links', async (req, res, next) => {
+  try {
+    const account = await affiliateService.getAffiliateAccount(req.user!.id)
+    if (!account) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'No affiliate account' }] }); return }
+    res.json({ data: await affiliateService.listCustomLinks(account.id) })
+  } catch (err) { next(err) }
+})
+
+tenantRouter.post('/affiliate/custom-links', async (req, res, next) => {
+  try {
+    const account = await affiliateService.getAffiliateAccount(req.user!.id)
+    if (!account || account.status !== 'ACTIVE') {
+      res.status(403).json({ errors: [{ code: 'FORBIDDEN', message: 'Active partner account required' }] }); return
+    }
+    const { slug, label, notes } = req.body as { slug?: string; label?: string; notes?: string }
+    res.json({ data: await affiliateService.createCustomLink(account.id, { slug: slug ?? '', label: label ?? '', notes }) })
+  } catch (err: unknown) {
+    if (err instanceof Error) res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: err.message }] })
+    else next(err)
+  }
+})
+
+tenantRouter.patch('/affiliate/custom-links/:id', async (req, res, next) => {
+  try {
+    const account = await affiliateService.getAffiliateAccount(req.user!.id)
+    if (!account) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'No affiliate account' }] }); return }
+    const { label, notes } = req.body as { label?: string; notes?: string | null }
+    res.json({ data: await affiliateService.updateCustomLink(account.id, req.params.id!, { label, notes }) })
+  } catch (err: unknown) {
+    if (err instanceof Error) res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: err.message }] })
+    else next(err)
+  }
+})
+
+tenantRouter.post('/affiliate/custom-links/:id/archive', async (req, res, next) => {
+  try {
+    const account = await affiliateService.getAffiliateAccount(req.user!.id)
+    if (!account) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'No affiliate account' }] }); return }
+    res.json({ data: await affiliateService.setCustomLinkArchived(account.id, req.params.id!, true) })
+  } catch (err: unknown) {
+    if (err instanceof Error) res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: err.message }] })
+    else next(err)
+  }
+})
+
+tenantRouter.post('/affiliate/custom-links/:id/unarchive', async (req, res, next) => {
+  try {
+    const account = await affiliateService.getAffiliateAccount(req.user!.id)
+    if (!account) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'No affiliate account' }] }); return }
+    res.json({ data: await affiliateService.setCustomLinkArchived(account.id, req.params.id!, false) })
+  } catch (err: unknown) {
+    if (err instanceof Error) res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: err.message }] })
+    else next(err)
+  }
+})
+
+tenantRouter.delete('/affiliate/custom-links/:id', async (req, res, next) => {
+  try {
+    const account = await affiliateService.getAffiliateAccount(req.user!.id)
+    if (!account) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'No affiliate account' }] }); return }
+    await affiliateService.deleteCustomLink(account.id, req.params.id!)
+    res.json({ data: { ok: true } })
+  } catch (err: unknown) {
+    if (err instanceof Error) res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: err.message }] })
+    else next(err)
+  }
+})
+
 // ── Admin routes ──────────────────────────────────────────────────────────────
 const adminRouter: IRouter = Router()
 adminRouter.use(authenticate, requirePlatformAdmin)
 
-adminRouter.get('/affiliate/settings',   async (req, res, next) => { try { res.json({ data: await affiliateService.getSettings() }) } catch (err) { next(err) } })
+adminRouter.get('/affiliate/settings',   async (_req, res, next) => { try { res.json({ data: await affiliateService.getSettings() }) } catch (err) { next(err) } })
 adminRouter.patch('/affiliate/settings', async (req, res, next) => { try { res.json({ data: await affiliateService.updateSettings(req.body as Parameters<typeof affiliateService.updateSettings>[0]) }) } catch (err) { next(err) } })
 
 adminRouter.get('/affiliates', async (req, res, next) => {
   try {
     const { status, search, page, limit } = req.query as Record<string, string>
-    res.json({ data: await affiliateService.listAffiliates({ status: status || undefined, search: search || undefined, page: parseInt(page ?? '1'), limit: parseInt(limit ?? '50') }) })
+    res.json({ data: await affiliateService.listAffiliates({ status: status || undefined, search: search || undefined, page: parseInt(page ?? '1', 10), limit: parseInt(limit ?? '50', 10) }) })
   } catch (err) { next(err) }
 })
 
@@ -121,14 +227,14 @@ adminRouter.get('/affiliates/:id', async (req, res, next) => {
 
 adminRouter.get('/affiliate/platform-stats', async (req, res, next) => {
   try {
-    const days = Math.max(1, Math.min(365, parseInt((req.query as Record<string, string>).days ?? '30') || 30))
+    const days = Math.max(1, Math.min(365, parseInt((req.query as Record<string, string>).days ?? '30', 10) || 30))
     res.json({ data: await affiliateService.getPlatformStats(days) })
   } catch (err) { next(err) }
 })
 
 adminRouter.get('/affiliate/platform-daily', async (req, res, next) => {
   try {
-    const days = Math.max(7, Math.min(90, parseInt((req.query as Record<string, string>).days ?? '30') || 30))
+    const days = Math.max(7, Math.min(90, parseInt((req.query as Record<string, string>).days ?? '30', 10) || 30))
     res.json({ data: await affiliateService.getPlatformDailyStats(days) })
   } catch (err) { next(err) }
 })
@@ -150,7 +256,7 @@ adminRouter.patch('/affiliates/:id/notes',     async (req, res, next) => { try {
 adminRouter.get('/affiliate/commissions', async (req, res, next) => {
   try {
     const { status, affiliateId, page, limit } = req.query as Record<string, string>
-    res.json({ data: await affiliateService.listAdminCommissions({ status: status || undefined, affiliateId: affiliateId || undefined, page: parseInt(page ?? '1'), limit: parseInt(limit ?? '50') }) })
+    res.json({ data: await affiliateService.listAdminCommissions({ status: status || undefined, affiliateId: affiliateId || undefined, page: parseInt(page ?? '1', 10), limit: parseInt(limit ?? '50', 10) }) })
   } catch (err) { next(err) }
 })
 
@@ -166,7 +272,7 @@ adminRouter.post('/affiliate/commissions/:id/pay',     async (req, res, next) =>
 adminRouter.get('/affiliate/payout-requests', async (req, res, next) => {
   try {
     const { status, page, limit } = req.query as Record<string, string>
-    res.json({ data: await affiliateService.listAdminPayoutRequests({ status: status || undefined, page: parseInt(page ?? '1'), limit: parseInt(limit ?? '50') }) })
+    res.json({ data: await affiliateService.listAdminPayoutRequests({ status: status || undefined, page: parseInt(page ?? '1', 10), limit: parseInt(limit ?? '50', 10) }) })
   } catch (err) { next(err) }
 })
 
@@ -191,10 +297,23 @@ publicRouter.post('/track/click', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-publicRouter.get('/affiliate/settings', async (req, res, next) => {
+publicRouter.get('/affiliate/settings', async (_req, res, next) => {
   try {
     const s = await affiliateService.getSettings()
     res.json({ data: { cookieDurationDays: s.cookieDurationDays, programName: s.programName, programDescription: s.programDescription, commissionRatePct: s.commissionRatePct, termsUrl: s.termsUrl } })
+  } catch (err) { next(err) }
+})
+
+// Resolve a referral code OR custom slug → parent referralCode. Lets the
+// /r/[code] redirect page drop the right cookie value when a visitor lands via
+// a custom slug. Returns 404 for unknown / archived / disabled inputs.
+publicRouter.get('/affiliate/resolve', async (req, res, next) => {
+  try {
+    const code = (req.query as Record<string, string>).code?.trim()
+    if (!code) { res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'code required' }] }); return }
+    const resolved = await affiliateService.resolveReferral(code)
+    if (!resolved) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'Unknown referral code' }] }); return }
+    res.json({ data: resolved })
   } catch (err) { next(err) }
 })
 

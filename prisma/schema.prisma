@@ -300,6 +300,7 @@ model User {
   passwordHash           String
   firstName              String?
   lastName               String?
+  preferredLocale        String                 @default("en")
   status                 UserStatus             @default(ACTIVE)
   lastLoginAt            DateTime?
   createdAt              DateTime               @default(now())
@@ -938,12 +939,13 @@ model AffiliateSettings {
 }
 
 model AffiliateAccount {
-  id                  String               @id @default(uuid())
-  userId              String               @unique
-  status              AffiliateStatus      @default(PENDING)
-  referralCode        String               @unique
-  payoutMethodJson    Json?
-  taxProfileJson      Json?
+  id                       String               @id @default(uuid())
+  userId                   String               @unique
+  status                   AffiliateStatus      @default(PENDING)
+  referralCode             String               @unique
+  stripeConnectAccountId   String?              @unique
+  payoutMethodJson         Json?
+  taxProfileJson           Json?
   payoutRequestedAt   DateTime?
   totalEarnedCents    Int                  @default(0)
   totalPaidCents      Int                  @default(0)
@@ -956,6 +958,22 @@ model AffiliateAccount {
   conversions         AffiliateConversion[]
   commissions         AffiliateCommission[]
   payoutRequests      AffiliatePayoutRequest[]
+  customLinks         AffiliateCustomLink[]
+}
+
+model AffiliateCustomLink {
+  id                 String           @id @default(uuid())
+  affiliateAccountId String
+  slug               String           @unique
+  label              String
+  notes              String?
+  archivedAt         DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  affiliateAccount   AffiliateAccount @relation(fields: [affiliateAccountId], references: [id], onDelete: Cascade)
+  clicks             AffiliateClick[]
+
+  @@index([affiliateAccountId, archivedAt])
 }
 
 model AffiliatePayoutRequest {
@@ -974,18 +992,21 @@ model AffiliatePayoutRequest {
 }
 
 model AffiliateClick {
-  id                String           @id @default(uuid())
+  id                String               @id @default(uuid())
   affiliateAccountId String
+  customLinkId      String?
   tenantId          String?
   sessionId         String?
   landingPath       String?
   referrer          String?
   ipHash            String?
   userAgent         String?
-  createdAt         DateTime         @default(now())
-  affiliateAccount  AffiliateAccount @relation(fields: [affiliateAccountId], references: [id], onDelete: Cascade)
+  createdAt         DateTime             @default(now())
+  affiliateAccount  AffiliateAccount     @relation(fields: [affiliateAccountId], references: [id], onDelete: Cascade)
+  customLink        AffiliateCustomLink? @relation(fields: [customLinkId], references: [id], onDelete: SetNull)
 
   @@index([affiliateAccountId, createdAt])
+  @@index([customLinkId, createdAt])
 }
 
 model AffiliateConversion {
