@@ -12,14 +12,32 @@ export async function persistConversation(opts: {
   transcript:  TranscriptEntry[]
   summary:     string
   channelType?: 'WIDGET' | 'INBOUND' | 'OUTBOUND'
+  /** Per-turn user→agent turnaround latencies (ms). Persisted to
+   *  Conversation.metadataJson so we can plot the distribution and
+   *  decide whether VAD tuning is worth further work. */
+  turnLatenciesMs?: number[]
 }): Promise<string> {
-  const { tenantId, sessionId, transcript, summary, channelType = 'WIDGET' } = opts
+  const { tenantId, sessionId, transcript, summary, channelType = 'WIDGET', turnLatenciesMs } = opts
 
   const transcriptJson = transcript.map(e => ({
     role:      e.role,
     text:      e.text,
     timestamp: e.timestamp,
   }))
+
+  // metadataJson payload — only attach latency if we measured at least one turn
+  const metadataPatch: Record<string, unknown> = {}
+  if (turnLatenciesMs && turnLatenciesMs.length > 0) {
+    const sorted = [...turnLatenciesMs].sort((a, b) => a - b)
+    metadataPatch['latency'] = {
+      turns: turnLatenciesMs,
+      count: turnLatenciesMs.length,
+      min:   sorted[0],
+      max:   sorted[sorted.length - 1],
+      median: sorted[Math.floor(sorted.length / 2)],
+      p95:   sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))],
+    }
+  }
 
   if (channelType === 'INBOUND' || channelType === 'OUTBOUND') {
     // Conversation was already created by logCallStart — update it
@@ -30,6 +48,7 @@ export async function persistConversation(opts: {
         endedAt:       new Date(),
         summaryText:   summary,
         transcriptJson: transcriptJson as any,
+        ...(Object.keys(metadataPatch).length > 0 ? { metadataJson: metadataPatch as any } : {}),
       },
     })
 

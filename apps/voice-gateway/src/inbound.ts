@@ -86,10 +86,31 @@ export async function handleInboundCall(ws: WebSocket) {
 
   // Gemini outputs PCM16 24kHz → downsample to 8kHz → mulaw → Twilio
   let audioChunksSent = 0
+
+  // Latency telemetry. We can't observe Gemini's internal "user stopped"
+  // moment, but we CAN measure "user's last audio frame went to Gemini" →
+  // "first agent audio came back to us." The delta is the perceived
+  // turnaround time the caller feels. Captured per turn, persisted on
+  // Conversation.metadataJson at finalize so we can plot the distribution
+  // and decide whether VAD silence_duration_ms / prefix_padding_ms are
+  // worth tuning further.
+  let lastUserAudioAt: number | null = null
+  let agentTurnStart:  number | null = null
+  const turnLatenciesMs: number[] = []
+
   function sendAudioToTwilio(pcm24k: Buffer) {
     if (!streamSid || ws.readyState !== 1) return
     audioChunksSent++
-    if (audioChunksSent === 1) console.log('[inbound] first audio chunk → Twilio')
+    if (audioChunksSent === 1 || agentTurnStart === null) {
+      agentTurnStart = Date.now()
+      if (lastUserAudioAt !== null) {
+        const ms = agentTurnStart - lastUserAudioAt
+        turnLatenciesMs.push(ms)
+        console.log(`[inbound] turnaround: ${ms}ms (user→agent)`)
+      } else {
+        console.log('[inbound] first audio chunk → Twilio')
+      }
+    }
     try {
       const pcm8k   = resamplePcm16(pcm24k, 24000, 8000)
       const mulaw   = pcm16ToMulaw(pcm8k)
@@ -273,6 +294,10 @@ export async function handleInboundCall(ws: WebSocket) {
         // Also flush any pending user turn (user finished before agent responded)
         if (userBuffer.trim()) flushBuffer('user')
         lastRole = null
+        // Reset latency tracking so the NEXT turn measures the next
+        // user→agent gap, not the time since this turn ended.
+        agentTurnStart = null
+        lastUserAudioAt = null
         console.log('[inbound] Gemini turn complete')
       },
       async onToolCall(call) {
@@ -348,7 +373,13 @@ export async function handleInboundCall(ws: WebSocket) {
           transcript: cleaned,
           summary,
           channelType: 'INBOUND',
+          turnLatenciesMs,
         })
+        if (turnLatenciesMs.length > 0) {
+          const sorted = [...turnLatenciesMs].sort((a, b) => a - b)
+          const median = sorted[Math.floor(sorted.length / 2)]
+          console.log(`[inbound] latency summary: turns=${turnLatenciesMs.length} median=${median}ms p95=${sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]}ms`)
+        }
         console.log(`[inbound] conversation persisted callSid=${callSid} turns=${transcript.length}`)
       } else {
         console.log(`[inbound] finalize ${status} — transcript len=${transcript.length}, not persisting`)
@@ -376,6 +407,7 @@ export async function handleInboundCall(ws: WebSocket) {
         const pcm8k    = mulawToPcm16(mulawBuf)
         const pcm16k   = resamplePcm16(pcm8k, 8000, 16000)  // Gemini expects 16kHz
         gemini.sendAudio(pcm16k)
+        lastUserAudioAt = Date.now()
         return
       }
 
