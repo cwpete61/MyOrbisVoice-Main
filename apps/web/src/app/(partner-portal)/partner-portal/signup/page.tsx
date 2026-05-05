@@ -6,8 +6,10 @@ import Link from 'next/link'
 import { apiAffiliateSignup } from '@/lib/api'
 import { setTokens } from '@/lib/auth'
 import { PasswordInput } from '@/components/PasswordInput'
+import { useT } from '@/lib/i18n/I18nProvider'
 
 export default function AffiliateSignupPage() {
+  const t = useT()
   const router = useRouter()
   const [form, setForm] = useState({ firstName: '', lastName: '', username: '', email: '', password: '' })
   const [error, setError] = useState('')
@@ -32,7 +34,7 @@ export default function AffiliateSignupPage() {
       setTokens(result.accessToken, result.refreshToken)
       router.push('/partner-portal/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signup failed. Please try again.')
+      setError(err instanceof Error ? err.message : t('partnerSignup.signupFailed'))
     } finally {
       setLoading(false)
     }
@@ -51,14 +53,14 @@ export default function AffiliateSignupPage() {
           </div>
           <div>
             <p className="font-bold text-sm leading-none" style={{ color: 'var(--text-primary)' }}>OrbisVoice</p>
-            <p className="text-xs mt-0.5" style={{ color: 'oklch(65% 0.15 193)' }}>Partner Portal</p>
+            <p className="text-xs mt-0.5" style={{ color: 'oklch(65% 0.15 193)' }}>{t('partnerSignup.brandSubtitle')}</p>
           </div>
         </div>
 
         <div className="rounded-2xl p-8" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
-          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Become a partner</h1>
+          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('partnerSignup.title')}</h1>
           <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-            Create your affiliate account and start earning commissions.
+            {t('partnerSignup.subtitle')}
           </p>
 
           {error && <div className="alert-error mb-5">{error}</div>}
@@ -66,16 +68,16 @@ export default function AffiliateSignupPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">First name</label>
-                <input type="text" autoFocus autoComplete="given-name" value={form.firstName} onChange={e => set('firstName', e.target.value)} className="input" placeholder="Jane" />
+                <label className="label">{t('partnerSignup.firstName')}</label>
+                <input type="text" autoFocus autoComplete="given-name" value={form.firstName} onChange={e => set('firstName', e.target.value)} className="input" placeholder={t('partnerSignup.firstNamePlaceholder')} />
               </div>
               <div>
-                <label className="label">Last name</label>
-                <input type="text" autoComplete="family-name" value={form.lastName} onChange={e => set('lastName', e.target.value)} className="input" placeholder="Smith" />
+                <label className="label">{t('partnerSignup.lastName')}</label>
+                <input type="text" autoComplete="family-name" value={form.lastName} onChange={e => set('lastName', e.target.value)} className="input" placeholder={t('partnerSignup.lastNamePlaceholder')} />
               </div>
             </div>
             <div>
-              <label className="label">Username <span style={{ color: 'oklch(55% 0.15 15)' }}>*</span></label>
+              <label className="label">{t('partnerSignup.username')} <span style={{ color: 'oklch(55% 0.15 15)' }}>*</span></label>
               <input
                 type="text"
                 required
@@ -83,12 +85,12 @@ export default function AffiliateSignupPage() {
                 value={form.username}
                 onChange={e => set('username', e.target.value)}
                 className="input"
-                placeholder="janesmith"
+                placeholder={t('partnerSignup.usernamePlaceholder')}
               />
-              <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Letters, numbers, underscores only</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('partnerSignup.usernameHelp')}</p>
             </div>
             <div>
-              <label className="label">Email <span style={{ color: 'oklch(55% 0.15 15)' }}>*</span></label>
+              <label className="label">{t('partnerSignup.email')} <span style={{ color: 'oklch(55% 0.15 15)' }}>*</span></label>
               <input
                 type="email"
                 required
@@ -96,36 +98,36 @@ export default function AffiliateSignupPage() {
                 value={form.email}
                 onChange={e => set('email', e.target.value)}
                 className="input"
-                placeholder="jane@example.com"
+                placeholder={t('partnerSignup.emailPlaceholder')}
               />
             </div>
             <div>
-              <label className="label">Password <span style={{ color: 'oklch(55% 0.15 15)' }}>*</span></label>
+              <label className="label">{t('partnerSignup.password')} <span style={{ color: 'oklch(55% 0.15 15)' }}>*</span></label>
               <PasswordInput
                 required
                 autoComplete="new-password"
                 value={form.password}
                 onChange={e => set('password', e.target.value)}
                 className="input"
-                placeholder="At least 8 characters"
+                placeholder={t('partnerSignup.passwordPlaceholder')}
               />
             </div>
 
             <div className="pt-1">
               <button type="submit" disabled={loading} className="btn-primary w-full">
-                {loading ? 'Creating account…' : 'Create Partner Account'}
+                {loading ? t('partnerSignup.creating') : t('partnerSignup.cta')}
               </button>
             </div>
           </form>
 
           <p className="text-xs text-center mt-4" style={{ color: 'var(--text-tertiary)' }}>
-            Your application will be reviewed before your account is activated.
+            {t('partnerSignup.reviewNotice')}
           </p>
 
           <p className="text-center mt-4 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-            Already have an account?{' '}
+            {t('partnerSignup.alreadyHave')}{' '}
             <Link href="/partner-portal/login" className="font-semibold" style={{ color: 'oklch(55% 0.11 193)' }}>
-              Sign in
+              {t('partnerSignup.signIn')}
             </Link>
           </p>
         </div>
