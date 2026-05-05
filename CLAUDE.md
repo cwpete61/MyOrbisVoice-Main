@@ -1592,9 +1592,47 @@ Teal swatch — 6 shades light to deep:
 
 Items below are confirmed product requirements. Implement them in order of dependency and phase fit. Do not skip or reorder without reviewing the impact on tenant isolation, entitlement gating, and audit requirements.
 
+### Status legend
+
+- ✅ **DONE** — shipped and verified in production
+- 🟡 **PARTIAL** — partially built; remaining work documented in the item
+- ❌ **TODO** — not yet built; real gap
+- 🔵 **DEFERRED** — blocked on an external dependency or intentionally pushed to v1.1
+
+### Backlog status snapshot (audited 2026-05-05)
+
+| # | Item | Status |
+|---|---|---|
+| 1 | Admin impersonation / support mode | ✅ DONE — per-action audit attribution shipped 2026-05-05 |
+| 2 | Agent always speaks first | ✅ DONE — both inbound + widget surfaces |
+| 3 | Reduce agent response latency | ❌ TODO — no profiling work yet; real gap |
+| 4 | Conversations bulk actions / search / filter / sort / download | ✅ DONE — bulk delete, search, filters, sort, ZIP export all in `/conversations` |
+| 5 | Channel availability gated by tier | ❌ TODO — entitlements model exists, but `/channels` UI does not gate by them |
+| 6 | Tooltips throughout the app | 🟡 PARTIAL — 34 use sites; full-app sweep still pending |
+| 7 | Full help section (tenant-facing) | ✅ DONE — `/help` page + helpContent.ts |
+| 8 | Phone usage section | ✅ DONE — `/usage` page |
+| 9 | Finish Google integration | ✅ DONE — Gmail send + Calendar create/update/cancel all live |
+| 10 | Calendar integration "coming soon" placeholders (Outlook / Calendly / Cal.com) | ❌ TODO — no placeholder cards in `/integrations` |
+| 11 | Logo upload | ✅ DONE — `POST /api/business-profile/logo` + TenantLogo component |
+| 12 | New conversation notifications (push / desktop / in-app) | ✅ DONE — push.service + NotificationBell |
+| 13 | Admin help section | ✅ DONE — `/admin/help` + adminHelpContent.ts |
+| 14 | Automated help-center screenshot capture (Playwright) | ❌ TODO — no capture script in repo |
+| 15 | Voice dispatch for tag-driven campaigns | 🔵 DEFERRED — pending v1.1 (carrier reputation, see #19) |
+| 16 | Per-tenant SMS subaccount routing | 🔵 DEFERRED — pending Twilio A2P 10DLC approval |
+| 17 | Twilio testing path completion | 🟡 IN-FLIGHT — Test Credentials path verified; toll-free verification + international real-delivery pending |
+| 18 | WhatsApp dispatch | 🔵 DEFERRED — pending Meta Business verification + WhatsApp template approval |
+| 19 | Outbound voice carrier reputation | 🔵 DEFERRED — pending A2P 10DLC + STIR/SHAKEN attestation; documented in detail |
+
+**Real remaining TODOs in priority order:**
+1. **#3 Agent latency reduction** — high impact (every call), needs profiling, ~half-day
+2. **#5 Channel availability by tier** — gates revenue per plan tier, ~1 hour
+3. **#10 Calendar integration placeholders** — sets expectations for prospective tenants, ~30 min
+4. **#6 Tooltips full sweep** — UX polish, ~half-day
+5. **#14 Playwright screenshot capture** — help-center quality, ~6 hours; gated by tenant feature testing sprint
+
 ---
 
-### 1. Admin Full Tenant Access (Impersonation / Support Mode)
+### 1. Admin Full Tenant Access (Impersonation / Support Mode) — ✅ DONE
 
 **What:** Platform admins must be able to enter any tenant's account from the admin dashboard to configure settings, troubleshoot issues, or act on behalf of the tenant during support.
 
@@ -1614,7 +1652,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 2. Agent Always Speaks First
+### 2. Agent Always Speaks First — ✅ DONE
 
 **What:** When a call connects (inbound or widget), the AI agent must open the conversation immediately — the caller should never hear silence waiting for the human to speak first.
 
@@ -1631,7 +1669,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 3. Reduce Agent Response Latency
+### 3. Reduce Agent Response Latency — ❌ TODO
 
 **What:** The gap between the caller finishing speaking and the agent beginning to respond is too long. Needs investigation and reduction.
 
@@ -1652,7 +1690,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 4. Conversations Page — Bulk Actions, Download, Search, Filters, Sort
+### 4. Conversations Page — Bulk Actions, Download, Search, Filters, Sort — ✅ DONE
 
 **What:** The conversations list needs production-grade data management capabilities.
 
@@ -1676,7 +1714,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 5. Channel Availability Controlled by Tier — Admin-Configured
+### 5. Channel Availability Controlled by Tier — Admin-Configured — ❌ TODO
 
 **What:** Which channels a tenant can enable (widget, inbound, outbound) must be determined by the tier they are on. Tier feature flags are configured by platform admins, not hardcoded.
 
@@ -1698,7 +1736,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 6. Tooltips Throughout the App
+### 6. Tooltips Throughout the App — 🟡 PARTIAL
 
 **What:** Add contextual tooltips to form fields, buttons, configuration options, and status indicators across all tenant and admin pages.
 
@@ -1716,7 +1754,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 7. Full Help Section
+### 7. Full Help Section — ✅ DONE
 
 **What:** A comprehensive in-app help system covering every feature and function in the product.
 
@@ -1737,7 +1775,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 8. Phone Usage Section
+### 8. Phone Usage Section — ✅ DONE
 
 **What:** Tenants need visibility into their phone number usage (minutes used, calls made, SMS sent). Admins configure the limits as part of the tier settings.
 
@@ -1761,7 +1799,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 9. Finish Google Integration
+### 9. Finish Google Integration — ✅ DONE
 
 **What:** The Google OAuth flow is built but several downstream features are incomplete.
 
@@ -1781,7 +1819,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 10. Calendar Integrations — Coming Soon Placeholder
+### 10. Calendar Integrations — Coming Soon Placeholder — ❌ TODO
 
 **What:** Future calendar integrations beyond Google (Outlook/Microsoft 365, Calendly, Cal.com) should be visible in the integrations page with a "Coming soon" state to set expectations.
 
@@ -1793,7 +1831,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 11. Logo Upload — Profile and Placeholders
+### 11. Logo Upload — Profile and Placeholders — ✅ DONE
 
 **What:** Tenants should be able to upload their business logo, which then appears throughout the app wherever a brand placeholder currently exists.
 
@@ -1816,7 +1854,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 12. New Conversation Notifications — Push, Desktop, In-App
+### 12. New Conversation Notifications — Push, Desktop, In-App — ✅ DONE
 
 **What:** When a new conversation (call or chat) comes in, the tenant should be notified on their phone, desktop, and within the app in real time.
 
@@ -1836,7 +1874,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 
 ---
 
-### 13. Admin / Support Help Section — comprehensive operator guide
+### 13. Admin / Support Help Section — comprehensive operator guide — ✅ DONE (text), 🟡 PARTIAL (screenshots — see #14)
 
 **What:** A dedicated help center for **platform admins and support staff** (separate from the tenant-facing `/help` we already shipped). Covers every admin function with step-by-step processes, expected outcomes, troubleshooting paths, and **screenshots of each UI element** so support can confidently walk customers through fixes without having to navigate the system themselves first.
 
@@ -1949,7 +1987,7 @@ As the platform grows, we will not always be the only people doing support. Supp
 
 ---
 
-### 14. Automated Help Center Screenshot Capture (Playwright)
+### 14. Automated Help Center Screenshot Capture (Playwright) — ❌ TODO
 
 **What:** A repeatable, scripted system that logs into the live app via headless browser, navigates through every screenshot slot defined in `helpContent.ts` and `adminHelpContent.ts`, captures the real UI, and saves PNGs to the matching paths. Run it once → all 65 tenant + 15 admin screenshots auto-populate. Re-run anytime the UI changes → all screenshots refresh.
 
@@ -2033,7 +2071,7 @@ A help center with stale or missing screenshots erodes user trust and increases 
 
 ---
 
-### 15. Voice dispatch for tag-driven campaigns
+### 15. Voice dispatch for tag-driven campaigns — 🔵 DEFERRED v1.1
 
 **What:** Wire the campaign scheduler's `dispatchVoice()` to actually place outbound calls when a `Campaign` enrollment with `channel=VOICE` is due. Currently this path is a stub that marks enrollments FAILED with the note "voice dispatch from tag-driven campaigns not yet wired."
 
@@ -2060,7 +2098,7 @@ A help center with stale or missing screenshots erodes user trust and increases 
 
 ---
 
-### 16. Move campaign SMS dispatch to per-tenant subaccount routing
+### 16. Move campaign SMS dispatch to per-tenant subaccount routing — 🔵 DEFERRED (pending Twilio A2P 10DLC)
 
 **What:** The campaign scheduler's `dispatchSms()` currently calls `sendTestMessage()` from `sms.service.ts`, which uses the **master** Twilio account credentials directly. This works for testing while A2P 10DLC is pending, but production SMS must route through each tenant's own Twilio subaccount.
 
@@ -2081,7 +2119,7 @@ A help center with stale or missing screenshots erodes user trust and increases 
 
 ---
 
-### 17. Twilio testing path completion (in-flight)
+### 17. Twilio testing path completion — 🟡 IN-FLIGHT
 
 **Status:** The infrastructure is shipped; three real-delivery proofs are pending external dependencies.
 
@@ -2097,7 +2135,7 @@ A help center with stale or missing screenshots erodes user trust and increases 
 
 ---
 
-### 18. WhatsApp dispatch (currently disabled in form)
+### 18. WhatsApp dispatch (currently disabled in form) — 🔵 DEFERRED (pending Meta verification)
 
 **What:** The campaign form already has a WhatsApp toggle (disabled with "Coming soon" badge), the schema persists `enableWhatsapp` and `whatsappBody`, the scheduler routes `channel=WHATSAPP` to `dispatchSms(channel='WHATSAPP')` which prefixes `whatsapp:` to the to/from numbers — the only missing piece is provisioning Twilio's WhatsApp Business API.
 
@@ -2115,7 +2153,7 @@ A help center with stale or missing screenshots erodes user trust and increases 
 
 ---
 
-### 19. Outbound voice carrier reputation — defer to v1.1
+### 19. Outbound voice carrier reputation — 🔵 DEFERRED v1.1
 
 **Status:** Deferred 2026-05-04. Outbound voice dispatch from tag-driven campaigns is fully wired and structurally verified, but **calls are silently rejected by carrier signaling layer with `busy` in 0 seconds** before reaching the recipient device — even with the recipient number in the user's contacts. Confirmed across two different from-numbers (`+14043830220` Atlanta and `+19296403810` NYC), so it's not the specific number, it's an upstream filtering pattern.
 
