@@ -213,17 +213,36 @@ router.patch('/system-settings/google', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Format-aware validators — catch paste-target mismatches at the API gate
+// instead of silently corrupting SystemConfig (which we hit twice during the
+// 2026-05-05 launch hardening session — pasting a whsec_… into secretKey
+// produced hours of 502s with no obvious cause).
+const stripeSecretKey      = z.string().regex(/^(sk|rk)_(live|test)_[A-Za-z0-9]+$/,
+  'Stripe secret keys start with sk_live_, sk_test_, rk_live_, or rk_test_. Got something else — did you paste a publishable key (pk_…) or a webhook signing secret (whsec_…) instead?')
+const stripePublishableKey = z.string().regex(/^pk_(live|test)_[A-Za-z0-9]+$/,
+  'Stripe publishable keys start with pk_live_ or pk_test_.')
+const stripeWebhookSecret  = z.string().regex(/^whsec_[A-Za-z0-9_-]+$/,
+  'Stripe webhook signing secrets start with whsec_.')
+
 const stripeSettingsSchema = z.object({
-  secretKey: z.string().min(1).optional(),
-  publishableKey: z.string().min(1).optional(),
-  webhookSecret: z.string().min(1).optional(),
-  webhookSecretConnect: z.string().min(1).optional(),
+  secretKey:            stripeSecretKey.optional(),
+  publishableKey:       stripePublishableKey.optional(),
+  webhookSecret:        stripeWebhookSecret.optional(),
+  webhookSecretConnect: stripeWebhookSecret.optional(),
 })
 
 router.patch('/system-settings/stripe', async (req, res, next) => {
   try {
     const parsed = stripeSettingsSchema.safeParse(req.body)
-    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    if (!parsed.success) {
+      // Surface field-specific errors so the form can show them inline
+      const fieldErrors: Record<string, string[]> = {}
+      for (const issue of parsed.error.issues) {
+        const key = issue.path.join('.') || 'root'
+        fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message]
+      }
+      throw new AppError('VALIDATION_ERROR', 'Invalid Stripe key format', 422, fieldErrors)
+    }
     const { secretKey, publishableKey, webhookSecret, webhookSecretConnect } = parsed.data
     const userId = req.user!.id
 
