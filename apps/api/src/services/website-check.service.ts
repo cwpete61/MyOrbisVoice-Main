@@ -80,8 +80,7 @@ function extractAnchors(html: string): Array<{ href: string; text: string }> {
     .replace(/<!--[\s\S]*?-->/g, '')
   // Greedy regex for <a ... href="...">text</a>
   const re = /<a\s+[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
-  let m: RegExpExecArray | null
-  while ((m = re.exec(cleaned)) !== null) {
+  for (let m = re.exec(cleaned); m !== null; m = re.exec(cleaned)) {
     const href = (m[1] ?? '').trim()
     const text = (m[2] ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
     if (href) results.push({ href, text })

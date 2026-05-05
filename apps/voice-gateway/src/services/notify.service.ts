@@ -12,7 +12,7 @@ async function getSmtpConfig() {
   if (!host || !user || !pass) return null
   return {
     host,
-    port: parseInt(get('smtp_port') ?? process.env['SMTP_PORT'] ?? '587'),
+    port: parseInt(get('smtp_port') ?? process.env['SMTP_PORT'] ?? '587', 10),
     user,
     pass,
     from: get('smtp_from') || process.env['SMTP_FROM'] || user,

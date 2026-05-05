@@ -45,7 +45,7 @@ export async function searchAvailability(tenantId: string, params: SlotSearchPar
       start: new Date(e.start?.dateTime ?? e.start?.date ?? '').getTime(),
       end: new Date(e.end?.dateTime ?? e.end?.date ?? '').getTime(),
     }))
-    .filter(b => !isNaN(b.start) && !isNaN(b.end))
+    .filter(b => !Number.isNaN(b.start) && !Number.isNaN(b.end))
 
   const durationMs = params.durationMinutes * 60 * 1000
   const incrementMs = DEFAULT_SLOT_INCREMENT_MINUTES * 60 * 1000

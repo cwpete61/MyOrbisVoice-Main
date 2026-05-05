@@ -53,7 +53,7 @@ export async function handleRecordingReady(payload: TwilioRecordingPayload): Pro
     if (!response.ok) throw new Error(`Failed to fetch recording: ${response.status}`)
     const audioBuffer = Buffer.from(await response.arrayBuffer())
 
-    const durationSecs = parseInt(payload.RecordingDuration) || 0
+    const durationSecs = parseInt(payload.RecordingDuration, 10) || 0
 
     if (config) {
       // Upload to Bunny

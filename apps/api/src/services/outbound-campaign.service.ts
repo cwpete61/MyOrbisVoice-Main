@@ -19,16 +19,6 @@ export const addContactsSchema = z.object({
   contactIds: z.array(z.string()).min(1),
 })
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function parsedSchedule(scheduleJson: unknown): { maxRetries: number; retryIntervalHours: number } {
-  const s = (scheduleJson ?? {}) as Record<string, unknown>
-  return {
-    maxRetries:          typeof s['maxRetries']          === 'number' ? s['maxRetries']          : 2,
-    retryIntervalHours:  typeof s['retryIntervalHours']  === 'number' ? s['retryIntervalHours']  : 24,
-  }
-}
-
 // ── CRUD ──────────────────────────────────────────────────────────────────────
 
 export async function listOutboundCampaigns(tenantId: string) {

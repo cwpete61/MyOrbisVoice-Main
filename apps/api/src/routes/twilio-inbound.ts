@@ -62,7 +62,7 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
 router.post('/webhooks/twilio/status', asyncHandler(async (req, res) => {
   const { CallSid, CallStatus, CallDuration, To, From } = req.body as Record<string, string>
   if (CallSid) {
-    await logCallEnd(CallSid, CallStatus ?? 'completed', CallDuration ? parseInt(CallDuration) : undefined)
+    await logCallEnd(CallSid, CallStatus ?? 'completed', CallDuration ? parseInt(CallDuration, 10) : undefined)
     // Resolve tenant from call log for event logging
     try {
       const { prisma } = await import('../lib/prisma.js')

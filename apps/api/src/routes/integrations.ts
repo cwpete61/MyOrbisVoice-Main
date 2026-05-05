@@ -1,5 +1,4 @@
 import { Router, type IRouter } from 'express'
-import type { z } from 'zod'
 import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import * as googleService from '../services/google.service.js'
@@ -45,19 +44,6 @@ router.get('/integrations/google/callback', async (req, res, next) => {
 // /api/* requests destined for other routers mounted after this one
 // (caused affiliate/apply to 403 with "No tenant context" before the fix).
 router.use('/integrations', authenticate, requireTenantContext)
-
-function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
-  const result = schema.safeParse(data)
-  if (!result.success) {
-    const fields: Record<string, string[]> = {}
-    for (const issue of result.error.issues) {
-      const key = issue.path.join('.') || 'root'
-      fields[key] = [...(fields[key] ?? []), issue.message]
-    }
-    throw new AppError('VALIDATION_ERROR', 'Invalid input', 422, fields)
-  }
-  return result.data
-}
 
 router.get('/integrations', async (req, res, next) => {
   try {

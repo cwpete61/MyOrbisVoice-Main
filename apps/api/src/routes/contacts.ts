@@ -28,8 +28,8 @@ router.get('/contacts', async (req, res, next) => {
     const { search, page, limit } = req.query as Record<string, string>
     const result = await contactService.listContacts(tenantId, {
       search: search || undefined,
-      page:   page   ? parseInt(page)  : undefined,
-      limit:  limit  ? parseInt(limit) : undefined,
+      page:   page   ? parseInt(page, 10)  : undefined,
+      limit:  limit  ? parseInt(limit, 10) : undefined,
     })
     res.json({ data: result })
   } catch (err) { next(err) }
@@ -198,8 +198,8 @@ router.get('/contacts/:id/timeline', async (req, res, next) => {
   try {
     const tenantId   = req.user!.currentTenantId!
     const contactId  = req.params.id!
-    const limit      = Math.min(parseInt((req.query['limit'] as string) || '50'), 100)
-    const offset     = parseInt((req.query['offset'] as string) || '0')
+    const limit      = Math.min(parseInt((req.query['limit'] as string) || '50', 10), 100)
+    const offset     = parseInt((req.query['offset'] as string) || '0', 10)
 
     const contact = await prisma.contact.findFirst({ where: { id: contactId, tenantId } })
     if (!contact) throw new AppError('NOT_FOUND', 'Contact not found', 404)
@@ -272,8 +272,8 @@ router.post('/contacts/:id/opt-in', async (req, res, next) => {
 router.get('/messages', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const limit    = Math.min(parseInt((req.query['limit'] as string) || '50'), 100)
-    const offset   = parseInt((req.query['offset'] as string) || '0')
+    const limit    = Math.min(parseInt((req.query['limit'] as string) || '50', 10), 100)
+    const offset   = parseInt((req.query['offset'] as string) || '0', 10)
     const contactId = req.query['contactId'] as string | undefined
 
     const where = { tenantId, channel: 'SMS' as const, ...(contactId ? { contactId } : {}) }

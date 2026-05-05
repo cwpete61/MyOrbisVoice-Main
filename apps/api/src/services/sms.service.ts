@@ -140,7 +140,7 @@ export async function processInboundSms(tenantId: string, payload: InboundMessag
 }
 
 export async function processInboundMessage(tenantId: string, payload: InboundMessagePayload) {
-  const numMedia    = payload.NumMedia ? parseInt(payload.NumMedia) : 0
+  const numMedia    = payload.NumMedia ? parseInt(payload.NumMedia, 10) : 0
   const channel     = resolveChannel(payload.From, numMedia > 0 ? ['_'] /* dummy to flag MMS */ : undefined)
   const bodyNorm    = (payload.Body ?? '').trim().toUpperCase()
   const isStop      = STOP_KEYWORDS.includes(bodyNorm)
@@ -161,7 +161,7 @@ export async function processInboundMessage(tenantId: string, payload: InboundMe
       bodyText:          payload.Body ?? '',
       providerMessageId: payload.MessageSid,
       deliveryStatus:    'received',
-      segmentCount:      payload.NumSegments ? parseInt(payload.NumSegments) : null,
+      segmentCount:      payload.NumSegments ? parseInt(payload.NumSegments, 10) : null,
       mediaCount:        numMedia || null,
       optOutDetected:    isStop,
       sentAt:            new Date(),

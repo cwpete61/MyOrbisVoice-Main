@@ -8,7 +8,7 @@ const router: IRouter = Router()
 router.use(authenticate, requireTenantContext)
 
 // ── Templates (what the platform offers for a vertical) ───────────────────────
-router.get('/campaigns/templates', async (req, res, next) => {
+router.get('/campaigns/templates', async (_req, res, next) => {
   try {
     const templates = await svc.listTemplates()
     res.json({ data: templates })

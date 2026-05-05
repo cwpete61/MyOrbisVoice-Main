@@ -92,7 +92,7 @@ export async function buildOutboundTwiml(tenantId: string, campaignId: string, a
   return response.toString()
 }
 
-export async function handleOutboundStatus(attemptId: string, callStatus: string, callDuration?: string) {
+export async function handleOutboundStatus(attemptId: string, callStatus: string, _callDuration?: string) {
   const outcomeMap: Record<string, string> = {
     completed:  'answered',
     busy:       'busy',
