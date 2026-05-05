@@ -1586,7 +1586,8 @@
         "placeholder": "e.g. Receptionist Greeting"
       },
       "scope": {
-        "label": "Scope"
+        "label": "Scope",
+        "tooltip": "Where this prompt applies. PLATFORM = the whole product (admin only). TENANT = your master prompt for the entire business. CHANNEL = overrides for one channel (Widget / Inbound / Outbound). ROLE = overrides for one agent role (Receptionist, Sales, etc.). SESSION = runtime, not editable here."
       },
       "content": {
         "label": "Prompt content",
@@ -1901,7 +1902,8 @@
         "website": "Website",
         "websitePlaceholder": "https://acme.com",
         "timezone": "Timezone",
-        "timezonePlaceholder": "America/New_York"
+        "timezonePlaceholder": "America/New_York",
+        "timezoneTooltip": "IANA timezone identifier (e.g. America/New_York, Europe/Madrid). The agent uses this for scheduling appointments and saying \"we're open from 9am to 5pm\" in the right local time."
       }
     },
     "industry": {
@@ -1946,7 +1948,8 @@
         "country": "Country",
         "countryPlaceholder": "US",
         "fallbackNotificationEmail": "Notification email",
-        "fallbackNotificationEmailPlaceholder": "alerts@acme.com"
+        "fallbackNotificationEmailPlaceholder": "alerts@acme.com",
+        "fallbackNotificationEmailTooltip": "Where call-ended notifications, missed-call alerts, and other system emails are sent. Used when a tenant member doesn't have a personal notification preference set."
       }
     },
     "notifications": {

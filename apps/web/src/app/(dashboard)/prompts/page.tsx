@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { Tooltip } from '@/components/Tooltip'
 
 interface Prompt {
   id: string; name: string; scope: string; channelType: string | null
@@ -150,7 +151,9 @@ export default function PromptsPage() {
               />
             </div>
             <div>
-              <label className="label">{t('tenantPrompts.fields.scope.label')}</label>
+              <label className="label">
+                <Tooltip content={t('tenantPrompts.fields.scope.tooltip')}>{t('tenantPrompts.fields.scope.label')}</Tooltip>
+              </label>
               <select className="input" value={newForm.scope}
                 onChange={(e) => setNewForm({ ...newForm, scope: e.target.value })}>
                 {SCOPES.map((s) => <option key={s} value={s}>{scopeLabel(s, t)}</option>)}

@@ -1586,7 +1586,8 @@
         "placeholder": "p. ej. Saludo de recepcionista"
       },
       "scope": {
-        "label": "Alcance"
+        "label": "Alcance",
+        "tooltip": "Dónde aplica este prompt. PLATFORM = todo el producto (solo admin). TENANT = tu prompt maestro para todo el negocio. CHANNEL = anulaciones para un canal (Widget / Entrante / Saliente). ROLE = anulaciones para un rol de agente (Recepcionista, Ventas, etc.). SESSION = runtime, no se edita aquí."
       },
       "content": {
         "label": "Contenido del prompt",
@@ -1901,7 +1902,8 @@
         "website": "Sitio web",
         "websitePlaceholder": "https://acme.com",
         "timezone": "Zona horaria",
-        "timezonePlaceholder": "America/New_York"
+        "timezonePlaceholder": "America/New_York",
+        "timezoneTooltip": "Identificador IANA (ej. America/New_York, Europe/Madrid). El agente lo usa para programar citas y decir \"estamos abiertos de 9am a 5pm\" en la hora local correcta."
       }
     },
     "industry": {
@@ -1946,7 +1948,8 @@
         "country": "País",
         "countryPlaceholder": "MX",
         "fallbackNotificationEmail": "Correo de notificaciones",
-        "fallbackNotificationEmailPlaceholder": "alertas@acme.com"
+        "fallbackNotificationEmailPlaceholder": "alertas@acme.com",
+        "fallbackNotificationEmailTooltip": "Adónde se envían las notificaciones de llamadas terminadas, alertas de llamadas perdidas y otros correos del sistema. Se usa cuando un miembro del tenant no tiene preferencia personal configurada."
       }
     },
     "notifications": {

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { apiFetch, apiUploadFile, useApi } from '@/hooks/useApi'
 import { PushNotificationToggle } from '@/components/PushNotificationToggle'
+import { Tooltip } from '@/components/Tooltip'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
@@ -128,6 +129,7 @@ interface FieldConfig {
   key: string
   labelKey: string
   placeholderKey?: string
+  tooltipKey?: string
   type?: string
 }
 
@@ -137,7 +139,7 @@ const WORKSPACE_FIELDS: FieldConfig[] = [
   { key: 'publicEmail', labelKey: 'tenantSettings.workspace.fields.publicEmail', placeholderKey: 'tenantSettings.workspace.fields.publicEmailPlaceholder', type: 'email' },
   { key: 'publicPhone', labelKey: 'tenantSettings.workspace.fields.publicPhone', placeholderKey: 'tenantSettings.workspace.fields.publicPhonePlaceholder' },
   { key: 'website',     labelKey: 'tenantSettings.workspace.fields.website',     placeholderKey: 'tenantSettings.workspace.fields.websitePlaceholder', type: 'url' },
-  { key: 'timezone',    labelKey: 'tenantSettings.workspace.fields.timezone',    placeholderKey: 'tenantSettings.workspace.fields.timezonePlaceholder' },
+  { key: 'timezone',    labelKey: 'tenantSettings.workspace.fields.timezone',    placeholderKey: 'tenantSettings.workspace.fields.timezonePlaceholder', tooltipKey: 'tenantSettings.workspace.fields.timezoneTooltip' },
 ]
 
 const PROFILE_FIELDS: FieldConfig[] = [
@@ -147,7 +149,7 @@ const PROFILE_FIELDS: FieldConfig[] = [
   { key: 'region',                    labelKey: 'tenantSettings.profile.fields.region',                    placeholderKey: 'tenantSettings.profile.fields.regionPlaceholder' },
   { key: 'postalCode',                labelKey: 'tenantSettings.profile.fields.postalCode',                placeholderKey: 'tenantSettings.profile.fields.postalCodePlaceholder' },
   { key: 'country',                   labelKey: 'tenantSettings.profile.fields.country',                   placeholderKey: 'tenantSettings.profile.fields.countryPlaceholder' },
-  { key: 'fallbackNotificationEmail', labelKey: 'tenantSettings.profile.fields.fallbackNotificationEmail', placeholderKey: 'tenantSettings.profile.fields.fallbackNotificationEmailPlaceholder', type: 'email' },
+  { key: 'fallbackNotificationEmail', labelKey: 'tenantSettings.profile.fields.fallbackNotificationEmail', placeholderKey: 'tenantSettings.profile.fields.fallbackNotificationEmailPlaceholder', type: 'email', tooltipKey: 'tenantSettings.profile.fields.fallbackNotificationEmailTooltip' },
 ]
 
 function FormField({
@@ -161,9 +163,15 @@ function FormField({
   onChange: (v: string) => void
   t: TFn
 }) {
+  const labelText = t(config.labelKey)
+  const tooltipText = config.tooltipKey ? t(config.tooltipKey) : null
+  // tooltipText could be the raw key if missing — only treat as tooltip if t() actually translated
+  const hasTooltip = tooltipText && tooltipText !== config.tooltipKey
   return (
     <div>
-      <label htmlFor={config.key} className="label">{t(config.labelKey)}</label>
+      <label htmlFor={config.key} className="label">
+        {hasTooltip ? <Tooltip content={tooltipText}>{labelText}</Tooltip> : labelText}
+      </label>
       <input
         id={config.key}
         type={config.type ?? 'text'}
