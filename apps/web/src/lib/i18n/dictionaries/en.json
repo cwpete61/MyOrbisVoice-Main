@@ -854,6 +854,8 @@
     "loading": "Loading…",
     "savedMessage": "Channel saved.",
     "saveFailed": "Failed",
+    "lockedBadge": "Locked",
+    "upgradeToUnlock": "Upgrade plan to unlock →",
     "channels": {
       "widget": {
         "label": "Website Widget",

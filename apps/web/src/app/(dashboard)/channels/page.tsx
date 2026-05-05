@@ -248,6 +248,7 @@ export default function ChannelsPage() {
 
   const { data: channels, loading, error, reload } = useApi<Channel[]>('/api/channels')
   const { data: phoneNumbers } = useApi<PhoneNumber[]>('/api/phone-numbers')
+  const { data: entitlements } = useApi<Record<string, boolean | number | string | null>>('/api/entitlements')
   const [selected, setSelected] = useState<Channel | null>(null)
   const [saving, setSaving]     = useState(false)
   const [message, setMessage]   = useState('')
@@ -299,6 +300,35 @@ export default function ChannelsPage() {
       <div className="grid grid-cols-3 gap-4 mb-8">
         {(channels ?? []).map((c) => {
           const keys = CHANNEL_KEYS[c.channelType]
+          // A channel is "locked" when the tenant's plan doesn't include it.
+          // Entitlement keys: widget_enabled, inbound_enabled, outbound_enabled.
+          // Default to true while entitlements are still loading so we don't
+          // flash a locked card during initial render.
+          const entKey =
+            c.channelType === 'WIDGET'   ? 'widget_enabled'   :
+            c.channelType === 'INBOUND'  ? 'inbound_enabled'  :
+            c.channelType === 'OUTBOUND' ? 'outbound_enabled' : null
+          const allowed = entitlements && entKey
+            ? entitlements[entKey] !== false
+            : true
+          if (!allowed) {
+            return (
+              <div key={c.id}
+                className="text-left p-5 rounded-xl border opacity-70"
+                style={{ background: 'var(--surface-overlay)', borderColor: 'var(--border-subtle)' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{keys ? t(keys.labelKey) : c.channelType}</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'oklch(60% 0.16 75 / 0.15)', color: 'oklch(45% 0.16 75)' }}>
+                    {t('tenantChannels.lockedBadge')}
+                  </span>
+                </div>
+                <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>{keys ? t(keys.descKey) : ''}</p>
+                <Link href="/billing" className="text-xs font-semibold underline" style={{ color: 'oklch(55% 0.11 193)' }}>
+                  {t('tenantChannels.upgradeToUnlock')}
+                </Link>
+              </div>
+            )
+          }
           return (
             <button key={c.id} onClick={() => { setSelected(prev => prev?.id === c.id ? null : c); setMessage('') }}
               className={`text-left p-5 rounded-xl border transition-all ${selected?.id === c.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600'}`}>

@@ -850,6 +850,8 @@
   },
   "tenantChannels": {
     "title": "Canales",
+    "lockedBadge": "Bloqueado",
+    "upgradeToUnlock": "Mejora tu plan para desbloquear →",
     "subtitle": "Habilita y configura cada canal de voz",
     "loading": "Cargando…",
     "savedMessage": "Canal guardado.",
