@@ -1593,6 +1593,15 @@
       "outboundEnabled": "Llamadas salientes",
       "affiliateEnabled": "Portal de socios"
     },
+    "entitlementTooltips": {
+      "max_channels": "Total de canales (widget, entrante, saliente) que puedes tener activos al mismo tiempo.",
+      "max_agents": "Total de roles de agente IA que puedes configurar (Recepcionista, Ventas, Atención al cliente, etc.).",
+      "minutes_per_month": "Minutos de voz incluidos por periodo de facturación. El consumo extra se factura por Stripe a la tarifa por minuto; las llamadas no se cortan a mitad.",
+      "widget_enabled": "Agente de voz en tiempo real integrado en tu sitio web. Los visitantes hacen clic para hablar.",
+      "inbound_enabled": "Recepcionista telefónica en vivo. Un número de Twilio dirige las llamadas entrantes a tu agente IA.",
+      "outbound_enabled": "Llamadas salientes con IA para seguimientos, recordatorios y campañas.",
+      "affiliate_enabled": "Acceso al Programa de Partners — gana comisiones refiriendo nuevos clientes."
+    },
     "noSubscription": {
       "title": "No tienes una suscripción activa",
       "desc": "Elige un plan abajo para empezar."

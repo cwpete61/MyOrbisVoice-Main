@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { Tooltip } from '@/components/Tooltip'
 
 interface Plan {
   id: string; code: string; name: string; interval: string
@@ -154,14 +155,23 @@ export default function BillingPage() {
 
             {/* Entitlements */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-5">
-              {sub.plan.entitlements.map((e) => (
-                <div key={e.key} className="rounded-lg px-3 py-2.5" style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)' }}>
-                  <p className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>{entitlementLabel(e.key, t)}</p>
-                  <p className="text-sm font-semibold" style={{ color: e.valueType === 'BOOLEAN' && !e.booleanValue ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
-                    {fmt(e, t)}
-                  </p>
-                </div>
-              ))}
+              {sub.plan.entitlements.map((e) => {
+                const tooltipKey = `tenantBilling.entitlementTooltips.${e.key}`
+                const tooltipText = t(tooltipKey)
+                const hasTooltip = tooltipText !== tooltipKey
+                return (
+                  <div key={e.key} className="rounded-lg px-3 py-2.5" style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)' }}>
+                    <p className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                      {hasTooltip
+                        ? <Tooltip content={tooltipText}>{entitlementLabel(e.key, t)}</Tooltip>
+                        : entitlementLabel(e.key, t)}
+                    </p>
+                    <p className="text-sm font-semibold" style={{ color: e.valueType === 'BOOLEAN' && !e.booleanValue ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
+                      {fmt(e, t)}
+                    </p>
+                  </div>
+                )
+              })}
             </div>
 
             <button onClick={openPortal} disabled={portalLoading} className="btn-ghost">

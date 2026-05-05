@@ -1593,6 +1593,15 @@
       "outboundEnabled": "Outbound caller",
       "affiliateEnabled": "Partner portal"
     },
+    "entitlementTooltips": {
+      "max_channels": "Total number of channels (widget, inbound, outbound) you can have enabled at the same time.",
+      "max_agents": "Total number of AI agent roles you can configure (Receptionist, Sales, Customer Service, etc.).",
+      "minutes_per_month": "Voice minutes included per billing period. Overage bills via Stripe at the per-minute rate; calls are not cut off mid-conversation.",
+      "widget_enabled": "Real-time voice agent embedded on your website. Visitors click to talk.",
+      "inbound_enabled": "Live phone receptionist. Twilio number routes inbound calls to your AI agent.",
+      "outbound_enabled": "AI-driven outbound calling for follow-ups, reminders, and campaigns.",
+      "affiliate_enabled": "Access to the Partner Program — earn commissions by referring new customers."
+    },
     "noSubscription": {
       "title": "No active subscription",
       "desc": "Choose a plan below to get started."
