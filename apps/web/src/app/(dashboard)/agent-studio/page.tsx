@@ -3,23 +3,24 @@
 import { useState, useRef, useEffect } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { FEMALE_AVATARS, MALE_AVATARS, AvatarDisplay, getAvatar } from '@/components/avatars/AvatarLibrary'
+import { useT } from '@/lib/i18n/I18nProvider'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const VOICES = [
-  { id: 'Zephyr',  gender: 'female',  label: 'Zephyr',  desc: 'Bright & clear' },
-  { id: 'Despina', gender: 'female',  label: 'Despina', desc: 'Smooth & polished' },
-  { id: 'Aoede',   gender: 'female',  label: 'Aoede',   desc: 'Warm & breezy' },
-  { id: 'Charon',  gender: 'male',    label: 'Charon',  desc: 'Deep & authoritative' },
-  { id: 'Fenrir',  gender: 'male',    label: 'Fenrir',  desc: 'Warm & approachable' },
-  { id: 'Puck',    gender: 'male',    label: 'Puck',    desc: 'Upbeat & conversational' },
-  { id: 'Sulafat', gender: 'neutral', label: 'Sulafat', desc: 'Warm & even' },
+const VOICES: Array<{ id: string; gender: 'female' | 'male' | 'neutral'; label: string }> = [
+  { id: 'Zephyr',  gender: 'female',  label: 'Zephyr'  },
+  { id: 'Despina', gender: 'female',  label: 'Despina' },
+  { id: 'Aoede',   gender: 'female',  label: 'Aoede'   },
+  { id: 'Charon',  gender: 'male',    label: 'Charon'  },
+  { id: 'Fenrir',  gender: 'male',    label: 'Fenrir'  },
+  { id: 'Puck',    gender: 'male',    label: 'Puck'    },
+  { id: 'Sulafat', gender: 'neutral', label: 'Sulafat' },
 ]
 
-const CHANNEL_TABS = [
-  { id: 'WIDGET',   label: 'Widget',            icon: 'M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-6v2m0 0v2m0-2h2m-2 0H6' },
-  { id: 'INBOUND',  label: 'Inbound',           icon: 'M4 2h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm4 10h.01M6 5h4M6 7h4M6 9h2' },
-  { id: 'OUTBOUND', label: 'Outbound',          icon: 'M15 3l-4 4M3 13l4-4M11 7l2 2-6 6-2-2zm-3 7l-3 2 1-3' },
+const CHANNEL_TABS: Array<{ id: string; labelKey: string; icon: string }> = [
+  { id: 'WIDGET',   labelKey: 'tenantAgentStudio.channels.widget',   icon: 'M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-6v2m0 0v2m0-2h2m-2 0H6' },
+  { id: 'INBOUND',  labelKey: 'tenantAgentStudio.channels.inbound',  icon: 'M4 2h8a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm4 10h.01M6 5h4M6 7h4M6 9h2' },
+  { id: 'OUTBOUND', labelKey: 'tenantAgentStudio.channels.outbound', icon: 'M15 3l-4 4M3 13l4-4M11 7l2 2-6 6-2-2zm-3 7l-3 2 1-3' },
 ]
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL ?? 'https://gateway.myorbisvoice.com'
@@ -38,6 +39,7 @@ type SessionState = 'idle' | 'connecting' | 'active' | 'ended' | 'error'
 // ── Voice card ────────────────────────────────────────────────────────────────
 
 function VoiceCard({ voice, selected, onClick }: { voice: typeof VOICES[0]; selected: boolean; onClick: () => void }) {
+  const t = useT()
   const genderColor = voice.gender === 'female'
     ? { bg: 'oklch(20% 0.06 310)', border: selected ? 'oklch(65% 0.18 310)' : 'oklch(35% 0.10 310)', text: 'oklch(80% 0.14 310)' }
     : voice.gender === 'male'
@@ -64,9 +66,9 @@ function VoiceCard({ voice, selected, onClick }: { voice: typeof VOICES[0]; sele
           </svg>
         )}
       </div>
-      <p className="text-xs mt-0.5" style={{ color: genderColor.text }}>{voice.desc}</p>
-      <span className="text-xs mt-1.5 inline-block px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>
-        {voice.gender}
+      <p className="text-xs mt-0.5" style={{ color: genderColor.text }}>{t(`tenantAgentStudio.voiceDesc.${voice.id}`)}</p>
+      <span className="text-xs mt-1.5 inline-block px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>
+        {t(`tenantAgentStudio.gender.${voice.gender}`)}
       </span>
     </button>
   )
@@ -104,9 +106,10 @@ function LiveTestPanel({
   avatarId: string | null
   onSessionEnd: () => void
 }) {
+  const t = useT()
   const [state, setState] = useState<SessionState>('idle')
   const [micState, setMicState] = useState<'off' | 'on'>('off')
-  const [statusText, setStatusText] = useState('Select a voice and press Start test')
+  const [statusText, setStatusText] = useState(() => t('tenantAgentStudio.testPanel.statusInitial'))
   const [error, setError] = useState('')
   const wsRef = useRef<WebSocket | null>(null)
 
@@ -206,9 +209,9 @@ function LiveTestPanel({
       audioCtxRef.current = ctx
       processorRef.current = processor
       setMicState('on')
-      setStatusText('Listening… speak now')
+      setStatusText(t('tenantAgentStudio.testPanel.listening'))
     } catch {
-      setError('Microphone access denied — allow mic permission and try again')
+      setError(t('tenantAgentStudio.testPanel.errorMicDenied'))
     }
   }
 
@@ -229,7 +232,7 @@ function LiveTestPanel({
   function toggleMic() {
     if (micState === 'on') {
       stopMic()
-      setStatusText('Processing…')
+      setStatusText(t('tenantAgentStudio.testPanel.processing'))
     } else {
       startMic()
     }
@@ -240,7 +243,7 @@ function LiveTestPanel({
   async function startSession() {
     setState('connecting')
     setError('')
-    setStatusText('Connecting to voice gateway…')
+    setStatusText(t('tenantAgentStudio.testPanel.connecting'))
     try {
       const res = await apiFetch<{ sessionToken: string; sessionId: string }>('/api/widget/draft-session', {
         method: 'POST',
@@ -252,7 +255,7 @@ function LiveTestPanel({
 
       ws.onerror = () => {
         setState('error')
-        setError('Connection to voice gateway failed. Check gateway is running.')
+        setError(t('tenantAgentStudio.testPanel.errorConnection'))
       }
 
       ws.onclose = () => {
@@ -260,7 +263,7 @@ function LiveTestPanel({
         resetPlayback()
         if (state !== 'error') {
           setState('ended')
-          setStatusText('Session ended')
+          setStatusText(t('tenantAgentStudio.testPanel.sessionEnded'))
           onSessionEnd()
         }
       }
@@ -271,7 +274,7 @@ function LiveTestPanel({
 
           if (msg.type === 'ready') {
             setState('active')
-            setStatusText('Agent is greeting you… then press the mic to speak')
+            setStatusText(t('tenantAgentStudio.testPanel.greetingThenMic'))
           }
 
           if (msg.type === 'audio' && typeof msg.data === 'string') {
@@ -280,22 +283,22 @@ function LiveTestPanel({
 
           if (msg.type === 'turn_complete') {
             resetPlayback()
-            setStatusText('Your turn — press the mic to respond')
+            setStatusText(t('tenantAgentStudio.testPanel.yourTurn'))
           }
 
           if (msg.type === 'error') {
-            setError(String(msg.message ?? 'Voice session error'))
+            setError(String(msg.message ?? t('tenantAgentStudio.testPanel.errorSessionGeneric')))
           }
 
           if (msg.type === 'ended') {
             setState('ended')
-            setStatusText('Session ended')
+            setStatusText(t('tenantAgentStudio.testPanel.sessionEnded'))
           }
         } catch { /* non-JSON */ }
       }
     } catch (err) {
       setState('error')
-      setError(err instanceof Error ? err.message : 'Failed to start session')
+      setError(err instanceof Error ? err.message : t('tenantAgentStudio.testPanel.errorStartFailed'))
     }
   }
 
@@ -307,7 +310,7 @@ function LiveTestPanel({
     wsRef.current?.close()
     wsRef.current = null
     setState('ended')
-    setStatusText('Session ended')
+    setStatusText(t('tenantAgentStudio.testPanel.sessionEnded'))
     onSessionEnd()
   }
 
@@ -319,10 +322,14 @@ function LiveTestPanel({
           <AvatarDisplay avatarId={channelType === 'WIDGET' ? avatarId : null} size={40} />
           <div>
             <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-              {channelType === 'WIDGET' ? (getAvatar(avatarId ?? '')?.label ?? 'Agent') : 'Voice Agent'}
+              {channelType === 'WIDGET'
+                ? (getAvatar(avatarId ?? '')?.label ?? t('tenantAgentStudio.testPanel.agentFallback'))
+                : t('tenantAgentStudio.testPanel.voiceAgent')}
             </p>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              {voiceName ? `Voice: ${voiceName}` : 'No voice selected'}
+              {voiceName
+                ? t('tenantAgentStudio.testPanel.voiceLine', { voice: voiceName })
+                : t('tenantAgentStudio.testPanel.noVoiceSelected')}
             </p>
           </div>
         </div>
@@ -335,7 +342,15 @@ function LiveTestPanel({
             ? { background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }
             : { background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }
           }>
-          {state === 'idle' ? 'Ready' : state === 'connecting' ? 'Connecting…' : state === 'active' ? '● Live' : state === 'ended' ? 'Ended' : 'Error'}
+          {state === 'idle'
+            ? t('tenantAgentStudio.testPanel.stateReady')
+            : state === 'connecting'
+            ? t('tenantAgentStudio.testPanel.stateConnecting')
+            : state === 'active'
+            ? t('tenantAgentStudio.testPanel.stateLive')
+            : state === 'ended'
+            ? t('tenantAgentStudio.testPanel.stateEnded')
+            : t('tenantAgentStudio.testPanel.stateError')}
         </span>
       </div>
 
@@ -354,7 +369,7 @@ function LiveTestPanel({
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
               <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/>
             </svg>
-            <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Start a test session to hear your agent</p>
+            <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('tenantAgentStudio.testPanel.idleHint')}</p>
           </>
         )}
         {state === 'connecting' && (
@@ -379,7 +394,7 @@ function LiveTestPanel({
           </div>
         )}
         {state === 'ended' && (
-          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Session ended</p>
+          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('tenantAgentStudio.testPanel.sessionEnded')}</p>
         )}
       </div>
 
@@ -397,13 +412,13 @@ function LiveTestPanel({
             style={!voiceName ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3l9 5-9 5V3z"/></svg>
-            {state === 'ended' ? 'Test again' : 'Start test'}
+            {state === 'ended' ? t('tenantAgentStudio.actions.testAgain') : t('tenantAgentStudio.actions.startTest')}
           </button>
         )}
 
         {/* Connecting spinner */}
         {state === 'connecting' && (
-          <button disabled className="btn-secondary text-sm opacity-50">Connecting…</button>
+          <button disabled className="btn-secondary text-sm opacity-50">{t('tenantAgentStudio.actions.connecting')}</button>
         )}
 
         {/* Active → Mic toggle + End */}
@@ -420,7 +435,7 @@ function LiveTestPanel({
               {micState === 'on' ? (
                 <>
                   <span className="inline-block w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                  Stop mic
+                  {t('tenantAgentStudio.actions.stopMic')}
                 </>
               ) : (
                 <>
@@ -428,13 +443,13 @@ function LiveTestPanel({
                     <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
                     <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
                   </svg>
-                  Speak
+                  {t('tenantAgentStudio.actions.speak')}
                 </>
               )}
             </button>
             <button onClick={endSession} className="text-sm px-4 py-2 rounded-lg"
               style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
-              End
+              {t('tenantAgentStudio.actions.end')}
             </button>
           </>
         )}
@@ -446,6 +461,7 @@ function LiveTestPanel({
 // ── Widget tab ────────────────────────────────────────────────────────────────
 
 function WidgetTab({ channel, onSaved }: { channel: ChannelConfig | undefined; onSaved: () => void }) {
+  const t = useT()
   const savedVoice = (channel?.configJson?.['voiceName'] as string | undefined) ?? null
   const savedAvatar = (channel?.configJson?.['avatarId'] as string | undefined) ?? null
 
@@ -454,7 +470,7 @@ function WidgetTab({ channel, onSaved }: { channel: ChannelConfig | undefined; o
   const [avatarGenderFilter, setAvatarGenderFilter] = useState<'female' | 'male'>('female')
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState('')
-  const [sessionEnded, setSessionEnded] = useState(false)
+  const [, setSessionEnded] = useState(false)
 
   const hasChanges = selectedVoice !== savedVoice || selectedAvatar !== savedAvatar
 
@@ -466,11 +482,11 @@ function WidgetTab({ channel, onSaved }: { channel: ChannelConfig | undefined; o
         method: 'PATCH',
         body: JSON.stringify({ configJson: { ...existing, voiceName: selectedVoice, avatarId: selectedAvatar } }),
       })
-      setToast('Widget agent saved')
+      setToast(t('tenantAgentStudio.widget.savedToast'))
       setTimeout(() => setToast(''), 3500)
       onSaved()
     } catch (err) {
-      setToast(err instanceof Error ? err.message : 'Save failed')
+      setToast(err instanceof Error ? err.message : t('tenantAgentStudio.errors.saveFailed'))
     } finally { setSaving(false) }
   }
 
@@ -484,8 +500,8 @@ function WidgetTab({ channel, onSaved }: { channel: ChannelConfig | undefined; o
       <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Agent Avatar</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>The face your visitors see in the widget before and during the call</p>
+            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantAgentStudio.widget.avatarTitle')}</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{t('tenantAgentStudio.widget.avatarDesc')}</p>
           </div>
           {/* Gender filter */}
           <div className="flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
@@ -524,8 +540,8 @@ function WidgetTab({ channel, onSaved }: { channel: ChannelConfig | undefined; o
       {/* Voice picker */}
       <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
         <div>
-          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Agent Voice</p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Select the voice your widget agent speaks with</p>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantAgentStudio.widget.voiceTitle')}</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{t('tenantAgentStudio.widget.voiceDesc')}</p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {VOICES.map(v => (
@@ -536,7 +552,7 @@ function WidgetTab({ channel, onSaved }: { channel: ChannelConfig | undefined; o
 
       {/* Live test */}
       <div>
-        <p className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Live Preview</p>
+        <p className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{t('tenantAgentStudio.widget.livePreview')}</p>
         <LiveTestPanel
           channelType="WIDGET"
           voiceName={selectedVoice}
@@ -566,6 +582,7 @@ function WidgetTab({ channel, onSaved }: { channel: ChannelConfig | undefined; o
 // ── Voice-only tab (Inbound / Outbound) ───────────────────────────────────────
 
 function VoiceOnlyTab({ channelType, channel, onSaved }: { channelType: string; channel: ChannelConfig | undefined; onSaved: () => void }) {
+  const t = useT()
   const savedVoice = (channel?.configJson?.['voiceName'] as string | undefined) ?? null
   const [selectedVoice, setSelectedVoice] = useState<string | null>(savedVoice)
   const [saving, setSaving] = useState(false)
@@ -609,7 +626,7 @@ function VoiceOnlyTab({ channelType, channel, onSaved }: { channelType: string; 
 
       {/* Live test */}
       <div>
-        <p className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Live Voice Test</p>
+        <p className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{t('tenantAgentStudio.voiceOnly.liveTest')}</p>
         <LiveTestPanel
           channelType={channelType}
           voiceName={selectedVoice}
@@ -638,6 +655,7 @@ function VoiceOnlyTab({ channelType, channel, onSaved }: { channelType: string; 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AgentStudioPage() {
+  const t = useT()
   const { data: channels, loading, reload } = useApi<ChannelConfig[]>('/api/channels')
   const [activeTab, setActiveTab] = useState<'WIDGET' | 'INBOUND' | 'OUTBOUND'>('WIDGET')
 
@@ -647,9 +665,9 @@ export default function AgentStudioPage() {
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Agent Studio</h1>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{t('tenantAgentStudio.title')}</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Configure your agent's voice and appearance, test them live, then save when you're happy.
+          {t('tenantAgentStudio.subtitle')}
         </p>
       </div>
 
@@ -667,7 +685,7 @@ export default function AgentStudioPage() {
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d={tab.icon} />
             </svg>
-            {tab.label}
+            {t(tab.labelKey)}
           </button>
         ))}
       </div>

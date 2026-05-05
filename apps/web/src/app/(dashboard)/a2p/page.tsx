@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 interface A2PApplication {
   id?:                string
@@ -35,14 +36,24 @@ const EMPTY: A2PApplication = {
   useCase: 'customer_care', sampleMessagesJson: ['', '', '', '', ''],
 }
 
-const STATUS_PILL: Record<NonNullable<A2PApplication['status']>, { bg: string; fg: string; label: string }> = {
-  DRAFT:     { bg: 'oklch(95% 0.02 270)', fg: 'oklch(35% 0.05 270)', label: 'Draft — fill in and submit' },
-  SUBMITTED: { bg: 'oklch(96% 0.05 75)',  fg: 'oklch(35% 0.16 75)',  label: 'Submitted — Twilio is reviewing (1-3 business days)' },
-  APPROVED:  { bg: 'oklch(95% 0.05 160)', fg: 'oklch(35% 0.16 160)', label: 'Approved — your numbers can send SMS at full throughput' },
-  REJECTED:  { bg: 'oklch(95% 0.05 25)',  fg: 'oklch(35% 0.18 25)',  label: 'Rejected — fix the issues below and resubmit' },
+const STATUS_PILL_COLORS: Record<NonNullable<A2PApplication['status']>, { bg: string; fg: string }> = {
+  DRAFT:     { bg: 'oklch(95% 0.02 270)', fg: 'oklch(35% 0.05 270)' },
+  SUBMITTED: { bg: 'oklch(96% 0.05 75)',  fg: 'oklch(35% 0.16 75)'  },
+  APPROVED:  { bg: 'oklch(95% 0.05 160)', fg: 'oklch(35% 0.16 160)' },
+  REJECTED:  { bg: 'oklch(95% 0.05 25)',  fg: 'oklch(35% 0.18 25)'  },
+}
+
+const STATUS_LABEL_KEY: Record<NonNullable<A2PApplication['status']>, string> = {
+  DRAFT:     'tenantA2p.statusPill.draft',
+  SUBMITTED: 'tenantA2p.statusPill.submitted',
+  APPROVED:  'tenantA2p.statusPill.approved',
+  REJECTED:  'tenantA2p.statusPill.rejected',
 }
 
 export default function A2PPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   const { data: existing, loading, reload } = useApi<A2PApplication | null>('/api/a2p')
   const [form, setForm] = useState<A2PApplication>(EMPTY)
   const [saving, setSaving] = useState(false)
@@ -55,8 +66,8 @@ export default function A2PPage() {
 
   useEffect(() => {
     if (!toast) return
-    const t = setTimeout(() => setToast(null), 5000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setToast(null), 5000)
+    return () => clearTimeout(timer)
   }, [toast])
 
   const isLocked = existing?.status === 'SUBMITTED' || existing?.status === 'APPROVED'
@@ -79,27 +90,27 @@ export default function A2PPage() {
       delete (payload as any).submittedAt
       delete (payload as any).approvedAt
       await apiFetch('/api/a2p', { method: 'PUT', body: JSON.stringify(payload) })
-      setToast({ type: 'success', text: 'Saved as draft.' })
+      setToast({ type: 'success', text: t('tenantA2p.toast.savedDraft') })
       reload()
     } catch (err) {
-      setToast({ type: 'error', text: err instanceof Error ? err.message : 'Save failed.' })
+      setToast({ type: 'error', text: err instanceof Error ? err.message : t('tenantA2p.toast.saveFailed') })
     } finally { setSaving(false) }
   }
 
   async function submit() {
-    if (!confirm('Submit to Twilio for review? You won\'t be able to edit while it\'s in review.')) return
+    if (!confirm(t('tenantA2p.confirm.submit'))) return
     setSubmitting(true)
     try {
       await save()
       await apiFetch('/api/a2p/submit', { method: 'POST' })
-      setToast({ type: 'success', text: 'Submitted for review.' })
+      setToast({ type: 'success', text: t('tenantA2p.toast.submitted') })
       reload()
     } catch (err) {
-      setToast({ type: 'error', text: err instanceof Error ? err.message : 'Submit failed.' })
+      setToast({ type: 'error', text: err instanceof Error ? err.message : t('tenantA2p.toast.submitFailed') })
     } finally { setSubmitting(false) }
   }
 
-  if (loading) return <div className="text-sm text-gray-500">Loading…</div>
+  if (loading) return <div className="text-sm text-gray-500">{t('tenantA2p.loading')}</div>
 
   const labelCls = 'label'
   const inputCls = 'input'
@@ -107,21 +118,20 @@ export default function A2PPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>SMS Compliance (A2P 10DLC)</h1>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{t('tenantA2p.title')}</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          US carriers require every business sending SMS to register their brand and use case.
-          Fill this in once. We submit to Twilio on your behalf — typically approved within 1-3 business days.
+          {t('tenantA2p.subtitle')}
         </p>
       </div>
 
       {existing?.status && (
-        <div className="rounded-xl px-5 py-4" style={{ background: STATUS_PILL[existing.status].bg, color: STATUS_PILL[existing.status].fg }}>
-          <p className="text-sm font-semibold">{STATUS_PILL[existing.status].label}</p>
+        <div className="rounded-xl px-5 py-4" style={{ background: STATUS_PILL_COLORS[existing.status].bg, color: STATUS_PILL_COLORS[existing.status].fg }}>
+          <p className="text-sm font-semibold">{t(STATUS_LABEL_KEY[existing.status])}</p>
           {existing.status === 'REJECTED' && existing.rejectionReason && (
             <p className="text-xs mt-1">{existing.rejectionReason}</p>
           )}
-          {existing.submittedAt && <p className="text-xs mt-1">Submitted: {new Date(existing.submittedAt).toLocaleString()}</p>}
-          {existing.approvedAt && <p className="text-xs mt-1">Approved: {new Date(existing.approvedAt).toLocaleString()}</p>}
+          {existing.submittedAt && <p className="text-xs mt-1">{t('tenantA2p.statusMeta.submittedAt', { date: new Date(existing.submittedAt).toLocaleString(dateLocale) })}</p>}
+          {existing.approvedAt && <p className="text-xs mt-1">{t('tenantA2p.statusMeta.approvedAt', { date: new Date(existing.approvedAt).toLocaleString(dateLocale) })}</p>}
         </div>
       )}
 
@@ -140,45 +150,45 @@ export default function A2PPage() {
 
         {/* Business identity */}
         <section className="rounded-xl p-5 space-y-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Business identity</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantA2p.identity.title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Legal business name *</label>
-              <input className={inputCls} value={form.legalName} onChange={e => set('legalName', e.target.value)} placeholder="Acme Holdings, LLC" />
-              <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Must match exactly what's on your EIN registration.</p>
+              <label className={labelCls}>{t('tenantA2p.identity.legalName')}</label>
+              <input className={inputCls} value={form.legalName} onChange={e => set('legalName', e.target.value)} placeholder={t('tenantA2p.identity.legalNamePlaceholder')} />
+              <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.identity.legalNameHelp')}</p>
             </div>
             <div>
-              <label className={labelCls}>EIN <span style={{ color: 'var(--text-tertiary)' }}>(optional for sole prop)</span></label>
+              <label className={labelCls}>{t('tenantA2p.identity.einLabel')} <span style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.identity.einOptional')}</span></label>
               <input className={inputCls} value={form.ein} onChange={e => set('ein', e.target.value)} placeholder="12-3456789" />
             </div>
             <div>
-              <label className={labelCls}>Business type *</label>
+              <label className={labelCls}>{t('tenantA2p.identity.businessType')}</label>
               <select className={inputCls} value={form.businessType} onChange={e => set('businessType', e.target.value as A2PApplication['businessType'])}>
-                <option value="SOLE_PROP">Sole Proprietorship</option>
-                <option value="LLC">LLC</option>
-                <option value="CORP">Corporation</option>
-                <option value="NON_PROFIT">Non-Profit</option>
-                <option value="PARTNERSHIP">Partnership</option>
+                <option value="SOLE_PROP">{t('tenantA2p.identity.businessTypeOptions.soleProp')}</option>
+                <option value="LLC">{t('tenantA2p.identity.businessTypeOptions.llc')}</option>
+                <option value="CORP">{t('tenantA2p.identity.businessTypeOptions.corp')}</option>
+                <option value="NON_PROFIT">{t('tenantA2p.identity.businessTypeOptions.nonProfit')}</option>
+                <option value="PARTNERSHIP">{t('tenantA2p.identity.businessTypeOptions.partnership')}</option>
               </select>
             </div>
             <div>
-              <label className={labelCls}>Vertical *</label>
+              <label className={labelCls}>{t('tenantA2p.identity.vertical')}</label>
               <select className={inputCls} value={form.vertical} onChange={e => set('vertical', e.target.value)}>
-                <option value="">— Choose one —</option>
-                <option value="healthcare">Healthcare</option>
-                <option value="retail">Retail</option>
-                <option value="professional_services">Professional Services</option>
-                <option value="real_estate">Real Estate</option>
-                <option value="financial">Financial</option>
-                <option value="education">Education</option>
-                <option value="hospitality">Hospitality</option>
-                <option value="auto">Automotive</option>
-                <option value="technology">Technology</option>
-                <option value="other">Other</option>
+                <option value="">{t('tenantA2p.identity.verticalOptions.choose')}</option>
+                <option value="healthcare">{t('tenantA2p.identity.verticalOptions.healthcare')}</option>
+                <option value="retail">{t('tenantA2p.identity.verticalOptions.retail')}</option>
+                <option value="professional_services">{t('tenantA2p.identity.verticalOptions.professionalServices')}</option>
+                <option value="real_estate">{t('tenantA2p.identity.verticalOptions.realEstate')}</option>
+                <option value="financial">{t('tenantA2p.identity.verticalOptions.financial')}</option>
+                <option value="education">{t('tenantA2p.identity.verticalOptions.education')}</option>
+                <option value="hospitality">{t('tenantA2p.identity.verticalOptions.hospitality')}</option>
+                <option value="auto">{t('tenantA2p.identity.verticalOptions.auto')}</option>
+                <option value="technology">{t('tenantA2p.identity.verticalOptions.technology')}</option>
+                <option value="other">{t('tenantA2p.identity.verticalOptions.other')}</option>
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className={labelCls}>Website URL <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span></label>
+              <label className={labelCls}>{t('tenantA2p.identity.websiteUrl')} <span style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.identity.websiteUrlOptional')}</span></label>
               <input className={inputCls} type="url" value={form.websiteUrl} onChange={e => set('websiteUrl', e.target.value)} placeholder="https://yourbusiness.com" />
             </div>
           </div>
@@ -186,51 +196,51 @@ export default function A2PPage() {
 
         {/* Address */}
         <section className="rounded-xl p-5 space-y-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Business address</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantA2p.address.title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className={labelCls}>Address line 1 *</label>
-              <input className={inputCls} value={form.addressLine1} onChange={e => set('addressLine1', e.target.value)} placeholder="123 Main St" />
+              <label className={labelCls}>{t('tenantA2p.address.line1')}</label>
+              <input className={inputCls} value={form.addressLine1} onChange={e => set('addressLine1', e.target.value)} placeholder={t('tenantA2p.address.line1Placeholder')} />
             </div>
             <div className="md:col-span-2">
-              <label className={labelCls}>Address line 2</label>
-              <input className={inputCls} value={form.addressLine2} onChange={e => set('addressLine2', e.target.value)} placeholder="Suite 200 (optional)" />
+              <label className={labelCls}>{t('tenantA2p.address.line2')}</label>
+              <input className={inputCls} value={form.addressLine2} onChange={e => set('addressLine2', e.target.value)} placeholder={t('tenantA2p.address.line2Placeholder')} />
             </div>
-            <div><label className={labelCls}>City *</label><input className={inputCls} value={form.city} onChange={e => set('city', e.target.value)} /></div>
-            <div><label className={labelCls}>State / Region *</label><input className={inputCls} value={form.region} onChange={e => set('region', e.target.value)} placeholder="CA" /></div>
-            <div><label className={labelCls}>Postal code *</label><input className={inputCls} value={form.postalCode} onChange={e => set('postalCode', e.target.value)} /></div>
-            <div><label className={labelCls}>Country</label><input className={inputCls} value={form.country} onChange={e => set('country', e.target.value)} placeholder="US" /></div>
+            <div><label className={labelCls}>{t('tenantA2p.address.city')}</label><input className={inputCls} value={form.city} onChange={e => set('city', e.target.value)} /></div>
+            <div><label className={labelCls}>{t('tenantA2p.address.region')}</label><input className={inputCls} value={form.region} onChange={e => set('region', e.target.value)} placeholder={t('tenantA2p.address.regionPlaceholder')} /></div>
+            <div><label className={labelCls}>{t('tenantA2p.address.postalCode')}</label><input className={inputCls} value={form.postalCode} onChange={e => set('postalCode', e.target.value)} /></div>
+            <div><label className={labelCls}>{t('tenantA2p.address.country')}</label><input className={inputCls} value={form.country} onChange={e => set('country', e.target.value)} placeholder="US" /></div>
           </div>
         </section>
 
         {/* Authorized contact */}
         <section className="rounded-xl p-5 space-y-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Authorized contact</h2>
-          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>The person Twilio reaches out to if they have questions about the registration.</p>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantA2p.contact.title')}</h2>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.contact.subtitle')}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className={labelCls}>First name *</label><input className={inputCls} value={form.contactFirstName} onChange={e => set('contactFirstName', e.target.value)} /></div>
-            <div><label className={labelCls}>Last name *</label><input className={inputCls} value={form.contactLastName} onChange={e => set('contactLastName', e.target.value)} /></div>
-            <div><label className={labelCls}>Email *</label><input className={inputCls} type="email" value={form.contactEmail} onChange={e => set('contactEmail', e.target.value)} /></div>
-            <div><label className={labelCls}>Phone *</label><input className={inputCls} type="tel" value={form.contactPhone} onChange={e => set('contactPhone', e.target.value)} placeholder="+15551234567" /></div>
+            <div><label className={labelCls}>{t('tenantA2p.contact.firstName')}</label><input className={inputCls} value={form.contactFirstName} onChange={e => set('contactFirstName', e.target.value)} /></div>
+            <div><label className={labelCls}>{t('tenantA2p.contact.lastName')}</label><input className={inputCls} value={form.contactLastName} onChange={e => set('contactLastName', e.target.value)} /></div>
+            <div><label className={labelCls}>{t('tenantA2p.contact.email')}</label><input className={inputCls} type="email" value={form.contactEmail} onChange={e => set('contactEmail', e.target.value)} /></div>
+            <div><label className={labelCls}>{t('tenantA2p.contact.phone')}</label><input className={inputCls} type="tel" value={form.contactPhone} onChange={e => set('contactPhone', e.target.value)} placeholder="+15551234567" /></div>
           </div>
         </section>
 
         {/* Use case + sample messages */}
         <section className="rounded-xl p-5 space-y-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>How you'll use SMS</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantA2p.useCase.title')}</h2>
           <div>
-            <label className={labelCls}>Use case *</label>
+            <label className={labelCls}>{t('tenantA2p.useCase.useCaseLabel')}</label>
             <select className={inputCls} value={form.useCase} onChange={e => set('useCase', e.target.value as A2PApplication['useCase'])}>
-              <option value="customer_care">Customer Care — replies, support, follow-ups</option>
-              <option value="mixed">Mixed — appointment reminders + occasional promos</option>
-              <option value="utility">Utility — confirmations, alerts, status updates</option>
-              <option value="2fa">2FA — login codes only</option>
-              <option value="marketing">Marketing — promotional content</option>
+              <option value="customer_care">{t('tenantA2p.useCase.options.customerCare')}</option>
+              <option value="mixed">{t('tenantA2p.useCase.options.mixed')}</option>
+              <option value="utility">{t('tenantA2p.useCase.options.utility')}</option>
+              <option value="2fa">{t('tenantA2p.useCase.options.twoFa')}</option>
+              <option value="marketing">{t('tenantA2p.useCase.options.marketing')}</option>
             </select>
           </div>
           <div>
-            <label className={labelCls}>Sample messages * <span style={{ color: 'var(--text-tertiary)' }}>(at least 1, up to 5)</span></label>
-            <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>Real examples of messages your AI will send. Include opt-out language ("Reply STOP to unsubscribe") in at least one. Carriers reject vague samples.</p>
+            <label className={labelCls}>{t('tenantA2p.useCase.sampleMessages')} <span style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.useCase.sampleMessagesCount')}</span></label>
+            <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.useCase.sampleMessagesHelp')}</p>
             <div className="space-y-2">
               {form.sampleMessagesJson.map((m, i) => (
                 <textarea
@@ -239,7 +249,7 @@ export default function A2PPage() {
                   rows={2}
                   value={m}
                   onChange={e => setSample(i, e.target.value)}
-                  placeholder={i === 0 ? 'Hi {{name}}, this is Acme confirming your appointment Tuesday at 2pm. Reply C to confirm, R to reschedule. Reply STOP to opt out.' : 'Sample message ' + (i + 1)}
+                  placeholder={i === 0 ? t('tenantA2p.useCase.sampleFirstPlaceholder') : t('tenantA2p.useCase.sampleNthPlaceholder', { n: i + 1 })}
                 />
               ))}
             </div>
@@ -250,13 +260,13 @@ export default function A2PPage() {
       {!isLocked && (
         <div className="flex items-center gap-3">
           <button onClick={save} disabled={saving || submitting} className="btn-secondary text-sm">
-            {saving ? 'Saving…' : 'Save draft'}
+            {saving ? t('tenantA2p.actions.saving') : t('tenantA2p.actions.saveDraft')}
           </button>
           <button onClick={submit} disabled={saving || submitting} className="btn-primary text-sm">
-            {submitting ? 'Submitting…' : 'Submit for review'}
+            {submitting ? t('tenantA2p.actions.submitting') : t('tenantA2p.actions.submit')}
           </button>
           <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-            We'll save the draft, then submit to Twilio. You can come back here to track status.
+            {t('tenantA2p.actions.helper')}
           </p>
         </div>
       )}

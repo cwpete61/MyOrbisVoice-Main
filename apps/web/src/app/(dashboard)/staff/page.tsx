@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 interface StaffMember {
   id: string
@@ -18,6 +19,10 @@ interface StaffMember {
 }
 
 export default function StaffDirectoryPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  // Hint to satisfy locale usage when not directly referenced in JSX (kept for future date formatting).
+  void locale
   const { data: entitlements } = useApi<Record<string, boolean | number | string | null>>('/api/entitlements')
   const { data: staff, loading, reload } = useApi<StaffMember[]>('/api/staff')
   const [adding, setAdding] = useState(false)
@@ -33,9 +38,11 @@ export default function StaffDirectoryPage() {
 
   useEffect(() => {
     if (searchParams.get('google') === 'error') {
-      setError(`Calendar connection failed: ${searchParams.get('reason') ?? 'unknown error'}`)
+      setError(t('tenantStaff.errors.calendarConnectFailed', {
+        reason: searchParams.get('reason') ?? t('tenantStaff.errors.unknownReason'),
+      }))
     }
-  }, [searchParams])
+  }, [searchParams, t])
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 4000) }
 
@@ -50,8 +57,8 @@ export default function StaffDirectoryPage() {
       setForm({ name: '', title: '', department: '', email: '' })
       setAdding(false)
       reload()
-      showToast('Staff member added')
-    } catch (e) { setError(e instanceof Error ? e.message : 'Failed') }
+      showToast(t('tenantStaff.toasts.memberAdded'))
+    } catch (e) { setError(e instanceof Error ? e.message : t('tenantStaff.errors.genericFailed')) }
     finally { setSaving(false) }
   }
 
@@ -59,15 +66,15 @@ export default function StaffDirectoryPage() {
     return (
       <div className="space-y-6 max-w-2xl">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Staff Directory</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Manage your team and connect their calendars for smart appointment routing.</p>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{t('tenantStaff.title')}</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{t('tenantStaff.subtitleShort')}</p>
         </div>
         <div className="rounded-xl px-6 py-10 text-center" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Staff Directory is a Premier & Enterprise feature</p>
+          <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{t('tenantStaff.gate.title')}</p>
           <p className="text-xs mb-5" style={{ color: 'var(--text-secondary)' }}>
-            Connect individual team calendars and route appointments to specific staff members automatically.
+            {t('tenantStaff.gate.description')}
           </p>
-          <a href="/billing" className="btn-primary text-sm">View plans →</a>
+          <a href="/billing" className="btn-primary text-sm">{t('tenantStaff.gate.viewPlans')}</a>
         </div>
       </div>
     )
@@ -78,18 +85,20 @@ export default function StaffDirectoryPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Staff Directory</h1>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{t('tenantStaff.title')}</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Add team members, connect their calendars, and let the agent route bookings to the right person.
+            {t('tenantStaff.subtitleLong')}
           </p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>{used} / {maxSeats} seats</p>
+          <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>
+            {t('tenantStaff.header.seatsUsed', { used, max: maxSeats })}
+          </p>
           {!adding && used < maxSeats && (
-            <button onClick={() => setAdding(true)} className="btn-primary text-sm">+ Add member</button>
+            <button onClick={() => setAdding(true)} className="btn-primary text-sm">{t('tenantStaff.header.addMember')}</button>
           )}
           {!adding && used >= maxSeats && (
-            <p className="text-xs" style={{ color: 'oklch(70% 0.16 75)' }}>Seat limit reached</p>
+            <p className="text-xs" style={{ color: 'oklch(70% 0.16 75)' }}>{t('tenantStaff.header.seatLimitReached')}</p>
           )}
         </div>
       </div>
@@ -100,28 +109,30 @@ export default function StaffDirectoryPage() {
       {/* Add form */}
       {adding && (
         <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>New staff member</p>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantStaff.form.heading')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Full name *</label>
-              <input className="input w-full" placeholder="Jane Smith" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('tenantStaff.form.fullNameLabel')}</label>
+              <input className="input w-full" placeholder={t('tenantStaff.form.fullNamePlaceholder')} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Job title</label>
-              <input className="input w-full" placeholder="Sales Consultant" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('tenantStaff.form.jobTitleLabel')}</label>
+              <input className="input w-full" placeholder={t('tenantStaff.form.jobTitlePlaceholder')} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Department</label>
-              <input className="input w-full" placeholder="Sales" value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} />
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('tenantStaff.form.departmentLabel')}</label>
+              <input className="input w-full" placeholder={t('tenantStaff.form.departmentPlaceholder')} value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Email</label>
-              <input className="input w-full" placeholder="jane@company.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('tenantStaff.form.emailLabel')}</label>
+              <input className="input w-full" placeholder={t('tenantStaff.form.emailPlaceholder')} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={addMember} disabled={saving || !form.name.trim()} className="btn-primary text-sm">{saving ? 'Adding…' : 'Add member'}</button>
-            <button onClick={() => { setAdding(false); setForm({ name: '', title: '', department: '', email: '' }) }} className="btn-secondary text-sm">Cancel</button>
+            <button onClick={addMember} disabled={saving || !form.name.trim()} className="btn-primary text-sm">
+              {saving ? t('tenantStaff.form.addingButton') : t('tenantStaff.form.addButton')}
+            </button>
+            <button onClick={() => { setAdding(false); setForm({ name: '', title: '', department: '', email: '' }) }} className="btn-secondary text-sm">{t('tenantStaff.form.cancelButton')}</button>
           </div>
         </div>
       )}
@@ -133,8 +144,8 @@ export default function StaffDirectoryPage() {
         </div>
       ) : !staff?.length ? (
         <div className="rounded-xl px-6 py-12 text-center" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>No staff members yet</p>
-          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Add your first team member to start routing bookings.</p>
+          <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>{t('tenantStaff.empty.title')}</p>
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{t('tenantStaff.empty.description')}</p>
         </div>
       ) : (
         <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
@@ -167,7 +178,7 @@ export default function StaffDirectoryPage() {
                     </span>
                   )}
                   {!member.isActive && (
-                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>Inactive</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>{t('tenantStaff.row.inactive')}</span>
                   )}
                 </div>
                 {member.email && <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-tertiary)' }}>{member.email}</p>}
@@ -179,7 +190,7 @@ export default function StaffDirectoryPage() {
                   style={member.integrationConnection?.status === 'CONNECTED'
                     ? { background: 'oklch(28% 0.10 193)', color: 'oklch(88% 0.07 193)' }
                     : { background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>
-                  {member.integrationConnection?.status === 'CONNECTED' ? 'Calendar ✓' : 'No calendar'}
+                  {member.integrationConnection?.status === 'CONNECTED' ? t('tenantStaff.row.calendarConnected') : t('tenantStaff.row.noCalendar')}
                 </span>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--text-tertiary)' }}>
                   <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -192,27 +203,27 @@ export default function StaffDirectoryPage() {
 
       {/* Calendar integrations footer */}
       <div>
-        <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>CALENDAR INTEGRATIONS</p>
+        <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-tertiary)' }}>{t('tenantStaff.integrations.heading')}</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'var(--surface-raised)', border: '1px solid oklch(55% 0.14 193)' }}>
             <GoogleIcon />
             <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Google Calendar</p>
-              <p className="text-xs" style={{ color: 'oklch(65% 0.15 145)' }}>Available now</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('tenantStaff.integrations.googleCalendar')}</p>
+              <p className="text-xs" style={{ color: 'oklch(65% 0.15 145)' }}>{t('tenantStaff.integrations.availableNow')}</p>
             </div>
           </div>
           <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', opacity: 0.55 }}>
             <OutlookIcon />
             <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Outlook / Microsoft 365</p>
-              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Coming soon</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{t('tenantStaff.integrations.outlook')}</p>
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantStaff.integrations.comingSoon')}</p>
             </div>
           </div>
           <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', opacity: 0.55 }}>
             <CalendlyIcon />
             <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Calendly</p>
-              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Coming soon</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{t('tenantStaff.integrations.calendly')}</p>
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantStaff.integrations.comingSoon')}</p>
             </div>
           </div>
         </div>

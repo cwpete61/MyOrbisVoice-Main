@@ -123,7 +123,7 @@ export default function AffiliateProfilePage() {
           onClick={save}
           disabled={saving}
           className="px-5 py-2.5 rounded-lg text-sm font-semibold"
-          style={{ background: saved ? 'oklch(55% 0.18 145)' : 'var(--brand-primary)', color: '#fff' }}
+          style={{ background: saved ? 'oklch(55% 0.18 145)' : 'var(--brand-500)', color: '#fff' }}
         >
           {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Preferences'}
         </button>

@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 interface Contact {
   id: string
@@ -30,6 +31,10 @@ const inp = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounde
 const lbl = 'block text-xs font-medium mb-1'
 
 export default function ContactsPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
+
   const [search, setSearch] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const { data, loading, error, reload } = useApi<ContactList>(
@@ -57,7 +62,7 @@ export default function ContactsPage() {
 
   async function createContact() {
     if (!form.firstName && !form.email && !form.phoneE164) {
-      setFormError('Provide at least a name, email, or phone number.')
+      setFormError(t('tenantContacts.form.validationMissing'))
       return
     }
     setSaving(true); setFormError('')
@@ -74,7 +79,7 @@ export default function ContactsPage() {
       setForm({ firstName: '', lastName: '', email: '', phoneE164: '' })
       setShowForm(false)
       reload()
-    } catch (err) { setFormError(err instanceof Error ? err.message : 'Failed') }
+    } catch (err) { setFormError(err instanceof Error ? err.message : t('tenantContacts.form.saveFailed')) }
     finally { setSaving(false) }
   }
 
@@ -126,7 +131,7 @@ export default function ContactsPage() {
       )
       setImportResult({ ok: result.created, failed: result.skipped })
       if (result.created > 0) reload()
-    } catch (err) {
+    } catch {
       setImportResult({ ok: 0, failed: csvRows.length })
     } finally {
       setImporting(false)
@@ -134,26 +139,27 @@ export default function ContactsPage() {
   }
 
   async function deleteContact(id: string) {
-    if (!confirm('Delete this contact?')) return
+    if (!confirm(t('tenantContacts.confirmDelete'))) return
     await apiFetch(`/api/contacts/${id}`, { method: 'DELETE' })
     reload()
   }
 
   const contacts = data?.items ?? []
+  const dash = t('tenantContacts.dash')
 
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Contacts</h1>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{t('tenantContacts.title')}</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            {data ? `${data.total} total` : 'Manage your contact list for outbound campaigns'}
+            {data ? t('tenantContacts.subtitleTotal', { n: data.total }) : t('tenantContacts.subtitleManage')}
           </p>
         </div>
         <div className="flex gap-2">
           <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
-          <button onClick={() => fileRef.current?.click()} className="btn-ghost">Import CSV</button>
-          <button onClick={() => setShowForm(true)} className="btn-primary">+ Add contact</button>
+          <button onClick={() => fileRef.current?.click()} className="btn-ghost">{t('tenantContacts.actions.importCsv')}</button>
+          <button onClick={() => setShowForm(true)} className="btn-primary">{t('tenantContacts.actions.addContact')}</button>
         </div>
       </div>
 
@@ -162,14 +168,16 @@ export default function ContactsPage() {
         <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Import CSV — {csvRows.length} row{csvRows.length !== 1 ? 's' : ''} detected
+              {csvRows.length === 1
+                ? t('tenantContacts.import.headingSingular', { n: csvRows.length })
+                : t('tenantContacts.import.headingPlural', { n: csvRows.length })}
             </h2>
             <button onClick={() => { setShowImport(false); setCsvRows([]); setRawCsv(''); setImportResult(null); if (fileRef.current) fileRef.current.value = '' }}
-              className="text-xs" style={{ color: 'var(--text-tertiary)' }}>✕ Close</button>
+              className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantContacts.import.close')}</button>
           </div>
 
           <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            Expected columns (case-insensitive): <code className="font-mono">firstName, lastName, email, phone</code>
+            {t('tenantContacts.import.expectedColumns')} <code className="font-mono">firstName, lastName, email, phone</code>
           </p>
 
           {csvRows.length > 0 && (
@@ -177,25 +185,30 @@ export default function ContactsPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
-                    {['First', 'Last', 'Email', 'Phone'].map(h => (
-                      <th key={h} className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-tertiary)' }}>{h}</th>
+                    {[
+                      { key: 'first', label: t('tenantContacts.import.table.first') },
+                      { key: 'last',  label: t('tenantContacts.import.table.last') },
+                      { key: 'email', label: t('tenantContacts.import.table.email') },
+                      { key: 'phone', label: t('tenantContacts.import.table.phone') },
+                    ].map(h => (
+                      <th key={h.key} className="px-3 py-2 text-left font-medium" style={{ color: 'var(--text-tertiary)' }}>{h.label}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {csvRows.slice(0, 10).map((r, i) => (
                     <tr key={i} style={{ borderBottom: i < Math.min(csvRows.length, 10) - 1 ? '1px solid var(--border-subtle)' : undefined }}>
-                      <td className="px-3 py-2" style={{ color: 'var(--text-primary)' }}>{r.firstName || '—'}</td>
-                      <td className="px-3 py-2" style={{ color: 'var(--text-primary)' }}>{r.lastName  || '—'}</td>
-                      <td className="px-3 py-2" style={{ color: 'var(--text-secondary)' }}>{r.email     || '—'}</td>
-                      <td className="px-3 py-2 font-mono" style={{ color: 'var(--text-secondary)' }}>{r.phoneE164 || '—'}</td>
+                      <td className="px-3 py-2" style={{ color: 'var(--text-primary)' }}>{r.firstName || dash}</td>
+                      <td className="px-3 py-2" style={{ color: 'var(--text-primary)' }}>{r.lastName  || dash}</td>
+                      <td className="px-3 py-2" style={{ color: 'var(--text-secondary)' }}>{r.email     || dash}</td>
+                      <td className="px-3 py-2 font-mono" style={{ color: 'var(--text-secondary)' }}>{r.phoneE164 || dash}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {csvRows.length > 10 && (
                 <p className="px-3 py-2 text-xs" style={{ color: 'var(--text-tertiary)', borderTop: '1px solid var(--border-subtle)' }}>
-                  …and {csvRows.length - 10} more rows
+                  {t('tenantContacts.import.moreRows', { n: csvRows.length - 10 })}
                 </p>
               )}
             </div>
@@ -203,17 +216,21 @@ export default function ContactsPage() {
 
           {importResult && (
             <div className={importResult.failed === 0 ? 'alert-success' : 'alert-error'}>
-              Imported {importResult.ok} contact{importResult.ok !== 1 ? 's' : ''}.
-              {importResult.failed > 0 && ` ${importResult.failed} failed (duplicate or invalid data).`}
+              {importResult.ok === 1
+                ? t('tenantContacts.import.resultSingular', { ok: importResult.ok })
+                : t('tenantContacts.import.resultPlural', { ok: importResult.ok })}
+              {importResult.failed > 0 && t('tenantContacts.import.resultFailed', { failed: importResult.failed })}
             </div>
           )}
 
           {!importResult && (
             <div className="flex gap-2">
               <button onClick={runImport} disabled={importing || csvRows.length === 0} className="btn-primary">
-                {importing ? `Importing… (${csvRows.length} rows)` : `Import ${csvRows.length} contacts`}
+                {importing
+                  ? t('tenantContacts.import.importingProgress', { n: csvRows.length })
+                  : t('tenantContacts.import.importCount', { n: csvRows.length })}
               </button>
-              <button onClick={() => fileRef.current?.click()} className="btn-ghost">Choose different file</button>
+              <button onClick={() => fileRef.current?.click()} className="btn-ghost">{t('tenantContacts.import.chooseDifferent')}</button>
             </div>
           )}
         </div>
@@ -224,41 +241,41 @@ export default function ContactsPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, email, or phone…"
+          placeholder={t('tenantContacts.search.placeholder')}
           className={inp + ' max-w-sm'}
         />
-        <button type="submit" className="btn-ghost">Search</button>
+        <button type="submit" className="btn-ghost">{t('tenantContacts.actions.search')}</button>
         {searchQuery && (
-          <button type="button" onClick={() => { setSearch(''); setSearchQuery('') }} className="btn-ghost">Clear</button>
+          <button type="button" onClick={() => { setSearch(''); setSearchQuery('') }} className="btn-ghost">{t('tenantContacts.actions.clear')}</button>
         )}
       </form>
 
       {/* Add contact form */}
       {showForm && (
         <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>New contact</h2>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantContacts.form.newContactTitle')}</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={lbl} style={{ color: 'var(--text-secondary)' }}>First name</label>
-              <input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className={inp} placeholder="Jane" />
+              <label className={lbl} style={{ color: 'var(--text-secondary)' }}>{t('tenantContacts.form.firstName')}</label>
+              <input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className={inp} placeholder={t('tenantContacts.form.firstNamePlaceholder')} />
             </div>
             <div>
-              <label className={lbl} style={{ color: 'var(--text-secondary)' }}>Last name</label>
-              <input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className={inp} placeholder="Smith" />
+              <label className={lbl} style={{ color: 'var(--text-secondary)' }}>{t('tenantContacts.form.lastName')}</label>
+              <input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className={inp} placeholder={t('tenantContacts.form.lastNamePlaceholder')} />
             </div>
             <div>
-              <label className={lbl} style={{ color: 'var(--text-secondary)' }}>Email</label>
-              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inp} placeholder="jane@example.com" />
+              <label className={lbl} style={{ color: 'var(--text-secondary)' }}>{t('tenantContacts.form.email')}</label>
+              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inp} placeholder={t('tenantContacts.form.emailPlaceholder')} />
             </div>
             <div>
-              <label className={lbl} style={{ color: 'var(--text-secondary)' }}>Phone (E.164)</label>
-              <input value={form.phoneE164} onChange={(e) => setForm({ ...form, phoneE164: e.target.value })} className={inp} placeholder="+18005551234" />
+              <label className={lbl} style={{ color: 'var(--text-secondary)' }}>{t('tenantContacts.form.phoneE164')}</label>
+              <input value={form.phoneE164} onChange={(e) => setForm({ ...form, phoneE164: e.target.value })} className={inp} placeholder={t('tenantContacts.form.phonePlaceholder')} />
             </div>
           </div>
           {formError && <p className="text-xs text-red-500">{formError}</p>}
           <div className="flex gap-2">
-            <button onClick={createContact} disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Save'}</button>
-            <button onClick={() => setShowForm(false)} className="btn-ghost">Cancel</button>
+            <button onClick={createContact} disabled={saving} className="btn-primary">{saving ? t('tenantContacts.actions.saving') : t('tenantContacts.actions.save')}</button>
+            <button onClick={() => setShowForm(false)} className="btn-ghost">{t('tenantContacts.actions.cancel')}</button>
           </div>
         </div>
       )}
@@ -269,7 +286,7 @@ export default function ContactsPage() {
 
       {!loading && contacts.length === 0 && (
         <div className="py-16 text-center rounded-xl" style={{ border: '1px dashed var(--border-subtle)' }}>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No contacts yet. Add one above or import a list.</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('tenantContacts.empty')}</p>
         </div>
       )}
 
@@ -278,8 +295,16 @@ export default function ContactsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
-                {['Name', 'Email', 'Phone', 'Status', 'Source', 'Added', ''].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{h}</th>
+                {[
+                  { key: 'name',   label: t('tenantContacts.table.name') },
+                  { key: 'email',  label: t('tenantContacts.table.email') },
+                  { key: 'phone',  label: t('tenantContacts.table.phone') },
+                  { key: 'status', label: t('tenantContacts.table.status') },
+                  { key: 'source', label: t('tenantContacts.table.source') },
+                  { key: 'added',  label: t('tenantContacts.table.added') },
+                  { key: 'actions', label: '' },
+                ].map((h) => (
+                  <th key={h.key} className="px-4 py-3 text-left text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{h.label}</th>
                 ))}
               </tr>
             </thead>
@@ -288,31 +313,31 @@ export default function ContactsPage() {
                 <tr key={c.id} style={{ borderBottom: i < contacts.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
                   <td className="px-4 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>
                     <Link href={`/contacts/${c.id}`} className="hover:underline">
-                      {c.fullName ?? ([c.firstName, c.lastName].filter(Boolean).join(' ') || '—')}
+                      {c.fullName ?? ([c.firstName, c.lastName].filter(Boolean).join(' ') || dash)}
                     </Link>
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
-                    <span>{c.email ?? '—'}</span>
+                    <span>{c.email ?? dash}</span>
                     {c.emailStatus === 'invalid' && <span className="ml-1 text-xs text-red-500">✕</span>}
                     {c.emailStatus === 'valid' && <span className="ml-1 text-xs text-green-500">✓</span>}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{c.phoneE164 ?? '—'}</td>
+                  <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{c.phoneE164 ?? dash}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 flex-wrap">
-                      {c.optedOutSms   && <span className="px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700">SMS out</span>}
-                      {c.optedOutVoice && <span className="px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700">Voice out</span>}
-                      {c.optedOutEmail && <span className="px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700">Email out</span>}
+                      {c.optedOutSms   && <span className="px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700">{t('tenantContacts.status.smsOptOut')}</span>}
+                      {c.optedOutVoice && <span className="px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700">{t('tenantContacts.status.voiceOptOut')}</span>}
+                      {c.optedOutEmail && <span className="px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700">{t('tenantContacts.status.emailOptOut')}</span>}
                       {!c.optedOutSms && !c.optedOutVoice && !c.optedOutEmail && (
-                        <span className="px-1.5 py-0.5 rounded text-xs bg-green-50 text-green-700">Active</span>
+                        <span className="px-1.5 py-0.5 rounded text-xs bg-green-50 text-green-700">{t('tenantContacts.status.active')}</span>
                       )}
                     </div>
                   </td>
                   <td className="px-4 py-3">
                     <span className="badge" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>{c.source}</span>
                   </td>
-                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-tertiary)' }}>{new Date(c.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-tertiary)' }}>{new Date(c.createdAt).toLocaleDateString(dateLocale)}</td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => deleteContact(c.id)} className="text-xs hover:opacity-100 opacity-40 transition-opacity" style={{ color: 'var(--error-600)' }}>Remove</button>
+                    <button onClick={() => deleteContact(c.id)} className="text-xs hover:opacity-100 opacity-40 transition-opacity" style={{ color: 'var(--error-600)' }}>{t('tenantContacts.actions.remove')}</button>
                   </td>
                 </tr>
               ))}

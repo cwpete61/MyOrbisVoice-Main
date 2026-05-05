@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useApi, apiFetchRaw, apiFetch } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 interface Contact { firstName: string | null; lastName: string | null; email: string | null; phoneE164: string | null }
 
@@ -25,22 +26,21 @@ interface Conversation {
 // `outcomeCode` set by the system (e.g. `voicemail`, `busy`, `no_answer` for
 // outbound). A tenant can override outcomeCode on any conversation to one
 // of these tags so funnel reports group by real outcomes.
-const DISPOSITIONS: { value: string; label: string }[] = [
-  { value: '',                  label: '— No disposition —' },
-  { value: 'booked',             label: '✓ Booked / Sale' },
-  { value: 'qualified',          label: '◎ Qualified lead' },
-  { value: 'callback',           label: '↻ Callback requested' },
-  { value: 'not_interested',     label: '✕ Not interested' },
-  { value: 'wrong_number',       label: '⊘ Wrong number' },
-  { value: 'voicemail',          label: '🔉 Voicemail' },
-  { value: 'no_answer',          label: '— No answer' },
-  { value: 'spam',               label: '🚫 Spam / robocall' },
+const DISPOSITION_VALUES: { value: string; labelKey: string }[] = [
+  { value: '',                  labelKey: 'tenantConversations.dispositions.none' },
+  { value: 'booked',             labelKey: 'tenantConversations.dispositions.booked' },
+  { value: 'qualified',          labelKey: 'tenantConversations.dispositions.qualified' },
+  { value: 'callback',           labelKey: 'tenantConversations.dispositions.callback' },
+  { value: 'not_interested',     labelKey: 'tenantConversations.dispositions.notInterested' },
+  { value: 'wrong_number',       labelKey: 'tenantConversations.dispositions.wrongNumber' },
+  { value: 'voicemail',          labelKey: 'tenantConversations.dispositions.voicemail' },
+  { value: 'no_answer',          labelKey: 'tenantConversations.dispositions.noAnswer' },
+  { value: 'spam',               labelKey: 'tenantConversations.dispositions.spam' },
 ]
 
 interface ConversationsResponse { items: Conversation[]; total: number }
 type TranscriptEntry = { role: 'user' | 'assistant'; text: string; timestamp: number }
 
-const CHANNEL_LABELS: Record<string, string> = { WIDGET: 'Widget', INBOUND: 'Phone', OUTBOUND: 'Outbound' }
 const CHANNEL_COLORS: Record<string, string> = {
   WIDGET: 'oklch(55% 0.11 193)',
   INBOUND: 'oklch(55% 0.14 140)',
@@ -54,14 +54,11 @@ function contactName(c: Contact | null): string {
   return name || c.email || c.phoneE164 || ''
 }
 
-function formatDuration(start: string, end: string | null) {
-  if (!end) return '—'
-  const secs = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000)
-  if (secs < 60) return `${secs}s`
-  return `${Math.floor(secs / 60)}m ${secs % 60}s`
-}
-
 export default function ConversationsPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
+
   const [selected, setSelected] = useState<Conversation | null>(null)
   const [channelFilter, setChannelFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -82,6 +79,43 @@ export default function ConversationsPage() {
   const audioRef = useRef<HTMLAudioElement>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const limit = 20
+
+  function channelLabel(channelType: string): string {
+    switch (channelType) {
+      case 'WIDGET':   return t('tenantConversations.channel.widget')
+      case 'INBOUND':  return t('tenantConversations.channel.inbound')
+      case 'OUTBOUND': return t('tenantConversations.channel.outbound')
+      default:         return channelType
+    }
+  }
+
+  function statusLabel(status: string): string {
+    switch (status) {
+      case 'COMPLETED': return t('tenantConversations.status.completed')
+      case 'MISSED':    return t('tenantConversations.status.missed')
+      case 'FAILED':    return t('tenantConversations.status.failed')
+      case 'OPEN':      return t('tenantConversations.status.open')
+      default:          return status
+    }
+  }
+
+  function statusPillLabel(status: string | null | undefined): string {
+    if (!status) return ''
+    switch (status.toUpperCase()) {
+      case 'COMPLETED': return t('tenantConversations.statusPill.completed')
+      case 'MISSED':    return t('tenantConversations.statusPill.missed')
+      case 'FAILED':    return t('tenantConversations.statusPill.failed')
+      case 'OPEN':      return t('tenantConversations.statusPill.open')
+      default:          return status.toLowerCase()
+    }
+  }
+
+  function formatDuration(start: string, end: string | null): string {
+    if (!end) return t('tenantConversations.duration.none')
+    const secs = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000)
+    if (secs < 60) return t('tenantConversations.duration.seconds', { s: secs })
+    return t('tenantConversations.duration.minutesSeconds', { m: Math.floor(secs / 60), s: secs % 60 })
+  }
 
   // Debounce search
   useEffect(() => {
@@ -149,7 +183,7 @@ export default function ConversationsPage() {
       })
       reload()
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed to update disposition')
+      showToast('error', err instanceof Error ? err.message : t('tenantConversations.detail.dispositionUpdateFailed'))
       // Roll back
       setSelected({ ...selected })
     }
@@ -158,19 +192,21 @@ export default function ConversationsPage() {
   function openFollowupEmail() {
     if (!selected) return
     const name = [selected.contact?.firstName, selected.contact?.lastName].filter(Boolean).join(' ') || ''
-    const greeting = name ? `Hi ${name},` : 'Hi,'
+    const greeting = name
+      ? t('tenantConversations.email.defaultGreeting', { name })
+      : t('tenantConversations.email.defaultGreetingNoName')
     const summaryLine = selected.summaryText ? `\n\n${selected.summaryText}` : ''
     setEmailDraft({
       to:      selected.contact?.email ?? '',
-      subject: 'Following up on our call',
-      body:    `${greeting}\n\nThanks for taking the time to speak with us today.${summaryLine}\n\nLet me know if there's anything else you need.\n\nBest,`,
+      subject: t('tenantConversations.email.defaultSubject'),
+      body:    t('tenantConversations.email.defaultBody', { greeting, summaryLine }),
     })
   }
 
   async function sendFollowupEmail() {
     if (!emailDraft) return
     if (!emailDraft.to || !emailDraft.subject.trim() || !emailDraft.body.trim()) {
-      showToast('error', 'To, subject, and body are all required.')
+      showToast('error', t('tenantConversations.email.validationError'))
       return
     }
     setEmailSending(true)
@@ -179,10 +215,10 @@ export default function ConversationsPage() {
         method: 'POST',
         body: JSON.stringify(emailDraft),
       })
-      showToast('success', `Email sent to ${emailDraft.to}.`)
+      showToast('success', t('tenantConversations.email.sentSuccess', { to: emailDraft.to }))
       setEmailDraft(null)
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Send failed — check that Google is connected in Integrations.')
+      showToast('error', err instanceof Error ? err.message : t('tenantConversations.email.sendFailed'))
     } finally { setEmailSending(false) }
   }
 
@@ -192,7 +228,7 @@ export default function ConversationsPage() {
     try {
       const res = await apiFetchRaw(`/api/conversations/${selected.id}/export.pdf`)
       if (!res.ok) {
-        let msg = 'PDF export failed'
+        let msg = t('tenantConversations.detail.pdfExportFailed')
         try {
           const ct = res.headers.get('Content-Type') ?? ''
           if (ct.includes('json')) {
@@ -220,7 +256,7 @@ export default function ConversationsPage() {
       // Revoke after a tick — some browsers need the URL alive briefly
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'PDF export failed')
+      showToast('error', err instanceof Error ? err.message : t('tenantConversations.detail.pdfExportFailed'))
     } finally {
       setPdfDownloading(false)
     }
@@ -228,16 +264,23 @@ export default function ConversationsPage() {
 
   async function bulkDelete() {
     if (checkedIds.size === 0) return
-    if (!confirm(`Delete ${checkedIds.size} conversation${checkedIds.size > 1 ? 's' : ''}? This cannot be undone.`)) return
+    const confirmMsg = checkedIds.size > 1
+      ? t('tenantConversations.bulk.confirmPlural', { n: checkedIds.size })
+      : t('tenantConversations.bulk.confirmSingular', { n: checkedIds.size })
+    if (!confirm(confirmMsg)) return
     setDeleting(true)
     try {
       await apiFetch('/api/conversations', { method: 'DELETE', body: JSON.stringify({ ids: [...checkedIds] }) })
+      const deletedCount = checkedIds.size
       setCheckedIds(new Set())
       if (selected && checkedIds.has(selected.id)) setSelected(null)
       await reload()
-      showToast('success', `Deleted ${checkedIds.size} conversation${checkedIds.size > 1 ? 's' : ''}.`)
+      const successMsg = deletedCount > 1
+        ? t('tenantConversations.bulk.deletedPlural', { n: deletedCount })
+        : t('tenantConversations.bulk.deletedSingular', { n: deletedCount })
+      showToast('success', successMsg)
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Delete failed')
+      showToast('error', err instanceof Error ? err.message : t('tenantConversations.bulk.deleteFailed'))
     } finally {
       setDeleting(false)
     }
@@ -250,11 +293,17 @@ export default function ConversationsPage() {
     try { transcript = JSON.parse(selected.transcriptRef) } catch { /* ignore */ }
   }
 
+  const totalCountText = total !== 1
+    ? t('tenantConversations.list.totalPlural', { n: total })
+    : t('tenantConversations.list.totalSingular', { n: total })
+
   return (
     <div className="max-w-6xl">
-      <h1 className="text-xl font-semibold mb-1 tracking-tight" style={{ color: 'var(--text-primary)' }}>Conversations</h1>
+      <h1 className="text-xl font-semibold mb-1 tracking-tight" style={{ color: 'var(--text-primary)' }}>
+        {t('tenantConversations.title')}
+      </h1>
       <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
-        Transcripts and summaries from widget, inbound, and outbound sessions.
+        {t('tenantConversations.subtitle')}
       </p>
 
       {toast && <div className={`mb-4 ${toast.type === 'success' ? 'alert-success' : 'alert-error'}`}>{toast.text}</div>}
@@ -268,7 +317,7 @@ export default function ConversationsPage() {
           </svg>
           <input
             className="input pl-7 text-xs"
-            placeholder="Search summary, contact name, phone…"
+            placeholder={t('tenantConversations.searchPlaceholder')}
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
           />
@@ -280,10 +329,10 @@ export default function ConversationsPage() {
           value={channelFilter}
           onChange={e => { setChannelFilter(e.target.value); setPage(1) }}
         >
-          <option value="">All channels</option>
-          <option value="WIDGET">Widget</option>
-          <option value="INBOUND">Phone</option>
-          <option value="OUTBOUND">Outbound</option>
+          <option value="">{t('tenantConversations.filters.allChannels')}</option>
+          <option value="WIDGET">{t('tenantConversations.channel.widget')}</option>
+          <option value="INBOUND">{t('tenantConversations.channel.inbound')}</option>
+          <option value="OUTBOUND">{t('tenantConversations.channel.outbound')}</option>
         </select>
 
         {/* Status filter */}
@@ -292,7 +341,9 @@ export default function ConversationsPage() {
           value={statusFilter}
           onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
         >
-          {STATUS_OPTS.map(s => <option key={s} value={s}>{s || 'All statuses'}</option>)}
+          {STATUS_OPTS.map(s => (
+            <option key={s} value={s}>{s ? statusLabel(s) : t('tenantConversations.filters.allStatuses')}</option>
+          ))}
         </select>
 
         {/* Recording filter */}
@@ -301,9 +352,9 @@ export default function ConversationsPage() {
           value={hasRecording}
           onChange={e => { setHasRecording(e.target.value); setPage(1) }}
         >
-          <option value="">All recordings</option>
-          <option value="true">Has recording</option>
-          <option value="false">No recording</option>
+          <option value="">{t('tenantConversations.filters.allRecordings')}</option>
+          <option value="true">{t('tenantConversations.filters.hasRecording')}</option>
+          <option value="false">{t('tenantConversations.filters.noRecording')}</option>
         </select>
 
         {/* Sort */}
@@ -312,15 +363,15 @@ export default function ConversationsPage() {
           value={`${sortBy}:${sortDir}`}
           onChange={e => { const [by, dir] = e.target.value.split(':'); setSortBy(by!); setSortDir(dir as 'asc' | 'desc'); setPage(1) }}
         >
-          <option value="startedAt:desc">Newest first</option>
-          <option value="startedAt:asc">Oldest first</option>
-          <option value="status:asc">Status A→Z</option>
+          <option value="startedAt:desc">{t('tenantConversations.sort.newestFirst')}</option>
+          <option value="startedAt:asc">{t('tenantConversations.sort.oldestFirst')}</option>
+          <option value="status:asc">{t('tenantConversations.sort.statusAsc')}</option>
         </select>
 
         {/* Bulk delete */}
         {checkedIds.size > 0 && (
           <button onClick={bulkDelete} disabled={deleting} className="btn-danger text-xs">
-            {deleting ? 'Deleting…' : `Delete ${checkedIds.size}`}
+            {deleting ? t('tenantConversations.bulk.deleting') : t('tenantConversations.bulk.deleteCount', { n: checkedIds.size })}
           </button>
         )}
       </div>
@@ -329,9 +380,13 @@ export default function ConversationsPage() {
         {/* List */}
         <div className="flex-1 min-w-0">
           {loading ? (
-            <div className="text-sm py-8 text-center" style={{ color: 'var(--text-tertiary)' }}>Loading…</div>
+            <div className="text-sm py-8 text-center" style={{ color: 'var(--text-tertiary)' }}>
+              {t('tenantConversations.list.loading')}
+            </div>
           ) : conversations.length === 0 ? (
-            <div className="text-sm py-8 text-center" style={{ color: 'var(--text-tertiary)' }}>No conversations found.</div>
+            <div className="text-sm py-8 text-center" style={{ color: 'var(--text-tertiary)' }}>
+              {t('tenantConversations.list.empty')}
+            </div>
           ) : (
             <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-subtle)' }}>
               {/* Header row with select-all */}
@@ -346,7 +401,9 @@ export default function ConversationsPage() {
                   className="w-3.5 h-3.5 flex-shrink-0"
                 />
                 <span style={{ color: 'var(--text-tertiary)' }}>
-                  {checkedIds.size > 0 ? `${checkedIds.size} selected` : `${total} conversation${total !== 1 ? 's' : ''}`}
+                  {checkedIds.size > 0
+                    ? t('tenantConversations.list.selectedCount', { n: checkedIds.size })
+                    : totalCountText}
                 </span>
               </div>
 
@@ -373,7 +430,7 @@ export default function ConversationsPage() {
                         className="text-xs font-semibold px-1.5 py-0.5 rounded"
                         style={{ background: CHANNEL_COLORS[c.channelType] + '22', color: CHANNEL_COLORS[c.channelType] }}
                       >
-                        {CHANNEL_LABELS[c.channelType]}
+                        {channelLabel(c.channelType)}
                       </span>
                       {contactName(c.contact) && (
                         <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -381,7 +438,7 @@ export default function ConversationsPage() {
                         </span>
                       )}
                       <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                        {new Date(c.startedAt).toLocaleString()}
+                        {new Date(c.startedAt).toLocaleString(dateLocale)}
                       </span>
                       <span className="text-xs ml-auto" style={{ color: 'var(--text-tertiary)' }}>
                         {formatDuration(c.startedAt, c.endedAt)}
@@ -392,7 +449,9 @@ export default function ConversationsPage() {
                         {c.summaryText}
                       </p>
                     ) : (
-                      <p className="text-sm italic" style={{ color: 'var(--text-tertiary)' }}>No summary</p>
+                      <p className="text-sm italic" style={{ color: 'var(--text-tertiary)' }}>
+                        {t('tenantConversations.list.noSummary')}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -404,7 +463,11 @@ export default function ConversationsPage() {
           {total > limit && (
             <div className="flex items-center justify-between mt-4">
               <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}
+                {t('tenantConversations.pagination.range', {
+                  from: (page - 1) * limit + 1,
+                  to: Math.min(page * limit, total),
+                  total,
+                })}
               </span>
               <div className="flex gap-2">
                 <button
@@ -413,7 +476,7 @@ export default function ConversationsPage() {
                   className="px-3 py-1.5 text-xs rounded-lg border disabled:opacity-40"
                   style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
                 >
-                  Previous
+                  {t('tenantConversations.pagination.previous')}
                 </button>
                 <button
                   onClick={() => setPage(p => p + 1)}
@@ -421,7 +484,7 @@ export default function ConversationsPage() {
                   className="px-3 py-1.5 text-xs rounded-lg border disabled:opacity-40"
                   style={{ borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
                 >
-                  Next
+                  {t('tenantConversations.pagination.next')}
                 </button>
               </div>
             </div>
@@ -439,9 +502,16 @@ export default function ConversationsPage() {
                 className="text-xs font-semibold px-1.5 py-0.5 rounded"
                 style={{ background: CHANNEL_COLORS[selected.channelType] + '22', color: CHANNEL_COLORS[selected.channelType] }}
               >
-                {CHANNEL_LABELS[selected.channelType]}
+                {channelLabel(selected.channelType)}
               </span>
-              <button onClick={() => setSelected(null)} className="text-xs" style={{ color: 'var(--text-tertiary)' }}>✕</button>
+              <button
+                onClick={() => setSelected(null)}
+                className="text-xs"
+                style={{ color: 'var(--text-tertiary)' }}
+                aria-label={t('tenantConversations.detail.close')}
+              >
+                ✕
+              </button>
             </div>
 
             <div className="mb-3 space-y-0.5">
@@ -449,17 +519,17 @@ export default function ConversationsPage() {
                 <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{contactName(selected.contact)}</div>
               )}
               <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                {new Date(selected.startedAt).toLocaleString()}
+                {new Date(selected.startedAt).toLocaleString(dateLocale)}
                 {selected.endedAt && ` · ${formatDuration(selected.startedAt, selected.endedAt)}`}
               </div>
               <span className="badge capitalize text-xs" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>
-                {selected.status?.toLowerCase()}
+                {statusPillLabel(selected.status)}
               </span>
             </div>
 
             <div className="mb-3">
               <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>
-                Disposition
+                {t('tenantConversations.detail.dispositionLabel')}
               </label>
               <select
                 value={selected.outcomeCode ?? ''}
@@ -467,12 +537,12 @@ export default function ConversationsPage() {
                 className="w-full text-xs px-2 py-1.5 rounded-lg"
                 style={{ background: 'var(--surface-overlay)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
               >
-                {DISPOSITIONS.map(d => (
-                  <option key={d.value} value={d.value}>{d.label}</option>
+                {DISPOSITION_VALUES.map(d => (
+                  <option key={d.value} value={d.value}>{t(d.labelKey)}</option>
                 ))}
               </select>
               <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                Tag the business outcome — used in funnel reports.
+                {t('tenantConversations.detail.dispositionHelp')}
               </p>
             </div>
 
@@ -485,7 +555,7 @@ export default function ConversationsPage() {
                 <rect x="2" y="3" width="12" height="10" rx="1" />
                 <path d="M2 4l6 5 6-5" />
               </svg>
-              Send follow-up email
+              {t('tenantConversations.detail.sendFollowupEmail')}
             </button>
 
             <button
@@ -498,7 +568,7 @@ export default function ConversationsPage() {
                 <path d="M8 2v8m0 0L5 7m3 3l3-3" />
                 <path d="M3 12v1.5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5V12" />
               </svg>
-              {pdfDownloading ? 'Generating PDF…' : 'Download PDF'}
+              {pdfDownloading ? t('tenantConversations.detail.generatingPdf') : t('tenantConversations.detail.downloadPdf')}
             </button>
 
             {/* Recording player */}
@@ -508,28 +578,38 @@ export default function ConversationsPage() {
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="8" cy="8" r="6"/><path d="M6 5.5l5 2.5-5 2.5V5.5z" fill="currentColor" stroke="none"/>
                   </svg>
-                  Recording
+                  {t('tenantConversations.detail.recording')}
                 </div>
-                {recordingLoading && <div className="text-xs py-2" style={{ color: 'var(--text-tertiary)' }}>Loading…</div>}
+                {recordingLoading && (
+                  <div className="text-xs py-2" style={{ color: 'var(--text-tertiary)' }}>
+                    {t('tenantConversations.detail.recordingLoading')}
+                  </div>
+                )}
                 {!recordingLoading && recordingUrl && (
                   <audio ref={audioRef} src={recordingUrl} controls style={{ width: '100%', height: '36px', accentColor: 'oklch(55% 0.11 193)' }} />
                 )}
                 {!recordingLoading && !recordingUrl && (
-                  <div className="text-xs py-2" style={{ color: 'var(--text-tertiary)' }}>Recording not available yet.</div>
+                  <div className="text-xs py-2" style={{ color: 'var(--text-tertiary)' }}>
+                    {t('tenantConversations.detail.recordingUnavailable')}
+                  </div>
                 )}
               </div>
             )}
 
             {selected.summaryText && (
               <div className="mb-4 p-3 rounded-lg text-xs leading-relaxed" style={{ background: 'var(--surface-sunken)', color: 'var(--text-secondary)' }}>
-                <div className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Summary</div>
+                <div className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                  {t('tenantConversations.detail.summary')}
+                </div>
                 {selected.summaryText}
               </div>
             )}
 
             {transcript.length > 0 && (
               <div>
-                <div className="text-xs font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Transcript</div>
+                <div className="text-xs font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+                  {t('tenantConversations.detail.transcript')}
+                </div>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {transcript.map((entry, i) => (
                     <div
@@ -541,7 +621,9 @@ export default function ConversationsPage() {
                       }}
                     >
                       <div className="font-semibold mb-0.5" style={{ color: 'var(--text-tertiary)', fontSize: '0.7rem' }}>
-                        {entry.role === 'user' ? 'Caller' : 'Agent'}
+                        {entry.role === 'user'
+                          ? t('tenantConversations.detail.speakerCaller')
+                          : t('tenantConversations.detail.speakerAgent')}
                       </div>
                       {entry.text}
                     </div>
@@ -551,7 +633,9 @@ export default function ConversationsPage() {
             )}
 
             {transcript.length === 0 && !selected.summaryText && (
-              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>No transcript available.</p>
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                {t('tenantConversations.detail.noTranscript')}
+              </p>
             )}
           </div>
         )}
@@ -569,24 +653,33 @@ export default function ConversationsPage() {
             style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Send follow-up email</h3>
-              <button onClick={() => setEmailDraft(null)} className="text-sm" style={{ color: 'var(--text-tertiary)' }}>✕</button>
+              <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {t('tenantConversations.email.title')}
+              </h3>
+              <button
+                onClick={() => setEmailDraft(null)}
+                className="text-sm"
+                style={{ color: 'var(--text-tertiary)' }}
+                aria-label={t('tenantConversations.detail.close')}
+              >
+                ✕
+              </button>
             </div>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              Sends from your connected Google account. Make sure Google is connected in <a href="/integrations" className="underline">Integrations</a>.
+              {t('tenantConversations.email.intro')} <a href="/integrations" className="underline">{t('tenantConversations.email.integrationsLink')}</a>.
             </p>
             <div>
-              <label className="label">To</label>
+              <label className="label">{t('tenantConversations.email.to')}</label>
               <input
                 type="email"
                 className="input"
                 value={emailDraft.to}
                 onChange={(e) => setEmailDraft({ ...emailDraft, to: e.target.value })}
-                placeholder="contact@example.com"
+                placeholder={t('tenantConversations.email.toPlaceholder')}
               />
             </div>
             <div>
-              <label className="label">Subject</label>
+              <label className="label">{t('tenantConversations.email.subject')}</label>
               <input
                 className="input"
                 value={emailDraft.subject}
@@ -594,7 +687,7 @@ export default function ConversationsPage() {
               />
             </div>
             <div>
-              <label className="label">Message</label>
+              <label className="label">{t('tenantConversations.email.message')}</label>
               <textarea
                 className="input font-mono text-xs"
                 rows={10}
@@ -609,14 +702,14 @@ export default function ConversationsPage() {
                 className="text-sm px-3 py-1.5 rounded-lg"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Cancel
+                {t('tenantConversations.email.cancel')}
               </button>
               <button
                 onClick={sendFollowupEmail}
                 disabled={emailSending}
                 className="btn-primary text-sm"
               >
-                {emailSending ? 'Sending…' : 'Send email'}
+                {emailSending ? t('tenantConversations.email.sending') : t('tenantConversations.email.send')}
               </button>
             </div>
           </div>

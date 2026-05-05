@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { AuthGuard } from '@/components/AuthGuard'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { LanguageToggle } from '@/components/LanguageToggle'
 import { SidebarNav } from '@/components/SidebarNav'
 import { SignOutButton } from '@/components/SignOutButton'
 import { SidebarUserBadge } from '@/components/SidebarUserBadge'
@@ -139,6 +140,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-1.5">
               <TierBadge />
               <NotificationBell />
+              <LanguageToggle />
               <ThemeToggle />
             </div>
           </header>
@@ -152,6 +154,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <TierBadge />
               <TenantIdBadge />
               <NotificationBell />
+              <LanguageToggle />
               <ThemeToggle />
             </div>
           </div>

@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { apiFetch, apiUploadFile, useApi } from '@/hooks/useApi'
 import { PushNotificationToggle } from '@/components/PushNotificationToggle'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string
 
 interface Tenant {
   id: string
@@ -15,25 +18,25 @@ interface Tenant {
   industryVertical: string
 }
 
-const INDUSTRY_VERTICALS = [
-  { value: 'GENERAL',             label: 'General' },
-  { value: 'ACCOUNTING',          label: 'Accounting / Tax' },
-  { value: 'AUTO_REPAIR',         label: 'Auto Repair' },
-  { value: 'BEAUTY',              label: 'Beauty & Wellness' },
-  { value: 'CHILDCARE',           label: 'Childcare / Nursery' },
-  { value: 'DENTAL',              label: 'Dental' },
-  { value: 'EDUCATION',           label: 'Education' },
-  { value: 'FINANCIAL',           label: 'Financial Services' },
-  { value: 'FITNESS',             label: 'Fitness & Gym' },
-  { value: 'HOME_SERVICES',       label: 'Home Services' },
-  { value: 'HOSPITALITY',         label: 'Hospitality' },
-  { value: 'INSURANCE',           label: 'Insurance' },
-  { value: 'LEGAL',               label: 'Legal' },
-  { value: 'MEDICAL',             label: 'Medical / Clinic' },
-  { value: 'PROPERTY_MANAGEMENT', label: 'Property Management' },
-  { value: 'REAL_ESTATE',         label: 'Real Estate' },
-  { value: 'VETERINARY',          label: 'Veterinary' },
-]
+const INDUSTRY_VERTICAL_CODES = [
+  'GENERAL',
+  'ACCOUNTING',
+  'AUTO_REPAIR',
+  'BEAUTY',
+  'CHILDCARE',
+  'DENTAL',
+  'EDUCATION',
+  'FINANCIAL',
+  'FITNESS',
+  'HOME_SERVICES',
+  'HOSPITALITY',
+  'INSURANCE',
+  'LEGAL',
+  'MEDICAL',
+  'PROPERTY_MANAGEMENT',
+  'REAL_ESTATE',
+  'VETERINARY',
+] as const
 
 interface BusinessProfile {
   brandName: string
@@ -46,18 +49,26 @@ interface BusinessProfile {
   fallbackNotificationEmail: string | null
 }
 
-function LogoUpload({ currentUrl, onUploaded }: { currentUrl: string | null; onUploaded: (url: string) => void }) {
+function LogoUpload({
+  currentUrl,
+  onUploaded,
+  t,
+}: {
+  currentUrl: string | null
+  onUploaded: (url: string) => void
+  t: TFn
+}) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleFile(file: File) {
     if (!['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(file.type)) {
-      setError('Unsupported type. Use PNG, JPG, WebP, or SVG.')
+      setError(t('tenantSettings.logo.errorUnsupportedType'))
       return
     }
     if (file.size > 2 * 1024 * 1024) {
-      setError('Logo must be under 2 MB.')
+      setError(t('tenantSettings.logo.errorTooLarge'))
       return
     }
     setError(null)
@@ -66,7 +77,7 @@ function LogoUpload({ currentUrl, onUploaded }: { currentUrl: string | null; onU
       const res = await apiUploadFile<{ logoUrl: string }>('/api/business-profile/logo', 'logo', file)
       onUploaded(res.logoUrl)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed')
+      setError(err instanceof Error ? err.message : t('tenantSettings.logo.errorUploadFailed'))
     } finally {
       setUploading(false)
     }
@@ -74,15 +85,15 @@ function LogoUpload({ currentUrl, onUploaded }: { currentUrl: string | null; onU
 
   return (
     <div>
-      <label className="label">Logo</label>
+      <label className="label">{t('tenantSettings.logo.label')}</label>
       <div className="flex items-center gap-4">
         <div
           className="w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0"
           style={{ background: 'var(--surface-base)', border: '1px solid var(--border-subtle)' }}
         >
           {currentUrl
-            ? <img src={currentUrl} alt="Logo" className="w-full h-full object-contain" />
-            : <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>No logo</span>
+            ? <img src={currentUrl} alt={t('tenantSettings.logo.altText')} className="w-full h-full object-contain" />
+            : <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantSettings.logo.noLogo')}</span>
           }
         </div>
         <div className="space-y-1">
@@ -92,9 +103,13 @@ function LogoUpload({ currentUrl, onUploaded }: { currentUrl: string | null; onU
             onClick={() => fileRef.current?.click()}
             className="btn-secondary text-sm"
           >
-            {uploading ? 'Uploading…' : currentUrl ? 'Replace logo' : 'Upload logo'}
+            {uploading
+              ? t('tenantSettings.logo.uploading')
+              : currentUrl
+                ? t('tenantSettings.logo.replace')
+                : t('tenantSettings.logo.upload')}
           </button>
-          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>PNG, JPG, WebP, or SVG — max 2 MB</p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantSettings.logo.constraints')}</p>
           {error && <p className="text-xs" style={{ color: 'var(--color-error)' }}>{error}</p>}
         </div>
       </div>
@@ -111,39 +126,49 @@ function LogoUpload({ currentUrl, onUploaded }: { currentUrl: string | null; onU
 
 interface FieldConfig {
   key: string
-  label: string
-  placeholder?: string
+  labelKey: string
+  placeholderKey?: string
   type?: string
 }
 
 const WORKSPACE_FIELDS: FieldConfig[] = [
-  { key: 'displayName',  label: 'Display name',    placeholder: 'Acme Corp' },
-  { key: 'legalName',    label: 'Legal name',       placeholder: 'Acme Corporation LLC (optional)' },
-  { key: 'publicEmail',  label: 'Public email',     placeholder: 'hello@acme.com',    type: 'email' },
-  { key: 'publicPhone',  label: 'Public phone',     placeholder: '+1 555 000 0000' },
-  { key: 'website',      label: 'Website',          placeholder: 'https://acme.com',   type: 'url' },
-  { key: 'timezone',     label: 'Timezone',         placeholder: 'America/New_York' },
+  { key: 'displayName', labelKey: 'tenantSettings.workspace.fields.displayName', placeholderKey: 'tenantSettings.workspace.fields.displayNamePlaceholder' },
+  { key: 'legalName',   labelKey: 'tenantSettings.workspace.fields.legalName',   placeholderKey: 'tenantSettings.workspace.fields.legalNamePlaceholder' },
+  { key: 'publicEmail', labelKey: 'tenantSettings.workspace.fields.publicEmail', placeholderKey: 'tenantSettings.workspace.fields.publicEmailPlaceholder', type: 'email' },
+  { key: 'publicPhone', labelKey: 'tenantSettings.workspace.fields.publicPhone', placeholderKey: 'tenantSettings.workspace.fields.publicPhonePlaceholder' },
+  { key: 'website',     labelKey: 'tenantSettings.workspace.fields.website',     placeholderKey: 'tenantSettings.workspace.fields.websitePlaceholder', type: 'url' },
+  { key: 'timezone',    labelKey: 'tenantSettings.workspace.fields.timezone',    placeholderKey: 'tenantSettings.workspace.fields.timezonePlaceholder' },
 ]
 
 const PROFILE_FIELDS: FieldConfig[] = [
-  { key: 'brandName',                   label: 'Brand name',            placeholder: 'Acme' },
-  { key: 'addressLine1',                label: 'Address',               placeholder: '123 Main St' },
-  { key: 'city',                        label: 'City',                  placeholder: 'New York' },
-  { key: 'region',                      label: 'State / Region',        placeholder: 'NY' },
-  { key: 'postalCode',                  label: 'Postal code',           placeholder: '10001' },
-  { key: 'country',                     label: 'Country',               placeholder: 'US' },
-  { key: 'fallbackNotificationEmail',   label: 'Notification email',    placeholder: 'alerts@acme.com', type: 'email' },
+  { key: 'brandName',                 labelKey: 'tenantSettings.profile.fields.brandName',                 placeholderKey: 'tenantSettings.profile.fields.brandNamePlaceholder' },
+  { key: 'addressLine1',              labelKey: 'tenantSettings.profile.fields.addressLine1',              placeholderKey: 'tenantSettings.profile.fields.addressLine1Placeholder' },
+  { key: 'city',                      labelKey: 'tenantSettings.profile.fields.city',                      placeholderKey: 'tenantSettings.profile.fields.cityPlaceholder' },
+  { key: 'region',                    labelKey: 'tenantSettings.profile.fields.region',                    placeholderKey: 'tenantSettings.profile.fields.regionPlaceholder' },
+  { key: 'postalCode',                labelKey: 'tenantSettings.profile.fields.postalCode',                placeholderKey: 'tenantSettings.profile.fields.postalCodePlaceholder' },
+  { key: 'country',                   labelKey: 'tenantSettings.profile.fields.country',                   placeholderKey: 'tenantSettings.profile.fields.countryPlaceholder' },
+  { key: 'fallbackNotificationEmail', labelKey: 'tenantSettings.profile.fields.fallbackNotificationEmail', placeholderKey: 'tenantSettings.profile.fields.fallbackNotificationEmailPlaceholder', type: 'email' },
 ]
 
-function FormField({ config, value, onChange }: { config: FieldConfig; value: string; onChange: (v: string) => void }) {
+function FormField({
+  config,
+  value,
+  onChange,
+  t,
+}: {
+  config: FieldConfig
+  value: string
+  onChange: (v: string) => void
+  t: TFn
+}) {
   return (
     <div>
-      <label htmlFor={config.key} className="label">{config.label}</label>
+      <label htmlFor={config.key} className="label">{t(config.labelKey)}</label>
       <input
         id={config.key}
         type={config.type ?? 'text'}
         value={value}
-        placeholder={config.placeholder}
+        placeholder={config.placeholderKey ? t(config.placeholderKey) : undefined}
         onChange={(e) => onChange(e.target.value)}
         className="input"
       />
@@ -158,6 +183,7 @@ function Section({
   onSave,
   saving,
   saveLabel,
+  savingLabel,
 }: {
   title: string
   description?: string
@@ -165,6 +191,7 @@ function Section({
   onSave: () => void
   saving: boolean
   saveLabel: string
+  savingLabel: string
 }) {
   return (
     <section>
@@ -181,7 +208,7 @@ function Section({
         {children}
         <div className="pt-2">
           <button onClick={onSave} disabled={saving} className="btn-primary">
-            {saving ? 'Saving…' : saveLabel}
+            {saving ? savingLabel : saveLabel}
           </button>
         </div>
       </div>
@@ -190,6 +217,10 @@ function Section({
 }
 
 export default function SettingsPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
+
   const { data: tenant, loading: tenantLoading, reload: reloadTenant } = useApi<Tenant>('/api/tenants/current')
   const { data: profile, loading: profileLoading, reload: reloadProfile } = useApi<BusinessProfile>('/api/business-profile')
 
@@ -211,9 +242,9 @@ export default function SettingsPage() {
     try {
       await apiFetch('/api/tenants/current', { method: 'PATCH', body: JSON.stringify(tenantForm) })
       await reloadTenant()
-      showToast('success', 'Workspace settings saved.')
+      showToast('success', t('tenantSettings.toasts.workspaceSaved'))
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Save failed')
+      showToast('error', err instanceof Error ? err.message : t('tenantSettings.toasts.saveFailed'))
     } finally {
       setSaving(null)
     }
@@ -224,9 +255,9 @@ export default function SettingsPage() {
     try {
       await apiFetch('/api/business-profile', { method: 'PATCH', body: JSON.stringify(profileForm) })
       await reloadProfile()
-      showToast('success', 'Business profile saved.')
+      showToast('success', t('tenantSettings.toasts.profileSaved'))
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Save failed')
+      showToast('error', err instanceof Error ? err.message : t('tenantSettings.toasts.saveFailed'))
     } finally {
       setSaving(null)
     }
@@ -249,9 +280,11 @@ export default function SettingsPage() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Settings</h1>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          {t('tenantSettings.title')}
+        </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Workspace and business profile
+          {t('tenantSettings.subtitle')}
         </p>
       </div>
 
@@ -262,11 +295,12 @@ export default function SettingsPage() {
       )}
 
       <Section
-        title="Workspace"
-        description="Basic info shown to your team and in communications."
+        title={t('tenantSettings.workspace.title')}
+        description={t('tenantSettings.workspace.description')}
         onSave={saveTenant}
         saving={saving === 'workspace'}
-        saveLabel="Save workspace"
+        saveLabel={t('tenantSettings.actions.saveWorkspace')}
+        savingLabel={t('tenantSettings.actions.saving')}
       >
         {WORKSPACE_FIELDS.map((f) => (
           <FormField
@@ -274,47 +308,51 @@ export default function SettingsPage() {
             config={f}
             value={(tenantForm[f.key as keyof Tenant] as string) ?? ''}
             onChange={(v) => setTenantForm({ ...tenantForm, [f.key]: v || null })}
+            t={t}
           />
         ))}
       </Section>
 
       <Section
-        title="Industry"
-        description="Select your industry so we can recommend the right campaign templates for your business."
+        title={t('tenantSettings.industry.title')}
+        description={t('tenantSettings.industry.description')}
         onSave={saveTenant}
         saving={saving === 'workspace'}
-        saveLabel="Save industry"
+        saveLabel={t('tenantSettings.actions.saveIndustry')}
+        savingLabel={t('tenantSettings.actions.saving')}
       >
         <div>
-          <label className="label">Industry vertical</label>
+          <label className="label">{t('tenantSettings.industry.label')}</label>
           <select
             value={(tenantForm as Tenant).industryVertical ?? 'GENERAL'}
             onChange={e => setTenantForm({ ...tenantForm, industryVertical: e.target.value })}
             className="input"
           >
-            {INDUSTRY_VERTICALS.map(v => (
-              <option key={v.value} value={v.value}>{v.label}</option>
+            {INDUSTRY_VERTICAL_CODES.map(code => (
+              <option key={code} value={code}>{t(`tenantSettings.industry.options.${code}`)}</option>
             ))}
           </select>
           <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-            This determines which campaign templates appear in your Campaign Library.
+            {t('tenantSettings.industry.helper')}
           </p>
         </div>
       </Section>
 
       <Section
-        title="Business profile"
-        description="Address and contact details used in confirmations and correspondence."
+        title={t('tenantSettings.profile.title')}
+        description={t('tenantSettings.profile.description')}
         onSave={saveProfile}
         saving={saving === 'profile'}
-        saveLabel="Save profile"
+        saveLabel={t('tenantSettings.actions.saveProfile')}
+        savingLabel={t('tenantSettings.actions.saving')}
       >
         <LogoUpload
           currentUrl={profileForm.logoUrl ?? null}
           onUploaded={(url) => {
             setProfileForm((p) => ({ ...p, logoUrl: url }))
-            showToast('success', 'Logo uploaded.')
+            showToast('success', t('tenantSettings.toasts.logoUploaded'))
           }}
+          t={t}
         />
         {PROFILE_FIELDS.map((f) => (
           <FormField
@@ -322,15 +360,18 @@ export default function SettingsPage() {
             config={f}
             value={(profileForm[f.key as keyof BusinessProfile] as string) ?? ''}
             onChange={(v) => setProfileForm({ ...profileForm, [f.key]: v || null })}
+            t={t}
           />
         ))}
       </Section>
 
       <section>
         <div className="mb-5">
-          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Notifications</h2>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {t('tenantSettings.notifications.title')}
+          </h2>
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            Per-device — enable on each browser you want to receive alerts on.
+            {t('tenantSettings.notifications.description')}
           </p>
         </div>
         <div className="rounded-xl p-6" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
@@ -338,7 +379,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <MembersSection onToast={showToast} />
+      <MembersSection onToast={showToast} t={t} dateLocale={dateLocale} />
     </div>
   )
 }
@@ -355,37 +396,45 @@ interface Member {
   roleDefinition: { key: string; name: string }
 }
 
-function MembersSection({ onToast }: { onToast: (t: 'success' | 'error', text: string) => void }) {
+function MembersSection({
+  onToast,
+  t,
+  dateLocale,
+}: {
+  onToast: (type: 'success' | 'error', text: string) => void
+  t: TFn
+  dateLocale: string
+}) {
   const { data, loading, reload } = useApi<Member[]>('/api/tenants/current/members')
   const [adding, setAdding] = useState(false)
   const [draft, setDraft]   = useState({ email: '', roleKey: 'tenant_staff' })
   const [saving, setSaving] = useState(false)
 
   async function addMember() {
-    if (!draft.email) { onToast('error', 'Enter an email.'); return }
+    if (!draft.email) { onToast('error', t('tenantSettings.members.toasts.emptyEmail')); return }
     setSaving(true)
     try {
       await apiFetch('/api/tenants/current/members', {
         method: 'POST',
         body: JSON.stringify(draft),
       })
-      onToast('success', 'Member added.')
+      onToast('success', t('tenantSettings.members.toasts.memberAdded'))
       setDraft({ email: '', roleKey: 'tenant_staff' })
       setAdding(false)
       reload()
     } catch (err) {
-      onToast('error', err instanceof Error ? err.message : 'Failed to add member.')
+      onToast('error', err instanceof Error ? err.message : t('tenantSettings.members.toasts.addFailed'))
     } finally { setSaving(false) }
   }
 
   async function removeMember(userId: string, displayName: string) {
-    if (!confirm(`Remove ${displayName} from this workspace?`)) return
+    if (!confirm(t('tenantSettings.members.confirmRemove', { name: displayName }))) return
     try {
       await apiFetch(`/api/tenants/current/members/${userId}`, { method: 'DELETE' })
-      onToast('success', 'Member removed.')
+      onToast('success', t('tenantSettings.members.toasts.memberRemoved'))
       reload()
     } catch (err) {
-      onToast('error', err instanceof Error ? err.message : 'Failed to remove member.')
+      onToast('error', err instanceof Error ? err.message : t('tenantSettings.members.toasts.removeFailed'))
     }
   }
 
@@ -393,14 +442,16 @@ function MembersSection({ onToast }: { onToast: (t: 'success' | 'error', text: s
     <section>
       <div className="mb-5 flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Team members</h2>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {t('tenantSettings.members.title')}
+          </h2>
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            Invite teammates to share access to this workspace. They must sign up first; then add them here by email.
+            {t('tenantSettings.members.description')}
           </p>
         </div>
         {!adding && (
           <button onClick={() => setAdding(true)} className="btn-primary text-sm">
-            + Add member
+            {t('tenantSettings.members.addButton')}
           </button>
         )}
       </div>
@@ -410,45 +461,45 @@ function MembersSection({ onToast }: { onToast: (t: 'success' | 'error', text: s
           <div className="p-5 space-y-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="md:col-span-2">
-                <label className="label">Email</label>
+                <label className="label">{t('tenantSettings.members.emailLabel')}</label>
                 <input
                   type="email"
                   className="input"
                   value={draft.email}
                   onChange={e => setDraft(p => ({ ...p, email: e.target.value }))}
-                  placeholder="teammate@example.com"
+                  placeholder={t('tenantSettings.members.emailPlaceholder')}
                   autoFocus
                 />
               </div>
               <div>
-                <label className="label">Role</label>
+                <label className="label">{t('tenantSettings.members.roleLabel')}</label>
                 <select
                   className="input"
                   value={draft.roleKey}
                   onChange={e => setDraft(p => ({ ...p, roleKey: e.target.value }))}
                 >
-                  <option value="tenant_owner">Owner — full control</option>
-                  <option value="tenant_manager">Manager — config + members</option>
-                  <option value="tenant_staff">Staff — day-to-day use</option>
+                  <option value="tenant_owner">{t('tenantSettings.members.roleOwner')}</option>
+                  <option value="tenant_manager">{t('tenantSettings.members.roleManager')}</option>
+                  <option value="tenant_staff">{t('tenantSettings.members.roleStaff')}</option>
                 </select>
               </div>
             </div>
             <div className="flex gap-2">
               <button onClick={addMember} disabled={saving} className="btn-primary text-sm">
-                {saving ? 'Adding…' : 'Add'}
+                {saving ? t('tenantSettings.members.adding') : t('tenantSettings.members.addAction')}
               </button>
               <button onClick={() => { setAdding(false); setDraft({ email: '', roleKey: 'tenant_staff' }) }} className="text-sm px-3 py-1.5 rounded-lg" style={{ color: 'var(--text-secondary)' }}>
-                Cancel
+                {t('tenantSettings.members.cancel')}
               </button>
             </div>
           </div>
         )}
 
-        {loading && <div className="p-5 text-sm" style={{ color: 'var(--text-tertiary)' }}>Loading…</div>}
+        {loading && <div className="p-5 text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('tenantSettings.members.loading')}</div>}
 
         {!loading && data && data.length === 0 && (
           <div className="p-5 text-sm text-center" style={{ color: 'var(--text-tertiary)' }}>
-            No members yet.
+            {t('tenantSettings.members.empty')}
           </div>
         )}
 
@@ -460,12 +511,12 @@ function MembersSection({ onToast }: { onToast: (t: 'success' | 'error', text: s
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{name}</p>
                   {m.isOwner && (
-                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'oklch(96% 0.05 75)', color: 'oklch(35% 0.16 75)' }}>Owner</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'oklch(96% 0.05 75)', color: 'oklch(35% 0.16 75)' }}>{t('tenantSettings.members.ownerBadge')}</span>
                   )}
                 </div>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
                   {m.user.email} · {m.roleDefinition.name}
-                  {m.user.lastLoginAt && ` · last login ${new Date(m.user.lastLoginAt).toLocaleDateString()}`}
+                  {m.user.lastLoginAt && ` · ${t('tenantSettings.members.lastLogin', { date: new Date(m.user.lastLoginAt).toLocaleDateString(dateLocale) })}`}
                 </p>
               </div>
               {!m.isOwner && (
@@ -474,7 +525,7 @@ function MembersSection({ onToast }: { onToast: (t: 'success' | 'error', text: s
                   className="text-xs px-3 py-1.5 rounded-lg"
                   style={{ color: 'oklch(45% 0.18 25)', background: 'transparent', border: '1px solid oklch(85% 0.10 25)' }}
                 >
-                  Remove
+                  {t('tenantSettings.members.removeButton')}
                 </button>
               )}
             </div>

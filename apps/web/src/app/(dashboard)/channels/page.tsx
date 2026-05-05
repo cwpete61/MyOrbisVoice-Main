@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { Tooltip } from '@/components/Tooltip'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string
 
 interface BusinessHours {
   [day: string]: { open: string; close: string; closed: boolean }
@@ -17,14 +20,18 @@ interface ChannelConfig {
   agentSpeaksFirst?: boolean
 }
 
-const VOICE_OPTIONS = [
-  { value: 'Zephyr',  label: 'Zephyr',  gender: 'Female', style: 'Bright & clear' },
-  { value: 'Despina', label: 'Despina', gender: 'Female', style: 'Smooth & polished' },
-  { value: 'Aoede',   label: 'Aoede',   gender: 'Female', style: 'Warm & breezy' },
-  { value: 'Charon',  label: 'Charon',  gender: 'Male',   style: 'Deep & authoritative' },
-  { value: 'Fenrir',  label: 'Fenrir',  gender: 'Male',   style: 'Warm & approachable' },
-  { value: 'Puck',    label: 'Puck',    gender: 'Male',   style: 'Upbeat & conversational' },
-  { value: 'Sulafat', label: 'Sulafat', gender: 'Neutral', style: 'Warm & even' },
+// Voice option `value` and `gender` are stable codes used by the agent runtime
+// (passed to Gemini's prebuilt_voice_config) and the genderTag color map below.
+// `label` is always the proper noun voice name (untranslated). Style + gender
+// labels shown to the user are looked up via t() against the value.
+const VOICE_OPTIONS: { value: string; label: string; gender: 'Female' | 'Male' | 'Neutral' }[] = [
+  { value: 'Zephyr',  label: 'Zephyr',  gender: 'Female'  },
+  { value: 'Despina', label: 'Despina', gender: 'Female'  },
+  { value: 'Aoede',   label: 'Aoede',   gender: 'Female'  },
+  { value: 'Charon',  label: 'Charon',  gender: 'Male'    },
+  { value: 'Fenrir',  label: 'Fenrir',  gender: 'Male'    },
+  { value: 'Puck',    label: 'Puck',    gender: 'Male'    },
+  { value: 'Sulafat', label: 'Sulafat', gender: 'Neutral' },
 ]
 
 interface Channel {
@@ -40,20 +47,19 @@ interface PhoneNumber {
   forwardingTarget: string | null; twilioNumberSid: string | null
 }
 
-const CHANNEL_LABELS: Record<string, { label: string; description: string }> = {
-  WIDGET:   { label: 'Website Widget',       description: 'Real-time browser voice agent' },
-  INBOUND:  { label: 'Inbound Receptionist', description: 'Handles live phone calls' },
-  OUTBOUND: { label: 'Outbound Caller',      description: 'Runs campaigns and follow-up calls' },
+const CHANNEL_KEYS: Record<string, { labelKey: string; descKey: string }> = {
+  WIDGET:   { labelKey: 'tenantChannels.channels.widget.label',   descKey: 'tenantChannels.channels.widget.description'   },
+  INBOUND:  { labelKey: 'tenantChannels.channels.inbound.label',  descKey: 'tenantChannels.channels.inbound.description'  },
+  OUTBOUND: { labelKey: 'tenantChannels.channels.outbound.label', descKey: 'tenantChannels.channels.outbound.description' },
 }
 
-const AFTER_HOURS_OPTIONS = [
-  { value: '',          label: 'Default (inform & hang up)' },
-  { value: 'voicemail', label: 'Record voicemail' },
-  { value: 'forward',   label: 'Forward to number' },
+const AFTER_HOURS_OPTIONS: { value: string; labelKey: string }[] = [
+  { value: '',          labelKey: 'tenantChannels.afterHoursOptions.default'   },
+  { value: 'voicemail', labelKey: 'tenantChannels.afterHoursOptions.voicemail' },
+  { value: 'forward',   labelKey: 'tenantChannels.afterHoursOptions.forward'   },
 ]
 
 const DAYS = ['mon','tue','wed','thu','fri','sat','sun']
-const DAY_LABELS: Record<string, string> = { mon:'Mon', tue:'Tue', wed:'Wed', thu:'Thu', fri:'Fri', sat:'Sat', sun:'Sun' }
 
 const DEFAULT_HOURS: BusinessHours = {
   mon: { open: '09:00', close: '17:00', closed: false },
@@ -71,7 +77,7 @@ const mono = 'font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded'
 
 interface ContactOption { id: string; fullName: string | null; phoneE164: string | null }
 
-function ContactPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function ContactPicker({ value, onChange, t }: { value: string; onChange: (v: string) => void; t: TFn }) {
   const { data } = useApi<{ items: ContactOption[] }>('/api/contacts?limit=200')
   const [open, setOpen] = useState(false)
   const ref             = useRef<HTMLDivElement>(null)
@@ -102,6 +108,7 @@ function ContactPicker({ value, onChange }: { value: string; onChange: (v: strin
 
   // Show name if value exactly matches a contact
   const matched = contacts.find(c => c.phoneE164 === value)
+  const noNamePlaceholder = t('tenantChannels.contactPicker.noContactName')
 
   return (
     <div ref={ref} className="relative">
@@ -110,7 +117,7 @@ function ContactPicker({ value, onChange }: { value: string; onChange: (v: strin
         onFocus={() => setOpen(true)}
         onChange={(e) => { handleInput(e.target.value); setOpen(true) }}
         className={inp}
-        placeholder="+1"
+        placeholder={t('tenantChannels.contactPicker.placeholder')}
         autoComplete="off"
       />
 
@@ -134,7 +141,7 @@ function ContactPicker({ value, onChange }: { value: string; onChange: (v: strin
               <button key={c.id} type="button"
                 onClick={() => { onChange(c.phoneE164!); setOpen(false) }}
                 className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.fullName ?? '—'}</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.fullName ?? noNamePlaceholder}</span>
                 <span className="text-xs font-mono" style={{ color: 'var(--text-tertiary)' }}>{c.phoneE164}</span>
               </button>
             ))}
@@ -144,13 +151,13 @@ function ContactPicker({ value, onChange }: { value: string; onChange: (v: strin
                 onClick={() => { onChange(c.phoneE164!); setOpen(false) }}
                 className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 style={{ background: c.phoneE164 === value ? 'var(--surface-overlay)' : undefined }}>
-                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.fullName ?? '—'}</span>
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.fullName ?? noNamePlaceholder}</span>
                 <span className="text-xs font-mono" style={{ color: 'var(--text-tertiary)' }}>{c.phoneE164}</span>
               </button>
             ))}
             {contacts.length === 0 && (
               <p className="px-3 py-4 text-xs text-center" style={{ color: 'var(--text-tertiary)' }}>
-                No contacts with phone numbers. Add them in Contacts first.
+                {t('tenantChannels.contactPicker.emptyContacts')}
               </p>
             )}
           </div>
@@ -160,22 +167,28 @@ function ContactPicker({ value, onChange }: { value: string; onChange: (v: strin
   )
 }
 
-function PhoneNumbersPanel({ numbers }: { numbers: PhoneNumber[] }) {
+function PhoneNumbersPanel({ numbers, t }: { numbers: PhoneNumber[]; t: TFn }) {
   return (
     <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Phone Numbers</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Numbers Twilio routes to this receptionist</p>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('tenantChannels.phoneNumbers.title')}</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('tenantChannels.phoneNumbers.subtitle')}</p>
         </div>
         <Link href="/phone-numbers"
           className="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
-          Manage in Phone Numbers →
+          {t('tenantChannels.phoneNumbers.manageLink')}
         </Link>
       </div>
 
       {numbers.length === 0
-        ? <p className="text-xs text-gray-400 dark:text-gray-500 py-3 text-center">No phone numbers yet — search and purchase one in <Link href="/phone-numbers" className="text-blue-600 hover:underline">Phone Numbers</Link>.</p>
+        ? (
+          <p className="text-xs text-gray-400 dark:text-gray-500 py-3 text-center">
+            {t('tenantChannels.phoneNumbers.emptyPrefix')}{' '}
+            <Link href="/phone-numbers" className="text-blue-600 hover:underline">{t('tenantChannels.phoneNumbers.emptyLink')}</Link>
+            {t('tenantChannels.phoneNumbers.emptySuffix')}
+          </p>
+        )
         : (
           <div className="space-y-2">
             {numbers.map((n) => (
@@ -192,32 +205,32 @@ function PhoneNumbersPanel({ numbers }: { numbers: PhoneNumber[] }) {
   )
 }
 
-function BusinessHoursEditor({ hours, onChange }: { hours: BusinessHours; onChange: (h: BusinessHours) => void }) {
+function BusinessHoursEditor({ hours, onChange, t }: { hours: BusinessHours; onChange: (h: BusinessHours) => void; t: TFn }) {
   return (
     <div className="space-y-2">
       {DAYS.map((day) => {
         const entry = hours[day] ?? DEFAULT_HOURS[day]!
         return (
           <div key={day} className="flex items-center gap-3">
-            <div className="w-8 text-xs font-medium text-gray-500 dark:text-gray-400">{DAY_LABELS[day]}</div>
+            <div className="w-8 text-xs font-medium text-gray-500 dark:text-gray-400">{t(`tenantChannels.days.${day}`)}</div>
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input type="checkbox" checked={!entry.closed}
                 onChange={(e) => onChange({ ...hours, [day]: { ...entry, closed: !e.target.checked } })}
                 className="rounded" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">Open</span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">{t('tenantChannels.businessHours.open')}</span>
             </label>
             {!entry.closed && (
               <>
                 <input type="time" value={entry.open}
                   onChange={(e) => onChange({ ...hours, [day]: { ...entry, open: e.target.value } })}
                   className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                <span className="text-xs text-gray-400">to</span>
+                <span className="text-xs text-gray-400">{t('tenantChannels.businessHours.to')}</span>
                 <input type="time" value={entry.close}
                   onChange={(e) => onChange({ ...hours, [day]: { ...entry, close: e.target.value } })}
                   className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500" />
               </>
             )}
-            {entry.closed && <span className="text-xs text-gray-400 italic">Closed</span>}
+            {entry.closed && <span className="text-xs text-gray-400 italic">{t('tenantChannels.businessHours.closed')}</span>}
           </div>
         )
       })}
@@ -226,8 +239,15 @@ function BusinessHoursEditor({ hours, onChange }: { hours: BusinessHours; onChan
 }
 
 export default function ChannelsPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  // Reserved for future date/time formatting on this page; kept for parity with
+  // the dashboard reference pattern.
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
+  void dateLocale
+
   const { data: channels, loading, error, reload } = useApi<Channel[]>('/api/channels')
-  const { data: phoneNumbers, reload: reloadNumbers } = useApi<PhoneNumber[]>('/api/phone-numbers')
+  const { data: phoneNumbers } = useApi<PhoneNumber[]>('/api/phone-numbers')
   const [selected, setSelected] = useState<Channel | null>(null)
   const [saving, setSaving]     = useState(false)
   const [message, setMessage]   = useState('')
@@ -257,36 +277,39 @@ export default function ChannelsPage() {
       })
       setSelected(updated)
       await reload()
-      setMessage('Channel saved.')
-    } catch (err) { setMessage(err instanceof Error ? err.message : 'Failed') }
+      setMessage(t('tenantChannels.savedMessage'))
+    } catch (err) { setMessage(err instanceof Error ? err.message : t('tenantChannels.saveFailed')) }
     finally { setSaving(false) }
   }
 
-  if (loading) return <div className="p-8 text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+  if (loading) return <div className="p-8 text-sm text-gray-500 dark:text-gray-400">{t('tenantChannels.loading')}</div>
   if (error)   return <div className="p-8 text-sm text-red-500">{error}</div>
 
   const cfg = selected ? getConfig(selected) : {}
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Channels</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Enable and configure each voice channel</p>
+      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-1">{t('tenantChannels.title')}</h1>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('tenantChannels.subtitle')}</p>
 
       {message && (
         <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-400">{message}</div>
       )}
 
       <div className="grid grid-cols-3 gap-4 mb-8">
-        {(channels ?? []).map((c) => (
-          <button key={c.id} onClick={() => { setSelected(prev => prev?.id === c.id ? null : c); setMessage('') }}
-            className={`text-left p-5 rounded-xl border transition-all ${selected?.id === c.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{CHANNEL_LABELS[c.channelType]?.label}</span>
-              <span className={`w-2 h-2 rounded-full ${c.isEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{CHANNEL_LABELS[c.channelType]?.description}</p>
-          </button>
-        ))}
+        {(channels ?? []).map((c) => {
+          const keys = CHANNEL_KEYS[c.channelType]
+          return (
+            <button key={c.id} onClick={() => { setSelected(prev => prev?.id === c.id ? null : c); setMessage('') }}
+              className={`text-left p-5 rounded-xl border transition-all ${selected?.id === c.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{keys ? t(keys.labelKey) : c.channelType}</span>
+                <span className={`w-2 h-2 rounded-full ${c.isEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{keys ? t(keys.descKey) : ''}</p>
+            </button>
+          )
+        })}
       </div>
 
       {selected && (
@@ -298,17 +321,17 @@ export default function ChannelsPage() {
 
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{CHANNEL_LABELS[selected.channelType]?.label}</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{CHANNEL_KEYS[selected.channelType] ? t(CHANNEL_KEYS[selected.channelType]!.labelKey) : selected.channelType}</h2>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                 <input type="checkbox" checked={selected.isEnabled}
                   onChange={(e) => setSelected({ ...selected, isEnabled: e.target.checked })} className="rounded" />
-                Enabled
+                {t('tenantChannels.enabledLabel')}
               </label>
               <button
                 onClick={() => setSelected(null)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-                aria-label="Close"
+                aria-label={t('tenantChannels.closeLabel')}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M3 3l10 10M13 3L3 13" />
@@ -320,7 +343,7 @@ export default function ChannelsPage() {
           {/* Voice selection */}
           <div>
             <label className={lbl + ' flex items-center'}>
-              <Tooltip content="The voice your AI agent uses on every call. Pick one that matches your brand — you can change it anytime; takes effect on the next call.">Agent voice</Tooltip>
+              <Tooltip content={t('tenantChannels.voicePicker.tooltip')}>{t('tenantChannels.voicePicker.label')}</Tooltip>
             </label>
             <div className="grid grid-cols-1 gap-2">
               {VOICE_OPTIONS.map((v) => {
@@ -340,7 +363,7 @@ export default function ChannelsPage() {
                       <span className="text-sm font-medium" style={{ color: active ? 'oklch(45% 0.11 193)' : 'var(--text-primary)' }}>
                         {v.label}
                       </span>
-                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{v.style}</span>
+                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t(`tenantChannels.voicePicker.style.${v.value}`)}</span>
                     </div>
                     <span
                       className="text-xs px-1.5 py-0.5 rounded font-medium"
@@ -349,7 +372,7 @@ export default function ChannelsPage() {
                         color:      v.gender === 'Female' ? 'oklch(45% 0.1 340)' : v.gender === 'Male' ? 'oklch(40% 0.12 240)' : 'oklch(40% 0.07 180)',
                       }}
                     >
-                      {v.gender}
+                      {t(`tenantChannels.voicePicker.gender.${v.gender}`)}
                     </span>
                   </button>
                 )
@@ -360,8 +383,8 @@ export default function ChannelsPage() {
           {/* Agent speaks first */}
           <div className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)' }}>
             <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Agent speaks first</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Agent delivers the opening greeting immediately when the session starts, without waiting for the caller to speak.</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('tenantChannels.agentSpeaksFirst.label')}</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{t('tenantChannels.agentSpeaksFirst.description')}</p>
             </div>
             <button
               type="button"
@@ -381,48 +404,49 @@ export default function ChannelsPage() {
           {/* Greeting mode */}
           <div>
             <label className={lbl + ' flex items-center'}>
-              <Tooltip content="A short word or phrase describing the tone of your agent's opening — passed into the prompt as guidance.">Greeting mode</Tooltip>
+              <Tooltip content={t('tenantChannels.greetingMode.tooltip')}>{t('tenantChannels.greetingMode.label')}</Tooltip>
             </label>
             <input value={selected.greetingMode ?? ''} onChange={(e) => setSelected({ ...selected, greetingMode: e.target.value || null })}
-              className={inp} placeholder="e.g. friendly, formal, professional" />
-            <p className="mt-1 text-xs text-gray-400">Sets the tone of the agent's opening message</p>
+              className={inp} placeholder={t('tenantChannels.greetingMode.placeholder')} />
+            <p className="mt-1 text-xs text-gray-400">{t('tenantChannels.greetingMode.help')}</p>
           </div>
 
           {/* Escalation mode + transfer number */}
           <div>
             <label className={lbl + ' flex items-center'}>
-              <Tooltip content="When the agent decides a caller needs a human (e.g. complex complaint, refund request), this controls how it hands off.">Escalation mode</Tooltip>
+              <Tooltip content={t('tenantChannels.escalation.modeTooltip')}>{t('tenantChannels.escalation.modeLabel')}</Tooltip>
             </label>
             <input value={selected.escalationMode ?? ''} onChange={(e) => setSelected({ ...selected, escalationMode: e.target.value || null })}
-              className={inp} placeholder="e.g. escalate-to-human" />
+              className={inp} placeholder={t('tenantChannels.escalation.modePlaceholder')} />
           </div>
 
           <div>
             <label className={lbl + ' flex items-center'}>
-              <Tooltip content="The phone number the AI dials and bridges the caller to when escalating. Should be a number that's reliably answered during business hours.">Transfer / escalation number</Tooltip>
+              <Tooltip content={t('tenantChannels.escalation.transferTooltip')}>{t('tenantChannels.escalation.transferLabel')}</Tooltip>
             </label>
             <ContactPicker
               value={cfg.transferNumber ?? ''}
               onChange={(v) => setConfig('transferNumber', v || undefined)}
+              t={t}
             />
-            <p className="mt-1 text-xs text-gray-400">The agent dials this number when escalating to a human</p>
+            <p className="mt-1 text-xs text-gray-400">{t('tenantChannels.escalation.transferHelp')}</p>
           </div>
 
           {/* Inbound-specific fields */}
           {selected.channelType === 'INBOUND' && (
             <>
               <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-4">
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">After-hours</h3>
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('tenantChannels.afterHours.title')}</h3>
 
                 <div>
                   <label className={lbl + ' flex items-center'}>
-                    <Tooltip content="What happens when a call comes in outside the business hours you set below. Voicemail, forward to a person, or just answer normally with the AI.">After-hours behaviour</Tooltip>
+                    <Tooltip content={t('tenantChannels.afterHours.behaviourTooltip')}>{t('tenantChannels.afterHours.behaviourLabel')}</Tooltip>
                   </label>
                   <select value={selected.afterHoursMode ?? ''}
                     onChange={(e) => setSelected({ ...selected, afterHoursMode: e.target.value || null })}
                     className={inp}>
                     {AFTER_HOURS_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
+                      <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
                     ))}
                   </select>
                 </div>
@@ -430,38 +454,40 @@ export default function ChannelsPage() {
                 {selected.afterHoursMode === 'forward' && (
                   <div>
                     <label className={lbl + ' flex items-center'}>
-                      <Tooltip content="The phone where after-hours calls are sent. Usually a personal mobile or an answering service.">Forward calls to</Tooltip>
+                      <Tooltip content={t('tenantChannels.afterHours.forwardTooltip')}>{t('tenantChannels.afterHours.forwardLabel')}</Tooltip>
                     </label>
                     <ContactPicker
                       value={cfg.forwardingNumber ?? ''}
                       onChange={(v) => setConfig('forwardingNumber', v || undefined)}
+                      t={t}
                     />
-                    <p className="mt-1 text-xs text-gray-400">Calls outside business hours are forwarded here</p>
+                    <p className="mt-1 text-xs text-gray-400">{t('tenantChannels.afterHours.forwardHelp')}</p>
                   </div>
                 )}
               </div>
 
               <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Business hours</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Calls outside these hours trigger the after-hours behaviour above</p>
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('tenantChannels.businessHours.title')}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('tenantChannels.businessHours.description')}</p>
                 <BusinessHoursEditor
                   hours={cfg.businessHours ?? DEFAULT_HOURS}
-                  onChange={(h) => setConfig('businessHours', h)} />
+                  onChange={(h) => setConfig('businessHours', h)}
+                  t={t} />
               </div>
             </>
           )}
 
           {selected.promptVersion && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">Bound prompt: {selected.promptVersion.name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('tenantChannels.boundPrompt', { name: selected.promptVersion.name })}</p>
           )}
 
           <button onClick={saveChannel} disabled={saving}
             className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
-            {saving ? 'Saving…' : 'Save channel'}
+            {saving ? t('tenantChannels.actions.saving') : t('tenantChannels.actions.save')}
           </button>
 
           {selected.channelType === 'INBOUND' && (
-            <PhoneNumbersPanel numbers={phoneNumbers ?? []} />
+            <PhoneNumbersPanel numbers={phoneNumbers ?? []} t={t} />
           )}
           </div>
         </>

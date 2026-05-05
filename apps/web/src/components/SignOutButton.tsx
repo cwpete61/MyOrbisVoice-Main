@@ -2,9 +2,11 @@
 
 import { useRouter } from 'next/navigation'
 import { clearTokens, getRefreshToken } from '@/lib/auth'
+import { useT } from '@/lib/i18n/I18nProvider'
 
 export function SignOutButton() {
   const router = useRouter()
+  const t = useT()
 
   async function handleSignOut() {
     const rt = getRefreshToken()
@@ -29,7 +31,7 @@ export function SignOutButton() {
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M10 2H13a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H10M7 11l3-3-3-3M2 8h9" />
       </svg>
-      Sign out
+      {t('actions.signOut')}
     </button>
   )
 }

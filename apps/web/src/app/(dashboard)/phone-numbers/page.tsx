@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 interface PhoneNumber {
   id: string
@@ -51,6 +52,11 @@ function CapabilityBadge({ enabled, label }: { enabled: boolean; label: string }
 }
 
 export default function PhoneNumbersPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  // Hint to satisfy locale usage when not directly referenced in JSX (kept for future date formatting).
+  void locale
+
   const { data: numbers, loading, reload } = useApi<PhoneNumber[]>('/api/phone-numbers')
   const [maxAllowed, setMaxAllowed] = useState<number | null>(null)
   const [toast, setToast] = useState('')
@@ -91,73 +97,79 @@ export default function PhoneNumbersPage() {
       params.set('limit', '20')
       const data = await apiFetch<AvailableNumber[]>(`/api/twilio/numbers/search?${params.toString()}`)
       setSearchResults(data || [])
-      if (!data || data.length === 0) setSearchError('No matching numbers available. Try a different area code or remove the pattern.')
+      if (!data || data.length === 0) setSearchError(t('tenantPhoneNumbers.modal.noResults'))
     } catch (e) {
-      setSearchError(e instanceof Error ? e.message : 'Search failed')
+      setSearchError(e instanceof Error ? e.message : t('tenantPhoneNumbers.errors.searchFailed'))
     } finally {
       setSearching(false)
     }
   }
 
   async function purchase(num: AvailableNumber) {
-    if (!confirm(`Get ${formatPhone(num.phoneNumber)}?\n\nMonthly cost: $${(num.monthlyPriceCents / 100).toFixed(2)} (included in your plan).`)) return
+    const amount = (num.monthlyPriceCents / 100).toFixed(2)
+    if (!confirm(t('tenantPhoneNumbers.confirm.purchase', { number: formatPhone(num.phoneNumber), amount }))) return
     setPurchasing(num.phoneNumber)
     try {
       await apiFetch('/api/twilio/numbers/purchase', {
         method: 'POST',
         body: JSON.stringify({ phoneNumber: num.phoneNumber }),
       })
-      showToast(`Number ${formatPhone(num.phoneNumber)} is yours.`)
+      showToast(t('tenantPhoneNumbers.toasts.purchased', { number: formatPhone(num.phoneNumber) }))
       setSearchOpen(false)
       setSearchResults(null)
       setSearchAreaCode('')
       setSearchPattern('')
       reload()
     } catch (e) {
-      setSearchError(e instanceof Error ? e.message : 'Purchase failed')
+      setSearchError(e instanceof Error ? e.message : t('tenantPhoneNumbers.errors.purchaseFailed'))
     } finally {
       setPurchasing(null)
     }
   }
 
   async function releaseNumber(n: PhoneNumber) {
-    if (!confirm(`Release ${formatPhone(n.e164Number)}?\n\nThe number will be returned to Twilio's pool. This cannot be undone.`)) return
+    if (!confirm(t('tenantPhoneNumbers.confirm.release', { number: formatPhone(n.e164Number) }))) return
     try {
       await apiFetch(`/api/phone-numbers/${n.id}`, { method: 'DELETE' })
-      showToast(`Number ${formatPhone(n.e164Number)} released.`)
+      showToast(t('tenantPhoneNumbers.toasts.released', { number: formatPhone(n.e164Number) }))
       reload()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Release failed')
+      showToast(e instanceof Error ? e.message : t('tenantPhoneNumbers.errors.releaseFailed'))
     }
   }
+
+  const getNumberTooltip = atCap
+    ? noPlan
+      ? t('tenantPhoneNumbers.tooltips.noPlan')
+      : t('tenantPhoneNumbers.tooltips.atCap', { used, max: maxAllowed ?? 0 })
+    : t('tenantPhoneNumbers.tooltips.getNumberDefault')
 
   return (
     <div className="p-8 max-w-3xl">
       <div className="flex items-start justify-between mb-1">
         <div>
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Phone Numbers</h1>
+          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {t('tenantPhoneNumbers.title')}
+          </h1>
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            Search and assign Twilio numbers to your tenant. We handle the Twilio account and billing.
+            {t('tenantPhoneNumbers.subtitle')}
           </p>
           {maxAllowed !== null && (
             <p className="text-xs mt-1.5" style={{ color: atCap ? 'oklch(55% 0.18 25)' : 'var(--text-tertiary)' }}>
-              <strong>{used} of {maxAllowed}</strong> phone numbers used
-              {atCap && ' — plan limit reached'}
+              <strong>{t('tenantPhoneNumbers.usageLabel', { used, max: maxAllowed })}</strong>{' '}
+              {t('tenantPhoneNumbers.usageSuffix')}
+              {atCap && t('tenantPhoneNumbers.planLimitReached')}
             </p>
           )}
         </div>
         <button
           onClick={() => setSearchOpen(true)}
           disabled={atCap}
-          title={atCap
-            ? noPlan
-              ? 'Your plan does not include phone numbers. Upgrade to request a number.'
-              : `Plan limit reached: ${used} of ${maxAllowed} used.`
-            : 'Search and request a phone number'}
+          title={getNumberTooltip}
           className="btn-primary text-sm px-4 py-2"
           style={atCap ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
         >
-          + Get a Number
+          {t('tenantPhoneNumbers.actions.getNumber')}
         </button>
       </div>
 
@@ -178,7 +190,7 @@ export default function PhoneNumbersPage() {
             textDecoration: 'none',
           }}
         >
-          🔓 <strong>Pick a plan to get a phone number →</strong> Your current plan doesn&apos;t include any. Upgrade to Basic ($197/mo, 1 number), Pro ($497/mo, 3 numbers), or higher.
+          🔓 <strong>{t('tenantPhoneNumbers.planUpgradeCta')}</strong>{t('tenantPhoneNumbers.planUpgradeBody')}
         </a>
       )}
 
@@ -193,21 +205,21 @@ export default function PhoneNumbersPage() {
           textDecoration: 'none',
         }}
       >
-        ℹ️ <strong>About SMS approvals (10DLC):</strong> SMS sending requires a one-time
-        carrier registration we manage on your behalf. Voice + inbound calls work
-        immediately on any number you request. Read the Twilio approval guide →
+        ℹ️ <strong>{t('tenantPhoneNumbers.complianceBanner.title')}</strong>{t('tenantPhoneNumbers.complianceBanner.body')}
       </a>
 
       {/* Numbers list / empty state */}
       <div className="mt-6">
         {loading ? (
-          <div className="text-sm py-8 text-center" style={{ color: 'var(--text-tertiary)' }}>Loading…</div>
+          <div className="text-sm py-8 text-center" style={{ color: 'var(--text-tertiary)' }}>
+            {t('tenantPhoneNumbers.loading')}
+          </div>
         ) : !numbers || numbers.length === 0 ? (
           <div className="text-sm py-12 text-center rounded-xl border" style={{ color: 'var(--text-tertiary)', borderColor: 'var(--border-subtle)' }}>
-            <p>No phone numbers yet.</p>
+            <p>{t('tenantPhoneNumbers.empty.title')}</p>
             <p className="mt-1 text-xs">{noPlan
-              ? 'Your current plan does not include phone numbers. Upgrade to request one.'
-              : 'Click "Get a Number" above to search Twilio\'s inventory and add one to your tenant.'}</p>
+              ? t('tenantPhoneNumbers.empty.noPlan')
+              : t('tenantPhoneNumbers.empty.ready')}</p>
           </div>
         ) : (
           <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border-subtle)' }}>
@@ -230,12 +242,12 @@ export default function PhoneNumbersPage() {
                     )}
                   </div>
                   <div className="flex gap-1.5 mt-1">
-                    <CapabilityBadge enabled={n.isInboundEnabled}  label="Inbound" />
-                    <CapabilityBadge enabled={n.isOutboundEnabled} label="Outbound" />
-                    <CapabilityBadge enabled={n.isSmsEnabled}      label="SMS" />
+                    <CapabilityBadge enabled={n.isInboundEnabled}  label={t('tenantPhoneNumbers.capabilityBadges.inbound')} />
+                    <CapabilityBadge enabled={n.isOutboundEnabled} label={t('tenantPhoneNumbers.capabilityBadges.outbound')} />
+                    <CapabilityBadge enabled={n.isSmsEnabled}      label={t('tenantPhoneNumbers.capabilityBadges.sms')} />
                     {n.monthlyPriceCents !== null && (
                       <span className="text-xs ml-1" style={{ color: 'var(--text-tertiary)' }}>
-                        ${(n.monthlyPriceCents / 100).toFixed(2)}/mo
+                        {t('tenantPhoneNumbers.pricePerMonth', { amount: (n.monthlyPriceCents / 100).toFixed(2) })}
                       </span>
                     )}
                   </div>
@@ -246,7 +258,7 @@ export default function PhoneNumbersPage() {
                     className="text-xs px-3 py-1.5 rounded-lg border"
                     style={{ borderColor: 'oklch(55% 0.14 25 / 0.3)', color: 'oklch(60% 0.18 25)' }}
                   >
-                    Release
+                    {t('tenantPhoneNumbers.actions.release')}
                   </button>
                 </div>
               </div>
@@ -269,9 +281,11 @@ export default function PhoneNumbersPage() {
           >
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Get a Phone Number</h2>
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {t('tenantPhoneNumbers.modal.title')}
+                </h2>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                  Search Twilio's inventory. Cost is included in your plan ($1.15/month per number).
+                  {t('tenantPhoneNumbers.modal.subtitle')}
                 </p>
               </div>
               <button
@@ -280,28 +294,32 @@ export default function PhoneNumbersPage() {
                 className="text-sm"
                 style={{ color: 'var(--text-tertiary)', background: 'transparent', border: 'none' }}
               >
-                ✕
+                {t('tenantPhoneNumbers.modal.close')}
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Area code (optional)</label>
+                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  {t('tenantPhoneNumbers.modal.areaCodeLabel')}
+                </label>
                 <input
                   value={searchAreaCode}
                   onChange={(e) => setSearchAreaCode(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                  placeholder="610"
+                  placeholder={t('tenantPhoneNumbers.modal.areaCodePlaceholder')}
                   maxLength={3}
                   className="w-full px-3 py-2 rounded-lg text-sm"
                   style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
                 />
               </div>
               <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>Contains digits (optional)</label>
+                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  {t('tenantPhoneNumbers.modal.patternLabel')}
+                </label>
                 <input
                   value={searchPattern}
                   onChange={(e) => setSearchPattern(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder="8888"
+                  placeholder={t('tenantPhoneNumbers.modal.patternPlaceholder')}
                   maxLength={10}
                   className="w-full px-3 py-2 rounded-lg text-sm"
                   style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
@@ -315,7 +333,7 @@ export default function PhoneNumbersPage() {
                 disabled={searching}
                 className="btn-primary text-sm px-4 py-2"
               >
-                {searching ? 'Searching…' : 'Search'}
+                {searching ? t('tenantPhoneNumbers.actions.searching') : t('tenantPhoneNumbers.actions.search')}
               </button>
             </div>
 
@@ -342,16 +360,16 @@ export default function PhoneNumbersPage() {
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                          {n.locality ?? n.region ?? 'United States'}
+                          {n.locality ?? n.region ?? t('tenantPhoneNumbers.modal.defaultRegion')}
                         </span>
                         <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>·</span>
                         <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                          ${(n.monthlyPriceCents / 100).toFixed(2)}/mo
+                          {t('tenantPhoneNumbers.pricePerMonth', { amount: (n.monthlyPriceCents / 100).toFixed(2) })}
                         </span>
                         <div className="flex gap-1 ml-2">
-                          {n.capabilities.voice && <span className="text-xs px-1.5 rounded" style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(40% 0.13 193)' }}>Voice</span>}
-                          {n.capabilities.sms   && <span className="text-xs px-1.5 rounded" style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(40% 0.13 193)' }}>SMS</span>}
-                          {n.capabilities.mms   && <span className="text-xs px-1.5 rounded" style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(40% 0.13 193)' }}>MMS</span>}
+                          {n.capabilities.voice && <span className="text-xs px-1.5 rounded" style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(40% 0.13 193)' }}>{t('tenantPhoneNumbers.capabilityBadges.voice')}</span>}
+                          {n.capabilities.sms   && <span className="text-xs px-1.5 rounded" style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(40% 0.13 193)' }}>{t('tenantPhoneNumbers.capabilityBadges.sms')}</span>}
+                          {n.capabilities.mms   && <span className="text-xs px-1.5 rounded" style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(40% 0.13 193)' }}>{t('tenantPhoneNumbers.capabilityBadges.mms')}</span>}
                         </div>
                       </div>
                     </div>
@@ -360,7 +378,7 @@ export default function PhoneNumbersPage() {
                       disabled={!!purchasing}
                       className="btn-primary text-xs px-3 py-1.5"
                     >
-                      {purchasing === n.phoneNumber ? 'Buying…' : 'Get'}
+                      {purchasing === n.phoneNumber ? t('tenantPhoneNumbers.actions.buying') : t('tenantPhoneNumbers.actions.get')}
                     </button>
                   </div>
                 ))}

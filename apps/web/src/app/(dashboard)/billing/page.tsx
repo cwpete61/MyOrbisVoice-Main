@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 interface Plan {
   id: string; code: string; name: string; interval: string
@@ -14,14 +15,16 @@ interface Subscription {
   cancelAtPeriodEnd: boolean; plan: Plan
 }
 
-const ENTITLEMENT_LABELS: Record<string, string> = {
-  max_channels:       'Max channels',
-  max_agents:         'Max agents',
-  minutes_per_month:  'Minutes / month',
-  widget_enabled:     'Website widget',
-  inbound_enabled:    'Inbound receptionist',
-  outbound_enabled:   'Outbound caller',
-  affiliate_enabled:  'Partner portal',
+type TFn = (key: string, vars?: Record<string, string | number>) => string
+
+const ENTITLEMENT_KEYS: Record<string, string> = {
+  max_channels:       'tenantBilling.entitlements.maxChannels',
+  max_agents:         'tenantBilling.entitlements.maxAgents',
+  minutes_per_month:  'tenantBilling.entitlements.minutesPerMonth',
+  widget_enabled:     'tenantBilling.entitlements.widgetEnabled',
+  inbound_enabled:    'tenantBilling.entitlements.inboundEnabled',
+  outbound_enabled:   'tenantBilling.entitlements.outboundEnabled',
+  affiliate_enabled:  'tenantBilling.entitlements.affiliateEnabled',
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
@@ -32,18 +35,47 @@ const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
   INCOMPLETE: { bg: 'var(--surface-overlay)', text: 'var(--text-tertiary)' },
 }
 
-function fmt(e: Plan['entitlements'][0]) {
-  if (e.valueType === 'BOOLEAN') return e.booleanValue ? '✓' : '—'
-  if (e.valueType === 'INTEGER') return String(e.integerValue ?? 0)
-  return e.stringValue ?? '—'
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  ACTIVE:     'tenantBilling.statusPill.active',
+  TRIALING:   'tenantBilling.statusPill.trialing',
+  PAST_DUE:   'tenantBilling.statusPill.pastDue',
+  CANCELED:   'tenantBilling.statusPill.canceled',
+  INCOMPLETE: 'tenantBilling.statusPill.incomplete',
 }
 
-function fmtDate(iso: string | null) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+function fmt(e: Plan['entitlements'][0], t: TFn) {
+  if (e.valueType === 'BOOLEAN') return e.booleanValue ? '✓' : '—'
+  if (e.valueType === 'INTEGER') return String(e.integerValue ?? 0)
+  return e.stringValue ?? t('tenantBilling.dash')
+}
+
+function entitlementLabel(key: string, t: TFn): string {
+  const tKey = ENTITLEMENT_KEYS[key]
+  if (tKey) {
+    const translated = t(tKey)
+    if (translated !== tKey) return translated
+  }
+  return key
+}
+
+function statusLabel(status: string, t: TFn): string {
+  const tKey = STATUS_LABEL_KEYS[status]
+  if (tKey) {
+    const translated = t(tKey)
+    if (translated !== tKey) return translated
+  }
+  return status
+}
+
+function fmtDate(iso: string | null, dateLocale: string, t: TFn) {
+  if (!iso) return t('tenantBilling.dash')
+  return new Date(iso).toLocaleDateString(dateLocale, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 export default function BillingPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   const { data: subscription, loading: subLoading } = useApi<Subscription | null>('/api/billing/subscription')
   const { data: plans, loading: plansLoading } = useApi<Plan[]>('/api/billing/plans')
   const [upgrading, setUpgrading] = useState<string | null>(null)
@@ -57,7 +89,7 @@ export default function BillingPage() {
         method: 'POST', body: JSON.stringify({ planCode }),
       })
       window.location.href = result.url
-    } catch (err) { setError(err instanceof Error ? err.message : 'Failed'); setUpgrading(null) }
+    } catch (err) { setError(err instanceof Error ? err.message : t('tenantBilling.errors.failed')); setUpgrading(null) }
   }
 
   async function openPortal() {
@@ -65,7 +97,7 @@ export default function BillingPage() {
     try {
       const result = await apiFetch<{ url: string }>('/api/billing/portal-session', { method: 'POST' })
       window.location.href = result.url
-    } catch (err) { setError(err instanceof Error ? err.message : 'Failed'); setPortalLoading(false) }
+    } catch (err) { setError(err instanceof Error ? err.message : t('tenantBilling.errors.failed')); setPortalLoading(false) }
   }
 
   if (subLoading || plansLoading) return (
@@ -81,9 +113,9 @@ export default function BillingPage() {
   return (
     <div className="space-y-8 max-w-4xl">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Billing</h1>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{t('tenantBilling.title')}</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Manage your subscription and plan.
+          {t('tenantBilling.subtitle')}
         </p>
       </div>
 
@@ -99,23 +131,23 @@ export default function BillingPage() {
             <div>
               <p className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{sub.plan.name}</p>
               <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                {sub.plan.interval === 'MONTHLY' ? 'Billed monthly' : 'Billed annually'}
+                {sub.plan.interval === 'MONTHLY' ? t('tenantBilling.billing.monthly') : t('tenantBilling.billing.annually')}
               </p>
             </div>
-            <span className="badge" style={{ background: statusStyle.bg, color: statusStyle.text }}>{sub.status}</span>
+            <span className="badge" style={{ background: statusStyle.bg, color: statusStyle.text }}>{statusLabel(sub.status, t)}</span>
           </div>
 
           <div className="px-6 py-5">
             <div className="flex items-center gap-8 mb-5">
               <div>
-                <p className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>Current period</p>
+                <p className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>{t('tenantBilling.currentPeriod')}</p>
                 <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {fmtDate(sub.currentPeriodStart)} – {fmtDate(sub.currentPeriodEnd)}
+                  {fmtDate(sub.currentPeriodStart, dateLocale, t)} – {fmtDate(sub.currentPeriodEnd, dateLocale, t)}
                 </p>
               </div>
               {sub.cancelAtPeriodEnd && (
                 <div className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'oklch(14% 0.04 75)', color: 'oklch(70% 0.16 75)' }}>
-                  Cancels at period end
+                  {t('tenantBilling.cancelsAtPeriodEnd')}
                 </div>
               )}
             </div>
@@ -124,16 +156,16 @@ export default function BillingPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-5">
               {sub.plan.entitlements.map((e) => (
                 <div key={e.key} className="rounded-lg px-3 py-2.5" style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)' }}>
-                  <p className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>{ENTITLEMENT_LABELS[e.key] ?? e.key}</p>
+                  <p className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>{entitlementLabel(e.key, t)}</p>
                   <p className="text-sm font-semibold" style={{ color: e.valueType === 'BOOLEAN' && !e.booleanValue ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
-                    {fmt(e)}
+                    {fmt(e, t)}
                   </p>
                 </div>
               ))}
             </div>
 
             <button onClick={openPortal} disabled={portalLoading} className="btn-ghost">
-              {portalLoading ? 'Opening…' : 'Manage subscription →'}
+              {portalLoading ? t('tenantBilling.actions.opening') : t('tenantBilling.actions.manageSubscription')}
             </button>
           </div>
         </div>
@@ -142,14 +174,14 @@ export default function BillingPage() {
           className="rounded-xl px-6 py-5"
           style={{ background: 'oklch(14% 0.04 75)', border: '1px solid oklch(25% 0.08 75)' }}
         >
-          <p className="text-sm font-medium" style={{ color: 'oklch(70% 0.16 75)' }}>No active subscription</p>
-          <p className="text-xs mt-0.5" style={{ color: 'oklch(55% 0.10 75)' }}>Choose a plan below to get started.</p>
+          <p className="text-sm font-medium" style={{ color: 'oklch(70% 0.16 75)' }}>{t('tenantBilling.noSubscription.title')}</p>
+          <p className="text-xs mt-0.5" style={{ color: 'oklch(55% 0.10 75)' }}>{t('tenantBilling.noSubscription.desc')}</p>
         </div>
       )}
 
       {/* Plan cards */}
       <div>
-        <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Available plans</h2>
+        <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>{t('tenantBilling.availablePlans')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {(plans ?? []).map((plan) => {
             const isCurrent = sub?.plan.code === plan.code
@@ -166,12 +198,12 @@ export default function BillingPage() {
                   <div>
                     <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{plan.name}</h3>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                      {plan.interval === 'MONTHLY' ? 'per month' : 'per year'}
+                      {plan.interval === 'MONTHLY' ? t('tenantBilling.interval.perMonth') : t('tenantBilling.interval.perYear')}
                     </p>
                   </div>
                   {isCurrent && (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'oklch(28% 0.10 193)', color: 'oklch(88% 0.07 193)' }}>
-                      Current
+                      {t('tenantBilling.currentBadge')}
                     </span>
                   )}
                 </div>
@@ -182,8 +214,8 @@ export default function BillingPage() {
                       <span style={{ color: e.valueType === 'BOOLEAN' ? (e.booleanValue ? 'oklch(65% 0.15 145)' : 'var(--text-tertiary)') : 'oklch(55% 0.14 193)' }}>
                         {e.valueType === 'BOOLEAN' ? (e.booleanValue ? '✓' : '✗') : '●'}
                       </span>
-                      {ENTITLEMENT_LABELS[e.key] ?? e.key}
-                      {e.valueType !== 'BOOLEAN' && `: ${e.integerValue ?? e.stringValue ?? '—'}`}
+                      {entitlementLabel(e.key, t)}
+                      {e.valueType !== 'BOOLEAN' && `: ${e.integerValue ?? e.stringValue ?? t('tenantBilling.dash')}`}
                     </li>
                   ))}
                 </ul>
@@ -194,7 +226,11 @@ export default function BillingPage() {
                     disabled={upgrading !== null || !plan.stripePriceId}
                     className="btn-primary w-full text-center"
                   >
-                    {upgrading === plan.code ? 'Redirecting…' : plan.stripePriceId ? 'Select plan' : 'Coming soon'}
+                    {upgrading === plan.code
+                      ? t('tenantBilling.actions.redirecting')
+                      : plan.stripePriceId
+                        ? t('tenantBilling.actions.selectPlan')
+                        : t('tenantBilling.actions.comingSoon')}
                   </button>
                 )}
               </div>

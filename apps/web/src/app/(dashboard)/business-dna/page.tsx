@@ -29,6 +29,7 @@ import {
   ComplianceSection,
   type SectionProps,
 } from '@/components/dna/sections'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 interface DNAVersion {
   id: string
@@ -59,33 +60,24 @@ type SectionKey =
 
 interface SectionMeta {
   key: SectionKey
-  label: string
+  i18nKey: string
   icon: string
-  description: string
   Component: (props: SectionProps) => React.JSX.Element
 }
 
 /* The metadata array is preserved verbatim from the original page so the
- * left-rail labels and descriptions are unchanged. */
+ * left-rail labels and descriptions are unchanged. Labels and descriptions
+ * are pulled from the i18n dictionary using `i18nKey` as the lookup root. */
 const SECTIONS: SectionMeta[] = [
-  { key: 'identityJson',    label: 'Identity',     icon: '🏢', Component: IdentitySection,
-    description: 'Your business name, mission, brand voice, and what you do at a glance. The agent uses this to introduce itself and frame every conversation.' },
-  { key: 'servicesJson',    label: 'Services',     icon: '🛠️', Component: ServicesSection,
-    description: 'What you offer — products, services, packages. Be specific. The agent quotes from this when callers ask "what do you do?" or "do you offer X?".' },
-  { key: 'pricingJson',     label: 'Pricing',      icon: '💰', Component: PricingSection,
-    description: 'How much things cost and what discounts/promotions apply. Include enough detail that the agent can answer pricing questions without escalating.' },
-  { key: 'operationsJson',  label: 'Operations',   icon: '⚙️', Component: OperationsSection,
-    description: 'How your business runs day-to-day: hours, locations, service areas, lead times, payment terms. The agent references this for logistical questions.' },
-  { key: 'salesJson',       label: 'Sales',        icon: '💼', Component: SalesSection,
-    description: 'Your qualifying questions, ideal-customer rules, and the workflow for converting a caller into a booked customer.' },
-  { key: 'appointmentJson', label: 'Appointments', icon: '📅', Component: AppointmentSection,
-    description: 'Booking rules: how long appointments take, what info to collect, what days/times are available, when to escalate to a human.' },
-  { key: 'supportJson',     label: 'Support',      icon: '🎧', Component: SupportSection,
-    description: 'How to handle complaints, refunds, and angry customers. Include the boundary where the agent should hand off to a human.' },
-  { key: 'languageJson',    label: 'Language',     icon: '🗣️', Component: LanguageSection,
-    description: 'Tone, voice, vocabulary preferences. Phrases the agent should always or never use. Languages it should respond to.' },
-  { key: 'complianceJson',  label: 'Compliance',   icon: '⚖️', Component: ComplianceSection,
-    description: 'Legal and regulatory rules the agent must follow — disclosures, recording notices, opt-out language, industry-specific compliance (HIPAA, GDPR, etc.).' },
+  { key: 'identityJson',    i18nKey: 'identity',     icon: '🏢', Component: IdentitySection },
+  { key: 'servicesJson',    i18nKey: 'services',     icon: '🛠️', Component: ServicesSection },
+  { key: 'pricingJson',     i18nKey: 'pricing',      icon: '💰', Component: PricingSection },
+  { key: 'operationsJson',  i18nKey: 'operations',   icon: '⚙️', Component: OperationsSection },
+  { key: 'salesJson',       i18nKey: 'sales',        icon: '💼', Component: SalesSection },
+  { key: 'appointmentJson', i18nKey: 'appointments', icon: '📅', Component: AppointmentSection },
+  { key: 'supportJson',     i18nKey: 'support',      icon: '🎧', Component: SupportSection },
+  { key: 'languageJson',    i18nKey: 'language',     icon: '🗣️', Component: LanguageSection },
+  { key: 'complianceJson',  i18nKey: 'compliance',   icon: '⚖️', Component: ComplianceSection },
 ]
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -93,6 +85,10 @@ const SECTIONS: SectionMeta[] = [
  * ──────────────────────────────────────────────────────────────────────── */
 
 export default function BusinessDNAPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
+
   const { data, loading, error, reload } =
     useApi<{ active: DNADetail | null; versions: DNAVersion[] }>('/api/business-dna')
 
@@ -134,7 +130,7 @@ export default function BusinessDNAPage() {
 
   async function loadVersion(id: string, opts: { confirmDiscard?: boolean } = {}) {
     if (opts.confirmDiscard !== false && dirty) {
-      const ok = window.confirm('You have unsaved changes. Discard them?')
+      const ok = window.confirm(t('tenantBusinessDna.confirm.discardChanges'))
       if (!ok) return
     }
     const detail = await apiFetch<DNADetail>(`/api/business-dna/${id}`)
@@ -150,7 +146,7 @@ export default function BusinessDNAPage() {
   function handleSectionChange(next: SectionKey) {
     if (next === activeSection) return
     if (dirty) {
-      const ok = window.confirm('You have unsaved changes. Discard them?')
+      const ok = window.confirm(t('tenantBusinessDna.confirm.discardChanges'))
       if (!ok) return
     }
     setActiveSection(next)
@@ -178,21 +174,21 @@ export default function BusinessDNAPage() {
       try {
         const parsed = JSON.parse(jsonText) as unknown
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          setJsonError('Top-level value must be a JSON object.')
+          setJsonError(t('tenantBusinessDna.jsonInvalidObject'))
           return
         }
         setFormValue(parsed as Record<string, unknown>)
         setJsonError('')
         setJsonMode(false)
       } catch (err) {
-        setJsonError(err instanceof Error ? err.message : 'Invalid JSON')
+        setJsonError(err instanceof Error ? err.message : t('tenantBusinessDna.jsonInvalid'))
       }
     }
   }
 
   async function createDraft() {
     if (dirty) {
-      const ok = window.confirm('You have unsaved changes. Discard them and create a new draft?')
+      const ok = window.confirm(t('tenantBusinessDna.confirm.discardForNewDraft'))
       if (!ok) return
     }
     setSaving(true)
@@ -203,9 +199,9 @@ export default function BusinessDNAPage() {
       })
       await reload()
       await loadVersion(draft.id, { confirmDiscard: false })
-      showToast('success', 'New draft created.')
+      showToast('success', t('tenantBusinessDna.toast.draftCreated'))
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed')
+      showToast('error', err instanceof Error ? err.message : t('tenantBusinessDna.toast.createFailed'))
     } finally {
       setSaving(false)
     }
@@ -220,12 +216,12 @@ export default function BusinessDNAPage() {
       try {
         const parsed = JSON.parse(jsonText) as unknown
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-          setJsonError('Top-level value must be a JSON object.')
+          setJsonError(t('tenantBusinessDna.jsonInvalidObject'))
           return
         }
         toSave = parsed as Record<string, unknown>
       } catch (err) {
-        setJsonError(err instanceof Error ? err.message : 'Invalid JSON')
+        setJsonError(err instanceof Error ? err.message : t('tenantBusinessDna.jsonInvalid'))
         return
       }
     }
@@ -242,9 +238,9 @@ export default function BusinessDNAPage() {
       setJsonText(JSON.stringify(fresh, null, 2))
       setJsonError('')
       setDirty(false)
-      showToast('success', 'Section saved.')
+      showToast('success', t('tenantBusinessDna.toast.sectionSaved'))
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Save failed')
+      showToast('error', err instanceof Error ? err.message : t('tenantBusinessDna.toast.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -253,7 +249,7 @@ export default function BusinessDNAPage() {
   async function publish() {
     if (!selected) return
     if (dirty) {
-      const ok = window.confirm('You have unsaved changes. Save them before publishing? Cancel to abort.')
+      const ok = window.confirm(t('tenantBusinessDna.confirm.saveBeforePublish'))
       if (!ok) return
       await saveSection()
     }
@@ -267,9 +263,9 @@ export default function BusinessDNAPage() {
       // Reload the current version to reflect isActive=true.
       const refreshed = await apiFetch<DNADetail>(`/api/business-dna/${selected.id}`)
       setSelected(refreshed)
-      showToast('success', 'Business DNA published and now active.')
+      showToast('success', t('tenantBusinessDna.toast.published'))
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Publish failed')
+      showToast('error', err instanceof Error ? err.message : t('tenantBusinessDna.toast.publishFailed'))
     } finally {
       setSaving(false)
     }
@@ -301,14 +297,14 @@ export default function BusinessDNAPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            Business DNA
+            {t('tenantBusinessDna.title')}
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Versioned knowledge base that your AI agents draw on in every conversation.
+            {t('tenantBusinessDna.subtitle')}
           </p>
         </div>
         <button onClick={createDraft} disabled={saving} className="btn-primary">
-          + New draft
+          {t('tenantBusinessDna.newDraft')}
         </button>
       </div>
 
@@ -320,11 +316,12 @@ export default function BusinessDNAPage() {
           <div>
             <p className="text-xs font-medium uppercase tracking-wide mb-2"
                style={{ color: 'var(--text-tertiary)' }}>
-              Sections
+              {t('tenantBusinessDna.sectionsHeading')}
             </p>
             <div className="space-y-1">
               {SECTIONS.map((s) => {
                 const isActive = activeSection === s.key
+                const sectionLabel = t(`tenantBusinessDna.sections.${s.i18nKey}.label`)
                 return (
                   <button
                     key={s.key}
@@ -340,7 +337,7 @@ export default function BusinessDNAPage() {
                       className="text-sm font-medium"
                       style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}
                     >
-                      {s.label}
+                      {sectionLabel}
                     </span>
                   </button>
                 )
@@ -351,10 +348,12 @@ export default function BusinessDNAPage() {
           <div>
             <p className="text-xs font-medium uppercase tracking-wide mb-2"
                style={{ color: 'var(--text-tertiary)' }}>
-              Versions
+              {t('tenantBusinessDna.versionsHeading')}
             </p>
             {versions.length === 0 && (
-              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>No versions yet.</p>
+              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                {t('tenantBusinessDna.noVersions')}
+              </p>
             )}
             <div className="space-y-1">
               {versions.map((v) => {
@@ -369,10 +368,14 @@ export default function BusinessDNAPage() {
                       : { background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }
                     }
                   >
-                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Version {v.version}</p>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                      {t('tenantBusinessDna.versionLabel', { n: v.version })}
+                    </p>
                     <p className="text-xs mt-0.5"
                        style={{ color: v.isActive ? 'oklch(65% 0.15 145)' : 'var(--text-tertiary)' }}>
-                      {v.isActive ? '● Active' : `Updated ${new Date(v.updatedAt).toLocaleDateString()}`}
+                      {v.isActive
+                        ? t('tenantBusinessDna.versionActive')
+                        : t('tenantBusinessDna.versionUpdated', { date: new Date(v.updatedAt).toLocaleDateString(dateLocale) })}
                     </p>
                   </button>
                 )
@@ -390,7 +393,7 @@ export default function BusinessDNAPage() {
             >
               <span className="text-2xl">🧬</span>
               <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                Select a version or create a new draft
+                {t('tenantBusinessDna.emptyStateTitle')}
               </p>
             </div>
           ) : (
@@ -405,20 +408,22 @@ export default function BusinessDNAPage() {
               >
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                    Version {selected.version}
+                    {t('tenantBusinessDna.statusVersion', { n: selected.version })}
                   </span>
                   <span
                     className="text-xs"
                     style={{ color: selected.isActive ? 'oklch(65% 0.15 145)' : 'var(--text-tertiary)' }}
                   >
-                    {selected.isActive ? '● Active — read-only' : '○ Draft'}
+                    {selected.isActive
+                      ? t('tenantBusinessDna.statusActive')
+                      : t('tenantBusinessDna.statusDraft')}
                   </span>
                   {dirty && (
                     <span
                       className="text-xs"
                       style={{ color: 'oklch(70% 0.13 75)' }}
                     >
-                      • Unsaved changes
+                      {t('tenantBusinessDna.statusUnsaved')}
                     </span>
                   )}
                 </div>
@@ -432,7 +437,9 @@ export default function BusinessDNAPage() {
                       border: '1px solid var(--border-subtle)',
                     }}
                   >
-                    {jsonMode ? 'Show form' : 'Show advanced (JSON)'}
+                    {jsonMode
+                      ? t('tenantBusinessDna.showForm')
+                      : t('tenantBusinessDna.showAdvancedJson')}
                   </button>
                   {!selected.isActive && (
                     <button
@@ -445,7 +452,7 @@ export default function BusinessDNAPage() {
                         border: '1px solid oklch(25% 0.08 145)',
                       }}
                     >
-                      Publish
+                      {t('tenantBusinessDna.actions.publish')}
                     </button>
                   )}
                 </div>
@@ -456,10 +463,10 @@ export default function BusinessDNAPage() {
                 <h2 className="text-base font-semibold flex items-center gap-2"
                     style={{ color: 'var(--text-primary)' }}>
                   <span>{sectionMeta.icon}</span>
-                  <span>{sectionMeta.label}</span>
+                  <span>{t(`tenantBusinessDna.sections.${sectionMeta.i18nKey}.label`)}</span>
                 </h2>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                  {sectionMeta.description}
+                  {t(`tenantBusinessDna.sections.${sectionMeta.i18nKey}.description`)}
                 </p>
               </div>
 
@@ -474,7 +481,7 @@ export default function BusinessDNAPage() {
                       border: '1px solid oklch(37% 0.08 193 / 0.35)',
                     }}
                   >
-                    This version is currently active and read-only. Create a new draft to make changes.
+                    {t('tenantBusinessDna.readOnlyBanner')}
                   </div>
                 )}
 
@@ -525,7 +532,7 @@ export default function BusinessDNAPage() {
                 >
                   {dirty && (
                     <span className="text-xs mr-2" style={{ color: 'var(--text-tertiary)' }}>
-                      Changes are saved per section.
+                      {t('tenantBusinessDna.savedPerSection')}
                     </span>
                   )}
                   <button
@@ -533,7 +540,9 @@ export default function BusinessDNAPage() {
                     disabled={saving || !dirty}
                     className="btn-primary text-xs px-4 py-1.5"
                   >
-                    {saving ? 'Saving…' : 'Save changes'}
+                    {saving
+                      ? t('tenantBusinessDna.actions.saving')
+                      : t('tenantBusinessDna.actions.save')}
                   </button>
                 </div>
               )}

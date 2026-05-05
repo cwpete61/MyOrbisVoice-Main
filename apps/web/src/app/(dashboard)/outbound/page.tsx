@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useApi, apiFetch } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface OutboundCampaign {
@@ -57,18 +58,6 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELED:  'bg-red-100 text-red-700',
 }
 
-const OUTCOME_LABELS: Record<string, string> = {
-  answered:          'Answered',
-  busy:              'Busy',
-  no_answer:         'No answer',
-  voicemail:         'Voicemail',
-  failed:            'Failed',
-  canceled:          'Canceled',
-  campaign_canceled: 'Campaign canceled',
-  dispatch_error:    'Dispatch error',
-  no_phone:          'No phone',
-}
-
 const ATTEMPT_STATUS_COLORS: Record<string, string> = {
   PENDING:   'bg-gray-100 text-gray-600',
   DIALING:   'bg-blue-50 text-blue-700',
@@ -85,8 +74,8 @@ function Badge({ label, color }: { label: string; color?: string }) {
   )
 }
 
-function contactName(c: Contact | Attempt['contact']) {
-  return c.fullName || `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || c.phoneE164 || c.email || 'Unknown'
+function contactNameOf(c: Contact | Attempt['contact'], fallback: string) {
+  return c.fullName || `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || c.phoneE164 || c.email || fallback
 }
 
 const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white text-gray-900'
@@ -95,6 +84,7 @@ const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ou
 type View = 'list' | 'detail'
 
 export default function OutboundPage() {
+  const t = useT()
   const [view, setView]       = useState<View>('list')
   const [selected, setSelected] = useState<OutboundCampaign | null>(null)
   const [toast, setToast]     = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -118,14 +108,14 @@ export default function OutboundPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Outbound Caller</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t('tenantOutbound.title')}</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Create campaigns, select contacts, and dispatch AI-powered outbound calls.
+            {t('tenantOutbound.subtitle')}
           </p>
         </div>
         {view === 'detail' && (
           <button onClick={backToList} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
-            ← Back to campaigns
+            {t('tenantOutbound.backToCampaigns')}
           </button>
         )}
       </div>
@@ -152,82 +142,85 @@ function CampaignList({
   onOpen: (c: OutboundCampaign) => void
   onMsg: (t: 'success' | 'error', m: string) => void
 }) {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   const { data: campaigns, loading, error, reload } = useApi<OutboundCampaign[]>('/api/outbound-campaigns')
   const [showNew, setShowNew] = useState(false)
   const [saving, setSaving]   = useState(false)
   const [form, setForm]       = useState({ name: '', description: '' })
 
   async function createCampaign() {
-    if (!form.name.trim()) { onMsg('error', 'Campaign name is required.'); return }
+    if (!form.name.trim()) { onMsg('error', t('tenantOutbound.messages.nameRequired')); return }
     setSaving(true)
     try {
       await apiFetch('/api/outbound-campaigns', {
         method: 'POST',
         body: JSON.stringify({ name: form.name.trim(), description: form.description.trim() || undefined }),
       })
-      onMsg('success', 'Campaign created. Open it to add contacts and start calling.')
+      onMsg('success', t('tenantOutbound.messages.createSuccess'))
       setForm({ name: '', description: '' })
       setShowNew(false)
       reload()
     } catch (err) {
-      onMsg('error', err instanceof Error ? err.message : 'Failed to create campaign')
+      onMsg('error', err instanceof Error ? err.message : t('tenantOutbound.messages.createFailed'))
     } finally { setSaving(false) }
   }
 
   async function deleteCampaign(id: string, e: React.MouseEvent) {
     e.stopPropagation()
-    if (!confirm('Delete this campaign? All call attempts will also be removed.')) return
+    if (!confirm(t('tenantOutbound.messages.deleteConfirm'))) return
     try {
       await apiFetch(`/api/outbound-campaigns/${id}`, { method: 'DELETE' })
-      onMsg('success', 'Campaign deleted.')
+      onMsg('success', t('tenantOutbound.messages.deleteSuccess'))
       reload()
     } catch (err) {
-      onMsg('error', err instanceof Error ? err.message : 'Delete failed')
+      onMsg('error', err instanceof Error ? err.message : t('tenantOutbound.messages.deleteFailed'))
     }
   }
 
-  if (loading) return <div className="text-sm text-gray-500 py-8 text-center">Loading…</div>
+  if (loading) return <div className="text-sm text-gray-500 py-8 text-center">{t('tenantOutbound.loading')}</div>
   if (error)   return <div className="text-sm text-red-600 py-8 text-center">{error}</div>
 
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <button onClick={() => setShowNew(true)} className="btn-primary">+ New campaign</button>
+        <button onClick={() => setShowNew(true)} className="btn-primary">{t('tenantOutbound.actions.newCampaign')}</button>
       </div>
 
       {showNew && (
         <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-900">New outbound campaign</h2>
+          <h2 className="text-sm font-semibold text-gray-900">{t('tenantOutbound.list.newHeading')}</h2>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Campaign name</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('tenantOutbound.list.form.name')}</label>
             <input
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               className={inp}
-              placeholder="Re-engagement call — Q2"
+              placeholder={t('tenantOutbound.list.form.namePlaceholder')}
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Description (optional)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{t('tenantOutbound.list.form.description')}</label>
             <input
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               className={inp}
-              placeholder="Brief description of the campaign goal"
+              placeholder={t('tenantOutbound.list.form.descriptionPlaceholder')}
             />
           </div>
           <div className="flex gap-3">
             <button onClick={createCampaign} disabled={saving} className="btn-primary">
-              {saving ? 'Creating…' : 'Create campaign'}
+              {saving ? t('tenantOutbound.actions.creating') : t('tenantOutbound.actions.createCampaign')}
             </button>
-            <button onClick={() => setShowNew(false)} className="btn-ghost">Cancel</button>
+            <button onClick={() => setShowNew(false)} className="btn-ghost">{t('tenantOutbound.actions.cancel')}</button>
           </div>
         </div>
       )}
 
       {(campaigns ?? []).length === 0 && !showNew && (
         <div className="py-16 text-center text-sm text-gray-400 border border-dashed border-gray-200 rounded-xl">
-          No outbound campaigns yet.<br />Create one to start making calls.
+          {t('tenantOutbound.list.empty.line1')}<br />{t('tenantOutbound.list.empty.line2')}
         </div>
       )}
 
@@ -246,15 +239,17 @@ function CampaignList({
               <p className="text-xs text-gray-500 line-clamp-2">{c.description}</p>
             )}
             <div className="flex items-center justify-between pt-1">
-              <span className="text-xs text-gray-400">{c._count.attempts} contact{c._count.attempts !== 1 ? 's' : ''}</span>
+              <span className="text-xs text-gray-400">
+                {t(c._count.attempts === 1 ? 'tenantOutbound.list.card.contact' : 'tenantOutbound.list.card.contacts', { count: c._count.attempts })}
+              </span>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-400">{new Date(c.createdAt).toLocaleDateString()}</span>
+                <span className="text-xs text-gray-400">{new Date(c.createdAt).toLocaleDateString(dateLocale)}</span>
                 {!['RUNNING', 'COMPLETED'].includes(c.status) && (
                   <button
                     onClick={e => deleteCampaign(c.id, e)}
                     className="text-xs text-red-400 hover:text-red-600 transition-colors"
                   >
-                    Delete
+                    {t('tenantOutbound.actions.delete')}
                   </button>
                 )}
               </div>
@@ -270,12 +265,17 @@ function CampaignList({
 function CampaignDetail({
   campaign: initial,
   onMsg,
-  onBack,
+  onBack: _onBack,
 }: {
   campaign: OutboundCampaign
   onMsg: (t: 'success' | 'error', m: string) => void
   onBack: () => void
 }) {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
+  void _onBack
+
   const { data: campaign, loading: cLoading, reload: reloadCampaign } =
     useApi<OutboundCampaign>(`/api/outbound-campaigns/${initial.id}`)
 
@@ -313,31 +313,41 @@ function CampaignDetail({
     return () => clearInterval(id)
   }, [current.status, reloadAttempts, reloadCampaign])
 
+  function outcomeLabel(code: string): string {
+    // OUTCOME_LABELS keys map to translation keys under tenantOutbound.outcomeLabels.*
+    const known = ['answered','busy','no_answer','voicemail','failed','canceled','campaign_canceled','dispatch_error','no_phone']
+    return known.includes(code) ? t(`tenantOutbound.outcomeLabels.${code}`) : code
+  }
+
   async function doAction(action: 'start' | 'pause' | 'cancel') {
     setActing(action)
     try {
       await apiFetch(`/api/outbound-campaigns/${current.id}/${action}`, { method: 'POST' })
-      onMsg('success', `Campaign ${action === 'start' ? 'started' : action === 'pause' ? 'paused' : 'canceled'}.`)
+      const msgKey =
+        action === 'start' ? 'tenantOutbound.messages.campaignStarted' :
+        action === 'pause' ? 'tenantOutbound.messages.campaignPaused' :
+        'tenantOutbound.messages.campaignCanceled'
+      onMsg('success', t(msgKey))
       reloadCampaign()
       reloadAttempts()
     } catch (err) {
-      onMsg('error', err instanceof Error ? err.message : 'Action failed')
+      onMsg('error', err instanceof Error ? err.message : t('tenantOutbound.messages.actionFailed'))
     } finally { setActing(null) }
   }
 
   async function saveEdit() {
-    if (!editForm.name.trim()) { onMsg('error', 'Campaign name is required.'); return }
+    if (!editForm.name.trim()) { onMsg('error', t('tenantOutbound.messages.nameRequired')); return }
     setSaving(true)
     try {
       await apiFetch(`/api/outbound-campaigns/${current.id}`, {
         method: 'PATCH',
         body: JSON.stringify({ name: editForm.name.trim(), description: editForm.description.trim() || undefined }),
       })
-      onMsg('success', 'Campaign updated.')
+      onMsg('success', t('tenantOutbound.messages.updateSuccess'))
       setEditing(false)
       reloadCampaign()
     } catch (err) {
-      onMsg('error', err instanceof Error ? err.message : 'Update failed')
+      onMsg('error', err instanceof Error ? err.message : t('tenantOutbound.messages.updateFailed'))
     } finally { setSaving(false) }
   }
 
@@ -349,14 +359,15 @@ function CampaignDetail({
         method: 'POST',
         body: JSON.stringify({ contactIds: Array.from(selected) }),
       }) as { data: { added: number } }
-      onMsg('success', `${result.data.added} contact${result.data.added !== 1 ? 's' : ''} added.`)
+      const added = result.data.added
+      onMsg('success', t(added === 1 ? 'tenantOutbound.messages.contactsAdded' : 'tenantOutbound.messages.contactsAddedPlural', { count: added }))
       setSelected(new Set())
       setShowPicker(false)
       setSearch('')
       reloadCampaign()
       reloadAttempts()
     } catch (err) {
-      onMsg('error', err instanceof Error ? err.message : 'Failed to add contacts')
+      onMsg('error', err instanceof Error ? err.message : t('tenantOutbound.messages.addContactsFailed'))
     } finally { setAdding(false) }
   }
 
@@ -366,7 +377,7 @@ function CampaignDetail({
       reloadAttempts()
       reloadCampaign()
     } catch (err) {
-      onMsg('error', err instanceof Error ? err.message : 'Remove failed')
+      onMsg('error', err instanceof Error ? err.message : t('tenantOutbound.messages.removeFailed'))
     }
   }
 
@@ -383,7 +394,9 @@ function CampaignDetail({
   const canPause  = current.status === 'RUNNING'
   const canCancel = !['COMPLETED', 'CANCELED'].includes(current.status)
 
-  if (cLoading) return <div className="text-sm text-gray-500 py-8 text-center">Loading…</div>
+  if (cLoading) return <div className="text-sm text-gray-500 py-8 text-center">{t('tenantOutbound.loading')}</div>
+
+  const unknownLabel = t('tenantOutbound.attempts.unknown')
 
   return (
     <div className="space-y-6">
@@ -395,19 +408,19 @@ function CampaignDetail({
               value={editForm.name}
               onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
               className={inp}
-              placeholder="Campaign name"
+              placeholder={t('tenantOutbound.detail.edit.namePlaceholder')}
             />
             <input
               value={editForm.description}
               onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
               className={inp}
-              placeholder="Description (optional)"
+              placeholder={t('tenantOutbound.detail.edit.descriptionPlaceholder')}
             />
             <div className="flex gap-3">
               <button onClick={saveEdit} disabled={saving} className="btn-primary">
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? t('tenantOutbound.actions.saving') : t('tenantOutbound.actions.save')}
               </button>
-              <button onClick={() => setEditing(false)} className="btn-ghost">Cancel</button>
+              <button onClick={() => setEditing(false)} className="btn-ghost">{t('tenantOutbound.actions.cancel')}</button>
             </div>
           </div>
         ) : (
@@ -424,11 +437,11 @@ function CampaignDetail({
             <div className="flex items-center gap-2 flex-shrink-0">
               {!['RUNNING', 'COMPLETED', 'CANCELED'].includes(current.status) && (
                 <button onClick={() => { setEditForm({ name: current.name, description: current.description ?? '' }); setEditing(true) }}
-                  className="btn-ghost text-xs">Edit</button>
+                  className="btn-ghost text-xs">{t('tenantOutbound.actions.edit')}</button>
               )}
-              {canStart  && <button onClick={() => doAction('start')}  disabled={!!acting} className="btn-primary text-sm">{acting === 'start'  ? 'Starting…' : '▶ Start'}</button>}
-              {canPause  && <button onClick={() => doAction('pause')}  disabled={!!acting} className="btn-secondary text-sm">{acting === 'pause'  ? 'Pausing…' : '⏸ Pause'}</button>}
-              {canCancel && <button onClick={() => doAction('cancel')} disabled={!!acting} className="btn-danger text-sm">{acting === 'cancel' ? 'Canceling…' : 'Cancel'}</button>}
+              {canStart  && <button onClick={() => doAction('start')}  disabled={!!acting} className="btn-primary text-sm">{acting === 'start'  ? t('tenantOutbound.actions.starting') : t('tenantOutbound.actions.start')}</button>}
+              {canPause  && <button onClick={() => doAction('pause')}  disabled={!!acting} className="btn-secondary text-sm">{acting === 'pause'  ? t('tenantOutbound.actions.pausing') : t('tenantOutbound.actions.pause')}</button>}
+              {canCancel && <button onClick={() => doAction('cancel')} disabled={!!acting} className="btn-danger text-sm">{acting === 'cancel' ? t('tenantOutbound.actions.canceling') : t('tenantOutbound.actions.cancelAction')}</button>}
             </div>
           </div>
         )}
@@ -437,7 +450,7 @@ function CampaignDetail({
         {totalAttempts > 0 && (
           <div className="pt-2">
             <div className="flex justify-between text-xs text-gray-500 mb-1">
-              <span>{completed + failed} of {totalAttempts} done</span>
+              <span>{t('tenantOutbound.detail.progress.doneOf', { done: completed + failed, total: totalAttempts })}</span>
               <span>{Math.round(((completed + failed) / totalAttempts) * 100)}%</span>
             </div>
             <div className="h-2 rounded-full overflow-hidden bg-gray-100">
@@ -450,7 +463,7 @@ function CampaignDetail({
               />
             </div>
             {current.status === 'RUNNING' && (
-              <p className="text-xs text-gray-400 mt-1">Live — refreshing every 5s</p>
+              <p className="text-xs text-gray-400 mt-1">{t('tenantOutbound.detail.progress.live')}</p>
             )}
           </div>
         )}
@@ -458,11 +471,11 @@ function CampaignDetail({
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 border-t border-gray-100">
           {[
-            { label: 'Total contacts', value: totalAttempts },
-            { label: 'Answered', value: answered },
-            { label: 'Pending', value: pending + dialing },
-            { label: 'Failed / No answer', value: failed },
-            { label: 'Completed', value: completed },
+            { label: t('tenantOutbound.detail.stats.totalContacts'), value: totalAttempts },
+            { label: t('tenantOutbound.detail.stats.answered'), value: answered },
+            { label: t('tenantOutbound.detail.stats.pending'), value: pending + dialing },
+            { label: t('tenantOutbound.detail.stats.failedNoAnswer'), value: failed },
+            { label: t('tenantOutbound.detail.stats.completed'), value: completed },
           ].map(({ label, value }) => (
             <div key={label} className="text-center">
               <p className="text-xl font-bold text-gray-900">{value}</p>
@@ -474,8 +487,11 @@ function CampaignDetail({
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
-        {([['contacts', 'Contacts & Attempts'], ['results', 'Results Summary']] as const).map(([v, label]) => (
-          <button key={v} onClick={() => setTab(v)}
+        {([
+          ['contacts', t('tenantOutbound.detail.tabs.contacts')],
+          ['results',  t('tenantOutbound.detail.tabs.results')],
+        ] as const).map(([v, label]) => (
+          <button key={v} onClick={() => setTab(v as 'contacts' | 'results')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === v ? 'border-teal-600 text-teal-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             {label}
           </button>
@@ -488,7 +504,7 @@ function CampaignDetail({
           {['DRAFT', 'PAUSED'].includes(current.status) && (
             <div>
               <button onClick={() => setShowPicker(!showPicker)} className="btn-secondary text-sm">
-                {showPicker ? 'Close contact picker' : '+ Add contacts'}
+                {showPicker ? t('tenantOutbound.actions.closePicker') : t('tenantOutbound.actions.addContacts')}
               </button>
             </div>
           )}
@@ -497,10 +513,12 @@ function CampaignDetail({
           {showPicker && (
             <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-900">Select contacts to add</p>
+                <p className="text-sm font-semibold text-gray-900">{t('tenantOutbound.picker.heading')}</p>
                 {selected.size > 0 && (
                   <button onClick={addContacts} disabled={adding} className="btn-primary text-sm">
-                    {adding ? 'Adding…' : `Add ${selected.size} contact${selected.size !== 1 ? 's' : ''}`}
+                    {adding
+                      ? t('tenantOutbound.picker.adding')
+                      : t(selected.size === 1 ? 'tenantOutbound.picker.addCount' : 'tenantOutbound.picker.addCountPlural', { count: selected.size })}
                   </button>
                 )}
               </div>
@@ -508,13 +526,13 @@ function CampaignDetail({
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search by name, phone, or email…"
+                placeholder={t('tenantOutbound.picker.searchPlaceholder')}
                 className={inp}
               />
-              {contactsLoading && <p className="text-sm text-gray-400">Loading contacts…</p>}
+              {contactsLoading && <p className="text-sm text-gray-400">{t('tenantOutbound.picker.loadingContacts')}</p>}
               <div className="max-h-64 overflow-y-auto space-y-1">
                 {allContacts.length === 0 && !contactsLoading && (
-                  <p className="text-sm text-gray-400 py-4 text-center">No contacts found.</p>
+                  <p className="text-sm text-gray-400 py-4 text-center">{t('tenantOutbound.picker.noResults')}</p>
                 )}
                 {allContacts.map(c => {
                   const alreadyAdded = attemptList.some(a => a.contact.id === c.id)
@@ -537,10 +555,10 @@ function CampaignDetail({
                         className="rounded border-gray-300 text-teal-600"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{contactName(c)}</p>
+                        <p className="text-sm font-medium text-gray-900 truncate">{contactNameOf(c, unknownLabel)}</p>
                         <p className="text-xs text-gray-400 truncate">{c.phoneE164 ?? c.email ?? '—'}</p>
                       </div>
-                      {alreadyAdded && <span className="text-xs text-gray-400">Added</span>}
+                      {alreadyAdded && <span className="text-xs text-gray-400">{t('tenantOutbound.picker.alreadyAdded')}</span>}
                     </label>
                   )
                 })}
@@ -549,10 +567,10 @@ function CampaignDetail({
           )}
 
           {/* Attempts table */}
-          {aLoading && <div className="text-sm text-gray-500 py-4 text-center">Loading…</div>}
+          {aLoading && <div className="text-sm text-gray-500 py-4 text-center">{t('tenantOutbound.loading')}</div>}
           {!aLoading && attemptList.length === 0 && (
             <div className="py-12 text-center text-sm text-gray-400 border border-dashed border-gray-200 rounded-xl">
-              No contacts added yet. Add contacts to begin the campaign.
+              {t('tenantOutbound.attempts.empty')}
             </div>
           )}
           {attemptList.length > 0 && (
@@ -560,7 +578,15 @@ function CampaignDetail({
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    {['Contact', 'Phone', 'Status', 'Outcome', 'Started', 'Duration', 'Actions'].map(h => (
+                    {[
+                      t('tenantOutbound.attempts.headers.contact'),
+                      t('tenantOutbound.attempts.headers.phone'),
+                      t('tenantOutbound.attempts.headers.status'),
+                      t('tenantOutbound.attempts.headers.outcome'),
+                      t('tenantOutbound.attempts.headers.started'),
+                      t('tenantOutbound.attempts.headers.duration'),
+                      t('tenantOutbound.attempts.headers.actions'),
+                    ].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                     ))}
                   </tr>
@@ -572,15 +598,15 @@ function CampaignDetail({
                       : null
                     return (
                       <tr key={a.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-medium text-gray-900">{contactName(a.contact)}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900">{contactNameOf(a.contact, unknownLabel)}</td>
                         <td className="px-4 py-3 text-gray-500 font-mono text-xs">{a.contact.phoneE164 ?? '—'}</td>
                         <td className="px-4 py-3"><Badge label={a.status} color={ATTEMPT_STATUS_COLORS[a.status]} /></td>
-                        <td className="px-4 py-3 text-gray-600 text-xs">{a.outcomeCode ? (OUTCOME_LABELS[a.outcomeCode] ?? a.outcomeCode) : '—'}</td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">{a.outcomeCode ? outcomeLabel(a.outcomeCode) : '—'}</td>
                         <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                          {a.startedAt ? new Date(a.startedAt).toLocaleString() : '—'}
+                          {a.startedAt ? new Date(a.startedAt).toLocaleString(dateLocale) : '—'}
                         </td>
                         <td className="px-4 py-3 text-gray-500 text-xs">
-                          {durationSecs != null ? `${durationSecs}s` : '—'}
+                          {durationSecs != null ? t('tenantOutbound.attempts.duration', { secs: durationSecs }) : '—'}
                         </td>
                         <td className="px-4 py-3">
                           {a.conversationId && (
@@ -588,7 +614,7 @@ function CampaignDetail({
                               href={`/conversations?id=${a.conversationId}`}
                               className="text-xs text-blue-500 hover:text-blue-700 transition-colors mr-3"
                             >
-                              View →
+                              {t('tenantOutbound.actions.view')}
                             </Link>
                           )}
                           {a.status === 'PENDING' && ['DRAFT', 'PAUSED'].includes(current.status) && (
@@ -596,7 +622,7 @@ function CampaignDetail({
                               onClick={() => removeContact(a.contact.id)}
                               className="text-xs text-red-400 hover:text-red-600 transition-colors"
                             >
-                              Remove
+                              {t('tenantOutbound.actions.remove')}
                             </button>
                           )}
                         </td>
@@ -614,9 +640,9 @@ function CampaignDetail({
         <div className="space-y-6">
           {/* Outcome breakdown */}
           <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Outcome Breakdown</h3>
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('tenantOutbound.results.outcomeBreakdown')}</h3>
             {totalAttempts === 0 ? (
-              <p className="text-sm text-gray-400">No attempts yet.</p>
+              <p className="text-sm text-gray-400">{t('tenantOutbound.results.noAttempts')}</p>
             ) : (
               <div className="space-y-3">
                 {Object.entries(
@@ -628,7 +654,7 @@ function CampaignDetail({
                 ).sort((a, b) => b[1] - a[1]).map(([code, count]) => (
                   <div key={code} className="flex items-center gap-3">
                     <span className="text-xs text-gray-600 w-36 flex-shrink-0">
-                      {OUTCOME_LABELS[code] ?? code}
+                      {outcomeLabel(code)}
                     </span>
                     <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
                       <div
@@ -650,12 +676,18 @@ function CampaignDetail({
           {attemptList.filter(a => a.status === 'COMPLETED').length > 0 && (
             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
               <div className="px-5 py-3 border-b border-gray-100">
-                <p className="text-sm font-semibold text-gray-900">Answered calls</p>
+                <p className="text-sm font-semibold text-gray-900">{t('tenantOutbound.results.answeredCalls')}</p>
               </div>
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    {['Contact', 'Phone', 'Outcome', 'Duration', 'Call time'].map(h => (
+                    {[
+                      t('tenantOutbound.attempts.headers.contact'),
+                      t('tenantOutbound.attempts.headers.phone'),
+                      t('tenantOutbound.attempts.headers.outcome'),
+                      t('tenantOutbound.attempts.headers.duration'),
+                      t('tenantOutbound.attempts.headers.callTime'),
+                    ].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
                     ))}
                   </tr>
@@ -667,12 +699,12 @@ function CampaignDetail({
                       : null
                     return (
                       <tr key={a.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-medium text-gray-900">{contactName(a.contact)}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900">{contactNameOf(a.contact, unknownLabel)}</td>
                         <td className="px-4 py-3 text-gray-500 font-mono text-xs">{a.contact.phoneE164 ?? '—'}</td>
-                        <td className="px-4 py-3 text-xs text-gray-600">{a.outcomeCode ? (OUTCOME_LABELS[a.outcomeCode] ?? a.outcomeCode) : '—'}</td>
-                        <td className="px-4 py-3 text-xs text-gray-500">{durationSecs != null ? `${durationSecs}s` : '—'}</td>
+                        <td className="px-4 py-3 text-xs text-gray-600">{a.outcomeCode ? outcomeLabel(a.outcomeCode) : '—'}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{durationSecs != null ? t('tenantOutbound.attempts.duration', { secs: durationSecs }) : '—'}</td>
                         <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                          {a.startedAt ? new Date(a.startedAt).toLocaleString() : '—'}
+                          {a.startedAt ? new Date(a.startedAt).toLocaleString(dateLocale) : '—'}
                         </td>
                       </tr>
                     )

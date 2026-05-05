@@ -1,0 +1,2356 @@
+{
+  "nav": {
+    "groups": {
+      "overview": "Resumen",
+      "configure": "Configurar",
+      "operations": "Operaciones",
+      "account": "Cuenta",
+      "platform": "Plataforma",
+      "management": "Gestión"
+    },
+    "items": {
+      "dashboard": "Panel",
+      "getStarted": "Comenzar",
+      "businessDna": "ADN del negocio",
+      "prompts": "Prompts",
+      "agents": "Agentes",
+      "agentStudio": "Estudio de agentes",
+      "channels": "Canales",
+      "integrations": "Integraciones",
+      "phoneNumbers": "Números de teléfono",
+      "smsCompliance": "Cumplimiento SMS",
+      "appointments": "Citas",
+      "staff": "Directorio de personal",
+      "contacts": "Contactos",
+      "campaigns": "Campañas",
+      "outbound": "Llamadas salientes",
+      "conversations": "Conversaciones",
+      "usage": "Uso",
+      "billing": "Facturación",
+      "settings": "Ajustes",
+      "help": "Ayuda",
+      "profile": "Perfil",
+      "tenants": "Inquilinos",
+      "plans": "Planes",
+      "pricing": "Precios",
+      "partners": "Partners",
+      "twilioLogs": "Registros de llamadas Twilio",
+      "errors": "Errores",
+      "systemSettings": "Ajustes del sistema",
+      "platformStatus": "Estado de la plataforma"
+    }
+  },
+  "partnerNav": {
+    "dashboard": "Panel",
+    "referrals": "Enlaces de referido",
+    "commissions": "Comisiones",
+    "payouts": "Pagos",
+    "profile": "Perfil"
+  },
+  "actions": {
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "update": "Actualizar",
+    "submit": "Enviar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "continue": "Continuar",
+    "loading": "Cargando…",
+    "signOut": "Cerrar sesión",
+    "logIn": "Iniciar sesión",
+    "signUp": "Crear cuenta",
+    "copy": "Copiar",
+    "copied": "¡Copiado!",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "refresh": "Actualizar",
+    "export": "Exportar",
+    "import": "Importar",
+    "upload": "Subir",
+    "download": "Descargar"
+  },
+  "common": {
+    "yes": "Sí",
+    "no": "No",
+    "noneYet": "Ninguno todavía",
+    "noResults": "Sin resultados",
+    "required": "Obligatorio",
+    "optional": "Opcional",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "enabled": "Habilitado",
+    "disabled": "Deshabilitado",
+    "pending": "Pendiente",
+    "approved": "Aprobado",
+    "completed": "Completado",
+    "failed": "Fallido",
+    "all": "Todos",
+    "name": "Nombre",
+    "email": "Correo",
+    "phone": "Teléfono",
+    "status": "Estado",
+    "date": "Fecha",
+    "time": "Hora",
+    "actions": "Acciones",
+    "settings": "Ajustes",
+    "details": "Detalles",
+    "error": "Error",
+    "success": "Éxito",
+    "warning": "Advertencia"
+  },
+  "profile": {
+    "title": "Perfil",
+    "personalInfo": "Información personal",
+    "personalInfoDesc": "Tu nombre aparece en los registros de auditoría y vistas de administrador.",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "username": "Nombre de usuario",
+    "language": "Idioma",
+    "languageDesc": "Cambia el panel entre inglés y español. Se guarda en tu cuenta y te sigue en todos tus dispositivos.",
+    "languageEn": "English",
+    "languageEs": "Español",
+    "languageSavedEn": "Idioma del panel guardado como Inglés.",
+    "languageSavedEs": "Idioma del panel guardado como Español.",
+    "password": "Contraseña",
+    "passwordDesc": "Elige una contraseña fuerte — mínimo 8 caracteres.",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirmar nueva contraseña",
+    "changePassword": "Cambiar contraseña",
+    "profileUpdated": "Perfil actualizado.",
+    "passwordUpdated": "Contraseña actualizada.",
+    "saveChanges": "Guardar cambios",
+    "subtitle": "Administra los detalles de tu cuenta y la seguridad.",
+    "firstNamePlaceholder": "Juana",
+    "lastNamePlaceholder": "Pérez",
+    "usernamePlaceholder": "juanaperez",
+    "usernameHelp": "Solo letras, números y guiones bajos. Se usa para iniciar sesión.",
+    "emailLabel": "Correo electrónico",
+    "emailHelp": "Contacta a soporte para cambiar tu correo electrónico.",
+    "saving": "Guardando…",
+    "lastLoginAt": "Último inicio de sesión {when}",
+    "passwordSectionDesc": "Después de cambiar tu contraseña, se cerrarán todas tus demás sesiones activas.",
+    "newPasswordPlaceholder": "Al menos 8 caracteres",
+    "updating": "Actualizando…",
+    "passwordsDoNotMatch": "Las contraseñas nuevas no coinciden",
+    "passwordChangedAndSignedOut": "Contraseña cambiada. Se cerraron tus demás sesiones.",
+    "failedToSave": "No se pudo guardar",
+    "failedToChangePassword": "No se pudo cambiar la contraseña",
+    "uploadingLabel": "Subiendo…",
+    "clickToUploadLogo": "Haz clic para subir el logo",
+    "clickLogoToUploadHint": "Haz clic en el logo para subirlo o reemplazarlo",
+    "unsupportedLogoType": "Tipo no admitido. Usa PNG, JPG o WebP.",
+    "logoTooLarge": "El logo debe pesar menos de 2 MB.",
+    "uploadFailed": "La subida falló",
+    "languageActive": "✓ Activo",
+    "languageActiveEs": "✓ Activo",
+    "languageSwitchToEn": "Switch to English",
+    "languageSwitchToEs": "Cambiar a Español",
+    "billingTitle": "Facturación y suscripción",
+    "billingDesc": "Administra tu plan, método de pago e historial de facturación a través del portal de Stripe.",
+    "noActivePlan": "Sin plan activo",
+    "noSubscription": "Sin suscripción",
+    "billedInterval": " · facturado {interval}",
+    "trialBadge": "Prueba",
+    "manageBillingButton": "Administrar facturación y método de pago →",
+    "stripeNote": "Los métodos de pago, facturas y detalles de tarjeta se administran de forma segura a través de Stripe. Nunca almacenamos números de tarjeta.",
+    "failedToOpenBillingPortal": "No se pudo abrir el portal de facturación",
+    "failed": "Falló",
+    "accountTitle": "Cuenta",
+    "accountId": "ID de cuenta",
+    "memberSince": "Miembro desde",
+    "statusLabel": "Estado"
+  },
+  "auth": {
+    "welcome": "Bienvenido",
+    "welcomeBack": "Bienvenido de vuelta",
+    "emailOrUsername": "Correo o nombre de usuario",
+    "password": "Contraseña",
+    "rememberMe": "Recuérdame",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "noAccount": "¿No tienes una cuenta?",
+    "haveAccount": "¿Ya tienes una cuenta?",
+    "createAccount": "Crear cuenta",
+    "businessName": "Nombre del negocio",
+    "loggingIn": "Iniciando sesión…",
+    "creatingAccount": "Creando cuenta…"
+  },
+  "empty": {
+    "noConversations": "Aún no hay conversaciones. Las llamadas y sesiones del widget aparecerán aquí en tiempo real.",
+    "noContacts": "Aún no hay contactos. Importa un CSV o agrega contactos manualmente.",
+    "noAppointments": "Aún no hay citas. Las reservas hechas por tus agentes IA aparecerán aquí.",
+    "noCampaigns": "Aún no hay campañas. Crea una para iniciar la automatización de seguimiento por etiquetas.",
+    "noPhoneNumbers": "Aún no hay números de teléfono. Agrega un número de Twilio para empezar a recibir llamadas."
+  },
+  "billing": {
+    "title": "Facturación",
+    "currentPlan": "Plan actual",
+    "noActivePlan": "Sin plan activo",
+    "upgrade": "Mejorar plan",
+    "downgrade": "Bajar de plan",
+    "manageBilling": "Administrar facturación",
+    "viewInvoices": "Ver facturas"
+  },
+  "errors": {
+    "generic": "Algo salió mal. Inténtalo de nuevo.",
+    "network": "No se pudo conectar. Verifica tu conexión e inténtalo de nuevo.",
+    "unauthorized": "Tu sesión expiró. Inicia sesión de nuevo.",
+    "validation": "Revisa los datos e inténtalo de nuevo.",
+    "notFound": "No encontrado.",
+    "saveFailed": "No se pudo guardar."
+  },
+  "lang": {
+    "english": "English",
+    "spanish": "Español",
+    "switchTo": "Cambiar a {lang}"
+  },
+  "partnerReferrals": {
+    "title": "Enlaces de referido",
+    "subtitle": "Comparte tu enlace para ganar comisiones por cada conversión.",
+    "primaryLinkLabel": "TU ENLACE DE REFERIDO PRINCIPAL",
+    "referralCode": "Código de referido:",
+    "notApprovedNotice": "Tu cuenta de partner debe ser aprobada antes de poder acceder a tu enlace de referido.",
+    "customLinks": "Enlaces personalizados",
+    "activeCount": "{n} activo(s)",
+    "customLinksDesc": "Crea tus propios slugs nombrados (p. ej. {a}, {b}) para rastrear campañas por separado. Cada clic te sigue generando comisión en tu cuenta principal.",
+    "label": "ETIQUETA",
+    "labelPlaceholder": "Podcast de Sara",
+    "labelHelp": "Nombre interno — lo que verás en la lista",
+    "slug": "SLUG",
+    "slugAutofilled": "se rellena automáticamente desde la etiqueta",
+    "slugPlaceholder": "mi-campaña",
+    "slugHelp": "Edítalo si quieres un slug propio · 3–50 caracteres · a–z, 0–9, guiones",
+    "notesLabel": "NOTAS (opcional)",
+    "notesPlaceholder": "Enlace en notas del programa",
+    "hintNeedLabel": "Agrega una etiqueta para activar el botón",
+    "hintNeedSlug": "Agrega un slug para activar el botón",
+    "hintSlugTooShort": "El slug debe tener al menos 3 caracteres",
+    "hintReady": "Listo — haz clic para crearlo.",
+    "createButton": "Crear enlace personalizado",
+    "creating": "Creando…",
+    "noCustomLinks": "Aún no hay enlaces personalizados. Crea uno arriba para rastrear una campaña específica.",
+    "createError": "No se pudo crear el enlace",
+    "deleteConfirm": "¿Eliminar este enlace personalizado? Las estadísticas pasadas de clics se suman a tu total general; el slug queda disponible nuevamente.",
+    "tableSlug": "Slug",
+    "tableLabel": "Etiqueta",
+    "tableClicks": "Clics",
+    "tableActions": "Acciones",
+    "archivedBadge": "Archivado",
+    "copyUrl": "Copiar URL",
+    "archive": "Archivar",
+    "unarchive": "Desarchivar",
+    "delete": "Eliminar",
+    "recentClicks": "Clics recientes",
+    "noClicks": "Aún no hay clics. Comparte tu enlace para empezar a rastrear.",
+    "clicksDate": "Fecha",
+    "clicksLanding": "Página de aterrizaje",
+    "clicksReferrer": "Referente",
+    "clicksConverted": "Convertido"
+  },
+  "partnerCommissions": {
+    "title": "Comisiones",
+    "subtitle": "Ganancias generadas a partir de tus referidos.",
+    "noCommissions": "Aún no hay comisiones. Las comisiones se crean cuando tus referidos se suscriben.",
+    "tableDate": "Fecha",
+    "tableDescription": "Descripción",
+    "tableAmount": "Monto",
+    "tableStatus": "Estado",
+    "tablePaysOn": "Se paga el",
+    "tablePaid": "Pagado",
+    "prev": "← Anterior",
+    "next": "Siguiente →",
+    "pageOf": "Página {page} de {total}",
+    "statusPill": {
+      "pending": "Pendiente",
+      "approved": "Aprobado",
+      "paid": "Pagado",
+      "hold": "En retención",
+      "reversed": "Revertido"
+    },
+    "explainer": {
+      "title": "Cómo cobras",
+      "section1Title": "1. Retención de 30 días (ventana de reembolso)",
+      "section1": "Cuando un cliente se suscribe, tu comisión queda retenida por 30 días. Si el cliente pide reembolso dentro de esa ventana, la comisión se revierte y no la verás. Después de 30 días, la comisión queda elegible para pago. Las renovaciones recurrentes de clientes existentes no llevan retención.",
+      "section2Title": "2. Pago automático el 1 y el 15",
+      "section2": "Las comisiones elegibles se agrupan y se pagan automáticamente dos veces al mes. Si el 1 o el 15 cae en fin de semana, el pago se ejecuta el siguiente día hábil. La fecha exacta de pago de cada comisión aparece en la columna \"Se paga el\" de arriba.",
+      "section3Title": "3. Las comisiones de Stripe se descuentan de tu pago",
+      "section3Intro": "Te pagamos vía depósito directo de Stripe a tu banco. Stripe cobra dos comisiones que se descuentan de cada pago:",
+      "section3Bullet1": "**$2 / mes** — comisión mensual de Stripe Connect Express, cobrada una vez al mes en tu primer pago (solo en los meses que efectivamente recibas un pago).",
+      "section3Bullet2": "**~$0 ACH estándar** (liquidación de 1–3 días hábiles) o **1.5% (mín $0.50) instantáneo** si eliges depósito el mismo día.",
+      "exampleTitle": "Ejemplo práctico",
+      "exampleEarned": "Comisión ganada",
+      "exampleStripeFee": "− Comisión mensual Stripe Connect (primer pago del mes)",
+      "exampleAchFee": "− Comisión de transferencia ACH estándar",
+      "exampleNet": "Neto depositado en tu banco",
+      "exampleNote": "La comisión mensual de $2 solo se aplica una vez al mes — cada pago adicional del mismo mes va sin esa comisión (o solo con la de transferencia si eliges instantáneo).",
+      "minTitle": "Saldo mínimo",
+      "minBody": "Necesitas al menos **$50** en comisiones aprobadas para que se ejecute un ciclo de pago. Si tu saldo elegible está por debajo del mínimo en un 1 o un 15, se traslada al siguiente ciclo."
+    }
+  },
+  "partnerPayouts": {
+    "title": "Pagos",
+    "subtitle": "Solicita el pago de tu saldo de comisiones aprobadas.",
+    "availableBalance": "Saldo disponible",
+    "approvedOnly": "Solo comisiones aprobadas",
+    "payoutMethod": "Método de pago",
+    "notConfigured": "Sin configurar",
+    "submitting": "Enviando…",
+    "requestPayoutOf": "Solicitar pago de {amount}",
+    "needApproved": "Necesitas comisiones aprobadas antes de solicitar un pago.",
+    "history": "Historial de pagos",
+    "noRequests": "Aún no hay solicitudes de pago.",
+    "tableRequested": "Solicitado",
+    "tableAmount": "Monto",
+    "tableStatus": "Estado",
+    "tableReference": "Referencia",
+    "tableProcessed": "Procesado",
+    "requestFailed": "La solicitud de pago falló",
+    "connectFailed": "No se pudo iniciar la configuración de Stripe",
+    "needConnect": "Conecta tu cuenta de pagos Stripe antes de solicitar un pago.",
+    "connect": {
+      "providerName": "Stripe Connect Express",
+      "statusVerified": "Verificada — pagos habilitados",
+      "statusPending": "En revisión por Stripe",
+      "statusRestricted": "Acción requerida — completa la configuración",
+      "statusNotConnected": "No conectada",
+      "connectNow": "Conectar ahora",
+      "continueOnboarding": "Continuar configuración",
+      "updateDetails": "Actualizar datos de pago",
+      "starting": "Redirigiendo…"
+    },
+    "statusPill": {
+      "pending": "Pendiente",
+      "processing": "Procesando",
+      "paid": "Pagado",
+      "rejected": "Rechazado"
+    }
+  },
+  "partnerDashboard": {
+    "welcome": "Bienvenido",
+    "welcomeWithName": "Bienvenido {name}",
+    "commissionLine": "Ganas {pct}% de comisión recurrente por cada suscripción activa que refieres.",
+    "applyTitle": "Únete al Programa de Partners",
+    "applyDesc": "Gana comisiones refiriendo clientes a OrbisVoice. Una vez aprobado, recibirás un enlace de referido único y seguimiento en tiempo real.",
+    "applyButton": "Solicitar ser Partner",
+    "submitting": "Enviando…",
+    "applicationFailed": "La solicitud falló",
+    "pendingTitle": "Solicitud en revisión.",
+    "pendingDesc": "Te notificaremos por correo cuando tu cuenta de partner sea aprobada. Hasta entonces no podrás rastrear conversiones.",
+    "checklist": {
+      "title": "Lo que necesitas para cobrar",
+      "desc": "Completa estos pasos para empezar a recibir comisiones. Puedes ganar referidos antes de completarlos — el pago simplemente no se procesará hasta que todo esté listo.",
+      "activeTitle": "Cuenta de partner activa",
+      "activeDoneDetail": "Ya puedes compartir tu enlace de referido.",
+      "activePendingDetail": "Tu solicitud está en revisión.",
+      "payoutTitle": "Conecta tu cuenta de pagos",
+      "payoutDoneDetail": "Cuenta de pago Stripe verificada.",
+      "payoutTodoDetail": "Conecta tu banco de forma segura a través de Stripe para empezar a recibir comisiones.",
+      "payoutPendingDetail": "Stripe está revisando tus datos. Te avisaremos cuando los pagos estén habilitados.",
+      "connectNow": "Conectar ahora",
+      "connecting": "Redirigiendo…",
+      "taxTitle": "Envía información fiscal (W-9 / W-8BEN)",
+      "taxDoneDetail": "Registrada con Stripe — te enviarán un 1099-NEC al final del año si ganas $600+.",
+      "taxTodoDetail": "Se recopila automáticamente cuando conectas tu cuenta de pagos.",
+      "minTitle": "Gana al menos ${amount} en comisiones aprobadas",
+      "minDoneDetail": "Saldo mínimo de pago alcanzado. El próximo pago se envía el 1 o el 15.",
+      "minTodoDetail": "Actualmente tienes ${current} de ${target} necesarios. Las comisiones se liberan después de una retención de 30 días y se pagan el 1 o el 15 de cada mes.",
+      "minTodoNextPayoutDetail": "Actualmente tienes ${current} de ${target} necesarios. Próximo pago programado: {date}."
+    },
+    "last30Days": "Últimos 30 días",
+    "allTime": "Histórico",
+    "stats": {
+      "referrals": "Referidos",
+      "visits": "Visitas",
+      "conversionRate": "Tasa de conversión",
+      "unpaidEarnings": "Ganancias sin pagar",
+      "pendingApproved": "Pendiente + aprobado",
+      "paidEarnings": "Ganancias pagadas",
+      "totalEarnings": "Ganancias totales",
+      "lifetimeSub": "Histórico — cada comisión que has ganado",
+      "viewAll": "Ver todo"
+    },
+    "recentActivity": "Actividad reciente de referidos",
+    "noCommissions": "Aún no hay comisiones. Tus ganancias aparecerán aquí cuando tus referidos se suscriban.",
+    "table": {
+      "reference": "Referencia",
+      "amount": "Monto",
+      "description": "Descripción",
+      "status": "Estado",
+      "date": "Fecha"
+    },
+    "viewAllCommissions": "Ver todas las comisiones →",
+    "statusPill": {
+      "pending": "Pendiente",
+      "approved": "Aprobado",
+      "paid": "Pagado",
+      "hold": "En retención",
+      "reversed": "Revertido",
+      "cancelled": "Cancelado"
+    }
+  },
+  "tenantAppointments": {
+    "title": "Citas",
+    "subtitle": "Reservas creadas por tus agentes de voz.",
+    "totalLabel": "{n} en total",
+    "loadFailed": "No se pudieron cargar las citas.",
+    "defaultType": "Cita",
+    "empty": {
+      "heading": "Aún no hay citas",
+      "body": "Conecta tu cuenta de Google y activa un canal. Las citas reservadas por los agentes aparecerán aquí."
+    },
+    "statusPill": {
+      "confirmed": "Confirmada",
+      "pending": "Pendiente",
+      "rescheduled": "Reprogramada",
+      "canceled": "Cancelada",
+      "failed": "Fallida",
+      "noShow": "No se presentó",
+      "completed": "Completada"
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "canceling": "Cancelando…"
+    },
+    "confirm": {
+      "cancel": "¿Cancelar esta cita?"
+    },
+    "toast": {
+      "cancelSuccess": "Cita cancelada.",
+      "cancelFailed": "No se pudo cancelar",
+      "cancelException": "No se pudo cancelar la cita"
+    }
+  },
+  "tenantCampaigns": {
+    "title": "Campañas",
+    "subtitle": "Seguimientos automáticos por voz, confirmaciones y prospección — activados por etiquetas de contacto.",
+    "howItWorks": {
+      "title": "Cómo funcionan las campañas",
+      "step1Title": "Explora la biblioteca de plantillas",
+      "step1Body": "Elige una campaña prediseñada que se ajuste a tu negocio. Cada plantilla incluye un guion, etiqueta de activación, retraso y programación de reintentos.",
+      "step2Title": "Agrégala a Mis campañas",
+      "step2Body": "Haz clic en \"+ Agregar a Mis campañas\" para copiar la plantilla a tu cuenta. Personaliza el guion y la configuración para que coincidan con tu tono.",
+      "step3Title": "Activa la campaña",
+      "step3Body": "Activa el interruptor de la campaña. Solo realizará llamadas cuando esté activa — las campañas inactivas se guardan pero nunca se disparan.",
+      "step4Title": "Las etiquetas activan las llamadas",
+      "step4Body": "Cuando un contacto recibe la etiqueta de activación de la campaña (de forma manual o por el resultado de una llamada), se programa automáticamente una llamada de seguimiento."
+    },
+    "tabs": {
+      "mine": "Mis campañas",
+      "library": "Biblioteca de plantillas",
+      "enrollments": "Inscripciones"
+    },
+    "library": {
+      "loading": "Cargando plantillas…",
+      "searchPlaceholder": "Busca plantillas por nombre, descripción o etiqueta…",
+      "summaryInVertical": "{count} plantilla en {vertical}",
+      "summaryInVerticalPlural": "{count} plantillas en {vertical}",
+      "summaryResults": "{count} resultado para \"{query}\"",
+      "summaryResultsPlural": "{count} resultados para \"{query}\"",
+      "verticalCount": "{count} plantilla",
+      "verticalCountPlural": "{count} plantillas",
+      "noMatches": "Ninguna plantilla coincide con tu búsqueda.",
+      "delayHours": "{hours}h de retraso",
+      "retries": "{count} reintentos",
+      "hidePrompt": "▲ Ocultar guion",
+      "previewPrompt": "▼ Ver guion",
+      "addButton": "+ Agregar a Mis campañas",
+      "adding": "Agregando…",
+      "addedToast": "\"{name}\" se agregó a Mis campañas — personalízala y actívala desde ahí.",
+      "addFailed": "No se pudo agregar la campaña"
+    },
+    "verticals": {
+      "GENERAL": "General",
+      "LEGAL": "Legal",
+      "DENTAL": "Dental",
+      "MEDICAL": "Medicina / Clínica",
+      "FINANCIAL": "Servicios financieros",
+      "HOME_SERVICES": "Servicios para el hogar",
+      "AUTO_REPAIR": "Mecánica automotriz",
+      "REAL_ESTATE": "Bienes raíces",
+      "FITNESS": "Fitness y gimnasio",
+      "BEAUTY": "Belleza y bienestar",
+      "EDUCATION": "Educación",
+      "HOSPITALITY": "Hospitalidad",
+      "VETERINARY": "Veterinaria",
+      "CHILDCARE": "Guardería",
+      "ACCOUNTING": "Contabilidad / Impuestos",
+      "INSURANCE": "Seguros",
+      "PROPERTY_MANAGEMENT": "Administración de propiedades"
+    },
+    "mine": {
+      "loading": "Cargando…",
+      "newCampaign": "+ Nueva campaña",
+      "emptyTitle": "Aún no tienes campañas.",
+      "emptyHint": "Agrega una desde la biblioteca de plantillas o crea una personalizada.",
+      "selectPrompt": "Selecciona una campaña para editarla o crea una nueva.",
+      "enrolledCount": "{count} inscritos",
+      "editTitle": "Editar campaña",
+      "newTitle": "Nueva campaña",
+      "deleteConfirm": "¿Eliminar esta campaña? También se eliminarán las inscripciones existentes.",
+      "createdToast": "Campaña creada.",
+      "updatedToast": "Campaña actualizada.",
+      "deletedToast": "Campaña eliminada.",
+      "saveFailed": "No se pudo guardar",
+      "deleteFailed": "No se pudo eliminar",
+      "toggleFailed": "Falló",
+      "validation": {
+        "nameAndTagRequired": "El nombre y la etiqueta de activación son obligatorios.",
+        "atLeastOneChannel": "Activa al menos un canal (voz, SMS, correo o WhatsApp).",
+        "voicePromptRequired": "El guion de voz es obligatorio cuando la voz está activada.",
+        "smsBodyRequired": "El cuerpo del SMS es obligatorio cuando el SMS está activado.",
+        "emailFieldsRequired": "El asunto y el cuerpo del correo son obligatorios cuando el correo está activado."
+      },
+      "active": "Activa — se disparará con la etiqueta",
+      "inactive": "Inactiva — no se disparará",
+      "save": "Guardar campaña",
+      "saving": "Guardando…",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "deleting": "Eliminando…"
+    },
+    "form": {
+      "name": "Nombre de la campaña",
+      "namePlaceholder": "Seguimiento posterior al procedimiento",
+      "description": "Descripción (opcional)",
+      "descriptionPlaceholder": "Breve descripción de lo que hace esta campaña",
+      "channels": "Canales",
+      "channelsHint": "Elige los canales por los que esta campaña enviará. Cada canal activado envía de forma independiente cuando se dispara la activación.",
+      "triggerTag": "Etiqueta de activación",
+      "triggerTagHint": "La etiqueta de contacto que inicia esta campaña automáticamente.",
+      "triggerTagPlaceholder": "post-procedimiento",
+      "voicePrompt": "Guion de voz",
+      "voicePromptHint": "Lo que el agente dice en la llamada. Sé específico con el propósito y el tono. Variables disponibles: {firstName}, {fullName}, {businessName}, {businessPhone}, {appointmentDate}, {appointmentTime}.",
+      "voicePromptPlaceholder": "Estás llamando para dar seguimiento a la visita reciente del contacto…",
+      "smsBody": "Cuerpo del SMS",
+      "smsBodyHint": "Mensaje en texto plano. Usa {firstName}, {businessName}, etc. {count}/1600 caracteres.",
+      "smsBodyPlaceholder": "Hola {firstName}, soy {businessName} confirmando tu cita. Responde STOP para darte de baja.",
+      "emailSubject": "Asunto del correo",
+      "emailSubjectHint": "Variables: {firstName}, {businessName}, {appointmentDate}, {appointmentTime}.",
+      "emailSubjectPlaceholder": "Tu cita con {businessName} está confirmada",
+      "emailBody": "Cuerpo del correo",
+      "emailBodyHint": "Se permite HTML. Mismas variables que el asunto.",
+      "emailBodyPlaceholder": "Hola {firstName},\n\nNos vemos el {appointmentDate} a las {appointmentTime}.\n\n— El equipo de {businessName}",
+      "whatsappBody": "Cuerpo del mensaje de WhatsApp",
+      "whatsappBodyHint": "El envío por WhatsApp llega próximamente — el contenido queda guardado para cuando se lance.",
+      "whatsappBodyPlaceholder": "¡Hola {firstName}! Tu cita con {businessName} está confirmada para el {appointmentDate} a las {appointmentTime}.",
+      "delayHours": "Retraso (horas)",
+      "delayHoursHint": "Cuánto tiempo esperar después de aplicar la etiqueta antes de llamar.",
+      "maxRetries": "Reintentos máximos",
+      "maxRetriesHint": "Cuántas veces reintentar si no contestan.",
+      "retryInterval": "Intervalo entre reintentos (horas)"
+    },
+    "channels": {
+      "voice": "Llamada de voz",
+      "voiceSub": "El agente de IA llama al contacto",
+      "sms": "SMS / Texto",
+      "smsSub": "Mensaje de texto vía Twilio",
+      "email": "Correo",
+      "emailSub": "Correo desde la bandeja conectada",
+      "whatsapp": "WhatsApp",
+      "whatsappSub": "Mensaje de WhatsApp Business",
+      "comingSoon": "Próximamente"
+    },
+    "enrollments": {
+      "loading": "Cargando…",
+      "allStatuses": "Todos los estados",
+      "count": "{count} inscripciones",
+      "empty": "No se encontraron inscripciones.",
+      "none": "—",
+      "table": {
+        "contact": "Contacto",
+        "campaign": "Campaña",
+        "tag": "Etiqueta",
+        "status": "Estado",
+        "triggered": "Activada",
+        "scheduledCall": "Llamada programada",
+        "attempts": "Intentos"
+      }
+    },
+    "statusPill": {
+      "PENDING": "PENDIENTE",
+      "IN_PROGRESS": "EN_PROGRESO",
+      "COMPLETED": "COMPLETADA",
+      "OPTED_OUT": "BAJA",
+      "FAILED": "FALLIDA",
+      "CANCELLED": "CANCELADA"
+    }
+  },
+  "tenantContacts": {
+    "title": "Contactos",
+    "subtitleManage": "Administra tu lista de contactos para campañas salientes",
+    "subtitleTotal": "{n} en total",
+    "actions": {
+      "importCsv": "Importar CSV",
+      "addContact": "+ Agregar contacto",
+      "search": "Buscar",
+      "clear": "Limpiar",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "cancel": "Cancelar",
+      "remove": "Quitar"
+    },
+    "search": {
+      "placeholder": "Busca por nombre, correo o teléfono…"
+    },
+    "import": {
+      "headingSingular": "Importar CSV — {n} fila detectada",
+      "headingPlural": "Importar CSV — {n} filas detectadas",
+      "close": "✕ Cerrar",
+      "expectedColumns": "Columnas esperadas (no distingue mayúsculas):",
+      "table": {
+        "first": "Nombre",
+        "last": "Apellido",
+        "email": "Correo",
+        "phone": "Teléfono"
+      },
+      "moreRows": "…y {n} filas más",
+      "importingProgress": "Importando… ({n} filas)",
+      "importCount": "Importar {n} contactos",
+      "chooseDifferent": "Elegir otro archivo",
+      "resultSingular": "Se importó {ok} contacto.",
+      "resultPlural": "Se importaron {ok} contactos.",
+      "resultFailed": " {failed} fallaron (duplicados o datos inválidos)."
+    },
+    "form": {
+      "newContactTitle": "Nuevo contacto",
+      "firstName": "Nombre",
+      "lastName": "Apellido",
+      "email": "Correo",
+      "phoneE164": "Teléfono (E.164)",
+      "firstNamePlaceholder": "Juana",
+      "lastNamePlaceholder": "García",
+      "emailPlaceholder": "juana@ejemplo.com",
+      "phonePlaceholder": "+18005551234",
+      "validationMissing": "Ingresa al menos un nombre, correo o teléfono.",
+      "saveFailed": "Falló"
+    },
+    "table": {
+      "name": "Nombre",
+      "email": "Correo",
+      "phone": "Teléfono",
+      "status": "Estado",
+      "source": "Origen",
+      "added": "Agregado"
+    },
+    "status": {
+      "smsOptOut": "SMS bloqueado",
+      "voiceOptOut": "Voz bloqueada",
+      "emailOptOut": "Correo bloqueado",
+      "active": "Activo"
+    },
+    "empty": "Aún no hay contactos. Agrega uno arriba o importa una lista.",
+    "confirmDelete": "¿Eliminar este contacto?",
+    "dash": "—"
+  },
+  "tenantConversations": {
+    "title": "Conversaciones",
+    "subtitle": "Transcripciones y resúmenes de sesiones de widget, entrantes y salientes.",
+    "searchPlaceholder": "Buscar resumen, nombre de contacto, teléfono…",
+    "filters": {
+      "allChannels": "Todos los canales",
+      "allStatuses": "Todos los estados",
+      "allRecordings": "Todas las grabaciones",
+      "hasRecording": "Con grabación",
+      "noRecording": "Sin grabación"
+    },
+    "channel": {
+      "widget": "Widget",
+      "inbound": "Teléfono",
+      "outbound": "Saliente"
+    },
+    "status": {
+      "completed": "COMPLETADA",
+      "missed": "PERDIDA",
+      "failed": "FALLIDA",
+      "open": "ABIERTA"
+    },
+    "statusPill": {
+      "completed": "completada",
+      "missed": "perdida",
+      "failed": "fallida",
+      "open": "abierta"
+    },
+    "sort": {
+      "newestFirst": "Más recientes primero",
+      "oldestFirst": "Más antiguas primero",
+      "statusAsc": "Estado A→Z"
+    },
+    "duration": {
+      "none": "—",
+      "seconds": "{s} s",
+      "minutesSeconds": "{m} min {s} s"
+    },
+    "list": {
+      "loading": "Cargando…",
+      "empty": "No se encontraron conversaciones.",
+      "selectedCount": "{n} seleccionadas",
+      "totalSingular": "{n} conversación",
+      "totalPlural": "{n} conversaciones",
+      "noSummary": "Sin resumen"
+    },
+    "bulk": {
+      "deleting": "Eliminando…",
+      "deleteCount": "Eliminar {n}",
+      "confirmSingular": "¿Eliminar {n} conversación? Esto no se puede deshacer.",
+      "confirmPlural": "¿Eliminar {n} conversaciones? Esto no se puede deshacer.",
+      "deletedSingular": "Se eliminó {n} conversación.",
+      "deletedPlural": "Se eliminaron {n} conversaciones.",
+      "deleteFailed": "No se pudo eliminar"
+    },
+    "pagination": {
+      "range": "{from}–{to} de {total}",
+      "previous": "Anterior",
+      "next": "Siguiente"
+    },
+    "detail": {
+      "close": "Cerrar",
+      "dispositionLabel": "Resultado",
+      "dispositionHelp": "Etiqueta el resultado de negocio — se usa en los reportes de embudo.",
+      "dispositionUpdateFailed": "No se pudo actualizar el resultado",
+      "sendFollowupEmail": "Enviar correo de seguimiento",
+      "downloadPdf": "Descargar PDF",
+      "generatingPdf": "Generando PDF…",
+      "pdfExportFailed": "No se pudo exportar el PDF",
+      "recording": "Grabación",
+      "recordingLoading": "Cargando…",
+      "recordingUnavailable": "Grabación todavía no disponible.",
+      "summary": "Resumen",
+      "transcript": "Transcripción",
+      "noTranscript": "No hay transcripción disponible.",
+      "speakerCaller": "Persona que llama",
+      "speakerAgent": "Agente"
+    },
+    "dispositions": {
+      "none": "— Sin resultado —",
+      "booked": "✓ Reservada / Venta",
+      "qualified": "◎ Lead calificado",
+      "callback": "↻ Solicitó devolución de llamada",
+      "notInterested": "✕ Sin interés",
+      "wrongNumber": "⊘ Número equivocado",
+      "voicemail": "🔉 Buzón de voz",
+      "noAnswer": "— Sin respuesta",
+      "spam": "🚫 Spam / robocall"
+    },
+    "email": {
+      "title": "Enviar correo de seguimiento",
+      "intro": "Se envía desde tu cuenta de Google conectada. Asegúrate de que Google esté conectado en",
+      "integrationsLink": "Integraciones",
+      "to": "Para",
+      "subject": "Asunto",
+      "message": "Mensaje",
+      "toPlaceholder": "contacto@ejemplo.com",
+      "cancel": "Cancelar",
+      "send": "Enviar correo",
+      "sending": "Enviando…",
+      "validationError": "Para, asunto y mensaje son obligatorios.",
+      "sentSuccess": "Correo enviado a {to}.",
+      "sendFailed": "No se pudo enviar — revisa que Google esté conectado en Integraciones.",
+      "defaultGreeting": "Hola {name},",
+      "defaultGreetingNoName": "Hola,",
+      "defaultSubject": "Seguimiento de nuestra llamada",
+      "defaultBody": "{greeting}\n\nGracias por tomarte el tiempo de hablar con nosotros hoy.{summaryLine}\n\nAvísame si necesitas cualquier otra cosa.\n\nSaludos,"
+    }
+  },
+  "tenantDashboard": {
+    "title": "Panel",
+    "platformOverview": "Resumen de la plataforma · últimos 30 días",
+    "operationalKpis": "KPIs operativos",
+    "periodSelector": "Selector de periodo",
+    "liveCallSingular": "{n} llamada en vivo",
+    "liveCallPlural": "{n} llamadas en vivo",
+    "period": {
+      "last7days": "Últimos 7 días",
+      "last30days": "Últimos 30 días"
+    },
+    "time": {
+      "justNow": "ahora mismo",
+      "minutesAgo": "hace {n} min",
+      "hoursAgo": "hace {n} h",
+      "daysAgo": "hace {n} d"
+    },
+    "duration": {
+      "seconds": "{s} s",
+      "minutesSeconds": "{m} min {s} s"
+    },
+    "headline": {
+      "callsThisMonth": "Llamadas este mes",
+      "callsThisMonthSub": "{n} esta semana",
+      "activeNow": "Activas ahora",
+      "activeNowSub": "llamadas en curso",
+      "appointmentsToday": "Citas de hoy",
+      "appointmentsTodaySub": "agendadas y confirmadas",
+      "totalContacts": "Total de contactos",
+      "totalContactsSub": "en tu base de datos"
+    },
+    "kpis": {
+      "loadError": "No se pudieron cargar los KPIs — {error}",
+      "loadFailed": "No se pudo cargar",
+      "emptyTitle": "Aún no hay datos — empieza a atender llamadas",
+      "emptyDesc": "En cuanto tu agente atienda una llamada, los KPIs de los {period} aparecerán aquí.",
+      "totalCalls": "Llamadas totales",
+      "totalCallsSub7d": "Total de 7 días en todos los canales",
+      "totalCallsSub30d": "Total de 30 días en todos los canales",
+      "missedCallRate": "Tasa de llamadas perdidas",
+      "missedCallRateNoInbound": "Sin llamadas entrantes en este periodo",
+      "missedCallRateSub": "{missed} de {inbound} entrantes",
+      "avgCallDuration": "Duración promedio de llamada",
+      "avgCallDurationSub": "Entre llamadas con grabación",
+      "appointmentsBooked": "Citas reservadas",
+      "appointmentsBookedSub7d": "Creadas en los últimos 7 días",
+      "appointmentsBookedSub30d": "Creadas en los últimos 30 días",
+      "followupEmails": "Correos de seguimiento enviados",
+      "followupEmailsSub": "Mensajes EMAIL salientes registrados en el periodo",
+      "topDispositions": "Top 3 resultados",
+      "noDispositions": "Aún no hay resultados etiquetados"
+    },
+    "dispositions": {
+      "booked": "Reservada",
+      "qualified": "Calificada",
+      "callback": "Devolver llamada",
+      "notInterested": "Sin interés",
+      "wrongNumber": "Número equivocado",
+      "voicemail": "Buzón de voz",
+      "noAnswer": "Sin respuesta",
+      "spam": "Spam",
+      "interested": "Interesada"
+    },
+    "chart": {
+      "title": "Volumen de llamadas — Últimos 7 días",
+      "callsCount": "{count} llamadas"
+    },
+    "storage": {
+      "title": "Almacenamiento de grabaciones",
+      "used": "usado",
+      "usedOf": "{used} de {quota}",
+      "upgrade": "Ampliar almacenamiento →"
+    },
+    "subscription": {
+      "title": "Suscripción",
+      "manage": "Gestionar",
+      "none": "Sin suscripción activa",
+      "choosePlan": "Elegir un plan →"
+    },
+    "recentConversations": {
+      "title": "Conversaciones recientes",
+      "viewAll": "Ver todo →",
+      "emptyTitle": "Aún no hay conversaciones",
+      "emptyDesc": "Aparecerán aquí cuando lleguen llamadas y chats.",
+      "unknownContact": "Desconocido",
+      "channelInbound": "↙ Entr",
+      "channelOutbound": "↗ Sal",
+      "channelWidget": "⊕ Web",
+      "live": "En vivo"
+    }
+  },
+  "tenantChannels": {
+    "title": "Canales",
+    "subtitle": "Habilita y configura cada canal de voz",
+    "loading": "Cargando…",
+    "savedMessage": "Canal guardado.",
+    "saveFailed": "Falló",
+    "channels": {
+      "widget": {
+        "label": "Widget del sitio web",
+        "description": "Agente de voz en el navegador en tiempo real"
+      },
+      "inbound": {
+        "label": "Recepcionista entrante",
+        "description": "Atiende llamadas telefónicas en vivo"
+      },
+      "outbound": {
+        "label": "Llamadas salientes",
+        "description": "Ejecuta campañas y llamadas de seguimiento"
+      }
+    },
+    "afterHoursOptions": {
+      "default": "Predeterminado (informar y colgar)",
+      "voicemail": "Grabar buzón de voz",
+      "forward": "Desviar a un número"
+    },
+    "days": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mié",
+      "thu": "Jue",
+      "fri": "Vie",
+      "sat": "Sáb",
+      "sun": "Dom"
+    },
+    "businessHours": {
+      "title": "Horario de atención",
+      "description": "Las llamadas fuera de este horario activan el comportamiento fuera de horario de arriba",
+      "open": "Abierto",
+      "closed": "Cerrado",
+      "to": "a"
+    },
+    "afterHours": {
+      "title": "Fuera de horario",
+      "behaviourLabel": "Comportamiento fuera de horario",
+      "behaviourTooltip": "Qué pasa cuando entra una llamada fuera del horario de atención que defines abajo. Buzón de voz, desviar a una persona, o simplemente atender con el agente IA como siempre.",
+      "forwardLabel": "Desviar llamadas a",
+      "forwardTooltip": "El teléfono al que se envían las llamadas fuera de horario. Normalmente un celular personal o un servicio de mensajería.",
+      "forwardHelp": "Las llamadas fuera del horario de atención se desvían aquí"
+    },
+    "voicePicker": {
+      "label": "Voz del agente",
+      "tooltip": "La voz que usa tu agente IA en cada llamada. Elige una que combine con tu marca — la puedes cambiar cuando quieras; aplica desde la siguiente llamada.",
+      "gender": {
+        "Female": "Femenina",
+        "Male": "Masculina",
+        "Neutral": "Neutra"
+      },
+      "style": {
+        "Zephyr": "Brillante y clara",
+        "Despina": "Suave y pulida",
+        "Aoede": "Cálida y ligera",
+        "Charon": "Grave y autoritaria",
+        "Fenrir": "Cálida y cercana",
+        "Puck": "Animada y conversacional",
+        "Sulafat": "Cálida y pareja"
+      }
+    },
+    "agentSpeaksFirst": {
+      "label": "El agente habla primero",
+      "description": "El agente da el saludo de apertura apenas comienza la sesión, sin esperar a que la persona que llama hable primero."
+    },
+    "greetingMode": {
+      "label": "Modo de saludo",
+      "tooltip": "Una palabra o frase corta que describe el tono de la apertura de tu agente — se inyecta en el prompt como guía.",
+      "placeholder": "p. ej. amable, formal, profesional",
+      "help": "Define el tono del mensaje de apertura del agente"
+    },
+    "escalation": {
+      "modeLabel": "Modo de escalamiento",
+      "modeTooltip": "Cuando el agente decide que una persona necesita atención humana (p. ej. queja compleja, solicitud de reembolso), esto controla cómo hace el traspaso.",
+      "modePlaceholder": "p. ej. escalate-to-human",
+      "transferLabel": "Número de transferencia / escalamiento",
+      "transferTooltip": "El número que la IA marca y al que conecta a la persona cuando escala. Debe ser un número que se conteste con seguridad en horario de atención.",
+      "transferHelp": "El agente marca este número cuando escala a un humano"
+    },
+    "contactPicker": {
+      "placeholder": "+1",
+      "emptyContacts": "No hay contactos con número telefónico. Agrégalos primero en Contactos.",
+      "noContactName": "—"
+    },
+    "phoneNumbers": {
+      "title": "Números de teléfono",
+      "subtitle": "Números que Twilio enruta a este recepcionista",
+      "manageLink": "Gestionar en Números de teléfono →",
+      "emptyPrefix": "Aún no hay números — busca y compra uno en",
+      "emptyLink": "Números de teléfono",
+      "emptySuffix": "."
+    },
+    "enabledLabel": "Habilitado",
+    "closeLabel": "Cerrar",
+    "boundPrompt": "Prompt asociado: {name}",
+    "actions": {
+      "save": "Guardar canal",
+      "saving": "Guardando…"
+    }
+  },
+  "tenantAgents": {
+    "title": "Agentes",
+    "subtitle": "Configura cada rol de agente de IA para tu espacio de trabajo.",
+    "selectAgent": "Selecciona un agente para configurarlo",
+    "savedMessage": "Agente guardado.",
+    "saveFailed": "Falló",
+    "status": {
+      "on": "Activo",
+      "off": "Inactivo",
+      "enabled": "Habilitado",
+      "disabled": "Deshabilitado"
+    },
+    "roles": {
+      "ORCHESTRATOR": {
+        "name": "Orquestador",
+        "description": "Coordina a los demás agentes y gestiona las transferencias"
+      },
+      "APPOINTMENT": {
+        "name": "Citas",
+        "description": "Agenda, reprograma y cancela citas"
+      },
+      "SALES": {
+        "name": "Ventas",
+        "description": "Califica prospectos e impulsa conversiones"
+      },
+      "CUSTOMER_SERVICE": {
+        "name": "Servicio al cliente",
+        "description": "Atiende consultas de soporte y escalamientos"
+      },
+      "MARKETING": {
+        "name": "Marketing",
+        "description": "Ejecuta campañas y secuencias de seguimiento"
+      },
+      "ASSISTANT": {
+        "name": "Asistente",
+        "description": "Asistente de uso general para cualquier tarea"
+      },
+      "SECRETARY": {
+        "name": "Secretaria",
+        "description": "Gestiona la agenda, notas y tareas administrativas"
+      }
+    },
+    "fields": {
+      "displayName": {
+        "label": "Nombre para mostrar",
+        "tooltip": "El nombre que tu agente usa al presentarse en las llamadas (p. ej. 'Hola, soy Aria de Acme'). Elige algo amigable y fácil de escuchar por teléfono.",
+        "placeholder": "p. ej. Aria"
+      },
+      "modelProvider": {
+        "label": "Proveedor del modelo",
+        "tooltip": "Qué proveedor de IA gestiona el razonamiento de este agente. Por defecto 'openai' — cámbialo solo si sabes lo que haces.",
+        "placeholder": "openai"
+      },
+      "modelName": {
+        "label": "Nombre del modelo",
+        "tooltip": "El modelo específico que se usa para el razonamiento textual de este agente (resúmenes, seguimientos, decisiones). La voz siempre es Gemini Live, configurada en el canal.",
+        "placeholder": "gpt-4o-mini"
+      }
+    },
+    "actions": {
+      "save": "Guardar agente",
+      "saving": "Guardando…"
+    }
+  },
+  "tenantBusinessDna": {
+    "title": "ADN del negocio",
+    "subtitle": "Base de conocimiento con versiones en la que tus agentes de IA se apoyan en cada conversación.",
+    "newDraft": "+ Nuevo borrador",
+    "sectionsHeading": "Secciones",
+    "versionsHeading": "Versiones",
+    "noVersions": "Aún no hay versiones.",
+    "versionLabel": "Versión {n}",
+    "versionActive": "● Activo",
+    "versionUpdated": "Actualizado {date}",
+    "emptyStateTitle": "Selecciona una versión o crea un nuevo borrador",
+    "statusVersion": "Versión {n}",
+    "statusActive": "● Activo — solo lectura",
+    "statusDraft": "○ Borrador",
+    "statusUnsaved": "• Cambios sin guardar",
+    "showForm": "Mostrar formulario",
+    "showAdvancedJson": "Mostrar avanzado (JSON)",
+    "actions": {
+      "publish": "Publicar",
+      "save": "Guardar cambios",
+      "saving": "Guardando…"
+    },
+    "savedPerSection": "Los cambios se guardan por sección.",
+    "readOnlyBanner": "Esta versión está activa actualmente y es de solo lectura. Crea un nuevo borrador para hacer cambios.",
+    "jsonInvalidObject": "El valor de nivel superior debe ser un objeto JSON.",
+    "jsonInvalid": "JSON inválido",
+    "confirm": {
+      "discardChanges": "Tienes cambios sin guardar. ¿Descartarlos?",
+      "discardForNewDraft": "Tienes cambios sin guardar. ¿Descartarlos y crear un nuevo borrador?",
+      "saveBeforePublish": "Tienes cambios sin guardar. ¿Guardarlos antes de publicar? Cancela para abortar."
+    },
+    "toast": {
+      "draftCreated": "Nuevo borrador creado.",
+      "sectionSaved": "Sección guardada.",
+      "saveFailed": "Falló el guardado",
+      "createFailed": "Falló",
+      "published": "ADN del negocio publicado y ahora activo.",
+      "publishFailed": "Falló la publicación"
+    },
+    "sections": {
+      "identity": {
+        "label": "Identidad",
+        "description": "El nombre de tu negocio, su misión, la voz de la marca y lo que haces de un vistazo. El agente lo usa para presentarse y enmarcar cada conversación."
+      },
+      "services": {
+        "label": "Servicios",
+        "description": "Lo que ofreces — productos, servicios, paquetes. Sé específico. El agente cita esto cuando los clientes preguntan \"¿qué hacen?\" o \"¿ofrecen X?\"."
+      },
+      "pricing": {
+        "label": "Precios",
+        "description": "Cuánto cuestan las cosas y qué descuentos o promociones aplican. Incluye suficiente detalle para que el agente pueda responder preguntas de precios sin escalar."
+      },
+      "operations": {
+        "label": "Operaciones",
+        "description": "Cómo funciona tu negocio día a día: horarios, ubicaciones, áreas de servicio, plazos, condiciones de pago. El agente consulta esto para preguntas logísticas."
+      },
+      "sales": {
+        "label": "Ventas",
+        "description": "Tus preguntas de calificación, las reglas del cliente ideal y el flujo para convertir a quien llama en un cliente agendado."
+      },
+      "appointments": {
+        "label": "Citas",
+        "description": "Reglas de reserva: cuánto duran las citas, qué información recoger, qué días y horarios están disponibles, cuándo escalar a una persona."
+      },
+      "support": {
+        "label": "Soporte",
+        "description": "Cómo manejar quejas, reembolsos y clientes molestos. Incluye el límite donde el agente debe pasar la llamada a una persona."
+      },
+      "language": {
+        "label": "Idioma",
+        "description": "Tono, voz y preferencias de vocabulario. Frases que el agente siempre o nunca debe usar. Idiomas en los que debe responder."
+      },
+      "compliance": {
+        "label": "Cumplimiento",
+        "description": "Reglas legales y regulatorias que el agente debe seguir — divulgaciones, avisos de grabación, lenguaje de exclusión, cumplimiento específico del sector (HIPAA, GDPR, etc.)."
+      }
+    },
+    "identity": {
+      "businessName": {
+        "label": "Nombre del negocio",
+        "placeholder": "Plomería Acme",
+        "description": "El nombre que tu agente usa para presentarse."
+      },
+      "tagline": {
+        "label": "Eslogan",
+        "placeholder": "Rápido, amable y bien hecho a la primera.",
+        "description": "Una frase corta. Opcional."
+      },
+      "shortDescription": {
+        "label": "Descripción breve",
+        "placeholder": "Lo que hace el negocio en una o dos oraciones.",
+        "description": "El agente lo usa para responder '¿qué hacen?'."
+      },
+      "elevatorPitch": {
+        "label": "Discurso de presentación",
+        "placeholder": "Una versión más larga de 30 segundos. Cubre qué haces, para quién y qué te diferencia.",
+        "description": "Se usa cuando quien llama quiere más detalle que la descripción breve."
+      },
+      "tone": {
+        "label": "Tono",
+        "placeholder": "cálido, profesional, sin tecnicismos",
+        "description": "Algunos adjetivos que describen cómo debería sonar el agente."
+      },
+      "voicePreference": {
+        "label": "Preferencia de voz",
+        "description": "Qué voz del agente preferir. El canal puede sobrescribir esto."
+      },
+      "industry": {
+        "label": "Industria",
+        "placeholder": "Servicios para el hogar"
+      },
+      "targetCustomers": {
+        "label": "Clientes objetivo",
+        "placeholder": "Propietarios en el área metropolitana, de 35 a 65 años, dueños de su casa.",
+        "description": "A quién atiendes. Ayuda al agente a calificar a los prospectos."
+      }
+    },
+    "voiceOptions": {
+      "none": "— Sin preferencia —",
+      "noneHint": "Usa la voz por defecto del canal.",
+      "zephyrHint": "Femenina · Brillante y clara",
+      "despinaHint": "Femenina · Suave y pulida",
+      "aoedeHint": "Femenina · Cálida y ligera",
+      "charonHint": "Masculina · Profunda y autoritaria",
+      "fenrirHint": "Masculina · Cálida y cercana (por defecto)",
+      "puckHint": "Masculina · Animada y conversacional",
+      "sulafatHint": "Neutral · Cálida y pareja"
+    },
+    "services": {
+      "channels": {
+        "label": "Canales",
+        "description": "Los canales por los que este negocio atiende a los clientes (llamadas, chat web, visitas, etc.).",
+        "empty": "Aún no hay canales — agrega los que el agente debe conocer.",
+        "fallbackName": "Canal {n}",
+        "fields": {
+          "name": "Nombre",
+          "namePlaceholder": "Llamadas entrantes",
+          "description": "Descripción",
+          "descriptionPlaceholder": "Lo que cubre este canal.",
+          "useCases": "Casos de uso",
+          "useCasesPlaceholder": "Un cliente nuevo pide una cotización",
+          "useCasesEmpty": "No hay casos de uso listados."
+        }
+      },
+      "agentCapabilities": {
+        "label": "Capacidades del agente",
+        "description": "Lo que el agente puede y tiene permitido hacer (agendar citas, cotizar precios, tomar mensajes, etc.).",
+        "placeholder": "Agendar citas",
+        "empty": "Aún no hay capacidades listadas."
+      }
+    },
+    "pricing": {
+      "plans": {
+        "label": "Planes",
+        "description": "Tus paquetes o niveles de precios.",
+        "empty": "Aún no hay planes.",
+        "fallbackName": "Plan {n}",
+        "fields": {
+          "name": "Nombre del plan",
+          "namePlaceholder": "Estándar",
+          "price": "Precio",
+          "pricePlaceholder": "$197 / mes",
+          "summary": "Resumen",
+          "summaryPlaceholder": "Lo que incluye de un vistazo."
+        }
+      },
+      "overageRate": {
+        "label": "Tarifa por excedente",
+        "placeholder": "$0.05 / minuto sobre la cuota incluida",
+        "description": "Qué pasa cuando se rebasa la cuota — déjalo en blanco si no aplica."
+      },
+      "freeTrial": {
+        "label": "Prueba gratuita",
+        "placeholder": "Prueba gratuita de 14 días, sin tarjeta",
+        "description": "Qué prueba o período gratuito ofreces, si aplica."
+      },
+      "discountPolicy": {
+        "label": "Política de descuentos",
+        "placeholder": "¿Cuándo puede el agente ofrecer un descuento? ¿Hasta cuánto?",
+        "description": "Las reglas que el agente debe seguir cuando alguien pide una rebaja."
+      }
+    },
+    "operations": {
+      "timezone": {
+        "label": "Zona horaria",
+        "selectPlaceholder": "— Selecciona —",
+        "description": "La zona horaria en la que opera el negocio. Se usa para horarios y reservas."
+      },
+      "businessHours": {
+        "description": "Cuándo abres. Marca los días cerrados con la casilla."
+      },
+      "holidays": {
+        "label": "Días festivos",
+        "placeholder": "Cerrado el 24 y 25 de diciembre y el 1 de enero. Horario reducido el 4 de julio.",
+        "description": "Festivos importantes y cualquier cierre especial."
+      },
+      "afterHoursBehavior": {
+        "label": "Comportamiento fuera de horario",
+        "placeholder": "Toma un mensaje, ofrece agendar una llamada en horario de oficina, escala las emergencias al número de guardia.",
+        "description": "Qué debe hacer el agente cuando llaman fuera del horario laboral."
+      }
+    },
+    "sales": {
+      "qualificationCriteria": {
+        "label": "Criterios de calificación",
+        "description": "¿Qué hace que quien llama sea un buen prospecto? El agente los usa para decidir si seguir vendiendo o descalificar amablemente.",
+        "placeholder": "Es dueño de una casa unifamiliar",
+        "empty": "Aún no hay criterios de calificación."
+      },
+      "discoveryQuestions": {
+        "label": "Preguntas de descubrimiento",
+        "description": "Preguntas que el agente debería hacer al inicio de una llamada de ventas.",
+        "placeholder": "¿Qué problema estás tratando de resolver?",
+        "empty": "Aún no hay preguntas de descubrimiento."
+      },
+      "demoFlow": {
+        "label": "Flujo de demo",
+        "placeholder": "Si quien llama califica, llévalo por: 1) el problema que resolvemos, 2) cómo funciona, 3) precios, 4) próximos pasos.",
+        "description": "La estructura de una conversación de ventas típica, de principio a fin."
+      },
+      "objectionHandling": {
+        "label": "Manejo de objeciones",
+        "description": "Objeciones comunes y cómo debe responder el agente. Clave = objeción, valor = respuesta.",
+        "keyLabel": "Objeción",
+        "valueLabel": "Respuesta",
+        "keyPlaceholder": "Demasiado caro",
+        "valuePlaceholder": "Reconoce el punto y luego re-anclá en el valor: explica qué incluye y el costo de no resolver el problema.",
+        "empty": "Aún no hay objeciones mapeadas."
+      }
+    },
+    "appointments": {
+      "defaultDuration": {
+        "label": "Duración por defecto",
+        "unit": "minutos",
+        "description": "Duración estándar de la cita cuando no se pide un tipo específico."
+      },
+      "appointmentTypes": {
+        "label": "Tipos de cita",
+        "description": "Los tipos de citas que se pueden reservar.",
+        "empty": "Aún no hay tipos de cita.",
+        "fallbackName": "Tipo {n}",
+        "fields": {
+          "name": "Nombre",
+          "namePlaceholder": "Consulta gratuita",
+          "duration": "Duración",
+          "durationUnit": "minutos",
+          "description": "Descripción",
+          "descriptionPlaceholder": "Qué pasa durante esta cita."
+        }
+      },
+      "bookingPolicy": {
+        "label": "Política de reservas",
+        "placeholder": "Las reservas requieren nombre, teléfono y correo. Mínimo 4 horas de aviso. Confirmaciones por correo.",
+        "description": "Las reglas para agendar citas."
+      },
+      "cancellationPolicy": {
+        "label": "Política de cancelación",
+        "placeholder": "Cancelación gratuita hasta 24 horas antes. Dentro de las 24 horas, $50 de cargo.",
+        "description": "Qué pasa si quien llama quiere cancelar o reprogramar."
+      }
+    },
+    "support": {
+      "commonIssues": {
+        "label": "Problemas comunes",
+        "description": "Problemas que los clientes preguntan a menudo, junto con la solución correcta.",
+        "empty": "Aún no hay problemas comunes mapeados.",
+        "fallbackName": "Problema {n}",
+        "fields": {
+          "issue": "Problema",
+          "issuePlaceholder": "Quien llama no encuentra su factura",
+          "fix": "Solución",
+          "fixPlaceholder": "Dirígelo a billing@... u ofrece enviarle una copia por correo."
+        }
+      },
+      "escalationRules": {
+        "label": "Reglas de escalamiento",
+        "description": "Cuándo el agente debe pasar la llamada a una persona.",
+        "placeholder": "Quien llama está frustrado o pide hablar con un gerente",
+        "empty": "Aún no hay reglas de escalamiento."
+      },
+      "supportEmail": {
+        "label": "Correo de soporte",
+        "placeholder": "soporte@acme.com",
+        "description": "A dónde debe dirigir el agente a los clientes para soporte por escrito."
+      },
+      "founderContact": {
+        "label": "Contacto del fundador",
+        "placeholder": "fundador@acme.com o +1 555 000 0000",
+        "description": "Una vía de escalamiento de último recurso. Úsala con moderación."
+      }
+    },
+    "language": {
+      "primaryLanguage": {
+        "label": "Idioma principal",
+        "selectPlaceholder": "— Selecciona —",
+        "description": "El idioma por defecto para las conversaciones del agente."
+      },
+      "supportedLanguages": {
+        "label": "Idiomas soportados",
+        "description": "Otros idiomas en los que el agente debe responder si se le pide.",
+        "placeholder": "Español",
+        "empty": "No hay idiomas adicionales."
+      },
+      "vocabularyPreferences": {
+        "label": "Preferencias de vocabulario",
+        "description": "Palabras y frases que el agente debería preferir.",
+        "placeholder": "decir 'miembro del equipo' en vez de 'personal'",
+        "empty": "No hay preferencias de vocabulario."
+      },
+      "prohibitedLanguage": {
+        "label": "Lenguaje prohibido",
+        "description": "Palabras y frases que el agente nunca debe usar.",
+        "placeholder": "no decir 'garantizado'",
+        "empty": "No hay palabras prohibidas."
+      },
+      "options": {
+        "english": "Inglés",
+        "spanish": "Español",
+        "french": "Francés",
+        "german": "Alemán",
+        "portuguese": "Portugués",
+        "italian": "Italiano"
+      }
+    },
+    "compliance": {
+      "callRecordingConsent": {
+        "label": "Consentimiento de grabación de llamadas",
+        "placeholder": "Esta llamada puede ser grabada con fines de calidad y capacitación.",
+        "description": "La divulgación exacta que tu agente debe leer al inicio de las llamadas grabadas."
+      },
+      "dataHandling": {
+        "label": "Manejo de datos",
+        "placeholder": "Almacenamos los datos de contacto en EE. UU. No los compartimos con terceros sin consentimiento.",
+        "description": "Cómo se almacenan y se usan los datos del cliente. Guía las respuestas de privacidad del agente."
+      },
+      "phoneCompliance": {
+        "label": "Cumplimiento telefónico",
+        "placeholder": "TCPA: solo llama a números con consentimiento expreso previo. Honra las exclusiones de inmediato.",
+        "description": "Reglas de telefonía que el agente debe seguir (TCPA, no llamar, etc.)."
+      },
+      "smsCompliance": {
+        "label": "Cumplimiento de SMS",
+        "placeholder": "Incluye texto de STOP y HELP en cualquier suscripción. Honra STOP en menos de 24 horas.",
+        "description": "Reglas específicas de SMS (10DLC, flujo de suscripción y exclusión)."
+      },
+      "ageRestrictions": {
+        "label": "Restricciones de edad",
+        "placeholder": "Solo mayores de 18.",
+        "description": "Cualquier restricción de edad que aplique a tu oferta."
+      }
+    }
+  },
+  "tenantOutbound": {
+    "title": "Llamadas salientes",
+    "subtitle": "Crea campañas, selecciona contactos y envía llamadas salientes con IA.",
+    "backToCampaigns": "← Volver a campañas",
+    "loading": "Cargando…",
+    "actions": {
+      "newCampaign": "+ Nueva campaña",
+      "createCampaign": "Crear campaña",
+      "creating": "Creando…",
+      "cancel": "Cancelar",
+      "edit": "Editar",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "delete": "Eliminar",
+      "remove": "Quitar",
+      "start": "▶ Iniciar",
+      "starting": "Iniciando…",
+      "pause": "⏸ Pausar",
+      "pausing": "Pausando…",
+      "cancelAction": "Cancelar",
+      "canceling": "Cancelando…",
+      "view": "Ver →",
+      "addContacts": "+ Agregar contactos",
+      "closePicker": "Cerrar selector de contactos"
+    },
+    "list": {
+      "newHeading": "Nueva campaña saliente",
+      "form": {
+        "name": "Nombre de la campaña",
+        "namePlaceholder": "Llamada de reactivación — T2",
+        "description": "Descripción (opcional)",
+        "descriptionPlaceholder": "Descripción breve del objetivo de la campaña"
+      },
+      "empty": {
+        "line1": "Aún no hay campañas salientes.",
+        "line2": "Crea una para empezar a hacer llamadas."
+      },
+      "card": {
+        "contact": "{count} contacto",
+        "contacts": "{count} contactos"
+      }
+    },
+    "messages": {
+      "nameRequired": "El nombre de la campaña es obligatorio.",
+      "createSuccess": "Campaña creada. Ábrela para agregar contactos y empezar a llamar.",
+      "createFailed": "No se pudo crear la campaña",
+      "deleteConfirm": "¿Eliminar esta campaña? También se quitarán todos los intentos de llamada.",
+      "deleteSuccess": "Campaña eliminada.",
+      "deleteFailed": "No se pudo eliminar",
+      "updateSuccess": "Campaña actualizada.",
+      "updateFailed": "No se pudo actualizar",
+      "actionFailed": "Acción fallida",
+      "campaignStarted": "Campaña iniciada.",
+      "campaignPaused": "Campaña pausada.",
+      "campaignCanceled": "Campaña cancelada.",
+      "contactsAdded": "{count} contacto agregado.",
+      "contactsAddedPlural": "{count} contactos agregados.",
+      "addContactsFailed": "No se pudieron agregar los contactos",
+      "removeFailed": "No se pudo quitar"
+    },
+    "detail": {
+      "edit": {
+        "namePlaceholder": "Nombre de la campaña",
+        "descriptionPlaceholder": "Descripción (opcional)"
+      },
+      "progress": {
+        "doneOf": "{done} de {total} listas",
+        "live": "En vivo — actualizando cada 5s"
+      },
+      "stats": {
+        "totalContacts": "Total de contactos",
+        "answered": "Contestadas",
+        "pending": "Pendientes",
+        "failedNoAnswer": "Falladas / Sin respuesta",
+        "completed": "Completadas"
+      },
+      "tabs": {
+        "contacts": "Contactos e intentos",
+        "results": "Resumen de resultados"
+      }
+    },
+    "picker": {
+      "heading": "Selecciona contactos para agregar",
+      "addCount": "Agregar {count} contacto",
+      "addCountPlural": "Agregar {count} contactos",
+      "adding": "Agregando…",
+      "searchPlaceholder": "Buscar por nombre, teléfono o correo…",
+      "loadingContacts": "Cargando contactos…",
+      "noResults": "No se encontraron contactos.",
+      "alreadyAdded": "Agregado"
+    },
+    "attempts": {
+      "empty": "Aún no se han agregado contactos. Agrega contactos para iniciar la campaña.",
+      "headers": {
+        "contact": "Contacto",
+        "phone": "Teléfono",
+        "status": "Estado",
+        "outcome": "Resultado",
+        "started": "Iniciado",
+        "duration": "Duración",
+        "actions": "Acciones",
+        "callTime": "Hora de llamada"
+      },
+      "duration": "{secs}s",
+      "unknown": "Desconocido"
+    },
+    "results": {
+      "outcomeBreakdown": "Desglose de resultados",
+      "noAttempts": "Aún no hay intentos.",
+      "answeredCalls": "Llamadas contestadas"
+    },
+    "outcomeLabels": {
+      "answered": "Contestada",
+      "busy": "Ocupado",
+      "no_answer": "Sin respuesta",
+      "voicemail": "Buzón de voz",
+      "failed": "Fallida",
+      "canceled": "Cancelada",
+      "campaign_canceled": "Campaña cancelada",
+      "dispatch_error": "Error de envío",
+      "no_phone": "Sin teléfono"
+    }
+  },
+  "tenantPrompts": {
+    "title": "Prompts",
+    "subtitle": "Biblioteca de prompts con versiones para todos los roles de agente y canales.",
+    "scopes": {
+      "platform": "Plataforma",
+      "tenant": "Cuenta",
+      "channel": "Canal",
+      "role": "Rol",
+      "session": "Sesión"
+    },
+    "statusBadge": {
+      "publishedWithVersion": "● Publicado · v{version}",
+      "draftWithVersion": "○ Borrador · v{version}",
+      "publishedReadOnly": "● Publicado · solo lectura"
+    },
+    "list": {
+      "empty": "Aún no hay prompts"
+    },
+    "editor": {
+      "emptyState": "Selecciona un prompt para editarlo"
+    },
+    "create": {
+      "heading": "Nuevo prompt"
+    },
+    "fields": {
+      "name": {
+        "label": "Nombre",
+        "placeholder": "p. ej. Saludo de recepcionista"
+      },
+      "scope": {
+        "label": "Alcance"
+      },
+      "content": {
+        "label": "Contenido del prompt",
+        "placeholder": "Eres un recepcionista profesional de {business_name}…"
+      },
+      "contentSimple": {
+        "label": "Contenido"
+      }
+    },
+    "actions": {
+      "newPrompt": "+ Nuevo prompt",
+      "createPrompt": "Crear prompt",
+      "creating": "Creando…",
+      "saveDraft": "Guardar borrador",
+      "saving": "Guardando…",
+      "publish": "Publicar",
+      "cancel": "Cancelar",
+      "cancelGlyph": "✕ Cancelar"
+    },
+    "toasts": {
+      "created": "Prompt creado.",
+      "saved": "Prompt guardado.",
+      "published": "Prompt publicado y activo.",
+      "failed": "Error"
+    }
+  },
+  "tenantBilling": {
+    "title": "Facturación",
+    "subtitle": "Administra tu suscripción y tu plan.",
+    "currentPeriod": "Periodo actual",
+    "cancelsAtPeriodEnd": "Se cancela al final del periodo",
+    "availablePlans": "Planes disponibles",
+    "currentBadge": "Actual",
+    "dash": "—",
+    "billing": {
+      "monthly": "Facturación mensual",
+      "annually": "Facturación anual"
+    },
+    "interval": {
+      "perMonth": "por mes",
+      "perYear": "por año"
+    },
+    "actions": {
+      "manageSubscription": "Administrar suscripción →",
+      "opening": "Abriendo…",
+      "selectPlan": "Elegir plan",
+      "comingSoon": "Próximamente",
+      "redirecting": "Redirigiendo…",
+      "upgrade": "Mejorar",
+      "downgrade": "Bajar de plan"
+    },
+    "statusPill": {
+      "active": "Activa",
+      "trialing": "En prueba",
+      "pastDue": "Vencida",
+      "canceled": "Cancelada",
+      "incomplete": "Incompleta"
+    },
+    "entitlements": {
+      "maxChannels": "Canales máximos",
+      "maxAgents": "Agentes máximos",
+      "minutesPerMonth": "Minutos / mes",
+      "widgetEnabled": "Widget del sitio web",
+      "inboundEnabled": "Recepcionista entrante",
+      "outboundEnabled": "Llamadas salientes",
+      "affiliateEnabled": "Portal de socios"
+    },
+    "noSubscription": {
+      "title": "No tienes una suscripción activa",
+      "desc": "Elige un plan abajo para empezar."
+    },
+    "errors": {
+      "failed": "Falló"
+    }
+  },
+  "tenantIntegrations": {
+    "title": "Integraciones",
+    "subtitle": "Conecta servicios externos que tus agentes usan para agendar, llamar y comunicarse.",
+    "loadError": "No se pudo cargar el estado de las integraciones.",
+    "comingSoon": "Próximamente",
+    "moreComingSoon": "Más integraciones — próximamente",
+    "statusPill": {
+      "connected": "Conectado",
+      "notConnected": "Sin conectar",
+      "error": "Error",
+      "reconnectRequired": "Requiere reconexión",
+      "disabled": "Desactivado",
+      "managed": "Gestionado"
+    },
+    "toasts": {
+      "googleConnected": "Cuenta de Google conectada: {email}",
+      "googleConnectionFailed": "Falló la conexión con Google: {reason}",
+      "googleConnectionFailedReasonUnknown": "error desconocido",
+      "failed": "Falló",
+      "failedStartGoogle": "No se pudo iniciar la conexión con Google",
+      "failedDisconnect": "No se pudo desconectar",
+      "googleDisconnected": "Cuenta de Google desconectada.",
+      "failedDisconnectGoogle": "No se pudo desconectar la cuenta de Google",
+      "geminiSaved": "Clave de API de Gemini guardada.",
+      "testEmailSent": "Correo de prueba enviado a {to}",
+      "failedSend": "No se pudo enviar",
+      "geminiRemoved": "Clave de Gemini eliminada.",
+      "failedRemoveGemini": "No se pudo eliminar la clave de Gemini"
+    },
+    "confirms": {
+      "disconnectGoogle": "¿Desconectar tu cuenta de Google? Esto desactivará las integraciones de Gmail y Calendar.",
+      "removeGemini": "¿Quitar la clave de API de Gemini? Las sesiones de voz usarán la clave de la plataforma si hay una configurada."
+    },
+    "google": {
+      "title": "Google Workspace",
+      "subtitle": "Buzón del agente · Google Calendar",
+      "labels": {
+        "account": "Cuenta",
+        "calendars": "Calendarios",
+        "lastVerified": "Verificada por última vez"
+      },
+      "calendarsFound": "{n} encontrados",
+      "notConnectedDesc": "Conecta la cuenta de Google dedicada que tu agente usará para enviar correos y gestionar citas. Debe ser un buzón configurado específicamente para tu agente — no el correo que usaste para registrarte.",
+      "needsReauth": "Tu conexión con Google necesita autorizarse de nuevo. Haz clic en Reconectar para arreglarlo.",
+      "actions": {
+        "connect": "Conectar Google",
+        "redirecting": "Redirigiendo…",
+        "reconnect": "Reconectar",
+        "disconnect": "Desconectar"
+      },
+      "test": {
+        "title": "Enviar un correo de prueba",
+        "desc": "Verifica que el buzón de tu agente puede enviar correos despachando un mensaje de prueba desde la cuenta conectada.",
+        "defaultSubject": "Prueba desde OrbisVoice",
+        "defaultBody": "Este es un correo de prueba enviado desde el buzón de tu agente de Google conectado.",
+        "placeholderTo": "Correo del destinatario",
+        "placeholderSubject": "Asunto",
+        "placeholderBody": "Cuerpo del mensaje",
+        "send": "Enviar correo de prueba",
+        "sending": "Enviando…"
+      },
+      "footer": "Conecta una cuenta de Google dedicada para tu agente — no tu correo personal ni el de registro. Permisos requeridos: enviar Gmail, leer Gmail y Google Calendar. Los tokens se cifran en reposo y nunca se muestran."
+    },
+    "twilio": {
+      "title": "Twilio (Voz y SMS)",
+      "subtitle": "Llamadas entrantes · Llamadas salientes · SMS — gestionado por OrbisVoice",
+      "intro": "No necesitas crear ni conectar una cuenta de Twilio. OrbisVoice maneja toda la voz y los SMS desde nuestra cuenta principal de Twilio, y te asignamos números de teléfono directamente desde nuestro grupo.",
+      "requestPrefix": "Para solicitar un número de teléfono, ve a ",
+      "phoneNumbersLink": "Phone Numbers",
+      "quotaMid": ". Tu cuota mensual de minutos / SMS depende de tu plan — consulta ",
+      "billingLink": "Billing",
+      "quotaSuffix": ".",
+      "footer": "Toda la facturación de voz / SMS está incluida en tu suscripción de OrbisVoice. No se requiere una cuenta de Twilio aparte."
+    },
+    "gemini": {
+      "title": "Gemini Live API",
+      "subtitle": "IA de voz en tiempo real · Necesaria para las sesiones de voz",
+      "labels": {
+        "apiKey": "Clave de API",
+        "saved": "Guardada"
+      },
+      "notConnectedDescPrefix": "Ingresa tu clave de Gemini Live API para habilitar sesiones de voz en tiempo real para tus agentes. Obtén una clave con la Live API habilitada en ",
+      "googleAiStudio": "Google AI Studio",
+      "notConnectedDescSuffix": ". Asegúrate de que la clave tenga acceso a la ",
+      "liveApiName": "Gemini Live API",
+      "notConnectedDescAccessSuffix": " (BidiGenerateContent).",
+      "rotateHeading": "Rotar clave de API",
+      "addHeading": "Agregar clave de API",
+      "actions": {
+        "save": "Guardar clave",
+        "rotate": "Rotar",
+        "saving": "Guardando…",
+        "remove": "Quitar"
+      },
+      "placeholderApiKey": "AIza…",
+      "footer": "La clave de API se cifra en reposo y nunca se muestra. Cada cuenta necesita su propia clave de Gemini Live API con acceso a BidiGenerateContent habilitado."
+    },
+    "calendars": {
+      "outlook": {
+        "name": "Outlook Calendar",
+        "desc": "Sincroniza citas con cuentas de Microsoft 365 y del calendario de Outlook."
+      },
+      "calendly": {
+        "name": "Calendly",
+        "desc": "Enruta reservas a través de tus tipos de evento y reglas de disponibilidad de Calendly."
+      },
+      "calcom": {
+        "name": "Cal.com",
+        "desc": "Programación de código abierto — conecta cuentas autoalojadas o de Cal.com en la nube."
+      }
+    },
+    "restApi": {
+      "title": "REST API",
+      "subtitle": "Conecta tus propios sistemas por medio de una clave de API",
+      "desc": "Genera claves de API para enviar contactos, lanzar campañas y obtener datos de conversaciones directamente desde tu CRM, sitio web o herramientas internas.",
+      "actions": {
+        "generate": "Generar clave de API",
+        "viewDocs": "Ver documentación"
+      },
+      "footer": "Disponible en una versión futura. Podrás crear claves con permisos de lectura/escritura por recurso."
+    }
+  },
+  "tenantPhoneNumbers": {
+    "title": "Números de teléfono",
+    "subtitle": "Busca y asigna números de Twilio a tu cuenta. Nosotros nos encargamos de la cuenta de Twilio y el cobro.",
+    "usageLabel": "{used} de {max}",
+    "usageSuffix": "números de teléfono usados",
+    "planLimitReached": " — límite del plan alcanzado",
+    "actions": {
+      "getNumber": "+ Obtener un número",
+      "release": "Liberar",
+      "search": "Buscar",
+      "searching": "Buscando…",
+      "get": "Obtener",
+      "buying": "Comprando…"
+    },
+    "tooltips": {
+      "getNumberDefault": "Busca y solicita un número de teléfono",
+      "noPlan": "Tu plan no incluye números de teléfono. Mejora tu plan para solicitar uno.",
+      "atCap": "Límite del plan alcanzado: {used} de {max} usados."
+    },
+    "planUpgradeCta": "Elige un plan para obtener un número de teléfono →",
+    "planUpgradeBody": " Tu plan actual no incluye ninguno. Mejora a Basic ($197/mes, 1 número), Pro ($497/mes, 3 números) o superior.",
+    "complianceBanner": {
+      "title": "Sobre las aprobaciones de SMS (10DLC):",
+      "body": " El envío de SMS requiere un registro único con la operadora que gestionamos en tu nombre. Las llamadas de voz e entrantes funcionan de inmediato en cualquier número que solicites. Lee la guía de aprobación de Twilio →"
+    },
+    "loading": "Cargando…",
+    "empty": {
+      "title": "Aún no tienes números de teléfono.",
+      "noPlan": "Tu plan actual no incluye números de teléfono. Mejora tu plan para solicitar uno.",
+      "ready": "Haz clic en \"Obtener un número\" arriba para buscar en el inventario de Twilio y agregar uno a tu cuenta."
+    },
+    "capabilityBadges": {
+      "inbound": "Entrante",
+      "outbound": "Saliente",
+      "sms": "SMS",
+      "voice": "Voz",
+      "mms": "MMS"
+    },
+    "pricePerMonth": "${amount}/mes",
+    "modal": {
+      "title": "Obtener un número de teléfono",
+      "subtitle": "Busca en el inventario de Twilio. El costo está incluido en tu plan ($1.15/mes por número).",
+      "close": "✕",
+      "areaCodeLabel": "Código de área (opcional)",
+      "areaCodePlaceholder": "610",
+      "patternLabel": "Contiene dígitos (opcional)",
+      "patternPlaceholder": "8888",
+      "defaultRegion": "Estados Unidos",
+      "noResults": "No hay números disponibles que coincidan. Prueba con otro código de área o quita el patrón."
+    },
+    "errors": {
+      "searchFailed": "La búsqueda falló",
+      "purchaseFailed": "La compra falló",
+      "releaseFailed": "La liberación falló"
+    },
+    "confirm": {
+      "purchase": "¿Obtener {number}?\n\nCosto mensual: ${amount} (incluido en tu plan).",
+      "release": "¿Liberar {number}?\n\nEl número se devolverá al inventario de Twilio. Esto no se puede deshacer."
+    },
+    "toasts": {
+      "purchased": "El número {number} es tuyo.",
+      "released": "Número {number} liberado."
+    }
+  },
+  "tenantSettings": {
+    "title": "Ajustes",
+    "subtitle": "Espacio de trabajo y perfil del negocio",
+    "actions": {
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "saveWorkspace": "Guardar espacio de trabajo",
+      "saveIndustry": "Guardar industria",
+      "saveProfile": "Guardar perfil",
+      "cancel": "Cancelar"
+    },
+    "toasts": {
+      "workspaceSaved": "Ajustes del espacio de trabajo guardados.",
+      "profileSaved": "Perfil del negocio guardado.",
+      "logoUploaded": "Logotipo subido.",
+      "saveFailed": "No se pudo guardar."
+    },
+    "logo": {
+      "label": "Logotipo",
+      "noLogo": "Sin logotipo",
+      "uploading": "Subiendo…",
+      "replace": "Reemplazar logotipo",
+      "upload": "Subir logotipo",
+      "constraints": "PNG, JPG, WebP o SVG — máximo 2 MB",
+      "altText": "Logotipo",
+      "errorUnsupportedType": "Tipo no permitido. Usa PNG, JPG, WebP o SVG.",
+      "errorTooLarge": "El logotipo debe pesar menos de 2 MB.",
+      "errorUploadFailed": "No se pudo subir el archivo."
+    },
+    "workspace": {
+      "title": "Espacio de trabajo",
+      "description": "Información básica que ve tu equipo y aparece en las comunicaciones.",
+      "fields": {
+        "displayName": "Nombre para mostrar",
+        "displayNamePlaceholder": "Acme Corp",
+        "legalName": "Razón social",
+        "legalNamePlaceholder": "Acme Corporation LLC (opcional)",
+        "publicEmail": "Correo público",
+        "publicEmailPlaceholder": "hola@acme.com",
+        "publicPhone": "Teléfono público",
+        "publicPhonePlaceholder": "+1 555 000 0000",
+        "website": "Sitio web",
+        "websitePlaceholder": "https://acme.com",
+        "timezone": "Zona horaria",
+        "timezonePlaceholder": "America/New_York"
+      }
+    },
+    "industry": {
+      "title": "Industria",
+      "description": "Selecciona tu industria para que te recomendemos las plantillas de campaña adecuadas para tu negocio.",
+      "label": "Sector",
+      "helper": "Esto determina qué plantillas de campaña aparecen en tu Biblioteca de Campañas.",
+      "options": {
+        "GENERAL": "General",
+        "ACCOUNTING": "Contabilidad / Impuestos",
+        "AUTO_REPAIR": "Taller automotriz",
+        "BEAUTY": "Belleza y bienestar",
+        "CHILDCARE": "Cuidado infantil / Guardería",
+        "DENTAL": "Dental",
+        "EDUCATION": "Educación",
+        "FINANCIAL": "Servicios financieros",
+        "FITNESS": "Gimnasio y fitness",
+        "HOME_SERVICES": "Servicios para el hogar",
+        "HOSPITALITY": "Hospitalidad",
+        "INSURANCE": "Seguros",
+        "LEGAL": "Legal",
+        "MEDICAL": "Medicina / Clínica",
+        "PROPERTY_MANAGEMENT": "Administración de propiedades",
+        "REAL_ESTATE": "Bienes raíces",
+        "VETERINARY": "Veterinaria"
+      }
+    },
+    "profile": {
+      "title": "Perfil del negocio",
+      "description": "Dirección y datos de contacto que se usan en confirmaciones y correspondencia.",
+      "fields": {
+        "brandName": "Nombre de la marca",
+        "brandNamePlaceholder": "Acme",
+        "addressLine1": "Dirección",
+        "addressLine1Placeholder": "Av. Principal 123",
+        "city": "Ciudad",
+        "cityPlaceholder": "Ciudad de México",
+        "region": "Estado / Región",
+        "regionPlaceholder": "CDMX",
+        "postalCode": "Código postal",
+        "postalCodePlaceholder": "06000",
+        "country": "País",
+        "countryPlaceholder": "MX",
+        "fallbackNotificationEmail": "Correo de notificaciones",
+        "fallbackNotificationEmailPlaceholder": "alertas@acme.com"
+      }
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "description": "Por dispositivo — actívalas en cada navegador en el que quieras recibir alertas."
+    },
+    "members": {
+      "title": "Miembros del equipo",
+      "description": "Invita a tu equipo a compartir acceso a este espacio de trabajo. Primero deben crear su cuenta; luego agrégalos aquí por correo.",
+      "addButton": "+ Agregar miembro",
+      "emailLabel": "Correo",
+      "emailPlaceholder": "compañero@ejemplo.com",
+      "roleLabel": "Rol",
+      "roleOwner": "Propietario — control total",
+      "roleManager": "Gerente — configuración y miembros",
+      "roleStaff": "Personal — uso diario",
+      "addAction": "Agregar",
+      "adding": "Agregando…",
+      "cancel": "Cancelar",
+      "loading": "Cargando…",
+      "empty": "Aún no hay miembros.",
+      "ownerBadge": "Propietario",
+      "lastLogin": "último acceso {date}",
+      "removeButton": "Quitar",
+      "confirmRemove": "¿Quitar a {name} de este espacio de trabajo?",
+      "toasts": {
+        "memberAdded": "Miembro agregado.",
+        "memberRemoved": "Miembro eliminado.",
+        "addFailed": "No se pudo agregar el miembro.",
+        "removeFailed": "No se pudo eliminar el miembro.",
+        "emptyEmail": "Ingresa un correo."
+      }
+    }
+  },
+  "tenantUsage": {
+    "title": "Uso",
+    "subtitle": "Actividad de voz y mensajería de {period}.",
+    "units": {
+      "min": "min",
+      "msg": "msj"
+    },
+    "progress": {
+      "noQuota": "{value} {unit} usados — no hay cuota establecida en tu plan",
+      "used": "{value} {unit} usados",
+      "pctOf": "{pct}% de {max} {unit}"
+    },
+    "rates": {
+      "perOverageMsg": "{rate}¢ por mensaje excedente",
+      "perOverageMin": "{rate}¢ por minuto excedente"
+    },
+    "labels": {
+      "sent": "enviados",
+      "received": "recibidos",
+      "overage": "excedente"
+    },
+    "tooltips": {
+      "sent": "Mensajes salientes que tu agente o campañas enviaron en este período. Cuentan para tu cuota incluida.",
+      "received": "Mensajes entrantes de tus contactos. Gratis — no cuentan para tu cuota.",
+      "overage": "Mensajes enviados por encima de tu cuota mensual incluida. Cada uno se cobra en tu próxima factura a la tarifa por mensaje mostrada arriba."
+    },
+    "projectedOverage": "Excedente proyectado: {amount}",
+    "voice": {
+      "heading": "Voz — {period}",
+      "tooltip": "Minutos totales de llamadas entrantes, salientes y del widget en este período de facturación. Redondeados al minuto siguiente por llamada.",
+      "rateTooltip": "Tarifa por minuto que se cobrará en tu próxima factura por los minutos de llamada que excedan tu cuota incluida."
+    },
+    "callStats": {
+      "totalCalls": "Llamadas totales",
+      "inbound": "Entrantes",
+      "outbound": "Salientes",
+      "widget": "Widget"
+    },
+    "messaging": {
+      "heading": "Mensajería — {period}"
+    },
+    "channels": {
+      "sms": "SMS",
+      "mms": "MMS",
+      "whatsapp": "WhatsApp",
+      "voice": "Voz",
+      "total": "Total"
+    },
+    "overageSection": {
+      "title": "Cargos por excedente proyectados de este período",
+      "tooltip": "Estimación de los cargos por excedente según el uso hasta ahora en este período. El monto real se finaliza en tu próxima factura de Stripe — el uso entre ahora y el fin del período puede cambiarlo.",
+      "disclaimer": "Los cargos son proyecciones basadas en el uso hasta ahora en este período. Los montos finales se publican en tu próxima factura."
+    },
+    "history": {
+      "title": "Voz — últimos 6 meses",
+      "minutesShort": "{n}m",
+      "axisLabel": "minutos / llamadas por mes"
+    }
+  },
+  "tenantA2p": {
+    "title": "Cumplimiento SMS (A2P 10DLC)",
+    "subtitle": "Las operadoras de EE. UU. exigen que todo negocio que envíe SMS registre su marca y caso de uso. Llena esto una sola vez. Lo enviamos a Twilio por ti, normalmente aprobado en 1 a 3 días hábiles.",
+    "loading": "Cargando…",
+    "statusPill": {
+      "draft": "Borrador — complétalo y envíalo",
+      "submitted": "Enviado — Twilio lo está revisando (1 a 3 días hábiles)",
+      "approved": "Aprobado — tus números pueden enviar SMS a máxima capacidad",
+      "rejected": "Rechazado — corrige los problemas y envíalo de nuevo"
+    },
+    "statusMeta": {
+      "submittedAt": "Enviado: {date}",
+      "approvedAt": "Aprobado: {date}"
+    },
+    "toast": {
+      "savedDraft": "Guardado como borrador.",
+      "saveFailed": "No se pudo guardar.",
+      "submitted": "Enviado para revisión.",
+      "submitFailed": "No se pudo enviar."
+    },
+    "confirm": {
+      "submit": "¿Enviar a Twilio para revisión? No podrás editar mientras esté en revisión."
+    },
+    "identity": {
+      "title": "Identidad del negocio",
+      "legalName": "Razón social *",
+      "legalNamePlaceholder": "Acme Holdings, LLC",
+      "legalNameHelp": "Debe coincidir exactamente con tu registro de EIN.",
+      "einLabel": "EIN",
+      "einOptional": "(opcional para propietario único)",
+      "businessType": "Tipo de negocio *",
+      "businessTypeOptions": {
+        "soleProp": "Propietario único",
+        "llc": "LLC",
+        "corp": "Corporación",
+        "nonProfit": "Sin fines de lucro",
+        "partnership": "Sociedad"
+      },
+      "vertical": "Sector *",
+      "verticalOptions": {
+        "choose": "— Elige uno —",
+        "healthcare": "Salud",
+        "retail": "Comercio minorista",
+        "professionalServices": "Servicios profesionales",
+        "realEstate": "Bienes raíces",
+        "financial": "Finanzas",
+        "education": "Educación",
+        "hospitality": "Hospitalidad",
+        "auto": "Automotriz",
+        "technology": "Tecnología",
+        "other": "Otro"
+      },
+      "websiteUrl": "URL del sitio web",
+      "websiteUrlOptional": "(opcional)"
+    },
+    "address": {
+      "title": "Dirección del negocio",
+      "line1": "Dirección línea 1 *",
+      "line1Placeholder": "123 Main St",
+      "line2": "Dirección línea 2",
+      "line2Placeholder": "Suite 200 (opcional)",
+      "city": "Ciudad *",
+      "region": "Estado / Región *",
+      "regionPlaceholder": "CA",
+      "postalCode": "Código postal *",
+      "country": "País"
+    },
+    "contact": {
+      "title": "Contacto autorizado",
+      "subtitle": "La persona a la que Twilio contactará si tiene preguntas sobre el registro.",
+      "firstName": "Nombre *",
+      "lastName": "Apellido *",
+      "email": "Correo *",
+      "phone": "Teléfono *"
+    },
+    "useCase": {
+      "title": "Cómo usarás SMS",
+      "useCaseLabel": "Caso de uso *",
+      "options": {
+        "customerCare": "Atención al cliente — respuestas, soporte, seguimientos",
+        "mixed": "Mixto — recordatorios de citas + promociones ocasionales",
+        "utility": "Utilidad — confirmaciones, alertas, actualizaciones de estado",
+        "twoFa": "2FA — solo códigos de inicio de sesión",
+        "marketing": "Marketing — contenido promocional"
+      },
+      "sampleMessages": "Mensajes de ejemplo *",
+      "sampleMessagesCount": "(al menos 1, hasta 5)",
+      "sampleMessagesHelp": "Ejemplos reales de mensajes que enviará tu IA. Incluye lenguaje de exclusión voluntaria (\"Reply STOP to unsubscribe\") en al menos uno. Las operadoras rechazan ejemplos vagos.",
+      "sampleFirstPlaceholder": "Hola {{name}}, soy Acme confirmando tu cita el martes a las 2 p. m. Responde C para confirmar, R para reprogramar. Responde STOP para darte de baja.",
+      "sampleNthPlaceholder": "Mensaje de ejemplo {n}"
+    },
+    "actions": {
+      "saving": "Guardando…",
+      "saveDraft": "Guardar borrador",
+      "submitting": "Enviando…",
+      "submit": "Enviar para revisión",
+      "helper": "Guardaremos el borrador y luego lo enviaremos a Twilio. Puedes volver aquí para ver el estado."
+    }
+  },
+  "tenantAgentStudio": {
+    "title": "Estudio de agentes",
+    "subtitle": "Configura la voz y la apariencia de tu agente, pruébalo en vivo y guarda cuando estés conforme.",
+    "channels": {
+      "widget": "Widget",
+      "inbound": "Entrante",
+      "outbound": "Saliente"
+    },
+    "gender": {
+      "female": "Femenino",
+      "male": "Masculino",
+      "neutral": "Neutro"
+    },
+    "voiceDesc": {
+      "Zephyr": "Brillante y clara",
+      "Despina": "Suave y refinada",
+      "Aoede": "Cálida y ligera",
+      "Charon": "Profunda y firme",
+      "Fenrir": "Cálida y cercana",
+      "Puck": "Animada y conversacional",
+      "Sulafat": "Cálida y equilibrada"
+    },
+    "testPanel": {
+      "agentFallback": "Agente",
+      "voiceAgent": "Agente de voz",
+      "voiceLine": "Voz: {voice}",
+      "noVoiceSelected": "Sin voz seleccionada",
+      "statusInitial": "Selecciona una voz y presiona Probar",
+      "listening": "Escuchando… habla ahora",
+      "processing": "Procesando…",
+      "connecting": "Conectando con el gateway de voz…",
+      "greetingThenMic": "El agente te está saludando… luego presiona el micrófono para responder",
+      "yourTurn": "Tu turno — presiona el micrófono para responder",
+      "sessionEnded": "Sesión finalizada",
+      "idleHint": "Inicia una sesión de prueba para escuchar a tu agente",
+      "stateReady": "Listo",
+      "stateConnecting": "Conectando…",
+      "stateLive": "● En vivo",
+      "stateEnded": "Finalizada",
+      "stateError": "Error",
+      "errorMicDenied": "Acceso al micrófono denegado — permite el micrófono e inténtalo de nuevo",
+      "errorConnection": "Falló la conexión con el gateway de voz. Verifica que el gateway esté funcionando.",
+      "errorSessionGeneric": "Error en la sesión de voz",
+      "errorStartFailed": "No se pudo iniciar la sesión"
+    },
+    "actions": {
+      "startTest": "Probar",
+      "testAgain": "Probar de nuevo",
+      "connecting": "Conectando…",
+      "stopMic": "Detener micrófono",
+      "speak": "Hablar",
+      "end": "Finalizar",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "saveWidgetConfig": "Guardar configuración del widget",
+      "saveVoice": "Guardar voz"
+    },
+    "widget": {
+      "avatarTitle": "Avatar del agente",
+      "avatarDesc": "La cara que tus visitantes ven en el widget antes y durante la llamada",
+      "voiceTitle": "Voz del agente",
+      "voiceDesc": "Selecciona la voz con la que habla tu agente del widget",
+      "livePreview": "Vista previa en vivo",
+      "unsavedChanges": "Tienes cambios sin guardar",
+      "activeVoice": "Activa: {voice}",
+      "notConfigured": "Aún sin configurar",
+      "savedToast": "Agente del widget guardado"
+    },
+    "voiceOnly": {
+      "inboundLabel": "Recepcionista entrante",
+      "outboundLabel": "Llamador saliente",
+      "voiceTitle": "Voz de {label}",
+      "voiceDesc": "Selecciona la voz con la que tu {labelLower} habla en las llamadas",
+      "liveTest": "Prueba de voz en vivo",
+      "currentVoice": "Actual: {voice}",
+      "noVoiceYet": "Aún no se ha seleccionado una voz",
+      "savedToast": "Voz guardada"
+    },
+    "errors": {
+      "saveFailed": "Falló al guardar"
+    }
+  },
+  "tenantHelp": {
+    "title": "Centro de ayuda",
+    "searchPlaceholder": "Buscar temas…",
+    "tips": "CONSEJOS",
+    "important": "IMPORTANTE",
+    "noResults": "Sin resultados para «{query}»"
+  },
+  "tenantOnboarding": {
+    "title": "Comenzar",
+    "subtitle": "Termina estos pasos para que tu recepcionista de IA empiece a funcionar. {done} de {total} listos.",
+    "allSetTitle": "Todo listo",
+    "allSetSubtitle": "Todo está configurado. Tu agente recepcionista ya está activo.",
+    "progress": "Progreso",
+    "optional": "Opcional",
+    "actions": {
+      "refresh": "Actualizar estado",
+      "configure": "Configurar →",
+      "edit": "Editar →"
+    },
+    "statusPill": {
+      "complete": "Listo"
+    },
+    "steps": {
+      "profile": {
+        "title": "Perfil del negocio",
+        "description": "Define el nombre de tu negocio, los horarios y los datos de contacto para que el agente sepa a quién representa."
+      },
+      "dna": {
+        "title": "ADN del negocio",
+        "description": "Define tus servicios, notas de precios y reglas operativas. El agente usa esto en cada llamada."
+      },
+      "agent": {
+        "title": "Recepcionista",
+        "description": "Elige una voz y ajusta el agente recepcionista que contestará tus llamadas."
+      },
+      "channel": {
+        "title": "Canal entrante",
+        "description": "Activa el canal del recepcionista entrante y vincula tu prompt publicado."
+      },
+      "number": {
+        "title": "Número de teléfono",
+        "description": "Consigue un número para tu negocio. Busca por código de área y compra con un clic."
+      },
+      "a2p": {
+        "title": "Cumplimiento SMS",
+        "description": "Registra tu negocio en A2P 10DLC para que tu agente de IA pueda enviar SMS con todo el rendimiento del operador. Es obligatorio si vas a usar SMS."
+      }
+    },
+    "complete": {
+      "title": "Configuración completa — llama a tu número para probarlo",
+      "descriptionPrefix": "Tu recepcionista de IA ya está activo. Llama a tu número para confirmar que todo funciona y revisa la conversación en",
+      "conversationsLink": "Conversaciones",
+      "descriptionSuffix": "."
+    }
+  },
+  "tenantStaff": {
+    "title": "Directorio de personal",
+    "subtitleShort": "Administra tu equipo y conecta sus calendarios para enrutar citas de forma inteligente.",
+    "subtitleLong": "Agrega miembros del equipo, conecta sus calendarios y deja que el agente enrute las reservas a la persona correcta.",
+    "gate": {
+      "title": "El Directorio de personal es una función de los planes Premier y Enterprise",
+      "description": "Conecta los calendarios de cada miembro del equipo y enruta las citas automáticamente a personas específicas.",
+      "viewPlans": "Ver planes →"
+    },
+    "header": {
+      "seatsUsed": "{used} / {max} asientos",
+      "addMember": "+ Agregar miembro",
+      "seatLimitReached": "Se alcanzó el límite de asientos"
+    },
+    "errors": {
+      "calendarConnectFailed": "Falló la conexión del calendario: {reason}",
+      "unknownReason": "error desconocido",
+      "genericFailed": "Falló"
+    },
+    "toasts": {
+      "memberAdded": "Miembro del personal agregado"
+    },
+    "form": {
+      "heading": "Nuevo miembro del personal",
+      "fullNameLabel": "Nombre completo *",
+      "fullNamePlaceholder": "Jane Smith",
+      "jobTitleLabel": "Puesto",
+      "jobTitlePlaceholder": "Asesor de ventas",
+      "departmentLabel": "Departamento",
+      "departmentPlaceholder": "Ventas",
+      "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "jane@empresa.com",
+      "addingButton": "Agregando…",
+      "addButton": "Agregar miembro",
+      "cancelButton": "Cancelar"
+    },
+    "empty": {
+      "title": "Aún no hay miembros del personal",
+      "description": "Agrega a tu primer miembro del equipo para empezar a enrutar reservas."
+    },
+    "row": {
+      "inactive": "Inactivo",
+      "calendarConnected": "Calendario ✓",
+      "noCalendar": "Sin calendario"
+    },
+    "integrations": {
+      "heading": "INTEGRACIONES DE CALENDARIO",
+      "googleCalendar": "Google Calendar",
+      "availableNow": "Disponible ahora",
+      "outlook": "Outlook / Microsoft 365",
+      "calendly": "Calendly",
+      "comingSoon": "Próximamente"
+    },
+    "detail": {
+      "backToDirectory": "Directorio de personal",
+      "notFound": "No se encontró el miembro del personal.",
+      "backLink": "← Volver al directorio",
+      "noTitleSet": "Sin puesto asignado",
+      "actions": {
+        "deactivate": "Desactivar",
+        "activate": "Activar",
+        "remove": "Eliminar"
+      },
+      "tabs": {
+        "profile": "Perfil",
+        "calendar": "Calendario",
+        "phone": "Teléfono",
+        "agents": "Agentes"
+      },
+      "toasts": {
+        "calendarConnected": "Calendario conectado: {email}",
+        "calendarDisconnected": "Calendario desconectado",
+        "profileSaved": "Perfil guardado",
+        "availabilitySaved": "Horario guardado"
+      },
+      "errors": {
+        "calendarConnectFailed": "Falló la conexión del calendario: {reason}",
+        "unknownReason": "desconocido"
+      },
+      "confirms": {
+        "disconnectCalendar": "¿Desconectar este calendario? Las reservas existentes no se ven afectadas.",
+        "deleteMember": "¿Eliminar permanentemente a este miembro del personal? Esta acción no se puede deshacer."
+      },
+      "profile": {
+        "fields": {
+          "nameLabel": "Nombre completo *",
+          "namePlaceholder": "Jane Smith",
+          "titleLabel": "Puesto",
+          "titlePlaceholder": "Asesor de ventas",
+          "departmentLabel": "Departamento",
+          "departmentPlaceholder": "Ventas",
+          "emailLabel": "Correo electrónico",
+          "emailPlaceholder": "jane@empresa.com",
+          "phoneLabel": "Teléfono directo",
+          "phonePlaceholder": "+1 555 000 0000",
+          "timezoneLabel": "Zona horaria",
+          "timezonePlaceholder": "America/Mexico_City",
+          "extensionLabel": "Extensión",
+          "extensionPlaceholder": "1042"
+        },
+        "savingButton": "Guardando…",
+        "saveButton": "Guardar perfil"
+      },
+      "calendar": {
+        "googleCalendar": "Google Calendar",
+        "connectedTo": "Conectado — {email}",
+        "lastVerified": "Última verificación {date}",
+        "noCalendarConnected": "No hay calendario conectado. No se podrán enrutar reservas a esta persona hasta que se conecte uno.",
+        "disconnectButton": "Desconectar",
+        "connectButton": "Conectar Google Calendar",
+        "redirectingButton": "Redirigiendo…",
+        "calendarIdLabel": "ID del calendario: {id}",
+        "schedule": {
+          "heading": "Horario de disponibilidad",
+          "days": {
+            "monday": "Lunes",
+            "tuesday": "Martes",
+            "wednesday": "Miércoles",
+            "thursday": "Jueves",
+            "friday": "Viernes",
+            "saturday": "Sábado",
+            "sunday": "Domingo"
+          },
+          "to": "a",
+          "unavailable": "No disponible",
+          "savingButton": "Guardando…",
+          "saveButton": "Guardar horario"
+        }
+      },
+      "phone": {
+        "heading": "Enrutamiento telefónico",
+        "description": "Asigna un número directo o una extensión para este miembro del personal. El agente puede transferir o conectar a las personas que llaman con él por su nombre.",
+        "directPhoneLabel": "Número de teléfono directo",
+        "directPhonePlaceholder": "+1 555 000 0000",
+        "extensionLabel": "Extensión",
+        "extensionPlaceholder": "1042",
+        "dedicatedTwilioTitle": "Números dedicados de Twilio por miembro",
+        "dedicatedTwilioDescription": "— asigna un número de teléfono comprado exclusivamente a este miembro del personal desde la página de Números de teléfono. Disponible en una próxima actualización.",
+        "savingButton": "Guardando…",
+        "saveButton": "Guardar"
+      },
+      "agents": {
+        "heading": "Asignación de agentes",
+        "description": "Controla qué agentes de IA pueden agendar citas con este miembro del personal o enrutarle llamadas.",
+        "comingSoonTitle": "Las reglas de asignación de agentes llegarán pronto.",
+        "comingSoonDescription": "Actualmente todos los agentes activos con capacidad de agendar pueden enrutar a cualquier miembro del personal activo."
+      }
+    }
+  }
+}

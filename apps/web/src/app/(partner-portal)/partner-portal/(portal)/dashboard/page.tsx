@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 // ─── API contracts ────────────────────────────────────────────────────────────
 type Account = {
@@ -67,37 +68,35 @@ function fmtMoney(cents: number) {
   return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function fmtNumber(n: number) {
-  return n.toLocaleString('en-US')
+function fmtNumber(n: number, locale: string) {
+  return n.toLocaleString(locale === 'es' ? 'es-MX' : 'en-US')
 }
 
 function fmtPct(pct: number) {
   return pct.toFixed(2) + '%'
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
-    ' ' + new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+function fmtDate(iso: string, locale: string) {
+  const tag = locale === 'es' ? 'es-MX' : 'en-US'
+  return new Date(iso).toLocaleDateString(tag, { month: 'short', day: 'numeric', year: 'numeric' }) +
+    ' ' + new Date(iso).toLocaleTimeString(tag, { hour: 'numeric', minute: '2-digit' }).toLowerCase()
 }
 
-const STATUS_PILL: Record<string, { bg: string; fg: string; label: string }> = {
-  PENDING:  { bg: 'oklch(95% 0.04 193)', fg: TEAL,                       label: 'Pending' },
-  APPROVED: { bg: 'oklch(95% 0.05 145)', fg: 'oklch(45% 0.15 145)',      label: 'Approved' },
-  PAID:     { bg: 'oklch(95% 0.05 145)', fg: 'oklch(45% 0.15 145)',      label: 'Paid' },
-  HOLD:     { bg: 'oklch(95% 0.05 60)',  fg: 'oklch(50% 0.15 60)',       label: 'On Hold' },
-  REVERSED: { bg: 'oklch(95% 0.05 25)',  fg: 'oklch(50% 0.15 25)',       label: 'Reversed' },
-  CANCELLED:{ bg: 'oklch(95% 0 0)',      fg: 'oklch(55% 0 0)',           label: 'Cancelled' },
+function fmtLongDate(iso: string, locale: string) {
+  const tag = locale === 'es' ? 'es-MX' : 'en-US'
+  return new Date(iso).toLocaleDateString(tag, { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 // ─── Card components ──────────────────────────────────────────────────────────
 function StatCard({
-  icon, label, value, sub, viewAllHref, variant = 'default',
+  icon, label, value, sub, viewAllHref, viewAllLabel, variant = 'default',
 }: {
   icon: React.ReactNode
   label: string
   value: string
   sub?: React.ReactNode
   viewAllHref?: string
+  viewAllLabel: string
   variant?: 'default' | 'feature'
 }) {
   const isFeature = variant === 'feature'
@@ -143,7 +142,7 @@ function StatCard({
           className="text-xs font-medium mt-4 self-start"
           style={{ color: TEAL, textDecoration: 'none' }}
         >
-          View all
+          {viewAllLabel}
         </Link>
       )}
     </div>
@@ -165,6 +164,7 @@ const I = {
 function GetPaidChecklist({
   accountActive, approvedBalanceCents, minPayoutCents,
   payoutMethodConnected, taxFormSubmitted, nextPayoutCommission,
+  onStartConnect, connectStarting,
 }: {
   accountActive: boolean
   approvedBalanceCents: number
@@ -172,43 +172,67 @@ function GetPaidChecklist({
   payoutMethodConnected: boolean
   taxFormSubmitted: boolean
   nextPayoutCommission: { scheduledPayoutDate: string | null } | null
+  onStartConnect: () => void
+  connectStarting: boolean
 }) {
+  const t = useT()
+  const { locale } = useLocale()
   const reachedMin = approvedBalanceCents >= minPayoutCents
   const nextPayoutDateStr = nextPayoutCommission?.scheduledPayoutDate
-    ? new Date(nextPayoutCommission.scheduledPayoutDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    ? fmtLongDate(nextPayoutCommission.scheduledPayoutDate, locale)
     : null
+
+  const minAmount = (minPayoutCents / 100).toFixed(0)
+  const currentAmount = (approvedBalanceCents / 100).toFixed(2)
 
   const items = [
     {
       done: accountActive,
-      title: 'Partner account active',
-      detail: accountActive ? 'You can start sharing your referral link.' : 'Application is being reviewed.',
-      action: null as { label: string; href: string } | null,
+      title: t('partnerDashboard.checklist.activeTitle'),
+      detail: accountActive
+        ? t('partnerDashboard.checklist.activeDoneDetail')
+        : t('partnerDashboard.checklist.activePendingDetail'),
+      action: null as React.ReactNode | null,
     },
     {
       done: payoutMethodConnected,
-      title: 'Connect your payout account',
+      title: t('partnerDashboard.checklist.payoutTitle'),
       detail: payoutMethodConnected
-        ? 'Stripe payout account verified.'
-        : 'Coming soon — secure bank deposit via Stripe. We\'ll notify you when this is live.',
-      action: payoutMethodConnected ? null : null, // Will become actionable when Stripe Connect lands
+        ? t('partnerDashboard.checklist.payoutDoneDetail')
+        : t('partnerDashboard.checklist.payoutTodoDetail'),
+      action: !payoutMethodConnected && accountActive ? (
+        <button
+          onClick={onStartConnect}
+          disabled={connectStarting}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
+          style={{ background: TEAL, color: '#fff', opacity: connectStarting ? 0.6 : 1 }}
+        >
+          {connectStarting
+            ? t('partnerDashboard.checklist.connecting')
+            : t('partnerDashboard.checklist.connectNow')}
+        </button>
+      ) : null,
     },
     {
       done: taxFormSubmitted,
-      title: 'Submit tax info (W-9 / W-8BEN)',
+      title: t('partnerDashboard.checklist.taxTitle'),
+      // Stripe Connect Express collects W-9 / W-8BEN as part of the onboarding
+      // form. Once payouts are enabled, tax info is on file too. So this item
+      // mirrors the connect status — separate line in the UI for clarity, but
+      // it flips together.
       detail: taxFormSubmitted
-        ? 'On file with Stripe — they\'ll mail you a 1099-NEC at year-end if you earn $600+.'
-        : 'Collected automatically when you connect your payout account.',
+        ? t('partnerDashboard.checklist.taxDoneDetail')
+        : t('partnerDashboard.checklist.taxTodoDetail'),
       action: null,
     },
     {
       done: reachedMin,
-      title: `Earn at least $${(minPayoutCents / 100).toFixed(0)} in approved commissions`,
+      title: t('partnerDashboard.checklist.minTitle', { amount: minAmount }),
       detail: nextPayoutDateStr
-        ? `Currently $${(approvedBalanceCents / 100).toFixed(2)} of $${(minPayoutCents / 100).toFixed(0)} needed. Next scheduled payout: ${nextPayoutDateStr}.`
+        ? t('partnerDashboard.checklist.minTodoNextPayoutDetail', { current: currentAmount, target: minAmount, date: nextPayoutDateStr })
         : reachedMin
-          ? 'Minimum payout balance reached. Next payout fires on the 1st or 15th.'
-          : `Currently $${(approvedBalanceCents / 100).toFixed(2)} of $${(minPayoutCents / 100).toFixed(0)} needed. Commissions clear after a 30-day hold and pay on the 1st or 15th of each month.`,
+          ? t('partnerDashboard.checklist.minDoneDetail')
+          : t('partnerDashboard.checklist.minTodoDetail', { current: currentAmount, target: minAmount }),
       action: null,
     },
   ]
@@ -224,10 +248,10 @@ function GetPaidChecklist({
       >
         <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            What you need to get paid
+            {t('partnerDashboard.checklist.title')}
           </h2>
           <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-            Complete these steps to start receiving commissions. You can earn referrals before completing them — payment just won&apos;t process until everything is checked.
+            {t('partnerDashboard.checklist.desc')}
           </p>
         </div>
         <ul>
@@ -263,6 +287,7 @@ function GetPaidChecklist({
                   {item.detail}
                 </p>
               </div>
+              {item.action && <div className="flex-shrink-0">{item.action}</div>}
             </li>
           ))}
         </ul>
@@ -273,6 +298,8 @@ function GetPaidChecklist({
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function PartnerDashboardPage() {
+  const t = useT()
+  const { locale } = useLocale()
   const [account, setAccount]       = useState<Account | null>(null)
   const [allTime, setAllTime]       = useState<Stats | null>(null)
   const [period, setPeriod]         = useState<PeriodStats | null>(null)
@@ -281,6 +308,17 @@ export default function PartnerDashboardPage() {
   const [firstName, setFirstName]   = useState<string>('')
   const [loading, setLoading]       = useState(true)
   const [applying, setApplying]     = useState(false)
+  const [connect, setConnect]       = useState<{ payoutsEnabled: boolean; detailsSubmitted: boolean } | null>(null)
+  const [connectStarting, setConnectStarting] = useState(false)
+
+  const STATUS_PILL: Record<string, { bg: string; fg: string; label: string }> = {
+    PENDING:  { bg: 'oklch(95% 0.04 193)', fg: TEAL,                       label: t('partnerDashboard.statusPill.pending') },
+    APPROVED: { bg: 'oklch(95% 0.05 145)', fg: 'oklch(45% 0.15 145)',      label: t('partnerDashboard.statusPill.approved') },
+    PAID:     { bg: 'oklch(95% 0.05 145)', fg: 'oklch(45% 0.15 145)',      label: t('partnerDashboard.statusPill.paid') },
+    HOLD:     { bg: 'oklch(95% 0.05 60)',  fg: 'oklch(50% 0.15 60)',       label: t('partnerDashboard.statusPill.hold') },
+    REVERSED: { bg: 'oklch(95% 0.05 25)',  fg: 'oklch(50% 0.15 25)',       label: t('partnerDashboard.statusPill.reversed') },
+    CANCELLED:{ bg: 'oklch(95% 0 0)',      fg: 'oklch(55% 0 0)',           label: t('partnerDashboard.statusPill.cancelled') },
+  }
 
   async function load() {
     setLoading(true)
@@ -288,21 +326,44 @@ export default function PartnerDashboardPage() {
       const acc = await apiFetch<Account>('/api/affiliate/account').catch(() => null)
       setAccount(acc)
       if (acc) {
-        const [s, p, sett, comms, me] = await Promise.all([
+        const [s, p, sett, comms, me, conn] = await Promise.all([
           apiFetch<Stats>('/api/affiliate/stats').catch(() => null),
           apiFetch<PeriodStats>('/api/affiliate/stats/period?days=30').catch(() => null),
           apiFetch<Settings>('/api/public/affiliate/settings').catch(() => null),
           apiFetch<CommissionsResp>('/api/affiliate/commissions?page=1&limit=5').catch(() => ({ items: [], total: 0 })),
           apiFetch<{ user: { firstName: string | null } }>('/api/auth/me').catch(() => null),
+          apiFetch<{ payoutsEnabled: boolean; detailsSubmitted: boolean }>('/api/affiliate/connect/status').catch(() => null),
         ])
         setAllTime(s)
         setPeriod(p)
         setSettings(sett)
         setRecent(comms?.items ?? [])
         setFirstName(me?.user?.firstName ?? '')
+        setConnect(conn)
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  /** Kick off Stripe Connect Express onboarding — gets a one-shot URL and
+   *  redirects the browser. Stripe sends them back to /partner-portal/payouts
+   *  on completion (or refresh URL if they bail mid-onboarding). */
+  async function startConnectOnboarding() {
+    setConnectStarting(true)
+    try {
+      const origin = window.location.origin
+      const result = await apiFetch<{ url: string }>('/api/affiliate/connect/onboard', {
+        method: 'POST',
+        body: JSON.stringify({
+          returnUrl:  `${origin}/partner-portal/payouts?stripe=return`,
+          refreshUrl: `${origin}/partner-portal/dashboard?stripe=refresh`,
+        }),
+      })
+      window.location.href = result.url
+    } catch (e) {
+      alert((e as Error).message ?? 'Could not start payout setup')
+      setConnectStarting(false)
     }
   }
 
@@ -312,7 +373,7 @@ export default function PartnerDashboardPage() {
       await apiFetch('/api/affiliate/apply', { method: 'POST' })
       await load()
     } catch (e) {
-      alert((e as Error).message ?? 'Application failed')
+      alert((e as Error).message ?? t('partnerDashboard.applicationFailed'))
     }
     setApplying(false)
   }
@@ -320,23 +381,23 @@ export default function PartnerDashboardPage() {
   useEffect(() => { load() }, [])
 
   if (loading) {
-    return <div className="text-sm pt-8" style={{ color: 'var(--text-tertiary)' }}>Loading…</div>
+    return <div className="text-sm pt-8" style={{ color: 'var(--text-tertiary)' }}>{t('actions.loading')}</div>
   }
 
   // No partner account yet → application CTA
   if (!account) {
     return (
       <div className="max-w-lg">
-        <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Join the Partner Program</h1>
+        <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{t('partnerDashboard.applyTitle')}</h1>
         <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-          Earn commissions by referring customers to OrbisVoice. Once approved, you'll get a unique referral link and real-time tracking.
+          {t('partnerDashboard.applyDesc')}
         </p>
         <button
           onClick={apply} disabled={applying}
           className="px-5 py-2.5 rounded-lg text-sm font-semibold"
           style={{ background: TEAL, color: '#fff' }}
         >
-          {applying ? 'Submitting…' : 'Apply to Become a Partner'}
+          {applying ? t('partnerDashboard.submitting') : t('partnerDashboard.applyButton')}
         </button>
       </div>
     )
@@ -350,16 +411,33 @@ export default function PartnerDashboardPage() {
     ? (allTime.conversions / allTime.clicks) * 100
     : 0
 
+  const viewAll = t('partnerDashboard.stats.viewAll')
+
   return (
     <div>
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-          Welcome{firstName ? ` ${firstName}` : ''}
+          {firstName
+            ? t('partnerDashboard.welcomeWithName', { name: firstName })
+            : t('partnerDashboard.welcome')}
         </h1>
         {settings && (
           <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>
-            You earn <span style={{ color: TEAL, fontWeight: 600 }}>{settings.commissionRatePct}%</span> recurring commission on every active subscription you refer.
+            {(() => {
+              const line = t('partnerDashboard.commissionLine', { pct: settings.commissionRatePct })
+              // Highlight the percentage in teal — split on the rendered "{pct}%" substring
+              const pctStr = `${settings.commissionRatePct}%`
+              const parts = line.split(pctStr)
+              if (parts.length !== 2) return line
+              return (
+                <>
+                  {parts[0]}
+                  <span style={{ color: TEAL, fontWeight: 600 }}>{pctStr}</span>
+                  {parts[1]}
+                </>
+              )
+            })()}
           </p>
         )}
       </div>
@@ -370,7 +448,7 @@ export default function PartnerDashboardPage() {
           border: '1px solid oklch(75% 0.15 80)',
           color: 'oklch(40% 0.13 60)',
         }}>
-          <strong>Application under review.</strong> We'll notify you by email once your partner account is approved. You won't be able to track conversions until then.
+          <strong>{t('partnerDashboard.pendingTitle')}</strong> {t('partnerDashboard.pendingDesc')}
         </div>
       )}
 
@@ -380,99 +458,113 @@ export default function PartnerDashboardPage() {
         accountActive={account.status === 'ACTIVE'}
         approvedBalanceCents={allTime?.approvedCents ?? 0}
         minPayoutCents={5000}
-        payoutMethodConnected={false /* TODO: from Stripe Connect status when wired */}
-        taxFormSubmitted={false /* TODO: from Stripe Connect KYC */}
+        // Stripe Connect Express onboarding handles payouts AND tax forms in
+        // one flow. Both checklist items flip true once Stripe says
+        // payoutsEnabled.
+        payoutMethodConnected={!!connect?.payoutsEnabled}
+        taxFormSubmitted={!!connect?.detailsSubmitted}
         nextPayoutCommission={recent.find(c => c.status !== 'PAID' && c.status !== 'REVERSED' && c.scheduledPayoutDate) ?? null}
+        onStartConnect={startConnectOnboarding}
+        connectStarting={connectStarting}
       />
 
       {/* Last 30 days */}
       <section className="mb-10">
-        <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Last 30 days</h2>
+        <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>{t('partnerDashboard.last30Days')}</h2>
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
           <StatCard
             icon={I.referrals}
-            label="Referrals"
-            value={fmtNumber(period?.conversions ?? 0)}
+            label={t('partnerDashboard.stats.referrals')}
+            value={fmtNumber(period?.conversions ?? 0, locale)}
             viewAllHref="/partner-portal/referrals"
+            viewAllLabel={viewAll}
           />
           <StatCard
             icon={I.visits}
-            label="Visits"
-            value={fmtNumber(period?.clicks ?? 0)}
+            label={t('partnerDashboard.stats.visits')}
+            value={fmtNumber(period?.clicks ?? 0, locale)}
             viewAllHref="/partner-portal/referrals"
+            viewAllLabel={viewAll}
           />
           <StatCard
             icon={I.rate}
-            label="Conversion Rate"
+            label={t('partnerDashboard.stats.conversionRate')}
             value={fmtPct(period?.conversionRate ?? 0)}
+            viewAllLabel={viewAll}
           />
         </div>
       </section>
 
       {/* All-time */}
       <section className="mb-10">
-        <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>All-time</h2>
+        <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>{t('partnerDashboard.allTime')}</h2>
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
           <StatCard
             icon={I.referrals}
-            label="Referrals"
-            value={fmtNumber(allTime?.conversions ?? 0)}
+            label={t('partnerDashboard.stats.referrals')}
+            value={fmtNumber(allTime?.conversions ?? 0, locale)}
             viewAllHref="/partner-portal/commissions"
+            viewAllLabel={viewAll}
           />
           <StatCard
             icon={I.visits}
-            label="Visits"
-            value={fmtNumber(allTime?.clicks ?? 0)}
+            label={t('partnerDashboard.stats.visits')}
+            value={fmtNumber(allTime?.clicks ?? 0, locale)}
+            viewAllLabel={viewAll}
           />
           <StatCard
             icon={I.rate}
-            label="Conversion Rate"
+            label={t('partnerDashboard.stats.conversionRate')}
             value={fmtPct(allTimeConvRate)}
+            viewAllLabel={viewAll}
           />
           <StatCard
             icon={I.unpaid}
-            label="Unpaid Earnings"
+            label={t('partnerDashboard.stats.unpaidEarnings')}
             value={fmtMoney((allTime?.pendingCents ?? 0) + (allTime?.approvedCents ?? 0))}
-            sub={<span>Pending + approved</span>}
+            sub={<span>{t('partnerDashboard.stats.pendingApproved')}</span>}
             viewAllHref="/partner-portal/commissions"
+            viewAllLabel={viewAll}
           />
           <StatCard
             icon={I.paid}
-            label="Paid Earnings"
+            label={t('partnerDashboard.stats.paidEarnings')}
             value={fmtMoney(allTime?.paidCents ?? 0)}
             viewAllHref="/partner-portal/payouts"
+            viewAllLabel={viewAll}
           />
           <StatCard
             icon={I.trophy}
-            label="Total Earnings"
+            label={t('partnerDashboard.stats.totalEarnings')}
             value={fmtMoney(allTime?.totalEarnedCents ?? 0)}
-            sub={<span style={{ color: 'oklch(100% 0 0 / 0.85)' }}>Lifetime — every commission you've earned</span>}
+            sub={<span style={{ color: 'oklch(100% 0 0 / 0.85)' }}>{t('partnerDashboard.stats.lifetimeSub')}</span>}
             variant="feature"
+            viewAllLabel={viewAll}
           />
         </div>
       </section>
 
       {/* Recent activity */}
       <section>
-        <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Recent referral activity</h2>
+        <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>{t('partnerDashboard.recentActivity')}</h2>
         {recent.length === 0 ? (
           <div className="rounded-xl p-8 text-center text-sm" style={{
             background: 'var(--surface-raised)',
             border: '1px dashed var(--border-subtle)',
             color: 'var(--text-tertiary)',
           }}>
-            No commissions yet. Your earnings will appear here once your referrals subscribe.
+            {t('partnerDashboard.noCommissions')}
           </div>
         ) : (
           <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>Reference</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>Amount</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>Description</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>{t('partnerDashboard.table.reference')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>{t('partnerDashboard.table.amount')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>{t('partnerDashboard.table.description')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>{t('partnerDashboard.table.status')}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>{t('partnerDashboard.table.date')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -488,7 +580,7 @@ export default function PartnerDashboardPage() {
                           {pill.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3" style={{ color: 'var(--text-tertiary)' }}>{fmtDate(c.createdAt)}</td>
+                      <td className="px-4 py-3" style={{ color: 'var(--text-tertiary)' }}>{fmtDate(c.createdAt, locale)}</td>
                     </tr>
                   )
                 })}
@@ -496,7 +588,7 @@ export default function PartnerDashboardPage() {
             </table>
             <div className="px-4 py-3 text-xs text-center" style={{ borderTop: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)' }}>
               <Link href="/partner-portal/commissions" style={{ color: TEAL, fontWeight: 500, textDecoration: 'none' }}>
-                View all commissions →
+                {t('partnerDashboard.viewAllCommissions')}
               </Link>
             </div>
           </div>

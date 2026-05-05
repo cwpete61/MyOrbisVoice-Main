@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { apiFetchRaw, useApi } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 interface Appointment {
   id: string
@@ -28,7 +29,21 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   FAILED:      { bg: 'oklch(13% 0.04 25)',  text: 'oklch(68% 0.20 25)' },
 }
 
+// Map raw status enum to its translation key under tenantAppointments.statusPill.*
+const STATUS_LABEL_KEY: Record<string, string> = {
+  CONFIRMED:   'tenantAppointments.statusPill.confirmed',
+  PENDING:     'tenantAppointments.statusPill.pending',
+  RESCHEDULED: 'tenantAppointments.statusPill.rescheduled',
+  CANCELED:    'tenantAppointments.statusPill.canceled',
+  FAILED:      'tenantAppointments.statusPill.failed',
+  NO_SHOW:     'tenantAppointments.statusPill.noShow',
+  COMPLETED:   'tenantAppointments.statusPill.completed',
+}
+
 export default function AppointmentsPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   const { data, loading, error, reload } = useApi<AppointmentsData>('/api/appointments')
   const [actionId, setActionId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -39,19 +54,19 @@ export default function AppointmentsPage() {
   }
 
   async function cancelAppt(id: string) {
-    if (!confirm('Cancel this appointment?')) return
+    if (!confirm(t('tenantAppointments.confirm.cancel'))) return
     setActionId(id)
     try {
       const res = await apiFetchRaw(`/api/appointments/${id}/cancel`, { method: 'PATCH' })
       if (!res.ok) {
         const json = (await res.json()) as { errors?: { message: string }[] }
-        showToast('error', json.errors?.[0]?.message ?? 'Cancel failed')
+        showToast('error', json.errors?.[0]?.message ?? t('tenantAppointments.toast.cancelFailed'))
         return
       }
-      showToast('success', 'Appointment canceled.')
+      showToast('success', t('tenantAppointments.toast.cancelSuccess'))
       reload()
     } catch {
-      showToast('error', 'Failed to cancel appointment')
+      showToast('error', t('tenantAppointments.toast.cancelException'))
     } finally {
       setActionId(null)
     }
@@ -59,18 +74,25 @@ export default function AppointmentsPage() {
 
   const appointments = data?.appointments ?? []
 
+  function statusLabel(rawStatus: string): string {
+    const key = STATUS_LABEL_KEY[rawStatus]
+    if (key) return t(key)
+    // Unknown status: fall back to the title-cased raw value so it's still legible.
+    return rawStatus.charAt(0) + rawStatus.slice(1).toLowerCase()
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Appointments</h1>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{t('tenantAppointments.title')}</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Bookings created by your voice agents.
+            {t('tenantAppointments.subtitle')}
           </p>
         </div>
         {data && data.total > 0 && (
           <span className="text-sm tabular-nums" style={{ color: 'var(--text-tertiary)' }}>
-            {data.total} total
+            {t('tenantAppointments.totalLabel', { n: data.total })}
           </span>
         )}
       </div>
@@ -87,7 +109,7 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {error && <div className="alert-error">Failed to load appointments.</div>}
+      {error && <div className="alert-error">{t('tenantAppointments.loadFailed')}</div>}
 
       {!loading && appointments.length === 0 && (
         <div
@@ -103,9 +125,9 @@ export default function AppointmentsPage() {
               <path d="M7 7h2M7 10h2M4 6h8" />
             </svg>
           </div>
-          <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>No appointments yet</p>
+          <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>{t('tenantAppointments.empty.heading')}</p>
           <p className="text-xs max-w-xs mx-auto" style={{ color: 'var(--text-tertiary)' }}>
-            Connect your Google account and activate a channel. Appointments booked by agents will appear here.
+            {t('tenantAppointments.empty.body')}
           </p>
         </div>
       )}
@@ -126,18 +148,18 @@ export default function AppointmentsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2.5 flex-wrap mb-1">
                       <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                        {appt.appointmentType ?? 'Appointment'}
+                        {appt.appointmentType ?? t('tenantAppointments.defaultType')}
                       </span>
                       <span className="badge" style={{ background: style.bg, color: style.text }}>
-                        {appt.status.charAt(0) + appt.status.slice(1).toLowerCase()}
+                        {statusLabel(appt.status)}
                       </span>
                     </div>
                     <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {start.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {start.toLocaleDateString(dateLocale, { weekday: 'short', month: 'short', day: 'numeric' })}
                       {' · '}
-                      {start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                      {start.toLocaleTimeString(dateLocale, { hour: 'numeric', minute: '2-digit' })}
                       {' – '}
-                      {end.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                      {end.toLocaleTimeString(dateLocale, { hour: 'numeric', minute: '2-digit' })}
                       {appt.timezone && (
                         <span style={{ color: 'var(--text-tertiary)' }}> {appt.timezone}</span>
                       )}
@@ -156,7 +178,7 @@ export default function AppointmentsPage() {
                       className="text-xs flex-shrink-0 transition-opacity disabled:opacity-40"
                       style={{ color: 'var(--error-600)' }}
                     >
-                      {actionId === appt.id ? 'Canceling…' : 'Cancel'}
+                      {actionId === appt.id ? t('tenantAppointments.actions.canceling') : t('tenantAppointments.actions.cancel')}
                     </button>
                   )}
                 </div>

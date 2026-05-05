@@ -172,7 +172,7 @@ export default function AdminPlansPage() {
         const meta = ENTITLEMENT_META[e.key]
         if (meta?.type === 'boolean') return { key: e.key, booleanValue: raw === 'true' }
         const n = Number(raw)
-        if (!isNaN(n)) return { key: e.key, integerValue: n }
+        if (!Number.isNaN(n)) return { key: e.key, integerValue: n }
         return { key: e.key, stringValue: raw }
       }).filter(Boolean)
 

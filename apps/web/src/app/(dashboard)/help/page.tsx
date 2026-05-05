@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { HELP_CONTENT, type HelpArticle, type HelpSection } from '@/lib/helpContent'
+import { HELP_CONTENT, type HelpArticle } from '@/lib/helpContent'
 import { HelpTemplateBlock } from '@/components/HelpTemplateBlock'
 import { HelpScreenshot } from '@/components/HelpScreenshot'
 import { WebsiteChecker } from '@/components/WebsiteChecker'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 function Icon({ d, size = 15 }: { d: string; size?: number }) {
   return (
@@ -24,6 +25,7 @@ function StepNumber({ n }: { n: number }) {
 }
 
 function ArticleView({ article }: { article: HelpArticle }) {
+  const t = useT()
   return (
     <div className="max-w-2xl">
       <h1 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{article.title}</h1>
@@ -69,7 +71,7 @@ function ArticleView({ article }: { article: HelpArticle }) {
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 2a4 4 0 0 1 2 7.46V12H6v-2.54A4 4 0 0 1 8 2zm-1 10h2v2H7z" />
             </svg>
-            TIPS
+            {t('tenantHelp.tips')}
           </p>
           <ul className="space-y-1.5">
             {article.tips.map((tip, i) => (
@@ -88,7 +90,7 @@ function ArticleView({ article }: { article: HelpArticle }) {
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 2L1 14h14L8 2zm0 4v4m0 2.5v.5" />
             </svg>
-            IMPORTANT
+            {t('tenantHelp.important')}
           </p>
           <ul className="space-y-1.5">
             {article.warnings.map((w, i) => (
@@ -105,6 +107,10 @@ function ArticleView({ article }: { article: HelpArticle }) {
 }
 
 export default function HelpPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
+  void dateLocale
   const [activeArticleId, setActiveArticleId] = useState<string>(
     HELP_CONTENT[0]!.articles[0]!.id
   )
@@ -173,14 +179,14 @@ export default function HelpPage() {
       {/* Left panel — topic list */}
       <aside className="w-64 flex-shrink-0 flex flex-col" style={{ background: 'var(--surface-raised)', borderRight: '1px solid var(--border-subtle)' }}>
         <div className="px-4 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-          <p className="text-sm font-bold mb-3" style={{ color: 'var(--text-primary)' }}>Help Center</p>
+          <p className="text-sm font-bold mb-3" style={{ color: 'var(--text-primary)' }}>{t('tenantHelp.title')}</p>
           <div className="relative">
             <svg className="absolute left-2.5 top-2.5" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-tertiary)' }}>
               <circle cx="7" cy="7" r="5"/><path d="m13 13-3-3"/>
             </svg>
             <input
               type="text"
-              placeholder="Search topics…"
+              placeholder={t('tenantHelp.searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-8 pr-3 py-2 rounded-lg text-xs"
@@ -229,7 +235,7 @@ export default function HelpPage() {
 
           {filtered.length === 0 && (
             <p className="px-4 py-6 text-xs text-center" style={{ color: 'var(--text-tertiary)' }}>
-              No results for &ldquo;{search}&rdquo;
+              {t('tenantHelp.noResults', { query: search })}
             </p>
           )}
         </nav>

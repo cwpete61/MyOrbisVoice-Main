@@ -1,5 +1,6 @@
 import { AuthGuard } from '@/components/AuthGuard'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { LanguageToggle } from '@/components/LanguageToggle'
 import { AdminNav } from '@/components/AdminNav'
 import { SignOutButton } from '@/components/SignOutButton'
 import { SidebarUserBadge } from '@/components/SidebarUserBadge'
@@ -49,7 +50,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </aside>
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto flex flex-col">
+          {/* Top bar — language toggle anchored top-right */}
+          <div
+            className="flex items-center justify-end px-8 py-3 flex-shrink-0"
+            style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-sidebar)' }}
+          >
+            <LanguageToggle />
+          </div>
           <div className="w-full px-8 py-8">
             {children}
           </div>

@@ -5,7 +5,7 @@ import { apiFetchRaw, useApi } from '@/hooks/useApi'
 
 interface SystemSettings {
   google: { clientId: string | null; clientSecret: boolean; redirectUri: string | null }
-  stripe: { secretKey: boolean; publishableKey: string | null; webhookSecret: boolean }
+  stripe: { secretKey: boolean; publishableKey: string | null; webhookSecret: boolean; webhookSecretConnect: boolean }
   twilio: { accountSid: string | null; authToken: boolean; phoneNumber: string | null }
   twilioTest: { accountSid: string | null; authToken: boolean }
   reoon: { apiKey: boolean; mode: string }
@@ -159,7 +159,7 @@ export default function SystemSettingsPage() {
   }
 
   // Stripe form state
-  const [s, setS] = useState({ secretKey: '', publishableKey: '', webhookSecret: '' })
+  const [s, setS] = useState({ secretKey: '', publishableKey: '', webhookSecret: '', webhookSecretConnect: '' })
   const [sSaving, setSSaving] = useState(false)
   async function saveStripe(e: React.FormEvent) {
     e.preventDefault()
@@ -167,10 +167,11 @@ export default function SystemSettingsPage() {
     if (s.secretKey) body['secretKey'] = s.secretKey
     if (s.publishableKey) body['publishableKey'] = s.publishableKey
     if (s.webhookSecret) body['webhookSecret'] = s.webhookSecret
+    if (s.webhookSecretConnect) body['webhookSecretConnect'] = s.webhookSecretConnect
     if (!Object.keys(body).length) { showToast('error', 'Enter at least one field.'); return }
     setSSaving(true)
     const ok = await saveSection('stripe', body, 'Stripe')
-    if (ok) setS({ secretKey: '', publishableKey: '', webhookSecret: '' })
+    if (ok) setS({ secretKey: '', publishableKey: '', webhookSecret: '', webhookSecretConnect: '' })
     setSSaving(false)
   }
 
@@ -220,9 +221,9 @@ export default function SystemSettingsPage() {
   async function saveStorage(e: React.FormEvent) {
     e.preventDefault()
     const body: Record<string, unknown> = {}
-    if (sq.defaultQuotaGb)      body['defaultQuotaGb']      = parseInt(sq.defaultQuotaGb)
-    if (sq.warningThresholdPct) body['warningThresholdPct'] = parseInt(sq.warningThresholdPct)
-    if (sq.retentionDays !== '') body['retentionDays']       = sq.retentionDays ? parseInt(sq.retentionDays) : null
+    if (sq.defaultQuotaGb)      body['defaultQuotaGb']      = parseInt(sq.defaultQuotaGb, 10)
+    if (sq.warningThresholdPct) body['warningThresholdPct'] = parseInt(sq.warningThresholdPct, 10)
+    if (sq.retentionDays !== '') body['retentionDays']       = sq.retentionDays ? parseInt(sq.retentionDays, 10) : null
     if (!Object.keys(body).length) { showToast('error', 'Enter at least one field.'); return }
     setSqSaving(true)
     const res = await apiFetchRaw('/api/admin/system-settings/storage', {
@@ -260,8 +261,8 @@ export default function SystemSettingsPage() {
     setTierSaving(tier)
     const body: Record<string, unknown> = {
       quotaGb:         parseFloat(edit.quotaGb) || 1,
-      retentionDays:   edit.retentionDays ? parseInt(edit.retentionDays) : null,
-      gracePeriodDays: parseInt(edit.gracePeriodDays) || 30,
+      retentionDays:   edit.retentionDays ? parseInt(edit.retentionDays, 10) : null,
+      gracePeriodDays: parseInt(edit.gracePeriodDays, 10) || 30,
     }
     const res = await apiFetchRaw(`/api/admin/storage-tiers/${tier}`, {
       method: 'PATCH', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' },
@@ -598,7 +599,8 @@ export default function SystemSettingsPage() {
             <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               <StatusRow label="Secret Key" value={!!stripe?.secretKey} isSecret />
               <StatusRow label="Publishable Key" value={stripe?.publishableKey ?? null} />
-              <StatusRow label="Webhook Secret" value={!!stripe?.webhookSecret} isSecret />
+              <StatusRow label="Webhook Secret (platform events)" value={!!stripe?.webhookSecret} isSecret />
+              <StatusRow label="Webhook Secret (Connect events)" value={!!stripe?.webhookSecretConnect} isSecret />
             </div>
 
             <form onSubmit={saveStripe} className="px-6 py-5 space-y-4">
@@ -615,9 +617,14 @@ export default function SystemSettingsPage() {
                     placeholder="pk_live_… or pk_test_…" autoComplete="off" />
                 </div>
                 <div>
-                  <label className={labelCls}>Webhook Secret <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                  <label className={labelCls}>Webhook Secret — platform events <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
                   <input type="password" className={inputCls} value={s.webhookSecret} onChange={e => setS(p => ({ ...p, webhookSecret: e.target.value }))}
-                    placeholder="whsec_…" autoComplete="new-password" />
+                    placeholder="whsec_… (Your account scope)" autoComplete="new-password" />
+                </div>
+                <div>
+                  <label className={labelCls}>Webhook Secret — Connect events <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                  <input type="password" className={inputCls} value={s.webhookSecretConnect} onChange={e => setS(p => ({ ...p, webhookSecretConnect: e.target.value }))}
+                    placeholder="whsec_… (Connected accounts scope)" autoComplete="new-password" />
                 </div>
               </div>
               <button type="submit" disabled={sSaving} className="btn-primary">
@@ -887,7 +894,7 @@ export default function SystemSettingsPage() {
                   <label className={labelCls}>Cookie duration (days)</label>
                   <input type="number" min="1" max="365" className={inputCls}
                     value={affVal('cookieDurationDays') ?? ''}
-                    onChange={e => setAff(p => ({ ...p, cookieDurationDays: parseInt(e.target.value) || 30 }))}
+                    onChange={e => setAff(p => ({ ...p, cookieDurationDays: parseInt(e.target.value, 10) || 30 }))}
                     placeholder="30" />
                 </div>
                 <div>
@@ -903,7 +910,7 @@ export default function SystemSettingsPage() {
                   <label className={labelCls}>Minimum payout (cents)</label>
                   <input type="number" min="100" className={inputCls}
                     value={affVal('minPayoutCents') ?? ''}
-                    onChange={e => setAff(p => ({ ...p, minPayoutCents: parseInt(e.target.value) || 5000 }))}
+                    onChange={e => setAff(p => ({ ...p, minPayoutCents: parseInt(e.target.value, 10) || 5000 }))}
                     placeholder="5000" />
                   <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
                     {affVal('minPayoutCents') ? `= $${((affVal('minPayoutCents') as number) / 100).toFixed(2)}` : '5000 = $50.00'}

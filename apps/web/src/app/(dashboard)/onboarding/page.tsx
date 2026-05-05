@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useApi } from '@/hooks/useApi'
+import { useT } from '@/lib/i18n/I18nProvider'
 
 interface OnboardingStep {
   key:         'profile' | 'dna' | 'agent' | 'channel' | 'number' | 'a2p'
@@ -46,6 +47,7 @@ function CompletedIcon() {
 }
 
 export default function OnboardingPage() {
+  const t = useT()
   const { data, loading, reload } = useApi<OnboardingStatus>('/api/onboarding/status')
 
   if (loading) {
@@ -62,28 +64,35 @@ export default function OnboardingPage() {
 
   const pct = Math.round((data.completedCount / data.totalCount) * 100)
 
+  // Translate step labels and descriptions by key. The API returns English
+  // copy as a fallback, but we always render the locale-specific version.
+  const stepLabel = (step: OnboardingStep) =>
+    t(`tenantOnboarding.steps.${step.key}.title`)
+  const stepDescription = (step: OnboardingStep) =>
+    t(`tenantOnboarding.steps.${step.key}.description`)
+
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            {data.allComplete ? 'You are all set' : 'Get started'}
+            {data.allComplete ? t('tenantOnboarding.allSetTitle') : t('tenantOnboarding.title')}
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
             {data.allComplete
-              ? 'Everything is configured. Your receptionist agent is live.'
-              : `Finish these steps to get your AI receptionist running. ${data.completedCount} of ${data.totalCount} done.`}
+              ? t('tenantOnboarding.allSetSubtitle')
+              : t('tenantOnboarding.subtitle', { done: data.completedCount, total: data.totalCount })}
           </p>
         </div>
         <button onClick={() => reload()} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: 'var(--surface-sunken)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
-          Refresh status
+          {t('tenantOnboarding.actions.refresh')}
         </button>
       </div>
 
       {!data.allComplete && (
         <div className="rounded-xl p-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
           <div className="flex justify-between text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
-            <span>Progress</span>
+            <span>{t('tenantOnboarding.progress')}</span>
             <span>{pct}%</span>
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-sunken)' }}>
@@ -109,18 +118,18 @@ export default function OnboardingPage() {
             <div className="flex-1">
               <div className="flex items-baseline justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{step.label}</h3>
+                  <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{stepLabel(step)}</h3>
                   {step.optional && !step.completed && (
                     <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>
-                      Optional
+                      {t('tenantOnboarding.optional')}
                     </span>
                   )}
                 </div>
                 {step.completed && (
-                  <span className="text-xs font-medium" style={{ color: 'oklch(45% 0.16 193)' }}>Complete</span>
+                  <span className="text-xs font-medium" style={{ color: 'oklch(45% 0.16 193)' }}>{t('tenantOnboarding.statusPill.complete')}</span>
                 )}
               </div>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{step.description}</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{stepDescription(step)}</p>
               <Link
                 href={step.href}
                 className="inline-block mt-3 text-sm font-medium px-3 py-1.5 rounded-lg"
@@ -130,7 +139,7 @@ export default function OnboardingPage() {
                   border:     step.completed ? '1px solid oklch(85% 0.10 193)' : 'none',
                 }}
               >
-                {step.completed ? 'Edit →' : 'Configure →'}
+                {step.completed ? t('tenantOnboarding.actions.edit') : t('tenantOnboarding.actions.configure')}
               </Link>
             </div>
           </div>
@@ -139,10 +148,11 @@ export default function OnboardingPage() {
 
       {data.allComplete && (
         <div className="rounded-xl p-5 text-center" style={{ background: 'oklch(96% 0.05 160)', border: '1px solid oklch(80% 0.10 160)' }}>
-          <p className="text-sm font-semibold mb-1" style={{ color: 'oklch(35% 0.16 160)' }}>Setup complete — call your number to test</p>
+          <p className="text-sm font-semibold mb-1" style={{ color: 'oklch(35% 0.16 160)' }}>{t('tenantOnboarding.complete.title')}</p>
           <p className="text-xs" style={{ color: 'oklch(45% 0.10 160)' }}>
-            Your AI receptionist is live. Call your number to confirm everything works,
-            then check the conversation in <Link href="/conversations" className="underline">Conversations</Link>.
+            {t('tenantOnboarding.complete.descriptionPrefix')}{' '}
+            <Link href="/conversations" className="underline">{t('tenantOnboarding.complete.conversationsLink')}</Link>
+            {t('tenantOnboarding.complete.descriptionSuffix')}
           </p>
         </div>
       )}

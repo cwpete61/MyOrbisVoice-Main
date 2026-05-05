@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useApi, apiFetch } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface CampaignTemplate {
@@ -54,14 +55,11 @@ interface Enrollment {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const VERTICAL_LABELS: Record<string, string> = {
-  GENERAL: 'General', LEGAL: 'Legal', DENTAL: 'Dental', MEDICAL: 'Medical / Clinic',
-  FINANCIAL: 'Financial Services', HOME_SERVICES: 'Home Services', AUTO_REPAIR: 'Auto Repair',
-  REAL_ESTATE: 'Real Estate', FITNESS: 'Fitness & Gym', BEAUTY: 'Beauty & Wellness',
-  EDUCATION: 'Education', HOSPITALITY: 'Hospitality', VETERINARY: 'Veterinary',
-  CHILDCARE: 'Childcare / Nursery', ACCOUNTING: 'Accounting / Tax',
-  INSURANCE: 'Insurance', PROPERTY_MANAGEMENT: 'Property Management',
-}
+const VERTICAL_ORDER = [
+  'GENERAL','LEGAL','DENTAL','MEDICAL','FINANCIAL','HOME_SERVICES','AUTO_REPAIR',
+  'REAL_ESTATE','FITNESS','BEAUTY','EDUCATION','HOSPITALITY',
+  'VETERINARY','CHILDCARE','ACCOUNTING','INSURANCE','PROPERTY_MANAGEMENT',
+]
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-blue-50 text-blue-700', IN_PROGRESS: 'bg-yellow-50 text-yellow-700',
@@ -77,6 +75,7 @@ function Badge({ label, color }: { label: string; color?: string }) {
 type View = 'library' | 'mine' | 'enrollments'
 
 export default function CampaignsPage() {
+  const t = useT()
   const [view, setView] = useState<View>('mine')
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -85,25 +84,33 @@ export default function CampaignsPage() {
     setTimeout(() => setToast(null), 4000)
   }
 
+  const steps: Array<{ step: string; title: string; body: string }> = [
+    { step: '1', title: t('tenantCampaigns.howItWorks.step1Title'), body: t('tenantCampaigns.howItWorks.step1Body') },
+    { step: '2', title: t('tenantCampaigns.howItWorks.step2Title'), body: t('tenantCampaigns.howItWorks.step2Body') },
+    { step: '3', title: t('tenantCampaigns.howItWorks.step3Title'), body: t('tenantCampaigns.howItWorks.step3Body') },
+    { step: '4', title: t('tenantCampaigns.howItWorks.step4Title'), body: t('tenantCampaigns.howItWorks.step4Body') },
+  ]
+
+  const tabs: Array<[View, string]> = [
+    ['mine', t('tenantCampaigns.tabs.mine')],
+    ['library', t('tenantCampaigns.tabs.library')],
+    ['enrollments', t('tenantCampaigns.tabs.enrollments')],
+  ]
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Campaigns</h1>
-          <p className="text-sm text-gray-500 mt-1">Automated voice follow-ups, confirmations, and outreach — triggered by contact tags.</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('tenantCampaigns.title')}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t('tenantCampaigns.subtitle')}</p>
         </div>
       </div>
 
       {/* How it works */}
       <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>How Campaigns Work</p>
+        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantCampaigns.howItWorks.title')}</p>
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          {[
-            { step: '1', title: 'Browse the Template Library', body: 'Pick a pre-built campaign that fits your business. Each template includes a prompt, trigger tag, delay, and retry schedule.' },
-            { step: '2', title: 'Add it to My Campaigns', body: 'Click "+ Add to My Campaigns" to copy the template into your account. Customize the prompt and settings to match your tone.' },
-            { step: '3', title: 'Activate the Campaign', body: 'Toggle the campaign on. It will only fire calls once it is active — inactive campaigns are saved but never triggered.' },
-            { step: '4', title: 'Tags Trigger the Calls', body: 'When a contact receives the campaign\'s trigger tag (manually or via a call outcome), a follow-up call is automatically scheduled.' },
-          ].map(({ step, title, body }) => (
+          {steps.map(({ step, title, body }) => (
             <div key={step} className="flex gap-3">
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
                 style={{ background: 'oklch(55% 0.11 193)', color: 'white' }}>
@@ -126,7 +133,7 @@ export default function CampaignsPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
-        {([['mine', 'My Campaigns'], ['library', 'Template Library'], ['enrollments', 'Enrollments']] as [View, string][]).map(([v, label]) => (
+        {tabs.map(([v, label]) => (
           <button key={v} onClick={() => setView(v)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${view === v ? 'border-teal-600 text-teal-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             {label}
@@ -142,72 +149,72 @@ export default function CampaignsPage() {
 }
 
 // ── Template Library ──────────────────────────────────────────────────────────
-const VERTICAL_ORDER = [
-  'GENERAL','LEGAL','DENTAL','MEDICAL','FINANCIAL','HOME_SERVICES','AUTO_REPAIR',
-  'REAL_ESTATE','FITNESS','BEAUTY','EDUCATION','HOSPITALITY',
-  'VETERINARY','CHILDCARE','ACCOUNTING','INSURANCE','PROPERTY_MANAGEMENT',
-]
-
 function TemplateLibrary({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => void }) {
+  const t = useT()
   const { data: allTemplates, loading, error } = useApi<CampaignTemplate[]>('/api/campaigns/templates')
   const [activating, setActivating]   = useState<string | null>(null)
   const [expanded, setExpanded]       = useState<string | null>(null)
   const [search, setSearch]           = useState('')
   const [activeVertical, setActiveVertical] = useState('GENERAL')
 
+  function verticalLabel(v: string) {
+    return t(`tenantCampaigns.verticals.${v}`)
+  }
+
   // Build counts per vertical from full template list
   const countsByVertical: Record<string, number> = {}
-  for (const t of allTemplates ?? []) {
-    countsByVertical[t.vertical] = (countsByVertical[t.vertical] ?? 0) + 1
+  for (const tmpl of allTemplates ?? []) {
+    countsByVertical[tmpl.vertical] = (countsByVertical[tmpl.vertical] ?? 0) + 1
   }
   // Verticals that actually have templates, in preferred order
   const presentVerticals = VERTICAL_ORDER.filter(v => countsByVertical[v])
 
   // Filter by vertical tab + search
   const query = search.toLowerCase().trim()
-  const filtered = (allTemplates ?? []).filter(t => {
-    const matchesVertical = t.vertical === activeVertical
+  const filtered = (allTemplates ?? []).filter(tmpl => {
+    const matchesVertical = tmpl.vertical === activeVertical
     const matchesSearch   = !query ||
-      t.name.toLowerCase().includes(query) ||
-      t.description.toLowerCase().includes(query) ||
-      t.defaultTriggerTag.toLowerCase().includes(query)
+      tmpl.name.toLowerCase().includes(query) ||
+      tmpl.description.toLowerCase().includes(query) ||
+      tmpl.defaultTriggerTag.toLowerCase().includes(query)
     return matchesVertical && matchesSearch
   })
 
   // Group filtered results by vertical
   const grouped: Record<string, CampaignTemplate[]> = {}
-  for (const t of filtered) {
-    ;(grouped[t.vertical] ??= []).push(t)
+  for (const tmpl of filtered) {
+    if (!grouped[tmpl.vertical]) grouped[tmpl.vertical] = []
+    grouped[tmpl.vertical]!.push(tmpl)
   }
   const groupedEntries = VERTICAL_ORDER
     .filter(v => grouped[v])
     .map(v => [v, grouped[v]!] as [string, CampaignTemplate[]])
 
-  async function activateTemplate(t: CampaignTemplate) {
-    setActivating(t.id)
+  async function activateTemplate(tmpl: CampaignTemplate) {
+    setActivating(tmpl.id)
     try {
       await apiFetch('/api/campaigns', {
         method: 'POST',
         body: JSON.stringify({
-          templateId:         t.id,
-          campaignType:       t.campaignType,
-          name:               t.name,
-          description:        t.description,
-          prompt:             t.defaultPrompt,
-          triggerTag:         t.defaultTriggerTag,
-          delayHours:         t.defaultDelayHours,
-          maxRetries:         t.defaultMaxRetries,
-          retryIntervalHours: t.defaultRetryIntervalHours,
+          templateId:         tmpl.id,
+          campaignType:       tmpl.campaignType,
+          name:               tmpl.name,
+          description:        tmpl.description,
+          prompt:             tmpl.defaultPrompt,
+          triggerTag:         tmpl.defaultTriggerTag,
+          delayHours:         tmpl.defaultDelayHours,
+          maxRetries:         tmpl.defaultMaxRetries,
+          retryIntervalHours: tmpl.defaultRetryIntervalHours,
           isActive:           false,
         }),
       })
-      onMsg('success', `"${t.name}" added to My Campaigns — customize and activate it there.`)
+      onMsg('success', t('tenantCampaigns.library.addedToast', { name: tmpl.name }))
     } catch (err) {
-      onMsg('error', err instanceof Error ? err.message : 'Failed to add campaign')
+      onMsg('error', err instanceof Error ? err.message : t('tenantCampaigns.library.addFailed'))
     } finally { setActivating(null) }
   }
 
-  if (loading) return <div className="text-sm text-gray-500 py-8 text-center">Loading templates…</div>
+  if (loading) return <div className="text-sm text-gray-500 py-8 text-center">{t('tenantCampaigns.library.loading')}</div>
   if (error)   return <div className="text-sm text-red-600 py-8 text-center">{error}</div>
 
   return (
@@ -222,7 +229,7 @@ function TemplateLibrary({ onMsg }: { onMsg: (t: 'success' | 'error', m: string)
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search templates by name, description, or tag…"
+          placeholder={t('tenantCampaigns.library.searchPlaceholder')}
           className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
         />
         {search && (
@@ -238,7 +245,7 @@ function TemplateLibrary({ onMsg }: { onMsg: (t: 'success' | 'error', m: string)
             onClick={() => setActiveVertical(v)}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${activeVertical === v ? 'border-teal-600 text-teal-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
-            {VERTICAL_LABELS[v] ?? v}
+            {verticalLabel(v)}
             <span className={`px-1.5 py-0.5 rounded-full text-xs ${activeVertical === v ? 'bg-teal-100 text-teal-700' : 'bg-gray-100 text-gray-500'}`}>{countsByVertical[v]}</span>
           </button>
         ))}
@@ -247,14 +254,14 @@ function TemplateLibrary({ onMsg }: { onMsg: (t: 'success' | 'error', m: string)
       {/* Results summary */}
       <p className="text-xs text-gray-400">
         {!search
-          ? `${filtered.length} template${filtered.length !== 1 ? 's' : ''} in ${VERTICAL_LABELS[activeVertical] ?? activeVertical}`
-          : `${filtered.length} result${filtered.length !== 1 ? 's' : ''} for "${search}"`}
+          ? t(filtered.length === 1 ? 'tenantCampaigns.library.summaryInVertical' : 'tenantCampaigns.library.summaryInVerticalPlural', { count: filtered.length, vertical: verticalLabel(activeVertical) })
+          : t(filtered.length === 1 ? 'tenantCampaigns.library.summaryResults' : 'tenantCampaigns.library.summaryResultsPlural', { count: filtered.length, query: search })}
       </p>
 
       {/* Template cards */}
       {filtered.length === 0 && (
         <div className="py-16 text-center text-sm text-gray-400 border border-dashed border-gray-200 rounded-xl">
-          No templates match your search.
+          {t('tenantCampaigns.library.noMatches')}
         </div>
       )}
 
@@ -264,46 +271,46 @@ function TemplateLibrary({ onMsg }: { onMsg: (t: 'success' | 'error', m: string)
           {query && groupedEntries.length > 1 && (
             <div className="flex items-center gap-3 mb-3">
               <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                {VERTICAL_LABELS[vertical] ?? vertical}
+                {verticalLabel(vertical)}
               </h2>
-              <span className="text-xs text-gray-400">{items.length} template{items.length !== 1 ? 's' : ''}</span>
+              <span className="text-xs text-gray-400">{t(items.length === 1 ? 'tenantCampaigns.library.verticalCount' : 'tenantCampaigns.library.verticalCountPlural', { count: items.length })}</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {items.map(t => (
-              <div key={t.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col">
+            {items.map(tmpl => (
+              <div key={tmpl.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col">
                 <div className="p-3 flex-1 flex flex-col gap-2">
                   <div>
-                    <p className="font-semibold text-gray-900 text-xs leading-snug">{t.name}</p>
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-3">{t.description}</p>
+                    <p className="font-semibold text-gray-900 text-xs leading-snug">{tmpl.name}</p>
+                    <p className="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-3">{tmpl.description}</p>
                   </div>
                   <div className="flex flex-wrap gap-1 text-xs text-gray-500 mt-auto pt-1">
-                    <span className="bg-gray-100 rounded px-1.5 py-0.5 font-mono text-gray-600 truncate max-w-full">{t.defaultTriggerTag}</span>
-                    <span className="bg-gray-100 rounded px-1.5 py-0.5">{t.defaultDelayHours}h delay</span>
-                    <span className="bg-gray-100 rounded px-1.5 py-0.5">{t.defaultMaxRetries} retries</span>
+                    <span className="bg-gray-100 rounded px-1.5 py-0.5 font-mono text-gray-600 truncate max-w-full">{tmpl.defaultTriggerTag}</span>
+                    <span className="bg-gray-100 rounded px-1.5 py-0.5">{t('tenantCampaigns.library.delayHours', { hours: tmpl.defaultDelayHours })}</span>
+                    <span className="bg-gray-100 rounded px-1.5 py-0.5">{t('tenantCampaigns.library.retries', { count: tmpl.defaultMaxRetries })}</span>
                   </div>
                 </div>
 
                 <div className="border-t border-gray-100">
                   <button
-                    onClick={() => setExpanded(expanded === t.id ? null : t.id)}
+                    onClick={() => setExpanded(expanded === tmpl.id ? null : tmpl.id)}
                     className="w-full px-3 py-1.5 text-left text-xs text-gray-400 hover:bg-gray-50 transition-colors"
                   >
-                    {expanded === t.id ? '▲ Hide prompt' : '▼ Preview prompt'}
+                    {expanded === tmpl.id ? t('tenantCampaigns.library.hidePrompt') : t('tenantCampaigns.library.previewPrompt')}
                   </button>
-                  {expanded === t.id && (
+                  {expanded === tmpl.id && (
                     <div className="px-3 pb-3">
-                      <p className="text-xs text-gray-600 bg-gray-50 rounded p-2 leading-relaxed">{t.defaultPrompt}</p>
+                      <p className="text-xs text-gray-600 bg-gray-50 rounded p-2 leading-relaxed">{tmpl.defaultPrompt}</p>
                     </div>
                   )}
                   <button
-                    onClick={() => activateTemplate(t)}
-                    disabled={activating === t.id}
+                    onClick={() => activateTemplate(tmpl)}
+                    disabled={activating === tmpl.id}
                     className="w-full px-3 py-2 bg-teal-600 text-white text-xs font-semibold hover:bg-teal-700 disabled:opacity-50 transition-colors"
                   >
-                    {activating === t.id ? 'Adding…' : '+ Add to My Campaigns'}
+                    {activating === tmpl.id ? t('tenantCampaigns.library.adding') : t('tenantCampaigns.library.addButton')}
                   </button>
                 </div>
               </div>
@@ -317,6 +324,7 @@ function TemplateLibrary({ onMsg }: { onMsg: (t: 'success' | 'error', m: string)
 
 // ── My Campaigns ──────────────────────────────────────────────────────────────
 function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => void }) {
+  const t = useT()
   const { data: campaigns, loading, error, reload } = useApi<Campaign[]>('/api/campaigns')
   const [editing, setEditing] = useState<Campaign | null>(null)
   const [showNew, setShowNew] = useState(false)
@@ -339,26 +347,26 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
   }
 
   async function save() {
-    if (!form.name || !form.triggerTag) { onMsg('error', 'Name and trigger tag are required.'); return }
+    if (!form.name || !form.triggerTag) { onMsg('error', t('tenantCampaigns.mine.validation.nameAndTagRequired')); return }
     if (!form.enableVoice && !form.enableSms && !form.enableEmail && !form.enableWhatsapp) {
-      onMsg('error', 'Enable at least one channel (voice, SMS, email, or WhatsApp).'); return
+      onMsg('error', t('tenantCampaigns.mine.validation.atLeastOneChannel')); return
     }
-    if (form.enableVoice && !form.prompt) { onMsg('error', 'Voice prompt is required when voice is enabled.'); return }
-    if (form.enableSms   && !form.smsBody) { onMsg('error', 'SMS body is required when SMS is enabled.'); return }
-    if (form.enableEmail && (!form.emailSubject || !form.emailBody)) { onMsg('error', 'Email subject and body are required when email is enabled.'); return }
+    if (form.enableVoice && !form.prompt) { onMsg('error', t('tenantCampaigns.mine.validation.voicePromptRequired')); return }
+    if (form.enableSms   && !form.smsBody) { onMsg('error', t('tenantCampaigns.mine.validation.smsBodyRequired')); return }
+    if (form.enableEmail && (!form.emailSubject || !form.emailBody)) { onMsg('error', t('tenantCampaigns.mine.validation.emailFieldsRequired')); return }
     setSaving(true)
     try {
       if (editing) {
         await apiFetch(`/api/campaigns/${editing.id}`, { method: 'PATCH', body: JSON.stringify(form) })
-        onMsg('success', 'Campaign updated.')
+        onMsg('success', t('tenantCampaigns.mine.updatedToast'))
       } else {
         await apiFetch('/api/campaigns', { method: 'POST', body: JSON.stringify(form) })
-        onMsg('success', 'Campaign created.')
+        onMsg('success', t('tenantCampaigns.mine.createdToast'))
       }
       reload()
       setEditing(null)
       setShowNew(false)
-    } catch (err) { onMsg('error', err instanceof Error ? err.message : 'Save failed') }
+    } catch (err) { onMsg('error', err instanceof Error ? err.message : t('tenantCampaigns.mine.saveFailed')) }
     finally { setSaving(false) }
   }
 
@@ -366,22 +374,22 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
     try {
       await apiFetch(`/api/campaigns/${c.id}`, { method: 'PATCH', body: JSON.stringify({ isActive: !c.isActive }) })
       reload()
-    } catch (err) { onMsg('error', err instanceof Error ? err.message : 'Failed') }
+    } catch (err) { onMsg('error', err instanceof Error ? err.message : t('tenantCampaigns.mine.toggleFailed')) }
   }
 
   async function deleteCampaign(id: string) {
-    if (!confirm('Delete this campaign? Existing enrollments will also be removed.')) return
+    if (!confirm(t('tenantCampaigns.mine.deleteConfirm'))) return
     setDeleting(id)
     try {
       await apiFetch(`/api/campaigns/${id}`, { method: 'DELETE' })
       reload()
       if (editing?.id === id) { setEditing(null); setShowNew(false) }
-      onMsg('success', 'Campaign deleted.')
-    } catch (err) { onMsg('error', err instanceof Error ? err.message : 'Delete failed') }
+      onMsg('success', t('tenantCampaigns.mine.deletedToast'))
+    } catch (err) { onMsg('error', err instanceof Error ? err.message : t('tenantCampaigns.mine.deleteFailed')) }
     finally { setDeleting(null) }
   }
 
-  if (loading) return <div className="text-sm text-gray-500 py-8 text-center">Loading…</div>
+  if (loading) return <div className="text-sm text-gray-500 py-8 text-center">{t('tenantCampaigns.mine.loading')}</div>
   if (error)   return <div className="text-sm text-red-600 py-8 text-center">{error}</div>
 
   const showForm = editing !== null || showNew
@@ -391,12 +399,12 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
       {/* Campaign list */}
       <div className="col-span-2 space-y-2">
         <button onClick={startNew} className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-teal-400 hover:text-teal-600 transition-colors">
-          + New campaign
+          {t('tenantCampaigns.mine.newCampaign')}
         </button>
 
         {(campaigns ?? []).length === 0 && !showNew && (
           <div className="py-12 text-center text-sm text-gray-400">
-            No campaigns yet.<br />Add one from the Template Library or create custom.
+            {t('tenantCampaigns.mine.emptyTitle')}<br />{t('tenantCampaigns.mine.emptyHint')}
           </div>
         )}
 
@@ -415,8 +423,8 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
             </div>
             <div className="mt-1.5 flex gap-2 items-center flex-wrap">
               <code className="text-xs bg-gray-100 rounded px-1.5 py-0.5 text-gray-600">{c.triggerTag}</code>
-              <span className="text-xs text-gray-400">{c._count.enrollments} enrolled</span>
-              {c.template && <span className="text-xs text-gray-400">{VERTICAL_LABELS[c.template.vertical] ?? c.template.vertical}</span>}
+              <span className="text-xs text-gray-400">{t('tenantCampaigns.mine.enrolledCount', { count: c._count.enrollments })}</span>
+              {c.template && <span className="text-xs text-gray-400">{t(`tenantCampaigns.verticals.${c.template.vertical}`)}</span>}
             </div>
           </div>
         ))}
@@ -426,49 +434,49 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
       <div className="col-span-3">
         {!showForm && (
           <div className="py-20 text-center text-sm text-gray-400 border border-dashed border-gray-200 rounded-xl">
-            Select a campaign to edit or create a new one.
+            {t('tenantCampaigns.mine.selectPrompt')}
           </div>
         )}
 
         {showForm && (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-900">{editing ? 'Edit Campaign' : 'New Campaign'}</h2>
+              <h2 className="text-sm font-semibold text-gray-900">{editing ? t('tenantCampaigns.mine.editTitle') : t('tenantCampaigns.mine.newTitle')}</h2>
             </div>
             <div className="p-6 space-y-5">
-              <Field label="Campaign name">
+              <Field label={t('tenantCampaigns.form.name')}>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className={inp} placeholder="Post-procedure follow-up" />
+                  className={inp} placeholder={t('tenantCampaigns.form.namePlaceholder')} />
               </Field>
 
-              <Field label="Description (optional)">
+              <Field label={t('tenantCampaigns.form.description')}>
                 <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  className={inp} placeholder="Brief description of what this campaign does" />
+                  className={inp} placeholder={t('tenantCampaigns.form.descriptionPlaceholder')} />
               </Field>
 
-              <Field label="Channels" hint="Pick which channels this campaign dispatches through. Each enabled channel sends independently when the trigger fires.">
+              <Field label={t('tenantCampaigns.form.channels')} hint={t('tenantCampaigns.form.channelsHint')}>
                 <div className="grid grid-cols-2 gap-2">
                   <ChannelToggle
-                    label="Voice call"
-                    sublabel="AI agent calls the contact"
+                    label={t('tenantCampaigns.channels.voice')}
+                    sublabel={t('tenantCampaigns.channels.voiceSub')}
                     checked={form.enableVoice}
                     onChange={v => setForm(f => ({ ...f, enableVoice: v }))}
                   />
                   <ChannelToggle
-                    label="SMS / Text"
-                    sublabel="Text message via Twilio"
+                    label={t('tenantCampaigns.channels.sms')}
+                    sublabel={t('tenantCampaigns.channels.smsSub')}
                     checked={form.enableSms}
                     onChange={v => setForm(f => ({ ...f, enableSms: v }))}
                   />
                   <ChannelToggle
-                    label="Email"
-                    sublabel="Email via connected mailbox"
+                    label={t('tenantCampaigns.channels.email')}
+                    sublabel={t('tenantCampaigns.channels.emailSub')}
                     checked={form.enableEmail}
                     onChange={v => setForm(f => ({ ...f, enableEmail: v }))}
                   />
                   <ChannelToggle
-                    label="WhatsApp"
-                    sublabel="WhatsApp Business message"
+                    label={t('tenantCampaigns.channels.whatsapp')}
+                    sublabel={t('tenantCampaigns.channels.whatsappSub')}
                     checked={form.enableWhatsapp}
                     onChange={v => setForm(f => ({ ...f, enableWhatsapp: v }))}
                     comingSoon
@@ -476,58 +484,58 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
                 </div>
               </Field>
 
-              <Field label="Trigger tag" hint="The contact tag that starts this campaign automatically.">
+              <Field label={t('tenantCampaigns.form.triggerTag')} hint={t('tenantCampaigns.form.triggerTagHint')}>
                 <input value={form.triggerTag} onChange={e => setForm(f => ({ ...f, triggerTag: e.target.value.toLowerCase().replace(/\s+/g, '-') }))}
-                  className={inp} placeholder="post-procedure" />
+                  className={inp} placeholder={t('tenantCampaigns.form.triggerTagPlaceholder')} />
               </Field>
 
               {form.enableVoice && (
-                <Field label="Voice prompt" hint="What the agent says on the call. Be specific about purpose and tone. Available variables: {firstName}, {fullName}, {businessName}, {businessPhone}, {appointmentDate}, {appointmentTime}.">
+                <Field label={t('tenantCampaigns.form.voicePrompt')} hint={t('tenantCampaigns.form.voicePromptHint')}>
                   <textarea value={form.prompt} onChange={e => setForm(f => ({ ...f, prompt: e.target.value }))}
-                    className={inp} rows={6} placeholder="You are calling to follow up on the contact's recent visit…" />
+                    className={inp} rows={6} placeholder={t('tenantCampaigns.form.voicePromptPlaceholder')} />
                 </Field>
               )}
 
               {form.enableSms && (
-                <Field label="SMS body" hint={`Plain text message. Use {firstName}, {businessName}, etc. ${form.smsBody.length}/1600 characters.`}>
+                <Field label={t('tenantCampaigns.form.smsBody')} hint={t('tenantCampaigns.form.smsBodyHint', { count: form.smsBody.length })}>
                   <textarea value={form.smsBody} onChange={e => setForm(f => ({ ...f, smsBody: e.target.value }))}
                     className={inp} rows={3} maxLength={1600}
-                    placeholder="Hi {firstName}, this is {businessName} confirming your appointment. Reply STOP to opt out." />
+                    placeholder={t('tenantCampaigns.form.smsBodyPlaceholder')} />
                 </Field>
               )}
 
               {form.enableEmail && (
                 <>
-                  <Field label="Email subject" hint="Variables: {firstName}, {businessName}, {appointmentDate}, {appointmentTime}.">
+                  <Field label={t('tenantCampaigns.form.emailSubject')} hint={t('tenantCampaigns.form.emailSubjectHint')}>
                     <input value={form.emailSubject} onChange={e => setForm(f => ({ ...f, emailSubject: e.target.value }))}
-                      className={inp} placeholder="Your appointment with {businessName} is confirmed" />
+                      className={inp} placeholder={t('tenantCampaigns.form.emailSubjectPlaceholder')} />
                   </Field>
-                  <Field label="Email body" hint="HTML allowed. Same variables as the subject.">
+                  <Field label={t('tenantCampaigns.form.emailBody')} hint={t('tenantCampaigns.form.emailBodyHint')}>
                     <textarea value={form.emailBody} onChange={e => setForm(f => ({ ...f, emailBody: e.target.value }))}
                       className={inp} rows={6}
-                      placeholder={"Hi {firstName},\n\nWe're looking forward to seeing you on {appointmentDate} at {appointmentTime}.\n\n— The {businessName} team"} />
+                      placeholder={t('tenantCampaigns.form.emailBodyPlaceholder')} />
                   </Field>
                 </>
               )}
 
               {form.enableWhatsapp && (
-                <Field label="WhatsApp message body" hint="WhatsApp dispatch is coming soon — content saved for when it launches.">
+                <Field label={t('tenantCampaigns.form.whatsappBody')} hint={t('tenantCampaigns.form.whatsappBodyHint')}>
                   <textarea value={form.whatsappBody} onChange={e => setForm(f => ({ ...f, whatsappBody: e.target.value }))}
                     className={inp} rows={3} maxLength={4000}
-                    placeholder="Hi {firstName}! Your appointment with {businessName} is confirmed for {appointmentDate} at {appointmentTime}." />
+                    placeholder={t('tenantCampaigns.form.whatsappBodyPlaceholder')} />
                 </Field>
               )}
 
               <div className="grid grid-cols-3 gap-4">
-                <Field label="Delay (hours)" hint="How long after the tag is applied before calling.">
+                <Field label={t('tenantCampaigns.form.delayHours')} hint={t('tenantCampaigns.form.delayHoursHint')}>
                   <input type="number" min={0} value={form.delayHours} onChange={e => setForm(f => ({ ...f, delayHours: Number(e.target.value) }))}
                     className={inp} />
                 </Field>
-                <Field label="Max retries" hint="How many times to retry if no answer.">
+                <Field label={t('tenantCampaigns.form.maxRetries')} hint={t('tenantCampaigns.form.maxRetriesHint')}>
                   <input type="number" min={0} max={10} value={form.maxRetries} onChange={e => setForm(f => ({ ...f, maxRetries: Number(e.target.value) }))}
                     className={inp} />
                 </Field>
-                <Field label="Retry interval (hours)">
+                <Field label={t('tenantCampaigns.form.retryInterval')}>
                   <input type="number" min={1} value={form.retryIntervalHours} onChange={e => setForm(f => ({ ...f, retryIntervalHours: Number(e.target.value) }))}
                     className={inp} />
                 </Field>
@@ -540,20 +548,20 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
                 >
                   <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${form.isActive ? 'translate-x-4' : 'translate-x-1'}`} />
                 </button>
-                <span className="text-sm text-gray-700">{form.isActive ? 'Active — will trigger on tag' : 'Inactive — will not trigger'}</span>
+                <span className="text-sm text-gray-700">{form.isActive ? t('tenantCampaigns.mine.active') : t('tenantCampaigns.mine.inactive')}</span>
               </div>
 
               <div className="flex gap-3 pt-2">
                 <button onClick={save} disabled={saving} className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50">
-                  {saving ? 'Saving…' : 'Save campaign'}
+                  {saving ? t('tenantCampaigns.mine.saving') : t('tenantCampaigns.mine.save')}
                 </button>
                 <button onClick={() => { setEditing(null); setShowNew(false) }} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">
-                  Cancel
+                  {t('tenantCampaigns.mine.cancel')}
                 </button>
                 {editing && (
                   <button onClick={() => deleteCampaign(editing.id)} disabled={deleting === editing.id}
                     className="ml-auto px-4 py-2 text-sm text-red-600 hover:text-red-800 disabled:opacity-50">
-                    {deleting === editing.id ? 'Deleting…' : 'Delete'}
+                    {deleting === editing.id ? t('tenantCampaigns.mine.deleting') : t('tenantCampaigns.mine.delete')}
                   </button>
                 )}
               </div>
@@ -567,52 +575,66 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
 
 // ── Enrollments ───────────────────────────────────────────────────────────────
 function Enrollments() {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   const [statusFilter, setStatusFilter] = useState('')
   const { data: enrollments, loading, error } = useApi<Enrollment[]>(
     `/api/enrollments${statusFilter ? `?status=${statusFilter}` : ''}`,
     [statusFilter]
   )
 
+  const STATUS_KEYS = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED', 'OPTED_OUT', 'CANCELLED'] as const
+  const headers: Array<[string, string]> = [
+    ['contact', t('tenantCampaigns.enrollments.table.contact')],
+    ['campaign', t('tenantCampaigns.enrollments.table.campaign')],
+    ['tag', t('tenantCampaigns.enrollments.table.tag')],
+    ['status', t('tenantCampaigns.enrollments.table.status')],
+    ['triggered', t('tenantCampaigns.enrollments.table.triggered')],
+    ['scheduledCall', t('tenantCampaigns.enrollments.table.scheduledCall')],
+    ['attempts', t('tenantCampaigns.enrollments.table.attempts')],
+  ]
+
   return (
     <div className="space-y-4">
       <div className="flex gap-3 items-center">
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
-          <option value="">All statuses</option>
-          {['PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED', 'OPTED_OUT', 'CANCELLED'].map(s => (
-            <option key={s} value={s}>{s}</option>
+          <option value="">{t('tenantCampaigns.enrollments.allStatuses')}</option>
+          {STATUS_KEYS.map(s => (
+            <option key={s} value={s}>{t(`tenantCampaigns.statusPill.${s}`)}</option>
           ))}
         </select>
-        <span className="text-sm text-gray-500">{enrollments?.length ?? 0} enrollments</span>
+        <span className="text-sm text-gray-500">{t('tenantCampaigns.enrollments.count', { count: enrollments?.length ?? 0 })}</span>
       </div>
 
-      {loading && <div className="text-sm text-gray-500 py-8 text-center">Loading…</div>}
+      {loading && <div className="text-sm text-gray-500 py-8 text-center">{t('tenantCampaigns.enrollments.loading')}</div>}
       {error   && <div className="text-sm text-red-600 py-8 text-center">{error}</div>}
       {!loading && !error && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {['Contact', 'Campaign', 'Tag', 'Status', 'Triggered', 'Scheduled Call', 'Attempts'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{h}</th>
+                {headers.map(([key, label]) => (
+                  <th key={key} className="px-4 py-3 text-left text-xs font-medium text-gray-500">{label}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {(enrollments ?? []).length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">No enrollments found.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400 text-sm">{t('tenantCampaigns.enrollments.empty')}</td></tr>
               )}
               {(enrollments ?? []).map(e => (
                 <tr key={e.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{e.contact.fullName ?? (`${e.contact.firstName ?? ''} ${e.contact.lastName ?? ''}`.trim() || '—')}</p>
-                    <p className="text-xs text-gray-400 font-mono">{e.contact.phoneE164 ?? e.contact.email ?? '—'}</p>
+                    <p className="font-medium text-gray-900">{e.contact.fullName ?? (`${e.contact.firstName ?? ''} ${e.contact.lastName ?? ''}`.trim() || t('tenantCampaigns.enrollments.none'))}</p>
+                    <p className="text-xs text-gray-400 font-mono">{e.contact.phoneE164 ?? e.contact.email ?? t('tenantCampaigns.enrollments.none')}</p>
                   </td>
                   <td className="px-4 py-3 text-gray-700">{e.campaign.name}</td>
                   <td className="px-4 py-3"><code className="text-xs bg-gray-100 rounded px-1.5 py-0.5 text-gray-600">{e.triggerTag}</code></td>
-                  <td className="px-4 py-3"><Badge label={e.status} color={STATUS_COLORS[e.status]} /></td>
-                  <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{new Date(e.triggeredAt).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{e.scheduledCallAt ? new Date(e.scheduledCallAt).toLocaleString() : '—'}</td>
+                  <td className="px-4 py-3"><Badge label={t(`tenantCampaigns.statusPill.${e.status}`)} color={STATUS_COLORS[e.status]} /></td>
+                  <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{new Date(e.triggeredAt).toLocaleString(dateLocale)}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{e.scheduledCallAt ? new Date(e.scheduledCallAt).toLocaleString(dateLocale) : t('tenantCampaigns.enrollments.none')}</td>
                   <td className="px-4 py-3 text-gray-600 text-center">{e.attemptCount}</td>
                 </tr>
               ))}
@@ -644,6 +666,7 @@ function ChannelToggle({
   onChange: (v: boolean) => void
   comingSoon?: boolean
 }) {
+  const t = useT()
   const disabled = !!comingSoon
   return (
     <label
@@ -667,7 +690,7 @@ function ChannelToggle({
           <span className="text-sm font-medium text-gray-900">{label}</span>
           {comingSoon && (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">
-              Coming soon
+              {t('tenantCampaigns.channels.comingSoon')}
             </span>
           )}
         </div>

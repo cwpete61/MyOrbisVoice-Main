@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { apiFetch, apiFetchRaw, useApi } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 interface GoogleStatus {
   status: 'NOT_CONNECTED' | 'CONNECTED' | 'ERROR' | 'RECONNECT_REQUIRED' | 'DISABLED'
@@ -21,17 +22,31 @@ interface IntegrationsData {
   gemini: GeminiStatus
 }
 
-const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  CONNECTED:          { bg: 'oklch(19% 0.04 193)', text: 'oklch(72% 0.12 193)', label: 'Connected' },
-  NOT_CONNECTED:      { bg: 'var(--surface-overlay)', text: 'var(--text-secondary)', label: 'Not connected' },
-  ERROR:              { bg: 'oklch(13% 0.04 25)', text: 'oklch(68% 0.20 25)', label: 'Error' },
-  RECONNECT_REQUIRED: { bg: 'oklch(14% 0.04 75)', text: 'oklch(70% 0.16 75)', label: 'Reconnect required' },
-  DISABLED:           { bg: 'var(--surface-overlay)', text: 'var(--text-tertiary)', label: 'Disabled' },
+// Status colour palette only — the human label resolves through t() at render
+// so it follows the active locale.
+const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
+  CONNECTED:          { bg: 'oklch(19% 0.04 193)',     text: 'oklch(72% 0.12 193)' },
+  NOT_CONNECTED:      { bg: 'var(--surface-overlay)',  text: 'var(--text-secondary)' },
+  ERROR:              { bg: 'oklch(13% 0.04 25)',      text: 'oklch(68% 0.20 25)' },
+  RECONNECT_REQUIRED: { bg: 'oklch(14% 0.04 75)',      text: 'oklch(70% 0.16 75)' },
+  DISABLED:           { bg: 'var(--surface-overlay)',  text: 'var(--text-tertiary)' },
+}
+
+const STATUS_LABEL_KEY: Record<string, string> = {
+  CONNECTED:          'tenantIntegrations.statusPill.connected',
+  NOT_CONNECTED:      'tenantIntegrations.statusPill.notConnected',
+  ERROR:              'tenantIntegrations.statusPill.error',
+  RECONNECT_REQUIRED: 'tenantIntegrations.statusPill.reconnectRequired',
+  DISABLED:           'tenantIntegrations.statusPill.disabled',
 }
 
 const inp = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
 
 export default function IntegrationsPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
+
   const { data, loading, error, reload } = useApi<IntegrationsData>('/api/integrations')
   const [connecting, setConnecting] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -42,8 +57,12 @@ export default function IntegrationsPage() {
   const [geminiKey, setGeminiKey] = useState('')
   const [geminiSaving, setGeminiSaving] = useState(false)
 
-  // Gmail test send
-  const [gmailTest, setGmailTest] = useState({ to: '', subject: 'Test from OrbisVoice', body: 'This is a test email sent from your connected Google agent mailbox.' })
+  // Gmail test send — defaults are translated, but user-edited values are kept
+  const [gmailTest, setGmailTest] = useState({
+    to: '',
+    subject: t('tenantIntegrations.google.test.defaultSubject'),
+    body: t('tenantIntegrations.google.test.defaultBody'),
+  })
   const [gmailSending, setGmailSending] = useState(false)
 
   function showToast(type: 'success' | 'error', text: string) {
@@ -57,39 +76,41 @@ export default function IntegrationsPage() {
     const email  = params.get('email')
     const reason = params.get('reason')
     if (result === 'success' && email) {
-      showToast('success', `Google account connected: ${email}`)
+      showToast('success', t('tenantIntegrations.toasts.googleConnected', { email }))
       reload()
       window.history.replaceState({}, '', '/integrations')
     } else if (result === 'error') {
-      showToast('error', `Google connection failed: ${reason ?? 'unknown error'}`)
+      showToast('error', t('tenantIntegrations.toasts.googleConnectionFailed', {
+        reason: reason ?? t('tenantIntegrations.toasts.googleConnectionFailedReasonUnknown'),
+      }))
       window.history.replaceState({}, '', '/integrations')
     }
-  }, [reload])
+  }, [reload, t])
 
   async function startOAuth(endpoint: string) {
     setConnecting(true)
     try {
       const res  = await apiFetchRaw(endpoint, { method: 'POST' })
       const json = (await res.json()) as { data?: { url: string }; errors?: { message: string }[] }
-      if (!res.ok) { showToast('error', json.errors?.[0]?.message ?? 'Failed'); return }
+      if (!res.ok) { showToast('error', json.errors?.[0]?.message ?? t('tenantIntegrations.toasts.failed')); return }
       window.location.href = json.data!.url
-    } catch { showToast('error', 'Failed to start Google connection') }
+    } catch { showToast('error', t('tenantIntegrations.toasts.failedStartGoogle')) }
     finally { setConnecting(false) }
   }
 
   async function disconnectGoogle() {
-    if (!confirm('Disconnect your Google account? This will disable Gmail and Calendar integrations.')) return
+    if (!confirm(t('tenantIntegrations.confirms.disconnectGoogle'))) return
     setConnecting(true)
     try {
       const res  = await apiFetchRaw('/api/integrations/google', { method: 'DELETE' })
       if (!res.ok) {
         const json = (await res.json()) as { errors?: { message: string }[] }
-        showToast('error', json.errors?.[0]?.message ?? 'Failed to disconnect')
+        showToast('error', json.errors?.[0]?.message ?? t('tenantIntegrations.toasts.failedDisconnect'))
         return
       }
-      showToast('success', 'Google account disconnected.')
+      showToast('success', t('tenantIntegrations.toasts.googleDisconnected'))
       reload()
-    } catch { showToast('error', 'Failed to disconnect Google account') }
+    } catch { showToast('error', t('tenantIntegrations.toasts.failedDisconnectGoogle')) }
     finally { setConnecting(false) }
   }
 
@@ -105,9 +126,9 @@ export default function IntegrationsPage() {
         body: JSON.stringify({ apiKey: geminiKey }),
       })
       setGeminiKey('')
-      showToast('success', 'Gemini API key saved.')
+      showToast('success', t('tenantIntegrations.toasts.geminiSaved'))
       reload()
-    } catch (err) { showToast('error', err instanceof Error ? err.message : 'Failed') }
+    } catch (err) { showToast('error', err instanceof Error ? err.message : t('tenantIntegrations.toasts.failed')) }
     finally { setGeminiSaving(false) }
   }
 
@@ -119,18 +140,18 @@ export default function IntegrationsPage() {
         method: 'POST',
         body: JSON.stringify({ to: gmailTest.to, subject: gmailTest.subject, body: gmailTest.body }),
       })
-      showToast('success', `Test email sent to ${gmailTest.to}`)
-    } catch (err) { showToast('error', err instanceof Error ? err.message : 'Failed to send') }
+      showToast('success', t('tenantIntegrations.toasts.testEmailSent', { to: gmailTest.to }))
+    } catch (err) { showToast('error', err instanceof Error ? err.message : t('tenantIntegrations.toasts.failedSend')) }
     finally { setGmailSending(false) }
   }
 
   async function disconnectGemini() {
-    if (!confirm('Remove Gemini API key? Voice sessions will fall back to the platform key if one is configured.')) return
+    if (!confirm(t('tenantIntegrations.confirms.removeGemini'))) return
     try {
       await apiFetch('/api/integrations/gemini', { method: 'DELETE' })
-      showToast('success', 'Gemini key removed.')
+      showToast('success', t('tenantIntegrations.toasts.geminiRemoved'))
       reload()
-    } catch { showToast('error', 'Failed to remove Gemini key') }
+    } catch { showToast('error', t('tenantIntegrations.toasts.failedRemoveGemini')) }
   }
 
   const google      = data?.google
@@ -139,19 +160,63 @@ export default function IntegrationsPage() {
   const googleStyle = STATUS_STYLES[google?.status ?? 'NOT_CONNECTED']!
   const twilioStyle = STATUS_STYLES[twilio?.status ?? 'NOT_CONNECTED']!
   const geminiStyle = STATUS_STYLES[gemini?.status ?? 'NOT_CONNECTED']!
+  const googleLabel = t(STATUS_LABEL_KEY[google?.status ?? 'NOT_CONNECTED']!)
+  const geminiLabel = t(STATUS_LABEL_KEY[gemini?.status ?? 'NOT_CONNECTED']!)
+  // Reference twilioStyle to keep parity with status-driven styling without
+  // breaking the linter when the variable isn't yet read in JSX.
+  void twilioStyle
+
+  const calendarPlaceholders = [
+    {
+      name: t('tenantIntegrations.calendars.outlook.name'),
+      desc: t('tenantIntegrations.calendars.outlook.desc'),
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <rect x="2" y="4" width="20" height="16" rx="2" fill="#0078D4" />
+          <path d="M8 4v16M2 10h6M8 10h14" stroke="white" strokeWidth="1.5" />
+          <rect x="10" y="12" width="4" height="4" fill="white" opacity="0.7" />
+        </svg>
+      ),
+    },
+    {
+      name: t('tenantIntegrations.calendars.calendly.name'),
+      desc: t('tenantIntegrations.calendars.calendly.desc'),
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" fill="#006BFF" />
+          <path d="M12 7v5l3 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+    },
+    {
+      name: t('tenantIntegrations.calendars.calcom.name'),
+      desc: t('tenantIntegrations.calendars.calcom.desc'),
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="4" width="18" height="17" rx="2" fill="#111827" />
+          <path d="M8 2v4M16 2v4M3 10h18" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" />
+          <circle cx="8" cy="15" r="1.5" fill="#6EE7B7" />
+          <circle cx="12" cy="15" r="1.5" fill="#6EE7B7" />
+          <circle cx="16" cy="15" r="1.5" fill="#6EE7B7" />
+        </svg>
+      ),
+    },
+  ]
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Integrations</h1>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          {t('tenantIntegrations.title')}
+        </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Connect third-party services your agents use to book, call, and communicate.
+          {t('tenantIntegrations.subtitle')}
         </p>
       </div>
 
       {toast && <div className={toast.type === 'success' ? 'alert-success' : 'alert-error'}>{toast.text}</div>}
       {loading && <div className="h-4 rounded animate-pulse w-48" style={{ background: 'var(--border-subtle)' }} />}
-      {error   && <div className="alert-error">Failed to load integration status.</div>}
+      {error   && <div className="alert-error">{t('tenantIntegrations.loadError')}</div>}
 
       {/* ── Google ─────────────────────────────────────────────────────── */}
       {!loading && google && (
@@ -167,41 +232,45 @@ export default function IntegrationsPage() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Google Workspace</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Agent mailbox · Google Calendar</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('tenantIntegrations.google.title')}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.google.subtitle')}</p>
               </div>
             </div>
-            <span className="badge" style={{ background: googleStyle.bg, color: googleStyle.text }}>{googleStyle.label}</span>
+            <span className="badge" style={{ background: googleStyle.bg, color: googleStyle.text }}>{googleLabel}</span>
           </div>
           <div className="px-6 py-5">
             {google.status === 'CONNECTED' && (
               <dl className="space-y-2 mb-5">
                 <div className="flex items-center gap-6">
-                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>Account</dt>
+                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.google.labels.account')}</dt>
                   <dd className="text-sm" style={{ color: 'var(--text-primary)' }}>{google.email}</dd>
                 </div>
                 <div className="flex items-center gap-6">
-                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>Calendars</dt>
-                  <dd className="text-sm" style={{ color: 'var(--text-primary)' }}>{google.calendarCount} found</dd>
+                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.google.labels.calendars')}</dt>
+                  <dd className="text-sm" style={{ color: 'var(--text-primary)' }}>{t('tenantIntegrations.google.calendarsFound', { n: google.calendarCount })}</dd>
                 </div>
                 {google.lastVerifiedAt && (
                   <div className="flex items-center gap-6">
-                    <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>Last verified</dt>
-                    <dd className="text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(google.lastVerifiedAt).toLocaleString()}</dd>
+                    <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.google.labels.lastVerified')}</dt>
+                    <dd className="text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(google.lastVerifiedAt).toLocaleString(dateLocale)}</dd>
                   </div>
                 )}
               </dl>
             )}
-            {google.status === 'NOT_CONNECTED' && <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>Connect the dedicated Google account your agent will use to send emails and manage appointments. This should be a mailbox set up specifically for your agent — not the email address you used to register.</p>}
-            {(google.status === 'ERROR' || google.status === 'RECONNECT_REQUIRED') && <p className="text-sm mb-5" style={{ color: 'var(--error-600)' }}>Your Google connection needs to be reauthorized. Click Reconnect to fix it.</p>}
+            {google.status === 'NOT_CONNECTED' && <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>{t('tenantIntegrations.google.notConnectedDesc')}</p>}
+            {(google.status === 'ERROR' || google.status === 'RECONNECT_REQUIRED') && <p className="text-sm mb-5" style={{ color: 'var(--error-600)' }}>{t('tenantIntegrations.google.needsReauth')}</p>}
             <div className="flex flex-wrap gap-2.5">
               {google.status === 'NOT_CONNECTED' && (
-                <button onClick={() => startOAuth('/api/integrations/google/start')} disabled={connecting} className="btn-primary">{connecting ? 'Redirecting…' : 'Connect Google'}</button>
+                <button onClick={() => startOAuth('/api/integrations/google/start')} disabled={connecting} className="btn-primary">
+                  {connecting ? t('tenantIntegrations.google.actions.redirecting') : t('tenantIntegrations.google.actions.connect')}
+                </button>
               )}
               {(google.status === 'CONNECTED' || google.status === 'ERROR' || google.status === 'RECONNECT_REQUIRED') && (
                 <>
-                  <button onClick={() => startOAuth('/api/integrations/google/reconnect')} disabled={connecting} className="btn-ghost">{connecting ? 'Redirecting…' : 'Reconnect'}</button>
-                  <button onClick={disconnectGoogle} disabled={connecting} className="btn-danger">Disconnect</button>
+                  <button onClick={() => startOAuth('/api/integrations/google/reconnect')} disabled={connecting} className="btn-ghost">
+                    {connecting ? t('tenantIntegrations.google.actions.redirecting') : t('tenantIntegrations.google.actions.reconnect')}
+                  </button>
+                  <button onClick={disconnectGoogle} disabled={connecting} className="btn-danger">{t('tenantIntegrations.google.actions.disconnect')}</button>
                 </>
               )}
             </div>
@@ -209,24 +278,24 @@ export default function IntegrationsPage() {
           {/* Gmail test send — only when connected */}
           {google.status === 'CONNECTED' && (
             <div className="px-6 py-5 space-y-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Send a test email</p>
-              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Verify your agent mailbox can send by dispatching a test message from the connected account.</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('tenantIntegrations.google.test.title')}</p>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{t('tenantIntegrations.google.test.desc')}</p>
               <div className="space-y-2">
                 <input value={gmailTest.to} onChange={(e) => setGmailTest({ ...gmailTest, to: e.target.value })}
-                  className={inp} type="email" placeholder="Recipient email" />
+                  className={inp} type="email" placeholder={t('tenantIntegrations.google.test.placeholderTo')} />
                 <input value={gmailTest.subject} onChange={(e) => setGmailTest({ ...gmailTest, subject: e.target.value })}
-                  className={inp} placeholder="Subject" />
+                  className={inp} placeholder={t('tenantIntegrations.google.test.placeholderSubject')} />
                 <textarea value={gmailTest.body} onChange={(e) => setGmailTest({ ...gmailTest, body: e.target.value })}
-                  className={inp} rows={3} placeholder="Message body" />
+                  className={inp} rows={3} placeholder={t('tenantIntegrations.google.test.placeholderBody')} />
               </div>
               <button onClick={sendTestEmail} disabled={gmailSending || !gmailTest.to} className="btn-secondary text-sm">
-                {gmailSending ? 'Sending…' : 'Send test email'}
+                {gmailSending ? t('tenantIntegrations.google.test.sending') : t('tenantIntegrations.google.test.send')}
               </button>
             </div>
           )}
 
           <div className="px-6 py-3.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Connect a dedicated Google account for your agent — not your personal or registration email. Required scopes: Gmail Send, Gmail Read, Google Calendar. Tokens are encrypted at rest and never displayed.</p>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.google.footer')}</p>
           </div>
         </div>
       )}
@@ -242,30 +311,29 @@ export default function IntegrationsPage() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Twilio (Voice & SMS)</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Inbound calls · Outbound calls · SMS — managed by OrbisVoice</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('tenantIntegrations.twilio.title')}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.twilio.subtitle')}</p>
               </div>
             </div>
-            <span className="badge" style={{ background: 'oklch(95% 0.07 145 / 0.6)', color: 'oklch(40% 0.15 145)' }}>Managed</span>
+            <span className="badge" style={{ background: 'oklch(95% 0.07 145 / 0.6)', color: 'oklch(40% 0.15 145)' }}>{t('tenantIntegrations.statusPill.managed')}</span>
           </div>
 
           <div className="px-6 py-5 space-y-3">
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              You don&apos;t need to create or connect a Twilio account.
-              OrbisVoice runs all voice and SMS through our master Twilio account, and we
-              assign phone numbers directly to your tenant from our pool.
+              {t('tenantIntegrations.twilio.intro')}
             </p>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              To request a phone number, go to{' '}
-              <a href="/phone-numbers" style={{ color: 'oklch(55% 0.11 193)', textDecoration: 'underline' }}>Phone Numbers</a>.
-              Your monthly minutes / SMS quota is set by your plan tier — see{' '}
-              <a href="/billing" style={{ color: 'oklch(55% 0.11 193)', textDecoration: 'underline' }}>Billing</a>.
+              {t('tenantIntegrations.twilio.requestPrefix')}
+              <a href="/phone-numbers" style={{ color: 'oklch(55% 0.11 193)', textDecoration: 'underline' }}>{t('tenantIntegrations.twilio.phoneNumbersLink')}</a>
+              {t('tenantIntegrations.twilio.quotaMid')}
+              <a href="/billing" style={{ color: 'oklch(55% 0.11 193)', textDecoration: 'underline' }}>{t('tenantIntegrations.twilio.billingLink')}</a>
+              {t('tenantIntegrations.twilio.quotaSuffix')}
             </p>
           </div>
 
           <div className="px-6 py-3.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              All voice / SMS billing is included in your OrbisVoice subscription. No separate Twilio account required.
+              {t('tenantIntegrations.twilio.footer')}
             </p>
           </div>
         </div>
@@ -282,59 +350,67 @@ export default function IntegrationsPage() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Gemini Live API</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Real-time voice AI · Required for voice sessions</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('tenantIntegrations.gemini.title')}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.gemini.subtitle')}</p>
               </div>
             </div>
-            <span className="badge" style={{ background: geminiStyle.bg, color: geminiStyle.text }}>{geminiStyle.label}</span>
+            <span className="badge" style={{ background: geminiStyle.bg, color: geminiStyle.text }}>{geminiLabel}</span>
           </div>
 
           <div className="px-6 py-5 space-y-4">
             {gemini.status === 'CONNECTED' && gemini.lastVerifiedAt && (
               <dl className="space-y-2">
                 <div className="flex items-center gap-6">
-                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>API Key</dt>
+                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.gemini.labels.apiKey')}</dt>
                   <dd className="text-sm" style={{ color: 'var(--text-tertiary)' }}>••••••••••••••••••••••••••••••••</dd>
                 </div>
                 <div className="flex items-center gap-6">
-                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>Saved</dt>
-                  <dd className="text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(gemini.lastVerifiedAt).toLocaleString()}</dd>
+                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.gemini.labels.saved')}</dt>
+                  <dd className="text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(gemini.lastVerifiedAt).toLocaleString(dateLocale)}</dd>
                 </div>
               </dl>
             )}
 
             {gemini.status === 'NOT_CONNECTED' && (
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Enter your Gemini Live API key to enable real-time voice sessions for your agents.
-                Get a Live API-enabled key from{' '}
+                {t('tenantIntegrations.gemini.notConnectedDescPrefix')}
                 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer"
                   className="underline" style={{ color: 'oklch(60% 0.18 264)' }}>
-                  Google AI Studio
-                </a>. Make sure the key has access to the <strong>Gemini Live API</strong> (BidiGenerateContent).
+                  {t('tenantIntegrations.gemini.googleAiStudio')}
+                </a>
+                {t('tenantIntegrations.gemini.notConnectedDescSuffix')}
+                <strong>{t('tenantIntegrations.gemini.liveApiName')}</strong>
+                {t('tenantIntegrations.gemini.notConnectedDescAccessSuffix')}
               </p>
             )}
 
             <div className="space-y-3">
               <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                {gemini.status === 'CONNECTED' ? 'Rotate API key' : 'Add API key'}
+                {gemini.status === 'CONNECTED'
+                  ? t('tenantIntegrations.gemini.rotateHeading')
+                  : t('tenantIntegrations.gemini.addHeading')}
               </p>
               <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>API Key</label>
+                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('tenantIntegrations.gemini.labels.apiKey')}</label>
                 <input
                   type="password"
                   value={geminiKey}
                   onChange={(e) => setGeminiKey(e.target.value)}
                   className={inp}
-                  placeholder="AIza…"
+                  placeholder={t('tenantIntegrations.gemini.placeholderApiKey')}
                   autoComplete="new-password"
                 />
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={saveGemini} disabled={geminiSaving || !geminiKey.trim()} className="btn-primary">
-                  {geminiSaving ? 'Saving…' : gemini.status === 'CONNECTED' ? 'Rotate' : 'Save key'}
+                  {geminiSaving
+                    ? t('tenantIntegrations.gemini.actions.saving')
+                    : gemini.status === 'CONNECTED'
+                      ? t('tenantIntegrations.gemini.actions.rotate')
+                      : t('tenantIntegrations.gemini.actions.save')}
                 </button>
                 {gemini.status === 'CONNECTED' && (
-                  <button onClick={disconnectGemini} className="btn-danger">Remove</button>
+                  <button onClick={disconnectGemini} className="btn-danger">{t('tenantIntegrations.gemini.actions.remove')}</button>
                 )}
               </div>
             </div>
@@ -342,7 +418,7 @@ export default function IntegrationsPage() {
 
           <div className="px-6 py-3.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              API key is encrypted at rest and never displayed. Each account requires its own Gemini Live API key with BidiGenerateContent access enabled.
+              {t('tenantIntegrations.gemini.footer')}
             </p>
           </div>
         </div>
@@ -350,44 +426,9 @@ export default function IntegrationsPage() {
 
       {/* ── Coming Soon: Calendar Integrations ─────────────────────────── */}
       <div>
-        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>More integrations — coming soon</h2>
+        <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>{t('tenantIntegrations.moreComingSoon')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {[
-            {
-              name: 'Outlook Calendar',
-              desc: 'Sync appointments with Microsoft 365 and Outlook calendar accounts.',
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <rect x="2" y="4" width="20" height="16" rx="2" fill="#0078D4" />
-                  <path d="M8 4v16M2 10h6M8 10h14" stroke="white" strokeWidth="1.5" />
-                  <rect x="10" y="12" width="4" height="4" fill="white" opacity="0.7" />
-                </svg>
-              ),
-            },
-            {
-              name: 'Calendly',
-              desc: 'Route bookings through your Calendly event types and availability rules.',
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="10" fill="#006BFF" />
-                  <path d="M12 7v5l3 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              ),
-            },
-            {
-              name: 'Cal.com',
-              desc: 'Open-source scheduling — connect self-hosted or Cal.com cloud accounts.',
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="4" width="18" height="17" rx="2" fill="#111827" />
-                  <path d="M8 2v4M16 2v4M3 10h18" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" />
-                  <circle cx="8" cy="15" r="1.5" fill="#6EE7B7" />
-                  <circle cx="12" cy="15" r="1.5" fill="#6EE7B7" />
-                  <circle cx="16" cy="15" r="1.5" fill="#6EE7B7" />
-                </svg>
-              ),
-            },
-          ].map((item) => (
+          {calendarPlaceholders.map((item) => (
             <div key={item.name} className="rounded-xl opacity-60" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
               <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                 <div className="flex items-center gap-3">
@@ -396,7 +437,7 @@ export default function IntegrationsPage() {
                   </div>
                   <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
                 </div>
-                <span className="badge" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>Coming soon</span>
+                <span className="badge" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.comingSoon')}</span>
               </div>
               <div className="px-5 py-4">
                 <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{item.desc}</p>
@@ -416,23 +457,23 @@ export default function IntegrationsPage() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>REST API</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Connect your own systems via API key</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('tenantIntegrations.restApi.title')}</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.restApi.subtitle')}</p>
             </div>
           </div>
-          <span className="badge" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>Coming soon</span>
+          <span className="badge" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.comingSoon')}</span>
         </div>
         <div className="px-6 py-5">
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Generate API keys to push contacts, trigger campaigns, and pull conversation data directly from your CRM, website, or custom tooling.
+            {t('tenantIntegrations.restApi.desc')}
           </p>
           <div className="mt-4 flex gap-2">
-            <button disabled className="btn-primary opacity-40 cursor-not-allowed">Generate API key</button>
-            <button disabled className="btn-ghost opacity-40 cursor-not-allowed">View docs</button>
+            <button disabled className="btn-primary opacity-40 cursor-not-allowed">{t('tenantIntegrations.restApi.actions.generate')}</button>
+            <button disabled className="btn-ghost opacity-40 cursor-not-allowed">{t('tenantIntegrations.restApi.actions.viewDocs')}</button>
           </div>
         </div>
         <div className="px-6 py-3.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Available in a future release. You&apos;ll be able to create scoped keys with read/write permissions per resource.</p>
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.restApi.footer')}</p>
         </div>
       </div>
     </div>

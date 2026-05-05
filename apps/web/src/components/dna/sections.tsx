@@ -18,6 +18,7 @@ import {
   type ObjectFieldSchema,
 } from './inputs'
 import { GenerateWithAi } from './generate-with-ai'
+import { useT } from '@/lib/i18n/I18nProvider'
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Type helpers — JSONB is loose; we always validate the shape we read.
@@ -48,7 +49,9 @@ function asStringArray(v: unknown): string[] {
 }
 function asObjectArray(v: unknown): Record<string, unknown>[] {
   if (!Array.isArray(v)) return []
-  return v.filter((x) => x !== null && typeof x === 'object' && !Array.isArray(x)) as Record<string, unknown>[]
+  const isObj = (x: unknown): x is Record<string, unknown> =>
+    x !== null && typeof x === 'object' && !Array.isArray(x)
+  return v.filter(isObj)
 }
 function asObject(v: unknown): Record<string, unknown> {
   return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}
@@ -84,18 +87,18 @@ const KNOWN_IDENTITY = [
   'tone', 'voicePreference', 'industry', 'targetCustomers',
 ]
 
-const VOICE_OPTIONS = [
-  { value: '',         label: '— No preference —', hint: 'Falls back to the channel default voice.' },
-  { value: 'Zephyr',   label: 'Zephyr',   hint: 'Female · Bright & clear' },
-  { value: 'Despina',  label: 'Despina',  hint: 'Female · Smooth & polished' },
-  { value: 'Aoede',    label: 'Aoede',    hint: 'Female · Warm & breezy' },
-  { value: 'Charon',   label: 'Charon',   hint: 'Male · Deep & authoritative' },
-  { value: 'Fenrir',   label: 'Fenrir',   hint: 'Male · Warm & approachable (default)' },
-  { value: 'Puck',     label: 'Puck',     hint: 'Male · Upbeat & conversational' },
-  { value: 'Sulafat',  label: 'Sulafat',  hint: 'Neutral · Warm & even' },
-]
-
 export function IdentitySection({ value, onChange, disabled }: SectionProps) {
+  const t = useT()
+  const VOICE_OPTIONS = [
+    { value: '',         label: t('tenantBusinessDna.voiceOptions.none'),  hint: t('tenantBusinessDna.voiceOptions.noneHint') },
+    { value: 'Zephyr',   label: 'Zephyr',   hint: t('tenantBusinessDna.voiceOptions.zephyrHint') },
+    { value: 'Despina',  label: 'Despina',  hint: t('tenantBusinessDna.voiceOptions.despinaHint') },
+    { value: 'Aoede',    label: 'Aoede',    hint: t('tenantBusinessDna.voiceOptions.aoedeHint') },
+    { value: 'Charon',   label: 'Charon',   hint: t('tenantBusinessDna.voiceOptions.charonHint') },
+    { value: 'Fenrir',   label: 'Fenrir',   hint: t('tenantBusinessDna.voiceOptions.fenrirHint') },
+    { value: 'Puck',     label: 'Puck',     hint: t('tenantBusinessDna.voiceOptions.puckHint') },
+    { value: 'Sulafat',  label: 'Sulafat',  hint: t('tenantBusinessDna.voiceOptions.sulafatHint') },
+  ]
   return (
     <div className="space-y-4">
       {!disabled && (
@@ -109,69 +112,69 @@ export function IdentitySection({ value, onChange, disabled }: SectionProps) {
         </AiAssistRow>
       )}
       <TextField
-        label="Business name"
+        label={t('tenantBusinessDna.identity.businessName.label')}
         value={asString(value['businessName'])}
         onChange={(v) => onChange(patch(value, { businessName: v }))}
-        placeholder="Acme Plumbing"
-        description="The name your agent uses to introduce itself."
+        placeholder={t('tenantBusinessDna.identity.businessName.placeholder')}
+        description={t('tenantBusinessDna.identity.businessName.description')}
         disabled={disabled}
       />
       <TextField
-        label="Tagline"
+        label={t('tenantBusinessDna.identity.tagline.label')}
         value={asString(value['tagline'])}
         onChange={(v) => onChange(patch(value, { tagline: v }))}
-        placeholder="Fast, friendly, fixed right the first time."
-        description="A short one-liner. Optional."
+        placeholder={t('tenantBusinessDna.identity.tagline.placeholder')}
+        description={t('tenantBusinessDna.identity.tagline.description')}
         disabled={disabled}
       />
       <TextArea
-        label="Short description"
+        label={t('tenantBusinessDna.identity.shortDescription.label')}
         value={asString(value['shortDescription'])}
         onChange={(v) => onChange(patch(value, { shortDescription: v }))}
         rows={2}
-        placeholder="What the business does in one or two sentences."
-        description="The agent uses this to answer 'what do you do?'."
+        placeholder={t('tenantBusinessDna.identity.shortDescription.placeholder')}
+        description={t('tenantBusinessDna.identity.shortDescription.description')}
         disabled={disabled}
       />
       <TextArea
-        label="Elevator pitch"
+        label={t('tenantBusinessDna.identity.elevatorPitch.label')}
         value={asString(value['elevatorPitch'])}
         onChange={(v) => onChange(patch(value, { elevatorPitch: v }))}
         rows={4}
-        placeholder="A longer 30-second version. Cover what you do, who for, and what makes you different."
-        description="Used when callers want more detail than the short description."
+        placeholder={t('tenantBusinessDna.identity.elevatorPitch.placeholder')}
+        description={t('tenantBusinessDna.identity.elevatorPitch.description')}
         disabled={disabled}
       />
       <TextField
-        label="Tone"
+        label={t('tenantBusinessDna.identity.tone.label')}
         value={asString(value['tone'])}
         onChange={(v) => onChange(patch(value, { tone: v }))}
-        placeholder="warm, professional, no jargon"
-        description="A few adjectives describing how the agent should sound."
+        placeholder={t('tenantBusinessDna.identity.tone.placeholder')}
+        description={t('tenantBusinessDna.identity.tone.description')}
         disabled={disabled}
       />
       <Select
-        label="Voice preference"
+        label={t('tenantBusinessDna.identity.voicePreference.label')}
         value={asString(value['voicePreference'])}
         options={VOICE_OPTIONS}
         onChange={(v) => onChange(patch(value, { voicePreference: v }))}
-        description="Which agent voice to prefer. The channel can override this."
+        description={t('tenantBusinessDna.identity.voicePreference.description')}
         disabled={disabled}
       />
       <TextField
-        label="Industry"
+        label={t('tenantBusinessDna.identity.industry.label')}
         value={asString(value['industry'])}
         onChange={(v) => onChange(patch(value, { industry: v }))}
-        placeholder="Home services"
+        placeholder={t('tenantBusinessDna.identity.industry.placeholder')}
         disabled={disabled}
       />
       <TextArea
-        label="Target customers"
+        label={t('tenantBusinessDna.identity.targetCustomers.label')}
         value={asString(value['targetCustomers'])}
         onChange={(v) => onChange(patch(value, { targetCustomers: v }))}
         rows={2}
-        placeholder="Homeowners in the greater metro area, ages 35-65, who own their home."
-        description="Who you serve. Helps the agent qualify leads."
+        placeholder={t('tenantBusinessDna.identity.targetCustomers.placeholder')}
+        description={t('tenantBusinessDna.identity.targetCustomers.description')}
         disabled={disabled}
       />
       <UnrecognizedFields extras={extras(value, KNOWN_IDENTITY)} />
@@ -187,32 +190,32 @@ export function IdentitySection({ value, onChange, disabled }: SectionProps) {
 
 const KNOWN_SERVICES = ['channels', 'agentCapabilities']
 
-const CHANNEL_SCHEMA: ObjectFieldSchema[] = [
-  { key: 'name',        label: 'Name',        type: 'text',     placeholder: 'Inbound calls' },
-  { key: 'description', label: 'Description', type: 'textarea', rows: 2, placeholder: 'What this channel covers.' },
-  { key: 'useCases',    label: 'Use cases',   type: 'strings',  placeholder: 'New customer asks for a quote', emptyText: 'No use cases listed.' },
-]
-
 export function ServicesSection({ value, onChange, disabled }: SectionProps) {
+  const t = useT()
+  const CHANNEL_SCHEMA: ObjectFieldSchema[] = [
+    { key: 'name',        label: t('tenantBusinessDna.services.channels.fields.name'),        type: 'text',     placeholder: t('tenantBusinessDna.services.channels.fields.namePlaceholder') },
+    { key: 'description', label: t('tenantBusinessDna.services.channels.fields.description'), type: 'textarea', rows: 2, placeholder: t('tenantBusinessDna.services.channels.fields.descriptionPlaceholder') },
+    { key: 'useCases',    label: t('tenantBusinessDna.services.channels.fields.useCases'),    type: 'strings',  placeholder: t('tenantBusinessDna.services.channels.fields.useCasesPlaceholder'), emptyText: t('tenantBusinessDna.services.channels.fields.useCasesEmpty') },
+  ]
   return (
     <div className="space-y-4">
       <ObjectList
-        label="Channels"
+        label={t('tenantBusinessDna.services.channels.label')}
         values={asObjectArray(value['channels'])}
         schema={CHANNEL_SCHEMA}
         onChange={(next) => onChange(patch(value, { channels: next }))}
-        description="The channels this business serves customers through (calls, web chat, walk-ins, etc.)."
-        itemLabel={(it, idx) => asString(it['name']) || `Channel ${idx + 1}`}
-        emptyText="No channels yet — add the ones the agent should know about."
+        description={t('tenantBusinessDna.services.channels.description')}
+        itemLabel={(it, idx) => asString(it['name']) || t('tenantBusinessDna.services.channels.fallbackName', { n: idx + 1 })}
+        emptyText={t('tenantBusinessDna.services.channels.empty')}
         disabled={disabled}
       />
       <StringList
-        label="Agent capabilities"
+        label={t('tenantBusinessDna.services.agentCapabilities.label')}
         values={asStringArray(value['agentCapabilities'])}
         onChange={(next) => onChange(patch(value, { agentCapabilities: next }))}
-        description="What the agent is allowed and able to do (book appointments, quote prices, take messages, etc.)."
-        placeholder="Book appointments"
-        emptyText="No capabilities listed yet."
+        description={t('tenantBusinessDna.services.agentCapabilities.description')}
+        placeholder={t('tenantBusinessDna.services.agentCapabilities.placeholder')}
+        emptyText={t('tenantBusinessDna.services.agentCapabilities.empty')}
         disabled={disabled}
       />
       <UnrecognizedFields extras={extras(value, KNOWN_SERVICES)} />
@@ -228,48 +231,48 @@ export function ServicesSection({ value, onChange, disabled }: SectionProps) {
 
 const KNOWN_PRICING = ['plans', 'overageRate', 'freeTrial', 'discountPolicy']
 
-const PLAN_SCHEMA: ObjectFieldSchema[] = [
-  { key: 'name',    label: 'Plan name', type: 'text',     placeholder: 'Standard' },
-  { key: 'price',   label: 'Price',     type: 'text',     placeholder: '$197 / month' },
-  { key: 'summary', label: 'Summary',   type: 'textarea', rows: 2, placeholder: 'What\'s included at a glance.' },
-]
-
 export function PricingSection({ value, onChange, disabled }: SectionProps) {
+  const t = useT()
+  const PLAN_SCHEMA: ObjectFieldSchema[] = [
+    { key: 'name',    label: t('tenantBusinessDna.pricing.plans.fields.name'),    type: 'text',     placeholder: t('tenantBusinessDna.pricing.plans.fields.namePlaceholder') },
+    { key: 'price',   label: t('tenantBusinessDna.pricing.plans.fields.price'),   type: 'text',     placeholder: t('tenantBusinessDna.pricing.plans.fields.pricePlaceholder') },
+    { key: 'summary', label: t('tenantBusinessDna.pricing.plans.fields.summary'), type: 'textarea', rows: 2, placeholder: t('tenantBusinessDna.pricing.plans.fields.summaryPlaceholder') },
+  ]
   return (
     <div className="space-y-4">
       <ObjectList
-        label="Plans"
+        label={t('tenantBusinessDna.pricing.plans.label')}
         values={asObjectArray(value['plans'])}
         schema={PLAN_SCHEMA}
         onChange={(next) => onChange(patch(value, { plans: next }))}
-        description="Your packages or pricing tiers."
-        itemLabel={(it, idx) => asString(it['name']) || `Plan ${idx + 1}`}
-        emptyText="No plans yet."
+        description={t('tenantBusinessDna.pricing.plans.description')}
+        itemLabel={(it, idx) => asString(it['name']) || t('tenantBusinessDna.pricing.plans.fallbackName', { n: idx + 1 })}
+        emptyText={t('tenantBusinessDna.pricing.plans.empty')}
         disabled={disabled}
       />
       <TextField
-        label="Overage rate"
+        label={t('tenantBusinessDna.pricing.overageRate.label')}
         value={asString(value['overageRate'])}
         onChange={(v) => onChange(patch(value, { overageRate: v }))}
-        placeholder="$0.05 / minute over the included quota"
-        description="What happens past the included quota — leave blank if N/A."
+        placeholder={t('tenantBusinessDna.pricing.overageRate.placeholder')}
+        description={t('tenantBusinessDna.pricing.overageRate.description')}
         disabled={disabled}
       />
       <TextField
-        label="Free trial"
+        label={t('tenantBusinessDna.pricing.freeTrial.label')}
         value={asString(value['freeTrial'])}
         onChange={(v) => onChange(patch(value, { freeTrial: v }))}
-        placeholder="14-day free trial, no card required"
-        description="What trial or free period you offer, if any."
+        placeholder={t('tenantBusinessDna.pricing.freeTrial.placeholder')}
+        description={t('tenantBusinessDna.pricing.freeTrial.description')}
         disabled={disabled}
       />
       <TextArea
-        label="Discount policy"
+        label={t('tenantBusinessDna.pricing.discountPolicy.label')}
         value={asString(value['discountPolicy'])}
         onChange={(v) => onChange(patch(value, { discountPolicy: v }))}
         rows={3}
-        placeholder="When can the agent offer a discount? Up to how much?"
-        description="The rules the agent should follow when callers ask for a deal."
+        placeholder={t('tenantBusinessDna.pricing.discountPolicy.placeholder')}
+        description={t('tenantBusinessDna.pricing.discountPolicy.description')}
         disabled={disabled}
       />
       <UnrecognizedFields extras={extras(value, KNOWN_PRICING)} />
@@ -285,21 +288,21 @@ export function PricingSection({ value, onChange, disabled }: SectionProps) {
 
 const KNOWN_OPERATIONS = ['timezone', 'businessHours', 'holidays', 'afterHoursBehavior']
 
-const TIMEZONE_OPTIONS = [
-  { value: '',                    label: '— Select —' },
-  { value: 'America/New_York',    label: 'America/New_York (Eastern)' },
-  { value: 'America/Chicago',     label: 'America/Chicago (Central)' },
-  { value: 'America/Denver',      label: 'America/Denver (Mountain)' },
-  { value: 'America/Los_Angeles', label: 'America/Los_Angeles (Pacific)' },
-  { value: 'America/Phoenix',     label: 'America/Phoenix' },
-  { value: 'Europe/London',       label: 'Europe/London' },
-  { value: 'Europe/Berlin',       label: 'Europe/Berlin' },
-  { value: 'Asia/Tokyo',          label: 'Asia/Tokyo' },
-  { value: 'Australia/Sydney',    label: 'Australia/Sydney' },
-  { value: 'UTC',                 label: 'UTC' },
-]
-
 export function OperationsSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
+  const t = useT()
+  const TIMEZONE_OPTIONS = [
+    { value: '',                    label: t('tenantBusinessDna.operations.timezone.selectPlaceholder') },
+    { value: 'America/New_York',    label: 'America/New_York (Eastern)' },
+    { value: 'America/Chicago',     label: 'America/Chicago (Central)' },
+    { value: 'America/Denver',      label: 'America/Denver (Mountain)' },
+    { value: 'America/Los_Angeles', label: 'America/Los_Angeles (Pacific)' },
+    { value: 'America/Phoenix',     label: 'America/Phoenix' },
+    { value: 'Europe/London',       label: 'Europe/London' },
+    { value: 'Europe/Berlin',       label: 'Europe/Berlin' },
+    { value: 'Asia/Tokyo',          label: 'Asia/Tokyo' },
+    { value: 'Australia/Sydney',    label: 'Australia/Sydney' },
+    { value: 'UTC',                 label: 'UTC' },
+  ]
   return (
     <div className="space-y-4">
       {!disabled && (
@@ -315,35 +318,35 @@ export function OperationsSection({ value, onChange, disabled, identitySnapshot 
         </AiAssistRow>
       )}
       <Select
-        label="Timezone"
+        label={t('tenantBusinessDna.operations.timezone.label')}
         value={asString(value['timezone'])}
         options={TIMEZONE_OPTIONS}
         onChange={(v) => onChange(patch(value, { timezone: v }))}
-        description="The timezone the business operates in. Used for hours and bookings."
+        description={t('tenantBusinessDna.operations.timezone.description')}
         disabled={disabled}
       />
       <HoursGrid
         value={asObject(value['businessHours'])}
         onChange={(next) => onChange(patch(value, { businessHours: next }))}
-        description="When you're open. Mark days closed with the checkbox."
+        description={t('tenantBusinessDna.operations.businessHours.description')}
         disabled={disabled}
       />
       <TextArea
-        label="Holidays"
+        label={t('tenantBusinessDna.operations.holidays.label')}
         value={asString(value['holidays'])}
         onChange={(v) => onChange(patch(value, { holidays: v }))}
         rows={3}
-        placeholder="Closed Dec 24, Dec 25, Jan 1. Reduced hours on July 4."
-        description="Major holidays and any special closures."
+        placeholder={t('tenantBusinessDna.operations.holidays.placeholder')}
+        description={t('tenantBusinessDna.operations.holidays.description')}
         disabled={disabled}
       />
       <TextArea
-        label="After-hours behavior"
+        label={t('tenantBusinessDna.operations.afterHoursBehavior.label')}
         value={asString(value['afterHoursBehavior'])}
         onChange={(v) => onChange(patch(value, { afterHoursBehavior: v }))}
         rows={3}
-        placeholder="Take a message, offer to schedule a callback during business hours, escalate emergencies to the on-call number."
-        description="What the agent should do when called outside business hours."
+        placeholder={t('tenantBusinessDna.operations.afterHoursBehavior.placeholder')}
+        description={t('tenantBusinessDna.operations.afterHoursBehavior.description')}
         disabled={disabled}
       />
       <UnrecognizedFields extras={extras(value, KNOWN_OPERATIONS)} />
@@ -360,6 +363,7 @@ export function OperationsSection({ value, onChange, disabled, identitySnapshot 
 const KNOWN_SALES = ['qualificationCriteria', 'discoveryQuestions', 'demoFlow', 'objectionHandling']
 
 export function SalesSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
+  const t = useT()
   return (
     <div className="space-y-4">
       {!disabled && (
@@ -373,42 +377,42 @@ export function SalesSection({ value, onChange, disabled, identitySnapshot }: Se
         </AiAssistRow>
       )}
       <StringList
-        label="Qualification criteria"
+        label={t('tenantBusinessDna.sales.qualificationCriteria.label')}
         values={asStringArray(value['qualificationCriteria'])}
         onChange={(next) => onChange(patch(value, { qualificationCriteria: next }))}
-        description="What makes a caller a good fit? The agent uses these to decide whether to keep selling or to politely disqualify."
-        placeholder="Owns a single-family home"
-        emptyText="No qualification criteria yet."
+        description={t('tenantBusinessDna.sales.qualificationCriteria.description')}
+        placeholder={t('tenantBusinessDna.sales.qualificationCriteria.placeholder')}
+        emptyText={t('tenantBusinessDna.sales.qualificationCriteria.empty')}
         disabled={disabled}
       />
       <StringList
-        label="Discovery questions"
+        label={t('tenantBusinessDna.sales.discoveryQuestions.label')}
         values={asStringArray(value['discoveryQuestions'])}
         onChange={(next) => onChange(patch(value, { discoveryQuestions: next }))}
-        description="Questions the agent should ask early on a sales call."
-        placeholder="What problem are you trying to solve?"
-        emptyText="No discovery questions yet."
+        description={t('tenantBusinessDna.sales.discoveryQuestions.description')}
+        placeholder={t('tenantBusinessDna.sales.discoveryQuestions.placeholder')}
+        emptyText={t('tenantBusinessDna.sales.discoveryQuestions.empty')}
         disabled={disabled}
       />
       <TextArea
-        label="Demo flow"
+        label={t('tenantBusinessDna.sales.demoFlow.label')}
         value={asString(value['demoFlow'])}
         onChange={(v) => onChange(patch(value, { demoFlow: v }))}
         rows={4}
-        placeholder="If the caller is qualified, walk them through: 1) the problem we solve, 2) how it works, 3) pricing, 4) next steps."
-        description="The structure of a typical sales conversation, top to bottom."
+        placeholder={t('tenantBusinessDna.sales.demoFlow.placeholder')}
+        description={t('tenantBusinessDna.sales.demoFlow.description')}
         disabled={disabled}
       />
       <KeyValueMap
-        label="Objection handling"
+        label={t('tenantBusinessDna.sales.objectionHandling.label')}
         value={asObject(value['objectionHandling'])}
         onChange={(next) => onChange(patch(value, { objectionHandling: next }))}
-        description="Common objections and how the agent should respond. Key = objection, value = response."
-        keyLabel="Objection"
-        valueLabel="Response"
-        keyPlaceholder="Too expensive"
-        valuePlaceholder="Acknowledge, then re-anchor on value: explain what's included and the cost of not solving the problem."
-        emptyText="No objections mapped yet."
+        description={t('tenantBusinessDna.sales.objectionHandling.description')}
+        keyLabel={t('tenantBusinessDna.sales.objectionHandling.keyLabel')}
+        valueLabel={t('tenantBusinessDna.sales.objectionHandling.valueLabel')}
+        keyPlaceholder={t('tenantBusinessDna.sales.objectionHandling.keyPlaceholder')}
+        valuePlaceholder={t('tenantBusinessDna.sales.objectionHandling.valuePlaceholder')}
+        emptyText={t('tenantBusinessDna.sales.objectionHandling.empty')}
         disabled={disabled}
       />
       <UnrecognizedFields extras={extras(value, KNOWN_SALES)} />
@@ -424,13 +428,13 @@ export function SalesSection({ value, onChange, disabled, identitySnapshot }: Se
 
 const KNOWN_APPOINTMENT = ['defaultDuration', 'appointmentTypes', 'bookingPolicy', 'cancellationPolicy']
 
-const APPOINTMENT_TYPE_SCHEMA: ObjectFieldSchema[] = [
-  { key: 'name',        label: 'Name',        type: 'text',     placeholder: 'Free consultation' },
-  { key: 'duration',    label: 'Duration',    type: 'number',   unit: 'minutes' },
-  { key: 'description', label: 'Description', type: 'textarea', rows: 2, placeholder: 'What happens during this appointment.' },
-]
-
 export function AppointmentSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
+  const t = useT()
+  const APPOINTMENT_TYPE_SCHEMA: ObjectFieldSchema[] = [
+    { key: 'name',        label: t('tenantBusinessDna.appointments.appointmentTypes.fields.name'),        type: 'text',     placeholder: t('tenantBusinessDna.appointments.appointmentTypes.fields.namePlaceholder') },
+    { key: 'duration',    label: t('tenantBusinessDna.appointments.appointmentTypes.fields.duration'),    type: 'number',   unit: t('tenantBusinessDna.appointments.appointmentTypes.fields.durationUnit') },
+    { key: 'description', label: t('tenantBusinessDna.appointments.appointmentTypes.fields.description'), type: 'textarea', rows: 2, placeholder: t('tenantBusinessDna.appointments.appointmentTypes.fields.descriptionPlaceholder') },
+  ]
   return (
     <div className="space-y-4">
       {!disabled && (
@@ -444,40 +448,40 @@ export function AppointmentSection({ value, onChange, disabled, identitySnapshot
         </AiAssistRow>
       )}
       <NumberField
-        label="Default duration"
+        label={t('tenantBusinessDna.appointments.defaultDuration.label')}
         value={asNumber(value['defaultDuration'], 30)}
-        unit="minutes"
+        unit={t('tenantBusinessDna.appointments.defaultDuration.unit')}
         onChange={(v) => onChange(patch(value, { defaultDuration: v }))}
-        description="Standard appointment length when no specific type is requested."
+        description={t('tenantBusinessDna.appointments.defaultDuration.description')}
         min={5}
         disabled={disabled}
       />
       <ObjectList
-        label="Appointment types"
+        label={t('tenantBusinessDna.appointments.appointmentTypes.label')}
         values={asObjectArray(value['appointmentTypes'])}
         schema={APPOINTMENT_TYPE_SCHEMA}
         onChange={(next) => onChange(patch(value, { appointmentTypes: next }))}
-        description="The kinds of appointments callers can book."
-        itemLabel={(it, idx) => asString(it['name']) || `Type ${idx + 1}`}
-        emptyText="No appointment types yet."
+        description={t('tenantBusinessDna.appointments.appointmentTypes.description')}
+        itemLabel={(it, idx) => asString(it['name']) || t('tenantBusinessDna.appointments.appointmentTypes.fallbackName', { n: idx + 1 })}
+        emptyText={t('tenantBusinessDna.appointments.appointmentTypes.empty')}
         disabled={disabled}
       />
       <TextArea
-        label="Booking policy"
+        label={t('tenantBusinessDna.appointments.bookingPolicy.label')}
         value={asString(value['bookingPolicy'])}
         onChange={(v) => onChange(patch(value, { bookingPolicy: v }))}
         rows={3}
-        placeholder="Bookings require name, phone, and email. Minimum 4 hours notice. Confirmations sent by email."
-        description="The rules around how appointments get booked."
+        placeholder={t('tenantBusinessDna.appointments.bookingPolicy.placeholder')}
+        description={t('tenantBusinessDna.appointments.bookingPolicy.description')}
         disabled={disabled}
       />
       <TextArea
-        label="Cancellation policy"
+        label={t('tenantBusinessDna.appointments.cancellationPolicy.label')}
         value={asString(value['cancellationPolicy'])}
         onChange={(v) => onChange(patch(value, { cancellationPolicy: v }))}
         rows={3}
-        placeholder="Free cancellation up to 24 hours before. Within 24 hours, $50 fee."
-        description="What happens if a caller wants to cancel or reschedule."
+        placeholder={t('tenantBusinessDna.appointments.cancellationPolicy.placeholder')}
+        description={t('tenantBusinessDna.appointments.cancellationPolicy.description')}
         disabled={disabled}
       />
       <UnrecognizedFields extras={extras(value, KNOWN_APPOINTMENT)} />
@@ -493,12 +497,12 @@ export function AppointmentSection({ value, onChange, disabled, identitySnapshot
 
 const KNOWN_SUPPORT = ['commonIssues', 'escalationRules', 'supportEmail', 'founderContact']
 
-const COMMON_ISSUE_SCHEMA: ObjectFieldSchema[] = [
-  { key: 'issue', label: 'Issue', type: 'text',     placeholder: 'Caller can\'t find their invoice' },
-  { key: 'fix',   label: 'Fix',   type: 'textarea', rows: 3, placeholder: 'Direct them to billing@... or offer to email a copy.' },
-]
-
 export function SupportSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
+  const t = useT()
+  const COMMON_ISSUE_SCHEMA: ObjectFieldSchema[] = [
+    { key: 'issue', label: t('tenantBusinessDna.support.commonIssues.fields.issue'), type: 'text',     placeholder: t('tenantBusinessDna.support.commonIssues.fields.issuePlaceholder') },
+    { key: 'fix',   label: t('tenantBusinessDna.support.commonIssues.fields.fix'),   type: 'textarea', rows: 3, placeholder: t('tenantBusinessDna.support.commonIssues.fields.fixPlaceholder') },
+  ]
   return (
     <div className="space-y-4">
       {!disabled && (
@@ -512,39 +516,39 @@ export function SupportSection({ value, onChange, disabled, identitySnapshot }: 
         </AiAssistRow>
       )}
       <ObjectList
-        label="Common issues"
+        label={t('tenantBusinessDna.support.commonIssues.label')}
         values={asObjectArray(value['commonIssues'])}
         schema={COMMON_ISSUE_SCHEMA}
         onChange={(next) => onChange(patch(value, { commonIssues: next }))}
-        description="Issues callers ask about often, paired with the right fix."
-        itemLabel={(it, idx) => asString(it['issue']) || `Issue ${idx + 1}`}
-        emptyText="No common issues mapped yet."
+        description={t('tenantBusinessDna.support.commonIssues.description')}
+        itemLabel={(it, idx) => asString(it['issue']) || t('tenantBusinessDna.support.commonIssues.fallbackName', { n: idx + 1 })}
+        emptyText={t('tenantBusinessDna.support.commonIssues.empty')}
         disabled={disabled}
       />
       <StringList
-        label="Escalation rules"
+        label={t('tenantBusinessDna.support.escalationRules.label')}
         values={asStringArray(value['escalationRules'])}
         onChange={(next) => onChange(patch(value, { escalationRules: next }))}
-        description="When the agent should hand off to a human."
-        placeholder="Caller is frustrated or asks for a manager"
-        emptyText="No escalation rules yet."
+        description={t('tenantBusinessDna.support.escalationRules.description')}
+        placeholder={t('tenantBusinessDna.support.escalationRules.placeholder')}
+        emptyText={t('tenantBusinessDna.support.escalationRules.empty')}
         disabled={disabled}
       />
       <TextField
-        label="Support email"
+        label={t('tenantBusinessDna.support.supportEmail.label')}
         value={asString(value['supportEmail'])}
         onChange={(v) => onChange(patch(value, { supportEmail: v }))}
         type="email"
-        placeholder="support@acme.com"
-        description="Where the agent should direct customers for written support."
+        placeholder={t('tenantBusinessDna.support.supportEmail.placeholder')}
+        description={t('tenantBusinessDna.support.supportEmail.description')}
         disabled={disabled}
       />
       <TextField
-        label="Founder contact"
+        label={t('tenantBusinessDna.support.founderContact.label')}
         value={asString(value['founderContact'])}
         onChange={(v) => onChange(patch(value, { founderContact: v }))}
-        placeholder="founder@acme.com or +1 555 000 0000"
-        description="An escalation path of last resort. Used sparingly."
+        placeholder={t('tenantBusinessDna.support.founderContact.placeholder')}
+        description={t('tenantBusinessDna.support.founderContact.description')}
         disabled={disabled}
       />
       <UnrecognizedFields extras={extras(value, KNOWN_SUPPORT)} />
@@ -560,17 +564,17 @@ export function SupportSection({ value, onChange, disabled, identitySnapshot }: 
 
 const KNOWN_LANGUAGE = ['primaryLanguage', 'supportedLanguages', 'vocabularyPreferences', 'prohibitedLanguage']
 
-const LANGUAGE_OPTIONS = [
-  { value: '',           label: '— Select —' },
-  { value: 'English',    label: 'English' },
-  { value: 'Spanish',    label: 'Spanish' },
-  { value: 'French',     label: 'French' },
-  { value: 'German',     label: 'German' },
-  { value: 'Portuguese', label: 'Portuguese' },
-  { value: 'Italian',    label: 'Italian' },
-]
-
 export function LanguageSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
+  const t = useT()
+  const LANGUAGE_OPTIONS = [
+    { value: '',           label: t('tenantBusinessDna.language.primaryLanguage.selectPlaceholder') },
+    { value: 'English',    label: t('tenantBusinessDna.language.options.english') },
+    { value: 'Spanish',    label: t('tenantBusinessDna.language.options.spanish') },
+    { value: 'French',     label: t('tenantBusinessDna.language.options.french') },
+    { value: 'German',     label: t('tenantBusinessDna.language.options.german') },
+    { value: 'Portuguese', label: t('tenantBusinessDna.language.options.portuguese') },
+    { value: 'Italian',    label: t('tenantBusinessDna.language.options.italian') },
+  ]
   return (
     <div className="space-y-4">
       {!disabled && (
@@ -584,38 +588,38 @@ export function LanguageSection({ value, onChange, disabled, identitySnapshot }:
         </AiAssistRow>
       )}
       <Select
-        label="Primary language"
+        label={t('tenantBusinessDna.language.primaryLanguage.label')}
         value={asString(value['primaryLanguage'])}
         options={LANGUAGE_OPTIONS}
         onChange={(v) => onChange(patch(value, { primaryLanguage: v }))}
-        description="The default language for agent conversations."
+        description={t('tenantBusinessDna.language.primaryLanguage.description')}
         disabled={disabled}
       />
       <StringList
-        label="Supported languages"
+        label={t('tenantBusinessDna.language.supportedLanguages.label')}
         values={asStringArray(value['supportedLanguages'])}
         onChange={(next) => onChange(patch(value, { supportedLanguages: next }))}
-        description="Other languages the agent should answer in if asked."
-        placeholder="Spanish"
-        emptyText="No additional languages."
+        description={t('tenantBusinessDna.language.supportedLanguages.description')}
+        placeholder={t('tenantBusinessDna.language.supportedLanguages.placeholder')}
+        emptyText={t('tenantBusinessDna.language.supportedLanguages.empty')}
         disabled={disabled}
       />
       <StringList
-        label="Vocabulary preferences"
+        label={t('tenantBusinessDna.language.vocabularyPreferences.label')}
         values={asStringArray(value['vocabularyPreferences'])}
         onChange={(next) => onChange(patch(value, { vocabularyPreferences: next }))}
-        description="Words and phrases the agent should prefer to use."
-        placeholder="say 'team member' instead of 'staff'"
-        emptyText="No vocabulary preferences."
+        description={t('tenantBusinessDna.language.vocabularyPreferences.description')}
+        placeholder={t('tenantBusinessDna.language.vocabularyPreferences.placeholder')}
+        emptyText={t('tenantBusinessDna.language.vocabularyPreferences.empty')}
         disabled={disabled}
       />
       <StringList
-        label="Prohibited language"
+        label={t('tenantBusinessDna.language.prohibitedLanguage.label')}
         values={asStringArray(value['prohibitedLanguage'])}
         onChange={(next) => onChange(patch(value, { prohibitedLanguage: next }))}
-        description="Words and phrases the agent must never use."
-        placeholder="don't say 'guarantee'"
-        emptyText="No prohibited words."
+        description={t('tenantBusinessDna.language.prohibitedLanguage.description')}
+        placeholder={t('tenantBusinessDna.language.prohibitedLanguage.placeholder')}
+        emptyText={t('tenantBusinessDna.language.prohibitedLanguage.empty')}
         disabled={disabled}
       />
       <UnrecognizedFields extras={extras(value, KNOWN_LANGUAGE)} />
@@ -634,51 +638,52 @@ const KNOWN_COMPLIANCE = [
 ]
 
 export function ComplianceSection({ value, onChange, disabled }: SectionProps) {
+  const t = useT()
   return (
     <div className="space-y-4">
       <TextArea
-        label="Call recording consent"
+        label={t('tenantBusinessDna.compliance.callRecordingConsent.label')}
         value={asString(value['callRecordingConsent'])}
         onChange={(v) => onChange(patch(value, { callRecordingConsent: v }))}
         rows={3}
-        placeholder="This call may be recorded for quality and training purposes."
-        description="The exact disclosure your agent should read at the start of recorded calls."
+        placeholder={t('tenantBusinessDna.compliance.callRecordingConsent.placeholder')}
+        description={t('tenantBusinessDna.compliance.callRecordingConsent.description')}
         disabled={disabled}
       />
       <TextArea
-        label="Data handling"
+        label={t('tenantBusinessDna.compliance.dataHandling.label')}
         value={asString(value['dataHandling'])}
         onChange={(v) => onChange(patch(value, { dataHandling: v }))}
         rows={3}
-        placeholder="We store contact data in the US. We don't share with third parties without consent."
-        description="How customer data is stored and used. Drives the agent's privacy answers."
+        placeholder={t('tenantBusinessDna.compliance.dataHandling.placeholder')}
+        description={t('tenantBusinessDna.compliance.dataHandling.description')}
         disabled={disabled}
       />
       <TextArea
-        label="Phone compliance"
+        label={t('tenantBusinessDna.compliance.phoneCompliance.label')}
         value={asString(value['phoneCompliance'])}
         onChange={(v) => onChange(patch(value, { phoneCompliance: v }))}
         rows={3}
-        placeholder="TCPA: only outbound-call numbers with prior express consent. Honor opt-outs immediately."
-        description="Telephony rules the agent must follow (TCPA, do-not-call, etc.)."
+        placeholder={t('tenantBusinessDna.compliance.phoneCompliance.placeholder')}
+        description={t('tenantBusinessDna.compliance.phoneCompliance.description')}
         disabled={disabled}
       />
       <TextArea
-        label="SMS compliance"
+        label={t('tenantBusinessDna.compliance.smsCompliance.label')}
         value={asString(value['smsCompliance'])}
         onChange={(v) => onChange(patch(value, { smsCompliance: v }))}
         rows={3}
-        placeholder="Include STOP and HELP language in any opt-in. Honor STOP within 24 hours."
-        description="SMS-specific rules (10DLC, opt-in/out flow)."
+        placeholder={t('tenantBusinessDna.compliance.smsCompliance.placeholder')}
+        description={t('tenantBusinessDna.compliance.smsCompliance.description')}
         disabled={disabled}
       />
       <TextArea
-        label="Age restrictions"
+        label={t('tenantBusinessDna.compliance.ageRestrictions.label')}
         value={asString(value['ageRestrictions'])}
         onChange={(v) => onChange(patch(value, { ageRestrictions: v }))}
         rows={2}
-        placeholder="18 and over only."
-        description="Any age gating that applies to your offering."
+        placeholder={t('tenantBusinessDna.compliance.ageRestrictions.placeholder')}
+        description={t('tenantBusinessDna.compliance.ageRestrictions.description')}
         disabled={disabled}
       />
       <UnrecognizedFields extras={extras(value, KNOWN_COMPLIANCE)} />

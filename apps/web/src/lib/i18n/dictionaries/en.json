@@ -1,0 +1,2356 @@
+{
+  "nav": {
+    "groups": {
+      "overview": "Overview",
+      "configure": "Configure",
+      "operations": "Operations",
+      "account": "Account",
+      "platform": "Platform",
+      "management": "Management"
+    },
+    "items": {
+      "dashboard": "Dashboard",
+      "getStarted": "Get Started",
+      "businessDna": "Business DNA",
+      "prompts": "Prompts",
+      "agents": "Agents",
+      "agentStudio": "Agent Studio",
+      "channels": "Channels",
+      "integrations": "Integrations",
+      "phoneNumbers": "Phone Numbers",
+      "smsCompliance": "SMS Compliance",
+      "appointments": "Appointments",
+      "staff": "Staff Directory",
+      "contacts": "Contacts",
+      "campaigns": "Campaigns",
+      "outbound": "Outbound Caller",
+      "conversations": "Conversations",
+      "usage": "Usage",
+      "billing": "Billing",
+      "settings": "Settings",
+      "help": "Help",
+      "profile": "Profile",
+      "tenants": "Tenants",
+      "plans": "Plans",
+      "pricing": "Pricing",
+      "partners": "Partners",
+      "twilioLogs": "Twilio Call Logs",
+      "errors": "Errors",
+      "systemSettings": "System Settings",
+      "platformStatus": "Platform Status"
+    }
+  },
+  "partnerNav": {
+    "dashboard": "Dashboard",
+    "referrals": "Referral Links",
+    "commissions": "Commissions",
+    "payouts": "Payouts",
+    "profile": "Profile"
+  },
+  "actions": {
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "update": "Update",
+    "submit": "Submit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "continue": "Continue",
+    "loading": "Loading…",
+    "signOut": "Sign out",
+    "logIn": "Log in",
+    "signUp": "Sign up",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "search": "Search",
+    "filter": "Filter",
+    "refresh": "Refresh",
+    "export": "Export",
+    "import": "Import",
+    "upload": "Upload",
+    "download": "Download"
+  },
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "noneYet": "None yet",
+    "noResults": "No results",
+    "required": "Required",
+    "optional": "Optional",
+    "active": "Active",
+    "inactive": "Inactive",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "pending": "Pending",
+    "approved": "Approved",
+    "completed": "Completed",
+    "failed": "Failed",
+    "all": "All",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "status": "Status",
+    "date": "Date",
+    "time": "Time",
+    "actions": "Actions",
+    "settings": "Settings",
+    "details": "Details",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning"
+  },
+  "profile": {
+    "title": "Profile",
+    "personalInfo": "Personal Information",
+    "personalInfoDesc": "Your name is shown in audit logs and admin views.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "username": "Username",
+    "language": "Language",
+    "languageDesc": "Switch the dashboard between English and Spanish. Saved to your account so it follows you to every device.",
+    "languageEn": "English",
+    "languageEs": "Español",
+    "languageSavedEn": "Dashboard language saved as English.",
+    "languageSavedEs": "Idioma del panel guardado como Español.",
+    "password": "Password",
+    "passwordDesc": "Choose a strong password — at least 8 characters.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "changePassword": "Change password",
+    "profileUpdated": "Profile updated.",
+    "passwordUpdated": "Password updated.",
+    "saveChanges": "Save changes",
+    "subtitle": "Manage your account details and security.",
+    "firstNamePlaceholder": "Jane",
+    "lastNamePlaceholder": "Smith",
+    "usernamePlaceholder": "janesmith",
+    "usernameHelp": "Letters, numbers, and underscores only. Used to log in.",
+    "emailLabel": "Email address",
+    "emailHelp": "Contact support to change your email address.",
+    "saving": "Saving…",
+    "lastLoginAt": "Last login {when}",
+    "passwordSectionDesc": "After changing your password, all other active sessions will be signed out.",
+    "newPasswordPlaceholder": "At least 8 characters",
+    "updating": "Updating…",
+    "passwordsDoNotMatch": "New passwords do not match",
+    "passwordChangedAndSignedOut": "Password changed. Other sessions have been signed out.",
+    "failedToSave": "Failed to save",
+    "failedToChangePassword": "Failed to change password",
+    "uploadingLabel": "Uploading…",
+    "clickToUploadLogo": "Click to upload logo",
+    "clickLogoToUploadHint": "Click the logo to upload or replace it",
+    "unsupportedLogoType": "Unsupported type. Use PNG, JPG, or WebP.",
+    "logoTooLarge": "Logo must be under 2 MB.",
+    "uploadFailed": "Upload failed",
+    "languageActive": "✓ Active",
+    "languageActiveEs": "✓ Activo",
+    "languageSwitchToEn": "Switch to English",
+    "languageSwitchToEs": "Cambiar a Español",
+    "billingTitle": "Billing & Subscription",
+    "billingDesc": "Manage your plan, payment method, and billing history via the Stripe portal.",
+    "noActivePlan": "No active plan",
+    "noSubscription": "No subscription",
+    "billedInterval": " · billed {interval}",
+    "trialBadge": "Trial",
+    "manageBillingButton": "Manage billing & payment method →",
+    "stripeNote": "Payment methods, invoices, and card details are managed securely via Stripe. We never store card numbers.",
+    "failedToOpenBillingPortal": "Failed to open billing portal",
+    "failed": "Failed",
+    "accountTitle": "Account",
+    "accountId": "Account ID",
+    "memberSince": "Member since",
+    "statusLabel": "Status"
+  },
+  "auth": {
+    "welcome": "Welcome",
+    "welcomeBack": "Welcome back",
+    "emailOrUsername": "Email or username",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "createAccount": "Create account",
+    "businessName": "Business name",
+    "loggingIn": "Logging in…",
+    "creatingAccount": "Creating account…"
+  },
+  "empty": {
+    "noConversations": "No conversations yet. Calls and widget sessions appear here as they happen.",
+    "noContacts": "No contacts yet. Import a CSV or add contacts manually.",
+    "noAppointments": "No appointments yet. Bookings made by your AI agents land here.",
+    "noCampaigns": "No campaigns yet. Create one to start tag-driven follow-up automation.",
+    "noPhoneNumbers": "No phone numbers yet. Add a Twilio number to start taking calls."
+  },
+  "billing": {
+    "title": "Billing",
+    "currentPlan": "Current plan",
+    "noActivePlan": "No active plan",
+    "upgrade": "Upgrade plan",
+    "downgrade": "Downgrade",
+    "manageBilling": "Manage billing",
+    "viewInvoices": "View invoices"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Unable to connect. Check your connection and try again.",
+    "unauthorized": "Your session expired. Please log in again.",
+    "validation": "Please check your input and try again.",
+    "notFound": "Not found.",
+    "saveFailed": "Failed to save."
+  },
+  "lang": {
+    "english": "English",
+    "spanish": "Español",
+    "switchTo": "Switch to {lang}"
+  },
+  "partnerReferrals": {
+    "title": "Referral Links",
+    "subtitle": "Share your link to earn commissions on every conversion.",
+    "primaryLinkLabel": "YOUR PRIMARY REFERRAL LINK",
+    "referralCode": "Referral code:",
+    "notApprovedNotice": "Your partner account must be approved before you can access your referral link.",
+    "customLinks": "Custom Links",
+    "activeCount": "{n} active",
+    "customLinksDesc": "Create your own named slugs (e.g. {a}, {b}) to track campaigns separately. Every click still earns you commission against your main account.",
+    "label": "LABEL",
+    "labelPlaceholder": "Sarah's podcast",
+    "labelHelp": "Internal name — what you'll see in the list",
+    "slug": "SLUG",
+    "slugAutofilled": "auto-filled from label",
+    "slugPlaceholder": "my-campaign",
+    "slugHelp": "Edit if you want a custom slug · 3–50 chars · a–z, 0–9, hyphens",
+    "notesLabel": "NOTES (optional)",
+    "notesPlaceholder": "Show notes link",
+    "hintNeedLabel": "Add a label to enable the button",
+    "hintNeedSlug": "Add a slug to enable the button",
+    "hintSlugTooShort": "Slug must be at least 3 characters",
+    "hintReady": "Ready — click to create.",
+    "createButton": "Create custom link",
+    "creating": "Creating…",
+    "noCustomLinks": "No custom links yet. Create one above to track a specific campaign.",
+    "createError": "Could not create link",
+    "deleteConfirm": "Delete this custom link? Past click stats roll into your overall totals; the slug becomes available again.",
+    "tableSlug": "Slug",
+    "tableLabel": "Label",
+    "tableClicks": "Clicks",
+    "tableActions": "Actions",
+    "archivedBadge": "Archived",
+    "copyUrl": "Copy URL",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "delete": "Delete",
+    "recentClicks": "Recent Clicks",
+    "noClicks": "No clicks yet. Share your link to start tracking.",
+    "clicksDate": "Date",
+    "clicksLanding": "Landing Page",
+    "clicksReferrer": "Referrer",
+    "clicksConverted": "Converted"
+  },
+  "partnerCommissions": {
+    "title": "Commissions",
+    "subtitle": "Earnings generated from your referrals.",
+    "noCommissions": "No commissions yet. Commissions are created when your referrals subscribe.",
+    "tableDate": "Date",
+    "tableDescription": "Description",
+    "tableAmount": "Amount",
+    "tableStatus": "Status",
+    "tablePaysOn": "Pays on",
+    "tablePaid": "Paid",
+    "prev": "← Prev",
+    "next": "Next →",
+    "pageOf": "Page {page} of {total}",
+    "statusPill": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "paid": "Paid",
+      "hold": "On Hold",
+      "reversed": "Reversed"
+    },
+    "explainer": {
+      "title": "How you get paid",
+      "section1Title": "1. 30-day hold (refund window)",
+      "section1": "When a customer subscribes, your commission is locked for 30 days. If the customer refunds during that window, the commission gets reversed and you don't see it. After 30 days, the commission becomes eligible for payout. Recurring renewals from existing customers skip the hold.",
+      "section2Title": "2. Auto-payout on the 1st & 15th",
+      "section2": "Eligible commissions are batched and paid automatically twice a month. If the 1st or 15th lands on a weekend, the payout fires the next business day. Each commission's exact payout date is shown in the \"Pays on\" column above.",
+      "section3Title": "3. Stripe processing fees come out of your payout",
+      "section3Intro": "We pay you via Stripe direct deposit to your bank. Stripe charges two fees that are deducted from each payout:",
+      "section3Bullet1": "**$2 / month** — Stripe Connect Express monthly fee, billed once per month on your first payout (only on months you actually receive a payout).",
+      "section3Bullet2": "**~$0 standard ACH** (1–3 business day settlement) or **1.5% (min $0.50) instant** if you opt for same-day deposit.",
+      "exampleTitle": "Worked example",
+      "exampleEarned": "Commission earned",
+      "exampleStripeFee": "− Stripe Connect monthly fee (first payout this month)",
+      "exampleAchFee": "− Standard ACH transfer fee",
+      "exampleNet": "Net deposited to your bank",
+      "exampleNote": "The $2 monthly fee only hits once per month — every additional payout the same month is fee-free (or just the transfer fee if you pick instant).",
+      "minTitle": "Minimum balance",
+      "minBody": "You need at least **$50** in approved commissions for a payout cycle to fire. If your eligible balance is below the minimum on a 1st or 15th, it rolls into the next cycle."
+    }
+  },
+  "partnerPayouts": {
+    "title": "Payouts",
+    "subtitle": "Request payment of your approved commission balance.",
+    "availableBalance": "Available Balance",
+    "approvedOnly": "Approved commissions only",
+    "payoutMethod": "Payout Method",
+    "notConfigured": "Not configured",
+    "submitting": "Submitting…",
+    "requestPayoutOf": "Request Payout of {amount}",
+    "needApproved": "You need approved commissions before requesting a payout.",
+    "history": "Payout History",
+    "noRequests": "No payout requests yet.",
+    "tableRequested": "Requested",
+    "tableAmount": "Amount",
+    "tableStatus": "Status",
+    "tableReference": "Reference",
+    "tableProcessed": "Processed",
+    "requestFailed": "Payout request failed",
+    "connectFailed": "Could not start Stripe onboarding",
+    "needConnect": "Connect your Stripe payout account before requesting a payout.",
+    "connect": {
+      "providerName": "Stripe Connect Express",
+      "statusVerified": "Verified — payouts enabled",
+      "statusPending": "Pending review by Stripe",
+      "statusRestricted": "Action required — finish onboarding",
+      "statusNotConnected": "Not connected",
+      "connectNow": "Connect now",
+      "continueOnboarding": "Continue onboarding",
+      "updateDetails": "Update payout details",
+      "starting": "Redirecting…"
+    },
+    "statusPill": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "paid": "Paid",
+      "rejected": "Rejected"
+    }
+  },
+  "partnerDashboard": {
+    "welcome": "Welcome",
+    "welcomeWithName": "Welcome {name}",
+    "commissionLine": "You earn {pct}% recurring commission on every active subscription you refer.",
+    "applyTitle": "Join the Partner Program",
+    "applyDesc": "Earn commissions by referring customers to OrbisVoice. Once approved, you'll get a unique referral link and real-time tracking.",
+    "applyButton": "Apply to Become a Partner",
+    "submitting": "Submitting…",
+    "applicationFailed": "Application failed",
+    "pendingTitle": "Application under review.",
+    "pendingDesc": "We'll notify you by email once your partner account is approved. You won't be able to track conversions until then.",
+    "checklist": {
+      "title": "What you need to get paid",
+      "desc": "Complete these steps to start receiving commissions. You can earn referrals before completing them — payment just won't process until everything is checked.",
+      "activeTitle": "Partner account active",
+      "activeDoneDetail": "You can start sharing your referral link.",
+      "activePendingDetail": "Application is being reviewed.",
+      "payoutTitle": "Connect your payout account",
+      "payoutDoneDetail": "Stripe payout account verified.",
+      "payoutTodoDetail": "Connect your bank securely through Stripe to start receiving commissions.",
+      "payoutPendingDetail": "Stripe is reviewing your details. We'll notify you when payouts are enabled.",
+      "connectNow": "Connect now",
+      "connecting": "Redirecting…",
+      "taxTitle": "Submit tax info (W-9 / W-8BEN)",
+      "taxDoneDetail": "On file with Stripe — they'll mail you a 1099-NEC at year-end if you earn $600+.",
+      "taxTodoDetail": "Collected automatically when you connect your payout account.",
+      "minTitle": "Earn at least ${amount} in approved commissions",
+      "minDoneDetail": "Minimum payout balance reached. Next payout fires on the 1st or 15th.",
+      "minTodoDetail": "Currently ${current} of ${target} needed. Commissions clear after a 30-day hold and pay on the 1st or 15th of each month.",
+      "minTodoNextPayoutDetail": "Currently ${current} of ${target} needed. Next scheduled payout: {date}."
+    },
+    "last30Days": "Last 30 days",
+    "allTime": "All-time",
+    "stats": {
+      "referrals": "Referrals",
+      "visits": "Visits",
+      "conversionRate": "Conversion Rate",
+      "unpaidEarnings": "Unpaid Earnings",
+      "pendingApproved": "Pending + approved",
+      "paidEarnings": "Paid Earnings",
+      "totalEarnings": "Total Earnings",
+      "lifetimeSub": "Lifetime — every commission you've earned",
+      "viewAll": "View all"
+    },
+    "recentActivity": "Recent referral activity",
+    "noCommissions": "No commissions yet. Your earnings will appear here once your referrals subscribe.",
+    "table": {
+      "reference": "Reference",
+      "amount": "Amount",
+      "description": "Description",
+      "status": "Status",
+      "date": "Date"
+    },
+    "viewAllCommissions": "View all commissions →",
+    "statusPill": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "paid": "Paid",
+      "hold": "On Hold",
+      "reversed": "Reversed",
+      "cancelled": "Cancelled"
+    }
+  },
+  "tenantAppointments": {
+    "title": "Appointments",
+    "subtitle": "Bookings created by your voice agents.",
+    "totalLabel": "{n} total",
+    "loadFailed": "Failed to load appointments.",
+    "defaultType": "Appointment",
+    "empty": {
+      "heading": "No appointments yet",
+      "body": "Connect your Google account and activate a channel. Appointments booked by agents will appear here."
+    },
+    "statusPill": {
+      "confirmed": "Confirmed",
+      "pending": "Pending",
+      "rescheduled": "Rescheduled",
+      "canceled": "Canceled",
+      "failed": "Failed",
+      "noShow": "No show",
+      "completed": "Completed"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "canceling": "Canceling…"
+    },
+    "confirm": {
+      "cancel": "Cancel this appointment?"
+    },
+    "toast": {
+      "cancelSuccess": "Appointment canceled.",
+      "cancelFailed": "Cancel failed",
+      "cancelException": "Failed to cancel appointment"
+    }
+  },
+  "tenantCampaigns": {
+    "title": "Campaigns",
+    "subtitle": "Automated voice follow-ups, confirmations, and outreach — triggered by contact tags.",
+    "howItWorks": {
+      "title": "How Campaigns Work",
+      "step1Title": "Browse the Template Library",
+      "step1Body": "Pick a pre-built campaign that fits your business. Each template includes a prompt, trigger tag, delay, and retry schedule.",
+      "step2Title": "Add it to My Campaigns",
+      "step2Body": "Click \"+ Add to My Campaigns\" to copy the template into your account. Customize the prompt and settings to match your tone.",
+      "step3Title": "Activate the Campaign",
+      "step3Body": "Toggle the campaign on. It will only fire calls once it is active — inactive campaigns are saved but never triggered.",
+      "step4Title": "Tags Trigger the Calls",
+      "step4Body": "When a contact receives the campaign's trigger tag (manually or via a call outcome), a follow-up call is automatically scheduled."
+    },
+    "tabs": {
+      "mine": "My Campaigns",
+      "library": "Template Library",
+      "enrollments": "Enrollments"
+    },
+    "library": {
+      "loading": "Loading templates…",
+      "searchPlaceholder": "Search templates by name, description, or tag…",
+      "summaryInVertical": "{count} template in {vertical}",
+      "summaryInVerticalPlural": "{count} templates in {vertical}",
+      "summaryResults": "{count} result for \"{query}\"",
+      "summaryResultsPlural": "{count} results for \"{query}\"",
+      "verticalCount": "{count} template",
+      "verticalCountPlural": "{count} templates",
+      "noMatches": "No templates match your search.",
+      "delayHours": "{hours}h delay",
+      "retries": "{count} retries",
+      "hidePrompt": "▲ Hide prompt",
+      "previewPrompt": "▼ Preview prompt",
+      "addButton": "+ Add to My Campaigns",
+      "adding": "Adding…",
+      "addedToast": "\"{name}\" added to My Campaigns — customize and activate it there.",
+      "addFailed": "Failed to add campaign"
+    },
+    "verticals": {
+      "GENERAL": "General",
+      "LEGAL": "Legal",
+      "DENTAL": "Dental",
+      "MEDICAL": "Medical / Clinic",
+      "FINANCIAL": "Financial Services",
+      "HOME_SERVICES": "Home Services",
+      "AUTO_REPAIR": "Auto Repair",
+      "REAL_ESTATE": "Real Estate",
+      "FITNESS": "Fitness & Gym",
+      "BEAUTY": "Beauty & Wellness",
+      "EDUCATION": "Education",
+      "HOSPITALITY": "Hospitality",
+      "VETERINARY": "Veterinary",
+      "CHILDCARE": "Childcare / Nursery",
+      "ACCOUNTING": "Accounting / Tax",
+      "INSURANCE": "Insurance",
+      "PROPERTY_MANAGEMENT": "Property Management"
+    },
+    "mine": {
+      "loading": "Loading…",
+      "newCampaign": "+ New campaign",
+      "emptyTitle": "No campaigns yet.",
+      "emptyHint": "Add one from the Template Library or create custom.",
+      "selectPrompt": "Select a campaign to edit or create a new one.",
+      "enrolledCount": "{count} enrolled",
+      "editTitle": "Edit Campaign",
+      "newTitle": "New Campaign",
+      "deleteConfirm": "Delete this campaign? Existing enrollments will also be removed.",
+      "createdToast": "Campaign created.",
+      "updatedToast": "Campaign updated.",
+      "deletedToast": "Campaign deleted.",
+      "saveFailed": "Save failed",
+      "deleteFailed": "Delete failed",
+      "toggleFailed": "Failed",
+      "validation": {
+        "nameAndTagRequired": "Name and trigger tag are required.",
+        "atLeastOneChannel": "Enable at least one channel (voice, SMS, email, or WhatsApp).",
+        "voicePromptRequired": "Voice prompt is required when voice is enabled.",
+        "smsBodyRequired": "SMS body is required when SMS is enabled.",
+        "emailFieldsRequired": "Email subject and body are required when email is enabled."
+      },
+      "active": "Active — will trigger on tag",
+      "inactive": "Inactive — will not trigger",
+      "save": "Save campaign",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting…"
+    },
+    "form": {
+      "name": "Campaign name",
+      "namePlaceholder": "Post-procedure follow-up",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "Brief description of what this campaign does",
+      "channels": "Channels",
+      "channelsHint": "Pick which channels this campaign dispatches through. Each enabled channel sends independently when the trigger fires.",
+      "triggerTag": "Trigger tag",
+      "triggerTagHint": "The contact tag that starts this campaign automatically.",
+      "triggerTagPlaceholder": "post-procedure",
+      "voicePrompt": "Voice prompt",
+      "voicePromptHint": "What the agent says on the call. Be specific about purpose and tone. Available variables: {firstName}, {fullName}, {businessName}, {businessPhone}, {appointmentDate}, {appointmentTime}.",
+      "voicePromptPlaceholder": "You are calling to follow up on the contact's recent visit…",
+      "smsBody": "SMS body",
+      "smsBodyHint": "Plain text message. Use {firstName}, {businessName}, etc. {count}/1600 characters.",
+      "smsBodyPlaceholder": "Hi {firstName}, this is {businessName} confirming your appointment. Reply STOP to opt out.",
+      "emailSubject": "Email subject",
+      "emailSubjectHint": "Variables: {firstName}, {businessName}, {appointmentDate}, {appointmentTime}.",
+      "emailSubjectPlaceholder": "Your appointment with {businessName} is confirmed",
+      "emailBody": "Email body",
+      "emailBodyHint": "HTML allowed. Same variables as the subject.",
+      "emailBodyPlaceholder": "Hi {firstName},\n\nWe're looking forward to seeing you on {appointmentDate} at {appointmentTime}.\n\n— The {businessName} team",
+      "whatsappBody": "WhatsApp message body",
+      "whatsappBodyHint": "WhatsApp dispatch is coming soon — content saved for when it launches.",
+      "whatsappBodyPlaceholder": "Hi {firstName}! Your appointment with {businessName} is confirmed for {appointmentDate} at {appointmentTime}.",
+      "delayHours": "Delay (hours)",
+      "delayHoursHint": "How long after the tag is applied before calling.",
+      "maxRetries": "Max retries",
+      "maxRetriesHint": "How many times to retry if no answer.",
+      "retryInterval": "Retry interval (hours)"
+    },
+    "channels": {
+      "voice": "Voice call",
+      "voiceSub": "AI agent calls the contact",
+      "sms": "SMS / Text",
+      "smsSub": "Text message via Twilio",
+      "email": "Email",
+      "emailSub": "Email via connected mailbox",
+      "whatsapp": "WhatsApp",
+      "whatsappSub": "WhatsApp Business message",
+      "comingSoon": "Coming soon"
+    },
+    "enrollments": {
+      "loading": "Loading…",
+      "allStatuses": "All statuses",
+      "count": "{count} enrollments",
+      "empty": "No enrollments found.",
+      "none": "—",
+      "table": {
+        "contact": "Contact",
+        "campaign": "Campaign",
+        "tag": "Tag",
+        "status": "Status",
+        "triggered": "Triggered",
+        "scheduledCall": "Scheduled Call",
+        "attempts": "Attempts"
+      }
+    },
+    "statusPill": {
+      "PENDING": "PENDING",
+      "IN_PROGRESS": "IN_PROGRESS",
+      "COMPLETED": "COMPLETED",
+      "OPTED_OUT": "OPTED_OUT",
+      "FAILED": "FAILED",
+      "CANCELLED": "CANCELLED"
+    }
+  },
+  "tenantContacts": {
+    "title": "Contacts",
+    "subtitleManage": "Manage your contact list for outbound campaigns",
+    "subtitleTotal": "{n} total",
+    "actions": {
+      "importCsv": "Import CSV",
+      "addContact": "+ Add contact",
+      "search": "Search",
+      "clear": "Clear",
+      "save": "Save",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "remove": "Remove"
+    },
+    "search": {
+      "placeholder": "Search by name, email, or phone…"
+    },
+    "import": {
+      "headingSingular": "Import CSV — {n} row detected",
+      "headingPlural": "Import CSV — {n} rows detected",
+      "close": "✕ Close",
+      "expectedColumns": "Expected columns (case-insensitive):",
+      "table": {
+        "first": "First",
+        "last": "Last",
+        "email": "Email",
+        "phone": "Phone"
+      },
+      "moreRows": "…and {n} more rows",
+      "importingProgress": "Importing… ({n} rows)",
+      "importCount": "Import {n} contacts",
+      "chooseDifferent": "Choose different file",
+      "resultSingular": "Imported {ok} contact.",
+      "resultPlural": "Imported {ok} contacts.",
+      "resultFailed": " {failed} failed (duplicate or invalid data)."
+    },
+    "form": {
+      "newContactTitle": "New contact",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phoneE164": "Phone (E.164)",
+      "firstNamePlaceholder": "Jane",
+      "lastNamePlaceholder": "Smith",
+      "emailPlaceholder": "jane@example.com",
+      "phonePlaceholder": "+18005551234",
+      "validationMissing": "Provide at least a name, email, or phone number.",
+      "saveFailed": "Failed"
+    },
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "status": "Status",
+      "source": "Source",
+      "added": "Added"
+    },
+    "status": {
+      "smsOptOut": "SMS out",
+      "voiceOptOut": "Voice out",
+      "emailOptOut": "Email out",
+      "active": "Active"
+    },
+    "empty": "No contacts yet. Add one above or import a list.",
+    "confirmDelete": "Delete this contact?",
+    "dash": "—"
+  },
+  "tenantConversations": {
+    "title": "Conversations",
+    "subtitle": "Transcripts and summaries from widget, inbound, and outbound sessions.",
+    "searchPlaceholder": "Search summary, contact name, phone…",
+    "filters": {
+      "allChannels": "All channels",
+      "allStatuses": "All statuses",
+      "allRecordings": "All recordings",
+      "hasRecording": "Has recording",
+      "noRecording": "No recording"
+    },
+    "channel": {
+      "widget": "Widget",
+      "inbound": "Phone",
+      "outbound": "Outbound"
+    },
+    "status": {
+      "completed": "COMPLETED",
+      "missed": "MISSED",
+      "failed": "FAILED",
+      "open": "OPEN"
+    },
+    "statusPill": {
+      "completed": "completed",
+      "missed": "missed",
+      "failed": "failed",
+      "open": "open"
+    },
+    "sort": {
+      "newestFirst": "Newest first",
+      "oldestFirst": "Oldest first",
+      "statusAsc": "Status A→Z"
+    },
+    "duration": {
+      "none": "—",
+      "seconds": "{s}s",
+      "minutesSeconds": "{m}m {s}s"
+    },
+    "list": {
+      "loading": "Loading…",
+      "empty": "No conversations found.",
+      "selectedCount": "{n} selected",
+      "totalSingular": "{n} conversation",
+      "totalPlural": "{n} conversations",
+      "noSummary": "No summary"
+    },
+    "bulk": {
+      "deleting": "Deleting…",
+      "deleteCount": "Delete {n}",
+      "confirmSingular": "Delete {n} conversation? This cannot be undone.",
+      "confirmPlural": "Delete {n} conversations? This cannot be undone.",
+      "deletedSingular": "Deleted {n} conversation.",
+      "deletedPlural": "Deleted {n} conversations.",
+      "deleteFailed": "Delete failed"
+    },
+    "pagination": {
+      "range": "{from}–{to} of {total}",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "detail": {
+      "close": "Close",
+      "dispositionLabel": "Disposition",
+      "dispositionHelp": "Tag the business outcome — used in funnel reports.",
+      "dispositionUpdateFailed": "Failed to update disposition",
+      "sendFollowupEmail": "Send follow-up email",
+      "downloadPdf": "Download PDF",
+      "generatingPdf": "Generating PDF…",
+      "pdfExportFailed": "PDF export failed",
+      "recording": "Recording",
+      "recordingLoading": "Loading…",
+      "recordingUnavailable": "Recording not available yet.",
+      "summary": "Summary",
+      "transcript": "Transcript",
+      "noTranscript": "No transcript available.",
+      "speakerCaller": "Caller",
+      "speakerAgent": "Agent"
+    },
+    "dispositions": {
+      "none": "— No disposition —",
+      "booked": "✓ Booked / Sale",
+      "qualified": "◎ Qualified lead",
+      "callback": "↻ Callback requested",
+      "notInterested": "✕ Not interested",
+      "wrongNumber": "⊘ Wrong number",
+      "voicemail": "🔉 Voicemail",
+      "noAnswer": "— No answer",
+      "spam": "🚫 Spam / robocall"
+    },
+    "email": {
+      "title": "Send follow-up email",
+      "intro": "Sends from your connected Google account. Make sure Google is connected in",
+      "integrationsLink": "Integrations",
+      "to": "To",
+      "subject": "Subject",
+      "message": "Message",
+      "toPlaceholder": "contact@example.com",
+      "cancel": "Cancel",
+      "send": "Send email",
+      "sending": "Sending…",
+      "validationError": "To, subject, and body are all required.",
+      "sentSuccess": "Email sent to {to}.",
+      "sendFailed": "Send failed — check that Google is connected in Integrations.",
+      "defaultGreeting": "Hi {name},",
+      "defaultGreetingNoName": "Hi,",
+      "defaultSubject": "Following up on our call",
+      "defaultBody": "{greeting}\n\nThanks for taking the time to speak with us today.{summaryLine}\n\nLet me know if there's anything else you need.\n\nBest,"
+    }
+  },
+  "tenantDashboard": {
+    "title": "Dashboard",
+    "platformOverview": "Platform overview · last 30 days",
+    "operationalKpis": "Operational KPIs",
+    "periodSelector": "Period selector",
+    "liveCallSingular": "{n} live call",
+    "liveCallPlural": "{n} live calls",
+    "period": {
+      "last7days": "Last 7 days",
+      "last30days": "Last 30 days"
+    },
+    "time": {
+      "justNow": "just now",
+      "minutesAgo": "{n}m ago",
+      "hoursAgo": "{n}h ago",
+      "daysAgo": "{n}d ago"
+    },
+    "duration": {
+      "seconds": "{s}s",
+      "minutesSeconds": "{m}m {s}s"
+    },
+    "headline": {
+      "callsThisMonth": "Calls this month",
+      "callsThisMonthSub": "{n} this week",
+      "activeNow": "Active now",
+      "activeNowSub": "live calls in progress",
+      "appointmentsToday": "Appointments today",
+      "appointmentsTodaySub": "scheduled & confirmed",
+      "totalContacts": "Total contacts",
+      "totalContactsSub": "in your database"
+    },
+    "kpis": {
+      "loadError": "Could not load KPIs — {error}",
+      "loadFailed": "Failed to load",
+      "emptyTitle": "No data yet — start handling calls",
+      "emptyDesc": "Once your agent takes a call, KPIs for the {period} will appear here.",
+      "totalCalls": "Total calls",
+      "totalCallsSub7d": "7-day total across all channels",
+      "totalCallsSub30d": "30-day total across all channels",
+      "missedCallRate": "Missed call rate",
+      "missedCallRateNoInbound": "No inbound calls in window",
+      "missedCallRateSub": "{missed} of {inbound} inbound",
+      "avgCallDuration": "Avg call duration",
+      "avgCallDurationSub": "Across calls with a recording",
+      "appointmentsBooked": "Appointments booked",
+      "appointmentsBookedSub7d": "Created in the last 7 days",
+      "appointmentsBookedSub30d": "Created in the last 30 days",
+      "followupEmails": "Follow-up emails sent",
+      "followupEmailsSub": "Outbound EMAIL messages logged in window",
+      "topDispositions": "Top 3 dispositions",
+      "noDispositions": "No dispositions tagged yet"
+    },
+    "dispositions": {
+      "booked": "Booked",
+      "qualified": "Qualified",
+      "callback": "Callback",
+      "notInterested": "Not interested",
+      "wrongNumber": "Wrong number",
+      "voicemail": "Voicemail",
+      "noAnswer": "No answer",
+      "spam": "Spam",
+      "interested": "Interested"
+    },
+    "chart": {
+      "title": "Call Volume — Last 7 Days",
+      "callsCount": "{count} calls"
+    },
+    "storage": {
+      "title": "Recording Storage",
+      "used": "used",
+      "usedOf": "{used} of {quota}",
+      "upgrade": "Upgrade storage →"
+    },
+    "subscription": {
+      "title": "Subscription",
+      "manage": "Manage",
+      "none": "No active subscription",
+      "choosePlan": "Choose a plan →"
+    },
+    "recentConversations": {
+      "title": "Recent Conversations",
+      "viewAll": "View all →",
+      "emptyTitle": "No conversations yet",
+      "emptyDesc": "They will appear here as calls and chats come in.",
+      "unknownContact": "Unknown",
+      "channelInbound": "↙ In",
+      "channelOutbound": "↗ Out",
+      "channelWidget": "⊕ Web",
+      "live": "Live"
+    }
+  },
+  "tenantChannels": {
+    "title": "Channels",
+    "subtitle": "Enable and configure each voice channel",
+    "loading": "Loading…",
+    "savedMessage": "Channel saved.",
+    "saveFailed": "Failed",
+    "channels": {
+      "widget": {
+        "label": "Website Widget",
+        "description": "Real-time browser voice agent"
+      },
+      "inbound": {
+        "label": "Inbound Receptionist",
+        "description": "Handles live phone calls"
+      },
+      "outbound": {
+        "label": "Outbound Caller",
+        "description": "Runs campaigns and follow-up calls"
+      }
+    },
+    "afterHoursOptions": {
+      "default": "Default (inform & hang up)",
+      "voicemail": "Record voicemail",
+      "forward": "Forward to number"
+    },
+    "days": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "businessHours": {
+      "title": "Business hours",
+      "description": "Calls outside these hours trigger the after-hours behaviour above",
+      "open": "Open",
+      "closed": "Closed",
+      "to": "to"
+    },
+    "afterHours": {
+      "title": "After-hours",
+      "behaviourLabel": "After-hours behaviour",
+      "behaviourTooltip": "What happens when a call comes in outside the business hours you set below. Voicemail, forward to a person, or just answer normally with the AI.",
+      "forwardLabel": "Forward calls to",
+      "forwardTooltip": "The phone where after-hours calls are sent. Usually a personal mobile or an answering service.",
+      "forwardHelp": "Calls outside business hours are forwarded here"
+    },
+    "voicePicker": {
+      "label": "Agent voice",
+      "tooltip": "The voice your AI agent uses on every call. Pick one that matches your brand — you can change it anytime; takes effect on the next call.",
+      "gender": {
+        "Female": "Female",
+        "Male": "Male",
+        "Neutral": "Neutral"
+      },
+      "style": {
+        "Zephyr": "Bright & clear",
+        "Despina": "Smooth & polished",
+        "Aoede": "Warm & breezy",
+        "Charon": "Deep & authoritative",
+        "Fenrir": "Warm & approachable",
+        "Puck": "Upbeat & conversational",
+        "Sulafat": "Warm & even"
+      }
+    },
+    "agentSpeaksFirst": {
+      "label": "Agent speaks first",
+      "description": "Agent delivers the opening greeting immediately when the session starts, without waiting for the caller to speak."
+    },
+    "greetingMode": {
+      "label": "Greeting mode",
+      "tooltip": "A short word or phrase describing the tone of your agent's opening — passed into the prompt as guidance.",
+      "placeholder": "e.g. friendly, formal, professional",
+      "help": "Sets the tone of the agent's opening message"
+    },
+    "escalation": {
+      "modeLabel": "Escalation mode",
+      "modeTooltip": "When the agent decides a caller needs a human (e.g. complex complaint, refund request), this controls how it hands off.",
+      "modePlaceholder": "e.g. escalate-to-human",
+      "transferLabel": "Transfer / escalation number",
+      "transferTooltip": "The phone number the AI dials and bridges the caller to when escalating. Should be a number that's reliably answered during business hours.",
+      "transferHelp": "The agent dials this number when escalating to a human"
+    },
+    "contactPicker": {
+      "placeholder": "+1",
+      "emptyContacts": "No contacts with phone numbers. Add them in Contacts first.",
+      "noContactName": "—"
+    },
+    "phoneNumbers": {
+      "title": "Phone Numbers",
+      "subtitle": "Numbers Twilio routes to this receptionist",
+      "manageLink": "Manage in Phone Numbers →",
+      "emptyPrefix": "No phone numbers yet — search and purchase one in",
+      "emptyLink": "Phone Numbers",
+      "emptySuffix": "."
+    },
+    "enabledLabel": "Enabled",
+    "closeLabel": "Close",
+    "boundPrompt": "Bound prompt: {name}",
+    "actions": {
+      "save": "Save channel",
+      "saving": "Saving…"
+    }
+  },
+  "tenantAgents": {
+    "title": "Agents",
+    "subtitle": "Configure each AI agent role for your workspace.",
+    "selectAgent": "Select an agent to configure it",
+    "savedMessage": "Agent saved.",
+    "saveFailed": "Failed",
+    "status": {
+      "on": "On",
+      "off": "Off",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "roles": {
+      "ORCHESTRATOR": {
+        "name": "Orchestrator",
+        "description": "Coordinates all other agents and manages handoffs"
+      },
+      "APPOINTMENT": {
+        "name": "Appointment",
+        "description": "Books, reschedules, and cancels appointments"
+      },
+      "SALES": {
+        "name": "Sales",
+        "description": "Qualifies leads and drives conversions"
+      },
+      "CUSTOMER_SERVICE": {
+        "name": "Customer Service",
+        "description": "Handles support queries and escalations"
+      },
+      "MARKETING": {
+        "name": "Marketing",
+        "description": "Runs campaigns and follow-up sequences"
+      },
+      "ASSISTANT": {
+        "name": "Assistant",
+        "description": "General-purpose assistant for any task"
+      },
+      "SECRETARY": {
+        "name": "Secretary",
+        "description": "Manages schedule, notes, and admin tasks"
+      }
+    },
+    "fields": {
+      "displayName": {
+        "label": "Display name",
+        "tooltip": "The name your agent uses when introducing itself on calls (e.g. 'Hi, this is Aria from Acme'). Pick something friendly and easy to hear over the phone.",
+        "placeholder": "e.g. Aria"
+      },
+      "modelProvider": {
+        "label": "Model provider",
+        "tooltip": "Which AI provider routes this agent's reasoning. Default 'openai' — only change if you know what you're doing.",
+        "placeholder": "openai"
+      },
+      "modelName": {
+        "label": "Model name",
+        "tooltip": "The specific model used for this agent's text reasoning (summaries, follow-ups, decisions). Voice itself is always Gemini Live, set on the channel.",
+        "placeholder": "gpt-4o-mini"
+      }
+    },
+    "actions": {
+      "save": "Save agent",
+      "saving": "Saving…"
+    }
+  },
+  "tenantBusinessDna": {
+    "title": "Business DNA",
+    "subtitle": "Versioned knowledge base that your AI agents draw on in every conversation.",
+    "newDraft": "+ New draft",
+    "sectionsHeading": "Sections",
+    "versionsHeading": "Versions",
+    "noVersions": "No versions yet.",
+    "versionLabel": "Version {n}",
+    "versionActive": "● Active",
+    "versionUpdated": "Updated {date}",
+    "emptyStateTitle": "Select a version or create a new draft",
+    "statusVersion": "Version {n}",
+    "statusActive": "● Active — read-only",
+    "statusDraft": "○ Draft",
+    "statusUnsaved": "• Unsaved changes",
+    "showForm": "Show form",
+    "showAdvancedJson": "Show advanced (JSON)",
+    "actions": {
+      "publish": "Publish",
+      "save": "Save changes",
+      "saving": "Saving…"
+    },
+    "savedPerSection": "Changes are saved per section.",
+    "readOnlyBanner": "This version is currently active and read-only. Create a new draft to make changes.",
+    "jsonInvalidObject": "Top-level value must be a JSON object.",
+    "jsonInvalid": "Invalid JSON",
+    "confirm": {
+      "discardChanges": "You have unsaved changes. Discard them?",
+      "discardForNewDraft": "You have unsaved changes. Discard them and create a new draft?",
+      "saveBeforePublish": "You have unsaved changes. Save them before publishing? Cancel to abort."
+    },
+    "toast": {
+      "draftCreated": "New draft created.",
+      "sectionSaved": "Section saved.",
+      "saveFailed": "Save failed",
+      "createFailed": "Failed",
+      "published": "Business DNA published and now active.",
+      "publishFailed": "Publish failed"
+    },
+    "sections": {
+      "identity": {
+        "label": "Identity",
+        "description": "Your business name, mission, brand voice, and what you do at a glance. The agent uses this to introduce itself and frame every conversation."
+      },
+      "services": {
+        "label": "Services",
+        "description": "What you offer — products, services, packages. Be specific. The agent quotes from this when callers ask \"what do you do?\" or \"do you offer X?\"."
+      },
+      "pricing": {
+        "label": "Pricing",
+        "description": "How much things cost and what discounts/promotions apply. Include enough detail that the agent can answer pricing questions without escalating."
+      },
+      "operations": {
+        "label": "Operations",
+        "description": "How your business runs day-to-day: hours, locations, service areas, lead times, payment terms. The agent references this for logistical questions."
+      },
+      "sales": {
+        "label": "Sales",
+        "description": "Your qualifying questions, ideal-customer rules, and the workflow for converting a caller into a booked customer."
+      },
+      "appointments": {
+        "label": "Appointments",
+        "description": "Booking rules: how long appointments take, what info to collect, what days/times are available, when to escalate to a human."
+      },
+      "support": {
+        "label": "Support",
+        "description": "How to handle complaints, refunds, and angry customers. Include the boundary where the agent should hand off to a human."
+      },
+      "language": {
+        "label": "Language",
+        "description": "Tone, voice, vocabulary preferences. Phrases the agent should always or never use. Languages it should respond to."
+      },
+      "compliance": {
+        "label": "Compliance",
+        "description": "Legal and regulatory rules the agent must follow — disclosures, recording notices, opt-out language, industry-specific compliance (HIPAA, GDPR, etc.)."
+      }
+    },
+    "identity": {
+      "businessName": {
+        "label": "Business name",
+        "placeholder": "Acme Plumbing",
+        "description": "The name your agent uses to introduce itself."
+      },
+      "tagline": {
+        "label": "Tagline",
+        "placeholder": "Fast, friendly, fixed right the first time.",
+        "description": "A short one-liner. Optional."
+      },
+      "shortDescription": {
+        "label": "Short description",
+        "placeholder": "What the business does in one or two sentences.",
+        "description": "The agent uses this to answer 'what do you do?'."
+      },
+      "elevatorPitch": {
+        "label": "Elevator pitch",
+        "placeholder": "A longer 30-second version. Cover what you do, who for, and what makes you different.",
+        "description": "Used when callers want more detail than the short description."
+      },
+      "tone": {
+        "label": "Tone",
+        "placeholder": "warm, professional, no jargon",
+        "description": "A few adjectives describing how the agent should sound."
+      },
+      "voicePreference": {
+        "label": "Voice preference",
+        "description": "Which agent voice to prefer. The channel can override this."
+      },
+      "industry": {
+        "label": "Industry",
+        "placeholder": "Home services"
+      },
+      "targetCustomers": {
+        "label": "Target customers",
+        "placeholder": "Homeowners in the greater metro area, ages 35-65, who own their home.",
+        "description": "Who you serve. Helps the agent qualify leads."
+      }
+    },
+    "voiceOptions": {
+      "none": "— No preference —",
+      "noneHint": "Falls back to the channel default voice.",
+      "zephyrHint": "Female · Bright & clear",
+      "despinaHint": "Female · Smooth & polished",
+      "aoedeHint": "Female · Warm & breezy",
+      "charonHint": "Male · Deep & authoritative",
+      "fenrirHint": "Male · Warm & approachable (default)",
+      "puckHint": "Male · Upbeat & conversational",
+      "sulafatHint": "Neutral · Warm & even"
+    },
+    "services": {
+      "channels": {
+        "label": "Channels",
+        "description": "The channels this business serves customers through (calls, web chat, walk-ins, etc.).",
+        "empty": "No channels yet — add the ones the agent should know about.",
+        "fallbackName": "Channel {n}",
+        "fields": {
+          "name": "Name",
+          "namePlaceholder": "Inbound calls",
+          "description": "Description",
+          "descriptionPlaceholder": "What this channel covers.",
+          "useCases": "Use cases",
+          "useCasesPlaceholder": "New customer asks for a quote",
+          "useCasesEmpty": "No use cases listed."
+        }
+      },
+      "agentCapabilities": {
+        "label": "Agent capabilities",
+        "description": "What the agent is allowed and able to do (book appointments, quote prices, take messages, etc.).",
+        "placeholder": "Book appointments",
+        "empty": "No capabilities listed yet."
+      }
+    },
+    "pricing": {
+      "plans": {
+        "label": "Plans",
+        "description": "Your packages or pricing tiers.",
+        "empty": "No plans yet.",
+        "fallbackName": "Plan {n}",
+        "fields": {
+          "name": "Plan name",
+          "namePlaceholder": "Standard",
+          "price": "Price",
+          "pricePlaceholder": "$197 / month",
+          "summary": "Summary",
+          "summaryPlaceholder": "What's included at a glance."
+        }
+      },
+      "overageRate": {
+        "label": "Overage rate",
+        "placeholder": "$0.05 / minute over the included quota",
+        "description": "What happens past the included quota — leave blank if N/A."
+      },
+      "freeTrial": {
+        "label": "Free trial",
+        "placeholder": "14-day free trial, no card required",
+        "description": "What trial or free period you offer, if any."
+      },
+      "discountPolicy": {
+        "label": "Discount policy",
+        "placeholder": "When can the agent offer a discount? Up to how much?",
+        "description": "The rules the agent should follow when callers ask for a deal."
+      }
+    },
+    "operations": {
+      "timezone": {
+        "label": "Timezone",
+        "selectPlaceholder": "— Select —",
+        "description": "The timezone the business operates in. Used for hours and bookings."
+      },
+      "businessHours": {
+        "description": "When you're open. Mark days closed with the checkbox."
+      },
+      "holidays": {
+        "label": "Holidays",
+        "placeholder": "Closed Dec 24, Dec 25, Jan 1. Reduced hours on July 4.",
+        "description": "Major holidays and any special closures."
+      },
+      "afterHoursBehavior": {
+        "label": "After-hours behavior",
+        "placeholder": "Take a message, offer to schedule a callback during business hours, escalate emergencies to the on-call number.",
+        "description": "What the agent should do when called outside business hours."
+      }
+    },
+    "sales": {
+      "qualificationCriteria": {
+        "label": "Qualification criteria",
+        "description": "What makes a caller a good fit? The agent uses these to decide whether to keep selling or to politely disqualify.",
+        "placeholder": "Owns a single-family home",
+        "empty": "No qualification criteria yet."
+      },
+      "discoveryQuestions": {
+        "label": "Discovery questions",
+        "description": "Questions the agent should ask early on a sales call.",
+        "placeholder": "What problem are you trying to solve?",
+        "empty": "No discovery questions yet."
+      },
+      "demoFlow": {
+        "label": "Demo flow",
+        "placeholder": "If the caller is qualified, walk them through: 1) the problem we solve, 2) how it works, 3) pricing, 4) next steps.",
+        "description": "The structure of a typical sales conversation, top to bottom."
+      },
+      "objectionHandling": {
+        "label": "Objection handling",
+        "description": "Common objections and how the agent should respond. Key = objection, value = response.",
+        "keyLabel": "Objection",
+        "valueLabel": "Response",
+        "keyPlaceholder": "Too expensive",
+        "valuePlaceholder": "Acknowledge, then re-anchor on value: explain what's included and the cost of not solving the problem.",
+        "empty": "No objections mapped yet."
+      }
+    },
+    "appointments": {
+      "defaultDuration": {
+        "label": "Default duration",
+        "unit": "minutes",
+        "description": "Standard appointment length when no specific type is requested."
+      },
+      "appointmentTypes": {
+        "label": "Appointment types",
+        "description": "The kinds of appointments callers can book.",
+        "empty": "No appointment types yet.",
+        "fallbackName": "Type {n}",
+        "fields": {
+          "name": "Name",
+          "namePlaceholder": "Free consultation",
+          "duration": "Duration",
+          "durationUnit": "minutes",
+          "description": "Description",
+          "descriptionPlaceholder": "What happens during this appointment."
+        }
+      },
+      "bookingPolicy": {
+        "label": "Booking policy",
+        "placeholder": "Bookings require name, phone, and email. Minimum 4 hours notice. Confirmations sent by email.",
+        "description": "The rules around how appointments get booked."
+      },
+      "cancellationPolicy": {
+        "label": "Cancellation policy",
+        "placeholder": "Free cancellation up to 24 hours before. Within 24 hours, $50 fee.",
+        "description": "What happens if a caller wants to cancel or reschedule."
+      }
+    },
+    "support": {
+      "commonIssues": {
+        "label": "Common issues",
+        "description": "Issues callers ask about often, paired with the right fix.",
+        "empty": "No common issues mapped yet.",
+        "fallbackName": "Issue {n}",
+        "fields": {
+          "issue": "Issue",
+          "issuePlaceholder": "Caller can't find their invoice",
+          "fix": "Fix",
+          "fixPlaceholder": "Direct them to billing@... or offer to email a copy."
+        }
+      },
+      "escalationRules": {
+        "label": "Escalation rules",
+        "description": "When the agent should hand off to a human.",
+        "placeholder": "Caller is frustrated or asks for a manager",
+        "empty": "No escalation rules yet."
+      },
+      "supportEmail": {
+        "label": "Support email",
+        "placeholder": "support@acme.com",
+        "description": "Where the agent should direct customers for written support."
+      },
+      "founderContact": {
+        "label": "Founder contact",
+        "placeholder": "founder@acme.com or +1 555 000 0000",
+        "description": "An escalation path of last resort. Used sparingly."
+      }
+    },
+    "language": {
+      "primaryLanguage": {
+        "label": "Primary language",
+        "selectPlaceholder": "— Select —",
+        "description": "The default language for agent conversations."
+      },
+      "supportedLanguages": {
+        "label": "Supported languages",
+        "description": "Other languages the agent should answer in if asked.",
+        "placeholder": "Spanish",
+        "empty": "No additional languages."
+      },
+      "vocabularyPreferences": {
+        "label": "Vocabulary preferences",
+        "description": "Words and phrases the agent should prefer to use.",
+        "placeholder": "say 'team member' instead of 'staff'",
+        "empty": "No vocabulary preferences."
+      },
+      "prohibitedLanguage": {
+        "label": "Prohibited language",
+        "description": "Words and phrases the agent must never use.",
+        "placeholder": "don't say 'guarantee'",
+        "empty": "No prohibited words."
+      },
+      "options": {
+        "english": "English",
+        "spanish": "Spanish",
+        "french": "French",
+        "german": "German",
+        "portuguese": "Portuguese",
+        "italian": "Italian"
+      }
+    },
+    "compliance": {
+      "callRecordingConsent": {
+        "label": "Call recording consent",
+        "placeholder": "This call may be recorded for quality and training purposes.",
+        "description": "The exact disclosure your agent should read at the start of recorded calls."
+      },
+      "dataHandling": {
+        "label": "Data handling",
+        "placeholder": "We store contact data in the US. We don't share with third parties without consent.",
+        "description": "How customer data is stored and used. Drives the agent's privacy answers."
+      },
+      "phoneCompliance": {
+        "label": "Phone compliance",
+        "placeholder": "TCPA: only outbound-call numbers with prior express consent. Honor opt-outs immediately.",
+        "description": "Telephony rules the agent must follow (TCPA, do-not-call, etc.)."
+      },
+      "smsCompliance": {
+        "label": "SMS compliance",
+        "placeholder": "Include STOP and HELP language in any opt-in. Honor STOP within 24 hours.",
+        "description": "SMS-specific rules (10DLC, opt-in/out flow)."
+      },
+      "ageRestrictions": {
+        "label": "Age restrictions",
+        "placeholder": "18 and over only.",
+        "description": "Any age gating that applies to your offering."
+      }
+    }
+  },
+  "tenantOutbound": {
+    "title": "Outbound Caller",
+    "subtitle": "Create campaigns, select contacts, and dispatch AI-powered outbound calls.",
+    "backToCampaigns": "← Back to campaigns",
+    "loading": "Loading…",
+    "actions": {
+      "newCampaign": "+ New campaign",
+      "createCampaign": "Create campaign",
+      "creating": "Creating…",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "save": "Save",
+      "saving": "Saving…",
+      "delete": "Delete",
+      "remove": "Remove",
+      "start": "▶ Start",
+      "starting": "Starting…",
+      "pause": "⏸ Pause",
+      "pausing": "Pausing…",
+      "cancelAction": "Cancel",
+      "canceling": "Canceling…",
+      "view": "View →",
+      "addContacts": "+ Add contacts",
+      "closePicker": "Close contact picker"
+    },
+    "list": {
+      "newHeading": "New outbound campaign",
+      "form": {
+        "name": "Campaign name",
+        "namePlaceholder": "Re-engagement call — Q2",
+        "description": "Description (optional)",
+        "descriptionPlaceholder": "Brief description of the campaign goal"
+      },
+      "empty": {
+        "line1": "No outbound campaigns yet.",
+        "line2": "Create one to start making calls."
+      },
+      "card": {
+        "contact": "{count} contact",
+        "contacts": "{count} contacts"
+      }
+    },
+    "messages": {
+      "nameRequired": "Campaign name is required.",
+      "createSuccess": "Campaign created. Open it to add contacts and start calling.",
+      "createFailed": "Failed to create campaign",
+      "deleteConfirm": "Delete this campaign? All call attempts will also be removed.",
+      "deleteSuccess": "Campaign deleted.",
+      "deleteFailed": "Delete failed",
+      "updateSuccess": "Campaign updated.",
+      "updateFailed": "Update failed",
+      "actionFailed": "Action failed",
+      "campaignStarted": "Campaign started.",
+      "campaignPaused": "Campaign paused.",
+      "campaignCanceled": "Campaign canceled.",
+      "contactsAdded": "{count} contact added.",
+      "contactsAddedPlural": "{count} contacts added.",
+      "addContactsFailed": "Failed to add contacts",
+      "removeFailed": "Remove failed"
+    },
+    "detail": {
+      "edit": {
+        "namePlaceholder": "Campaign name",
+        "descriptionPlaceholder": "Description (optional)"
+      },
+      "progress": {
+        "doneOf": "{done} of {total} done",
+        "live": "Live — refreshing every 5s"
+      },
+      "stats": {
+        "totalContacts": "Total contacts",
+        "answered": "Answered",
+        "pending": "Pending",
+        "failedNoAnswer": "Failed / No answer",
+        "completed": "Completed"
+      },
+      "tabs": {
+        "contacts": "Contacts & Attempts",
+        "results": "Results Summary"
+      }
+    },
+    "picker": {
+      "heading": "Select contacts to add",
+      "addCount": "Add {count} contact",
+      "addCountPlural": "Add {count} contacts",
+      "adding": "Adding…",
+      "searchPlaceholder": "Search by name, phone, or email…",
+      "loadingContacts": "Loading contacts…",
+      "noResults": "No contacts found.",
+      "alreadyAdded": "Added"
+    },
+    "attempts": {
+      "empty": "No contacts added yet. Add contacts to begin the campaign.",
+      "headers": {
+        "contact": "Contact",
+        "phone": "Phone",
+        "status": "Status",
+        "outcome": "Outcome",
+        "started": "Started",
+        "duration": "Duration",
+        "actions": "Actions",
+        "callTime": "Call time"
+      },
+      "duration": "{secs}s",
+      "unknown": "Unknown"
+    },
+    "results": {
+      "outcomeBreakdown": "Outcome Breakdown",
+      "noAttempts": "No attempts yet.",
+      "answeredCalls": "Answered calls"
+    },
+    "outcomeLabels": {
+      "answered": "Answered",
+      "busy": "Busy",
+      "no_answer": "No answer",
+      "voicemail": "Voicemail",
+      "failed": "Failed",
+      "canceled": "Canceled",
+      "campaign_canceled": "Campaign canceled",
+      "dispatch_error": "Dispatch error",
+      "no_phone": "No phone"
+    }
+  },
+  "tenantPrompts": {
+    "title": "Prompts",
+    "subtitle": "Versioned prompt library for all agent roles and channels.",
+    "scopes": {
+      "platform": "Platform",
+      "tenant": "Tenant",
+      "channel": "Channel",
+      "role": "Role",
+      "session": "Session"
+    },
+    "statusBadge": {
+      "publishedWithVersion": "● Published · v{version}",
+      "draftWithVersion": "○ Draft · v{version}",
+      "publishedReadOnly": "● Published · read-only"
+    },
+    "list": {
+      "empty": "No prompts yet"
+    },
+    "editor": {
+      "emptyState": "Select a prompt to edit"
+    },
+    "create": {
+      "heading": "New prompt"
+    },
+    "fields": {
+      "name": {
+        "label": "Name",
+        "placeholder": "e.g. Receptionist Greeting"
+      },
+      "scope": {
+        "label": "Scope"
+      },
+      "content": {
+        "label": "Prompt content",
+        "placeholder": "You are a professional receptionist for {business_name}…"
+      },
+      "contentSimple": {
+        "label": "Content"
+      }
+    },
+    "actions": {
+      "newPrompt": "+ New prompt",
+      "createPrompt": "Create prompt",
+      "creating": "Creating…",
+      "saveDraft": "Save draft",
+      "saving": "Saving…",
+      "publish": "Publish",
+      "cancel": "Cancel",
+      "cancelGlyph": "✕ Cancel"
+    },
+    "toasts": {
+      "created": "Prompt created.",
+      "saved": "Prompt saved.",
+      "published": "Prompt published and active.",
+      "failed": "Failed"
+    }
+  },
+  "tenantBilling": {
+    "title": "Billing",
+    "subtitle": "Manage your subscription and plan.",
+    "currentPeriod": "Current period",
+    "cancelsAtPeriodEnd": "Cancels at period end",
+    "availablePlans": "Available plans",
+    "currentBadge": "Current",
+    "dash": "—",
+    "billing": {
+      "monthly": "Billed monthly",
+      "annually": "Billed annually"
+    },
+    "interval": {
+      "perMonth": "per month",
+      "perYear": "per year"
+    },
+    "actions": {
+      "manageSubscription": "Manage subscription →",
+      "opening": "Opening…",
+      "selectPlan": "Select plan",
+      "comingSoon": "Coming soon",
+      "redirecting": "Redirecting…",
+      "upgrade": "Upgrade",
+      "downgrade": "Downgrade"
+    },
+    "statusPill": {
+      "active": "Active",
+      "trialing": "Trialing",
+      "pastDue": "Past due",
+      "canceled": "Canceled",
+      "incomplete": "Incomplete"
+    },
+    "entitlements": {
+      "maxChannels": "Max channels",
+      "maxAgents": "Max agents",
+      "minutesPerMonth": "Minutes / month",
+      "widgetEnabled": "Website widget",
+      "inboundEnabled": "Inbound receptionist",
+      "outboundEnabled": "Outbound caller",
+      "affiliateEnabled": "Partner portal"
+    },
+    "noSubscription": {
+      "title": "No active subscription",
+      "desc": "Choose a plan below to get started."
+    },
+    "errors": {
+      "failed": "Failed"
+    }
+  },
+  "tenantIntegrations": {
+    "title": "Integrations",
+    "subtitle": "Connect third-party services your agents use to book, call, and communicate.",
+    "loadError": "Failed to load integration status.",
+    "comingSoon": "Coming soon",
+    "moreComingSoon": "More integrations — coming soon",
+    "statusPill": {
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "error": "Error",
+      "reconnectRequired": "Reconnect required",
+      "disabled": "Disabled",
+      "managed": "Managed"
+    },
+    "toasts": {
+      "googleConnected": "Google account connected: {email}",
+      "googleConnectionFailed": "Google connection failed: {reason}",
+      "googleConnectionFailedReasonUnknown": "unknown error",
+      "failed": "Failed",
+      "failedStartGoogle": "Failed to start Google connection",
+      "failedDisconnect": "Failed to disconnect",
+      "googleDisconnected": "Google account disconnected.",
+      "failedDisconnectGoogle": "Failed to disconnect Google account",
+      "geminiSaved": "Gemini API key saved.",
+      "testEmailSent": "Test email sent to {to}",
+      "failedSend": "Failed to send",
+      "geminiRemoved": "Gemini key removed.",
+      "failedRemoveGemini": "Failed to remove Gemini key"
+    },
+    "confirms": {
+      "disconnectGoogle": "Disconnect your Google account? This will disable Gmail and Calendar integrations.",
+      "removeGemini": "Remove Gemini API key? Voice sessions will fall back to the platform key if one is configured."
+    },
+    "google": {
+      "title": "Google Workspace",
+      "subtitle": "Agent mailbox · Google Calendar",
+      "labels": {
+        "account": "Account",
+        "calendars": "Calendars",
+        "lastVerified": "Last verified"
+      },
+      "calendarsFound": "{n} found",
+      "notConnectedDesc": "Connect the dedicated Google account your agent will use to send emails and manage appointments. This should be a mailbox set up specifically for your agent — not the email address you used to register.",
+      "needsReauth": "Your Google connection needs to be reauthorized. Click Reconnect to fix it.",
+      "actions": {
+        "connect": "Connect Google",
+        "redirecting": "Redirecting…",
+        "reconnect": "Reconnect",
+        "disconnect": "Disconnect"
+      },
+      "test": {
+        "title": "Send a test email",
+        "desc": "Verify your agent mailbox can send by dispatching a test message from the connected account.",
+        "defaultSubject": "Test from OrbisVoice",
+        "defaultBody": "This is a test email sent from your connected Google agent mailbox.",
+        "placeholderTo": "Recipient email",
+        "placeholderSubject": "Subject",
+        "placeholderBody": "Message body",
+        "send": "Send test email",
+        "sending": "Sending…"
+      },
+      "footer": "Connect a dedicated Google account for your agent — not your personal or registration email. Required scopes: Gmail Send, Gmail Read, Google Calendar. Tokens are encrypted at rest and never displayed."
+    },
+    "twilio": {
+      "title": "Twilio (Voice & SMS)",
+      "subtitle": "Inbound calls · Outbound calls · SMS — managed by OrbisVoice",
+      "intro": "You don’t need to create or connect a Twilio account. OrbisVoice runs all voice and SMS through our master Twilio account, and we assign phone numbers directly to your tenant from our pool.",
+      "requestPrefix": "To request a phone number, go to ",
+      "phoneNumbersLink": "Phone Numbers",
+      "quotaMid": ". Your monthly minutes / SMS quota is set by your plan tier — see ",
+      "billingLink": "Billing",
+      "quotaSuffix": ".",
+      "footer": "All voice / SMS billing is included in your OrbisVoice subscription. No separate Twilio account required."
+    },
+    "gemini": {
+      "title": "Gemini Live API",
+      "subtitle": "Real-time voice AI · Required for voice sessions",
+      "labels": {
+        "apiKey": "API Key",
+        "saved": "Saved"
+      },
+      "notConnectedDescPrefix": "Enter your Gemini Live API key to enable real-time voice sessions for your agents. Get a Live API-enabled key from ",
+      "googleAiStudio": "Google AI Studio",
+      "notConnectedDescSuffix": ". Make sure the key has access to the ",
+      "liveApiName": "Gemini Live API",
+      "notConnectedDescAccessSuffix": " (BidiGenerateContent).",
+      "rotateHeading": "Rotate API key",
+      "addHeading": "Add API key",
+      "actions": {
+        "save": "Save key",
+        "rotate": "Rotate",
+        "saving": "Saving…",
+        "remove": "Remove"
+      },
+      "placeholderApiKey": "AIza…",
+      "footer": "API key is encrypted at rest and never displayed. Each account requires its own Gemini Live API key with BidiGenerateContent access enabled."
+    },
+    "calendars": {
+      "outlook": {
+        "name": "Outlook Calendar",
+        "desc": "Sync appointments with Microsoft 365 and Outlook calendar accounts."
+      },
+      "calendly": {
+        "name": "Calendly",
+        "desc": "Route bookings through your Calendly event types and availability rules."
+      },
+      "calcom": {
+        "name": "Cal.com",
+        "desc": "Open-source scheduling — connect self-hosted or Cal.com cloud accounts."
+      }
+    },
+    "restApi": {
+      "title": "REST API",
+      "subtitle": "Connect your own systems via API key",
+      "desc": "Generate API keys to push contacts, trigger campaigns, and pull conversation data directly from your CRM, website, or custom tooling.",
+      "actions": {
+        "generate": "Generate API key",
+        "viewDocs": "View docs"
+      },
+      "footer": "Available in a future release. You’ll be able to create scoped keys with read/write permissions per resource."
+    }
+  },
+  "tenantPhoneNumbers": {
+    "title": "Phone Numbers",
+    "subtitle": "Search and assign Twilio numbers to your tenant. We handle the Twilio account and billing.",
+    "usageLabel": "{used} of {max}",
+    "usageSuffix": "phone numbers used",
+    "planLimitReached": " — plan limit reached",
+    "actions": {
+      "getNumber": "+ Get a Number",
+      "release": "Release",
+      "search": "Search",
+      "searching": "Searching…",
+      "get": "Get",
+      "buying": "Buying…"
+    },
+    "tooltips": {
+      "getNumberDefault": "Search and request a phone number",
+      "noPlan": "Your plan does not include phone numbers. Upgrade to request a number.",
+      "atCap": "Plan limit reached: {used} of {max} used."
+    },
+    "planUpgradeCta": "Pick a plan to get a phone number →",
+    "planUpgradeBody": " Your current plan doesn't include any. Upgrade to Basic ($197/mo, 1 number), Pro ($497/mo, 3 numbers), or higher.",
+    "complianceBanner": {
+      "title": "About SMS approvals (10DLC):",
+      "body": " SMS sending requires a one-time carrier registration we manage on your behalf. Voice + inbound calls work immediately on any number you request. Read the Twilio approval guide →"
+    },
+    "loading": "Loading…",
+    "empty": {
+      "title": "No phone numbers yet.",
+      "noPlan": "Your current plan does not include phone numbers. Upgrade to request one.",
+      "ready": "Click \"Get a Number\" above to search Twilio's inventory and add one to your tenant."
+    },
+    "capabilityBadges": {
+      "inbound": "Inbound",
+      "outbound": "Outbound",
+      "sms": "SMS",
+      "voice": "Voice",
+      "mms": "MMS"
+    },
+    "pricePerMonth": "${amount}/mo",
+    "modal": {
+      "title": "Get a Phone Number",
+      "subtitle": "Search Twilio's inventory. Cost is included in your plan ($1.15/month per number).",
+      "close": "✕",
+      "areaCodeLabel": "Area code (optional)",
+      "areaCodePlaceholder": "610",
+      "patternLabel": "Contains digits (optional)",
+      "patternPlaceholder": "8888",
+      "defaultRegion": "United States",
+      "noResults": "No matching numbers available. Try a different area code or remove the pattern."
+    },
+    "errors": {
+      "searchFailed": "Search failed",
+      "purchaseFailed": "Purchase failed",
+      "releaseFailed": "Release failed"
+    },
+    "confirm": {
+      "purchase": "Get {number}?\n\nMonthly cost: ${amount} (included in your plan).",
+      "release": "Release {number}?\n\nThe number will be returned to Twilio's pool. This cannot be undone."
+    },
+    "toasts": {
+      "purchased": "Number {number} is yours.",
+      "released": "Number {number} released."
+    }
+  },
+  "tenantSettings": {
+    "title": "Settings",
+    "subtitle": "Workspace and business profile",
+    "actions": {
+      "save": "Save",
+      "saving": "Saving…",
+      "saveWorkspace": "Save workspace",
+      "saveIndustry": "Save industry",
+      "saveProfile": "Save profile",
+      "cancel": "Cancel"
+    },
+    "toasts": {
+      "workspaceSaved": "Workspace settings saved.",
+      "profileSaved": "Business profile saved.",
+      "logoUploaded": "Logo uploaded.",
+      "saveFailed": "Save failed"
+    },
+    "logo": {
+      "label": "Logo",
+      "noLogo": "No logo",
+      "uploading": "Uploading…",
+      "replace": "Replace logo",
+      "upload": "Upload logo",
+      "constraints": "PNG, JPG, WebP, or SVG — max 2 MB",
+      "altText": "Logo",
+      "errorUnsupportedType": "Unsupported type. Use PNG, JPG, WebP, or SVG.",
+      "errorTooLarge": "Logo must be under 2 MB.",
+      "errorUploadFailed": "Upload failed"
+    },
+    "workspace": {
+      "title": "Workspace",
+      "description": "Basic info shown to your team and in communications.",
+      "fields": {
+        "displayName": "Display name",
+        "displayNamePlaceholder": "Acme Corp",
+        "legalName": "Legal name",
+        "legalNamePlaceholder": "Acme Corporation LLC (optional)",
+        "publicEmail": "Public email",
+        "publicEmailPlaceholder": "hello@acme.com",
+        "publicPhone": "Public phone",
+        "publicPhonePlaceholder": "+1 555 000 0000",
+        "website": "Website",
+        "websitePlaceholder": "https://acme.com",
+        "timezone": "Timezone",
+        "timezonePlaceholder": "America/New_York"
+      }
+    },
+    "industry": {
+      "title": "Industry",
+      "description": "Select your industry so we can recommend the right campaign templates for your business.",
+      "label": "Industry vertical",
+      "helper": "This determines which campaign templates appear in your Campaign Library.",
+      "options": {
+        "GENERAL": "General",
+        "ACCOUNTING": "Accounting / Tax",
+        "AUTO_REPAIR": "Auto Repair",
+        "BEAUTY": "Beauty & Wellness",
+        "CHILDCARE": "Childcare / Nursery",
+        "DENTAL": "Dental",
+        "EDUCATION": "Education",
+        "FINANCIAL": "Financial Services",
+        "FITNESS": "Fitness & Gym",
+        "HOME_SERVICES": "Home Services",
+        "HOSPITALITY": "Hospitality",
+        "INSURANCE": "Insurance",
+        "LEGAL": "Legal",
+        "MEDICAL": "Medical / Clinic",
+        "PROPERTY_MANAGEMENT": "Property Management",
+        "REAL_ESTATE": "Real Estate",
+        "VETERINARY": "Veterinary"
+      }
+    },
+    "profile": {
+      "title": "Business profile",
+      "description": "Address and contact details used in confirmations and correspondence.",
+      "fields": {
+        "brandName": "Brand name",
+        "brandNamePlaceholder": "Acme",
+        "addressLine1": "Address",
+        "addressLine1Placeholder": "123 Main St",
+        "city": "City",
+        "cityPlaceholder": "New York",
+        "region": "State / Region",
+        "regionPlaceholder": "NY",
+        "postalCode": "Postal code",
+        "postalCodePlaceholder": "10001",
+        "country": "Country",
+        "countryPlaceholder": "US",
+        "fallbackNotificationEmail": "Notification email",
+        "fallbackNotificationEmailPlaceholder": "alerts@acme.com"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "Per-device — enable on each browser you want to receive alerts on."
+    },
+    "members": {
+      "title": "Team members",
+      "description": "Invite teammates to share access to this workspace. They must sign up first; then add them here by email.",
+      "addButton": "+ Add member",
+      "emailLabel": "Email",
+      "emailPlaceholder": "teammate@example.com",
+      "roleLabel": "Role",
+      "roleOwner": "Owner — full control",
+      "roleManager": "Manager — config + members",
+      "roleStaff": "Staff — day-to-day use",
+      "addAction": "Add",
+      "adding": "Adding…",
+      "cancel": "Cancel",
+      "loading": "Loading…",
+      "empty": "No members yet.",
+      "ownerBadge": "Owner",
+      "lastLogin": "last login {date}",
+      "removeButton": "Remove",
+      "confirmRemove": "Remove {name} from this workspace?",
+      "toasts": {
+        "memberAdded": "Member added.",
+        "memberRemoved": "Member removed.",
+        "addFailed": "Failed to add member.",
+        "removeFailed": "Failed to remove member.",
+        "emptyEmail": "Enter an email."
+      }
+    }
+  },
+  "tenantUsage": {
+    "title": "Usage",
+    "subtitle": "Voice and messaging activity for {period}.",
+    "units": {
+      "min": "min",
+      "msg": "msg"
+    },
+    "progress": {
+      "noQuota": "{value} {unit} used — no quota set on your plan",
+      "used": "{value} {unit} used",
+      "pctOf": "{pct}% of {max} {unit}"
+    },
+    "rates": {
+      "perOverageMsg": "{rate}¢ per overage msg",
+      "perOverageMin": "{rate}¢ per overage min"
+    },
+    "labels": {
+      "sent": "sent",
+      "received": "received",
+      "overage": "overage"
+    },
+    "tooltips": {
+      "sent": "Outbound messages your agent or campaigns sent this period. Counts toward your included quota.",
+      "received": "Inbound messages from your contacts. Free — does not count toward your quota.",
+      "overage": "Messages sent above your included monthly quota. Each one is billed on your next invoice at the per-message rate shown above."
+    },
+    "projectedOverage": "Projected overage: {amount}",
+    "voice": {
+      "heading": "Voice — {period}",
+      "tooltip": "Total minutes across inbound, outbound, and widget calls this billing period. Rounded up to the next minute per call.",
+      "rateTooltip": "Per-minute rate billed on your next invoice for any call minutes beyond your included quota."
+    },
+    "callStats": {
+      "totalCalls": "Total calls",
+      "inbound": "Inbound",
+      "outbound": "Outbound",
+      "widget": "Widget"
+    },
+    "messaging": {
+      "heading": "Messaging — {period}"
+    },
+    "channels": {
+      "sms": "SMS",
+      "mms": "MMS",
+      "whatsapp": "WhatsApp",
+      "voice": "Voice",
+      "total": "Total"
+    },
+    "overageSection": {
+      "title": "Projected overage charges this period",
+      "tooltip": "Estimate of overage charges based on usage so far this period. The actual amount finalizes on your next Stripe invoice — usage between now and the period end can change it.",
+      "disclaimer": "Charges are projections based on usage so far this period. Final amounts post on your next invoice."
+    },
+    "history": {
+      "title": "Voice — last 6 months",
+      "minutesShort": "{n}m",
+      "axisLabel": "minutes / calls per month"
+    }
+  },
+  "tenantA2p": {
+    "title": "SMS Compliance (A2P 10DLC)",
+    "subtitle": "US carriers require every business sending SMS to register their brand and use case. Fill this in once. We submit to Twilio on your behalf — typically approved within 1-3 business days.",
+    "loading": "Loading…",
+    "statusPill": {
+      "draft": "Draft — fill in and submit",
+      "submitted": "Submitted — Twilio is reviewing (1-3 business days)",
+      "approved": "Approved — your numbers can send SMS at full throughput",
+      "rejected": "Rejected — fix the issues below and resubmit"
+    },
+    "statusMeta": {
+      "submittedAt": "Submitted: {date}",
+      "approvedAt": "Approved: {date}"
+    },
+    "toast": {
+      "savedDraft": "Saved as draft.",
+      "saveFailed": "Save failed.",
+      "submitted": "Submitted for review.",
+      "submitFailed": "Submit failed."
+    },
+    "confirm": {
+      "submit": "Submit to Twilio for review? You won't be able to edit while it's in review."
+    },
+    "identity": {
+      "title": "Business identity",
+      "legalName": "Legal business name *",
+      "legalNamePlaceholder": "Acme Holdings, LLC",
+      "legalNameHelp": "Must match exactly what's on your EIN registration.",
+      "einLabel": "EIN",
+      "einOptional": "(optional for sole prop)",
+      "businessType": "Business type *",
+      "businessTypeOptions": {
+        "soleProp": "Sole Proprietorship",
+        "llc": "LLC",
+        "corp": "Corporation",
+        "nonProfit": "Non-Profit",
+        "partnership": "Partnership"
+      },
+      "vertical": "Vertical *",
+      "verticalOptions": {
+        "choose": "— Choose one —",
+        "healthcare": "Healthcare",
+        "retail": "Retail",
+        "professionalServices": "Professional Services",
+        "realEstate": "Real Estate",
+        "financial": "Financial",
+        "education": "Education",
+        "hospitality": "Hospitality",
+        "auto": "Automotive",
+        "technology": "Technology",
+        "other": "Other"
+      },
+      "websiteUrl": "Website URL",
+      "websiteUrlOptional": "(optional)"
+    },
+    "address": {
+      "title": "Business address",
+      "line1": "Address line 1 *",
+      "line1Placeholder": "123 Main St",
+      "line2": "Address line 2",
+      "line2Placeholder": "Suite 200 (optional)",
+      "city": "City *",
+      "region": "State / Region *",
+      "regionPlaceholder": "CA",
+      "postalCode": "Postal code *",
+      "country": "Country"
+    },
+    "contact": {
+      "title": "Authorized contact",
+      "subtitle": "The person Twilio reaches out to if they have questions about the registration.",
+      "firstName": "First name *",
+      "lastName": "Last name *",
+      "email": "Email *",
+      "phone": "Phone *"
+    },
+    "useCase": {
+      "title": "How you'll use SMS",
+      "useCaseLabel": "Use case *",
+      "options": {
+        "customerCare": "Customer Care — replies, support, follow-ups",
+        "mixed": "Mixed — appointment reminders + occasional promos",
+        "utility": "Utility — confirmations, alerts, status updates",
+        "twoFa": "2FA — login codes only",
+        "marketing": "Marketing — promotional content"
+      },
+      "sampleMessages": "Sample messages *",
+      "sampleMessagesCount": "(at least 1, up to 5)",
+      "sampleMessagesHelp": "Real examples of messages your AI will send. Include opt-out language (\"Reply STOP to unsubscribe\") in at least one. Carriers reject vague samples.",
+      "sampleFirstPlaceholder": "Hi {{name}}, this is Acme confirming your appointment Tuesday at 2pm. Reply C to confirm, R to reschedule. Reply STOP to opt out.",
+      "sampleNthPlaceholder": "Sample message {n}"
+    },
+    "actions": {
+      "saving": "Saving…",
+      "saveDraft": "Save draft",
+      "submitting": "Submitting…",
+      "submit": "Submit for review",
+      "helper": "We'll save the draft, then submit to Twilio. You can come back here to track status."
+    }
+  },
+  "tenantAgentStudio": {
+    "title": "Agent Studio",
+    "subtitle": "Configure your agent's voice and appearance, test them live, then save when you're happy.",
+    "channels": {
+      "widget": "Widget",
+      "inbound": "Inbound",
+      "outbound": "Outbound"
+    },
+    "gender": {
+      "female": "Female",
+      "male": "Male",
+      "neutral": "Neutral"
+    },
+    "voiceDesc": {
+      "Zephyr": "Bright & clear",
+      "Despina": "Smooth & polished",
+      "Aoede": "Warm & breezy",
+      "Charon": "Deep & authoritative",
+      "Fenrir": "Warm & approachable",
+      "Puck": "Upbeat & conversational",
+      "Sulafat": "Warm & even"
+    },
+    "testPanel": {
+      "agentFallback": "Agent",
+      "voiceAgent": "Voice Agent",
+      "voiceLine": "Voice: {voice}",
+      "noVoiceSelected": "No voice selected",
+      "statusInitial": "Select a voice and press Start test",
+      "listening": "Listening… speak now",
+      "processing": "Processing…",
+      "connecting": "Connecting to voice gateway…",
+      "greetingThenMic": "Agent is greeting you… then press the mic to respond",
+      "yourTurn": "Your turn — press the mic to respond",
+      "sessionEnded": "Session ended",
+      "idleHint": "Start a test session to hear your agent",
+      "stateReady": "Ready",
+      "stateConnecting": "Connecting…",
+      "stateLive": "● Live",
+      "stateEnded": "Ended",
+      "stateError": "Error",
+      "errorMicDenied": "Microphone access denied — allow mic permission and try again",
+      "errorConnection": "Connection to voice gateway failed. Check gateway is running.",
+      "errorSessionGeneric": "Voice session error",
+      "errorStartFailed": "Failed to start session"
+    },
+    "actions": {
+      "startTest": "Start test",
+      "testAgain": "Test again",
+      "connecting": "Connecting…",
+      "stopMic": "Stop mic",
+      "speak": "Speak",
+      "end": "End",
+      "save": "Save",
+      "saving": "Saving…",
+      "saveWidgetConfig": "Save widget config",
+      "saveVoice": "Save voice"
+    },
+    "widget": {
+      "avatarTitle": "Agent Avatar",
+      "avatarDesc": "The face your visitors see in the widget before and during the call",
+      "voiceTitle": "Agent Voice",
+      "voiceDesc": "Select the voice your widget agent speaks with",
+      "livePreview": "Live Preview",
+      "unsavedChanges": "You have unsaved changes",
+      "activeVoice": "Active: {voice}",
+      "notConfigured": "Not yet configured",
+      "savedToast": "Widget agent saved"
+    },
+    "voiceOnly": {
+      "inboundLabel": "Inbound Receptionist",
+      "outboundLabel": "Outbound Caller",
+      "voiceTitle": "{label} Voice",
+      "voiceDesc": "Select the voice your {labelLower} speaks with on calls",
+      "liveTest": "Live Voice Test",
+      "currentVoice": "Current: {voice}",
+      "noVoiceYet": "No voice selected yet",
+      "savedToast": "Voice saved"
+    },
+    "errors": {
+      "saveFailed": "Save failed"
+    }
+  },
+  "tenantHelp": {
+    "title": "Help Center",
+    "searchPlaceholder": "Search topics…",
+    "tips": "TIPS",
+    "important": "IMPORTANT",
+    "noResults": "No results for “{query}”"
+  },
+  "tenantOnboarding": {
+    "title": "Get started",
+    "subtitle": "Finish these steps to get your AI receptionist running. {done} of {total} done.",
+    "allSetTitle": "You are all set",
+    "allSetSubtitle": "Everything is configured. Your receptionist agent is live.",
+    "progress": "Progress",
+    "optional": "Optional",
+    "actions": {
+      "refresh": "Refresh status",
+      "configure": "Configure →",
+      "edit": "Edit →"
+    },
+    "statusPill": {
+      "complete": "Complete"
+    },
+    "steps": {
+      "profile": {
+        "title": "Business Profile",
+        "description": "Set your business name, hours, and contact details so the agent knows who it is representing."
+      },
+      "dna": {
+        "title": "Business DNA",
+        "description": "Define your services, pricing notes, and operating rules. The agent uses this on every call."
+      },
+      "agent": {
+        "title": "Receptionist",
+        "description": "Pick a voice and tune the receptionist agent that will answer your calls."
+      },
+      "channel": {
+        "title": "Inbound Channel",
+        "description": "Enable the inbound receptionist channel and bind your published prompt."
+      },
+      "number": {
+        "title": "Phone Number",
+        "description": "Get a number for your business. Search by area code and purchase in one click."
+      },
+      "a2p": {
+        "title": "SMS Compliance",
+        "description": "Register your business for A2P 10DLC so your AI agent can send SMS at full carrier throughput. Required if you plan to use SMS."
+      }
+    },
+    "complete": {
+      "title": "Setup complete — call your number to test",
+      "descriptionPrefix": "Your AI receptionist is live. Call your number to confirm everything works, then check the conversation in",
+      "conversationsLink": "Conversations",
+      "descriptionSuffix": "."
+    }
+  },
+  "tenantStaff": {
+    "title": "Staff Directory",
+    "subtitleShort": "Manage your team and connect their calendars for smart appointment routing.",
+    "subtitleLong": "Add team members, connect their calendars, and let the agent route bookings to the right person.",
+    "gate": {
+      "title": "Staff Directory is a Premier & Enterprise feature",
+      "description": "Connect individual team calendars and route appointments to specific staff members automatically.",
+      "viewPlans": "View plans →"
+    },
+    "header": {
+      "seatsUsed": "{used} / {max} seats",
+      "addMember": "+ Add member",
+      "seatLimitReached": "Seat limit reached"
+    },
+    "errors": {
+      "calendarConnectFailed": "Calendar connection failed: {reason}",
+      "unknownReason": "unknown error",
+      "genericFailed": "Failed"
+    },
+    "toasts": {
+      "memberAdded": "Staff member added"
+    },
+    "form": {
+      "heading": "New staff member",
+      "fullNameLabel": "Full name *",
+      "fullNamePlaceholder": "Jane Smith",
+      "jobTitleLabel": "Job title",
+      "jobTitlePlaceholder": "Sales Consultant",
+      "departmentLabel": "Department",
+      "departmentPlaceholder": "Sales",
+      "emailLabel": "Email",
+      "emailPlaceholder": "jane@company.com",
+      "addingButton": "Adding…",
+      "addButton": "Add member",
+      "cancelButton": "Cancel"
+    },
+    "empty": {
+      "title": "No staff members yet",
+      "description": "Add your first team member to start routing bookings."
+    },
+    "row": {
+      "inactive": "Inactive",
+      "calendarConnected": "Calendar ✓",
+      "noCalendar": "No calendar"
+    },
+    "integrations": {
+      "heading": "CALENDAR INTEGRATIONS",
+      "googleCalendar": "Google Calendar",
+      "availableNow": "Available now",
+      "outlook": "Outlook / Microsoft 365",
+      "calendly": "Calendly",
+      "comingSoon": "Coming soon"
+    },
+    "detail": {
+      "backToDirectory": "Staff Directory",
+      "notFound": "Staff member not found.",
+      "backLink": "← Back to directory",
+      "noTitleSet": "No title set",
+      "actions": {
+        "deactivate": "Deactivate",
+        "activate": "Activate",
+        "remove": "Remove"
+      },
+      "tabs": {
+        "profile": "Profile",
+        "calendar": "Calendar",
+        "phone": "Phone",
+        "agents": "Agents"
+      },
+      "toasts": {
+        "calendarConnected": "Calendar connected: {email}",
+        "calendarDisconnected": "Calendar disconnected",
+        "profileSaved": "Profile saved",
+        "availabilitySaved": "Availability saved"
+      },
+      "errors": {
+        "calendarConnectFailed": "Calendar connection failed: {reason}",
+        "unknownReason": "unknown"
+      },
+      "confirms": {
+        "disconnectCalendar": "Disconnect this calendar? Existing bookings are not affected.",
+        "deleteMember": "Permanently remove this staff member? This cannot be undone."
+      },
+      "profile": {
+        "fields": {
+          "nameLabel": "Full name *",
+          "namePlaceholder": "Jane Smith",
+          "titleLabel": "Job title",
+          "titlePlaceholder": "Sales Consultant",
+          "departmentLabel": "Department",
+          "departmentPlaceholder": "Sales",
+          "emailLabel": "Email",
+          "emailPlaceholder": "jane@company.com",
+          "phoneLabel": "Direct phone",
+          "phonePlaceholder": "+1 555 000 0000",
+          "timezoneLabel": "Timezone",
+          "timezonePlaceholder": "America/New_York",
+          "extensionLabel": "Extension",
+          "extensionPlaceholder": "1042"
+        },
+        "savingButton": "Saving…",
+        "saveButton": "Save profile"
+      },
+      "calendar": {
+        "googleCalendar": "Google Calendar",
+        "connectedTo": "Connected — {email}",
+        "lastVerified": "Last verified {date}",
+        "noCalendarConnected": "No calendar connected. Bookings cannot be routed to this person until connected.",
+        "disconnectButton": "Disconnect",
+        "connectButton": "Connect Google Calendar",
+        "redirectingButton": "Redirecting…",
+        "calendarIdLabel": "Calendar ID: {id}",
+        "schedule": {
+          "heading": "Availability schedule",
+          "days": {
+            "monday": "Monday",
+            "tuesday": "Tuesday",
+            "wednesday": "Wednesday",
+            "thursday": "Thursday",
+            "friday": "Friday",
+            "saturday": "Saturday",
+            "sunday": "Sunday"
+          },
+          "to": "to",
+          "unavailable": "Unavailable",
+          "savingButton": "Saving…",
+          "saveButton": "Save availability"
+        }
+      },
+      "phone": {
+        "heading": "Phone routing",
+        "description": "Set a direct number or extension for this staff member. The agent can transfer or connect callers to them by name.",
+        "directPhoneLabel": "Direct phone number",
+        "directPhonePlaceholder": "+1 555 000 0000",
+        "extensionLabel": "Extension",
+        "extensionPlaceholder": "1042",
+        "dedicatedTwilioTitle": "Dedicated Twilio numbers per staff",
+        "dedicatedTwilioDescription": "— assign a specific purchased phone number exclusively to this staff member from your Phone Numbers page. Coming in a future update.",
+        "savingButton": "Saving…",
+        "saveButton": "Save"
+      },
+      "agents": {
+        "heading": "Agent assignment",
+        "description": "Control which AI agents are permitted to book appointments with or route callers to this staff member.",
+        "comingSoonTitle": "Agent assignment rules coming soon.",
+        "comingSoonDescription": "Currently all active agents with booking capability can route to any active staff member."
+      }
+    }
+  }
+}

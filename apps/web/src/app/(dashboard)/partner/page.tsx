@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { apiFetch, apiFetchRaw, useApi } from '@/hooks/useApi'
+import { apiFetchRaw, useApi } from '@/hooks/useApi'
 
 interface AffiliateAccount {
   id: string; status: 'PENDING' | 'ACTIVE' | 'PAUSED' | 'DISABLED'

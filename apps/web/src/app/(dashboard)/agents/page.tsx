@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { Tooltip } from '@/components/Tooltip'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 interface Agent {
   id: string; agentRoleType: string; displayName: string
@@ -10,17 +11,23 @@ interface Agent {
   promptVersion: { id: string; name: string; status: string } | null
 }
 
-const ROLE_META: Record<string, { label: string; icon: string; desc: string }> = {
-  ORCHESTRATOR:    { label: 'Orchestrator',    icon: '🎯', desc: 'Coordinates all other agents and manages handoffs' },
-  APPOINTMENT:     { label: 'Appointment',     icon: '📅', desc: 'Books, reschedules, and cancels appointments' },
-  SALES:           { label: 'Sales',           icon: '💼', desc: 'Qualifies leads and drives conversions' },
-  CUSTOMER_SERVICE:{ label: 'Customer Service',icon: '🎧', desc: 'Handles support queries and escalations' },
-  MARKETING:       { label: 'Marketing',       icon: '📣', desc: 'Runs campaigns and follow-up sequences' },
-  ASSISTANT:       { label: 'Assistant',       icon: '🤖', desc: 'General-purpose assistant for any task' },
-  SECRETARY:       { label: 'Secretary',       icon: '📋', desc: 'Manages schedule, notes, and admin tasks' },
+const ROLE_ICONS: Record<string, string> = {
+  ORCHESTRATOR:    '🎯',
+  APPOINTMENT:     '📅',
+  SALES:           '💼',
+  CUSTOMER_SERVICE:'🎧',
+  MARKETING:       '📣',
+  ASSISTANT:       '🤖',
+  SECRETARY:       '📋',
 }
 
 export default function AgentsPage() {
+  const t = useT()
+  const { locale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
+  // Reserved for future date formatting in this page.
+  void dateLocale
+
   const { data: agents, loading, error, reload } = useApi<Agent[]>('/api/agents')
   const [selected, setSelected] = useState<Agent | null>(null)
   const [saving, setSaving] = useState(false)
@@ -29,6 +36,18 @@ export default function AgentsPage() {
   function showToast(type: 'success' | 'error', text: string) {
     setToast({ type, text })
     setTimeout(() => setToast(null), 4000)
+  }
+
+  function roleLabel(roleType: string): string {
+    const key = `tenantAgents.roles.${roleType}.name`
+    const translated = t(key)
+    return translated === key ? roleType : translated
+  }
+
+  function roleDescription(roleType: string): string {
+    const key = `tenantAgents.roles.${roleType}.description`
+    const translated = t(key)
+    return translated === key ? '' : translated
   }
 
   async function saveAgent() {
@@ -46,8 +65,8 @@ export default function AgentsPage() {
       })
       setSelected(updated)
       await reload()
-      showToast('success', 'Agent saved.')
-    } catch (err) { showToast('error', err instanceof Error ? err.message : 'Failed') }
+      showToast('success', t('tenantAgents.savedMessage'))
+    } catch (err) { showToast('error', err instanceof Error ? err.message : t('tenantAgents.saveFailed')) }
     finally { setSaving(false) }
   }
 
@@ -65,9 +84,11 @@ export default function AgentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Agents</h1>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          {t('tenantAgents.title')}
+        </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Configure each AI agent role for your workspace.
+          {t('tenantAgents.subtitle')}
         </p>
       </div>
 
@@ -77,7 +98,9 @@ export default function AgentsPage() {
         {/* Agent cards */}
         <div className="lg:col-span-1 grid grid-cols-1 gap-3 content-start">
           {(agents ?? []).map((a) => {
-            const meta = ROLE_META[a.agentRoleType] ?? { label: a.agentRoleType, icon: '🤖', desc: '' }
+            const icon = ROLE_ICONS[a.agentRoleType] ?? '🤖'
+            const label = roleLabel(a.agentRoleType)
+            const desc = roleDescription(a.agentRoleType)
             const isSelected = selected?.id === a.id
             return (
               <button
@@ -91,8 +114,8 @@ export default function AgentsPage() {
               >
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg leading-none">{meta.icon}</span>
-                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{meta.label}</span>
+                    <span className="text-lg leading-none">{icon}</span>
+                    <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{label}</span>
                   </div>
                   <span
                     className="text-xs px-2 py-0.5 rounded-full"
@@ -101,10 +124,10 @@ export default function AgentsPage() {
                       : { background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }
                     }
                   >
-                    {a.isEnabled ? 'On' : 'Off'}
+                    {a.isEnabled ? t('tenantAgents.status.on') : t('tenantAgents.status.off')}
                   </span>
                 </div>
-                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{meta.desc}</p>
+                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{desc}</p>
               </button>
             )
           })}
@@ -118,7 +141,7 @@ export default function AgentsPage() {
               style={{ background: 'var(--surface-raised)', border: '1px dashed var(--border-subtle)' }}
             >
               <span className="text-2xl">🤖</span>
-              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Select an agent to configure it</p>
+              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('tenantAgents.selectAgent')}</p>
             </div>
           ) : (
             <div
@@ -127,15 +150,15 @@ export default function AgentsPage() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-xl">{ROLE_META[selected.agentRoleType]?.icon ?? '🤖'}</span>
+                  <span className="text-xl">{ROLE_ICONS[selected.agentRoleType] ?? '🤖'}</span>
                   <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    {ROLE_META[selected.agentRoleType]?.label ?? selected.agentRoleType}
+                    {roleLabel(selected.agentRoleType)}
                   </h2>
                 </div>
                 {/* Toggle */}
                 <label className="flex items-center gap-2.5 cursor-pointer">
                   <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    {selected.isEnabled ? 'Enabled' : 'Disabled'}
+                    {selected.isEnabled ? t('tenantAgents.status.enabled') : t('tenantAgents.status.disabled')}
                   </span>
                   <div
                     onClick={() => setSelected({ ...selected, isEnabled: !selected.isEnabled })}
@@ -153,36 +176,36 @@ export default function AgentsPage() {
               <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="label flex items-center">
-                    <Tooltip content="The name your agent uses when introducing itself on calls (e.g. 'Hi, this is Aria from Acme'). Pick something friendly and easy to hear over the phone.">Display name</Tooltip>
+                    <Tooltip content={t('tenantAgents.fields.displayName.tooltip')}>{t('tenantAgents.fields.displayName.label')}</Tooltip>
                   </label>
                   <input
                     className="input"
                     value={selected.displayName}
                     onChange={(e) => setSelected({ ...selected, displayName: e.target.value })}
-                    placeholder="e.g. Aria"
+                    placeholder={t('tenantAgents.fields.displayName.placeholder')}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="label flex items-center">
-                      <Tooltip content="Which AI provider routes this agent's reasoning. Default 'openai' — only change if you know what you're doing.">Model provider</Tooltip>
+                      <Tooltip content={t('tenantAgents.fields.modelProvider.tooltip')}>{t('tenantAgents.fields.modelProvider.label')}</Tooltip>
                     </label>
                     <input
                       className="input"
                       value={selected.modelProvider}
                       onChange={(e) => setSelected({ ...selected, modelProvider: e.target.value })}
-                      placeholder="openai"
+                      placeholder={t('tenantAgents.fields.modelProvider.placeholder')}
                     />
                   </div>
                   <div>
                     <label className="label flex items-center">
-                      <Tooltip content="The specific model used for this agent's text reasoning (summaries, follow-ups, decisions). Voice itself is always Gemini Live, set on the channel.">Model name</Tooltip>
+                      <Tooltip content={t('tenantAgents.fields.modelName.tooltip')}>{t('tenantAgents.fields.modelName.label')}</Tooltip>
                     </label>
                     <input
                       className="input"
                       value={selected.modelName}
                       onChange={(e) => setSelected({ ...selected, modelName: e.target.value })}
-                      placeholder="gpt-4o-mini"
+                      placeholder={t('tenantAgents.fields.modelName.placeholder')}
                     />
                   </div>
                 </div>
@@ -203,7 +226,7 @@ export default function AgentsPage() {
 
               <div className="pt-2">
                 <button onClick={saveAgent} disabled={saving} className="btn-primary">
-                  {saving ? 'Saving…' : 'Save agent'}
+                  {saving ? t('tenantAgents.actions.saving') : t('tenantAgents.actions.save')}
                 </button>
               </div>
             </div>

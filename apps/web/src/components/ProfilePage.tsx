@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { apiFetch, apiFetchRaw, apiUploadFile, useApi } from '@/hooks/useApi'
-import { getTokenPayload } from '@/lib/auth'
+import { useT, useLocale, type Locale } from '@/lib/i18n/I18nProvider'
 
 interface UserMe {
   user: {
@@ -11,6 +11,7 @@ interface UserMe {
     username: string | null
     firstName: string | null
     lastName: string | null
+    preferredLocale?: 'en' | 'es'
     status: string
     createdAt: string
     lastLoginAt: string | null
@@ -52,9 +53,23 @@ interface ProfilePageProps {
 }
 
 export function ProfilePage({ showBilling = false }: ProfilePageProps) {
+  const t = useT()
+  const { locale, setLocale } = useLocale()
+  const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
+  const [localeToast, setLocaleToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const { data: meData, loading: meLoading, reload } = useApi<UserMe>('/api/auth/me')
   const { data: billingData } = useApi<BillingData>(showBilling ? '/api/billing/subscription' : '')
   const { data: logoData, reload: reloadLogo } = useApi<{ logoUrl: string | null }>('/api/business-profile/logo')
+
+  function changeLocale(next: Locale) {
+    if (next === locale) return
+    setLocale(next)
+    setLocaleToast({
+      type: 'success',
+      text: next === 'es' ? t('profile.languageSavedEs') : t('profile.languageSavedEn'),
+    })
+    setTimeout(() => setLocaleToast(null), 4000)
+  }
 
   // Logo upload
   const logoFileRef = useRef<HTMLInputElement>(null)
@@ -63,11 +78,11 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
 
   async function handleLogoFile(file: File) {
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      setLogoError('Unsupported type. Use PNG, JPG, or WebP.')
+      setLogoError(t('profile.unsupportedLogoType'))
       return
     }
     if (file.size > 2 * 1024 * 1024) {
-      setLogoError('Logo must be under 2 MB.')
+      setLogoError(t('profile.logoTooLarge'))
       return
     }
     setLogoError(null)
@@ -76,7 +91,7 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
       await apiUploadFile('/api/business-profile/logo', 'logo', file)
       reloadLogo()
     } catch (err) {
-      setLogoError(err instanceof Error ? err.message : 'Upload failed')
+      setLogoError(err instanceof Error ? err.message : t('profile.uploadFailed'))
     } finally {
       setLogoUploading(false)
     }
@@ -120,9 +135,9 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
         body: JSON.stringify({ firstName: firstName || undefined, lastName: lastName || undefined, username: username || undefined }),
       })
       reload()
-      toast(setProfileToast, 'success', 'Profile updated.')
+      toast(setProfileToast, 'success', t('profile.profileUpdated'))
     } catch (err) {
-      toast(setProfileToast, 'error', err instanceof Error ? err.message : 'Failed to save')
+      toast(setProfileToast, 'error', err instanceof Error ? err.message : t('profile.failedToSave'))
     } finally {
       setProfileSaving(false)
     }
@@ -131,7 +146,7 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
   async function changePassword(e: React.FormEvent) {
     e.preventDefault()
     if (newPassword !== confirmPassword) {
-      toast(setPasswordToast, 'error', 'New passwords do not match')
+      toast(setPasswordToast, 'error', t('profile.passwordsDoNotMatch'))
       return
     }
     setPasswordSaving(true)
@@ -143,9 +158,9 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      toast(setPasswordToast, 'success', 'Password changed. Other sessions have been signed out.')
+      toast(setPasswordToast, 'success', t('profile.passwordChangedAndSignedOut'))
     } catch (err) {
-      toast(setPasswordToast, 'error', err instanceof Error ? err.message : 'Failed to change password')
+      toast(setPasswordToast, 'error', err instanceof Error ? err.message : t('profile.failedToChangePassword'))
     } finally {
       setPasswordSaving(false)
     }
@@ -155,14 +170,13 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
     try {
       const res = await apiFetchRaw('/api/billing/portal-session', { method: 'POST' })
       const json = (await res.json()) as { data?: { url: string }; errors?: { message: string }[] }
-      if (!res.ok) { toast(setProfileToast, 'error', json.errors?.[0]?.message ?? 'Failed'); return }
+      if (!res.ok) { toast(setProfileToast, 'error', json.errors?.[0]?.message ?? t('profile.failed')); return }
       window.open(json.data!.url, '_blank')
     } catch {
-      toast(setProfileToast, 'error', 'Failed to open billing portal')
+      toast(setProfileToast, 'error', t('profile.failedToOpenBillingPortal'))
     }
   }
 
-  const payload = getTokenPayload() as { email?: string } | null
   const initials = (user?.username ?? user?.email ?? '??').slice(0, 2).toUpperCase()
   const membership = meData?.memberships[0]
 
@@ -171,8 +185,8 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Profile</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Manage your account details and security.</p>
+        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{t('profile.title')}</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{t('profile.subtitle')}</p>
       </div>
 
       {/* Identity summary — logo replaces initials avatar */}
@@ -180,14 +194,14 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
         {/* Avatar / logo */}
         <button
           type="button"
-          title={logoUploading ? 'Uploading…' : 'Click to upload logo'}
+          title={logoUploading ? t('profile.uploadingLabel') : t('profile.clickToUploadLogo')}
           disabled={logoUploading}
           onClick={() => logoFileRef.current?.click()}
           className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0 group"
           style={logoData?.logoUrl ? { border: '1px solid var(--border-subtle)' } : { background: 'oklch(55% 0.11 193 / 0.18)' }}
         >
           {logoData?.logoUrl
-            ? <img src={logoData.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+            ? <img src={logoData.logoUrl} alt={t('profile.clickToUploadLogo')} className="w-full h-full object-contain" />
             : <span className="text-xl font-bold" style={{ color: 'oklch(72% 0.12 193)' }}>{initials}</span>
           }
           {/* Hover overlay */}
@@ -220,82 +234,125 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
             </span>
           )}
           <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
-            {logoUploading ? 'Uploading…' : 'Click the logo to upload or replace it'}
+            {logoUploading ? t('profile.uploadingLabel') : t('profile.clickLogoToUploadHint')}
           </p>
           {logoError && <p className="text-xs mt-1" style={{ color: 'var(--color-error)' }}>{logoError}</p>}
         </div>
       </div>
 
       {/* Personal info */}
-      <Section title="Personal Information" description="Your name is shown in audit logs and admin views.">
+      <Section title={t('profile.personalInfo')} description={t('profile.personalInfoDesc')}>
         {profileToast && <Toast {...profileToast} />}
         <form onSubmit={saveProfile} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">First name</label>
-              <input className="input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Jane" />
+              <label className="label">{t('profile.firstName')}</label>
+              <input className="input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder={t('profile.firstNamePlaceholder')} />
             </div>
             <div>
-              <label className="label">Last name</label>
-              <input className="input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Smith" />
+              <label className="label">{t('profile.lastName')}</label>
+              <input className="input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder={t('profile.lastNamePlaceholder')} />
             </div>
           </div>
           <div>
-            <label className="label">Username</label>
-            <input className="input" value={username} onChange={e => setUsername(e.target.value)} placeholder="janesmith" />
-            <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Letters, numbers, and underscores only. Used to log in.</p>
+            <label className="label">{t('profile.username')}</label>
+            <input className="input" value={username} onChange={e => setUsername(e.target.value)} placeholder={t('profile.usernamePlaceholder')} />
+            <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('profile.usernameHelp')}</p>
           </div>
           <div>
-            <label className="label">Email address</label>
+            <label className="label">{t('profile.emailLabel')}</label>
             <input className="input" value={user?.email ?? ''} disabled style={{ opacity: 0.5 }} />
-            <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Contact support to change your email address.</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('profile.emailHelp')}</p>
           </div>
           <div className="flex items-center gap-3 pt-1">
             <button type="submit" disabled={profileSaving} className="btn-primary">
-              {profileSaving ? 'Saving…' : 'Save changes'}
+              {profileSaving ? t('profile.saving') : t('profile.saveChanges')}
             </button>
             {user?.lastLoginAt && (
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                Last login {new Date(user.lastLoginAt).toLocaleString()}
+                {t('profile.lastLoginAt', { when: new Date(user.lastLoginAt).toLocaleString(dateLocale) })}
               </p>
             )}
           </div>
         </form>
       </Section>
 
+      {/* Language */}
+      <Section title={t('profile.language')} description={t('profile.languageDesc')}>
+        {localeToast && <Toast {...localeToast} />}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => changeLocale('en')}
+            className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left"
+            style={{
+              background: locale === 'en' ? 'var(--brand-500)' : 'var(--surface-app)',
+              color: locale === 'en' ? '#fff' : 'var(--text-primary)',
+              border: locale === 'en' ? 'none' : '1px solid var(--border-subtle)',
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '1.1rem' }}>🇺🇸</span>
+              <div>
+                <div style={{ fontWeight: 600 }}>English</div>
+                <div style={{ fontSize: '0.72rem', opacity: 0.85 }}>{locale === 'en' ? t('profile.languageActive') : t('profile.languageSwitchToEn')}</div>
+              </div>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => changeLocale('es')}
+            className="flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-colors text-left"
+            style={{
+              background: locale === 'es' ? 'var(--brand-500)' : 'var(--surface-app)',
+              color: locale === 'es' ? '#fff' : 'var(--text-primary)',
+              border: locale === 'es' ? 'none' : '1px solid var(--border-subtle)',
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <span style={{ fontSize: '1.1rem' }}>🇲🇽</span>
+              <div>
+                <div style={{ fontWeight: 600 }}>Español</div>
+                <div style={{ fontSize: '0.72rem', opacity: 0.85 }}>{locale === 'es' ? t('profile.languageActiveEs') : t('profile.languageSwitchToEs')}</div>
+              </div>
+            </div>
+          </button>
+        </div>
+      </Section>
+
       {/* Password */}
-      <Section title="Password" description="After changing your password, all other active sessions will be signed out.">
+      <Section title={t('profile.password')} description={t('profile.passwordSectionDesc')}>
         {passwordToast && <Toast {...passwordToast} />}
         <form onSubmit={changePassword} className="space-y-4">
           <div>
-            <label className="label">Current password</label>
+            <label className="label">{t('profile.currentPassword')}</label>
             <input type="password" className="input" autoComplete="current-password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required />
           </div>
           <div>
-            <label className="label">New password</label>
-            <input type="password" className="input" autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} placeholder="At least 8 characters" />
+            <label className="label">{t('profile.newPassword')}</label>
+            <input type="password" className="input" autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} placeholder={t('profile.newPasswordPlaceholder')} />
           </div>
           <div>
-            <label className="label">Confirm new password</label>
+            <label className="label">{t('profile.confirmPassword')}</label>
             <input type="password" className="input" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required minLength={8} />
           </div>
           <button type="submit" disabled={passwordSaving} className="btn-primary">
-            {passwordSaving ? 'Updating…' : 'Change password'}
+            {passwordSaving ? t('profile.updating') : t('profile.changePassword')}
           </button>
         </form>
       </Section>
 
       {/* Billing — tenant users only */}
       {showBilling && (
-        <Section title="Billing &amp; Subscription" description="Manage your plan, payment method, and billing history via the Stripe portal.">
+        <Section title={t('profile.billingTitle')} description={t('profile.billingDesc')}>
           <div className="flex items-center justify-between mb-5">
             <div>
               <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                {billingData?.subscription?.plan?.name ?? 'No active plan'}
+                {billingData?.subscription?.plan?.name ?? t('profile.noActivePlan')}
               </p>
               <p className="text-xs mt-0.5 capitalize" style={{ color: 'var(--text-tertiary)' }}>
-                {billingData?.subscription?.status?.toLowerCase() ?? 'No subscription'}
-                {billingData?.subscription?.plan?.interval ? ` · billed ${billingData.subscription.plan.interval.toLowerCase()}` : ''}
+                {billingData?.subscription?.status?.toLowerCase() ?? t('profile.noSubscription')}
+                {billingData?.subscription?.plan?.interval ? t('profile.billedInterval', { interval: billingData.subscription.plan.interval.toLowerCase() }) : ''}
               </p>
             </div>
             <span
@@ -305,35 +362,35 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
                 : { background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }
               }
             >
-              {billingData?.subscription?.status ?? 'Trial'}
+              {billingData?.subscription?.status ?? t('profile.trialBadge')}
             </span>
           </div>
           <div className="flex gap-3">
             <button onClick={openBillingPortal} className="btn-ghost">
-              Manage billing &amp; payment method →
+              {t('profile.manageBillingButton')}
             </button>
           </div>
           <p className="text-xs mt-3" style={{ color: 'var(--text-tertiary)' }}>
-            Payment methods, invoices, and card details are managed securely via Stripe. We never store card numbers.
+            {t('profile.stripeNote')}
           </p>
         </Section>
       )}
 
       {/* Account info */}
-      <Section title="Account">
+      <Section title={t('profile.accountTitle')}>
         <dl className="space-y-3">
           <div className="flex items-center justify-between">
-            <dt className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Account ID</dt>
+            <dt className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('profile.accountId')}</dt>
             <dd className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{user?.id}</dd>
           </div>
           <div className="flex items-center justify-between">
-            <dt className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Member since</dt>
+            <dt className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('profile.memberSince')}</dt>
             <dd className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-              {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—'}
+              {user?.createdAt ? new Date(user.createdAt).toLocaleDateString(dateLocale) : '—'}
             </dd>
           </div>
           <div className="flex items-center justify-between">
-            <dt className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Status</dt>
+            <dt className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('profile.statusLabel')}</dt>
             <dd>
               <span className="badge capitalize" style={{ background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }}>
                 {user?.status?.toLowerCase()}
