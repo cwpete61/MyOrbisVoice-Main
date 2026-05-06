@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { getTokenPayload } from '@/lib/auth'
+import { NumberSearch, type SearchFilters, type SearchResult } from '@/components/numbers/NumberSearch'
 
 interface PhoneNumber {
   id: string
@@ -14,15 +16,6 @@ interface PhoneNumber {
   forwardingTarget: string | null
   twilioNumberSid: string | null
   monthlyPriceCents: number | null
-}
-
-interface AvailableNumber {
-  phoneNumber: string
-  friendlyName: string
-  locality: string | null
-  region: string | null
-  capabilities: { voice: boolean; sms: boolean; mms: boolean }
-  monthlyPriceCents: number
 }
 
 function formatPhone(e164: string): string {
@@ -60,15 +53,7 @@ export default function PhoneNumbersPage() {
   const { data: numbers, loading, reload } = useApi<PhoneNumber[]>('/api/phone-numbers')
   const [maxAllowed, setMaxAllowed] = useState<number | null>(null)
   const [toast, setToast] = useState('')
-
-  // Number-search modal state
   const [searchOpen, setSearchOpen] = useState(false)
-  const [searchAreaCode, setSearchAreaCode] = useState('')
-  const [searchPattern, setSearchPattern] = useState('')
-  const [searchResults, setSearchResults] = useState<AvailableNumber[] | null>(null)
-  const [searching, setSearching] = useState(false)
-  const [purchasing, setPurchasing] = useState<string | null>(null)
-  const [searchError, setSearchError] = useState('')
 
   useEffect(() => {
     apiFetch<Record<string, boolean | number>>('/api/entitlements')
@@ -84,48 +69,6 @@ export default function PhoneNumbersPage() {
   const noPlan  = maxAllowed === 0
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(''), 5000) }
-
-  async function runSearch() {
-    setSearchError('')
-    setSearching(true)
-    setSearchResults(null)
-    try {
-      const params = new URLSearchParams()
-      if (searchAreaCode.trim()) params.set('areaCode', searchAreaCode.trim())
-      if (searchPattern.trim())  params.set('pattern',  searchPattern.trim())
-      params.set('capabilities', 'voice,sms')
-      params.set('limit', '20')
-      const data = await apiFetch<AvailableNumber[]>(`/api/twilio/numbers/search?${params.toString()}`)
-      setSearchResults(data || [])
-      if (!data || data.length === 0) setSearchError(t('tenantPhoneNumbers.modal.noResults'))
-    } catch (e) {
-      setSearchError(e instanceof Error ? e.message : t('tenantPhoneNumbers.errors.searchFailed'))
-    } finally {
-      setSearching(false)
-    }
-  }
-
-  async function purchase(num: AvailableNumber) {
-    const amount = (num.monthlyPriceCents / 100).toFixed(2)
-    if (!confirm(t('tenantPhoneNumbers.confirm.purchase', { number: formatPhone(num.phoneNumber), amount }))) return
-    setPurchasing(num.phoneNumber)
-    try {
-      await apiFetch('/api/twilio/numbers/purchase', {
-        method: 'POST',
-        body: JSON.stringify({ phoneNumber: num.phoneNumber }),
-      })
-      showToast(t('tenantPhoneNumbers.toasts.purchased', { number: formatPhone(num.phoneNumber) }))
-      setSearchOpen(false)
-      setSearchResults(null)
-      setSearchAreaCode('')
-      setSearchPattern('')
-      reload()
-    } catch (e) {
-      setSearchError(e instanceof Error ? e.message : t('tenantPhoneNumbers.errors.purchaseFailed'))
-    } finally {
-      setPurchasing(null)
-    }
-  }
 
   async function releaseNumber(n: PhoneNumber) {
     if (!confirm(t('tenantPhoneNumbers.confirm.release', { number: formatPhone(n.e164Number) }))) return
@@ -272,10 +215,10 @@ export default function PhoneNumbersPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={() => !searching && !purchasing && setSearchOpen(false)}
+          onClick={() => setSearchOpen(false)}
         >
           <div
-            className="w-full max-w-2xl rounded-xl p-6"
+            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-6"
             style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -290,7 +233,6 @@ export default function PhoneNumbersPage() {
               </div>
               <button
                 onClick={() => setSearchOpen(false)}
-                disabled={!!purchasing}
                 className="text-sm"
                 style={{ color: 'var(--text-tertiary)', background: 'transparent', border: 'none' }}
               >
@@ -298,92 +240,31 @@ export default function PhoneNumbersPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
-                  {t('tenantPhoneNumbers.modal.areaCodeLabel')}
-                </label>
-                <input
-                  value={searchAreaCode}
-                  onChange={(e) => setSearchAreaCode(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                  placeholder={t('tenantPhoneNumbers.modal.areaCodePlaceholder')}
-                  maxLength={3}
-                  className="w-full px-3 py-2 rounded-lg text-sm"
-                  style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
-                />
-              </div>
-              <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
-                  {t('tenantPhoneNumbers.modal.patternLabel')}
-                </label>
-                <input
-                  value={searchPattern}
-                  onChange={(e) => setSearchPattern(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder={t('tenantPhoneNumbers.modal.patternPlaceholder')}
-                  maxLength={10}
-                  className="w-full px-3 py-2 rounded-lg text-sm"
-                  style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={runSearch}
-                disabled={searching}
-                className="btn-primary text-sm px-4 py-2"
-              >
-                {searching ? t('tenantPhoneNumbers.actions.searching') : t('tenantPhoneNumbers.actions.search')}
-              </button>
-            </div>
-
-            {searchError && (
-              <div className="rounded-lg px-3 py-2 mb-3 text-xs"
-                style={{ background: 'oklch(95% 0.05 25 / 0.5)', color: 'oklch(45% 0.18 25)' }}>
-                {searchError}
-              </div>
-            )}
-
-            {searchResults && searchResults.length > 0 && (
-              <div className="rounded-lg overflow-hidden border max-h-[400px] overflow-y-auto"
-                style={{ borderColor: 'var(--border-subtle)' }}>
-                {searchResults.map((n, i) => (
-                  <div key={n.phoneNumber}
-                    className="flex items-center justify-between gap-3 px-3 py-2.5"
-                    style={{
-                      background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)',
-                      borderTop: i > 0 ? '1px solid var(--border-subtle)' : undefined,
-                    }}>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>
-                        {formatPhone(n.phoneNumber)}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                          {n.locality ?? n.region ?? t('tenantPhoneNumbers.modal.defaultRegion')}
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>·</span>
-                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                          {t('tenantPhoneNumbers.pricePerMonth', { amount: (n.monthlyPriceCents / 100).toFixed(2) })}
-                        </span>
-                        <div className="flex gap-1 ml-2">
-                          {n.capabilities.voice && <span className="text-xs px-1.5 rounded" style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(40% 0.13 193)' }}>{t('tenantPhoneNumbers.capabilityBadges.voice')}</span>}
-                          {n.capabilities.sms   && <span className="text-xs px-1.5 rounded" style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(40% 0.13 193)' }}>{t('tenantPhoneNumbers.capabilityBadges.sms')}</span>}
-                          {n.capabilities.mms   && <span className="text-xs px-1.5 rounded" style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(40% 0.13 193)' }}>{t('tenantPhoneNumbers.capabilityBadges.mms')}</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => purchase(n)}
-                      disabled={!!purchasing}
-                      className="btn-primary text-xs px-3 py-1.5"
-                    >
-                      {purchasing === n.phoneNumber ? t('tenantPhoneNumbers.actions.buying') : t('tenantPhoneNumbers.actions.get')}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <NumberSearch
+              search={async (filters: SearchFilters): Promise<SearchResult[]> => {
+                const params = new URLSearchParams()
+                if (filters.areaCode) params.set('areaCode', filters.areaCode)
+                if (filters.pattern)  params.set('pattern',  filters.pattern)
+                params.set('capabilities', 'voice,sms')
+                params.set('limit', String(filters.limit))
+                return apiFetch<SearchResult[]>(`/api/twilio/numbers/search?${params.toString()}`)
+              }}
+              purchase={async (phoneNumber) => {
+                await apiFetch('/api/twilio/numbers/purchase', {
+                  method: 'POST',
+                  body: JSON.stringify({ phoneNumber }),
+                })
+                return { phoneNumber }
+              }}
+              shortlistKey={`tenant-${getTokenPayload()?.tenantId ?? 'unknown'}`}
+              maxAllowed={maxAllowed ?? undefined}
+              currentCount={used}
+              onPurchase={(phone) => {
+                showToast(t('tenantPhoneNumbers.toasts.purchased', { number: formatPhone(phone) }))
+                setSearchOpen(false)
+                reload()
+              }}
+            />
           </div>
         </div>
       )}

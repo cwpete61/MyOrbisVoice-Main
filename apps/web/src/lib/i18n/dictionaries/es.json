@@ -370,6 +370,57 @@
     "notPartnerAccount": "Esta cuenta no es de partner. Inicia sesión en la app principal.",
     "invalidCredentials": "Credenciales inválidas."
   },
+  "numberSearch": {
+    "areaCode": "Código de área",
+    "pattern": "Patrón contiene",
+    "patternHint": "usa * como comodín, ej. *1234 termina en 1234",
+    "search": "Buscar inventario de Twilio",
+    "searching": "Buscando…",
+    "sortBy": "Ordenar por",
+    "planCap": "Números usados: {current} de {max}",
+    "results": {
+      "empty": "Sin resultados aún. Usa los filtros para buscar el inventario de Twilio.",
+      "save": "Guardar",
+      "saved": "Guardado",
+      "buy": "Comprar",
+      "buying": "Comprando…",
+      "findMoreLike": "Buscar más como este:"
+    },
+    "similarity": {
+      "sameAreaCode": "Mismo código de área",
+      "sameLast4": "Mismos últimos 4",
+      "samePrefix": "Mismo prefijo"
+    },
+    "tags": {
+      "repeated": "Dígitos repetidos",
+      "sequential": "Secuencial",
+      "repeatedPair": "Par repetido",
+      "round": "Terminación redonda",
+      "palindrome": "Palíndromo",
+      "tripletEnd": "Terminación triple"
+    },
+    "sort": {
+      "byScore": "Puntuación de memorabilidad",
+      "byPhoneAsc": "Número (asc)",
+      "byPhoneDesc": "Número (desc)",
+      "byLast4": "Últimos 4 dígitos"
+    },
+    "shortlist": {
+      "title": "Lista corta",
+      "empty": "Guarda números aquí para comparar antes de comprar. Persiste en tu navegador.",
+      "collapse": "Ocultar",
+      "show": "Lista corta ({n})",
+      "buy": "Comprar este",
+      "remove": "Eliminar",
+      "clearAll": "Vaciar"
+    },
+    "purchase": {
+      "confirm": "¿Comprar {phone} por {price}? El cargo mensual recurrente comienza de inmediato.",
+      "success": "✓ Comprado {phone}.",
+      "unavailable": "{phone} ya no está disponible — alguien más lo compró. Eliminado de la lista corta.",
+      "error": "La compra falló"
+    }
+  },
   "partnerSignup": {
     "brandSubtitle": "Portal de Partners",
     "title": "Conviértete en partner",

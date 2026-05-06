@@ -20,6 +20,7 @@
 
 import { useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { NumberSearch, type SearchResult, type SearchFilters } from '@/components/numbers/NumberSearch'
 
 interface PlatformNumber {
   sid:          string
@@ -55,15 +56,6 @@ interface InventoryResponse {
 interface DestinationsResponse {
   master:      { accountSid: string; label: string }
   subaccounts: { accountSid: string; tenantId: string; label: string }[]
-}
-
-interface SearchResult {
-  phoneNumber:       string
-  friendlyName:      string
-  locality:          string | null
-  region:            string | null
-  capabilities:      { voice: boolean; sms: boolean; mms: boolean }
-  monthlyPriceCents: number
 }
 
 function CapBadge({ on, label }: { on: boolean; label: string }) {
@@ -186,48 +178,28 @@ export default function AdminPhoneNumbersPage() {
   const { data, loading, error, reload } = useApi<InventoryResponse>('/api/admin/phone-numbers')
   const { data: destinations }            = useApi<DestinationsResponse>('/api/admin/phone-numbers/destinations')
   const [searchOpen, setSearchOpen]       = useState(false)
-  const [areaCode, setAreaCode]           = useState('')
-  const [pattern, setPattern]             = useState('')
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
-  const [searching, setSearching]         = useState(false)
-  const [purchasing, setPurchasing]       = useState<string | null>(null)
   const [confirmRelease, setConfirmRelease] = useState<string | null>(null)
   const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null)
   const [message, setMessage]             = useState('')
 
-  async function search() {
-    setSearching(true)
-    setMessage('')
-    try {
-      const result = await apiFetch<SearchResult[]>('/api/admin/phone-numbers/search', {
-        method: 'POST',
-        body: JSON.stringify({ areaCode: areaCode || undefined, pattern: pattern || undefined }),
-      })
-      setSearchResults(result)
-    } catch (e) {
-      setMessage((e as Error).message)
-    } finally {
-      setSearching(false)
-    }
+  // Backend wrappers passed into NumberSearch
+  async function searchBackend(filters: SearchFilters): Promise<SearchResult[]> {
+    return apiFetch<SearchResult[]>('/api/admin/phone-numbers/search', {
+      method: 'POST',
+      body: JSON.stringify({
+        areaCode: filters.areaCode || undefined,
+        pattern:  filters.pattern  || undefined,
+        country:  filters.country,
+        limit:    filters.limit,
+      }),
+    })
   }
 
-  async function purchase(num: SearchResult) {
-    if (!confirm(`Purchase ${num.phoneNumber} for $${(num.monthlyPriceCents / 100).toFixed(2)}/mo? This is a recurring charge on the platform's master Twilio account.`)) return
-    setPurchasing(num.phoneNumber)
-    setMessage('')
-    try {
-      await apiFetch('/api/admin/phone-numbers/purchase', {
-        method: 'POST',
-        body: JSON.stringify({ phoneNumber: num.phoneNumber }),
-      })
-      setMessage(`✓ Purchased ${num.phoneNumber}. Check Twilio Console for any extra config (webhooks, A2P linking).`)
-      setSearchResults(searchResults.filter(r => r.phoneNumber !== num.phoneNumber))
-      reload()
-    } catch (e) {
-      setMessage((e as Error).message)
-    } finally {
-      setPurchasing(null)
-    }
+  async function purchaseBackend(phoneNumber: string): Promise<{ phoneNumber: string }> {
+    return apiFetch<{ phoneNumber: string }>('/api/admin/phone-numbers/purchase', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber }),
+    })
   }
 
   async function release(sid: string, phoneNumber: string) {
@@ -296,54 +268,16 @@ export default function AdminPhoneNumbersPage() {
         </div>
 
         {searchOpen && (
-          <div className="rounded-xl p-4 mb-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-            <div className="flex flex-wrap gap-3 items-end">
-              <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>Area code</label>
-                <input value={areaCode} onChange={e => setAreaCode(e.target.value.replace(/\D/g, '').slice(0, 3))}
-                  placeholder="610" className="px-3 py-1.5 rounded-lg text-sm w-24"
-                  style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>Pattern (optional)</label>
-                <input value={pattern} onChange={e => setPattern(e.target.value)}
-                  placeholder="6105" className="px-3 py-1.5 rounded-lg text-sm w-40"
-                  style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
-              </div>
-              <button onClick={search} disabled={searching}
-                className="px-4 py-1.5 rounded-lg text-sm font-semibold"
-                style={{ background: 'oklch(55% 0.11 193)', color: 'white' }}>
-                {searching ? 'Searching…' : 'Search Twilio inventory'}
-              </button>
-            </div>
-            {searchResults.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {searchResults.map(num => (
-                  <div key={num.phoneNumber} className="flex items-center justify-between rounded-lg p-3"
-                    style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)' }}>
-                    <div>
-                      <p className="font-mono text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{num.phoneNumber}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                        {num.locality || num.region || 'US'} · {fmtMoney(num.monthlyPriceCents)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CapBadge on={num.capabilities.voice} label="Voice" />
-                      <CapBadge on={num.capabilities.sms}   label="SMS" />
-                      <CapBadge on={num.capabilities.mms}   label="MMS" />
-                      <button
-                        onClick={() => purchase(num)}
-                        disabled={purchasing === num.phoneNumber}
-                        className="ml-3 text-xs px-3 py-1 rounded-lg font-semibold"
-                        style={{ background: 'oklch(55% 0.18 145)', color: 'white' }}
-                      >
-                        {purchasing === num.phoneNumber ? 'Buying…' : 'Buy'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="mb-4">
+            <NumberSearch
+              search={searchBackend}
+              purchase={purchaseBackend}
+              shortlistKey="admin"
+              onPurchase={(phone) => {
+                setMessage(`✓ Purchased ${phone}. Check Twilio Console for any extra config (webhooks, A2P linking).`)
+                reload()
+              }}
+            />
           </div>
         )}
 

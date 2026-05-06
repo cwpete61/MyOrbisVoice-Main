@@ -370,6 +370,57 @@
     "notPartnerAccount": "This account is not a partner account. Log in to the main app instead.",
     "invalidCredentials": "Invalid credentials."
   },
+  "numberSearch": {
+    "areaCode": "Area code",
+    "pattern": "Contains pattern",
+    "patternHint": "use * as wildcard, e.g. *1234 ends with 1234",
+    "search": "Search Twilio inventory",
+    "searching": "Searching…",
+    "sortBy": "Sort by",
+    "planCap": "Numbers used: {current} of {max}",
+    "results": {
+      "empty": "No results yet. Use the filters above to search Twilio's inventory.",
+      "save": "Save",
+      "saved": "Saved",
+      "buy": "Buy",
+      "buying": "Buying…",
+      "findMoreLike": "Find more like this:"
+    },
+    "similarity": {
+      "sameAreaCode": "Same area code",
+      "sameLast4": "Same last 4",
+      "samePrefix": "Same prefix"
+    },
+    "tags": {
+      "repeated": "Repeated digits",
+      "sequential": "Sequential",
+      "repeatedPair": "Repeated pair",
+      "round": "Round ending",
+      "palindrome": "Palindrome",
+      "tripletEnd": "Triplet ending"
+    },
+    "sort": {
+      "byScore": "Memorability score",
+      "byPhoneAsc": "Phone number (asc)",
+      "byPhoneDesc": "Phone number (desc)",
+      "byLast4": "Last 4 digits"
+    },
+    "shortlist": {
+      "title": "Shortlist",
+      "empty": "Save numbers here to compare before buying. Persists in your browser.",
+      "collapse": "Hide",
+      "show": "Shortlist ({n})",
+      "buy": "Buy this one",
+      "remove": "Remove",
+      "clearAll": "Clear all"
+    },
+    "purchase": {
+      "confirm": "Buy {phone} for {price}? Recurring monthly charge starts immediately.",
+      "success": "✓ Purchased {phone}.",
+      "unavailable": "{phone} is no longer available — someone else bought it. Removed from shortlist.",
+      "error": "Purchase failed"
+    }
+  },
   "partnerSignup": {
     "brandSubtitle": "Partner Portal",
     "title": "Become a partner",

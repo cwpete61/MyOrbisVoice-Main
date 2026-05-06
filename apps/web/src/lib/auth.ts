@@ -27,12 +27,12 @@ export function isAuthenticated(): boolean {
   return !!getAccessToken()
 }
 
-export function getTokenPayload(): { roleKey?: string; isPlatformRole?: boolean } | null {
+export function getTokenPayload(): { roleKey?: string; isPlatformRole?: boolean; tenantId?: string; sub?: string } | null {
   const token = getAccessToken()
   if (!token) return null
   try {
     const payload = JSON.parse(atob(token.split('.')[1]!))
-    return payload as { roleKey?: string; isPlatformRole?: boolean }
+    return payload as { roleKey?: string; isPlatformRole?: boolean; tenantId?: string; sub?: string }
   } catch {
     return null
   }
