@@ -1148,6 +1148,181 @@ router.post('/phone-numbers/purchase', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// GET /api/admin/phone-numbers/destinations — list of valid reassign targets:
+// the master account + every tenant subaccount with its display name. Used by
+// the reassign modal to populate the destination dropdown.
+router.get('/phone-numbers/destinations', async (_req, res, next) => {
+  try {
+    const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
+    const masterClient = await getPlatformTwilioClient()
+
+    // Master account SID (the account this API key authenticates against)
+    const master = await masterClient.api.v2010.accounts(masterClient.accountSid!).fetch()
+
+    // All tenant subaccounts in our DB
+    const subaccounts = await prisma.tenantTwilioSubaccount.findMany({
+      where:   { status: 'ACTIVE' },
+      include: { tenant: { select: { id: true, displayName: true } } },
+      orderBy: { tenant: { displayName: 'asc' } },
+    })
+
+    res.json({
+      data: {
+        master: {
+          accountSid: master.sid,
+          label:      `${master.friendlyName ?? 'Platform'} (master)`,
+        },
+        subaccounts: subaccounts.map(s => ({
+          accountSid:  s.twilioSubaccountSid,
+          tenantId:    s.tenantId,
+          label:       s.tenant.displayName,
+        })),
+      },
+    })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/phone-numbers/:sid/reassign — move a number between accounts.
+// Body: { targetAccountSid: string, targetTenantId?: string }
+//   - targetAccountSid is master.sid for "move to platform-owned"
+//   - or a subaccount SID for "move to tenant"
+//   - targetTenantId is required when targetAccountSid is a subaccount (so we
+//     can update the local DB row)
+//
+// Updates the DB to reflect the new ownership:
+//   - master ← anywhere : delete the PhoneNumber row (no longer tenant-assigned)
+//   - master → subaccount : create a new PhoneNumber row for the tenant
+//   - subaccount → subaccount : update tenantId + subaccountSid on existing row
+const reassignSchema = z.object({
+  targetAccountSid: z.string().regex(/^AC[a-zA-Z0-9]{32}$/, 'Invalid Twilio account SID'),
+  targetTenantId:   z.string().uuid().optional(),
+  confirmPhoneNumber: z.string().regex(/^\+[1-9]\d{7,14}$/, 'Must match the number being reassigned in E.164'),
+})
+
+router.post('/phone-numbers/:sid/reassign', async (req, res, next) => {
+  try {
+    const { sid } = req.params as { sid: string }
+    if (!sid.startsWith('PN')) throw new AppError('VALIDATION_ERROR', 'Invalid Twilio number SID', 422)
+    const { targetAccountSid, targetTenantId, confirmPhoneNumber } = reassignSchema.parse(req.body)
+
+    const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
+    const masterClient = await getPlatformTwilioClient()
+    const masterAccountSid = masterClient.accountSid!
+
+    // Verify target is either master or a known active subaccount
+    if (targetAccountSid !== masterAccountSid) {
+      const sub = await prisma.tenantTwilioSubaccount.findUnique({ where: { twilioSubaccountSid: targetAccountSid } })
+      if (!sub || sub.status !== 'ACTIVE') {
+        throw new AppError('VALIDATION_ERROR', 'Target account is not a known active subaccount', 422)
+      }
+      if (!targetTenantId) {
+        throw new AppError('VALIDATION_ERROR', 'targetTenantId is required when reassigning to a subaccount', 422)
+      }
+      if (sub.tenantId !== targetTenantId) {
+        throw new AppError('VALIDATION_ERROR', 'targetTenantId does not match the subaccount', 422)
+      }
+    }
+
+    // Confirm the phoneNumber typed in the modal matches what we're moving —
+    // belt-and-suspenders against accidentally moving the wrong row
+    let beforeNumber
+    try {
+      beforeNumber = await masterClient.incomingPhoneNumbers(sid).fetch()
+    } catch (e) {
+      throw new AppError('NOT_FOUND', `Number ${sid} not found on master account or accessible subaccount: ${(e as Error).message}`, 404)
+    }
+    if (beforeNumber.phoneNumber !== confirmPhoneNumber) {
+      throw new AppError('VALIDATION_ERROR', `Confirmation phone number (${confirmPhoneNumber}) does not match the number being reassigned (${beforeNumber.phoneNumber})`, 422)
+    }
+
+    const sourceAccountSid = beforeNumber.accountSid
+    if (sourceAccountSid === targetAccountSid) {
+      throw new AppError('VALIDATION_ERROR', 'Number is already on the target account — no move needed', 422)
+    }
+
+    // ── Execute the Twilio-side move ─────────────────────────────────────
+    await masterClient.incomingPhoneNumbers(sid).update({ accountSid: targetAccountSid })
+
+    // ── Reconcile our DB to reflect the new ownership ─────────────────────
+    // Look up the existing row (if any) by either twilioNumberSid or e164Number
+    const existing = await prisma.phoneNumber.findFirst({
+      where: { OR: [{ twilioNumberSid: sid }, { e164Number: beforeNumber.phoneNumber }] },
+    })
+
+    if (targetAccountSid === masterAccountSid) {
+      // Moving back to master → delete tenant row if it exists
+      if (existing) await prisma.phoneNumber.delete({ where: { id: existing.id } })
+    } else if (sourceAccountSid === masterAccountSid && targetTenantId) {
+      // Moving from master to subaccount → create new tenant row
+      await prisma.phoneNumber.upsert({
+        where:  { e164Number: beforeNumber.phoneNumber },
+        create: {
+          tenantId:            targetTenantId,
+          twilioNumberSid:     sid,
+          twilioSubaccountSid: targetAccountSid,
+          e164Number:          beforeNumber.phoneNumber,
+          monthlyPriceCents:   115,
+          isInboundEnabled:    true,
+          isOutboundEnabled:   true,
+          isSmsEnabled:        true,
+        },
+        update: {
+          tenantId:            targetTenantId,
+          twilioSubaccountSid: targetAccountSid,
+        },
+      })
+    } else if (targetTenantId) {
+      // Moving between subaccounts → update tenantId + subaccountSid
+      if (existing) {
+        await prisma.phoneNumber.update({
+          where: { id: existing.id },
+          data:  { tenantId: targetTenantId, twilioSubaccountSid: targetAccountSid },
+        })
+      } else {
+        // No existing row but we're going to a subaccount — create one
+        await prisma.phoneNumber.create({
+          data: {
+            tenantId:            targetTenantId,
+            twilioNumberSid:     sid,
+            twilioSubaccountSid: targetAccountSid,
+            e164Number:          beforeNumber.phoneNumber,
+            monthlyPriceCents:   115,
+            isInboundEnabled:    true,
+            isOutboundEnabled:   true,
+            isSmsEnabled:        true,
+          },
+        })
+      }
+    }
+
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.phone_number.reassigned',
+      targetType:   'TwilioIncomingPhoneNumber',
+      targetId:     sid,
+      tenantId:     targetTenantId,
+      metadataJson: {
+        phoneNumber:      beforeNumber.phoneNumber,
+        sid,
+        sourceAccountSid,
+        targetAccountSid,
+        targetTenantId:   targetTenantId ?? null,
+      },
+    })
+
+    res.json({
+      data: {
+        sid,
+        phoneNumber: beforeNumber.phoneNumber,
+        sourceAccountSid,
+        targetAccountSid,
+        targetTenantId: targetTenantId ?? null,
+      },
+    })
+  } catch (err) { next(err) }
+})
+
 // DELETE /api/admin/phone-numbers/:sid — release a platform-owned number back to Twilio
 router.delete('/phone-numbers/:sid', async (req, res, next) => {
   try {

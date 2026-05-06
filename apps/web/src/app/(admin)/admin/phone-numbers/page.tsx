@@ -52,6 +52,11 @@ interface InventoryResponse {
   tenants:  TenantNumber[]
 }
 
+interface DestinationsResponse {
+  master:      { accountSid: string; label: string }
+  subaccounts: { accountSid: string; tenantId: string; label: string }[]
+}
+
 interface SearchResult {
   phoneNumber:       string
   friendlyName:      string
@@ -75,8 +80,111 @@ function fmtMoney(cents: number | null) {
   return `$${(cents / 100).toFixed(2)}/mo`
 }
 
+interface ReassignTarget {
+  sid:         string
+  phoneNumber: string
+  currentAccountSid: string
+}
+
+function ReassignModal({
+  target, destinations, onClose, onDone,
+}: {
+  target:       ReassignTarget
+  destinations: DestinationsResponse
+  onClose:      () => void
+  onDone:       (msg: string) => void
+}) {
+  const [targetAccountSid, setTargetAccountSid] = useState('')
+  const [confirmText, setConfirmText]           = useState('')
+  const [busy, setBusy]                         = useState(false)
+  const [error, setError]                       = useState('')
+
+  const options = [
+    { accountSid: destinations.master.accountSid, tenantId: undefined as string | undefined, label: destinations.master.label, isMaster: true },
+    ...destinations.subaccounts.map(s => ({ accountSid: s.accountSid, tenantId: s.tenantId, label: s.label, isMaster: false })),
+  ].filter(o => o.accountSid !== target.currentAccountSid)
+
+  const targetTenantId = options.find(o => o.accountSid === targetAccountSid)?.tenantId
+
+  async function submit() {
+    setError('')
+    if (!targetAccountSid) { setError('Pick a destination'); return }
+    if (confirmText !== target.phoneNumber) { setError('Type the full phone number to confirm'); return }
+    setBusy(true)
+    try {
+      await apiFetch(`/api/admin/phone-numbers/${target.sid}/reassign`, {
+        method: 'POST',
+        body: JSON.stringify({ targetAccountSid, targetTenantId, confirmPhoneNumber: target.phoneNumber }),
+      })
+      const destLabel = options.find(o => o.accountSid === targetAccountSid)?.label ?? targetAccountSid
+      onDone(`✓ Moved ${target.phoneNumber} → ${destLabel}. A2P throughput on the destination resets to default until that account has its own A2P registration.`)
+    } catch (e) {
+      setError((e as Error).message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
+      <div className="rounded-xl p-6 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()} style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
+        <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Reassign {target.phoneNumber}</h3>
+        <p className="text-xs mb-5" style={{ color: 'var(--text-tertiary)' }}>
+          Currently on <span className="font-mono">{target.currentAccountSid.slice(0, 14)}…</span>
+        </p>
+
+        <label className="block mb-1 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Move to</label>
+        <select value={targetAccountSid} onChange={e => setTargetAccountSid(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg text-sm mb-4"
+          style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+          <option value="">— Select destination —</option>
+          {options.map(o => (
+            <option key={o.accountSid} value={o.accountSid}>
+              {o.isMaster ? '🌐 ' : '🏢 '}{o.label}
+            </option>
+          ))}
+        </select>
+
+        <div className="rounded-lg p-3 mb-4 text-xs" style={{ background: 'oklch(96% 0.05 75)', color: 'oklch(35% 0.16 75)' }}>
+          <strong>⚠ Footguns to know:</strong>
+          <ul className="list-disc pl-4 mt-1 space-y-1">
+            <li>A2P 10DLC throughput on the destination resets to default until that account has its own A2P registration</li>
+            <li>Active calls / SMS aren't disrupted</li>
+            <li>Pending scheduled SMS on the source account will fail</li>
+            <li>Webhook URLs transfer with the number</li>
+            <li>Messaging Service / SIP Trunk / Verify bindings are cleared</li>
+          </ul>
+        </div>
+
+        <label className="block mb-1 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+          Type <code className="font-mono">{target.phoneNumber}</code> to confirm
+        </label>
+        <input value={confirmText} onChange={e => setConfirmText(e.target.value)}
+          placeholder={target.phoneNumber}
+          className="w-full px-3 py-2 rounded-lg text-sm font-mono mb-4"
+          style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
+
+        {error && <div className="rounded-lg p-2 mb-3 text-xs" style={{ background: 'oklch(95% 0.05 25)', color: 'oklch(35% 0.18 25)' }}>{error}</div>}
+
+        <div className="flex gap-2 justify-end">
+          <button onClick={onClose} disabled={busy}
+            className="px-4 py-2 rounded-lg text-sm font-semibold"
+            style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+            Cancel
+          </button>
+          <button onClick={submit} disabled={busy || !targetAccountSid || confirmText !== target.phoneNumber}
+            className="px-4 py-2 rounded-lg text-sm font-semibold"
+            style={{ background: 'oklch(55% 0.11 193)', color: 'white', opacity: busy || !targetAccountSid || confirmText !== target.phoneNumber ? 0.5 : 1 }}>
+            {busy ? 'Moving…' : 'Reassign'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminPhoneNumbersPage() {
   const { data, loading, error, reload } = useApi<InventoryResponse>('/api/admin/phone-numbers')
+  const { data: destinations }            = useApi<DestinationsResponse>('/api/admin/phone-numbers/destinations')
   const [searchOpen, setSearchOpen]       = useState(false)
   const [areaCode, setAreaCode]           = useState('')
   const [pattern, setPattern]             = useState('')
@@ -84,6 +192,7 @@ export default function AdminPhoneNumbersPage() {
   const [searching, setSearching]         = useState(false)
   const [purchasing, setPurchasing]       = useState<string | null>(null)
   const [confirmRelease, setConfirmRelease] = useState<string | null>(null)
+  const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null)
   const [message, setMessage]             = useState('')
 
   async function search() {
@@ -144,6 +253,14 @@ export default function AdminPhoneNumbersPage() {
 
   return (
     <div className="space-y-8">
+      {reassignTarget && destinations && (
+        <ReassignModal
+          target={reassignTarget}
+          destinations={destinations}
+          onClose={() => setReassignTarget(null)}
+          onDone={(msg) => { setMessage(msg); setReassignTarget(null); reload() }}
+        />
+      )}
       <div>
         <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Phone numbers</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
@@ -260,15 +377,22 @@ export default function AdminPhoneNumbersPage() {
                     </td>
                     <td className="px-4 py-2.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>{n.dateCreated ? new Date(n.dateCreated).toLocaleDateString() : '—'}</td>
                     <td className="px-4 py-2.5 text-right">
-                      <button onClick={() => release(n.sid, n.phoneNumber)}
-                        className="text-xs px-2.5 py-1 rounded font-medium"
-                        style={{
-                          background: confirmRelease === n.sid ? 'oklch(55% 0.18 25)' : 'transparent',
-                          color:      confirmRelease === n.sid ? 'white' : 'oklch(55% 0.18 25)',
-                          border:     '1px solid oklch(55% 0.18 25)',
-                        }}>
-                        {confirmRelease === n.sid ? 'Click again to confirm' : 'Release'}
-                      </button>
+                      <div className="flex gap-1.5 justify-end">
+                        <button onClick={() => setReassignTarget({ sid: n.sid, phoneNumber: n.phoneNumber, currentAccountSid: n.accountSid })}
+                          className="text-xs px-2.5 py-1 rounded font-medium"
+                          style={{ background: 'transparent', color: 'oklch(55% 0.11 193)', border: '1px solid oklch(55% 0.11 193)' }}>
+                          Reassign
+                        </button>
+                        <button onClick={() => release(n.sid, n.phoneNumber)}
+                          className="text-xs px-2.5 py-1 rounded font-medium"
+                          style={{
+                            background: confirmRelease === n.sid ? 'oklch(55% 0.18 25)' : 'transparent',
+                            color:      confirmRelease === n.sid ? 'white' : 'oklch(55% 0.18 25)',
+                            border:     '1px solid oklch(55% 0.18 25)',
+                          }}>
+                          {confirmRelease === n.sid ? 'Click again to confirm' : 'Release'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -297,6 +421,7 @@ export default function AdminPhoneNumbersPage() {
                   <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Subaccount</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Capabilities</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Forwarding</th>
+                  <th className="text-right px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -319,6 +444,19 @@ export default function AdminPhoneNumbersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-xs font-mono" style={{ color: 'var(--text-tertiary)' }}>{n.forwardingTarget ?? '—'}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      {n.twilioNumberSid && n.twilioSubaccountSid && (
+                        <button onClick={() => setReassignTarget({
+                          sid: n.twilioNumberSid!,
+                          phoneNumber: n.phoneNumber,
+                          currentAccountSid: n.twilioSubaccountSid!,
+                        })}
+                          className="text-xs px-2.5 py-1 rounded font-medium"
+                          style={{ background: 'transparent', color: 'oklch(55% 0.11 193)', border: '1px solid oklch(55% 0.11 193)' }}>
+                          Reassign
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
