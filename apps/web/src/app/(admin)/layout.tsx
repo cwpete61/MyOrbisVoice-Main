@@ -4,10 +4,12 @@ import { LanguageToggle } from '@/components/LanguageToggle'
 import { AdminNav } from '@/components/AdminNav'
 import { SignOutButton } from '@/components/SignOutButton'
 import { SidebarUserBadge } from '@/components/SidebarUserBadge'
+import { IdleTimeout } from '@/components/IdleTimeout'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
+      <IdleTimeout redirectTo="/login" />
       <div className="h-screen flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
         <aside
           className="w-52 flex-shrink-0 flex flex-col"

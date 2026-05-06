@@ -75,6 +75,12 @@
     "upload": "Subir",
     "download": "Descargar"
   },
+  "idleTimeout": {
+    "title": "¿Sigues ahí?",
+    "body": "Has estado inactivo por un tiempo. Te cerraremos sesión automáticamente en {seconds} segundos.",
+    "stay": "Sigo aquí",
+    "logoutNow": "Cerrar sesión ahora"
+  },
   "common": {
     "yes": "Sí",
     "no": "No",

@@ -6,6 +6,7 @@ import { clearTokens } from '@/lib/auth'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ContactBlock } from '@/components/ContactBlock'
+import { IdleTimeout } from '@/components/IdleTimeout'
 
 const NAV = [
   { href: '/partner-portal/dashboard',   labelKey: 'partnerNav.dashboard',   icon: 'M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z' },
@@ -42,6 +43,7 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--surface-app)' }}>
+      <IdleTimeout redirectTo="/partner-portal/login" />
       {/* Sidebar */}
       <aside className="w-56 flex-shrink-0 flex flex-col" style={{ background: 'var(--surface-raised)', borderRight: '1px solid var(--border-subtle)' }}>
         {/* Brand */}

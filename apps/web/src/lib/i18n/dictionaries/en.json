@@ -75,6 +75,12 @@
     "upload": "Upload",
     "download": "Download"
   },
+  "idleTimeout": {
+    "title": "Are you still there?",
+    "body": "You've been inactive for a while. You'll be signed out automatically in {seconds} seconds.",
+    "stay": "I'm still here",
+    "logoutNow": "Log out now"
+  },
   "common": {
     "yes": "Yes",
     "no": "No",

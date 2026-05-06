@@ -12,6 +12,7 @@ import { NotificationBell } from '@/components/NotificationBell'
 import { TenantLogo } from '@/components/TenantLogo'
 import { TenantIdBadge } from '@/components/TenantIdBadge'
 import { TierBadge } from '@/components/TierBadge'
+import { IdleTimeout } from '@/components/IdleTimeout'
 import { getImpersonationInfo, endImpersonation } from '@/lib/auth'
 import { apiFetch } from '@/hooks/useApi'
 
@@ -77,6 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <AuthGuard>
+      <IdleTimeout redirectTo="/login" />
       <div className="h-screen flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
 
         {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
