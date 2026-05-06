@@ -113,7 +113,6 @@ function ContactPicker({ value, onChange, t }: { value: string; onChange: (v: st
 
   return (
     <div ref={ref} className="relative">
-      <BackToOnboarding />
       <input
         value={value}
         onFocus={() => setOpen(true)}
@@ -292,6 +291,7 @@ export default function ChannelsPage() {
 
   return (
     <div className="p-8">
+      <BackToOnboarding markStepKey="channel" />
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-1">{t('tenantChannels.title')}</h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('tenantChannels.subtitle')}</p>
 

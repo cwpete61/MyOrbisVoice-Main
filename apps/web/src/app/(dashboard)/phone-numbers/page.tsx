@@ -90,7 +90,7 @@ export default function PhoneNumbersPage() {
 
   return (
     <div className="p-8 max-w-3xl">
-      <BackToOnboarding />
+      <BackToOnboarding markStepKey="number" />
       <div className="flex items-start justify-between mb-1">
         <div>
           <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>

@@ -277,7 +277,7 @@ export default function BusinessDNAPage() {
   if (loading) {
     return (
       <div className="space-y-4 animate-pulse">
-        <BackToOnboarding />
+        <BackToOnboarding markStepKey="dna" />
         <div className="h-7 w-44 rounded-lg" style={{ background: 'var(--border-subtle)' }} />
         <div
           className="h-80 rounded-xl"
@@ -295,6 +295,7 @@ export default function BusinessDNAPage() {
 
   return (
     <div className="space-y-6">
+      <BackToOnboarding markStepKey="dna" />
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>

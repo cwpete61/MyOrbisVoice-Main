@@ -2346,7 +2346,10 @@
   },
   "backToOnboarding": {
     "message": "When you're done here, click the button to return to the Get Started checklist. Anything you save on this page is auto-detected — you don't have to mark it complete.",
-    "action": "Back to Get Started →"
+    "messageWithMark": "When you're done with this step, click the button to mark it complete and return to the Get Started checklist. You don't have to fill out every section — only the parts your business needs.",
+    "action": "Back to Get Started →",
+    "actionMarkDone": "Done — Back to Get Started →",
+    "markingDone": "Marking done…"
   },
   "tenantOnboarding": {
     "title": "Get started",

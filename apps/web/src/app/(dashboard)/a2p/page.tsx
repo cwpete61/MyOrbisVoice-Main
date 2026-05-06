@@ -119,7 +119,7 @@ export default function A2PPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <BackToOnboarding />
+      <BackToOnboarding markStepKey="a2p" />
       <div>
         <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{t('tenantA2p.title')}</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>

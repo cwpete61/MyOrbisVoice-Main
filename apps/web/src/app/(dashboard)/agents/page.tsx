@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { Tooltip } from '@/components/Tooltip'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
@@ -25,9 +24,6 @@ const ROLE_ICONS: Record<string, string> = {
 
 export default function AgentsPage() {
   const t = useT()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const fromOnboarding = searchParams.get('from') === 'onboarding'
   const { locale } = useLocale()
   const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   // Reserved for future date formatting in this page.
@@ -75,38 +71,10 @@ export default function AgentsPage() {
     finally { setSaving(false) }
   }
 
-  /** Save the currently-selected agent + explicitly mark Step 3 (agent /
-   *  Receptionist) complete on the onboarding checklist + route back. The
-   *  mark is durable in Tenant.onboardingMarkedDone — survives reloads
-   *  and overrides the data-based auto-detection (which requires an
-   *  enabled agent with a bound prompt). */
-  async function saveAgentAndBackToOnboarding() {
-    if (!selected) return
-    setSaving(true)
-    try {
-      await apiFetch(`/api/agents/${selected.agentRoleType}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          displayName:   selected.displayName,
-          isEnabled:     selected.isEnabled,
-          modelProvider: selected.modelProvider,
-          modelName:     selected.modelName,
-        }),
-      })
-      await apiFetch('/api/onboarding/mark-step-done', {
-        method: 'POST',
-        body: JSON.stringify({ stepKey: 'agent' }),
-      })
-      router.push('/onboarding')
-    } catch (err) {
-      showToast('error', err instanceof Error ? err.message : t('tenantAgents.saveFailed'))
-      setSaving(false)
-    }
-  }
 
   if (loading) return (
     <div className="space-y-6 animate-pulse">
-      <BackToOnboarding />
+      <BackToOnboarding markStepKey="agent" />
       <div className="h-7 w-32 rounded-lg" style={{ background: 'var(--border-subtle)' }} />
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {[...Array(6)].map((_, i) => <div key={i} className="h-24 rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }} />)}
@@ -118,6 +86,7 @@ export default function AgentsPage() {
 
   return (
     <div className="space-y-6">
+      <BackToOnboarding markStepKey="agent" />
       <div>
         <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
           {t('tenantAgents.title')}
@@ -259,24 +228,10 @@ export default function AgentsPage() {
                 </div>
               )}
 
-              <div className="pt-2 flex items-center gap-3 flex-wrap">
+              <div className="pt-2">
                 <button onClick={saveAgent} disabled={saving} className="btn-primary">
                   {saving ? t('tenantAgents.actions.saving') : t('tenantAgents.actions.save')}
                 </button>
-                {fromOnboarding && (
-                  <button
-                    onClick={saveAgentAndBackToOnboarding}
-                    disabled={saving}
-                    className="text-sm font-semibold px-4 py-2 rounded-lg"
-                    style={{
-                      background: 'oklch(96% 0.04 193)',
-                      color:      'oklch(35% 0.13 193)',
-                      border:     '1px solid oklch(85% 0.10 193)',
-                    }}
-                  >
-                    {t('common.saveAndBackToOnboarding')}
-                  </button>
-                )}
               </div>
             </div>
           )}

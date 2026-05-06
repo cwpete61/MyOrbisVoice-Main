@@ -2346,7 +2346,10 @@
   },
   "backToOnboarding": {
     "message": "Cuando termines aquí, haz clic en el botón para volver a la lista de Comenzar. Lo que guardes en esta página se detecta automáticamente — no tienes que marcarla como completa.",
-    "action": "Volver a Comenzar →"
+    "messageWithMark": "Cuando termines con este paso, haz clic en el botón para marcarlo como completo y volver a la lista de Comenzar. No tienes que llenar cada sección — solo las partes que tu negocio necesite.",
+    "action": "Volver a Comenzar →",
+    "actionMarkDone": "Listo — Volver a Comenzar →",
+    "markingDone": "Marcando como listo…"
   },
   "tenantOnboarding": {
     "title": "Comenzar",
