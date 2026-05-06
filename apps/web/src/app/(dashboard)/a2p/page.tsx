@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { useTenantContext } from '@/hooks/useTenantContext'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { Tooltip } from '@/components/Tooltip'
 import { BackToOnboarding } from '@/components/BackToOnboarding'
@@ -57,14 +58,42 @@ export default function A2PPage() {
   const { locale } = useLocale()
   const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   const { data: existing, loading, reload } = useApi<A2PApplication | null>('/api/a2p')
+  const tenantCtx = useTenantContext()
   const [form, setForm] = useState<A2PApplication>(EMPTY)
+  const [seededFromContext, setSeededFromContext] = useState(false)
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Load saved A2P record into the form (overrides everything).
   useEffect(() => {
     if (existing) setForm({ ...EMPTY, ...existing, sampleMessagesJson: existing.sampleMessagesJson?.length ? existing.sampleMessagesJson : ['', '', '', '', ''] })
   }, [existing])
+
+  // First-time prefill: if there's no saved A2P record AND we haven't
+  // seeded yet, fill the empty form fields from the tenant's settings/
+  // business-profile so the user doesn't have to retype data they
+  // already entered. Every field stays editable — A2P sometimes needs
+  // a registered address/contact different from operating ones.
+  useEffect(() => {
+    if (loading) return
+    if (existing) return                  // saved A2P always wins
+    if (!tenantCtx) return                // wait for tenant data
+    if (seededFromContext) return         // only seed once per page load
+    setForm(prev => ({
+      ...prev,
+      legalName:    prev.legalName    || tenantCtx.legalName,
+      websiteUrl:   prev.websiteUrl   || tenantCtx.website,
+      addressLine1: prev.addressLine1 || tenantCtx.addressLine1,
+      city:         prev.city         || tenantCtx.city,
+      region:       prev.region       || tenantCtx.region,
+      postalCode:   prev.postalCode   || tenantCtx.postalCode,
+      country:      prev.country      || tenantCtx.country,
+      contactEmail: prev.contactEmail || tenantCtx.publicEmail,
+      contactPhone: prev.contactPhone || tenantCtx.publicPhone,
+    }))
+    setSeededFromContext(true)
+  }, [loading, existing, tenantCtx, seededFromContext])
 
   useEffect(() => {
     if (!toast) return

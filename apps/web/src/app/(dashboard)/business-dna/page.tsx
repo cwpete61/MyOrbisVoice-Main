@@ -23,6 +23,8 @@
 
 import { useEffect, useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { useTenantContext } from '@/hooks/useTenantContext'
+import { findIndustry } from '@/lib/industries'
 import {
   IdentitySection, ServicesSection, PricingSection, OperationsSection,
   SalesSection, AppointmentSection, SupportSection, LanguageSection,
@@ -112,9 +114,14 @@ export default function BusinessDNAPage() {
 
   const { data, loading, error, reload } =
     useApi<{ active: DNADetail | null; versions: DNAVersion[] }>('/api/business-dna')
+  const tenantCtx = useTenantContext()
 
   const [selected, setSelected] = useState<DNADetail | null>(null)
   const [activeSection, setActiveSection] = useState<SectionKey>('identityJson')
+  // Track which version IDs we've already prefilled Identity for so we
+  // don't re-suggest values every time the user navigates back to the
+  // section. Per-version-id keeps draft/active versions isolated.
+  const [identityPrefilledFor, setIdentityPrefilledFor] = useState<string | null>(null)
 
   // The currently-edited value for the active section.
   const [formValue, setFormValue] = useState<Record<string, unknown>>({})
@@ -135,6 +142,47 @@ export default function BusinessDNAPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.active?.id])
+
+  // Identity prefill: when the user is on the Identity section and the
+  // formValue's businessName/industry/website fields are blank, seed
+  // them from /settings (tenant + business profile) so the user doesn't
+  // have to re-type data they already entered. Marks the form dirty so
+  // the user sees an "Unsaved changes" indicator and knows to review +
+  // save. Runs at most once per (version × identity-section) load.
+  useEffect(() => {
+    if (activeSection !== 'identityJson') return
+    if (!selected) return
+    if (!tenantCtx) return
+    if (identityPrefilledFor === selected.id) return
+
+    const nextValue = { ...formValue }
+    let changed = false
+    if (!nextValue['businessName'] && tenantCtx.legalName) {
+      nextValue['businessName'] = tenantCtx.legalName
+      changed = true
+    }
+    if (!nextValue['website'] && tenantCtx.website) {
+      nextValue['website'] = tenantCtx.website
+      changed = true
+    }
+    if (!nextValue['industry'] && tenantCtx.industryCode) {
+      const ind = findIndustry(tenantCtx.industryCode)
+      // DNA stores the human label in identity.industry (the AI prompt
+      // builder reads it verbatim), so persist the localized label.
+      const label = locale === 'es' ? ind.labelEs : ind.labelEn
+      if (label && ind.code !== 'GENERAL') {  // don't autofill the catch-all
+        nextValue['industry'] = label
+        changed = true
+      }
+    }
+    setIdentityPrefilledFor(selected.id)
+    if (changed) {
+      setFormValue(nextValue)
+      setJsonText(JSON.stringify(nextValue, null, 2))
+      setDirty(true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, selected?.id, tenantCtx])
 
   function showToast(type: 'success' | 'error', text: string) {
     setToast({ type, text })
