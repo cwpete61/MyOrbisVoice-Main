@@ -395,7 +395,7 @@
     "title": "Partner login",
     "subtitle": "Sign in to your partner account.",
     "usernameOrEmail": "Username or email",
-    "usernameOrEmailPlaceholder": "you@example.com",
+    "usernameOrEmailPlaceholder": "yourname or you@example.com",
     "password": "Password",
     "passwordPlaceholder": "Your password",
     "signingIn": "Signing in…",

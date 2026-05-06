@@ -395,7 +395,7 @@
     "title": "Inicio de sesión para partners",
     "subtitle": "Inicia sesión en tu cuenta de partner.",
     "usernameOrEmail": "Usuario o correo",
-    "usernameOrEmailPlaceholder": "tu@ejemplo.com",
+    "usernameOrEmailPlaceholder": "tunombre o tu@ejemplo.com",
     "password": "Contraseña",
     "passwordPlaceholder": "Tu contraseña",
     "signingIn": "Iniciando sesión…",

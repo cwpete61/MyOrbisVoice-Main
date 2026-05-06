@@ -87,11 +87,11 @@ export default function ReferralRedirectPage() {
   }, [code, router, searchParams])
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-base, #0a0a0a)' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--surface-app)' }}>
       <div className="text-center space-y-3">
         <div className="w-8 h-8 border-2 rounded-full animate-spin mx-auto"
           style={{ borderColor: 'oklch(72% 0.12 193)', borderTopColor: 'transparent' }} />
-        <p className="text-sm" style={{ color: 'var(--text-secondary, #888)' }}>Setting up your referral…</p>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Setting up your referral…</p>
       </div>
     </div>
   )

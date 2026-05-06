@@ -119,7 +119,7 @@ export async function loginUser(data: { login: string; password: string }) {
   })
 
   if (!user || !(await bcrypt.compare(data.password, user.passwordHash))) {
-    throw new AppError('UNAUTHORIZED', 'Invalid email or password', 401)
+    throw new AppError('UNAUTHORIZED', 'Invalid credentials', 401)
   }
   if (user.status !== 'ACTIVE') {
     throw new AppError('FORBIDDEN', 'Account is not active', 403)
