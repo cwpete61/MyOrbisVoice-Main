@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { apiFetch, apiUploadFile, useApi } from '@/hooks/useApi'
 import { PushNotificationToggle } from '@/components/PushNotificationToggle'
 import { Tooltip } from '@/components/Tooltip'
@@ -194,6 +195,7 @@ function Section({
   saving,
   saveLabel,
   savingLabel,
+  onSaveAndBack,
 }: {
   title: string
   description?: string
@@ -202,7 +204,17 @@ function Section({
   saving: boolean
   saveLabel: string
   savingLabel: string
+  /** When set, renders an additional "Save & Back to Get Started" button
+   *  next to the regular Save. The handler should: save current form
+   *  state → POST /api/onboarding/mark-step-done → navigate to /onboarding.
+   *  Only rendered when the page was arrived at via ?from=onboarding so
+   *  it doesn't pollute normal usage of /settings. */
+  onSaveAndBack?: () => void
 }) {
+  const t = useT()
+  const params = useSearchParams()
+  const fromOnboarding = params.get('from') === 'onboarding'
+
   return (
     <section>
       <div className="mb-5">
@@ -216,10 +228,24 @@ function Section({
         style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
       >
         {children}
-        <div className="pt-2">
+        <div className="pt-2 flex items-center gap-3 flex-wrap">
           <button onClick={onSave} disabled={saving} className="btn-primary">
             {saving ? savingLabel : saveLabel}
           </button>
+          {fromOnboarding && onSaveAndBack && (
+            <button
+              onClick={onSaveAndBack}
+              disabled={saving}
+              className="text-sm font-semibold px-4 py-2 rounded-lg"
+              style={{
+                background: 'oklch(96% 0.04 193)',
+                color:      'oklch(35% 0.13 193)',
+                border:     '1px solid oklch(85% 0.10 193)',
+              }}
+            >
+              {t('tenantSettings.actions.saveAndBackToOnboarding')}
+            </button>
+          )}
         </div>
       </div>
     </section>
@@ -228,6 +254,7 @@ function Section({
 
 export default function SettingsPage() {
   const t = useT()
+  const router = useRouter()
   const { locale } = useLocale()
   const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
 
@@ -273,6 +300,26 @@ export default function SettingsPage() {
     }
   }
 
+  /** Save the tenant section (Workspace OR Industry — both PATCH the same
+   *  endpoint), explicitly mark Step 1 (Business Profile) as complete on
+   *  the onboarding checklist, then navigate back to /onboarding. The
+   *  explicit-mark is durable in Tenant.onboardingMarkedDone — it survives
+   *  page refreshes and overrides the data-based auto-detection. */
+  async function saveTenantAndBackToOnboarding() {
+    setSaving('workspace')
+    try {
+      await apiFetch('/api/tenants/current', { method: 'PATCH', body: JSON.stringify(tenantForm) })
+      await apiFetch('/api/onboarding/mark-step-done', {
+        method: 'POST',
+        body: JSON.stringify({ stepKey: 'profile' }),
+      })
+      router.push('/onboarding')
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : t('tenantSettings.toasts.saveFailed'))
+      setSaving(null)
+    }
+  }
+
   if (tenantLoading || profileLoading) {
     return (
       <div className="space-y-2 pt-2">
@@ -308,6 +355,7 @@ export default function SettingsPage() {
         title={t('tenantSettings.workspace.title')}
         description={t('tenantSettings.workspace.description')}
         onSave={saveTenant}
+        onSaveAndBack={saveTenantAndBackToOnboarding}
         saving={saving === 'workspace'}
         saveLabel={t('tenantSettings.actions.saveWorkspace')}
         savingLabel={t('tenantSettings.actions.saving')}
@@ -327,6 +375,7 @@ export default function SettingsPage() {
         title={t('tenantSettings.industry.title')}
         description={t('tenantSettings.industry.description')}
         onSave={saveTenant}
+        onSaveAndBack={saveTenantAndBackToOnboarding}
         saving={saving === 'workspace'}
         saveLabel={t('tenantSettings.actions.saveIndustry')}
         savingLabel={t('tenantSettings.actions.saving')}

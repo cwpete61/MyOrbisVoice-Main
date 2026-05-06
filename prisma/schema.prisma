@@ -330,6 +330,13 @@ model Tenant {
   createdAt                 DateTime                @default(now())
   updatedAt                 DateTime                @updatedAt
   deletedAt                 DateTime?
+  /// Per-step explicit "I'm done with this onboarding step" markers.
+  /// Shape: { profile: true, dna: true, ... } — set by the user clicking
+  /// the "Save & Back to Get Started" button on a step page. Acts as an
+  /// override on top of the data-based auto-detection so a user who has
+  /// configured what they care about can mark a step done even if
+  /// non-required fields are blank. Null = nothing manually marked yet.
+  onboardingMarkedDone      Json?
   referredByCode            String?
   attributedAt              DateTime?
   industryVertical          IndustryVertical        @default(GENERAL)

@@ -1964,6 +1964,7 @@
       "saveWorkspace": "Guardar espacio de trabajo",
       "saveIndustry": "Guardar industria",
       "saveProfile": "Guardar perfil",
+      "saveAndBackToOnboarding": "Guardar y volver a Comenzar →",
       "cancel": "Cancelar"
     },
     "toasts": {

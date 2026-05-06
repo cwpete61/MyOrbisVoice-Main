@@ -9,18 +9,30 @@
  * locked steps with an "Upgrade plan to unlock" CTA, and progress is
  * computed only against UNLOCKED required steps so a Free-tier tenant
  * who can't reach Inbound/Phone/A2P still sees a path to 100%.
+ *
+ * Two completion signals per step (whichever is true):
+ *   1. Data-based: the underlying resource exists / is configured
+ *      (brandName + hours set, BusinessDNA published, prompt bound, etc.)
+ *   2. User-marked: the tenant clicked "Save & Back to Get Started" on
+ *      a step page and explicitly flagged that step done. Stored in
+ *      Tenant.onboardingMarkedDone[stepKey] = true.
  */
 import { Router, type IRouter } from 'express'
+import { z } from 'zod'
 import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import { asyncHandler } from '../lib/async-handler.js'
 import { prisma } from '../lib/prisma.js'
+import { AppError } from '@voiceautomation/shared'
 
 const router: IRouter = Router()
 router.use(authenticate, requireTenantContext)
 
+type StepKey = 'profile' | 'dna' | 'agent' | 'channel' | 'number' | 'a2p'
+const STEP_KEYS: readonly StepKey[] = ['profile', 'dna', 'agent', 'channel', 'number', 'a2p']
+
 interface OnboardingStep {
-  key:         'profile' | 'dna' | 'agent' | 'channel' | 'number' | 'a2p'
+  key:         StepKey
   label:       string
   description: string
   href:        string
@@ -35,7 +47,13 @@ interface OnboardingStep {
 router.get('/onboarding/status', asyncHandler(async (req, res) => {
   const tenantId = req.user!.currentTenantId!
 
-  const [businessProfile, activeDNA, configuredAgent, inboundChannel, phoneCount, a2pApp, entitlements] = await Promise.all([
+  const [tenantRow, businessProfile, activeDNA, configuredAgent, inboundChannel, phoneCount, a2pApp, entitlements] = await Promise.all([
+    // Tenant row — needed for onboardingMarkedDone (explicit user-marked
+    // completion overrides). Always exists for an authenticated tenant.
+    prisma.tenant.findUnique({
+      where:  { id: tenantId },
+      select: { onboardingMarkedDone: true },
+    }),
     prisma.businessProfile.findFirst({
       where:  { tenantId },
       select: { brandName: true, businessHoursJson: true, addressLine1: true },
@@ -69,6 +87,11 @@ router.get('/onboarding/status', asyncHandler(async (req, res) => {
     }),
   ])
 
+  // Explicit user-marked completions — overrides auto-detection so the
+  // user can flag a step done even when auto-detection would say no.
+  const markedDone = (tenantRow?.onboardingMarkedDone ?? {}) as Record<string, boolean>
+  const isMarked = (k: StepKey) => markedDone[k] === true
+
   // Build a quick lookup. Booleans → boolean. Integers → number.
   const ent = new Map<string, boolean | number | null>()
   for (const e of entitlements) {
@@ -79,13 +102,15 @@ router.get('/onboarding/status', asyncHandler(async (req, res) => {
   const maxPhoneNumbers   = (ent.get('max_phone_numbers') as number | null) ?? 0
   const phoneNumbersAllowed = maxPhoneNumbers > 0
 
-  // Completion checks
-  const profileDone = !!businessProfile?.brandName && !!businessProfile?.businessHoursJson
-  const dnaDone     = !!activeDNA
-  const agentDone   = !!configuredAgent       // now requires explicit prompt binding
-  const channelDone = !!inboundChannel?.isEnabled
-  const numberDone  = phoneCount > 0
-  const a2pDone     = a2pApp?.status === 'SUBMITTED' || a2pApp?.status === 'APPROVED'
+  // Completion checks. Each step is "done" if EITHER the data-based
+  // signal is true OR the user has explicitly marked it done via the
+  // "Save & Back to Get Started" button.
+  const profileDone = isMarked('profile') || (!!businessProfile?.brandName && !!businessProfile?.businessHoursJson)
+  const dnaDone     = isMarked('dna')     || !!activeDNA
+  const agentDone   = isMarked('agent')   || !!configuredAgent
+  const channelDone = isMarked('channel') || !!inboundChannel?.isEnabled
+  const numberDone  = isMarked('number')  || phoneCount > 0
+  const a2pDone     = isMarked('a2p')     || a2pApp?.status === 'SUBMITTED' || a2pApp?.status === 'APPROVED'
 
   const steps: OnboardingStep[] = [
     { key: 'profile', label: 'Business Profile', description: 'Set your business name, hours, and contact details so the agent knows who it is representing.', href: '/settings',         completed: profileDone },
@@ -114,6 +139,36 @@ router.get('/onboarding/status', asyncHandler(async (req, res) => {
       allComplete: allRequiredDone,
     },
   })
+}))
+
+// Explicit user-marked completion. Triggered by the "Save & Back to Get
+// Started" button on a step page. Idempotent — calling this with a step
+// that's already marked is a no-op.
+const markStepDoneSchema = z.object({
+  stepKey: z.enum(['profile', 'dna', 'agent', 'channel', 'number', 'a2p']),
+})
+
+router.post('/onboarding/mark-step-done', asyncHandler(async (req, res) => {
+  const tenantId = req.user!.currentTenantId!
+  const parsed = markStepDoneSchema.safeParse(req.body)
+  if (!parsed.success) {
+    throw new AppError('VALIDATION_ERROR', 'Invalid stepKey — must be one of profile/dna/agent/channel/number/a2p', 422)
+  }
+
+  const tenant = await prisma.tenant.findUnique({
+    where:  { id: tenantId },
+    select: { onboardingMarkedDone: true },
+  })
+  if (!tenant) throw new AppError('NOT_FOUND', 'Tenant not found', 404)
+
+  const current = (tenant.onboardingMarkedDone ?? {}) as Record<string, boolean>
+  const next = { ...current, [parsed.data.stepKey]: true }
+  await prisma.tenant.update({
+    where: { id: tenantId },
+    data:  { onboardingMarkedDone: next },
+  })
+
+  res.json({ data: { ok: true, markedDone: next } })
 }))
 
 export default router

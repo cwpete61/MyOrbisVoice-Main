@@ -1964,6 +1964,7 @@
       "saveWorkspace": "Save workspace",
       "saveIndustry": "Save industry",
       "saveProfile": "Save profile",
+      "saveAndBackToOnboarding": "Save & Back to Get Started →",
       "cancel": "Cancel"
     },
     "toasts": {
