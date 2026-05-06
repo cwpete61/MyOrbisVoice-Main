@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { Tooltip } from '@/components/Tooltip'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
@@ -24,6 +25,9 @@ const ROLE_ICONS: Record<string, string> = {
 
 export default function AgentsPage() {
   const t = useT()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromOnboarding = searchParams.get('from') === 'onboarding'
   const { locale } = useLocale()
   const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   // Reserved for future date formatting in this page.
@@ -69,6 +73,35 @@ export default function AgentsPage() {
       showToast('success', t('tenantAgents.savedMessage'))
     } catch (err) { showToast('error', err instanceof Error ? err.message : t('tenantAgents.saveFailed')) }
     finally { setSaving(false) }
+  }
+
+  /** Save the currently-selected agent + explicitly mark Step 3 (agent /
+   *  Receptionist) complete on the onboarding checklist + route back. The
+   *  mark is durable in Tenant.onboardingMarkedDone — survives reloads
+   *  and overrides the data-based auto-detection (which requires an
+   *  enabled agent with a bound prompt). */
+  async function saveAgentAndBackToOnboarding() {
+    if (!selected) return
+    setSaving(true)
+    try {
+      await apiFetch(`/api/agents/${selected.agentRoleType}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          displayName:   selected.displayName,
+          isEnabled:     selected.isEnabled,
+          modelProvider: selected.modelProvider,
+          modelName:     selected.modelName,
+        }),
+      })
+      await apiFetch('/api/onboarding/mark-step-done', {
+        method: 'POST',
+        body: JSON.stringify({ stepKey: 'agent' }),
+      })
+      router.push('/onboarding')
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : t('tenantAgents.saveFailed'))
+      setSaving(false)
+    }
   }
 
   if (loading) return (
@@ -226,10 +259,24 @@ export default function AgentsPage() {
                 </div>
               )}
 
-              <div className="pt-2">
+              <div className="pt-2 flex items-center gap-3 flex-wrap">
                 <button onClick={saveAgent} disabled={saving} className="btn-primary">
                   {saving ? t('tenantAgents.actions.saving') : t('tenantAgents.actions.save')}
                 </button>
+                {fromOnboarding && (
+                  <button
+                    onClick={saveAgentAndBackToOnboarding}
+                    disabled={saving}
+                    className="text-sm font-semibold px-4 py-2 rounded-lg"
+                    style={{
+                      background: 'oklch(96% 0.04 193)',
+                      color:      'oklch(35% 0.13 193)',
+                      border:     '1px solid oklch(85% 0.10 193)',
+                    }}
+                  >
+                    {t('common.saveAndBackToOnboarding')}
+                  </button>
+                )}
               </div>
             </div>
           )}
