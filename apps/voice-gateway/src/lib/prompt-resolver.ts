@@ -49,6 +49,22 @@ export function resolveSystemPrompt(
   if (dna) {
     const dnaLines: string[] = ['--- Business Knowledge ---']
     const stringify = (v: unknown) => v ? JSON.stringify(v) : null
+
+    // Emit a prominent named identity directive at the top of the DNA block
+    // so the model uses the agent's persona name and business name reliably
+    // when greeting callers (instead of having to parse them out of the
+    // identityJson dump below).
+    const identity = (dna.identityJson ?? {}) as Record<string, unknown>
+    const agentName = typeof identity['agentName'] === 'string' ? (identity['agentName'] as string).trim() : ''
+    const businessName = typeof identity['businessName'] === 'string' ? (identity['businessName'] as string).trim() : ''
+    if (agentName && businessName) {
+      dnaLines.push(`You are ${agentName}, an AI assistant for ${businessName}. Introduce yourself by name when greeting a caller (for example: "Hi, this is ${agentName} from ${businessName} — how can I help?").`)
+    } else if (agentName) {
+      dnaLines.push(`Your name is ${agentName}. Introduce yourself by name when greeting a caller.`)
+    } else if (businessName) {
+      dnaLines.push(`You represent ${businessName}. Greet callers on behalf of ${businessName}.`)
+    }
+
     if (dna.identityJson)    dnaLines.push(`Identity: ${stringify(dna.identityJson)}`)
     if (dna.servicesJson)    dnaLines.push(`Services: ${stringify(dna.servicesJson)}`)
     if (dna.pricingJson)     dnaLines.push(`Pricing: ${stringify(dna.pricingJson)}`)

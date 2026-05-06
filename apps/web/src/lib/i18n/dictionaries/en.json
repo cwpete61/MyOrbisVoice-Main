@@ -1263,7 +1263,12 @@
       "businessName": {
         "label": "Business name",
         "placeholder": "Acme Plumbing",
-        "description": "The name your agent uses to introduce itself."
+        "description": "Your business's actual name."
+      },
+      "agentName": {
+        "label": "Agent name",
+        "placeholder": "Sarah",
+        "description": "The first name the AI agent uses to introduce itself (e.g. \"Hi, this is Sarah from Acme Plumbing\"). Optional — leave blank for no persona name."
       },
       "tagline": {
         "label": "Tagline",

@@ -59,9 +59,10 @@ function isObj(v: unknown): v is Record<string, unknown> {
 const SECTION_SPECS: Record<DnaSection, SectionSpec> = {
   identity: {
     description:
-      'Generate the business identity for a voice agent: business name, tagline, descriptions, tone, industry, and target customers.',
+      'Generate the business identity for a voice agent: business name, agent persona name, tagline, descriptions, tone, industry, and target customers.',
     schemaExample: `{
-  "businessName": "string",
+  "businessName": "string — the actual company name",
+  "agentName": "string — a friendly first name the AI agent will use to introduce itself (e.g. Sarah, Jordan, Alex). Pick something neutral and easy to pronounce. Optional but recommended.",
   "tagline": "short string under 80 chars",
   "shortDescription": "1-2 sentences for general use",
   "elevatorPitch": "2-3 sentences, conversational, what we do and who for",

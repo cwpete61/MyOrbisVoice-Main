@@ -19,7 +19,7 @@ export const businessDNASchema = z.object({
 export type BusinessDNAInput = z.infer<typeof businessDNASchema>
 
 const DEFAULT_DNA: BusinessDNAInput = {
-  identityJson: { businessName: '', tagline: '', description: '', founded: '', type: '' },
+  identityJson: { businessName: '', agentName: '', tagline: '', description: '', founded: '', type: '' },
   servicesJson: { services: [] },
   pricingJson: { pricingModel: '', startingPrice: '', notes: '' },
   operationsJson: { businessHours: {}, holidays: [], serviceArea: [] },

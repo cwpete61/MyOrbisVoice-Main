@@ -83,7 +83,7 @@ function AiAssistRow({ children }: { children: React.ReactNode }) {
  * ──────────────────────────────────────────────────────────────────────── */
 
 const KNOWN_IDENTITY = [
-  'businessName', 'tagline', 'shortDescription', 'elevatorPitch',
+  'businessName', 'agentName', 'tagline', 'shortDescription', 'elevatorPitch',
   'tone', 'voicePreference', 'industry', 'targetCustomers',
 ]
 
@@ -117,6 +117,14 @@ export function IdentitySection({ value, onChange, disabled }: SectionProps) {
         onChange={(v) => onChange(patch(value, { businessName: v }))}
         placeholder={t('tenantBusinessDna.identity.businessName.placeholder')}
         description={t('tenantBusinessDna.identity.businessName.description')}
+        disabled={disabled}
+      />
+      <TextField
+        label={t('tenantBusinessDna.identity.agentName.label')}
+        value={asString(value['agentName'])}
+        onChange={(v) => onChange(patch(value, { agentName: v }))}
+        placeholder={t('tenantBusinessDna.identity.agentName.placeholder')}
+        description={t('tenantBusinessDna.identity.agentName.description')}
         disabled={disabled}
       />
       <TextField

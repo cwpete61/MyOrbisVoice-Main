@@ -1263,7 +1263,12 @@
       "businessName": {
         "label": "Nombre del negocio",
         "placeholder": "Plomería Acme",
-        "description": "El nombre que tu agente usa para presentarse."
+        "description": "El nombre real de tu negocio."
+      },
+      "agentName": {
+        "label": "Nombre del agente",
+        "placeholder": "Sara",
+        "description": "El nombre con el que el agente de IA se presenta (por ejemplo: \"Hola, soy Sara de Plomería Acme\"). Opcional — déjalo en blanco si no quieres un nombre de persona."
       },
       "tagline": {
         "label": "Eslogan",
