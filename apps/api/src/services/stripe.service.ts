@@ -90,14 +90,21 @@ export async function createCheckoutSession(
   const stripe = getStripe()
   const customerId = await getOrCreateStripeCustomer(tenantId)
 
-  const isOneTime = plan.interval === 'ONE_TIME'
-  const session = await stripe.checkout.sessions.create({
+  // Bundled plan = ONE_TIME plan with a non-null stripeRecurringPriceId.
+  // Today only LTD uses this: $497 one-time at checkout (lifetime access)
+  // PLUS $24.99/mo recurring (token coverage) with a 30-day trial so the
+  // recurring doesn't bill until day 31. Customer pays $497 day 1, then
+  // $24.99/mo from day 31 until they cancel. Cancelling the recurring
+  // does NOT revoke the lifetime entitlements — see customer.subscription
+  // .deleted handler below.
+  const hasRecurringAddon = plan.interval === 'ONE_TIME' && !!plan.stripeRecurringPriceId
+  const isOneTime         = plan.interval === 'ONE_TIME' && !hasRecurringAddon
+
+  const baseSessionConfig = {
     customer: customerId,
-    mode: isOneTime ? 'payment' : 'subscription',
-    line_items: [{ price: plan.stripePriceId, quantity: 1 }],
     success_url: `${env.APP_BASE_URL}/billing?session_id={CHECKOUT_SESSION_ID}&status=success`,
-    cancel_url: `${env.APP_BASE_URL}/billing?status=cancelled`,
-    metadata: { tenantId, planCode },
+    cancel_url:  `${env.APP_BASE_URL}/billing?status=cancelled`,
+    metadata:    { tenantId, planCode },
     // Allow customers to enter a Promotion Code at checkout (e.g. comp codes
     // generated from /admin/comp-codes). Comp codes are 100%-off coupons
     // restricted via `applies_to.products` to the matching plan tier — Stripe
@@ -108,11 +115,41 @@ export async function createCheckoutSession(
     // collection. Stripe only collects a payment method if the final due
     // amount is non-zero. Without this flag, even free subscriptions force a
     // card on file, breaking the comp-code UX.
-    payment_method_collection: 'if_required',
-    ...(isOneTime
-      ? { payment_intent_data: { metadata: { tenantId, planCode } } }
-      : { subscription_data: { metadata: { tenantId, planCode } } }),
-  })
+    payment_method_collection: 'if_required' as const,
+  }
+
+  let session
+  if (hasRecurringAddon) {
+    // LTD-style bundled plan: one-time + recurring with trial
+    session = await stripe.checkout.sessions.create({
+      ...baseSessionConfig,
+      mode: 'subscription',
+      line_items: [
+        { price: plan.stripePriceId,           quantity: 1 },  // $497 one-time
+        { price: plan.stripeRecurringPriceId!, quantity: 1 },  // $24.99/mo
+      ],
+      subscription_data: {
+        metadata:           { tenantId, planCode },
+        trial_period_days:  30,
+      },
+    })
+  } else if (isOneTime) {
+    // Pure one-time payment (no recurring)
+    session = await stripe.checkout.sessions.create({
+      ...baseSessionConfig,
+      mode: 'payment',
+      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+      payment_intent_data: { metadata: { tenantId, planCode } },
+    })
+  } else {
+    // Standard recurring subscription
+    session = await stripe.checkout.sessions.create({
+      ...baseSessionConfig,
+      mode: 'subscription',
+      line_items: [{ price: plan.stripePriceId, quantity: 1 }],
+      subscription_data: { metadata: { tenantId, planCode } },
+    })
+  }
 
   if (!session.url) throw new AppError('INTERNAL_ERROR', 'Failed to create checkout session', 500)
   return { url: session.url }
@@ -494,6 +531,7 @@ async function handleSubscriptionUpdated(stripeSub: StripeSub) {
 
 async function handleSubscriptionDeleted(stripeSub: StripeSub) {
   const tenantId = stripeSub.metadata?.tenantId
+  const planCode = stripeSub.metadata?.planCode
   if (!tenantId) return
 
   await prisma.subscription.updateMany({
@@ -501,6 +539,28 @@ async function handleSubscriptionDeleted(stripeSub: StripeSub) {
     data: { status: 'CANCELED', canceledAt: new Date() },
   })
 
+  // LTD special case: cancelling the recurring ($24.99/mo token coverage)
+  // does NOT revoke lifetime access. The customer paid $497 for the
+  // lifetime deal — that promise is honored regardless of whether they
+  // keep paying for token coverage. Tenant stays on whatever status they
+  // had (typically ACTIVE), entitlements stay, AI features stay enabled.
+  // Audit-log the event so we can see who's running on platform-absorbed
+  // token costs.
+  if (planCode === 'ltd') {
+    writeAuditLog({
+      actorType: 'SYSTEM',
+      action:    'billing.ltd_recurring_canceled',
+      tenantId,
+      metadataJson: {
+        stripeSubscriptionId: stripeSub.id,
+        note: 'LTD recurring token coverage cancelled. Lifetime access preserved per LTD billing design.',
+      },
+    }).catch(() => null)
+    return
+  }
+
+  // Standard path: cancellation downgrades tenant back to TRIAL until they
+  // pick a new plan.
   await prisma.tenant.update({ where: { id: tenantId }, data: { status: 'TRIAL' } })
   writeAuditLog({ actorType: 'SYSTEM', action: 'billing.subscription_canceled', tenantId, metadataJson: { stripeSubscriptionId: stripeSub.id } }).catch(() => null)
 }

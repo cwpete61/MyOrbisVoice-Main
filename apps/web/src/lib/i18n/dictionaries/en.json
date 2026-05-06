@@ -1679,8 +1679,11 @@
     },
     "interval": {
       "perMonth": "per month",
-      "perYear": "per year"
+      "perYear": "per year",
+      "oneTime": "one-time payment",
+      "oneTimePlusRecurring": "$497 once + $24.99/mo"
     },
+    "ltdNote": "Lifetime access. The $24.99/mo covers token usage and starts after a 30-day trial. Cancel the recurring anytime — your lifetime access stays.",
     "actions": {
       "manageSubscription": "Manage subscription →",
       "opening": "Opening…",

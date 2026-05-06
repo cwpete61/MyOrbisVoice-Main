@@ -7,7 +7,11 @@ import { Tooltip } from '@/components/Tooltip'
 
 interface Plan {
   id: string; code: string; name: string; interval: string
+  priceCents: number
   stripePriceId: string | null
+  /** Optional second Stripe price for plans that bundle a one-time charge
+   *  PLUS a recurring add-on (today only LTD: $497 + $24.99/mo). */
+  stripeRecurringPriceId: string | null
   entitlements: Array<{ key: string; valueType: string; booleanValue: boolean | null; integerValue: number | null; stringValue: string | null }>
 }
 interface Subscription {
@@ -208,8 +212,19 @@ export default function BillingPage() {
                   <div>
                     <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{plan.name}</h3>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                      {plan.interval === 'MONTHLY' ? t('tenantBilling.interval.perMonth') : t('tenantBilling.interval.perYear')}
+                      {plan.interval === 'MONTHLY'
+                        ? t('tenantBilling.interval.perMonth')
+                        : plan.interval === 'YEARLY'
+                          ? t('tenantBilling.interval.perYear')
+                          : plan.stripeRecurringPriceId
+                            ? t('tenantBilling.interval.oneTimePlusRecurring')
+                            : t('tenantBilling.interval.oneTime')}
                     </p>
+                    {plan.interval === 'ONE_TIME' && plan.stripeRecurringPriceId && (
+                      <p className="text-xs mt-1 italic" style={{ color: 'var(--text-secondary)' }}>
+                        {t('tenantBilling.ltdNote')}
+                      </p>
+                    )}
                   </div>
                   {isCurrent && (
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'oklch(28% 0.10 193)', color: 'oklch(88% 0.07 193)' }}>

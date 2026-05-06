@@ -409,6 +409,11 @@ model Plan {
   interval      PlanInterval
   priceCents    Int               @default(0)
   stripePriceId String?
+  /// Optional second Stripe price ID, used for plans that bundle a one-time
+  /// charge (`stripePriceId`) PLUS a recurring add-on (this field). Today
+  /// only LTD uses this — $497 one-time for lifetime access plus $24.99/mo
+  /// for token coverage. Standard plans leave this null.
+  stripeRecurringPriceId String?
   isActive      Boolean           @default(true)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt

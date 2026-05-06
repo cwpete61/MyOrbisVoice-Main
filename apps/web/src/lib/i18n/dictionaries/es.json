@@ -1679,8 +1679,11 @@
     },
     "interval": {
       "perMonth": "por mes",
-      "perYear": "por año"
+      "perYear": "por año",
+      "oneTime": "pago único",
+      "oneTimePlusRecurring": "$497 una vez + $24.99/mes"
     },
+    "ltdNote": "Acceso de por vida. Los $24.99/mes cubren el uso de tokens y comienzan después de una prueba de 30 días. Cancela el cargo recurrente cuando quieras — tu acceso de por vida se mantiene.",
     "actions": {
       "manageSubscription": "Administrar suscripción →",
       "opening": "Abriendo…",
