@@ -258,7 +258,7 @@
     "customLinksDesc": "Create your own named slugs (e.g. {a}, {b}) to track campaigns separately. Every click still earns you commission against your main account.",
     "label": "LABEL",
     "labelPlaceholder": "Sarah's podcast",
-    "labelHelp": "Internal name — what you'll see in the list",
+    "labelHelp": "Use spaces only between words",
     "slug": "SLUG",
     "slugAutofilled": "auto-filled from label",
     "slugPlaceholder": "my-campaign",

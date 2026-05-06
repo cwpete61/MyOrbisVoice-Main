@@ -60,8 +60,12 @@ export default function ReferralsPage() {
       .slice(0, 50)
   }
   function onLabelChange(value: string) {
-    setNewLabel(value)
-    if (!slugTouched) setNewSlug(slugify(value))
+    // Only spaces between words: no leading whitespace, no double spaces.
+    // (A single trailing space is preserved while typing so the user can
+    // type the next word; createCustomLink trims on submit.)
+    const cleaned = value.replace(/^\s+/, '').replace(/\s{2,}/g, ' ')
+    setNewLabel(cleaned)
+    if (!slugTouched) setNewSlug(slugify(cleaned))
   }
 
   function loadCustomLinks() {

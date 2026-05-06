@@ -258,7 +258,7 @@
     "customLinksDesc": "Crea tus propios slugs nombrados (p. ej. {a}, {b}) para rastrear campañas por separado. Cada clic te sigue generando comisión en tu cuenta principal.",
     "label": "ETIQUETA",
     "labelPlaceholder": "Podcast de Sara",
-    "labelHelp": "Nombre interno — lo que verás en la lista",
+    "labelHelp": "Usa espacios solo entre palabras",
     "slug": "SLUG",
     "slugAutofilled": "se rellena automáticamente desde la etiqueta",
     "slugPlaceholder": "mi-campaña",
