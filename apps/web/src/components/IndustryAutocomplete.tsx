@@ -11,11 +11,28 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { INDUSTRIES, findIndustry, type Industry } from '@/lib/industries'
 
 interface Props {
-  value:    string                    // current enum code (e.g. "DENTAL")
-  onChange: (code: string) => void
+  /** If `byLabel` is false (default): treated as the enum code (e.g. "DENTAL").
+   *  If `byLabel` is true: treated as the human label (e.g. "Dental offices")
+   *  and onChange fires with the label too — used by free-form fields like
+   *  Business DNA → Identity → Industry that store the label, not the code. */
+  value:    string
+  onChange: (next: string) => void
   locale:   'en' | 'es'
   placeholder?: string
   disabled?: boolean
+  byLabel?: boolean
+}
+
+/** Find an industry by matching its code, EN label, or ES label
+ *  (case-insensitive). Returns undefined for genuinely custom strings. */
+function findIndustryByAny(needle: string): Industry | undefined {
+  if (!needle) return undefined
+  const n = needle.toLowerCase().trim()
+  return INDUSTRIES.find(i =>
+    i.code.toLowerCase() === n ||
+    i.labelEn.toLowerCase() === n ||
+    i.labelEs.toLowerCase() === n,
+  )
 }
 
 function labelFor(ind: Industry, locale: 'en' | 'es'): string {
@@ -34,8 +51,14 @@ function matchesQuery(ind: Industry, locale: 'en' | 'es', q: string): boolean {
   return haystack.includes(needle)
 }
 
-export function IndustryAutocomplete({ value, onChange, locale, placeholder, disabled }: Props) {
-  const selected = findIndustry(value)
+export function IndustryAutocomplete({ value, onChange, locale, placeholder, disabled, byLabel }: Props) {
+  // In byLabel mode the incoming value is a label (or legacy free-form text).
+  // We try to resolve it to a known industry; if it doesn't match anything
+  // we still surface the raw text in the "Currently: …" indicator so users
+  // see what's saved.
+  const selected: Industry | undefined = byLabel
+    ? findIndustryByAny(value)
+    : findIndustry(value)
   // Search field starts empty regardless of saved value. The saved
   // industry is shown as a small "Currently: …" indicator below the
   // input so the user always knows what's stored.
@@ -71,7 +94,7 @@ export function IndustryAutocomplete({ value, onChange, locale, placeholder, dis
   }, [filtered, activeIdx])
 
   function pick(ind: Industry) {
-    onChange(ind.code)
+    onChange(byLabel ? labelFor(ind, locale) : ind.code)
     setQuery('')
     setOpen(false)
   }
@@ -171,11 +194,16 @@ export function IndustryAutocomplete({ value, onChange, locale, placeholder, dis
         </div>
       )}
       {/* Always show the currently saved industry below the input so the
-          user knows what's stored even when the search field is empty. */}
-      {!open && (
+          user knows what's stored even when the search field is empty.
+          If byLabel mode resolved to a known industry, show its localized
+          label; if it didn't resolve (custom legacy text), show the raw
+          value verbatim so we never erase what the user typed before. */}
+      {!open && (value || selected) && (
         <p className="text-xs mt-1.5" style={{ color: 'var(--text-tertiary)' }}>
           {locale === 'es' ? 'Actualmente: ' : 'Currently: '}
-          <strong style={{ color: 'var(--text-secondary)' }}>{labelFor(selected, locale)}</strong>
+          <strong style={{ color: 'var(--text-secondary)' }}>
+            {selected ? labelFor(selected, locale) : value}
+          </strong>
         </p>
       )}
     </div>

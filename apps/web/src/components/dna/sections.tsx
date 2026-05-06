@@ -19,7 +19,8 @@ import {
   type ObjectFieldSchema,
 } from './inputs'
 import { GenerateWithAi } from './generate-with-ai'
-import { useT } from '@/lib/i18n/I18nProvider'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { IndustryAutocomplete } from '../IndustryAutocomplete'
 
 /* ─────────────────────────────────────────────────────────────────────────
  * Type helpers — JSONB is loose; we always validate the shape we read.
@@ -79,6 +80,7 @@ function AiAssistRow({ children }: { children: React.ReactNode }) {
 
 export function IdentitySection({ value, onChange, disabled }: SectionProps) {
   const t = useT()
+  const { locale } = useLocale()
   const VOICE_OPTIONS = [
     { value: '',         label: t('tenantBusinessDna.voiceOptions.none'),  hint: t('tenantBusinessDna.voiceOptions.noneHint') },
     { value: 'Zephyr',   label: 'Zephyr',   hint: t('tenantBusinessDna.voiceOptions.zephyrHint') },
@@ -159,13 +161,17 @@ export function IdentitySection({ value, onChange, disabled }: SectionProps) {
         description={t('tenantBusinessDna.identity.voicePreference.description')}
         disabled={disabled}
       />
-      <TextField
-        label={t('tenantBusinessDna.identity.industry.label')}
-        value={asString(value['industry'])}
-        onChange={(v) => onChange(patch(value, { industry: v }))}
-        placeholder={t('tenantBusinessDna.identity.industry.placeholder')}
-        disabled={disabled}
-      />
+      <div>
+        <label className="label">{t('tenantBusinessDna.identity.industry.label')}</label>
+        <IndustryAutocomplete
+          byLabel
+          value={asString(value['industry'])}
+          onChange={(label) => onChange(patch(value, { industry: label }))}
+          locale={locale === 'es' ? 'es' : 'en'}
+          placeholder={t('tenantBusinessDna.identity.industry.placeholder')}
+          disabled={disabled}
+        />
+      </div>
       <TextArea
         label={t('tenantBusinessDna.identity.targetCustomers.label')}
         value={asString(value['targetCustomers'])}
