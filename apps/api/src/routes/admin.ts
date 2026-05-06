@@ -1000,6 +1000,178 @@ router.post('/a2p/:applicationId/mark-rejected', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ── Phone numbers admin surface ────────────────────────────────────────────
+//
+// Two sources of truth:
+//   - Twilio master-account `incomingPhoneNumbers` list = platform-owned
+//     numbers (not transferred to any subaccount). Used for ops, A2P
+//     testing, support lines.
+//   - Our DB's PhoneNumber table = tenant-assigned numbers (already on
+//     a subaccount). Cross-referenced to show which tenant owns each.
+//
+// Admin can: search Twilio inventory, purchase new platform numbers
+// (stays on master), release platform numbers, and SEE which tenant owns
+// every assigned number.
+
+// GET /api/admin/phone-numbers — full platform-wide inventory
+router.get('/phone-numbers', async (_req, res, next) => {
+  try {
+    const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
+    const masterClient = await getPlatformTwilioClient()
+
+    // Source 1: Twilio master-account numbers (platform-owned, not transferred)
+    const masterNumbers = await masterClient.incomingPhoneNumbers.list({ limit: 200 })
+
+    // Source 2: tenant-assigned numbers from our DB
+    const tenantNumbers = await prisma.phoneNumber.findMany({
+      include: { tenant: { select: { id: true, displayName: true } } },
+      orderBy: { e164Number: 'asc' },
+    })
+
+    res.json({
+      data: {
+        platform: masterNumbers.map(n => ({
+          sid:                n.sid,
+          phoneNumber:        n.phoneNumber,
+          friendlyName:       n.friendlyName,
+          capabilities: {
+            voice: n.capabilities?.voice ?? false,
+            sms:   n.capabilities?.sms ?? false,
+            mms:   n.capabilities?.mms ?? false,
+          },
+          dateCreated:        n.dateCreated?.toISOString() ?? null,
+          accountSid:         n.accountSid,
+          voiceUrl:           n.voiceUrl,
+          smsUrl:             n.smsUrl,
+        })),
+        tenants: tenantNumbers.map(n => ({
+          id:                  n.id,
+          phoneNumber:         n.e164Number,
+          twilioNumberSid:     n.twilioNumberSid,
+          twilioSubaccountSid: n.twilioSubaccountSid,
+          tenantId:            n.tenantId,
+          tenantName:          n.tenant?.displayName ?? null,
+          displayLabel:        n.displayLabel,
+          monthlyPriceCents:   n.monthlyPriceCents,
+          isInboundEnabled:    n.isInboundEnabled,
+          isOutboundEnabled:   n.isOutboundEnabled,
+          isSmsEnabled:        n.isSmsEnabled,
+          forwardingTarget:    n.forwardingTarget,
+        })),
+      },
+    })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/phone-numbers/search — search Twilio inventory for new numbers
+const adminSearchSchema = z.object({
+  areaCode:    z.string().regex(/^\d{3}$/).optional(),
+  pattern:     z.string().max(20).optional(),
+  country:     z.string().length(2).default('US'),
+  limit:       z.number().int().min(1).max(50).default(20),
+})
+
+router.post('/phone-numbers/search', async (req, res, next) => {
+  try {
+    const { areaCode, pattern, country, limit } = adminSearchSchema.parse(req.body)
+    const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
+    const masterClient = await getPlatformTwilioClient()
+
+    const searchOpts: Record<string, unknown> = { limit, voiceEnabled: true, smsEnabled: true }
+    if (areaCode) searchOpts.areaCode = parseInt(areaCode, 10)
+    if (pattern)  searchOpts.contains = pattern
+
+    const list = await masterClient.availablePhoneNumbers(country).local.list(searchOpts as never)
+    res.json({
+      data: list.map(n => ({
+        phoneNumber:    n.phoneNumber,
+        friendlyName:   n.friendlyName,
+        locality:       n.locality ?? null,
+        region:         n.region ?? null,
+        capabilities: {
+          voice: n.capabilities?.voice ?? false,
+          sms:   n.capabilities?.sms ?? false,
+          mms:   n.capabilities?.mms ?? false,
+        },
+        monthlyPriceCents: 115,  // Twilio standard local: $1.15/mo
+      })),
+    })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/phone-numbers/purchase — buy a number for the platform (stays on master)
+const adminPurchaseSchema = z.object({
+  phoneNumber:  z.string().regex(/^\+[1-9]\d{7,14}$/, 'Must be E.164 format'),
+  friendlyName: z.string().max(120).optional(),
+})
+
+router.post('/phone-numbers/purchase', async (req, res, next) => {
+  try {
+    const { phoneNumber, friendlyName } = adminPurchaseSchema.parse(req.body)
+    const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
+    const masterClient = await getPlatformTwilioClient()
+
+    let purchased
+    try {
+      purchased = await masterClient.incomingPhoneNumbers.create({
+        phoneNumber,
+        friendlyName: friendlyName ?? `Platform — ${phoneNumber}`,
+        // Webhook URLs intentionally NOT set — admin can configure later via
+        // Twilio Console if needed. Most platform-owned numbers won't receive
+        // calls (they're for outbound A2P testing / ops).
+      })
+    } catch (e) {
+      const msg = (e as Error).message
+      if (msg.includes('21422') || msg.includes('not available')) {
+        throw new AppError('NOT_FOUND', 'That number is no longer available — search again and pick another.', 404)
+      }
+      throw new AppError('INTERNAL_ERROR', `Twilio purchase failed: ${msg}`, 500)
+    }
+
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.phone_number.purchased_platform',
+      targetType:   'TwilioIncomingPhoneNumber',
+      targetId:     purchased.sid,
+      metadataJson: { phoneNumber, sid: purchased.sid, monthlyPriceCents: 115 },
+    })
+
+    res.status(201).json({
+      data: {
+        sid:          purchased.sid,
+        phoneNumber:  purchased.phoneNumber,
+        friendlyName: purchased.friendlyName,
+        accountSid:   purchased.accountSid,
+      },
+    })
+  } catch (err) { next(err) }
+})
+
+// DELETE /api/admin/phone-numbers/:sid — release a platform-owned number back to Twilio
+router.delete('/phone-numbers/:sid', async (req, res, next) => {
+  try {
+    const { sid } = req.params as { sid: string }
+    if (!sid.startsWith('PN')) throw new AppError('VALIDATION_ERROR', 'Invalid Twilio number SID', 422)
+    const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
+    const masterClient = await getPlatformTwilioClient()
+
+    const before = await masterClient.incomingPhoneNumbers(sid).fetch()
+    await masterClient.incomingPhoneNumbers(sid).remove()
+
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.phone_number.released_platform',
+      targetType:   'TwilioIncomingPhoneNumber',
+      targetId:     sid,
+      metadataJson: { phoneNumber: before.phoneNumber, sid },
+    })
+
+    res.json({ data: { released: true, phoneNumber: before.phoneNumber } })
+  } catch (err) { next(err) }
+})
+
 // Helper to flatten the schema into Prisma-shaped data
 function buildA2PData(d: z.infer<typeof a2pAdminSchema>) {
   return {
