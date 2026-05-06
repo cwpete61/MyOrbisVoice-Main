@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useApi, apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { Tooltip } from '@/components/Tooltip'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface CampaignTemplate {
@@ -484,13 +485,13 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
                 </div>
               </Field>
 
-              <Field label={t('tenantCampaigns.form.triggerTag')} hint={t('tenantCampaigns.form.triggerTagHint')}>
+              <Field label={t('tenantCampaigns.form.triggerTag')} hint={t('tenantCampaigns.form.triggerTagHint')} tooltip={t('tenantCampaigns.tooltips.triggerTag')}>
                 <input value={form.triggerTag} onChange={e => setForm(f => ({ ...f, triggerTag: e.target.value.toLowerCase().replace(/\s+/g, '-') }))}
                   className={inp} placeholder={t('tenantCampaigns.form.triggerTagPlaceholder')} />
               </Field>
 
               {form.enableVoice && (
-                <Field label={t('tenantCampaigns.form.voicePrompt')} hint={t('tenantCampaigns.form.voicePromptHint')}>
+                <Field label={t('tenantCampaigns.form.voicePrompt')} hint={t('tenantCampaigns.form.voicePromptHint')} tooltip={t('tenantCampaigns.tooltips.voicePrompt')}>
                   <textarea value={form.prompt} onChange={e => setForm(f => ({ ...f, prompt: e.target.value }))}
                     className={inp} rows={6} placeholder={t('tenantCampaigns.form.voicePromptPlaceholder')} />
                 </Field>
@@ -527,15 +528,15 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
               )}
 
               <div className="grid grid-cols-3 gap-4">
-                <Field label={t('tenantCampaigns.form.delayHours')} hint={t('tenantCampaigns.form.delayHoursHint')}>
+                <Field label={t('tenantCampaigns.form.delayHours')} hint={t('tenantCampaigns.form.delayHoursHint')} tooltip={t('tenantCampaigns.tooltips.delayHours')}>
                   <input type="number" min={0} value={form.delayHours} onChange={e => setForm(f => ({ ...f, delayHours: Number(e.target.value) }))}
                     className={inp} />
                 </Field>
-                <Field label={t('tenantCampaigns.form.maxRetries')} hint={t('tenantCampaigns.form.maxRetriesHint')}>
+                <Field label={t('tenantCampaigns.form.maxRetries')} hint={t('tenantCampaigns.form.maxRetriesHint')} tooltip={t('tenantCampaigns.tooltips.maxRetries')}>
                   <input type="number" min={0} max={10} value={form.maxRetries} onChange={e => setForm(f => ({ ...f, maxRetries: Number(e.target.value) }))}
                     className={inp} />
                 </Field>
-                <Field label={t('tenantCampaigns.form.retryInterval')}>
+                <Field label={t('tenantCampaigns.form.retryInterval')} tooltip={t('tenantCampaigns.tooltips.retryInterval')}>
                   <input type="number" min={1} value={form.retryIntervalHours} onChange={e => setForm(f => ({ ...f, retryIntervalHours: Number(e.target.value) }))}
                     className={inp} />
                 </Field>
@@ -647,10 +648,12 @@ function Enrollments() {
 }
 
 // ── Shared ────────────────────────────────────────────────────────────────────
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, tooltip, children }: { label: string; hint?: string; tooltip?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-gray-700 mb-1">
+        {tooltip ? <Tooltip content={tooltip}>{label}</Tooltip> : label}
+      </label>
       {children}
       {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
     </div>

@@ -657,6 +657,13 @@
       "maxRetriesHint": "How many times to retry if no answer.",
       "retryInterval": "Retry interval (hours)"
     },
+    "tooltips": {
+      "triggerTag": "When a contact gets this tag (manually OR auto-applied by call outcomes like BOOKED, MISSED_CALL, CALLBACK_REQUESTED, INFO_REQUEST, QUALIFIED_LEAD), the campaign fires for them on every channel you've enabled below. Use lowercase-with-dashes — spaces auto-convert.",
+      "voicePrompt": "What the AI agent says when it calls. Be specific: who's calling, why, what action you want from them. Available variables auto-fill: {firstName}, {fullName}, {businessName}, {businessPhone}, {appointmentDate}, {appointmentTime}. The agent voice + business identity come from your Business DNA — don't repeat them here.",
+      "delayHours": "Time between the tag being applied and the campaign firing. 0 = right away. For example, 24 sends a day-after follow-up, 168 sends a week-after re-engagement. Counts from when the tag was applied, not from the original event (call, booking, etc.).",
+      "maxRetries": "If the channel attempt fails (no answer on voice, undelivered SMS, bounced email), how many MORE attempts before giving up. 0 = single attempt, no retries. 3 = original try plus 3 retries (4 total attempts).",
+      "retryInterval": "Hours between retry attempts. Counted from the LAST attempt, not from the original tag. Example: tag at 9am, delayHours=0, retryInterval=4, maxRetries=2 → first attempt 9am, retry 1 at 1pm, retry 2 at 5pm. Stops once any attempt succeeds."
+    },
     "channels": {
       "voice": "Voice call",
       "voiceSub": "AI agent calls the contact",

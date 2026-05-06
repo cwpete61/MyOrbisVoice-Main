@@ -657,6 +657,13 @@
       "maxRetriesHint": "Cuántas veces reintentar si no contestan.",
       "retryInterval": "Intervalo entre reintentos (horas)"
     },
+    "tooltips": {
+      "triggerTag": "Cuando un contacto recibe esta etiqueta (manualmente O auto-aplicada por resultados de llamada como BOOKED, MISSED_CALL, CALLBACK_REQUESTED, INFO_REQUEST, QUALIFIED_LEAD), la campaña se dispara en cada canal que habilites abajo. Usa minúsculas-con-guiones — los espacios se convierten automáticamente.",
+      "voicePrompt": "Lo que dice el agente de IA cuando llama. Sé específico: quién llama, por qué, qué acción esperas. Variables disponibles que se autocompletan: {firstName}, {fullName}, {businessName}, {businessPhone}, {appointmentDate}, {appointmentTime}. La voz del agente y la identidad del negocio vienen de tu Business DNA — no las repitas aquí.",
+      "delayHours": "Tiempo entre que se aplica la etiqueta y que se dispara la campaña. 0 = de inmediato. Por ejemplo, 24 envía un seguimiento al día siguiente, 168 envía un re-enganche una semana después. Se cuenta desde que se aplicó la etiqueta, no desde el evento original (llamada, reserva, etc.).",
+      "maxRetries": "Si el intento del canal falla (sin respuesta en voz, SMS no entregado, correo rebotado), cuántos intentos MÁS antes de rendirse. 0 = un único intento, sin reintentos. 3 = intento original más 3 reintentos (4 intentos en total).",
+      "retryInterval": "Horas entre reintentos. Se cuenta desde el ÚLTIMO intento, no desde la etiqueta original. Ejemplo: etiqueta a las 9am, delayHours=0, retryInterval=4, maxRetries=2 → primer intento 9am, reintento 1 a la 1pm, reintento 2 a las 5pm. Se detiene cuando algún intento tiene éxito."
+    },
     "channels": {
       "voice": "Llamada de voz",
       "voiceSub": "El agente de IA llama al contacto",
