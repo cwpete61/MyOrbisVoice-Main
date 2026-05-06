@@ -23,6 +23,7 @@ export function AdminNav() {
         { href: '/admin/pricing',     label: 'Pricing',          icon: <PricingIcon /> },
         { href: '/admin/partners',    label: 'Partners',         icon: <AffiliatesIcon /> },
         { href: '/admin/twilio-logs', label: 'Twilio Call Logs', icon: <CallLogsIcon /> },
+        { href: '/admin/a2p',         label: 'A2P 10DLC',        icon: <A2PIcon /> },
         { href: '/admin/errors',      label: 'Errors',           icon: <ErrorsIcon /> },
       ],
     },
@@ -115,6 +116,15 @@ function CallLogsIcon() {
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 2h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
       <path d="M5 6h6M5 8.5h4M5 11h3" />
+    </svg>
+  )
+}
+
+function A2PIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 4h10v6a1 1 0 0 1-1 1H7l-3 2V5a1 1 0 0 1 1-1z" />
+      <path d="M6 7h4" />
     </svg>
   )
 }

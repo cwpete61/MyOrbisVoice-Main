@@ -818,4 +818,209 @@ router.delete('/test-tenants', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ── A2P 10DLC admin surface ────────────────────────────────────────────────
+//
+// Lists every A2P application across the platform (tenant-scope + the single
+// platform-scope row) and lets the admin edit + submit MyOrbisVoice's own
+// platform-level application. The platform application is identified by
+// tenantId IS NULL — the schema allows exactly one such row.
+
+const a2pAdminSchema = z.object({
+  legalName:         z.string().min(2).max(120),
+  ein:               z.string().regex(/^\d{2}-?\d{7}$/, 'EIN must be in XX-XXXXXXX format').optional().or(z.literal('')),
+  businessType:      z.enum(['SOLE_PROP', 'LLC', 'CORP', 'NON_PROFIT', 'PARTNERSHIP']),
+  vertical:          z.string().min(2).max(60),
+  websiteUrl:        z.string().url().optional().or(z.literal('')),
+  addressLine1:      z.string().min(2).max(120),
+  addressLine2:      z.string().max(120).optional().or(z.literal('')),
+  city:              z.string().min(1).max(60),
+  region:            z.string().min(2).max(60),
+  postalCode:        z.string().min(3).max(20),
+  country:           z.string().length(2).default('US'),
+  contactFirstName:  z.string().min(1).max(60),
+  contactLastName:   z.string().min(1).max(60),
+  contactEmail:      z.string().email(),
+  contactPhone:      z.string().min(7).max(20),
+  useCase:           z.enum(['marketing', 'mixed', 'customer_care', '2fa', 'utility']),
+  sampleMessages:    z.array(z.string().min(10).max(1600)).min(1).max(10),
+})
+
+// GET /api/admin/a2p — list every A2P application across the platform
+router.get('/a2p', async (_req, res, next) => {
+  try {
+    const apps = await prisma.tenantA2PApplication.findMany({
+      orderBy: [{ status: 'asc' }, { updatedAt: 'desc' }],
+      include: {
+        tenant: { select: { id: true, displayName: true } },
+      },
+    })
+    const platformApp = apps.find(a => a.tenantId === null) ?? null
+    const tenantApps  = apps.filter(a => a.tenantId !== null)
+    res.json({ data: { platform: platformApp, tenants: tenantApps } })
+  } catch (err) { next(err) }
+})
+
+// GET /api/admin/a2p/:tenantId — view a specific tenant's application
+// (read-only — admins inspect, tenants edit). Use 'platform' as the special
+// id for the platform-scope application.
+router.get('/a2p/:tenantId', async (req, res, next) => {
+  try {
+    const { tenantId } = req.params as { tenantId: string }
+    const app = tenantId === 'platform'
+      ? await prisma.tenantA2PApplication.findFirst({
+          where: { tenantId: null },
+          include: { tenant: { select: { id: true, displayName: true } } },
+        })
+      : await prisma.tenantA2PApplication.findUnique({
+          where: { tenantId },
+          include: { tenant: { select: { id: true, displayName: true } } },
+        })
+    if (!app) throw new AppError('NOT_FOUND', 'A2P application not found', 404)
+    res.json({ data: app })
+  } catch (err) { next(err) }
+})
+
+// PUT /api/admin/a2p/platform — upsert the platform-scope (MyOrbisVoice's own)
+// A2P application. Status starts as DRAFT; submit endpoint flips it.
+router.put('/a2p/platform', async (req, res, next) => {
+  try {
+    const data = a2pAdminSchema.parse(req.body)
+    const userId = req.user!.id
+
+    const existing = await prisma.tenantA2PApplication.findFirst({ where: { tenantId: null } })
+    if (existing && existing.status !== 'DRAFT' && existing.status !== 'REJECTED') {
+      throw new AppError('CONFLICT', `Platform application is in ${existing.status} status — cannot edit`, 409)
+    }
+
+    const upserted = existing
+      ? await prisma.tenantA2PApplication.update({
+          where: { id: existing.id },
+          data: { ...buildA2PData(data), status: 'DRAFT', rejectionReason: null },
+        })
+      : await prisma.tenantA2PApplication.create({
+          data: { tenantId: null, ...buildA2PData(data), status: 'DRAFT' },
+        })
+
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  userId,
+      action:       'admin.a2p.platform.updated',
+      targetType:   'TenantA2PApplication',
+      targetId:     upserted.id,
+      metadataJson: { useCase: upserted.useCase, vertical: upserted.vertical },
+    })
+
+    res.json({ data: upserted })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/a2p/platform/submit — flip platform application DRAFT → SUBMITTED.
+// Until Trust Hub automation lands, this is a status-only flip; admin then
+// posts the captured data to Twilio Trust Hub Console manually.
+router.post('/a2p/platform/submit', async (req, res, next) => {
+  try {
+    const userId = req.user!.id
+    const app = await prisma.tenantA2PApplication.findFirst({ where: { tenantId: null } })
+    if (!app) throw new AppError('NOT_FOUND', 'Fill out the platform application first', 404)
+    if (app.status !== 'DRAFT' && app.status !== 'REJECTED') {
+      throw new AppError('CONFLICT', `Platform application is in ${app.status} status — cannot submit`, 409)
+    }
+    const updated = await prisma.tenantA2PApplication.update({
+      where: { id: app.id },
+      data:  { status: 'SUBMITTED', submittedAt: new Date(), rejectionReason: null },
+    })
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  userId,
+      action:       'admin.a2p.platform.submitted',
+      targetType:   'TenantA2PApplication',
+      targetId:     updated.id,
+      metadataJson: { useCase: updated.useCase, vertical: updated.vertical },
+    })
+    res.json({ data: updated })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/a2p/:applicationId/mark-approved — admin manually flips
+// status to APPROVED after they've posted the data to Twilio Trust Hub
+// Console and Twilio approved the brand + campaign. Records the Twilio SIDs
+// so we know which Brand/Campaign goes with which application.
+router.post('/a2p/:applicationId/mark-approved', async (req, res, next) => {
+  try {
+    const { applicationId } = req.params as { applicationId: string }
+    const { brandSid, campaignSid, customerProfileSid } = req.body as {
+      brandSid?: string
+      campaignSid?: string
+      customerProfileSid?: string
+    }
+    const updated = await prisma.tenantA2PApplication.update({
+      where: { id: applicationId },
+      data:  {
+        status:                   'APPROVED',
+        approvedAt:               new Date(),
+        rejectionReason:          null,
+        twilioBrandSid:           brandSid           ?? null,
+        twilioCampaignSid:        campaignSid        ?? null,
+        twilioCustomerProfileSid: customerProfileSid ?? null,
+      },
+    })
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.a2p.marked_approved',
+      targetType:   'TenantA2PApplication',
+      targetId:     applicationId,
+      metadataJson: { brandSid, campaignSid, customerProfileSid },
+    })
+    res.json({ data: updated })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/a2p/:applicationId/mark-rejected — admin manually flips
+// status to REJECTED with a reason after Twilio rejected the application.
+// Tenant sees the reason and can edit + resubmit.
+router.post('/a2p/:applicationId/mark-rejected', async (req, res, next) => {
+  try {
+    const { applicationId } = req.params as { applicationId: string }
+    const { reason } = req.body as { reason: string }
+    if (!reason) throw new AppError('VALIDATION_ERROR', 'Reason is required', 422)
+    const updated = await prisma.tenantA2PApplication.update({
+      where: { id: applicationId },
+      data:  { status: 'REJECTED', rejectionReason: reason },
+    })
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.a2p.marked_rejected',
+      targetType:   'TenantA2PApplication',
+      targetId:     applicationId,
+      metadataJson: { reason },
+    })
+    res.json({ data: updated })
+  } catch (err) { next(err) }
+})
+
+// Helper to flatten the schema into Prisma-shaped data
+function buildA2PData(d: z.infer<typeof a2pAdminSchema>) {
+  return {
+    legalName:         d.legalName,
+    ein:               d.ein || null,
+    businessType:      d.businessType,
+    vertical:          d.vertical,
+    websiteUrl:        d.websiteUrl || null,
+    addressLine1:      d.addressLine1,
+    addressLine2:      d.addressLine2 || null,
+    city:              d.city,
+    region:            d.region,
+    postalCode:        d.postalCode,
+    country:           d.country,
+    contactFirstName:  d.contactFirstName,
+    contactLastName:   d.contactLastName,
+    contactEmail:      d.contactEmail,
+    contactPhone:      d.contactPhone,
+    useCase:           d.useCase,
+    sampleMessagesJson: d.sampleMessages,
+  }
+}
+
 export default router

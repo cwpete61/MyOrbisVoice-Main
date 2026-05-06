@@ -669,7 +669,11 @@ enum TwilioSubaccountStatus {
 // until then this stores the data so we can submit in bulk once unblocked.
 model TenantA2PApplication {
   id                    String              @id @default(uuid())
-  tenantId              String              @unique
+  /// Null for platform-scope (MyOrbisVoice's own A2P registration on the
+  /// master Twilio account). Set for tenant-scope (each tenant's
+  /// subaccount registration). At most one row per tenant + at most one
+  /// platform-scope row.
+  tenantId              String?             @unique
   legalName             String              // exact business legal name (matches EIN registration)
   ein                   String?             // US EIN — optional for sole-prop
   businessType          String              // SOLE_PROP / LLC / CORP / NON_PROFIT etc.
@@ -696,7 +700,7 @@ model TenantA2PApplication {
   approvedAt            DateTime?
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
-  tenant                Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                Tenant?             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 enum A2PApplicationStatus {
