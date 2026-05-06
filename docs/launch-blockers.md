@@ -10,18 +10,6 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ## 🔴 Pre-launch must-do (blocks first paying customer)
 
-### 2. Submit Twilio toll-free verification
-
-**What:** Submit the package drafted at [docs/twilio-toll-free-verification.md](twilio-toll-free-verification.md) via the Twilio console.
-
-**Why:** Toll-free numbers are blocked by carriers from sending real SMS until they're verified. Until this is in, tenants who use toll-free numbers can't actually send messages.
-
-**Owner:** You (Twilio Console, ~10 min to submit; then 2-5 business days in Twilio's queue).
-
-**Verifies done when:** Twilio Console shows the toll-free number's verification status as "Approved."
-
----
-
 ### 3. Recruit ONE real partner for live Stripe Connect onboarding
 
 **What:** Have one trusted person (you, a co-founder, a close customer) complete Stripe Express Connect onboarding via the Partner Portal in **live mode** (with real SSN, real bank, real KYC).
@@ -75,6 +63,18 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 ---
 
 ## 🔵 External wait queues (no action — just track)
+
+### 2. Twilio toll-free verification — not a launch blocker
+
+**What:** Submit the package drafted at [docs/twilio-toll-free-verification.md](twilio-toll-free-verification.md) via the Twilio console when convenient.
+
+**Why this is NOT a launch blocker:** Toll-free SMS is one outbound channel among several (email works today, voice inbound works today, in-app notifications work today). First customers can run their full receptionist + partner program flow without it. Submit when there's a customer who specifically wants outbound SMS from a toll-free number.
+
+**Owner:** You (Twilio Console, ~10 min to submit; then 2-5 business days in Twilio's queue).
+
+**Verifies done when:** Twilio Console shows the toll-free number's verification status as "Approved."
+
+---
 
 ### 7. Twilio A2P 10DLC approval
 
