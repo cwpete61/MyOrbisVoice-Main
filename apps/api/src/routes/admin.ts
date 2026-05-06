@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { authenticate } from '../middleware/authenticate.js'
 import { requirePlatformAdmin } from '../middleware/rbac.js'
 import * as adminService from '../services/admin.service.js'
+import * as compCodeService from '../services/comp-code.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { getEnv } from '@voiceautomation/config'
 import { prisma } from '../lib/prisma.js'
@@ -1450,5 +1451,98 @@ function buildA2PData(d: z.infer<typeof a2pAdminSchema>) {
     sampleMessagesJson: d.sampleMessages,
   }
 }
+
+// ── Comp codes (single-use 100%-off Stripe promotion codes) ───────────────
+//
+// Generates and tracks tier-scoped, single-use promo codes that grant 100%
+// off a specific plan. Stripe is the source of truth — no parallel DB
+// table. See apps/api/src/services/comp-code.service.ts for the model and
+// docs/runbook-comp-codes-setup.md for the one-time Stripe Dashboard setup.
+
+const compCodeCreateSchema = z.object({
+  tier:           z.enum(['BASIC', 'PRO', 'PREMIER', 'ENTERPRISE']),
+  recipientName:  z.string().min(1).max(200),
+  recipientEmail: z.string().email(),
+  purpose:        z.string().max(500).optional().or(z.literal('')),
+})
+
+function validateCompCode(data: unknown): z.infer<typeof compCodeCreateSchema> {
+  const result = compCodeCreateSchema.safeParse(data)
+  if (!result.success) {
+    const fields: Record<string, string[]> = {}
+    for (const issue of result.error.issues) {
+      const key = issue.path.join('.') || 'root'
+      fields[key] = [...(fields[key] ?? []), issue.message]
+    }
+    throw new AppError('VALIDATION_ERROR', 'Invalid input', 422, fields)
+  }
+  return result.data
+}
+
+// GET /api/admin/comp-codes/config-status — which tiers have a coupon
+// configured in Stripe Dashboard. Used by the admin UI to grey out tiers
+// that aren't ready yet.
+router.get('/comp-codes/config-status', async (_req, res, next) => {
+  try {
+    res.json({ data: await compCodeService.getConfigStatus() })
+  } catch (err) { next(err) }
+})
+
+// GET /api/admin/comp-codes — list all comp codes, optional tier filter
+router.get('/comp-codes', async (req, res, next) => {
+  try {
+    const rawTier = (req.query as Record<string, string>)['tier']
+    const filters: { tier?: 'BASIC' | 'PRO' | 'PREMIER' | 'ENTERPRISE' } = {}
+    if (rawTier && ['BASIC', 'PRO', 'PREMIER', 'ENTERPRISE'].includes(rawTier)) {
+      filters.tier = rawTier as 'BASIC' | 'PRO' | 'PREMIER' | 'ENTERPRISE'
+    }
+    res.json({ data: await compCodeService.listCompCodes(filters) })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/comp-codes — generate a fresh single-use comp code
+router.post('/comp-codes', async (req, res, next) => {
+  try {
+    const body = validateCompCode(req.body)
+    const created = await compCodeService.generateCompCode({
+      tier:           body.tier,
+      recipientName:  body.recipientName,
+      recipientEmail: body.recipientEmail,
+      purpose:        body.purpose || undefined,
+      generatedBy:    req.user!.id,
+    })
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.comp_code.generated',
+      targetType:   'PromotionCode',
+      targetId:     created.id,
+      metadataJson: {
+        tier:           created.tier,
+        code:           created.code,
+        recipientEmail: created.recipientEmail,
+        recipientName:  created.recipientName,
+      },
+    })
+    res.status(201).json({ data: created })
+  } catch (err) { next(err) }
+})
+
+// DELETE /api/admin/comp-codes/:id — disable an unredeemed comp code
+router.delete('/comp-codes/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params as { id: string }
+    const updated = await compCodeService.disableCompCode(id)
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.comp_code.disabled',
+      targetType:   'PromotionCode',
+      targetId:     id,
+      metadataJson: { tier: updated.tier, code: updated.code },
+    })
+    res.json({ data: updated })
+  } catch (err) { next(err) }
+})
 
 export default router

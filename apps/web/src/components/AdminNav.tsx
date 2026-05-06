@@ -21,6 +21,7 @@ export function AdminNav() {
         { href: '/admin/tenants',     label: 'Tenants',          icon: <TenantsIcon /> },
         { href: '/admin/plans',       label: 'Plans',            icon: <PlansIcon /> },
         { href: '/admin/pricing',     label: 'Pricing',          icon: <PricingIcon /> },
+        { href: '/admin/comp-codes',  label: 'Comp Codes',       icon: <CompCodesIcon /> },
         { href: '/admin/partners',    label: 'Partners',         icon: <AffiliatesIcon /> },
         { href: '/admin/phone-numbers', label: 'Phone Numbers',  icon: <PhoneIcon /> },
         { href: '/admin/twilio-logs', label: 'Twilio Call Logs', icon: <CallLogsIcon /> },
@@ -162,6 +163,17 @@ function PricingIcon() {
       <path d="M9.5 1.5h-5L1.5 4.5l6.5 9 6.5-9z" />
       <path d="M1.5 4.5h13" />
       <path d="M5.5 4.5l2.5 9 2.5-9" />
+    </svg>
+  )
+}
+
+function CompCodesIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1.5" y="3.5" width="13" height="9" rx="1" />
+      <path d="M1.5 8h13" />
+      <path d="M5 5.5l1 1m0-1l-1 1" />
+      <path d="M5 10.5l1 1m0-1l-1 1" />
     </svg>
   )
 }

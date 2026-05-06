@@ -2553,5 +2553,61 @@
         "OTHER":                "Otra"
       }
     }
+  },
+  "adminCompCodes": {
+    "title":    "Códigos de Cortesía",
+    "subtitle": "Genera códigos promocionales de un solo uso con 100% de descuento para tenants a quienes quieras dar cortesía en un plan específico. Cada código está restringido a su nivel (un código de Premier solo puede canjearse en el checkout de Premier) y se invalida tras el primer canje.",
+    "loading":  "Cargando…",
+    "setupBanner": {
+      "title":          "Configuración requerida",
+      "missingTiers":   "No hay cupón de cortesía configurado en Stripe para: {tiers}.",
+      "instructionsPrefix": "Consulta el ",
+      "instructionsLink":   "manual de configuración de códigos de cortesía",
+      "instructionsSuffix": " para crear los cupones faltantes en el panel de Stripe. Los generadores de abajo permanecen desactivados hasta que exista el cupón de cada nivel."
+    },
+    "stripeNotConfigured": "Stripe no está configurado. Establece STRIPE_SECRET_KEY en Admin → Configuración del sistema primero.",
+    "generators": {
+      "title":           "Generar un código de cortesía",
+      "tierLabel":       "Nivel de plan",
+      "recipientNameLabel":  "Nombre del destinatario",
+      "recipientNamePlaceholder": "p. ej. Bob Smith",
+      "recipientEmailLabel": "Correo del destinatario",
+      "recipientEmailPlaceholder": "bob@ejemplo.com",
+      "purposeLabel":    "Propósito (opcional)",
+      "purposePlaceholder": "p. ej. agradecimiento beta, adopción temprana, alianza",
+      "generate":        "Generar código",
+      "generating":      "Generando…",
+      "disabledForTier": "Cupón no configurado para este nivel",
+      "successPrefix":   "Código generado:",
+      "successCopy":     "Copiar",
+      "successCopied":   "¡Copiado!",
+      "successDismiss":  "Cerrar"
+    },
+    "table": {
+      "filterAll":     "Todos los niveles",
+      "filterTier":    "Filtrar por nivel",
+      "code":          "Código",
+      "tier":          "Nivel",
+      "recipient":     "Destinatario",
+      "purpose":       "Propósito",
+      "status":        "Estado",
+      "generatedBy":   "Generado por",
+      "generatedAt":   "Generado",
+      "actions":       "Acciones",
+      "empty":         "Aún no se han generado códigos de cortesía.",
+      "emptyFiltered": "No hay códigos de cortesía para este nivel."
+    },
+    "status": {
+      "active":   "Activo",
+      "redeemed": "Canjeado",
+      "disabled": "Desactivado"
+    },
+    "actions": {
+      "disable":         "Desactivar",
+      "disabling":       "Desactivando…",
+      "disableConfirm":  "¿Desactivar el código {code}? Esto es permanente y no se puede deshacer.",
+      "disableSuccess":  "Código {code} desactivado.",
+      "disableFailed":   "No se pudo desactivar el código: {reason}"
+    }
   }
 }

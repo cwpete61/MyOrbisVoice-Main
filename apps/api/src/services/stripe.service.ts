@@ -98,6 +98,17 @@ export async function createCheckoutSession(
     success_url: `${env.APP_BASE_URL}/billing?session_id={CHECKOUT_SESSION_ID}&status=success`,
     cancel_url: `${env.APP_BASE_URL}/billing?status=cancelled`,
     metadata: { tenantId, planCode },
+    // Allow customers to enter a Promotion Code at checkout (e.g. comp codes
+    // generated from /admin/comp-codes). Comp codes are 100%-off coupons
+    // restricted via `applies_to.products` to the matching plan tier — Stripe
+    // enforces that scope, so a Premier comp code cannot be redeemed against
+    // an Enterprise checkout.
+    allow_promotion_codes: true,
+    // For $0 subscriptions (after a 100%-off comp code is applied) skip card
+    // collection. Stripe only collects a payment method if the final due
+    // amount is non-zero. Without this flag, even free subscriptions force a
+    // card on file, breaking the comp-code UX.
+    payment_method_collection: 'if_required',
     ...(isOneTime
       ? { payment_intent_data: { metadata: { tenantId, planCode } } }
       : { subscription_data: { metadata: { tenantId, planCode } } }),
