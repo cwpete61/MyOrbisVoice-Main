@@ -21,6 +21,39 @@
 
 import { AppError } from '@voiceautomation/shared'
 import { getStripe } from '../lib/stripe.js'
+import { prisma } from '../lib/prisma.js'
+
+/** Map tier enum (used in Stripe coupon metadata) → Plan.code (DB row). */
+const TIER_TO_PLAN_CODE: Record<'BASIC' | 'PRO' | 'PREMIER' | 'ENTERPRISE', string> = {
+  BASIC:      'basic_monthly',
+  PRO:        'pro_monthly',
+  PREMIER:    'premier_monthly',
+  ENTERPRISE: 'enterprise_monthly',
+}
+
+/**
+ * Build the "magic" Stripe checkout URL that lands the recipient on a fully
+ * pre-filled checkout — plan loaded, email populated, comp code applied.
+ * Recipient just clicks Subscribe.
+ *
+ * Returns null if the plan has no stripeBuyLinkUrl configured (admin needs
+ * to create the Payment Link in Stripe and store its URL on the Plan row).
+ */
+async function buildCheckoutUrl(
+  tier:           'BASIC' | 'PRO' | 'PREMIER' | 'ENTERPRISE',
+  recipientEmail: string,
+  code:           string,
+): Promise<string | null> {
+  const plan = await prisma.plan.findUnique({
+    where:  { code: TIER_TO_PLAN_CODE[tier] },
+    select: { stripeBuyLinkUrl: true },
+  })
+  if (!plan?.stripeBuyLinkUrl) return null
+  const params = new URLSearchParams()
+  params.set('prefilled_email', recipientEmail)
+  params.set('prefilled_promo_code', code)
+  return `${plan.stripeBuyLinkUrl}?${params.toString()}`
+}
 
 /** Returns the Stripe client if STRIPE_SECRET_KEY is configured, else null.
  *  Lets read endpoints (config-status, list) degrade to empty/false rather
@@ -68,6 +101,9 @@ export interface CompCodeListItem {
   timesRedeemed:    number
   maxRedemptions:   number
   redeemed:         boolean        // shorthand: timesRedeemed >= maxRedemptions
+  /** Magic checkout URL with email + promo code pre-filled. Null if the
+   *  Plan row has no stripeBuyLinkUrl configured. */
+  checkoutUrl:      string | null
 }
 
 // In-memory cache of tier → coupon ID. 60s TTL. Stripe is the source of
@@ -198,7 +234,9 @@ export async function generateCompCode(input: GenerateInput): Promise<CompCodeLi
     }
   }
 
-  return formatCompCode(promo as unknown as RawPromo)
+  const formatted = formatCompCode(promo as unknown as RawPromo)
+  formatted.checkoutUrl = await buildCheckoutUrl(input.tier, input.recipientEmail, formatted.code)
+  return formatted
 }
 
 interface RawPromo {
@@ -228,6 +266,7 @@ function formatCompCode(promo: RawPromo): CompCodeListItem {
     timesRedeemed:  promo.times_redeemed,
     maxRedemptions: max,
     redeemed:       promo.times_redeemed >= max,
+    checkoutUrl:    null,  // populated by callers that need it (one DB read per call to buildCheckoutUrl)
   }
 }
 
@@ -257,6 +296,26 @@ export async function listCompCodes(filters?: { tier?: CompCodeTier }): Promise<
   })
 
   const formatted = ours.map(p => formatCompCode(p as unknown as RawPromo))
+
+  // Resolve buyLinkUrl per tier ONCE, then build the magic checkout URL for
+  // each comp code without an extra DB hit per row.
+  const tierBuyLinks = new Map<CompCodeTier, string | null>()
+  for (const tier of COMP_TIERS) {
+    const plan = await prisma.plan.findUnique({
+      where:  { code: TIER_TO_PLAN_CODE[tier] },
+      select: { stripeBuyLinkUrl: true },
+    })
+    tierBuyLinks.set(tier, plan?.stripeBuyLinkUrl ?? null)
+  }
+  for (const item of formatted) {
+    const buyUrl = tierBuyLinks.get(item.tier)
+    if (!buyUrl) continue
+    const params = new URLSearchParams({
+      prefilled_email:      item.recipientEmail,
+      prefilled_promo_code: item.code,
+    })
+    item.checkoutUrl = `${buyUrl}?${params.toString()}`
+  }
 
   if (filters?.tier) return formatted.filter(c => c.tier === filters.tier)
   return formatted

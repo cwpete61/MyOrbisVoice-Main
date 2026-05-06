@@ -422,6 +422,13 @@ model Plan {
   /// only LTD uses this — $497 one-time for lifetime access plus $24.99/mo
   /// for token coverage. Standard plans leave this null.
   stripeRecurringPriceId String?
+  /// Public Stripe Payment Link URL for this plan (https://buy.stripe.com/...).
+  /// Used by the comp-codes admin page to give admins a one-click share link
+  /// that the recipient can open to land directly in Stripe checkout with the
+  /// right price loaded — `?prefilled_email=` and `?prefilled_promo_code=`
+  /// query params are appended at link-generation time. Created via the
+  /// Stripe API once per plan and reused.
+  stripeBuyLinkUrl String?
   isActive      Boolean           @default(true)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt

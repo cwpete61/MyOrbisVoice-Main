@@ -1488,6 +1488,22 @@ router.get('/comp-codes/config-status', async (_req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// GET /api/admin/comp-codes/buy-links — list all 5 plan tiers (Basic, Pro,
+// Premier, Enterprise, LTD) with their Stripe Payment Link URLs. The
+// standalone link-generator section in the admin UI uses this to let an
+// admin pick any tier (including LTD) and generate a "share this buy link
+// with email pre-filled" URL — separate from comp codes.
+router.get('/comp-codes/buy-links', async (_req, res, next) => {
+  try {
+    const plans = await prisma.plan.findMany({
+      where:  { isActive: true, stripeBuyLinkUrl: { not: null } },
+      select: { code: true, name: true, stripeBuyLinkUrl: true, priceCents: true, interval: true },
+      orderBy: { priceCents: 'asc' },
+    })
+    res.json({ data: plans })
+  } catch (err) { next(err) }
+})
+
 // GET /api/admin/comp-codes — list all comp codes, optional tier filter
 router.get('/comp-codes', async (req, res, next) => {
   try {

@@ -2667,10 +2667,25 @@
       "generate":        "Generar código",
       "generating":      "Generando…",
       "disabledForTier": "Cupón no configurado para este nivel",
-      "successPrefix":   "Código generado:",
+      "successPrefix":   "Código generado — envía el enlace y el código al destinatario.",
+      "successCodeLabel": "Código de cortesía",
+      "successUrlLabel":  "Enlace directo al checkout (correo y código ya cargados)",
+      "successCopyBundle": "Copiar código + enlace como mensaje",
+      "successBundleTemplate": "Usa este código de cortesía: {code}\n\nEnlace directo al checkout (correo cargado, código aplicado): {url}",
+      "successNoUrl":    "No se generó enlace al checkout — este nivel no tiene un Stripe Payment Link configurado. El destinatario puede canjear el código en /billing.",
       "successCopy":     "Copiar",
       "successCopied":   "¡Copiado!",
       "successDismiss":  "Cerrar"
+    },
+    "directLink": {
+      "title":            "Enlace directo al checkout (sin código de cortesía)",
+      "subtitle":         "Elige un nivel y un correo del destinatario para generar una URL de checkout de Stripe con el correo ya cargado. Útil para LTD o para cualquier nivel donde el destinatario va a pagar el precio completo.",
+      "tierLabel":        "Nivel del plan",
+      "emailLabel":       "Correo del destinatario",
+      "emailPlaceholder": "comprador@ejemplo.com",
+      "generate":         "Generar enlace",
+      "copy":             "Copiar enlace",
+      "noPlans":          "Ningún plan tiene un Stripe Payment Link configurado todavía. Créalos en el Dashboard de Stripe o sigue el runbook de configuración de comp codes."
     },
     "table": {
       "filterAll":     "Todos los niveles",

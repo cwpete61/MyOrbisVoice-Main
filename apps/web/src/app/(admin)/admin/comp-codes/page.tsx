@@ -35,6 +35,15 @@ interface CompCode {
   timesRedeemed:    number
   maxRedemptions:   number
   redeemed:         boolean
+  checkoutUrl:      string | null
+}
+
+interface BuyLinkPlan {
+  code:             string
+  name:             string
+  stripeBuyLinkUrl: string
+  priceCents:       number
+  interval:         'MONTHLY' | 'ONE_TIME'
 }
 
 type ConfigStatus = Record<CompTier, boolean>
@@ -88,12 +97,13 @@ interface GeneratorState {
   busy:           boolean
   error:          string | null
   lastCode:       string | null
-  copied:         boolean
+  lastUrl:        string | null
+  copiedField:    'code' | 'url' | 'bundle' | null
 }
 
 const INITIAL_GEN: GeneratorState = {
   recipientName: '', recipientEmail: '', purpose: '',
-  busy: false, error: null, lastCode: null, copied: false,
+  busy: false, error: null, lastCode: null, lastUrl: null, copiedField: null,
 }
 
 function GeneratorCard({
@@ -128,7 +138,8 @@ function GeneratorCard({
         busy: false,
         error: null,
         lastCode: created.code,
-        copied: false,
+        lastUrl: created.checkoutUrl,
+        copiedField: null,
         recipientName: '', recipientEmail: '', purpose: '',
       })
       onGenerated()
@@ -137,11 +148,10 @@ function GeneratorCard({
     }
   }
 
-  async function copy() {
-    if (!state.lastCode) return
-    await navigator.clipboard.writeText(state.lastCode)
-    patch({ copied: true })
-    setTimeout(() => patch({ copied: false }), 1500)
+  async function copyText(text: string, field: 'code' | 'url' | 'bundle') {
+    await navigator.clipboard.writeText(text)
+    patch({ copiedField: field })
+    setTimeout(() => patch({ copiedField: null }), 1500)
   }
 
   const disabled = !configured || state.busy
@@ -216,27 +226,187 @@ function GeneratorCard({
       )}
 
       {state.lastCode && (
-        <div className="mt-3 rounded-lg p-3" style={{ background: 'oklch(95% 0.05 145)', border: '1px solid oklch(80% 0.08 145)' }}>
-          <p className="text-xs mb-2" style={{ color: 'oklch(35% 0.16 145)' }}>
-            {t('adminCompCodes.generators.successPrefix')}
-          </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 font-mono text-sm font-semibold break-all" style={{ color: 'oklch(25% 0.16 145)' }}>
-              {state.lastCode}
-            </code>
+        <div className="mt-3 rounded-lg p-3 space-y-2.5" style={{ background: 'oklch(95% 0.05 145)', border: '1px solid oklch(80% 0.08 145)' }}>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold" style={{ color: 'oklch(35% 0.16 145)' }}>
+              {t('adminCompCodes.generators.successPrefix')}
+            </p>
             <button
-              onClick={copy}
-              className="px-2 py-1 rounded text-xs"
-              style={{ background: state.copied ? 'oklch(80% 0.10 145)' : 'white', color: 'oklch(35% 0.16 145)', border: '1px solid oklch(80% 0.08 145)' }}
-            >
-              {state.copied ? t('adminCompCodes.generators.successCopied') : t('adminCompCodes.generators.successCopy')}
-            </button>
-            <button
-              onClick={() => patch({ lastCode: null })}
+              onClick={() => patch({ lastCode: null, lastUrl: null })}
               className="text-xs"
               style={{ color: 'oklch(45% 0.10 145)', background: 'transparent', border: 'none' }}
             >
               {t('adminCompCodes.generators.successDismiss')}
+            </button>
+          </div>
+
+          {/* Comp code row */}
+          <div>
+            <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'oklch(45% 0.10 145)' }}>
+              {t('adminCompCodes.generators.successCodeLabel')}
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 font-mono text-sm font-semibold break-all" style={{ color: 'oklch(25% 0.16 145)' }}>
+                {state.lastCode}
+              </code>
+              <button
+                onClick={() => copyText(state.lastCode!, 'code')}
+                className="px-2 py-1 rounded text-xs"
+                style={{ background: state.copiedField === 'code' ? 'oklch(80% 0.10 145)' : 'white', color: 'oklch(35% 0.16 145)', border: '1px solid oklch(80% 0.08 145)' }}
+              >
+                {state.copiedField === 'code' ? t('adminCompCodes.generators.successCopied') : t('adminCompCodes.generators.successCopy')}
+              </button>
+            </div>
+          </div>
+
+          {/* Magic checkout URL row */}
+          {state.lastUrl ? (
+            <div>
+              <p className="text-[10px] uppercase tracking-wide mb-1" style={{ color: 'oklch(45% 0.10 145)' }}>
+                {t('adminCompCodes.generators.successUrlLabel')}
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 font-mono text-[11px] break-all" style={{ color: 'oklch(25% 0.16 145)' }}>
+                  {state.lastUrl}
+                </code>
+                <button
+                  onClick={() => copyText(state.lastUrl!, 'url')}
+                  className="px-2 py-1 rounded text-xs whitespace-nowrap"
+                  style={{ background: state.copiedField === 'url' ? 'oklch(80% 0.10 145)' : 'white', color: 'oklch(35% 0.16 145)', border: '1px solid oklch(80% 0.08 145)' }}
+                >
+                  {state.copiedField === 'url' ? t('adminCompCodes.generators.successCopied') : t('adminCompCodes.generators.successCopy')}
+                </button>
+              </div>
+              <button
+                onClick={() => copyText(
+                  t('adminCompCodes.generators.successBundleTemplate', { code: state.lastCode!, url: state.lastUrl! }),
+                  'bundle',
+                )}
+                className="mt-2 w-full px-2 py-1.5 rounded text-xs font-medium"
+                style={{ background: state.copiedField === 'bundle' ? 'oklch(80% 0.10 145)' : 'oklch(55% 0.11 193)', color: 'white', border: 'none' }}
+              >
+                {state.copiedField === 'bundle' ? t('adminCompCodes.generators.successCopied') : t('adminCompCodes.generators.successCopyBundle')}
+              </button>
+            </div>
+          ) : (
+            <p className="text-[11px]" style={{ color: 'oklch(50% 0.05 75)' }}>
+              {t('adminCompCodes.generators.successNoUrl')}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Standalone "Direct Buy Link" generator. Picks any of the 5 tiers
+ * (Basic / Pro / Premier / Enterprise / LTD) and an email; produces a
+ * shareable Stripe checkout URL with the email pre-filled. No comp code
+ * is involved — this is for sharing a paid-purchase link, including LTD
+ * which is not on the comp-code grid.
+ */
+function DirectBuyLinkGenerator({ plans }: { plans: BuyLinkPlan[] }) {
+  const t = useT()
+  const [planCode, setPlanCode] = useState<string>(plans[0]?.code ?? '')
+  const [email, setEmail] = useState('')
+  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const selectedPlan = plans.find(p => p.code === planCode) ?? null
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+
+  function generate() {
+    if (!selectedPlan || !validEmail) return
+    const params = new URLSearchParams({ prefilled_email: email.trim() })
+    setGeneratedUrl(`${selectedPlan.stripeBuyLinkUrl}?${params.toString()}`)
+    setCopied(false)
+  }
+
+  async function copy() {
+    if (!generatedUrl) return
+    await navigator.clipboard.writeText(generatedUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  if (plans.length === 0) {
+    return (
+      <div
+        className="rounded-xl p-5 text-sm"
+        style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-tertiary)' }}
+      >
+        {t('adminCompCodes.directLink.noPlans')}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="rounded-xl p-5"
+      style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
+    >
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+          {t('adminCompCodes.directLink.title')}
+        </h3>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+          {t('adminCompCodes.directLink.subtitle')}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <select
+          value={planCode}
+          onChange={e => { setPlanCode(e.target.value); setGeneratedUrl(null) }}
+          className="px-3 py-2 rounded-lg text-sm"
+          style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+          aria-label={t('adminCompCodes.directLink.tierLabel')}
+        >
+          {plans.map(p => (
+            <option key={p.code} value={p.code}>{p.name}</option>
+          ))}
+        </select>
+        <input
+          type="email"
+          value={email}
+          onChange={e => { setEmail(e.target.value); setGeneratedUrl(null) }}
+          placeholder={t('adminCompCodes.directLink.emailPlaceholder')}
+          aria-label={t('adminCompCodes.directLink.emailLabel')}
+          className="px-3 py-2 rounded-lg text-sm sm:col-span-1"
+          style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+        />
+        <button
+          onClick={generate}
+          disabled={!validEmail || !selectedPlan}
+          className="px-4 py-2 rounded-lg text-sm font-semibold"
+          style={{
+            background: 'oklch(55% 0.11 193)',
+            color: 'white',
+            opacity: validEmail && selectedPlan ? 1 : 0.45,
+            cursor: validEmail && selectedPlan ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {t('adminCompCodes.directLink.generate')}
+        </button>
+      </div>
+
+      {generatedUrl && (
+        <div className="mt-3 rounded-lg p-3" style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)' }}>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 font-mono text-[11px] break-all" style={{ color: 'var(--text-primary)' }}>
+              {generatedUrl}
+            </code>
+            <button
+              onClick={copy}
+              className="px-2 py-1 rounded text-xs whitespace-nowrap"
+              style={{
+                background: copied ? 'oklch(85% 0.10 145)' : 'oklch(55% 0.11 193)',
+                color: copied ? 'oklch(30% 0.16 145)' : 'white',
+                border: 'none',
+              }}
+            >
+              {copied ? t('adminCompCodes.generators.successCopied') : t('adminCompCodes.directLink.copy')}
             </button>
           </div>
         </div>
@@ -250,6 +420,7 @@ export default function AdminCompCodesPage() {
   const { locale } = useLocale()
   const [config, setConfig]     = useState<ConfigStatus | null>(null)
   const [codes, setCodes]       = useState<CompCode[] | null>(null)
+  const [buyLinks, setBuyLinks] = useState<BuyLinkPlan[]>([])
   const [error, setError]       = useState<string | null>(null)
   const [filter, setFilter]     = useState<CompTier | 'ALL'>('ALL')
   const [disabling, setDisabling] = useState<string | null>(null)
@@ -257,12 +428,14 @@ export default function AdminCompCodesPage() {
 
   async function loadAll() {
     try {
-      const [c, list] = await Promise.all([
+      const [c, list, links] = await Promise.all([
         apiFetch<ConfigStatus>('/api/admin/comp-codes/config-status'),
         apiFetch<CompCode[]>('/api/admin/comp-codes'),
+        apiFetch<BuyLinkPlan[]>('/api/admin/comp-codes/buy-links'),
       ])
       setConfig(c)
       setCodes(list)
+      setBuyLinks(links)
       setError(null)
     } catch (e) {
       setError((e as Error).message)
@@ -378,6 +551,10 @@ export default function AdminCompCodesPage() {
           ))}
         </div>
       </div>
+
+      {/* Standalone direct-buy-link generator — covers all 5 tiers including
+          LTD, no comp code involved. Lives below the comp-code cards. */}
+      <DirectBuyLinkGenerator plans={buyLinks} />
 
       <div>
         <div className="flex items-center justify-between mb-3">
