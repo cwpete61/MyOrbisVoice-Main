@@ -63,8 +63,10 @@ export function IndustryAutocomplete({ value, onChange, locale, placeholder, dis
   // industry is shown as a small "Currently: …" indicator below the
   // input so the user always knows what's stored.
   const [query, setQuery]   = useState<string>('')
-  const [open, setOpen]     = useState(false)
   const [activeIdx, setIdx] = useState(0)
+  // The dropdown only appears once the user has typed something. No
+  // browse-by-default — keeps the UI clean and forces type-to-search.
+  const open = query.trim().length > 0
   const wrapRef             = useRef<HTMLDivElement>(null)
   const listRef             = useRef<HTMLDivElement>(null)
 
@@ -75,7 +77,6 @@ export function IndustryAutocomplete({ value, onChange, locale, placeholder, dis
       if (!wrapRef.current) return
       if (!wrapRef.current.contains(e.target as Node)) {
         setQuery('')
-        setOpen(false)
       }
     }
     document.addEventListener('mousedown', onDocClick)
@@ -84,7 +85,7 @@ export function IndustryAutocomplete({ value, onChange, locale, placeholder, dis
 
   const filtered = useMemo(() => {
     const q = query.trim()
-    if (q === '') return INDUSTRIES
+    if (q === '') return [] as Industry[]   // never show a list while empty
     return INDUSTRIES.filter(i => matchesQuery(i, locale, q))
   }, [query, locale])
 
@@ -96,15 +97,10 @@ export function IndustryAutocomplete({ value, onChange, locale, placeholder, dis
   function pick(ind: Industry) {
     onChange(byLabel ? labelFor(ind, locale) : ind.code)
     setQuery('')
-    setOpen(false)
   }
 
   function onKey(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (!open && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-      setOpen(true)
-      e.preventDefault()
-      return
-    }
+    if (!open) return  // arrow keys do nothing while the dropdown is closed
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setIdx(i => Math.min(filtered.length - 1, i + 1))
@@ -118,7 +114,6 @@ export function IndustryAutocomplete({ value, onChange, locale, placeholder, dis
       const choice = filtered[activeIdx]
       if (choice) pick(choice)
     } else if (e.key === 'Escape') {
-      setOpen(false)
       setQuery('')
     }
   }
@@ -134,8 +129,7 @@ export function IndustryAutocomplete({ value, onChange, locale, placeholder, dis
       <input
         type="text"
         value={query}
-        onChange={(e) => { setQuery(e.target.value); setOpen(true); setIdx(0) }}
-        onFocus={() => setOpen(true)}
+        onChange={(e) => { setQuery(e.target.value); setIdx(0) }}
         onKeyDown={onKey}
         placeholder={placeholder}
         disabled={disabled}
