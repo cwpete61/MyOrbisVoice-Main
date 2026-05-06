@@ -22,7 +22,8 @@
     "capture-screenshots": "tsx scripts/capture-screenshots.ts",
     "preflight": "tsx scripts/preflight.ts",
     "smoke-test": "tsx scripts/smoke-test.ts",
-    "latency-report": "tsx scripts/latency-report.ts"
+    "latency-report": "tsx scripts/latency-report.ts",
+    "watch-partner-onboarding": "tsx scripts/watch-partner-onboarding.ts"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
