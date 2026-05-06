@@ -134,16 +134,16 @@ interface FieldConfig {
 }
 
 const WORKSPACE_FIELDS: FieldConfig[] = [
-  { key: 'displayName', labelKey: 'tenantSettings.workspace.fields.displayName', placeholderKey: 'tenantSettings.workspace.fields.displayNamePlaceholder' },
-  { key: 'legalName',   labelKey: 'tenantSettings.workspace.fields.legalName',   placeholderKey: 'tenantSettings.workspace.fields.legalNamePlaceholder' },
-  { key: 'publicEmail', labelKey: 'tenantSettings.workspace.fields.publicEmail', placeholderKey: 'tenantSettings.workspace.fields.publicEmailPlaceholder', type: 'email' },
-  { key: 'publicPhone', labelKey: 'tenantSettings.workspace.fields.publicPhone', placeholderKey: 'tenantSettings.workspace.fields.publicPhonePlaceholder' },
-  { key: 'website',     labelKey: 'tenantSettings.workspace.fields.website',     placeholderKey: 'tenantSettings.workspace.fields.websitePlaceholder', type: 'url' },
+  { key: 'displayName', labelKey: 'tenantSettings.workspace.fields.displayName', placeholderKey: 'tenantSettings.workspace.fields.displayNamePlaceholder', tooltipKey: 'tenantSettings.workspace.fields.displayNameTooltip' },
+  { key: 'legalName',   labelKey: 'tenantSettings.workspace.fields.legalName',   placeholderKey: 'tenantSettings.workspace.fields.legalNamePlaceholder',   tooltipKey: 'tenantSettings.workspace.fields.legalNameTooltip' },
+  { key: 'publicEmail', labelKey: 'tenantSettings.workspace.fields.publicEmail', placeholderKey: 'tenantSettings.workspace.fields.publicEmailPlaceholder', type: 'email', tooltipKey: 'tenantSettings.workspace.fields.publicEmailTooltip' },
+  { key: 'publicPhone', labelKey: 'tenantSettings.workspace.fields.publicPhone', placeholderKey: 'tenantSettings.workspace.fields.publicPhonePlaceholder', tooltipKey: 'tenantSettings.workspace.fields.publicPhoneTooltip' },
+  { key: 'website',     labelKey: 'tenantSettings.workspace.fields.website',     placeholderKey: 'tenantSettings.workspace.fields.websitePlaceholder', type: 'url', tooltipKey: 'tenantSettings.workspace.fields.websiteTooltip' },
   { key: 'timezone',    labelKey: 'tenantSettings.workspace.fields.timezone',    placeholderKey: 'tenantSettings.workspace.fields.timezonePlaceholder', tooltipKey: 'tenantSettings.workspace.fields.timezoneTooltip' },
 ]
 
 const PROFILE_FIELDS: FieldConfig[] = [
-  { key: 'brandName',                 labelKey: 'tenantSettings.profile.fields.brandName',                 placeholderKey: 'tenantSettings.profile.fields.brandNamePlaceholder' },
+  { key: 'brandName',                 labelKey: 'tenantSettings.profile.fields.brandName',                 placeholderKey: 'tenantSettings.profile.fields.brandNamePlaceholder', tooltipKey: 'tenantSettings.profile.fields.brandNameTooltip' },
   { key: 'addressLine1',              labelKey: 'tenantSettings.profile.fields.addressLine1',              placeholderKey: 'tenantSettings.profile.fields.addressLine1Placeholder' },
   { key: 'city',                      labelKey: 'tenantSettings.profile.fields.city',                      placeholderKey: 'tenantSettings.profile.fields.cityPlaceholder' },
   { key: 'region',                    labelKey: 'tenantSettings.profile.fields.region',                    placeholderKey: 'tenantSettings.profile.fields.regionPlaceholder' },

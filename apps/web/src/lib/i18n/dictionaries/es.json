@@ -1893,14 +1893,19 @@
       "fields": {
         "displayName": "Nombre para mostrar",
         "displayNamePlaceholder": "Acme Corp",
+        "displayNameTooltip": "Cómo se refieren los clientes a tu negocio. El agente lo dice al saludar (\"Gracias por llamar a Acme Corp…\") y al generar correos. Manténlo corto y reconocible.",
         "legalName": "Razón social",
         "legalNamePlaceholder": "Acme Corporation LLC (opcional)",
+        "legalNameTooltip": "Tu nombre legal completo (con LLC / Inc. / etc.). Se usa en facturas, recibos de reembolso y registros de cliente en Stripe. Opcional — si lo dejas vacío, se usa el nombre para mostrar.",
         "publicEmail": "Correo público",
         "publicEmailPlaceholder": "hola@acme.com",
+        "publicEmailTooltip": "El correo visible para clientes que el agente ofrece para enviar seguimientos. Distinto del correo de notificaciones — este es el que ven y al que pueden responder los clientes.",
         "publicPhone": "Teléfono público",
         "publicPhonePlaceholder": "+1 555 000 0000",
+        "publicPhoneTooltip": "El número que el agente menciona a los clientes (ej. \"Puedes contactarnos al…\"). Usualmente tu línea principal. Formato: +CódigoPaís seguido de dígitos.",
         "website": "Sitio web",
         "websitePlaceholder": "https://acme.com",
+        "websiteTooltip": "Tu sitio web. El agente lo menciona cuando preguntan \"¿tienen sitio?\" o lo incluye en correos de seguimiento. Debe incluir https://.",
         "timezone": "Zona horaria",
         "timezonePlaceholder": "America/New_York",
         "timezoneTooltip": "Identificador IANA (ej. America/New_York, Europe/Madrid). El agente lo usa para programar citas y decir \"estamos abiertos de 9am a 5pm\" en la hora local correcta."
@@ -1937,6 +1942,7 @@
       "fields": {
         "brandName": "Nombre de la marca",
         "brandNamePlaceholder": "Acme",
+        "brandNameTooltip": "El nombre corto y comercial (distinto a la razón social) que se usa en presentaciones de voz del agente, firmas de correo y el widget de tu sitio. Si el nombre para mostrar es \"Acme Corp\", la marca puede ser solo \"Acme\".",
         "addressLine1": "Dirección",
         "addressLine1Placeholder": "Av. Principal 123",
         "city": "Ciudad",

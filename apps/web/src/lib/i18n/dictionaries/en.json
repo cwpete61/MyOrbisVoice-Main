@@ -1893,14 +1893,19 @@
       "fields": {
         "displayName": "Display name",
         "displayNamePlaceholder": "Acme Corp",
+        "displayNameTooltip": "How your business is referred to in conversation. The agent says this when greeting callers (\"Thanks for calling Acme Corp…\") and when generating email templates. Keep it short and recognizable.",
         "legalName": "Legal name",
         "legalNamePlaceholder": "Acme Corporation LLC (optional)",
+        "legalNameTooltip": "Your full registered business name (with LLC / Inc. / etc.). Used on customer invoices, refund receipts, and Stripe customer records. Optional — if blank, display name is used everywhere.",
         "publicEmail": "Public email",
         "publicEmailPlaceholder": "hello@acme.com",
+        "publicEmailTooltip": "The customer-facing email shown to callers when the agent offers to send a follow-up. Different from the notification email — this is what your customers see and reply to.",
         "publicPhone": "Public phone",
         "publicPhonePlaceholder": "+1 555 000 0000",
+        "publicPhoneTooltip": "The phone number the agent quotes to callers (e.g. \"You can reach us back at this number\"). Usually your main business line. Format: +CountryCode followed by digits.",
         "website": "Website",
         "websitePlaceholder": "https://acme.com",
+        "websiteTooltip": "Your business website. Mentioned by the agent when callers ask \"do you have a site?\" or when sending follow-up emails with links. Must include https://.",
         "timezone": "Timezone",
         "timezonePlaceholder": "America/New_York",
         "timezoneTooltip": "IANA timezone identifier (e.g. America/New_York, Europe/Madrid). The agent uses this for scheduling appointments and saying \"we're open from 9am to 5pm\" in the right local time."
@@ -1937,6 +1942,7 @@
       "fields": {
         "brandName": "Brand name",
         "brandNamePlaceholder": "Acme",
+        "brandNameTooltip": "The short, marketable name (different from legal name) used in agent voice introductions, email signatures, and your website widget. If display name is \"Acme Corp\", brand name might just be \"Acme\".",
         "addressLine1": "Address",
         "addressLine1Placeholder": "123 Main St",
         "city": "City",
