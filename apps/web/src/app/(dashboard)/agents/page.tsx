@@ -76,7 +76,7 @@ export default function AgentsPage() {
     <div className="space-y-6 animate-pulse">
       <BackToOnboarding markStepKey="agent" />
       <div className="h-7 w-32 rounded-lg" style={{ background: 'var(--border-subtle)' }} />
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {[...Array(6)].map((_, i) => <div key={i} className="h-24 rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }} />)}
       </div>
     </div>
@@ -189,7 +189,7 @@ export default function AgentsPage() {
                     placeholder={t('tenantAgents.fields.displayName.placeholder')}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="label flex items-center">
                       <Tooltip content={t('tenantAgents.fields.modelProvider.tooltip')}>{t('tenantAgents.fields.modelProvider.label')}</Tooltip>

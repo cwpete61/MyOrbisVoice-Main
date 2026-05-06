@@ -254,7 +254,7 @@ export default function ContactsPage() {
       {showForm && (
         <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantContacts.form.newContactTitle')}</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={lbl} style={{ color: 'var(--text-secondary)' }}>{t('tenantContacts.form.firstName')}</label>
               <input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className={inp} placeholder={t('tenantContacts.form.firstNamePlaceholder')} />

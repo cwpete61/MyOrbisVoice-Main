@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { I18nProvider } from '@/lib/i18n/I18nProvider'
@@ -6,6 +6,12 @@ import { I18nProvider } from '@/lib/i18n/I18nProvider'
 export const metadata: Metadata = {
   title: 'MyOrbisVoice',
   description: 'AI voice automation for your business',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -66,7 +66,7 @@ export default function AffiliateSignupPage() {
           {error && <div className="alert-error mb-5">{error}</div>}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="label">{t('partnerSignup.firstName')}</label>
                 <input type="text" autoFocus autoComplete="given-name" value={form.firstName} onChange={e => set('firstName', e.target.value)} className="input" placeholder={t('partnerSignup.firstNamePlaceholder')} />

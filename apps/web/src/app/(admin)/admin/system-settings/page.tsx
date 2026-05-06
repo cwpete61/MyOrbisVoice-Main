@@ -698,7 +698,7 @@ export default function SystemSettingsPage() {
                         Current: {t.quotaGb} GB · {t.retentionDays ? `${t.retentionDays}d retention` : 'Forever'} · {t.gracePeriodDays}d grace
                       </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
                         <label className={labelCls}>Quota (GB)</label>
                         <input type="number" min="0.1" step="0.5" className={inputCls}
@@ -854,7 +854,7 @@ export default function SystemSettingsPage() {
               configured={true}
             />
             <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                   { label: 'Default quota',      value: `${data?.storage?.defaultQuotaGb ?? 1} GB` },
                   { label: 'Warning threshold',  value: `${data?.storage?.warningThresholdPct ?? 90}%` },
@@ -910,7 +910,7 @@ export default function SystemSettingsPage() {
 
             {affSettings && (
               <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {[
                     { label: 'Commission rate', value: `${affSettings.commissionRatePct}%` },
                     { label: 'Cookie duration',  value: `${affSettings.cookieDurationDays} days` },
@@ -1144,8 +1144,8 @@ export default function SystemSettingsPage() {
           <StatusRow label="From"     value={data?.smtp?.from ?? null} />
         </div>
         <form onSubmit={saveSmtp} className="px-6 py-5 space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2">
               <label className={labelCls}>SMTP Host</label>
               <input className={inputCls} value={smtp.host} onChange={e => setSmtp(p => ({ ...p, host: e.target.value }))} placeholder="smtp.sendgrid.net" autoComplete="off" />
             </div>

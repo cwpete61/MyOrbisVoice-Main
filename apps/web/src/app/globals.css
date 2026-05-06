@@ -121,6 +121,14 @@
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
 
+  html, body {
+    /* Safety net: never let the document scroll horizontally on mobile.
+       Individual scrollable regions (tables, code blocks) opt-in via
+       overflow-x:auto on their own container. */
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   html {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;

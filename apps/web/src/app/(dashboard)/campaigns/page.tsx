@@ -396,7 +396,7 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
   const showForm = editing !== null || showNew
 
   return (
-    <div className="grid grid-cols-5 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
       {/* Campaign list */}
       <div className="col-span-2 space-y-2">
         <button onClick={startNew} className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-teal-400 hover:text-teal-600 transition-colors">
@@ -456,7 +456,7 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
               </Field>
 
               <Field label={t('tenantCampaigns.form.channels')} hint={t('tenantCampaigns.form.channelsHint')}>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <ChannelToggle
                     label={t('tenantCampaigns.channels.voice')}
                     sublabel={t('tenantCampaigns.channels.voiceSub')}
@@ -527,7 +527,7 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
                 </Field>
               )}
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Field label={t('tenantCampaigns.form.delayHours')} hint={t('tenantCampaigns.form.delayHoursHint')} tooltip={t('tenantCampaigns.tooltips.delayHours')}>
                   <input type="number" min={0} value={form.delayHours} onChange={e => setForm(f => ({ ...f, delayHours: Number(e.target.value) }))}
                     className={inp} />

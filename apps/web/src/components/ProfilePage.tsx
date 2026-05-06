@@ -244,7 +244,7 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
       <Section title={t('profile.personalInfo')} description={t('profile.personalInfoDesc')}>
         {profileToast && <Toast {...profileToast} />}
         <form onSubmit={saveProfile} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">{t('profile.firstName')}</label>
               <input className="input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder={t('profile.firstNamePlaceholder')} />

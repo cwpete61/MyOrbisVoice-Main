@@ -301,7 +301,7 @@ export default function ChannelsPage() {
         <div className="alert-success mb-4">{message}</div>
       )}
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {(channels ?? []).map((c) => {
           const keys = CHANNEL_KEYS[c.channelType]
           // A channel is "locked" when the tenant's plan doesn't include it.

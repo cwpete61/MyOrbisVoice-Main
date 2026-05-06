@@ -97,7 +97,7 @@ function ChannelCard({
         </p>
       </div>
       <ProgressBar value={sent} max={included || null} unit="msg" t={t} />
-      <div className="grid grid-cols-3 gap-2 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
         <div>
           <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{sent}</p>
           <p className="text-xs flex items-center" style={{ color: 'var(--text-tertiary)' }}>
@@ -211,7 +211,7 @@ export default function UsagePage() {
               {t('tenantUsage.overageSection.title')}
             </Tooltip>
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
             {[
               { key: 'sms',      label: t('tenantUsage.channels.sms'),      cents: data.overageCharges.smsCents },
               { key: 'mms',      label: t('tenantUsage.channels.mms'),      cents: data.overageCharges.mmsCents },

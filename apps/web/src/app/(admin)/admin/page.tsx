@@ -37,7 +37,7 @@ export default function AdminOverviewPage() {
 
       {/* Stats */}
       {cards.length > 0 && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {cards.map((c) => (
             <div key={c.label} className="rounded-xl px-6 py-5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
               <p className="text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>{c.label}</p>

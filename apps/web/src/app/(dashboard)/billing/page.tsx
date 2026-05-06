@@ -158,7 +158,7 @@ export default function BillingPage() {
             </div>
 
             {/* Entitlements */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-5">
               {sub.plan.entitlements.map((e) => {
                 const tooltipKey = `tenantBilling.entitlementTooltips.${e.key}`
                 const tooltipText = t(tooltipKey)

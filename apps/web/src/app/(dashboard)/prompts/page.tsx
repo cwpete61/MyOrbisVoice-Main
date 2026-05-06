@@ -140,7 +140,7 @@ export default function PromptsPage() {
               {t('tenantPrompts.actions.cancelGlyph')}
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">{t('tenantPrompts.fields.name.label')}</label>
               <input

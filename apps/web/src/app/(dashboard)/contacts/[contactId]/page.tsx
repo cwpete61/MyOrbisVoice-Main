@@ -105,7 +105,7 @@ export default function ContactTimelinePage() {
 
       {msg && <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">{msg}</div>}
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Contact info */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
           <h2 className="text-sm font-medium text-gray-900">Contact info</h2>

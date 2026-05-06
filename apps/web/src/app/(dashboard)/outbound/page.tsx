@@ -469,7 +469,7 @@ function CampaignDetail({
         )}
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 border-t border-gray-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2 border-t border-gray-100">
           {[
             { label: t('tenantOutbound.detail.stats.totalContacts'), value: totalAttempts },
             { label: t('tenantOutbound.detail.stats.answered'), value: answered },

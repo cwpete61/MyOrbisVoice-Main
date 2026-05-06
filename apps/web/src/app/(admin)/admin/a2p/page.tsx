@@ -107,7 +107,7 @@ function CopyableField({ label, value }: { label: string; value: string | null |
     setTimeout(() => setCopied(false), 1500)
   }
   return (
-    <div className="grid grid-cols-3 gap-3 py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
       <span className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>{label}</span>
       <span className="col-span-2 text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
         <span className="font-mono break-all">{value}</span>

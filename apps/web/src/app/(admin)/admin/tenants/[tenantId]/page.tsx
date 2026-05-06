@@ -158,7 +158,7 @@ export default function AdminTenantDetailPage() {
   if (loading) return (
     <div className="space-y-4 animate-pulse">
       <div className="h-7 w-48 rounded-lg" style={{ background: 'var(--border-subtle)' }} />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {[...Array(4)].map((_, i) => <div key={i} className="h-40 rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }} />)}
       </div>
     </div>
@@ -270,7 +270,7 @@ export default function AdminTenantDetailPage() {
 
         {/* Activity */}
         <Card title="Activity">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               { label: 'Conversations', value: tenant._count.conversations },
               { label: 'Appointments',  value: tenant._count.appointments },
@@ -367,7 +367,7 @@ export default function AdminTenantDetailPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <div>
               <label className="label">Assign storage tier</label>
               <select className="input" value={selectedTier} onChange={e => setSelectedTier(e.target.value)}>

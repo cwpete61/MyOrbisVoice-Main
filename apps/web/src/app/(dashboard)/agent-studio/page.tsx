@@ -517,7 +517,7 @@ function WidgetTab({ channel, onSaved }: { channel: ChannelConfig | undefined; o
           </div>
         </div>
 
-        <div className="grid grid-cols-6 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
           {filteredAvatars.map(avatar => {
             const Comp = avatar.component
             return (
@@ -543,7 +543,7 @@ function WidgetTab({ channel, onSaved }: { channel: ChannelConfig | undefined; o
           <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantAgentStudio.widget.voiceTitle')}</p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{t('tenantAgentStudio.widget.voiceDesc')}</p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
           {VOICES.map(v => (
             <VoiceCard key={v.id} voice={v} selected={selectedVoice === v.id} onClick={() => setSelectedVoice(v.id)} />
           ))}
@@ -617,7 +617,7 @@ function VoiceOnlyTab({ channelType, channel, onSaved }: { channelType: string; 
             Select the voice your {label.toLowerCase()} speaks with on calls
           </p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
           {VOICES.map(v => (
             <VoiceCard key={v.id} voice={v} selected={selectedVoice === v.id} onClick={() => setSelectedVoice(v.id)} />
           ))}

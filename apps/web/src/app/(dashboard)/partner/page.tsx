@@ -185,7 +185,7 @@ export default function AffiliatePage() {
               Share your unique referral link and earn commission for every customer who signs up and subscribes.
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-4 text-sm max-w-sm mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm max-w-sm mx-auto">
             {[
               [`${settings?.commissionRatePct ?? 20}%`, 'Commission rate'],
               [`${settings?.cookieDurationDays ?? 30} days`, 'Cookie window'],
@@ -317,7 +317,7 @@ export default function AffiliatePage() {
 
               {/* Charts */}
               {daily && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     { title: 'Clicks (30 days)', data: daily.clicks, key: 'clicks' as const, color: 'oklch(55% 0.11 193)' },
                     { title: 'Conversions (30 days)', data: daily.conversions, key: 'conversions' as const, color: 'oklch(55% 0.15 145)' },
@@ -425,7 +425,7 @@ export default function AffiliatePage() {
               </div>
 
               {stats && (
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
                     { label: 'Available', value: cents(stats.approvedCents), note: 'Ready to request' },
                     { label: 'On hold',   value: cents(stats.holdCents),     note: 'Payout processing' },
