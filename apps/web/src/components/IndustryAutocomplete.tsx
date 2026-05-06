@@ -41,14 +41,11 @@ function labelFor(ind: Industry, locale: 'en' | 'es'): string {
 
 function matchesQuery(ind: Industry, locale: 'en' | 'es', q: string): boolean {
   if (!q) return true
-  const needle = q.toLowerCase()
-  const haystack = [
-    ind.labelEn.toLowerCase(),
-    ind.labelEs.toLowerCase(),
-    ind.code.toLowerCase().replace(/_/g, ' '),
-    (ind.searchTerms ?? '').toLowerCase(),
-  ].join(' ')
-  return haystack.includes(needle)
+  // Strict prefix match against the displayed label only — type "c" and
+  // see only industries whose label starts with C, just like jumping to
+  // a letter in an alphabetized list.
+  const label = (locale === 'es' ? ind.labelEs : ind.labelEn).toLowerCase()
+  return label.startsWith(q.toLowerCase())
 }
 
 export function IndustryAutocomplete({ value, onChange, locale, placeholder, disabled, byLabel }: Props) {
