@@ -1688,12 +1688,14 @@ Items below are confirmed product requirements. Implement them in order of depen
 | 17 | Twilio testing path completion | 🟡 IN-FLIGHT |
 | 18 | WhatsApp dispatch | 🔵 DEFERRED — pending Meta Business verification |
 | 19 | Outbound voice carrier reputation | 🔵 DEFERRED — pending A2P 10DLC + STIR/SHAKEN attestation |
+| 20 | Self-service A2P 10DLC registration wizard (tenants only) | ❌ TODO — build AFTER soft-launch when manual-A2P pain is observed; ~7-10 working days; full Twilio Trust Hub API automation, no Console clicking |
 
 **Open work — incremental, not blocking launch:**
 - **#3 Agent latency tuning** — telemetry now captures real distributions; tune VAD / prompt-size only after baseline data exists across real production calls
 - **#6 Tooltips per-field sweep** — editorial work across remaining pages, driven by user-confusion feedback rather than a single big push
 - **#14 Screenshot capture** — gated by feature-testing sprint (intentional)
 - **#15-19 Twilio / outbound voice** — all blocked on external approvals (A2P 10DLC, toll-free verification, Meta Business, carrier reputation)
+- **#20 A2P self-service wizard (tenants only)** — gated by post-soft-launch friction signal; no use building it until we know which fields actually trip tenants up
 
 There are no remaining TODO items the team can close without external signal.
 
@@ -2249,3 +2251,59 @@ A help center with stale or missing screenshots erodes user trust and increases 
 - Day A2P clears, voice reputation almost certainly improves and these calls start ringing through with no further code changes.
 
 **Resolved 2026-05-04:** the originally-unauthorized purchase of `+19296403810` (Twilio SID `PN8cdda6a103...`, $1.15/mo on master account) was decided KEEP by the user. Now an authorized platform resource. Marked outbound + voice + SMS enabled on test tenant `4259d0f4-b160-4b12-83d1-b7ed0f101c2c` in PhoneNumber table. The "no purchases without explicit yes" rule still holds going forward — see `feedback_no_unauthorized_purchases.md` in memory.
+
+---
+
+### 20. Self-service A2P 10DLC registration wizard (TENANTS ONLY) — ❌ TODO
+
+**⚠ Scope clarification — TENANTS ONLY, NOT PARTNERS.** A2P 10DLC is the carrier-required registration for sending SMS in the US. It applies to *tenants* — the businesses using MyOrbisVoice as their AI receptionist who want to send outbound SMS from their tenant-subaccount Twilio numbers. Partners (who refer customers and get paid via Stripe Connect) are a completely separate flow and never touch A2P.
+
+**What:** A multi-step wizard that lets a tenant (or admin acting on their behalf via impersonation) register for A2P 10DLC entirely from the MyOrbisVoice dashboard. No Twilio Console clicking required from the tenant.
+
+**Where it lives:** Tenant dashboard. The "Register for SMS" CTA appears on `/phone-numbers` after the tenant has purchased their first Twilio subaccount number. Admin can also trigger via impersonation if a tenant needs help.
+
+**Why this matters:** Today, the tenant's path to send SMS is "go log into Twilio Console, navigate the maze, register A2P manually." That's a competitive disadvantage versus other CPaaS resellers, and at scale (50+ tenants) it becomes operationally impossible to support. Self-service registration is a meaningful product moat.
+
+**Why this is NOT a launch blocker:** First 5-20 tenants can have A2P registered manually (either by us in our master Twilio account, or by them in their own subaccount). The wizard pays for itself only once we feel the manual-pain at higher volume. Build AFTER soft-launch surfaces real friction patterns.
+
+**API surface (Twilio Trust Hub + A2P endpoints) — fully automatable:**
+
+| Step | Twilio API | Our wizard step |
+|---|---|---|
+| Customer Profile | `POST /v1/CustomerProfiles` | "Business identity" — legal name, EIN, type, vertical, address |
+| Supporting Documents | `POST /v1/SupportingDocuments` | File uploads — EIN letter, articles of incorporation |
+| End User profile | `POST /v1/EndUsers` | Authorized rep contact info |
+| Trust Product (A2P bundle) | `POST /v1/TrustProducts` | Bundles the above |
+| Submit for evaluation | `POST /v1/TrustProducts/{Sid}/Evaluations` | Triggers Twilio pre-flight |
+| Brand Registration | `POST /v1/a2p/BrandRegistrations` | Standard or Low-Volume Standard ($4 or $44) |
+| Campaign Registration | `POST /v1/a2p/Brands/{Sid}/Campaigns` | Use case + sample messages + opt-in flow |
+| Phone Number → Campaign link | Update IncomingPhoneNumber or Messaging Service | Auto-fired by us when Campaign status = `VERIFIED` |
+
+Status transitions tracked via webhooks (`twilio-approved`, `in-review`, `twilio-rejected`, `verified`, `failed`).
+
+**Realistic effort to build:**
+
+| Piece | Estimate |
+|---|---|
+| `A2PRegistration` Prisma model + state-machine fields | half-day |
+| Multi-step wizard UI (4-5 screens), bilingual EN+ES | 1-2 days |
+| Backend Trust Hub integration (8 sequential POSTs with retry/error handling) | 2-3 days |
+| File upload + forwarding to SupportingDocuments | half-day |
+| Twilio status webhook receiver + DB state updates | 1 day |
+| Auto-link approved campaign to tenant's IncomingPhoneNumbers | half-day |
+| Admin "view all tenant A2P submissions" dashboard | 1 day |
+| Test against Twilio sandbox + one real submission end-to-end | 1-2 days |
+| **Total** | **~7-10 working days** |
+
+**Architecture notes:**
+- The wizard runs on the **tenant's Twilio subaccount**, NOT the master account. Each tenant's brand + campaign is independent. The wizard auth-flows through `getSubaccountClient(tenantId)`.
+- `BusinessProfile` data we already store (legal name, address, EIN once we add that field) auto-fills the wizard — partial pre-fill from existing tenant data reduces friction.
+- Carrier review queue (1-4 weeks at AT&T/Verizon/T-Mobile) is **external and unavoidable** even with perfect API automation. The wizard doesn't shorten that — it just makes the submission painless.
+- Fees pass through to the tenant or absorbed in their plan tier (decision needed at build time): TCR brand registration $4-44 one-time, plus per-campaign monthly fees ~$10-15.
+
+**Limitations / what can still go wrong:**
+- Wrong sample messages or vague message-flow descriptions → campaign rejected at TCR review. Wizard should validate format + provide examples per use case.
+- Some supporting docs require human verification on our side (we can sanity-check before forwarding to Twilio).
+- Tenants with no EIN (sole props using SSN) need a different flow path.
+
+**When to build:** AFTER the soft-launch period (first 5-20 customers). That window will surface which wizard fields trip people up most often, what use cases dominate, and whether tenants want full self-service or prefer admin-assisted. Building now without that signal risks designing the wizard around assumptions instead of real friction.
