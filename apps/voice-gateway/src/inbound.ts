@@ -97,6 +97,9 @@ export async function handleInboundCall(ws: WebSocket) {
   let lastUserAudioAt: number | null = null
   let agentTurnStart:  number | null = null
   const turnLatenciesMs: number[] = []
+  // One-shot diagnostic flags — see media-event handler below
+  let firstMediaLogged       = false
+  let firstTrackRejectLogged = false
 
   function sendAudioToTwilio(pcm24k: Buffer) {
     if (!streamSid || ws.readyState !== 1) return
@@ -401,13 +404,33 @@ export async function handleInboundCall(ws: WebSocket) {
         return
       }
 
-      if (msg.event === 'media' && initialized && gemini) {
-        if (msg.media.track !== 'inbound') return  // ignore outbound track echo
-        const mulawBuf = Buffer.from(msg.media.payload, 'base64')
-        const pcm8k    = mulawToPcm16(mulawBuf)
-        const pcm16k   = resamplePcm16(pcm8k, 8000, 16000)  // Gemini expects 16kHz
-        gemini.sendAudio(pcm16k)
-        lastUserAudioAt = Date.now()
+      if (msg.event === 'media') {
+        // Diagnostic logging — fires only on the FIRST media event of each
+        // call. Captures the track value Twilio is actually sending us and
+        // the gating-flag state, so we can debug why latency telemetry
+        // never fires (0/28 calls have metadataJson). Cheap (one log per
+        // call) but answers the question conclusively.
+        if (!firstMediaLogged) {
+          firstMediaLogged = true
+          console.log(`[inbound] first media event: track=${JSON.stringify(msg.media.track)} initialized=${initialized} gemini=${!!gemini}`)
+        }
+        if (initialized && gemini) {
+          if (msg.media.track !== 'inbound') {
+            // Diagnostic — log the FIRST track-mismatch reject per call so
+            // we see what value Twilio is actually sending if it's not
+            // 'inbound'. Without this we'd silently drop forever.
+            if (!firstTrackRejectLogged) {
+              firstTrackRejectLogged = true
+              console.log(`[inbound] first track-rejection: track=${JSON.stringify(msg.media.track)} (expected 'inbound')`)
+            }
+            return
+          }
+          const mulawBuf = Buffer.from(msg.media.payload, 'base64')
+          const pcm8k    = mulawToPcm16(mulawBuf)
+          const pcm16k   = resamplePcm16(pcm8k, 8000, 16000)  // Gemini expects 16kHz
+          gemini.sendAudio(pcm16k)
+          lastUserAudioAt = Date.now()
+        }
         return
       }
 
