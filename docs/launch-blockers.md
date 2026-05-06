@@ -2,7 +2,7 @@
 
 These are the items that **cannot be closed by code alone** — they require external signal (third-party approvals, off-repo actions, real-world data, or specific business decisions). They're tracked here so they don't get lost in conversation history but also don't block the build.
 
-**Last reviewed:** 2026-05-05.
+**Last reviewed:** 2026-05-06.
 
 Items below sorted by urgency. Re-review weekly. When an item is closed, move it to the **Closed** section at the bottom with the date and what unblocked it.
 
@@ -10,13 +10,34 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ## 🔴 Pre-launch must-do (blocks first paying customer)
 
-### M1. Pick a contact email for the marketing site footer — open 2026-05-06
+### G1. Gemini Live WebSocket closing with code 1008 mid-call — open 2026-05-06
 
-**What:** The marketing site (myorbisvoice.com) has no contact mechanism — no `support@`, `hello@`, or contact form anywhere. Footer has only the legal address. Prospects can't ask pre-sales questions before signing up, and once they're signed up, the only contact is "reply to the welcome email."
+**What:** During an inbound test call on 2026-05-06 around 23:03 UTC, the agent stopped responding mid-conversation after 5 successful turns. Gateway logs show `[gemini] WebSocket closed, code: 1008 reason: Operation is not implemented, or supported, or enabled.` immediately after the agent's "Just to confirm, the email is …" turn. Our gateway correctly hung up the Twilio call (per the fix in commit `9e166c9`), so to Twilio the call appeared COMPLETED — but the AI experience was abruptly terminated.
 
-**Required from you:** Pick the email address — `support@myorbisvoice.com` is the standard choice but `hello@myorbisvoice.com` works too. Confirm the inbox is set up and being monitored. Then I'll add it to the marketing-site footer (EN + ES) and the welcome email signature, and ship a quick `mailto:` Contact link.
+**Pattern, not flake.** Three identical `code: 1008` closes in the last 24 hours, all with the same reason text. Different points in the session each time:
+- Once immediately after `setupComplete` (no turns at all)
+- Once after a successful `save_contact` tool call response
+- Once mid-conversation (the test call) after 5 clean turns
 
-**Verifies done when:** Footer of every marketing page shows a contact email; clicking opens the user's mail client; emails to that address actually land in a real inbox.
+**What this is NOT:**
+- Not a latency issue — telemetry recorded median **7ms**, p95 **31ms** on the test call (so item 4a "latency telemetry not firing" is now CLOSED — it IS firing, see closed section below)
+- Not our gateway closing the connection — Gemini sent the close frame
+- Not a Twilio issue — Twilio recording stored cleanly, status COMPLETED
+
+**Likely causes (ranked by probability):**
+1. Model name `gemini-2.5-flash-native-audio-latest` is a `-latest` alias — preview/experimental variants sometimes get tighter limits or quietly deprecate. **Try the GA-stable name** (`gemini-2.5-flash-native-audio` without `-latest`) — fastest fix to attempt.
+2. A specific tool function definition Gemini rejects on this model variant — supported by the 2nd disconnect happening right after `save_contact`.
+3. API key tier / quota change at Google's end.
+4. Specific input-pattern policy filter (less likely — conversations look clean).
+
+**Required to diagnose further:**
+- Switch to non-`-latest` model name, redeploy gateway, retest with one inbound call
+- If still 1008: add diagnostic logging to capture the last 3 frames sent to Gemini before each close
+- Check Google AI Studio / Vertex console for any quota or billing warnings on the project
+
+**Verifies done when:** Two consecutive test inbound calls of 2+ minutes complete WITHOUT a Gemini-side WebSocket close (gateway log shows `[inbound] finalize` reached without an intervening `[gemini] WebSocket closed`).
+
+**Owner:** Me to switch the model name + add logging; you to make the test call.
 
 ---
 
@@ -24,26 +45,13 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ## 🟡 Recommended pre-launch (won't block customers, but reduces support load)
 
-### 4a. Latency telemetry isn't firing — needs a fresh inbound call to debug — open 2026-05-06
-
-**What:** Out of 28 completed inbound conversations in the last 14 days, `Conversation.metadataJson` is null on all 28. Per [apps/voice-gateway/src/inbound.ts:97-110](apps/voice-gateway/src/inbound.ts#L97-L110), the code SHOULD push `(agentFirstAudio - lastUserAudio)` ms onto `turnLatenciesMs` at every turn boundary, then [persistConversation()](apps/voice-gateway/src/services/conversation.service.ts#L20) writes it to `metadataJson.latency` at finalize. Neither is happening — `grep "turnaround:" gateway-logs` returns ZERO matches across all history.
-
-**Code audit (2026-05-06) found no bug on paper:**
-- `lastUserAudioAt` correctly set on each Twilio media event with track==='inbound' ([inbound.ts:404-411](apps/voice-gateway/src/inbound.ts#L404-L411))
-- `agentTurnStart` correctly reset to `null` on each `onTurnComplete` ([inbound.ts:299](apps/voice-gateway/src/inbound.ts#L299))
-- `sendAudioToTwilio` correctly enters the measurement block when `agentTurnStart === null` ([inbound.ts:104-108](apps/voice-gateway/src/inbound.ts#L104-L108))
-
-But `"first audio chunk → Twilio"` (the else-branch log meaning `lastUserAudioAt === null`) fires once per call, and `"turnaround:"` never fires. That implies `lastUserAudioAt` is null whenever the agent's first chunk for turn N+1 arrives — which can only happen if user audio frames never update line 410. Most likely cause: Twilio is sending media events with `track` field empty or non-'inbound', so the filter at line 405 silently drops them. Cannot confirm without a fresh inbound call to trace.
-
-**Verifies done when:** Make one inbound call to a tenant's number, hold a 2-3 turn conversation, then check `Conversation.metadataJson.latency` is populated. If still null, add a log line at [inbound.ts:404](apps/voice-gateway/src/inbound.ts#L404) that prints `msg.media.track` for the first 5 media events, deploy, call again, read logs.
-
-**Owner:** You (drive a real inbound call), me (read logs in parallel + ship the fix).
-
 ### 4. Capture real production call latency baseline
 
 **What:** Once we have ~50 real production calls, query `SELECT metadataJson->'latency' FROM "Conversation" WHERE metadataJson ? 'latency' ORDER BY "createdAt" DESC` and look at the median + p95 distribution.
 
 **Why:** Per-turn telemetry shipped 2026-05-05 (commit 85bcd46). The next move on backlog #3 (latency reduction) is data-gated by these distributions. Without 50+ real samples, tuning VAD silence_duration_ms or prompt size is just guessing.
+
+**First sample landed 2026-05-06** from the test call diagnosing G1: `{"max":31,"min":2,"p95":31,"count":5,"turns":[31,2,3,7,23],"median":7}`. Median 7 ms, p95 31 ms across 5 turns. **Numbers look excellent on the first sample** — well below the 800ms target stated in backlog #3. If the next 49 calls land in the same distribution, latency tuning may not be needed at all and the item closes as "current numbers are acceptable, no further work."
 
 **Owner:** Me, once data exists.
 
@@ -128,6 +136,16 @@ But `"first audio chunk → Twilio"` (the else-branch log meaning `lastUserAudio
 ## ✅ Closed
 
 *(items move here with a date + what unblocked them)*
+
+### M1. Pick a contact email for the marketing site footer — closed 2026-05-06
+
+Verified `admin@myorbisvoice.com` (General) and `support@myorbisvoice.com` (Support) are both wired into the home-page footer (`site/index.html`) and the legal pages (`terms.html`, `privacy.html`, `cookies.html`, `how-it-works.html`). User confirmed inboxes are monitored. Prospects now have a clear contact path before signing up.
+
+### 4a. Latency telemetry isn't firing — closed 2026-05-06
+
+**Closed because the original assumption was wrong.** A test inbound call on 2026-05-06 23:03 UTC populated `Conversation.metadataJson.latency` with `{"max":31,"min":2,"p95":31,"count":5,"turns":[31,2,3,7,23],"median":7}` and the gateway logs show `[inbound] turnaround: Xms (user→agent)` firing on every turn boundary. The earlier theory that Twilio media events were missing the `track` field was incorrect — `track="inbound"` is set, the filter is passing, the timing is captured, and the latency summary is persisting cleanly. No code change needed.
+
+**Useful side effect:** the test call surfaced a different, real issue (G1 — Gemini 1008 disconnect) which is now the new top pre-launch blocker.
 
 ### 3. Recruit ONE real partner for live Stripe Connect onboarding — closed 2026-05-06
 

@@ -5,9 +5,15 @@ import { env } from '../lib/env.js'
 
 const GEMINI_LIVE_HOST = 'generativelanguage.googleapis.com'
 const GEMINI_API_VERSION = 'v1alpha'
+// Pinning to a stable snapshot instead of the rolling `-latest` alias.
+// `-latest` is a moving target — preview/experimental variants get tighter
+// limits or rotate without warning, which surfaced as repeated WebSocket
+// close code 1008 ("Operation is not implemented, or supported, or
+// enabled.") in the 2026-05-06 launch-blocker investigation. Override via
+// GEMINI_LIVE_MODEL env var if you want to test a different snapshot.
 const GEMINI_MODEL = process.env['GEMINI_LIVE_MODEL']
   ? `models/${process.env['GEMINI_LIVE_MODEL']}`
-  : 'models/gemini-2.5-flash-native-audio-latest'
+  : 'models/gemini-2.5-flash-native-audio-preview-09-2025'
 
 // Gemini tool function declaration. The full schema lives in services/tools.ts;
 // we accept it here as a structural type so this file stays free of tool logic.
@@ -72,12 +78,28 @@ export function openGeminiLiveSession(
   let ws: import('ws').WebSocket | null = null
   let closed = false
 
+  // Ring buffer of the last 5 OUTBOUND frame summaries we sent to Gemini.
+  // Dumped to logs on WebSocket close so we can see what the model was
+  // reacting to when it terminated the session (especially close code 1008
+  // which surfaced repeatedly on 2026-05-06 — see launch-blockers G1).
+  // Audio frames are summarised by length only; text/tool/setup frames
+  // include a 200-char preview of the JSON.
+  type OutboundFrameSummary = { ts: number; kind: string; preview: string }
+  const recentFrames: OutboundFrameSummary[] = []
+  function recordFrame(kind: string, preview: string) {
+    recentFrames.push({ ts: Date.now(), kind, preview: preview.slice(0, 200) })
+    if (recentFrames.length > 5) recentFrames.shift()
+  }
+  let messagesSentByKind: Record<string, number> = {
+    setup: 0, audio: 0, text: 0, toolResponse: 0, turnComplete: 0,
+  }
+
   async function connect() {
     const { WebSocket } = await import('ws')
     ws = new WebSocket(url)
 
     ws.on('open', () => {
-      console.log('[gemini] WebSocket connected')
+      console.log('[gemini] WebSocket connected — model=' + GEMINI_MODEL + ' voice=' + (opts.voiceName ?? '(default)') + ' tools=' + (opts.tools?.length ?? 0))
       // Send setup message with model and system prompt
       const setup: Record<string, unknown> = {
         model: GEMINI_MODEL,
@@ -107,7 +129,10 @@ export function openGeminiLiveSession(
         setup['tools'] = [{ function_declarations: opts.tools }]
       }
 
-      ws!.send(JSON.stringify({ setup }))
+      const setupPayload = JSON.stringify({ setup })
+      recordFrame('setup', setupPayload)
+      messagesSentByKind['setup'] = (messagesSentByKind['setup'] ?? 0) + 1
+      ws!.send(setupPayload)
     })
 
     ws.on('message', (raw: Buffer) => {
@@ -180,6 +205,16 @@ export function openGeminiLiveSession(
 
     ws.on('close', (code: number, reason: Buffer) => {
       console.log('[gemini] WebSocket closed, code:', code, 'reason:', reason?.toString())
+      // Diagnostic dump — what did we send Gemini before it closed? This
+      // is the key signal for figuring out a non-1000 close (especially
+      // 1008 "Operation is not implemented, or supported, or enabled.").
+      console.log('[gemini] sent counts:', JSON.stringify(messagesSentByKind))
+      console.log('[gemini] last ' + recentFrames.length + ' outbound frames before close:')
+      const now = Date.now()
+      for (const f of recentFrames) {
+        const ago = ((now - f.ts) / 1000).toFixed(2)
+        console.log(`[gemini]   -${ago}s ${f.kind}: ${f.preview}`)
+      }
       if (!closed) {
         closed = true
         callbacks.onClose()
@@ -200,34 +235,42 @@ export function openGeminiLiveSession(
           },
         },
       }))
+      messagesSentByKind['audio'] = (messagesSentByKind['audio'] ?? 0) + 1
+      // Don't ring-buffer audio — too noisy; the count is enough signal.
     },
 
     sendText(text: string) {
       if (!ws || ws.readyState !== 1) return
-      ws.send(JSON.stringify({
+      const payload = JSON.stringify({
         client_content: {
           turns: [{ role: 'user', parts: [{ text }] }],
           turn_complete: true,
         },
-      }))
+      })
+      recordFrame('text', payload)
+      messagesSentByKind['text'] = (messagesSentByKind['text'] ?? 0) + 1
+      ws.send(payload)
     },
 
     signalTurnComplete() {
       if (!ws || ws.readyState !== 1) return
-      // Send an empty realtime_input with activity_end to tell Gemini the user stopped speaking
-      ws.send(JSON.stringify({
-        realtime_input: { activity_end: {} },
-      }))
+      const payload = JSON.stringify({ realtime_input: { activity_end: {} } })
+      recordFrame('turnComplete', payload)
+      messagesSentByKind['turnComplete'] = (messagesSentByKind['turnComplete'] ?? 0) + 1
+      ws.send(payload)
     },
 
     sendToolResponse(id, name, response) {
       if (!ws || ws.readyState !== 1) return
       // Gemini Live expects: tool_response: { function_responses: [{ id, name, response }] }
-      ws.send(JSON.stringify({
+      const payload = JSON.stringify({
         tool_response: {
           function_responses: [{ id, name, response }],
         },
-      }))
+      })
+      recordFrame('toolResponse', `name=${name} id=${id} ${payload}`)
+      messagesSentByKind['toolResponse'] = (messagesSentByKind['toolResponse'] ?? 0) + 1
+      ws.send(payload)
     },
 
     close() {
