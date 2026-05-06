@@ -10,15 +10,7 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ## 🔴 Pre-launch must-do (blocks first paying customer)
 
-### 3. Recruit ONE real partner for live Stripe Connect onboarding
-
-**What:** Have one trusted person (you, a co-founder, a close customer) complete Stripe Express Connect onboarding via the Partner Portal in **live mode** (with real SSN, real bank, real KYC).
-
-**Why:** Bob's onboarding was test mode. Real partners go through deeper KYC than test mode covers. Doing it once before public launch closes the unknown — if there's a config gap or branding issue, find it now, not when 50 partners are stuck mid-flow.
-
-**Owner:** You (recruit + walk them through). Me (monitor logs in parallel).
-
-**Verifies done when:** A real `AffiliateAccount` row in prod has `stripeConnectAccountId` set + `payoutsEnabled: true` + audit log shows `affiliate.connect_status_synced` event.
+*(empty — see Closed at the bottom)*
 
 ---
 
@@ -108,6 +100,12 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 ## ✅ Closed
 
 *(items move here with a date + what unblocked them)*
+
+### 3. Recruit ONE real partner for live Stripe Connect onboarding — closed 2026-05-06
+
+`onbrandcopywriter@gmail.com` (Stripe account `acct_1TTw6t2K2gztGZYP`) completed live-mode Stripe Express Connect onboarding end-to-end. Verified state in prod DB: `chargesEnabled: true`, `payoutsEnabled: true`, `detailsSubmitted: true`, `disabledReason: null`. Seven `affiliate.connect_status_synced` audit-log events confirm the `account.updated` webhook is firing and our handler is updating `payoutMethodJson` correctly.
+
+**One bug found and fixed during this test:** `getConnectStatus` and `refreshConnectStatus` were using `findUniqueOrThrow` on `AffiliateAccount` lookup. Any logged-in non-partner hitting the partner-portal payouts/dashboard pages triggered P2025 → 500 → log-spamming `system.error.unhandled` audit entries. Fixed to use `findUnique` and return `NOT_CONNECTED` cleanly. Same pattern as the earlier `/affiliate/link` fix in memory.
 
 ### 1. Save the 4 Stripe live secrets to off-repo secret manager — closed 2026-05-05
 

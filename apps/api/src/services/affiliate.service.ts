@@ -123,10 +123,16 @@ const NOT_CONNECTED: ConnectStatus = {
 
 /** Fetch + cache the latest Connect status for the partner. Pulls from Stripe
  *  if we have an account on file, then writes the summary into payoutMethodJson
- *  so the dashboard checklist renders without a Stripe round-trip. */
+ *  so the dashboard checklist renders without a Stripe round-trip.
+ *
+ *  Returns NOT_CONNECTED for users without an AffiliateAccount — the
+ *  partner-portal pages call this on every load and not every user is a
+ *  partner. Throwing here would 500 the page; returning a clean
+ *  not-connected status lets the UI render the "you need to apply first"
+ *  state gracefully. */
 export async function refreshConnectStatus(userId: string): Promise<ConnectStatus> {
-  const account = await prisma.affiliateAccount.findUniqueOrThrow({ where: { userId } })
-  if (!account.stripeConnectAccountId) return NOT_CONNECTED
+  const account = await prisma.affiliateAccount.findUnique({ where: { userId } })
+  if (!account || !account.stripeConnectAccountId) return NOT_CONNECTED
 
   const stripe = getStripe()
   const stripeAccount = await stripe.accounts.retrieve(account.stripeConnectAccountId)
@@ -146,10 +152,13 @@ export async function refreshConnectStatus(userId: string): Promise<ConnectStatu
 }
 
 /** Read the cached Connect status without hitting Stripe. Falls back to
- *  refreshing if we have an account ID but no cached payload (first read). */
+ *  refreshing if we have an account ID but no cached payload (first read).
+ *
+ *  Returns NOT_CONNECTED for users without an AffiliateAccount (see note on
+ *  refreshConnectStatus above — same reasoning). */
 export async function getConnectStatus(userId: string): Promise<ConnectStatus> {
-  const account = await prisma.affiliateAccount.findUniqueOrThrow({ where: { userId } })
-  if (!account.stripeConnectAccountId) return NOT_CONNECTED
+  const account = await prisma.affiliateAccount.findUnique({ where: { userId } })
+  if (!account || !account.stripeConnectAccountId) return NOT_CONNECTED
   const cached = (account.payoutMethodJson as Record<string, unknown> | null) ?? {}
   if (typeof cached['payoutsEnabled'] === 'boolean') {
     return {
