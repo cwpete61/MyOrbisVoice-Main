@@ -945,6 +945,9 @@ router.post('/a2p/platform/submit', async (req, res, next) => {
 // status to APPROVED after they've posted the data to Twilio Trust Hub
 // Console and Twilio approved the brand + campaign. Records the Twilio SIDs
 // so we know which Brand/Campaign goes with which application.
+//
+// Guard: application must be SUBMITTED or REJECTED (i.e. the tenant filled
+// + submitted the form first). Blocks the DRAFT → APPROVED shortcut.
 router.post('/a2p/:applicationId/mark-approved', async (req, res, next) => {
   try {
     const { applicationId } = req.params as { applicationId: string }
@@ -952,6 +955,11 @@ router.post('/a2p/:applicationId/mark-approved', async (req, res, next) => {
       brandSid?: string
       campaignSid?: string
       customerProfileSid?: string
+    }
+    const existing = await prisma.tenantA2PApplication.findUnique({ where: { id: applicationId } })
+    if (!existing) throw new AppError('NOT_FOUND', 'A2P application not found', 404)
+    if (existing.status === 'DRAFT') {
+      throw new AppError('CONFLICT', 'Application must be submitted (form completed) before it can be marked approved. Have the tenant fill and submit the /a2p form first, or use impersonation to fill it on their behalf.', 409)
     }
     const updated = await prisma.tenantA2PApplication.update({
       where: { id: applicationId },
@@ -970,7 +978,7 @@ router.post('/a2p/:applicationId/mark-approved', async (req, res, next) => {
       action:       'admin.a2p.marked_approved',
       targetType:   'TenantA2PApplication',
       targetId:     applicationId,
-      metadataJson: { brandSid, campaignSid, customerProfileSid },
+      metadataJson: { brandSid, campaignSid, customerProfileSid, fromStatus: existing.status },
     })
     res.json({ data: updated })
   } catch (err) { next(err) }
@@ -979,11 +987,18 @@ router.post('/a2p/:applicationId/mark-approved', async (req, res, next) => {
 // POST /api/admin/a2p/:applicationId/mark-rejected — admin manually flips
 // status to REJECTED with a reason after Twilio rejected the application.
 // Tenant sees the reason and can edit + resubmit.
+//
+// Guard: application must NOT be DRAFT — same form-first principle.
 router.post('/a2p/:applicationId/mark-rejected', async (req, res, next) => {
   try {
     const { applicationId } = req.params as { applicationId: string }
     const { reason } = req.body as { reason: string }
     if (!reason) throw new AppError('VALIDATION_ERROR', 'Reason is required', 422)
+    const existing = await prisma.tenantA2PApplication.findUnique({ where: { id: applicationId } })
+    if (!existing) throw new AppError('NOT_FOUND', 'A2P application not found', 404)
+    if (existing.status === 'DRAFT') {
+      throw new AppError('CONFLICT', 'Application must be submitted before it can be marked rejected. There is nothing to reject — it has not been submitted yet.', 409)
+    }
     const updated = await prisma.tenantA2PApplication.update({
       where: { id: applicationId },
       data:  { status: 'REJECTED', rejectionReason: reason },
@@ -994,9 +1009,75 @@ router.post('/a2p/:applicationId/mark-rejected', async (req, res, next) => {
       action:       'admin.a2p.marked_rejected',
       targetType:   'TenantA2PApplication',
       targetId:     applicationId,
-      metadataJson: { reason },
+      metadataJson: { reason, fromStatus: existing.status },
     })
     res.json({ data: updated })
+  } catch (err) { next(err) }
+})
+
+// ── A2P operator notes ─────────────────────────────────────────────────────
+//
+// Append-only friction log. Every time an operator processing a manual A2P
+// submission has to email a tenant for clarification, finds a missing field,
+// flags a likely Twilio rejection, etc., they capture it here. After ~20
+// submissions this becomes the data-driven design input for the future
+// self-service A2P wizard (backlog #20).
+
+const a2pNoteSchema = z.object({
+  category: z.enum(['CLARIFICATION_NEEDED', 'DATA_GAP', 'FORMAT_ERROR', 'USE_CASE_MISMATCH', 'COMPLIANCE_CONCERN', 'OTHER']),
+  note:     z.string().min(1).max(2000),
+})
+
+function validateA2PNote(data: unknown): z.infer<typeof a2pNoteSchema> {
+  const result = a2pNoteSchema.safeParse(data)
+  if (!result.success) {
+    const fields: Record<string, string[]> = {}
+    for (const issue of result.error.issues) {
+      const key = issue.path.join('.') || 'root'
+      fields[key] = [...(fields[key] ?? []), issue.message]
+    }
+    throw new AppError('VALIDATION_ERROR', 'Invalid input', 422, fields)
+  }
+  return result.data
+}
+
+// POST /api/admin/a2p/:applicationId/notes — append a note
+router.post('/a2p/:applicationId/notes', async (req, res, next) => {
+  try {
+    const { applicationId } = req.params as { applicationId: string }
+    const { category, note } = validateA2PNote(req.body)
+
+    const application = await prisma.tenantA2PApplication.findUnique({ where: { id: applicationId } })
+    if (!application) throw new AppError('NOT_FOUND', 'A2P application not found', 404)
+
+    const created = await prisma.a2POperatorNote.create({
+      data: { applicationId, byUserId: req.user!.id, category, note },
+      include: { byUser: { select: { id: true, email: true, firstName: true, lastName: true } } },
+    })
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.a2p.note_added',
+      targetType:   'TenantA2PApplication',
+      targetId:     applicationId,
+      metadataJson: { category, noteId: created.id },
+    })
+    res.status(201).json({ data: created })
+  } catch (err) { next(err) }
+})
+
+// GET /api/admin/a2p/:applicationId/notes — list notes for an application
+router.get('/a2p/:applicationId/notes', async (req, res, next) => {
+  try {
+    const { applicationId } = req.params as { applicationId: string }
+    const application = await prisma.tenantA2PApplication.findUnique({ where: { id: applicationId } })
+    if (!application) throw new AppError('NOT_FOUND', 'A2P application not found', 404)
+    const notes = await prisma.a2POperatorNote.findMany({
+      where:   { applicationId },
+      orderBy: { createdAt: 'desc' },
+      include: { byUser: { select: { id: true, email: true, firstName: true, lastName: true } } },
+    })
+    res.json({ data: notes })
   } catch (err) { next(err) }
 })
 

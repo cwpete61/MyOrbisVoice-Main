@@ -294,84 +294,85 @@ enum WidgetSessionStatus {
 }
 
 model User {
-  id                     String                 @id @default(uuid())
-  email                  String                 @unique
-  username               String?                @unique
-  passwordHash           String
-  firstName              String?
-  lastName               String?
-  preferredLocale        String                 @default("en")
-  status                 UserStatus             @default(ACTIVE)
-  lastLoginAt            DateTime?
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
-  tenantMemberships      TenantMember[]
-  createdPromptVersions  PromptVersion[]        @relation("PromptCreatedBy")
-  auditLogs              AuditLog[]             @relation("AuditActorUser")
-  affiliateAccount       AffiliateAccount?
-  startedImpersonations  ImpersonationSession[] @relation("ImpersonationStartedBy")
-  refreshTokens          RefreshToken[]
-  pushSubscriptions      PushSubscription[]
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique
+  username              String?                @unique
+  passwordHash          String
+  firstName             String?
+  lastName              String?
+  preferredLocale       String                 @default("en")
+  status                UserStatus             @default(ACTIVE)
+  lastLoginAt           DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  tenantMemberships     TenantMember[]
+  createdPromptVersions PromptVersion[]        @relation("PromptCreatedBy")
+  auditLogs             AuditLog[]             @relation("AuditActorUser")
+  affiliateAccount      AffiliateAccount?
+  startedImpersonations ImpersonationSession[] @relation("ImpersonationStartedBy")
+  refreshTokens         RefreshToken[]
+  pushSubscriptions     PushSubscription[]
+  a2pOperatorNotes      A2POperatorNote[]
 }
 
 model Tenant {
-  id                     String                  @id @default(uuid())
-  slug                   String                  @unique
-  displayName            String
-  legalName              String?
-  status                 TenantStatus            @default(TRIAL)
-  timezone               String                  @default("America/New_York")
-  registrationEmail      String
-  publicEmail            String?
-  publicPhone            String?
-  website                String?
-  createdAt              DateTime                @default(now())
-  updatedAt              DateTime                @updatedAt
-  deletedAt              DateTime?
-  referredByCode         String?
-  attributedAt           DateTime?
-  industryVertical       IndustryVertical       @default(GENERAL)
-  members                TenantMember[]
-  businessProfile        BusinessProfile?
-  businessDNARecords     BusinessDNA[]
-  promptVersions         PromptVersion[]
-  agentProfiles          AgentProfile[]
-  channelConfigs         ChannelConfig[]
-  integrationConnections IntegrationConnection[]
-  stripeCustomerRef      StripeCustomerRef?
-  subscriptions          Subscription[]
-  phoneNumbers           PhoneNumber[]
-  twilioSubaccount       TenantTwilioSubaccount?
-  a2pApplication         TenantA2PApplication?
-  pushSubscriptions      PushSubscription[]
-  contacts               Contact[]
-  conversations          Conversation[]
-  appointments           Appointment[]
-  staffMembers           StaffMember[]
-  messageLogs            MessageLog[]
-  workflowExecutions     WorkflowExecutionRef[]
-  tenantEntitlements     TenantEntitlement[]
-  affiliateConversions   AffiliateConversion[]
-  affiliateCommissions   AffiliateCommission[]
-  auditLogs              AuditLog[]
-  impersonationSessions  ImpersonationSession[]
-  callLogs               CallLog[]
-  outboundCampaigns      OutboundCampaign[]
-  outboundCallAttempts   OutboundCallAttempt[]
-  campaigns              Campaign[]
-  campaignEnrollments    CampaignEnrollment[]
-  widgetSessions         WidgetSession[]
-  twilioEventLogs        TwilioEventLog[]
-  storageQuotaBytes            BigInt?
-  storageUsedBytes             BigInt    @default(0)
-  storageWarningAckedAt        DateTime?
-  recordingBehavior            String    @default("stop")
-  recordingRetentionDays       Int?
-  storageTier                  String?
-  storageGracePeriodEndsAt     DateTime?
-  storagePreviousQuotaBytes    BigInt?
-  optOutLogs                   OptOutLog[]
-  notifications                Notification[]
+  id                        String                  @id @default(uuid())
+  slug                      String                  @unique
+  displayName               String
+  legalName                 String?
+  status                    TenantStatus            @default(TRIAL)
+  timezone                  String                  @default("America/New_York")
+  registrationEmail         String
+  publicEmail               String?
+  publicPhone               String?
+  website                   String?
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+  deletedAt                 DateTime?
+  referredByCode            String?
+  attributedAt              DateTime?
+  industryVertical          IndustryVertical        @default(GENERAL)
+  members                   TenantMember[]
+  businessProfile           BusinessProfile?
+  businessDNARecords        BusinessDNA[]
+  promptVersions            PromptVersion[]
+  agentProfiles             AgentProfile[]
+  channelConfigs            ChannelConfig[]
+  integrationConnections    IntegrationConnection[]
+  stripeCustomerRef         StripeCustomerRef?
+  subscriptions             Subscription[]
+  phoneNumbers              PhoneNumber[]
+  twilioSubaccount          TenantTwilioSubaccount?
+  a2pApplication            TenantA2PApplication?
+  pushSubscriptions         PushSubscription[]
+  contacts                  Contact[]
+  conversations             Conversation[]
+  appointments              Appointment[]
+  staffMembers              StaffMember[]
+  messageLogs               MessageLog[]
+  workflowExecutions        WorkflowExecutionRef[]
+  tenantEntitlements        TenantEntitlement[]
+  affiliateConversions      AffiliateConversion[]
+  affiliateCommissions      AffiliateCommission[]
+  auditLogs                 AuditLog[]
+  impersonationSessions     ImpersonationSession[]
+  callLogs                  CallLog[]
+  outboundCampaigns         OutboundCampaign[]
+  outboundCallAttempts      OutboundCallAttempt[]
+  campaigns                 Campaign[]
+  campaignEnrollments       CampaignEnrollment[]
+  widgetSessions            WidgetSession[]
+  twilioEventLogs           TwilioEventLog[]
+  storageQuotaBytes         BigInt?
+  storageUsedBytes          BigInt                  @default(0)
+  storageWarningAckedAt     DateTime?
+  recordingBehavior         String                  @default("stop")
+  recordingRetentionDays    Int?
+  storageTier               String?
+  storageGracePeriodEndsAt  DateTime?
+  storagePreviousQuotaBytes BigInt?
+  optOutLogs                OptOutLog[]
+  notifications             Notification[]
 }
 
 model TenantMember {
@@ -390,29 +391,29 @@ model TenantMember {
 }
 
 model RoleDefinition {
-  id            String         @id @default(uuid())
-  key           String         @unique
-  name          String
-  description   String?
-  isPlatformRole Boolean       @default(false)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  tenantMembers TenantMember[]
+  id             String         @id @default(uuid())
+  key            String         @unique
+  name           String
+  description    String?
+  isPlatformRole Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  tenantMembers  TenantMember[]
 }
 
 model Plan {
-  id              String            @id @default(uuid())
-  code            String            @unique
-  name            String
-  description     String?
-  interval        PlanInterval
-  priceCents      Int               @default(0)
-  stripePriceId   String?
-  isActive        Boolean           @default(true)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  entitlements    PlanEntitlement[]
-  subscriptions   Subscription[]
+  id            String            @id @default(uuid())
+  code          String            @unique
+  name          String
+  description   String?
+  interval      PlanInterval
+  priceCents    Int               @default(0)
+  stripePriceId String?
+  isActive      Boolean           @default(true)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  entitlements  PlanEntitlement[]
+  subscriptions Subscription[]
 }
 
 model PlanEntitlement {
@@ -431,8 +432,8 @@ model PlanEntitlement {
 }
 
 model TenantEntitlement {
-  id           String               @id @default(uuid())
-  tenantId      String
+  id           String                @id @default(uuid())
+  tenantId     String
   key          String
   valueType    EntitlementValueType
   booleanValue Boolean?
@@ -440,93 +441,93 @@ model TenantEntitlement {
   stringValue  String?
   sourceType   EntitlementSourceType
   sourceRef    String?
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  tenant       Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, key])
 }
 
 model BusinessProfile {
-  id                      String   @id @default(uuid())
-  tenantId                String   @unique
-  brandName               String
-  logoUrl                 String?
-  addressLine1            String?
-  addressLine2            String?
-  city                    String?
-  region                  String?
-  postalCode              String?
-  country                 String?
-  serviceAreasJson        Json?
-  businessHoursJson       Json?
+  id                        String   @id @default(uuid())
+  tenantId                  String   @unique
+  brandName                 String
+  logoUrl                   String?
+  addressLine1              String?
+  addressLine2              String?
+  city                      String?
+  region                    String?
+  postalCode                String?
+  country                   String?
+  serviceAreasJson          Json?
+  businessHoursJson         Json?
   fallbackNotificationEmail String?
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  tenant                  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  tenant                    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model BusinessDNA {
-  id             String   @id @default(uuid())
-  tenantId       String
-  identityJson   Json
-  servicesJson   Json
-  pricingJson    Json
-  operationsJson Json
-  salesJson      Json
+  id              String   @id @default(uuid())
+  tenantId        String
+  identityJson    Json
+  servicesJson    Json
+  pricingJson     Json
+  operationsJson  Json
+  salesJson       Json
   appointmentJson Json
-  supportJson    Json
-  languageJson   Json
-  complianceJson Json
-  version        Int
-  isActive       Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supportJson     Json
+  languageJson    Json
+  complianceJson  Json
+  version         Int
+  isActive        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, version])
 }
 
 model PromptVersion {
-  id             String         @id @default(uuid())
-  tenantId       String?
-  scope          PromptScope
-  channelType    ChannelType?
-  agentRoleType  AgentRoleType?
-  name           String
-  content        String
-  status         PromptStatus   @default(DRAFT)
-  versionNumber  Int            @default(1)
-  parentPromptId String?
+  id              String          @id @default(uuid())
+  tenantId        String?
+  scope           PromptScope
+  channelType     ChannelType?
+  agentRoleType   AgentRoleType?
+  name            String
+  content         String
+  status          PromptStatus    @default(DRAFT)
+  versionNumber   Int             @default(1)
+  parentPromptId  String?
   createdByUserId String?
-  publishedAt    DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  tenant         Tenant?        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  parentPrompt   PromptVersion? @relation("PromptParent", fields: [parentPromptId], references: [id], onDelete: SetNull)
-  childPrompts   PromptVersion[] @relation("PromptParent")
-  createdByUser  User?          @relation("PromptCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  agentProfiles  AgentProfile[]
-  channelConfigs ChannelConfig[]
+  publishedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  tenant          Tenant?         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parentPrompt    PromptVersion?  @relation("PromptParent", fields: [parentPromptId], references: [id], onDelete: SetNull)
+  childPrompts    PromptVersion[] @relation("PromptParent")
+  createdByUser   User?           @relation("PromptCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  agentProfiles   AgentProfile[]
+  channelConfigs  ChannelConfig[]
 
   @@index([tenantId, scope])
   @@index([tenantId, status])
 }
 
 model AgentProfile {
-  id             String        @id @default(uuid())
-  tenantId       String
-  agentRoleType  AgentRoleType
-  displayName    String
-  isEnabled      Boolean       @default(false)
-  modelProvider  String
-  modelName      String
+  id              String         @id @default(uuid())
+  tenantId        String
+  agentRoleType   AgentRoleType
+  displayName     String
+  isEnabled       Boolean        @default(false)
+  modelProvider   String
+  modelName       String
   promptVersionId String?
-  settingsJson   Json?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  promptVersion  PromptVersion? @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
+  settingsJson    Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  promptVersion   PromptVersion? @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, agentRoleType])
 }
@@ -551,45 +552,45 @@ model ChannelConfig {
 }
 
 model IntegrationConnection {
-  id                  String                 @id @default(uuid())
+  id                  String                  @id @default(uuid())
   tenantId            String?
   provider            IntegrationProvider
-  status              IntegrationStatus      @default(NOT_CONNECTED)
+  status              IntegrationStatus       @default(NOT_CONNECTED)
   label               String
   externalAccountId   String?
   externalEmail       String?
   metadataJson        Json?
   lastVerifiedAt      DateTime?
   reconnectRequiredAt DateTime?
-  createdAt           DateTime               @default(now())
-  updatedAt           DateTime               @updatedAt
-  tenant              Tenant?                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  tenant              Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   googleDetail        GoogleConnectionDetail?
   twilioDetail        TwilioConnectionDetail?
   staffMember         StaffMember?
 }
 
 model GoogleConnectionDetail {
-  id                     String               @id @default(uuid())
-  integrationConnectionId String             @unique
-  mailboxEmail           String
-  grantedScopesJson      Json
-  calendarIdsJson        Json?
-  tokenExpiresAt         DateTime?
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
-  integrationConnection  IntegrationConnection @relation(fields: [integrationConnectionId], references: [id], onDelete: Cascade)
+  id                      String                @id @default(uuid())
+  integrationConnectionId String                @unique
+  mailboxEmail            String
+  grantedScopesJson       Json
+  calendarIdsJson         Json?
+  tokenExpiresAt          DateTime?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  integrationConnection   IntegrationConnection @relation(fields: [integrationConnectionId], references: [id], onDelete: Cascade)
 }
 
 model TwilioConnectionDetail {
-  id                     String               @id @default(uuid())
-  integrationConnectionId String             @unique
-  accountSid             String
-  encryptedAuthToken     String?
-  messagingServiceSid    String?
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
-  integrationConnection  IntegrationConnection @relation(fields: [integrationConnectionId], references: [id], onDelete: Cascade)
+  id                      String                @id @default(uuid())
+  integrationConnectionId String                @unique
+  accountSid              String
+  encryptedAuthToken      String?
+  messagingServiceSid     String?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  integrationConnection   IntegrationConnection @relation(fields: [integrationConnectionId], references: [id], onDelete: Cascade)
 }
 
 model StripeCustomerRef {
@@ -620,190 +621,218 @@ model Subscription {
 }
 
 model PhoneNumber {
-  id                   String    @id @default(uuid())
-  tenantId             String
-  twilioNumberSid      String?
-  twilioSubaccountSid  String?   // null = on master account; populated once subaccount exists
-  e164Number           String    @unique
-  displayLabel         String?
-  monthlyPriceCents    Int?      // captured at purchase time so we can show it without re-querying Twilio
-  notes                String?   // tenant-facing free-text note for the number (e.g. "main reception")
-  isInboundEnabled     Boolean   @default(false)
-  isOutboundEnabled    Boolean   @default(false)
-  isSmsEnabled         Boolean   @default(false)
-  forwardingTarget     String?
+  id                  String    @id @default(uuid())
+  tenantId            String
+  twilioNumberSid     String?
+  twilioSubaccountSid String? // null = on master account; populated once subaccount exists
+  e164Number          String    @unique
+  displayLabel        String?
+  monthlyPriceCents   Int? // captured at purchase time so we can show it without re-querying Twilio
+  notes               String? // tenant-facing free-text note for the number (e.g. "main reception")
+  isInboundEnabled    Boolean   @default(false)
+  isOutboundEnabled   Boolean   @default(false)
+  isSmsEnabled        Boolean   @default(false)
+  forwardingTarget    String?
   // Cancellation grace period — when set, number is marked for release at this time.
   // Background job (or check-on-fetch) releases it when reached.
-  releaseScheduledAt   DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  tenant               Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  releaseScheduledAt  DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 // One row per tenant — created lazily on the tenant's FIRST number purchase.
 // Stores the Twilio subaccount SID + encrypted subaccount auth token.
 // Numbers, brands, billing in Twilio are scoped to this subaccount.
 model TenantTwilioSubaccount {
-  id                          String    @id @default(uuid())
-  tenantId                    String    @unique
-  twilioSubaccountSid         String    @unique
+  id                           String                 @id @default(uuid())
+  tenantId                     String                 @unique
+  twilioSubaccountSid          String                 @unique
   encryptedSubaccountAuthToken String
-  status                      TwilioSubaccountStatus @default(ACTIVE)
+  status                       TwilioSubaccountStatus @default(ACTIVE)
   // Set when tenant cancels their subscription. After cancellationGraceUntil
   // expires we release all the subaccount's resources and close it.
-  cancellationGraceUntil      DateTime?
-  createdAt                   DateTime  @default(now())
-  updatedAt                   DateTime  @updatedAt
-  tenant                      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cancellationGraceUntil       DateTime?
+  createdAt                    DateTime               @default(now())
+  updatedAt                    DateTime               @updatedAt
+  tenant                       Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 enum TwilioSubaccountStatus {
   ACTIVE
-  PENDING_CLOSURE   // grace period running
-  CLOSED            // closed on Twilio's side
-  SUSPENDED         // platform-side suspension (abuse, etc.)
+  PENDING_CLOSURE // grace period running
+  CLOSED // closed on Twilio's side
+  SUSPENDED // platform-side suspension (abuse, etc.)
 }
 
 // A2P 10DLC application — captured per tenant for SMS compliance.
 // Submission to Twilio Trust Hub APIs is gated on platform's ISV approval;
 // until then this stores the data so we can submit in bulk once unblocked.
 model TenantA2PApplication {
-  id                    String              @id @default(uuid())
+  id                       String               @id @default(uuid())
   /// Null for platform-scope (MyOrbisVoice's own A2P registration on the
   /// master Twilio account). Set for tenant-scope (each tenant's
   /// subaccount registration). At most one row per tenant + at most one
   /// platform-scope row.
-  tenantId              String?             @unique
-  legalName             String              // exact business legal name (matches EIN registration)
-  ein                   String?             // US EIN — optional for sole-prop
-  businessType          String              // SOLE_PROP / LLC / CORP / NON_PROFIT etc.
-  vertical              String              // healthcare, retail, professional_services, etc.
-  websiteUrl            String?
-  addressLine1          String
-  addressLine2          String?
-  city                  String
-  region                String              // state for US
-  postalCode            String
-  country               String              @default("US")
-  contactFirstName      String
-  contactLastName       String
-  contactEmail          String
-  contactPhone          String
-  useCase               String              // marketing / mixed / customer_care / 2fa / utility
-  sampleMessagesJson    Json                // array of 5 sample SMS bodies
-  twilioCustomerProfileSid String?          // populated after submit to Trust Hub
-  twilioBrandSid        String?             // populated after Brand creation
-  twilioCampaignSid     String?             // populated after Campaign creation
-  status                A2PApplicationStatus @default(DRAFT)
-  rejectionReason       String?
-  submittedAt           DateTime?
-  approvedAt            DateTime?
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  tenant                Tenant?             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId                 String?              @unique
+  legalName                String // exact business legal name (matches EIN registration)
+  ein                      String? // US EIN — optional for sole-prop
+  businessType             String // SOLE_PROP / LLC / CORP / NON_PROFIT etc.
+  vertical                 String // healthcare, retail, professional_services, etc.
+  websiteUrl               String?
+  addressLine1             String
+  addressLine2             String?
+  city                     String
+  region                   String // state for US
+  postalCode               String
+  country                  String               @default("US")
+  contactFirstName         String
+  contactLastName          String
+  contactEmail             String
+  contactPhone             String
+  useCase                  String // marketing / mixed / customer_care / 2fa / utility
+  sampleMessagesJson       Json // array of 5 sample SMS bodies
+  twilioCustomerProfileSid String? // populated after submit to Trust Hub
+  twilioBrandSid           String? // populated after Brand creation
+  twilioCampaignSid        String? // populated after Campaign creation
+  status                   A2PApplicationStatus @default(DRAFT)
+  rejectionReason          String?
+  submittedAt              DateTime?
+  approvedAt               DateTime?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  tenant                   Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  operatorNotes            A2POperatorNote[]
 }
 
 enum A2PApplicationStatus {
-  DRAFT       // tenant filling form
-  SUBMITTED   // posted to Twilio Trust Hub, vetting in progress
-  APPROVED    // Brand + Campaign approved, numbers can send SMS at full throughput
-  REJECTED    // Twilio rejected the brand/campaign
+  DRAFT // tenant filling form
+  SUBMITTED // posted to Twilio Trust Hub, vetting in progress
+  APPROVED // Brand + Campaign approved, numbers can send SMS at full throughput
+  REJECTED // Twilio rejected the brand/campaign
+}
+
+/// Append-only friction log for A2P submissions. Operators add a note every
+/// time they have to email a tenant for clarification, find a missing field,
+/// hit a Twilio rejection, etc. After ~20 submissions this becomes the
+/// data-driven design input for the future self-service A2P wizard.
+model A2POperatorNote {
+  id            String                  @id @default(uuid())
+  applicationId String
+  byUserId      String // admin user who wrote the note
+  category      A2POperatorNoteCategory
+  note          String // free-form description, max ~2000 chars enforced at API layer
+  createdAt     DateTime                @default(now())
+  application   TenantA2PApplication    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  byUser        User                    @relation(fields: [byUserId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId, createdAt])
+  @@index([category])
+}
+
+enum A2POperatorNoteCategory {
+  CLARIFICATION_NEEDED // had to email tenant for more info
+  DATA_GAP // tenant left a required field blank or stub
+  FORMAT_ERROR // tenant entered something in wrong format (EIN, phone, URL)
+  USE_CASE_MISMATCH // sample messages don't match declared use case
+  COMPLIANCE_CONCERN // pre-emptive flag — Twilio likely to reject if submitted as-is
+  OTHER
 }
 
 // Web Push subscription — one row per browser/device. Created when the user
 // grants permission. Used to fire desktop notifications on call events.
 model PushSubscription {
-  id            String   @id @default(uuid())
-  tenantId      String
-  userId        String
-  endpoint      String   @unique
-  p256dh        String   // browser public key for E2E encryption
-  auth          String   // browser auth secret
-  userAgent     String?
-  lastUsedAt    DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String
+  endpoint   String   @unique
+  p256dh     String // browser public key for E2E encryption
+  auth       String // browser auth secret
+  userAgent  String?
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, userId])
 }
 
 model Contact {
-  id               String          @id @default(uuid())
-  tenantId         String
-  firstName        String?
-  lastName         String?
-  fullName         String?
-  email                String?
-  phoneE164            String?
-  addressLine1         String?
-  city                 String?
-  region               String?
-  postalCode           String?
-  country              String?
-  source               String
-  tagsJson             Json?
-  metadataJson         Json?
-  emailStatus          String?
-  emailVerifiedAt      DateTime?
-  phoneStatus          String?
-  phoneVerifiedAt      DateTime?
-  agentConfirmedAt     DateTime?
-  optedOutSms          Boolean   @default(false)
-  optedOutSmsAt        DateTime?
-  optedOutVoice        Boolean   @default(false)
-  optedOutVoiceAt      DateTime?
-  optedOutEmail        Boolean   @default(false)
-  optedOutEmailAt      DateTime?
-  optedOutWhatsapp     Boolean   @default(false)
-  optedOutWhatsappAt   DateTime?
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
-  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  conversations    Conversation[]
-  appointments     Appointment[]
-  messageLogs      MessageLog[]
-  callLogs         CallLog[]
-  outboundAttempts     OutboundCallAttempt[]
-  campaignEnrollments  CampaignEnrollment[]
-  optOutLogs           OptOutLog[]
+  id                  String                @id @default(uuid())
+  tenantId            String
+  firstName           String?
+  lastName            String?
+  fullName            String?
+  email               String?
+  phoneE164           String?
+  addressLine1        String?
+  city                String?
+  region              String?
+  postalCode          String?
+  country             String?
+  source              String
+  tagsJson            Json?
+  metadataJson        Json?
+  emailStatus         String?
+  emailVerifiedAt     DateTime?
+  phoneStatus         String?
+  phoneVerifiedAt     DateTime?
+  agentConfirmedAt    DateTime?
+  optedOutSms         Boolean               @default(false)
+  optedOutSmsAt       DateTime?
+  optedOutVoice       Boolean               @default(false)
+  optedOutVoiceAt     DateTime?
+  optedOutEmail       Boolean               @default(false)
+  optedOutEmailAt     DateTime?
+  optedOutWhatsapp    Boolean               @default(false)
+  optedOutWhatsappAt  DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations       Conversation[]
+  appointments        Appointment[]
+  messageLogs         MessageLog[]
+  callLogs            CallLog[]
+  outboundAttempts    OutboundCallAttempt[]
+  campaignEnrollments CampaignEnrollment[]
+  optOutLogs          OptOutLog[]
 
   @@index([tenantId, email])
   @@index([tenantId, phoneE164])
 }
 
 model Conversation {
-  id              String                 @id @default(uuid())
-  tenantId        String
-  contactId       String?
-  channelType     ChannelType
-  direction       ConversationDirection
-  status          ConversationStatus
-  startedAt       DateTime
-  endedAt         DateTime?
-  summaryText            String?
-  transcriptRef          String?
-  transcriptJson         Json?
-  outcomeCode            String?
-  outcomeJson            Json?
-  externalCallId         String?
-  recordingRef           String?
-  recordingBunnyPath     String?
-  recordingDurationSecs  Int?
-  recordingStatus        String?
-  recordingSizeBytes     BigInt?
+  id                    String                @id @default(uuid())
+  tenantId              String
+  contactId             String?
+  channelType           ChannelType
+  direction             ConversationDirection
+  status                ConversationStatus
+  startedAt             DateTime
+  endedAt               DateTime?
+  summaryText           String?
+  transcriptRef         String?
+  transcriptJson        Json?
+  outcomeCode           String?
+  outcomeJson           Json?
+  externalCallId        String?
+  recordingRef          String?
+  recordingBunnyPath    String?
+  recordingDurationSecs Int?
+  recordingStatus       String?
+  recordingSizeBytes    BigInt?
   /// Free-form metadata about the call: per-turn latency, diagnostic flags, etc.
   /// Read by the latency-report CLI; written by the voice gateway on call finalize.
-  metadataJson           Json?
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
-  tenant          Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact         Contact?               @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  appointments         Appointment[]
-  messageLogs          MessageLog[]
-  callLogs             CallLog[]
-  outboundCallAttempts OutboundCallAttempt[]
+  metadataJson          Json?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  tenant                Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact               Contact?              @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  appointments          Appointment[]
+  messageLogs           MessageLog[]
+  callLogs              CallLog[]
+  outboundCallAttempts  OutboundCallAttempt[]
 
   @@index([tenantId, startedAt])
   @@index([tenantId, channelType])
@@ -811,7 +840,7 @@ model Conversation {
 }
 
 model StaffMember {
-  id                      String    @id @default(uuid())
+  id                      String                 @id @default(uuid())
   tenantId                String
   name                    String
   title                   String?
@@ -821,12 +850,12 @@ model StaffMember {
   timezone                String?
   phoneExtension          String?
   availabilityJson        Json?
-  integrationConnectionId String?   @unique
+  integrationConnectionId String?                @unique
   calendarId              String?
-  isActive                Boolean   @default(true)
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-  tenant                  Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  isActive                Boolean                @default(true)
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  tenant                  Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   integrationConnection   IntegrationConnection? @relation(fields: [integrationConnectionId], references: [id], onDelete: SetNull)
   appointments            Appointment[]
 
@@ -856,7 +885,7 @@ model Appointment {
 }
 
 model MessageLog {
-  id                String            @id @default(uuid())
+  id                String           @id @default(uuid())
   tenantId          String
   contactId         String?
   conversationId    String?
@@ -878,12 +907,12 @@ model MessageLog {
   sentAt            DateTime?
   deliveredAt       DateTime?
   failedAt          DateTime?
-  optOutDetected    Boolean           @default(false)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact           Contact?          @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  conversation      Conversation?     @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  optOutDetected    Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact           Contact?         @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  conversation      Conversation?    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, channel, direction, createdAt])
   @@index([tenantId, contactId])
@@ -891,43 +920,43 @@ model MessageLog {
 }
 
 model CallLog {
-  id               String      @id @default(uuid())
-  tenantId         String
-  contactId        String?
-  conversationId   String?
-  direction        ConversationDirection
-  sourceNumber     String
+  id                String                @id @default(uuid())
+  tenantId          String
+  contactId         String?
+  conversationId    String?
+  direction         ConversationDirection
+  sourceNumber      String
   destinationNumber String
-  providerCallId   String?     @unique
-  status           String
-  startAt          DateTime?
-  endAt            DateTime?
-  durationSeconds  Int?
-  forwarded        Boolean     @default(false)
-  forwardingTarget String?
-  outcomeCode      String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  tenant           Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact          Contact?    @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  conversation     Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  providerCallId    String?               @unique
+  status            String
+  startAt           DateTime?
+  endAt             DateTime?
+  durationSeconds   Int?
+  forwarded         Boolean               @default(false)
+  forwardingTarget  String?
+  outcomeCode       String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact           Contact?              @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  conversation      Conversation?         @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, startAt])
 }
 
 model WorkflowExecutionRef {
-  id            String                  @id @default(uuid())
-  tenantId      String?
-  workflowCode  String
-  executionRef  String
-  status        WorkflowExecutionStatus
-  inputHash     String?
-  resultJson    Json?
-  startedAt     DateTime
-  finishedAt    DateTime?
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
-  tenant        Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id           String                  @id @default(uuid())
+  tenantId     String?
+  workflowCode String
+  executionRef String
+  status       WorkflowExecutionStatus
+  inputHash    String?
+  resultJson   Json?
+  startedAt    DateTime
+  finishedAt   DateTime?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  tenant       Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([workflowCode, executionRef])
 }
@@ -946,26 +975,26 @@ model AffiliateSettings {
 }
 
 model AffiliateAccount {
-  id                       String               @id @default(uuid())
-  userId                   String               @unique
-  status                   AffiliateStatus      @default(PENDING)
-  referralCode             String               @unique
-  stripeConnectAccountId   String?              @unique
-  payoutMethodJson         Json?
-  taxProfileJson           Json?
-  payoutRequestedAt   DateTime?
-  totalEarnedCents    Int                  @default(0)
-  totalPaidCents      Int                  @default(0)
-  approvedAt          DateTime?
-  notes               String?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clicks              AffiliateClick[]
-  conversions         AffiliateConversion[]
-  commissions         AffiliateCommission[]
-  payoutRequests      AffiliatePayoutRequest[]
-  customLinks         AffiliateCustomLink[]
+  id                     String                   @id @default(uuid())
+  userId                 String                   @unique
+  status                 AffiliateStatus          @default(PENDING)
+  referralCode           String                   @unique
+  stripeConnectAccountId String?                  @unique
+  payoutMethodJson       Json?
+  taxProfileJson         Json?
+  payoutRequestedAt      DateTime?
+  totalEarnedCents       Int                      @default(0)
+  totalPaidCents         Int                      @default(0)
+  approvedAt             DateTime?
+  notes                  String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  user                   User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clicks                 AffiliateClick[]
+  conversions            AffiliateConversion[]
+  commissions            AffiliateCommission[]
+  payoutRequests         AffiliatePayoutRequest[]
+  customLinks            AffiliateCustomLink[]
 }
 
 model AffiliateCustomLink {
@@ -984,64 +1013,64 @@ model AffiliateCustomLink {
 }
 
 model AffiliatePayoutRequest {
-  id                String           @id @default(uuid())
+  id                 String           @id @default(uuid())
   affiliateAccountId String
-  amountCents       Int
-  currency          String           @default("usd")
-  status            String           @default("PENDING")
-  requestedAt       DateTime         @default(now())
-  processedAt       DateTime?
-  payoutRef         String?
-  notes             String?
-  affiliateAccount  AffiliateAccount @relation(fields: [affiliateAccountId], references: [id], onDelete: Cascade)
+  amountCents        Int
+  currency           String           @default("usd")
+  status             String           @default("PENDING")
+  requestedAt        DateTime         @default(now())
+  processedAt        DateTime?
+  payoutRef          String?
+  notes              String?
+  affiliateAccount   AffiliateAccount @relation(fields: [affiliateAccountId], references: [id], onDelete: Cascade)
 
   @@index([affiliateAccountId, status])
 }
 
 model AffiliateClick {
-  id                String               @id @default(uuid())
+  id                 String               @id @default(uuid())
   affiliateAccountId String
-  customLinkId      String?
-  tenantId          String?
-  sessionId         String?
-  landingPath       String?
-  referrer          String?
-  ipHash            String?
-  userAgent         String?
-  createdAt         DateTime             @default(now())
-  affiliateAccount  AffiliateAccount     @relation(fields: [affiliateAccountId], references: [id], onDelete: Cascade)
-  customLink        AffiliateCustomLink? @relation(fields: [customLinkId], references: [id], onDelete: SetNull)
+  customLinkId       String?
+  tenantId           String?
+  sessionId          String?
+  landingPath        String?
+  referrer           String?
+  ipHash             String?
+  userAgent          String?
+  createdAt          DateTime             @default(now())
+  affiliateAccount   AffiliateAccount     @relation(fields: [affiliateAccountId], references: [id], onDelete: Cascade)
+  customLink         AffiliateCustomLink? @relation(fields: [customLinkId], references: [id], onDelete: SetNull)
 
   @@index([affiliateAccountId, createdAt])
   @@index([customLinkId, createdAt])
 }
 
 model AffiliateConversion {
-  id                String           @id @default(uuid())
+  id                 String                @id @default(uuid())
   affiliateAccountId String
-  tenantId          String
-  subscriptionId    String?
-  conversionType    String
-  conversionValue   Int?
-  occurredAt        DateTime
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  affiliateAccount  AffiliateAccount @relation(fields: [affiliateAccountId], references: [id], onDelete: Cascade)
-  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  commissions       AffiliateCommission[]
+  tenantId           String
+  subscriptionId     String?
+  conversionType     String
+  conversionValue    Int?
+  occurredAt         DateTime
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  affiliateAccount   AffiliateAccount      @relation(fields: [affiliateAccountId], references: [id], onDelete: Cascade)
+  tenant             Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  commissions        AffiliateCommission[]
 }
 
 model AffiliateCommission {
-  id                   String            @id @default(uuid())
+  id                    String              @id @default(uuid())
   affiliateConversionId String
-  affiliateAccountId   String
-  tenantId             String
-  amountMinor          Int
-  currency             String
-  status               CommissionStatus  @default(PENDING)
-  approvedAt           DateTime?
-  paidAt               DateTime?
-  payoutRef            String?
+  affiliateAccountId    String
+  tenantId              String
+  amountMinor           Int
+  currency              String
+  status                CommissionStatus    @default(PENDING)
+  approvedAt            DateTime?
+  paidAt                DateTime?
+  payoutRef             String?
   // Holdback policy fields (added 2026-05-04 PM):
   // - eligibleAt: when 30-day hold ends (= conversion date + 30 days for first
   //   subscriptions and one-time payments; = conversion date itself for
@@ -1049,33 +1078,33 @@ model AffiliateCommission {
   // - scheduledPayoutDate: next 1st/15th >= eligibleAt, business-day-adjusted
   //   forward (Sat→Mon, Sun→Mon). The auto-payout scheduler picks up
   //   commissions where scheduledPayoutDate <= today AND status='APPROVED'.
-  eligibleAt           DateTime          @default(now())
-  scheduledPayoutDate  DateTime?
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
-  affiliateConversion  AffiliateConversion @relation(fields: [affiliateConversionId], references: [id], onDelete: Cascade)
-  affiliateAccount     AffiliateAccount  @relation(fields: [affiliateAccountId], references: [id], onDelete: Cascade)
-  tenant               Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  eligibleAt            DateTime            @default(now())
+  scheduledPayoutDate   DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  affiliateConversion   AffiliateConversion @relation(fields: [affiliateConversionId], references: [id], onDelete: Cascade)
+  affiliateAccount      AffiliateAccount    @relation(fields: [affiliateAccountId], references: [id], onDelete: Cascade)
+  tenant                Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([affiliateAccountId, status])
   @@index([scheduledPayoutDate, status])
 }
 
 model AuditLog {
-  id                    String                @id @default(uuid())
-  tenantId              String?
-  actorType             AuditActorType
-  actorUserId           String?
+  id                     String                @id @default(uuid())
+  tenantId               String?
+  actorType              AuditActorType
+  actorUserId            String?
   impersonationSessionId String?
-  action                String
-  targetType            String
-  targetId              String?
-  metadataJson          Json?
-  ipHash                String?
-  createdAt             DateTime              @default(now())
-  tenant                Tenant?               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actorUser             User?                 @relation("AuditActorUser", fields: [actorUserId], references: [id], onDelete: SetNull)
-  impersonationSession  ImpersonationSession? @relation(fields: [impersonationSessionId], references: [id], onDelete: SetNull)
+  action                 String
+  targetType             String
+  targetId               String?
+  metadataJson           Json?
+  ipHash                 String?
+  createdAt              DateTime              @default(now())
+  tenant                 Tenant?               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorUser              User?                 @relation("AuditActorUser", fields: [actorUserId], references: [id], onDelete: SetNull)
+  impersonationSession   ImpersonationSession? @relation(fields: [impersonationSessionId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, createdAt])
   @@index([actorUserId, createdAt])
@@ -1099,17 +1128,17 @@ model SecretRef {
 }
 
 model ImpersonationSession {
-  id              String    @id @default(uuid())
-  adminUserId     String
-  tenantId        String
-  assumedRoleKey  String
-  reasonCode      String?
-  notes           String?
-  startedAt       DateTime  @default(now())
-  endedAt         DateTime?
-  adminUser       User      @relation("ImpersonationStartedBy", fields: [adminUserId], references: [id], onDelete: Cascade)
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  auditLogs       AuditLog[]
+  id             String     @id @default(uuid())
+  adminUserId    String
+  tenantId       String
+  assumedRoleKey String
+  reasonCode     String?
+  notes          String?
+  startedAt      DateTime   @default(now())
+  endedAt        DateTime?
+  adminUser      User       @relation("ImpersonationStartedBy", fields: [adminUserId], references: [id], onDelete: Cascade)
+  tenant         Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  auditLogs      AuditLog[]
 
   @@index([tenantId, startedAt])
   @@index([adminUserId, startedAt])
@@ -1118,24 +1147,24 @@ model ImpersonationSession {
 // Short-lived token issued to the browser widget before a voice session starts.
 // The voice gateway verifies this token, then upgrades to a full session.
 model WidgetSession {
-  id              String              @id @default(uuid())
-  tenantId        String
-  contactId       String?
-  token           String              @unique
-  status          WidgetSessionStatus @default(PENDING)
-  channelConfigId String?
-  promptSnapshotJson Json?
+  id                      String              @id @default(uuid())
+  tenantId                String
+  contactId               String?
+  token                   String              @unique
+  status                  WidgetSessionStatus @default(PENDING)
+  channelConfigId         String?
+  promptSnapshotJson      Json?
   businessDNASnapshotJson Json?
-  metadataJson    Json?
-  conversationId  String?
-  remoteIp        String?
-  userAgent       String?
-  expiresAt       DateTime
-  startedAt       DateTime?
-  endedAt         DateTime?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  metadataJson            Json?
+  conversationId          String?
+  remoteIp                String?
+  userAgent               String?
+  expiresAt               DateTime
+  startedAt               DateTime?
+  endedAt                 DateTime?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  tenant                  Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, status])
   @@index([token])
@@ -1154,43 +1183,43 @@ model RefreshToken {
 }
 
 model OutboundCampaign {
-  id              String               @id @default(uuid())
+  id              String                @id @default(uuid())
   tenantId        String
   name            String
   description     String?
-  status          CampaignStatus       @default(DRAFT)
+  status          CampaignStatus        @default(DRAFT)
   audienceJson    Json?
   scheduleJson    Json?
   promptVersionId String?
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   attempts        OutboundCallAttempt[]
 }
 
 model OutboundCallAttempt {
-  id                String            @id @default(uuid())
-  campaignId        String
-  tenantId          String
-  contactId         String
-  providerCallId    String?           @unique
-  status            String
-  attemptNumber     Int               @default(1)
-  startedAt         DateTime?
-  endedAt           DateTime?
-  outcomeCode       String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  conversationId    String?
+  id             String              @id @default(uuid())
+  campaignId     String
+  tenantId       String
+  contactId      String
+  providerCallId String?             @unique
+  status         String
+  attemptNumber  Int                 @default(1)
+  startedAt      DateTime?
+  endedAt        DateTime?
+  outcomeCode    String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  conversationId String?
   // Optional back-reference to a tag-driven Campaign enrollment when the
   // outbound call was triggered by the campaign scheduler. The webhook
   // outcome handler propagates the call result back to this enrollment.
-  enrollmentId      String?
-  campaign          OutboundCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact           Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  conversation      Conversation?     @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-  enrollment        CampaignEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  enrollmentId   String?
+  campaign       OutboundCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact        Contact             @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  conversation   Conversation?       @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  enrollment     CampaignEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
 
   @@index([campaignId, status])
   @@index([enrollmentId])
@@ -1205,7 +1234,7 @@ model SystemConfig {
 }
 
 model StorageTierConfig {
-  tier            String   @id   // LTD | BASIC | ESSENTIALS | PREMIUM | ENTERPRISE
+  tier            String   @id // LTD | BASIC | ESSENTIALS | PREMIUM | ENTERPRISE
   quotaBytes      BigInt
   retentionDays   Int?
   gracePeriodDays Int      @default(30)
@@ -1214,21 +1243,21 @@ model StorageTierConfig {
 }
 
 model TwilioEventLog {
-  id            String   @id @default(uuid())
-  tenantId      String
-  callSid       String?
-  direction     String   // INBOUND | OUTBOUND
-  eventType     String   // amd | status | error | inbound_received | inbound_error
-  callStatus    String?  // completed | busy | no-answer | failed | canceled
-  answeredBy    String?  // AMD result: human | machine_start | machine_end_beep | etc
-  fromNumber    String?
-  toNumber      String?
-  durationSecs  Int?
-  outcomeCode   String?
-  errorMessage  String?
-  metaJson      Json?
-  occurredAt    DateTime @default(now())
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id           String   @id @default(uuid())
+  tenantId     String
+  callSid      String?
+  direction    String // INBOUND | OUTBOUND
+  eventType    String // amd | status | error | inbound_received | inbound_error
+  callStatus   String? // completed | busy | no-answer | failed | canceled
+  answeredBy   String? // AMD result: human | machine_start | machine_end_beep | etc
+  fromNumber   String?
+  toNumber     String?
+  durationSecs Int?
+  outcomeCode  String?
+  errorMessage String?
+  metaJson     Json?
+  occurredAt   DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, occurredAt(sort: Desc)])
   @@index([tenantId, callSid])
@@ -1236,21 +1265,21 @@ model TwilioEventLog {
 
 // Platform-level pre-built campaign templates per vertical
 model CampaignTemplate {
-  id               String           @id @default(uuid())
-  vertical         IndustryVertical
-  campaignType     CampaignType
-  name             String
-  description      String
-  defaultPrompt    String
-  defaultTriggerTag String
-  defaultDelayHours Int             @default(1)
-  defaultMaxRetries Int             @default(2)
-  defaultRetryIntervalHours Int     @default(24)
-  suggestedTagsJson Json?
-  isActive         Boolean          @default(true)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  campaigns        Campaign[]
+  id                        String           @id @default(uuid())
+  vertical                  IndustryVertical
+  campaignType              CampaignType
+  name                      String
+  description               String
+  defaultPrompt             String
+  defaultTriggerTag         String
+  defaultDelayHours         Int              @default(1)
+  defaultMaxRetries         Int              @default(2)
+  defaultRetryIntervalHours Int              @default(24)
+  suggestedTagsJson         Json?
+  isActive                  Boolean          @default(true)
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+  campaigns                 Campaign[]
 
   @@unique([vertical, campaignType])
   @@index([vertical])
@@ -1258,33 +1287,33 @@ model CampaignTemplate {
 
 // Tenant's activated campaign instance
 model Campaign {
-  id                  String           @id @default(uuid())
-  tenantId            String
-  templateId          String?
-  campaignType        CampaignType
-  name                String
-  description         String?
-  prompt              String
-  triggerTag          String
-  delayHours          Int              @default(1)
-  maxRetries          Int              @default(2)
-  retryIntervalHours  Int              @default(24)
-  isActive            Boolean          @default(false)
-  exitOnReply         Boolean          @default(true)
-  exitOnOptOut        Boolean          @default(true)
-  enableVoice         Boolean          @default(true)
-  enableSms           Boolean          @default(false)
-  enableEmail         Boolean          @default(false)
-  enableWhatsapp      Boolean          @default(false)
-  smsBody             String?
-  whatsappBody        String?
-  emailSubject        String?
-  emailBody           String?
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-  tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  template            CampaignTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  enrollments         CampaignEnrollment[]
+  id                 String               @id @default(uuid())
+  tenantId           String
+  templateId         String?
+  campaignType       CampaignType
+  name               String
+  description        String?
+  prompt             String
+  triggerTag         String
+  delayHours         Int                  @default(1)
+  maxRetries         Int                  @default(2)
+  retryIntervalHours Int                  @default(24)
+  isActive           Boolean              @default(false)
+  exitOnReply        Boolean              @default(true)
+  exitOnOptOut       Boolean              @default(true)
+  enableVoice        Boolean              @default(true)
+  enableSms          Boolean              @default(false)
+  enableEmail        Boolean              @default(false)
+  enableWhatsapp     Boolean              @default(false)
+  smsBody            String?
+  whatsappBody       String?
+  emailSubject       String?
+  emailBody          String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  template           CampaignTemplate?    @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  enrollments        CampaignEnrollment[]
 
   @@index([tenantId, isActive])
   @@index([tenantId, triggerTag])
@@ -1294,25 +1323,25 @@ model Campaign {
 // One row per (campaign, contact, channel) — a single trigger fan-outs into
 // up to 4 enrollments (one per enabled channel on the campaign).
 model CampaignEnrollment {
-  id              String           @id @default(uuid())
+  id              String                @id @default(uuid())
   tenantId        String
   campaignId      String
   contactId       String
-  channel         EnrollmentChannel @default(VOICE)
-  status          EnrollmentStatus @default(PENDING)
+  channel         EnrollmentChannel     @default(VOICE)
+  status          EnrollmentStatus      @default(PENDING)
   triggerTag      String
-  triggeredAt     DateTime         @default(now())
+  triggeredAt     DateTime              @default(now())
   scheduledCallAt DateTime?
   lastAttemptAt   DateTime?
-  attemptCount    Int              @default(0)
+  attemptCount    Int                   @default(0)
   completedAt     DateTime?
   exitReason      String?
   metaJson        Json?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  campaign        Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  contact         Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaign        Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact         Contact               @relation(fields: [contactId], references: [id], onDelete: Cascade)
   voiceAttempts   OutboundCallAttempt[]
 
   @@unique([campaignId, contactId, channel])
@@ -1330,31 +1359,31 @@ enum EnrollmentChannel {
 
 // Immutable opt-out event log — one row per opt-out or opt-in event
 model OptOutLog {
-  id          String   @id @default(uuid())
-  tenantId    String
-  contactId   String
-  channel     String   // SMS | VOICE | EMAIL
-  source      String   // REPLY_STOP | REPLY_START | VOICE_REQUEST | MANUAL | WEBHOOK
-  optedOut    Boolean  // true = opted out, false = opted back in
-  createdAt   DateTime @default(now())
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  tenantId  String
+  contactId String
+  channel   String // SMS | VOICE | EMAIL
+  source    String // REPLY_STOP | REPLY_START | VOICE_REQUEST | MANUAL | WEBHOOK
+  optedOut  Boolean // true = opted out, false = opted back in
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, contactId])
   @@index([tenantId, channel, createdAt])
 }
 
 model Notification {
-  id         String    @id @default(uuid())
-  tenantId   String
-  type       String    // storage_warning | storage_critical | twilio_error | google_expiring | campaign_complete | admin_broadcast | opt_out_received | contact_created
-  priority   String    @default("info")  // critical | warning | info
-  title      String
-  body       String
-  linkPath   String?   // optional deep link e.g. /billing or /contacts/123
-  readAt     DateTime?
-  createdAt  DateTime  @default(now())
-  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid())
+  tenantId  String
+  type      String // storage_warning | storage_critical | twilio_error | google_expiring | campaign_complete | admin_broadcast | opt_out_received | contact_created
+  priority  String    @default("info") // critical | warning | info
+  title     String
+  body      String
+  linkPath  String? // optional deep link e.g. /billing or /contacts/123
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, readAt, createdAt])
   @@index([tenantId, type])

@@ -2484,5 +2484,74 @@
         "comingSoonDescription": "Currently all active agents with booking capability can route to any active staff member."
       }
     }
+  },
+  "adminA2P": {
+    "title": "A2P 10DLC Applications",
+    "subtitlePrefix": "Every A2P 10DLC registration across the platform. Use the copy buttons to grab field values for manual submission to ",
+    "trustHubLink": "Twilio Trust Hub Console",
+    "subtitleSuffix": " until full API automation lands. Mark approved/rejected here when Twilio responds.",
+    "loading": "Loading…",
+    "platformHeader": "Platform-scope (MyOrbisVoice's own A2P)",
+    "platformLabel": "Platform (MyOrbisVoice)",
+    "platformIdLabel": "Platform-scope (master account)",
+    "platformEmpty": "No platform-scope application yet. Use {endpoint} with the same fields as the tenant /a2p form to create one. UI form coming when needed.",
+    "tenantHeader": "Tenant applications ({count})",
+    "tenantIdLabel": "Tenant ID: {id}…",
+    "tenantEmpty": "No tenant has submitted an A2P application yet.",
+    "status": {
+      "draft":     "Draft",
+      "submitted": "Submitted",
+      "approved":  "Approved",
+      "rejected":  "Rejected"
+    },
+    "rejectionLabel": "Rejection reason:",
+    "fields": {
+      "legalName":        "Legal name",
+      "ein":              "EIN",
+      "businessType":     "Business type",
+      "vertical":         "Vertical",
+      "website":          "Website",
+      "address":          "Address",
+      "authRep":          "Auth rep",
+      "useCase":          "Use case",
+      "twilioBrandSid":   "Twilio Brand SID",
+      "twilioCampaignSid": "Twilio Campaign SID",
+      "sampleMessages":   "Sample messages"
+    },
+    "copy":   "Copy",
+    "copied": "Copied",
+    "actions": {
+      "title":             "Mark as approved or rejected",
+      "markApproved":      "Mark Approved",
+      "markRejected":      "Mark Rejected",
+      "rejectionPlaceholder": "Rejection reason (required if rejecting)",
+      "rejectionReasonRequired": "Rejection reason required",
+      "confirmReject":     "Confirm Reject",
+      "confirmApprove":    "Confirm Approve",
+      "cancel":            "Cancel",
+      "customerProfileSidPlaceholder": "Twilio Customer Profile SID (BU…)",
+      "brandSidPlaceholder":           "Twilio Brand SID (BN…)",
+      "campaignSidPlaceholder":        "Twilio Campaign SID (CMP…)"
+    },
+    "notes": {
+      "title":         "Operator notes",
+      "subtitle":      "Friction log captured during manual submission. After ~20 submissions this becomes the design input for the self-service A2P wizard.",
+      "empty":         "No notes yet for this application.",
+      "addTitle":      "Add a note",
+      "categoryLabel": "Category",
+      "noteLabel":     "Note",
+      "notePlaceholder": "What happened? e.g. ‘Tenant left EIN blank — emailed for clarification.’",
+      "submit":        "Add note",
+      "submitting":    "Adding…",
+      "byLabel":       "by",
+      "category": {
+        "CLARIFICATION_NEEDED": "Clarification needed",
+        "DATA_GAP":             "Data gap",
+        "FORMAT_ERROR":         "Format error",
+        "USE_CASE_MISMATCH":    "Use case mismatch",
+        "COMPLIANCE_CONCERN":   "Compliance concern",
+        "OTHER":                "Other"
+      }
+    }
   }
 }

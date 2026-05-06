@@ -2484,5 +2484,74 @@
         "comingSoonDescription": "Actualmente todos los agentes activos con capacidad de agendar pueden enrutar a cualquier miembro del personal activo."
       }
     }
+  },
+  "adminA2P": {
+    "title": "Solicitudes de A2P 10DLC",
+    "subtitlePrefix": "Cada registro de A2P 10DLC en toda la plataforma. Usa los botones de copiar para tomar los valores de los campos y enviarlos manualmente a ",
+    "trustHubLink": "la consola Twilio Trust Hub",
+    "subtitleSuffix": " hasta que llegue la automatización completa por API. Marca como aprobado o rechazado aquí cuando Twilio responda.",
+    "loading": "Cargando…",
+    "platformHeader": "Alcance de plataforma (A2P propio de MyOrbisVoice)",
+    "platformLabel": "Plataforma (MyOrbisVoice)",
+    "platformIdLabel": "Alcance de plataforma (cuenta maestra)",
+    "platformEmpty": "Aún no hay solicitud de alcance de plataforma. Usa {endpoint} con los mismos campos del formulario tenant /a2p para crear una. La interfaz llegará cuando se necesite.",
+    "tenantHeader": "Solicitudes de tenants ({count})",
+    "tenantIdLabel": "ID de tenant: {id}…",
+    "tenantEmpty": "Ningún tenant ha enviado una solicitud de A2P todavía.",
+    "status": {
+      "draft":     "Borrador",
+      "submitted": "Enviada",
+      "approved":  "Aprobada",
+      "rejected":  "Rechazada"
+    },
+    "rejectionLabel": "Motivo del rechazo:",
+    "fields": {
+      "legalName":        "Razón social",
+      "ein":              "EIN",
+      "businessType":     "Tipo de empresa",
+      "vertical":         "Vertical",
+      "website":          "Sitio web",
+      "address":          "Dirección",
+      "authRep":          "Representante autorizado",
+      "useCase":          "Caso de uso",
+      "twilioBrandSid":   "SID de marca Twilio",
+      "twilioCampaignSid": "SID de campaña Twilio",
+      "sampleMessages":   "Mensajes de muestra"
+    },
+    "copy":   "Copiar",
+    "copied": "Copiado",
+    "actions": {
+      "title":             "Marcar como aprobada o rechazada",
+      "markApproved":      "Marcar como aprobada",
+      "markRejected":      "Marcar como rechazada",
+      "rejectionPlaceholder": "Motivo del rechazo (requerido si rechazas)",
+      "rejectionReasonRequired": "Se requiere un motivo de rechazo",
+      "confirmReject":     "Confirmar rechazo",
+      "confirmApprove":    "Confirmar aprobación",
+      "cancel":            "Cancelar",
+      "customerProfileSidPlaceholder": "SID de perfil de cliente Twilio (BU…)",
+      "brandSidPlaceholder":           "SID de marca Twilio (BN…)",
+      "campaignSidPlaceholder":        "SID de campaña Twilio (CMP…)"
+    },
+    "notes": {
+      "title":         "Notas del operador",
+      "subtitle":      "Bitácora de fricción capturada durante el envío manual. Después de ~20 envíos, esto se convierte en el insumo de diseño para el asistente A2P de autoservicio.",
+      "empty":         "Aún no hay notas para esta solicitud.",
+      "addTitle":      "Agregar nota",
+      "categoryLabel": "Categoría",
+      "noteLabel":     "Nota",
+      "notePlaceholder": "¿Qué pasó? p. ej. ‘El tenant dejó el EIN en blanco — le envié correo para aclararlo.’",
+      "submit":        "Agregar nota",
+      "submitting":    "Agregando…",
+      "byLabel":       "por",
+      "category": {
+        "CLARIFICATION_NEEDED": "Aclaración necesaria",
+        "DATA_GAP":             "Falta de datos",
+        "FORMAT_ERROR":         "Error de formato",
+        "USE_CASE_MISMATCH":    "Caso de uso no coincide",
+        "COMPLIANCE_CONCERN":   "Inquietud de cumplimiento",
+        "OTHER":                "Otra"
+      }
+    }
   }
 }
