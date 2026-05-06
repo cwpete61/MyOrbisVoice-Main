@@ -1257,6 +1257,10 @@
       "compliance": {
         "label": "Compliance",
         "description": "Legal and regulatory rules the agent must follow — disclosures, recording notices, opt-out language, industry-specific compliance (HIPAA, GDPR, etc.)."
+      },
+      "knowledgeBase": {
+        "label": "Knowledge Base",
+        "description": "Upload reference documents (PDF, Word, Excel, plain text) that the AI agent can use to answer caller questions. Files are stored on our infrastructure; the agent reads the extracted text on every call."
       }
     },
     "identity": {
@@ -1660,6 +1664,35 @@
       "campaign_canceled": "Campaign canceled",
       "dispatch_error": "Dispatch error",
       "no_phone": "No phone"
+    }
+  },
+  "tenantKb": {
+    "loading": "Loading knowledge base…",
+    "empty": "No documents uploaded yet. Drag a file above to get started.",
+    "confirmDelete": "Delete this document? The AI agent will stop using it on the next call.",
+    "dropzone": {
+      "title": "Drop files here, or click to choose",
+      "uploading": "Uploading…",
+      "hint": "PDF, Word, Excel, CSV, plain text, or Markdown. Multiple files OK."
+    },
+    "usage": {
+      "label": "{used} MB used of {cap} MB · {count} files",
+      "fileSizeHint": "Max {mb} MB per file. Bigger files won't extract reliably."
+    },
+    "status": {
+      "pending":    "Pending",
+      "processing": "Processing",
+      "ready":      "Ready",
+      "failed":     "Failed"
+    },
+    "actions": {
+      "delete":   "Delete",
+      "deleting": "Deleting…"
+    },
+    "locked": {
+      "title": "Knowledge Base is a paid feature",
+      "body": "Upgrade to Basic, Pro, Premier, or Enterprise to upload reference documents the AI agent can use during calls.",
+      "upgradeCta": "View plans"
     }
   },
   "tenantPrompts": {

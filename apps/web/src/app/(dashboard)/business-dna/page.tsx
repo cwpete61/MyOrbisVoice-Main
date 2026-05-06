@@ -29,6 +29,7 @@ import {
   ComplianceSection,
   type SectionProps,
 } from '@/components/dna/sections'
+import { KnowledgeBaseSection } from '@/components/dna/KnowledgeBaseSection'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { BackToOnboarding } from '@/components/BackToOnboarding'
 
@@ -54,16 +55,31 @@ interface DNADetail {
   complianceJson: Record<string, unknown>
 }
 
-type SectionKey =
+/** "knowledgeBase" is a special section that doesn't write to a DNA JSON
+ *  column — it manages its own files via the /api/knowledge-base endpoints
+ *  and bypasses the standard form/save/dirty/JSON-mode flow. */
+type DnaJsonKey =
   | 'identityJson' | 'servicesJson' | 'pricingJson' | 'operationsJson'
   | 'salesJson' | 'appointmentJson' | 'supportJson' | 'languageJson'
   | 'complianceJson'
+
+type SectionKey = DnaJsonKey | 'knowledgeBase'
+
+const DNA_JSON_KEYS: readonly DnaJsonKey[] = [
+  'identityJson', 'servicesJson', 'pricingJson', 'operationsJson',
+  'salesJson', 'appointmentJson', 'supportJson', 'languageJson', 'complianceJson',
+]
+function isDnaJsonKey(k: SectionKey): k is DnaJsonKey {
+  return (DNA_JSON_KEYS as readonly string[]).includes(k)
+}
 
 interface SectionMeta {
   key: SectionKey
   i18nKey: string
   icon: string
-  Component: (props: SectionProps) => React.JSX.Element
+  /** Standard sections render through this component. The knowledgeBase
+   *  section bypasses it — see the renderer below. */
+  Component: ((props: SectionProps) => React.JSX.Element) | null
 }
 
 /* The metadata array is preserved verbatim from the original page so the
@@ -79,6 +95,10 @@ const SECTIONS: SectionMeta[] = [
   { key: 'supportJson',     i18nKey: 'support',      icon: '🎧', Component: SupportSection },
   { key: 'languageJson',    i18nKey: 'language',     icon: '🗣️', Component: LanguageSection },
   { key: 'complianceJson',  i18nKey: 'compliance',   icon: '⚖️', Component: ComplianceSection },
+  // Knowledge Base — special section that manages its own state via
+  // /api/knowledge-base. Component is null because the renderer branches
+  // on this section key and renders <KnowledgeBaseSection /> directly.
+  { key: 'knowledgeBase',   i18nKey: 'knowledgeBase', icon: '📚', Component: null },
 ]
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -136,9 +156,11 @@ export default function BusinessDNAPage() {
     }
     const detail = await apiFetch<DNADetail>(`/api/business-dna/${id}`)
     setSelected(detail)
-    const sectionVal = (detail[activeSection] ?? {}) as Record<string, unknown>
-    setFormValue(sectionVal)
-    setJsonText(JSON.stringify(sectionVal, null, 2))
+    if (isDnaJsonKey(activeSection)) {
+      const sectionVal = (detail[activeSection] ?? {}) as Record<string, unknown>
+      setFormValue(sectionVal)
+      setJsonText(JSON.stringify(sectionVal, null, 2))
+    }
     setJsonMode(false)
     setJsonError('')
     setDirty(false)
@@ -151,11 +173,12 @@ export default function BusinessDNAPage() {
       if (!ok) return
     }
     setActiveSection(next)
-    if (selected) {
+    if (isDnaJsonKey(next) && selected) {
       const sectionVal = (selected[next] ?? {}) as Record<string, unknown>
       setFormValue(sectionVal)
       setJsonText(JSON.stringify(sectionVal, null, 2))
     } else {
+      // KB section or no selected version yet — no JSON value to load.
       setFormValue({})
       setJsonText('{}')
     }
@@ -210,6 +233,10 @@ export default function BusinessDNAPage() {
 
   async function saveSection() {
     if (!selected) return
+    // Knowledge Base self-saves on upload/delete; the page-level Save bar
+    // is hidden for it. Belt-and-suspenders early return if invoked anyway.
+    if (!isDnaJsonKey(activeSection)) return
+    const sectionKey: DnaJsonKey = activeSection
 
     // Resolve the value to save: if user is in JSON view, parse it first.
     let toSave: Record<string, unknown> = formValue
@@ -231,10 +258,10 @@ export default function BusinessDNAPage() {
     try {
       const updated = await apiFetch<DNADetail>(`/api/business-dna/${selected.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ [activeSection]: toSave }),
+        body: JSON.stringify({ [sectionKey]: toSave }),
       })
       setSelected(updated)
-      const fresh = (updated[activeSection] ?? {}) as Record<string, unknown>
+      const fresh = (updated[sectionKey] ?? {}) as Record<string, unknown>
       setFormValue(fresh)
       setJsonText(JSON.stringify(fresh, null, 2))
       setJsonError('')
@@ -431,19 +458,21 @@ export default function BusinessDNAPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={toggleJsonMode}
-                    className="text-xs px-3 py-1.5 rounded-lg"
-                    style={{
-                      color: jsonMode ? 'oklch(72% 0.12 193)' : 'var(--text-secondary)',
-                      background: jsonMode ? 'oklch(19% 0.04 193 / 0.6)' : 'transparent',
-                      border: '1px solid var(--border-subtle)',
-                    }}
-                  >
-                    {jsonMode
-                      ? t('tenantBusinessDna.showForm')
-                      : t('tenantBusinessDna.showAdvancedJson')}
-                  </button>
+                  {activeSection !== 'knowledgeBase' && (
+                    <button
+                      onClick={toggleJsonMode}
+                      className="text-xs px-3 py-1.5 rounded-lg"
+                      style={{
+                        color: jsonMode ? 'oklch(72% 0.12 193)' : 'var(--text-secondary)',
+                        background: jsonMode ? 'oklch(19% 0.04 193 / 0.6)' : 'transparent',
+                        border: '1px solid var(--border-subtle)',
+                      }}
+                    >
+                      {jsonMode
+                        ? t('tenantBusinessDna.showForm')
+                        : t('tenantBusinessDna.showAdvancedJson')}
+                    </button>
+                  )}
                   {!selected.isActive && (
                     <button
                       onClick={publish}
@@ -475,7 +504,7 @@ export default function BusinessDNAPage() {
 
               {/* Body */}
               <div className="px-5 py-4">
-                {readOnly && (
+                {readOnly && activeSection !== 'knowledgeBase' && (
                   <div
                     className="text-xs px-3 py-2 rounded-lg mb-4"
                     style={{
@@ -488,7 +517,11 @@ export default function BusinessDNAPage() {
                   </div>
                 )}
 
-                {jsonMode ? (
+                {activeSection === 'knowledgeBase' ? (
+                  // KB is shared across all DNA versions (it's tenant-scoped,
+                  // not version-scoped) and self-saves on upload/delete.
+                  <KnowledgeBaseSection />
+                ) : jsonMode ? (
                   <div>
                     <textarea
                       value={jsonText}
@@ -508,7 +541,7 @@ export default function BusinessDNAPage() {
                       </p>
                     )}
                   </div>
-                ) : (
+                ) : SectionComponent ? (
                   <SectionComponent
                     value={formValue}
                     onChange={setSectionValue}
@@ -521,11 +554,11 @@ export default function BusinessDNAPage() {
                         : (selected.identityJson as Record<string, unknown> | undefined)
                     }
                   />
-                )}
+                ) : null}
               </div>
 
-              {/* Sticky save bar */}
-              {!readOnly && (
+              {/* Sticky save bar — hidden for KB (self-saves on upload/delete) */}
+              {!readOnly && activeSection !== 'knowledgeBase' && (
                 <div
                   className="px-5 py-3 flex items-center justify-end gap-2 sticky bottom-0"
                   style={{

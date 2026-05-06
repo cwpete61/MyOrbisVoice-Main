@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
+import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { generateSummary } from './services/summary.service.js'
 import { persistConversation, markSessionFailed, type TranscriptEntry } from './services/conversation.service.js'
@@ -68,7 +69,11 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     ? (session.promptSnapshotJson as any[])
     : []
   const dna = session.businessDNASnapshotJson as Record<string, any> | null
-  const systemPrompt = resolveSystemPrompt(prompts, dna, 'WIDGET', buildToolGuidanceBlock())
+  const kbText = await fetchKbForPrompt(session.tenantId).catch(e => {
+    console.error('[session] kb fetch failed (non-fatal):', e?.message ?? e)
+    return null
+  })
+  const systemPrompt = resolveSystemPrompt(prompts, dna, 'WIDGET', buildToolGuidanceBlock(), kbText)
 
   const transcript: TranscriptEntry[] = []
   let conversationId: string | undefined

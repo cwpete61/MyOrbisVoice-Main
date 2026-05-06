@@ -23,6 +23,7 @@ export function resolveSystemPrompt(
   dna: DNASnapshot | null,
   channelType = 'WIDGET',
   toolGuidance?: string,
+  kbText?: string | null,
 ): string {
   const layers: string[] = []
 
@@ -79,6 +80,17 @@ export function resolveSystemPrompt(
 
   // Layer 5 — tool guidance (when tools are available for this session)
   if (toolGuidance) layers.push(toolGuidance)
+
+  // Layer 5 — tenant knowledge-base reference documents (uploaded PDFs,
+  // Word/Excel docs, plain text). Already pre-truncated by the caller to
+  // fit the model's context budget.
+  if (kbText && kbText.trim().length > 0) {
+    layers.push(
+      '--- Reference Documents ---\n' +
+      'The tenant has uploaded the following reference documents. Use them to answer caller questions about the business. If the answer is not in these documents, say so honestly rather than guessing.\n' +
+      kbText,
+    )
+  }
 
   return layers.join('\n\n')
 }

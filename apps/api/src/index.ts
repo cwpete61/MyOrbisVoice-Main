@@ -10,6 +10,7 @@ import { errorHandler } from './middleware/error-handler.js'
 import { startTokenCleanupJob } from './jobs/token-cleanup.js'
 import { startCampaignScheduler } from './jobs/campaign-scheduler.js'
 import { bootStripeFromConfig } from './lib/stripe.js'
+import { recoverStuckExtractions } from './services/knowledge-base.service.js'
 
 const env = getEnv()
 const app: Express = express()
@@ -106,6 +107,10 @@ async function start() {
     console.log(`[api] env: ${env.NODE_ENV}`)
     startTokenCleanupJob()
     startCampaignScheduler()
+    // Reset any KB extraction jobs left in PROCESSING from a prior crash —
+    // we can't resume the original buffer, so they get FAILED with a clear
+    // message and the user can re-upload.
+    recoverStuckExtractions().catch(e => console.error('[kb][recover] boot:', e))
   })
 }
 

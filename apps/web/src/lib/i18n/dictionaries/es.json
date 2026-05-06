@@ -1257,6 +1257,10 @@
       "compliance": {
         "label": "Cumplimiento",
         "description": "Reglas legales y regulatorias que el agente debe seguir — divulgaciones, avisos de grabación, lenguaje de exclusión, cumplimiento específico del sector (HIPAA, GDPR, etc.)."
+      },
+      "knowledgeBase": {
+        "label": "Base de conocimientos",
+        "description": "Sube documentos de referencia (PDF, Word, Excel, texto plano) que el agente de IA puede usar para responder preguntas de los llamantes. Los archivos se guardan en nuestra infraestructura; el agente lee el texto extraído en cada llamada."
       }
     },
     "identity": {
@@ -1660,6 +1664,35 @@
       "campaign_canceled": "Campaña cancelada",
       "dispatch_error": "Error de envío",
       "no_phone": "Sin teléfono"
+    }
+  },
+  "tenantKb": {
+    "loading": "Cargando base de conocimientos…",
+    "empty": "Aún no has subido documentos. Arrastra un archivo arriba para empezar.",
+    "confirmDelete": "¿Eliminar este documento? El agente de IA dejará de usarlo en la próxima llamada.",
+    "dropzone": {
+      "title": "Suelta archivos aquí, o haz clic para elegir",
+      "uploading": "Subiendo…",
+      "hint": "PDF, Word, Excel, CSV, texto plano o Markdown. Puedes subir varios archivos."
+    },
+    "usage": {
+      "label": "{used} MB usados de {cap} MB · {count} archivos",
+      "fileSizeHint": "Máximo {mb} MB por archivo. Archivos más grandes no se extraerán de forma confiable."
+    },
+    "status": {
+      "pending":    "Pendiente",
+      "processing": "Procesando",
+      "ready":      "Listo",
+      "failed":     "Falló"
+    },
+    "actions": {
+      "delete":   "Eliminar",
+      "deleting": "Eliminando…"
+    },
+    "locked": {
+      "title": "La base de conocimientos es una función de pago",
+      "body": "Actualiza a Basic, Pro, Premier o Enterprise para subir documentos de referencia que el agente de IA pueda usar durante las llamadas.",
+      "upgradeCta": "Ver planes"
     }
   },
   "tenantPrompts": {

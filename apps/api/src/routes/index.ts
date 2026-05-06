@@ -24,6 +24,7 @@ import onboardingRouter from './onboarding.js'
 import a2pRouter from './a2p.js'
 import pushRouter from './push.js'
 import aiAssistRouter from './ai-assist.js'
+import knowledgeBaseRouter from './knowledge-base.js'
 import { twilioInboundRouter } from './twilio-inbound.js'
 import { outboundWebhooksRouter } from './outbound-webhooks.js'
 import internalGatewayRouter from './internal-gateway.js'
@@ -62,5 +63,6 @@ router.use('/api', dashboardRouter)
 router.use('/api', onboardingRouter)
 router.use('/api', a2pRouter)
 router.use('/api', aiAssistRouter)
+router.use('/api/knowledge-base', knowledgeBaseRouter)
 
 export default router

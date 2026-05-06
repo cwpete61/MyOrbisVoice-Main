@@ -91,6 +91,8 @@ async function main() {
         { key: 'voice_overage_per_minute_cents',     valueType: 'INTEGER' as const, integerValue: 15 },
         { key: 'whatsapp_enabled',                   valueType: 'BOOLEAN' as const, booleanValue: false },
         { key: 'mms_enabled',                        valueType: 'BOOLEAN' as const, booleanValue: false },
+        // Knowledge base — feature locked on free tier
+        { key: 'kb_storage_mb',                      valueType: 'INTEGER' as const, integerValue: 0 },
       ],
     },
     {
@@ -118,6 +120,8 @@ async function main() {
         { key: 'voice_overage_per_minute_cents',     valueType: 'INTEGER' as const, integerValue: 12  },
         { key: 'whatsapp_enabled',                   valueType: 'BOOLEAN' as const, booleanValue: true },
         { key: 'mms_enabled',                        valueType: 'BOOLEAN' as const, booleanValue: true },
+        // Knowledge base — LTD matches Pro tier (250 MB)
+        { key: 'kb_storage_mb',                      valueType: 'INTEGER' as const, integerValue: 250 },
       ],
     },
     {
@@ -145,6 +149,8 @@ async function main() {
         { key: 'voice_overage_per_minute_cents',     valueType: 'INTEGER' as const, integerValue: 15  },
         { key: 'whatsapp_enabled',                   valueType: 'BOOLEAN' as const, booleanValue: false },
         { key: 'mms_enabled',                        valueType: 'BOOLEAN' as const, booleanValue: true  },
+        // Knowledge base — Basic tier (50 MB)
+        { key: 'kb_storage_mb',                      valueType: 'INTEGER' as const, integerValue: 50 },
       ],
     },
     {
@@ -172,6 +178,8 @@ async function main() {
         { key: 'voice_overage_per_minute_cents',     valueType: 'INTEGER' as const, integerValue: 12  },
         { key: 'whatsapp_enabled',                   valueType: 'BOOLEAN' as const, booleanValue: true },
         { key: 'mms_enabled',                        valueType: 'BOOLEAN' as const, booleanValue: true },
+        // Knowledge base — Pro tier (250 MB)
+        { key: 'kb_storage_mb',                      valueType: 'INTEGER' as const, integerValue: 250 },
       ],
     },
     {
@@ -199,6 +207,8 @@ async function main() {
         { key: 'voice_overage_per_minute_cents',     valueType: 'INTEGER' as const, integerValue: 10  },
         { key: 'whatsapp_enabled',                   valueType: 'BOOLEAN' as const, booleanValue: true },
         { key: 'mms_enabled',                        valueType: 'BOOLEAN' as const, booleanValue: true },
+        // Knowledge base — Premier tier (1 GB)
+        { key: 'kb_storage_mb',                      valueType: 'INTEGER' as const, integerValue: 1024 },
       ],
     },
     {
@@ -268,6 +278,8 @@ async function main() {
         { key: 'voice_overage_per_minute_cents',     valueType: 'INTEGER' as const, integerValue: 8   },
         { key: 'whatsapp_enabled',                   valueType: 'BOOLEAN' as const, booleanValue: true },
         { key: 'mms_enabled',                        valueType: 'BOOLEAN' as const, booleanValue: true },
+        // Knowledge base — Enterprise tier (5 GB)
+        { key: 'kb_storage_mb',                      valueType: 'INTEGER' as const, integerValue: 5120 },
       ],
     },
   ]

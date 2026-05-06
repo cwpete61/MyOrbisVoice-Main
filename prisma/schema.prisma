@@ -314,6 +314,7 @@ model User {
   pushSubscriptions     PushSubscription[]
   a2pOperatorNotes      A2POperatorNote[]
   passwordResetTokens   PasswordResetToken[]
+  uploadedKbFiles       KnowledgeBaseFile[]    @relation("KbFileUploadedBy")
 }
 
 model Tenant {
@@ -381,6 +382,11 @@ model Tenant {
   storagePreviousQuotaBytes BigInt?
   optOutLogs                OptOutLog[]
   notifications             Notification[]
+  knowledgeBaseFiles        KnowledgeBaseFile[]
+  /// Cumulative bytes used by knowledge-base files. Maintained by the
+  /// upload/delete service. Capped by the `kb_storage_mb` entitlement
+  /// (separate pool from voice-recording storageUsedBytes).
+  kbStorageUsedBytes        BigInt                  @default(0)
 }
 
 model TenantMember {
@@ -506,6 +512,40 @@ model BusinessDNA {
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, version])
+}
+
+/// Tenant-uploaded reference documents the AI agent can use as background
+/// knowledge during conversations. File blobs live on Bunny under
+/// `tenants/{tenantId}/knowledge-base/{id}.{ext}`. Extracted text lives in
+/// this row's `extractedText` so the agent never round-trips to Bunny on
+/// the live-call path. Capped per-tenant by the `kb_storage_mb`
+/// entitlement; per-file size capped by KB_MAX_FILE_BYTES in code.
+model KnowledgeBaseFile {
+  id               String       @id @default(uuid())
+  tenantId         String
+  filename         String
+  mimeType         String
+  sizeBytes        Int
+  bunnyStorageKey  String       @unique
+  extractedText    String?
+  extractionStatus KbFileStatus @default(PENDING)
+  errorMessage     String?
+  uploadedById     String
+  uploadedAt       DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  tenant     Tenant @relation(fields: [tenantId],     references: [id], onDelete: Cascade)
+  uploadedBy User   @relation("KbFileUploadedBy", fields: [uploadedById], references: [id])
+
+  @@index([tenantId, extractionStatus])
+  @@index([tenantId, uploadedAt])
+}
+
+enum KbFileStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
 }
 
 model PromptVersion {

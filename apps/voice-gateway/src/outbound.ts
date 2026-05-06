@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
+import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { generateSummary, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
@@ -162,11 +163,16 @@ export async function handleOutboundCall(ws: WebSocket) {
       complianceJson:  dna.complianceJson,
     } : null
 
+    const kbText = await fetchKbForPrompt(tenantId).catch(e => {
+      console.error('[outbound] kb fetch failed (non-fatal):', e?.message ?? e)
+      return null
+    })
     const systemPrompt = resolveSystemPrompt(
       prompts as any[],
       dnaSnap,
       'OUTBOUND',
       buildToolGuidanceBlock(),
+      kbText,
     )
 
     // Build greeting from DNA business name + campaign description
