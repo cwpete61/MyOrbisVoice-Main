@@ -2056,7 +2056,7 @@
     },
     "industry": {
       "title": "Industria",
-      "description": "Selecciona tu industria para que te recomendemos las plantillas de campaña adecuadas para tu negocio.",
+      "description": "Selecciona tu industria para que te recomendemos las plantillas de campaña adecuadas para tu negocio. Si tu industria no aparece en la lista, selecciona \"General\" como tu industria.",
       "label": "Sector",
       "helper": "Esto determina qué plantillas de campaña aparecen en tu Biblioteca de Campañas.",
       "searchPlaceholder": "Escribe para buscar industrias…"

@@ -2056,7 +2056,7 @@
     },
     "industry": {
       "title": "Industry",
-      "description": "Select your industry so we can recommend the right campaign templates for your business.",
+      "description": "Select your industry so we can recommend the right campaign templates for your business. If your industry is not listed, select \"General\" as your industry.",
       "label": "Industry vertical",
       "helper": "This determines which campaign templates appear in your Campaign Library.",
       "searchPlaceholder": "Type to search industries…"

@@ -36,42 +36,34 @@ function matchesQuery(ind: Industry, locale: 'en' | 'es', q: string): boolean {
 
 export function IndustryAutocomplete({ value, onChange, locale, placeholder, disabled }: Props) {
   const selected = findIndustry(value)
-  const [query, setQuery]   = useState<string>(labelFor(selected, locale))
+  // Search field starts empty regardless of saved value. The saved
+  // industry is shown as a small "Currently: …" indicator below the
+  // input so the user always knows what's stored.
+  const [query, setQuery]   = useState<string>('')
   const [open, setOpen]     = useState(false)
   const [activeIdx, setIdx] = useState(0)
   const wrapRef             = useRef<HTMLDivElement>(null)
   const listRef             = useRef<HTMLDivElement>(null)
 
-  // When the controlling `value` changes from outside (e.g. form reset),
-  // reflect it in the visible query.
-  useEffect(() => {
-    setQuery(labelFor(findIndustry(value), locale))
-  }, [value, locale])
-
-  // Close dropdown on outside click.
+  // Close dropdown on outside click; clear any partial query so the
+  // field returns to empty.
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (!wrapRef.current) return
       if (!wrapRef.current.contains(e.target as Node)) {
-        // On close, if the typed query doesn't match the selected label,
-        // restore the visible label so the field always shows a real industry.
-        setQuery(labelFor(findIndustry(value), locale))
+        setQuery('')
         setOpen(false)
       }
     }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
-  }, [value, locale])
+  }, [])
 
   const filtered = useMemo(() => {
-    // If the query equals the selected industry's label, treat as "no
-    // filter" so the user sees the full list when they tab into the
-    // field — easier discovery than starting empty.
     const q = query.trim()
-    const fullList = q === '' || q === labelFor(selected, locale)
-    if (fullList) return INDUSTRIES
+    if (q === '') return INDUSTRIES
     return INDUSTRIES.filter(i => matchesQuery(i, locale, q))
-  }, [query, selected, locale])
+  }, [query, locale])
 
   // Keep activeIdx in bounds when filter changes.
   useEffect(() => {
@@ -80,7 +72,7 @@ export function IndustryAutocomplete({ value, onChange, locale, placeholder, dis
 
   function pick(ind: Industry) {
     onChange(ind.code)
-    setQuery(labelFor(ind, locale))
+    setQuery('')
     setOpen(false)
   }
 
@@ -104,7 +96,7 @@ export function IndustryAutocomplete({ value, onChange, locale, placeholder, dis
       if (choice) pick(choice)
     } else if (e.key === 'Escape') {
       setOpen(false)
-      setQuery(labelFor(findIndustry(value), locale))
+      setQuery('')
     }
   }
 
@@ -177,6 +169,14 @@ export function IndustryAutocomplete({ value, onChange, locale, placeholder, dis
         >
           No matches. Try a broader term.
         </div>
+      )}
+      {/* Always show the currently saved industry below the input so the
+          user knows what's stored even when the search field is empty. */}
+      {!open && (
+        <p className="text-xs mt-1.5" style={{ color: 'var(--text-tertiary)' }}>
+          {locale === 'es' ? 'Actualmente: ' : 'Currently: '}
+          <strong style={{ color: 'var(--text-secondary)' }}>{labelFor(selected, locale)}</strong>
+        </p>
       )}
     </div>
   )
