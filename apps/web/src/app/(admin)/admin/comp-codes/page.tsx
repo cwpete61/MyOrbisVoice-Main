@@ -337,19 +337,20 @@ export default function AdminCompCodesPage() {
           <p className="mb-1">
             {t('adminCompCodes.setupBanner.missingTiers', { tiers: missingTiers.join(', ') })}
           </p>
-          <p>
-            {t('adminCompCodes.setupBanner.instructionsPrefix')}
-            <a
-              href="https://github.com/anthropic/myorbisvoice/blob/main/docs/runbook-comp-codes-setup.md"
-              target="_blank"
-              rel="noreferrer"
-              className="underline"
-              style={{ color: 'oklch(35% 0.16 230)' }}
-            >
-              {t('adminCompCodes.setupBanner.instructionsLink')}
-            </a>
-            {t('adminCompCodes.setupBanner.instructionsSuffix')}
-          </p>
+          <p className="mb-2">{t('adminCompCodes.setupBanner.instructionsLine')}</p>
+          <details className="mt-1">
+            <summary className="cursor-pointer underline" style={{ color: 'oklch(35% 0.16 230)' }}>
+              {t('adminCompCodes.setupBanner.showSteps')}
+            </summary>
+            <div className="mt-3 space-y-3">
+              {([1, 2, 3, 4] as const).map(n => (
+                <div key={n}>
+                  <p className="font-semibold">{t(`adminCompCodes.setupBanner.step${n}Title`)}</p>
+                  <p className="mt-0.5">{t(`adminCompCodes.setupBanner.step${n}Body`)}</p>
+                </div>
+              ))}
+            </div>
+          </details>
         </div>
       )}
 

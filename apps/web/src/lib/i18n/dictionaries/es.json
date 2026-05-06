@@ -2561,9 +2561,17 @@
     "setupBanner": {
       "title":          "Configuración requerida",
       "missingTiers":   "No hay cupón de cortesía configurado en Stripe para: {tiers}.",
-      "instructionsPrefix": "Consulta el ",
-      "instructionsLink":   "manual de configuración de códigos de cortesía",
-      "instructionsSuffix": " para crear los cupones faltantes en el panel de Stripe. Los generadores de abajo permanecen desactivados hasta que exista el cupón de cada nivel."
+      "instructionsLine": "Los generadores de abajo permanecen desactivados hasta que exista el cupón de cada nivel.",
+      "showSteps":      "Mostrar los 4 pasos de configuración",
+      "hideSteps":      "Ocultar pasos de configuración",
+      "step1Title":     "1. Localiza los 4 IDs de producto en Stripe",
+      "step1Body":      "Ve a Stripe Dashboard → Products. Copia el ID prod_… de Basic, Pro, Premier y Enterprise (omite LTD).",
+      "step2Title":     "2. Crea 4 cupones (Stripe Dashboard → Coupons → + New)",
+      "step2Body":      "Para cada uno de los 4 niveles, crea un cupón con: Type = Percentage discount, Percent off = 100, Duration = Forever, Apply to specific products = el producto correspondiente al nivel. Nómbralos 'Comp - Basic' / 'Comp - Pro' / etc.",
+      "step3Title":     "3. Agrega metadata.tier a cada cupón",
+      "step3Body":      "En cada cupón, agrega una clave de metadata 'tier' con valor BASIC / PRO / PREMIER / ENTERPRISE (en mayúsculas, coincidencia exacta — así es como esta página los encuentra). Guarda.",
+      "step4Title":     "4. Recarga esta página",
+      "step4Body":      "El aviso 'Configuración requerida' desaparece en ~60 segundos (TTL de caché). Los 4 generadores se activan. Repite para cualquier nivel que aún aparezca como faltante."
     },
     "stripeNotConfigured": "Stripe no está configurado. Establece STRIPE_SECRET_KEY en Admin → Configuración del sistema primero.",
     "generators": {

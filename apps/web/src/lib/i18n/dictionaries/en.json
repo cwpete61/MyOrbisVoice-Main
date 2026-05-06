@@ -2561,9 +2561,17 @@
     "setupBanner": {
       "title":          "Setup required",
       "missingTiers":   "No comp coupon configured in Stripe for: {tiers}.",
-      "instructionsPrefix": "See the ",
-      "instructionsLink":   "comp-codes setup runbook",
-      "instructionsSuffix": " to create the missing coupons in Stripe Dashboard. Generators below stay disabled until each tier's coupon exists."
+      "instructionsLine": "Generators below stay disabled until each tier's coupon exists.",
+      "showSteps":      "Show the 4 setup steps",
+      "hideSteps":      "Hide setup steps",
+      "step1Title":     "1. Find the 4 product IDs in Stripe",
+      "step1Body":      "Go to Stripe Dashboard → Products. Copy the prod_… ID for Basic, Pro, Premier, and Enterprise (skip LTD).",
+      "step2Title":     "2. Create 4 Coupons (Stripe Dashboard → Coupons → + New)",
+      "step2Body":      "For each of the 4 tiers, create a coupon with: Type = Percentage discount, Percent off = 100, Duration = Forever, Apply to specific products = the matching tier's product. Name it 'Comp - Basic' / 'Comp - Pro' / etc.",
+      "step3Title":     "3. Add metadata.tier on each coupon",
+      "step3Body":      "On each coupon, add a metadata key 'tier' with value BASIC / PRO / PREMIER / ENTERPRISE (uppercase, exact match — this is how this page finds them). Save.",
+      "step4Title":     "4. Refresh this page",
+      "step4Body":      "The 'Setup required' banner disappears within ~60 seconds (cache TTL). All 4 generators light up. Repeat for any tier still showing as missing."
     },
     "stripeNotConfigured": "Stripe is not configured. Set STRIPE_SECRET_KEY in Admin → System Settings first.",
     "generators": {
