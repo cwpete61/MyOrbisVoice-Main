@@ -16,6 +16,21 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ## 🟡 Recommended pre-launch (won't block customers, but reduces support load)
 
+### 4a. Latency telemetry isn't firing — needs a fresh inbound call to debug — open 2026-05-06
+
+**What:** Out of 28 completed inbound conversations in the last 14 days, `Conversation.metadataJson` is null on all 28. Per [apps/voice-gateway/src/inbound.ts:97-110](apps/voice-gateway/src/inbound.ts#L97-L110), the code SHOULD push `(agentFirstAudio - lastUserAudio)` ms onto `turnLatenciesMs` at every turn boundary, then [persistConversation()](apps/voice-gateway/src/services/conversation.service.ts#L20) writes it to `metadataJson.latency` at finalize. Neither is happening — `grep "turnaround:" gateway-logs` returns ZERO matches across all history.
+
+**Code audit (2026-05-06) found no bug on paper:**
+- `lastUserAudioAt` correctly set on each Twilio media event with track==='inbound' ([inbound.ts:404-411](apps/voice-gateway/src/inbound.ts#L404-L411))
+- `agentTurnStart` correctly reset to `null` on each `onTurnComplete` ([inbound.ts:299](apps/voice-gateway/src/inbound.ts#L299))
+- `sendAudioToTwilio` correctly enters the measurement block when `agentTurnStart === null` ([inbound.ts:104-108](apps/voice-gateway/src/inbound.ts#L104-L108))
+
+But `"first audio chunk → Twilio"` (the else-branch log meaning `lastUserAudioAt === null`) fires once per call, and `"turnaround:"` never fires. That implies `lastUserAudioAt` is null whenever the agent's first chunk for turn N+1 arrives — which can only happen if user audio frames never update line 410. Most likely cause: Twilio is sending media events with `track` field empty or non-'inbound', so the filter at line 405 silently drops them. Cannot confirm without a fresh inbound call to trace.
+
+**Verifies done when:** Make one inbound call to a tenant's number, hold a 2-3 turn conversation, then check `Conversation.metadataJson.latency` is populated. If still null, add a log line at [inbound.ts:404](apps/voice-gateway/src/inbound.ts#L404) that prints `msg.media.track` for the first 5 media events, deploy, call again, read logs.
+
+**Owner:** You (drive a real inbound call), me (read logs in parallel + ship the fix).
+
 ### 4. Capture real production call latency baseline
 
 **What:** Once we have ~50 real production calls, query `SELECT metadataJson->'latency' FROM "Conversation" WHERE metadataJson ? 'latency' ORDER BY "createdAt" DESC` and look at the median + p95 distribution.
