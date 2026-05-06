@@ -27,7 +27,7 @@ interface ContactList {
   limit: number
 }
 
-const inp = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
+const inp = 'input'
 const lbl = 'block text-xs font-medium mb-1'
 
 export default function ContactsPage() {

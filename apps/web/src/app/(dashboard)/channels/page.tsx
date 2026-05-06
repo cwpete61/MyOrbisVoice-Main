@@ -72,9 +72,8 @@ const DEFAULT_HOURS: BusinessHours = {
   sun: { open: '09:00', close: '13:00', closed: true  },
 }
 
-const inp  = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
-const lbl  = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1'
-const mono = 'font-mono text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded'
+const inp  = 'input'
+const lbl  = 'label'
 
 interface ContactOption { id: string; fullName: string | null; phoneE164: string | null }
 
@@ -141,7 +140,7 @@ function ContactPicker({ value, onChange, t }: { value: string; onChange: (v: st
             {suggestions.length > 0 && suggestions.map(c => (
               <button key={c.id} type="button"
                 onClick={() => { onChange(c.phoneE164!); setOpen(false) }}
-                className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                className="w-full text-left px-3 py-2.5 flex items-center justify-between transition-colors hover:[background:var(--surface-overlay)]">
                 <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.fullName ?? noNamePlaceholder}</span>
                 <span className="text-xs font-mono" style={{ color: 'var(--text-tertiary)' }}>{c.phoneE164}</span>
               </button>
@@ -150,7 +149,7 @@ function ContactPicker({ value, onChange, t }: { value: string; onChange: (v: st
             {suggestions.length === 0 && contacts.map(c => (
               <button key={c.id} type="button"
                 onClick={() => { onChange(c.phoneE164!); setOpen(false) }}
-                className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="w-full text-left px-3 py-2.5 flex items-center justify-between transition-colors hover:[background:var(--surface-overlay)]"
                 style={{ background: c.phoneE164 === value ? 'var(--surface-overlay)' : undefined }}>
                 <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{c.fullName ?? noNamePlaceholder}</span>
                 <span className="text-xs font-mono" style={{ color: 'var(--text-tertiary)' }}>{c.phoneE164}</span>
@@ -170,33 +169,34 @@ function ContactPicker({ value, onChange, t }: { value: string; onChange: (v: st
 
 function PhoneNumbersPanel({ numbers, t }: { numbers: PhoneNumber[]; t: TFn }) {
   return (
-    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-3">
+    <div className="mt-6 pt-6 space-y-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{t('tenantChannels.phoneNumbers.title')}</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('tenantChannels.phoneNumbers.subtitle')}</p>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantChannels.phoneNumbers.title')}</h3>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{t('tenantChannels.phoneNumbers.subtitle')}</p>
         </div>
         <Link href="/phone-numbers"
-          className="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700">
+          className="px-3 py-1.5 text-xs rounded-lg"
+          style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
           {t('tenantChannels.phoneNumbers.manageLink')}
         </Link>
       </div>
 
       {numbers.length === 0
         ? (
-          <p className="text-xs text-gray-400 dark:text-gray-500 py-3 text-center">
+          <p className="text-xs py-3 text-center" style={{ color: 'var(--text-tertiary)' }}>
             {t('tenantChannels.phoneNumbers.emptyPrefix')}{' '}
-            <Link href="/phone-numbers" className="text-blue-600 hover:underline">{t('tenantChannels.phoneNumbers.emptyLink')}</Link>
+            <Link href="/phone-numbers" className="underline" style={{ color: 'oklch(55% 0.11 193)' }}>{t('tenantChannels.phoneNumbers.emptyLink')}</Link>
             {t('tenantChannels.phoneNumbers.emptySuffix')}
           </p>
         )
         : (
           <div className="space-y-2">
             {numbers.map((n) => (
-              <div key={n.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <div key={n.id} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)' }}>
                 <div>
-                  <span className={mono}>{n.e164Number}</span>
-                  {n.displayLabel && <span className="ml-2 text-xs text-gray-500">{n.displayLabel}</span>}
+                  <span className="font-mono text-xs px-2 py-1 rounded" style={{ background: 'var(--surface-sunken)', color: 'var(--text-primary)' }}>{n.e164Number}</span>
+                  {n.displayLabel && <span className="ml-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>{n.displayLabel}</span>}
                 </div>
               </div>
             ))}
@@ -213,25 +213,27 @@ function BusinessHoursEditor({ hours, onChange, t }: { hours: BusinessHours; onC
         const entry = hours[day] ?? DEFAULT_HOURS[day]!
         return (
           <div key={day} className="flex items-center gap-3">
-            <div className="w-8 text-xs font-medium text-gray-500 dark:text-gray-400">{t(`tenantChannels.days.${day}`)}</div>
+            <div className="w-8 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{t(`tenantChannels.days.${day}`)}</div>
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input type="checkbox" checked={!entry.closed}
                 onChange={(e) => onChange({ ...hours, [day]: { ...entry, closed: !e.target.checked } })}
                 className="rounded" />
-              <span className="text-xs text-gray-600 dark:text-gray-400">{t('tenantChannels.businessHours.open')}</span>
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{t('tenantChannels.businessHours.open')}</span>
             </label>
             {!entry.closed && (
               <>
                 <input type="time" value={entry.open}
                   onChange={(e) => onChange({ ...hours, [day]: { ...entry, open: e.target.value } })}
-                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                <span className="text-xs text-gray-400">{t('tenantChannels.businessHours.to')}</span>
+                  className="input"
+                  style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} />
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantChannels.businessHours.to')}</span>
                 <input type="time" value={entry.close}
                   onChange={(e) => onChange({ ...hours, [day]: { ...entry, close: e.target.value } })}
-                  className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  className="input"
+                  style={{ width: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} />
               </>
             )}
-            {entry.closed && <span className="text-xs text-gray-400 italic">{t('tenantChannels.businessHours.closed')}</span>}
+            {entry.closed && <span className="text-xs italic" style={{ color: 'var(--text-tertiary)' }}>{t('tenantChannels.businessHours.closed')}</span>}
           </div>
         )
       })}
@@ -284,19 +286,19 @@ export default function ChannelsPage() {
     finally { setSaving(false) }
   }
 
-  if (loading) return <div className="p-8 text-sm text-gray-500 dark:text-gray-400">{t('tenantChannels.loading')}</div>
-  if (error)   return <div className="p-8 text-sm text-red-500">{error}</div>
+  if (loading) return <div className="p-8 text-sm" style={{ color: 'var(--text-secondary)' }}>{t('tenantChannels.loading')}</div>
+  if (error)   return <div className="p-8"><div className="alert-error">{error}</div></div>
 
   const cfg = selected ? getConfig(selected) : {}
 
   return (
     <div className="p-8">
       <BackToOnboarding markStepKey="channel" />
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-1">{t('tenantChannels.title')}</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('tenantChannels.subtitle')}</p>
+      <h1 className="text-2xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{t('tenantChannels.title')}</h1>
+      <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>{t('tenantChannels.subtitle')}</p>
 
       {message && (
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-400">{message}</div>
+        <div className="alert-success mb-4">{message}</div>
       )}
 
       <div className="grid grid-cols-3 gap-4 mb-8">
@@ -331,14 +333,19 @@ export default function ChannelsPage() {
               </div>
             )
           }
+          const isSelected = selected?.id === c.id
           return (
             <button key={c.id} onClick={() => { setSelected(prev => prev?.id === c.id ? null : c); setMessage('') }}
-              className={`text-left p-5 rounded-xl border transition-all ${selected?.id === c.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-gray-300 dark:hover:border-gray-600'}`}>
+              className="text-left p-5 rounded-xl transition-all"
+              style={{
+                background: isSelected ? 'oklch(55% 0.11 193 / 0.08)' : 'var(--surface-raised)',
+                border:     isSelected ? '1px solid oklch(55% 0.11 193)' : '1px solid var(--border-subtle)',
+              }}>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{keys ? t(keys.labelKey) : c.channelType}</span>
-                <span className={`w-2 h-2 rounded-full ${c.isEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{keys ? t(keys.labelKey) : c.channelType}</span>
+                <span className="w-2 h-2 rounded-full" style={{ background: c.isEnabled ? 'oklch(65% 0.16 145)' : 'var(--border-subtle)' }} />
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{keys ? t(keys.descKey) : ''}</p>
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{keys ? t(keys.descKey) : ''}</p>
             </button>
           )
         })}
@@ -349,20 +356,22 @@ export default function ChannelsPage() {
           {/* Backdrop — click outside panel to close */}
           <div className="fixed inset-0 z-10" onClick={() => setSelected(null)} />
 
-          <div className="relative z-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 max-w-xl space-y-5">
+          <div className="relative z-20 rounded-xl p-6 max-w-xl space-y-5"
+            style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
 
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{CHANNEL_KEYS[selected.channelType] ? t(CHANNEL_KEYS[selected.channelType]!.labelKey) : selected.channelType}</h2>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{CHANNEL_KEYS[selected.channelType] ? t(CHANNEL_KEYS[selected.channelType]!.labelKey) : selected.channelType}</h2>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+              <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
                 <input type="checkbox" checked={selected.isEnabled}
                   onChange={(e) => setSelected({ ...selected, isEnabled: e.target.checked })} className="rounded" />
                 {t('tenantChannels.enabledLabel')}
               </label>
               <button
                 onClick={() => setSelected(null)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                className="transition-colors"
+                style={{ color: 'var(--text-tertiary)' }}
                 aria-label={t('tenantChannels.closeLabel')}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -440,7 +449,7 @@ export default function ChannelsPage() {
             </label>
             <input value={selected.greetingMode ?? ''} onChange={(e) => setSelected({ ...selected, greetingMode: e.target.value || null })}
               className={inp} placeholder={t('tenantChannels.greetingMode.placeholder')} />
-            <p className="mt-1 text-xs text-gray-400">{t('tenantChannels.greetingMode.help')}</p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantChannels.greetingMode.help')}</p>
           </div>
 
           {/* Escalation mode + transfer number */}
@@ -461,14 +470,14 @@ export default function ChannelsPage() {
               onChange={(v) => setConfig('transferNumber', v || undefined)}
               t={t}
             />
-            <p className="mt-1 text-xs text-gray-400">{t('tenantChannels.escalation.transferHelp')}</p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantChannels.escalation.transferHelp')}</p>
           </div>
 
           {/* Inbound-specific fields */}
           {selected.channelType === 'INBOUND' && (
             <>
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-4">
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('tenantChannels.afterHours.title')}</h3>
+              <div className="pt-4 space-y-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantChannels.afterHours.title')}</h3>
 
                 <div>
                   <label className={lbl + ' flex items-center'}>
@@ -493,14 +502,14 @@ export default function ChannelsPage() {
                       onChange={(v) => setConfig('forwardingNumber', v || undefined)}
                       t={t}
                     />
-                    <p className="mt-1 text-xs text-gray-400">{t('tenantChannels.afterHours.forwardHelp')}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantChannels.afterHours.forwardHelp')}</p>
                   </div>
                 )}
               </div>
 
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-3">
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">{t('tenantChannels.businessHours.title')}</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{t('tenantChannels.businessHours.description')}</p>
+              <div className="pt-4 space-y-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantChannels.businessHours.title')}</h3>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{t('tenantChannels.businessHours.description')}</p>
                 <BusinessHoursEditor
                   hours={cfg.businessHours ?? DEFAULT_HOURS}
                   onChange={(h) => setConfig('businessHours', h)}
@@ -510,11 +519,10 @@ export default function ChannelsPage() {
           )}
 
           {selected.promptVersion && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">{t('tenantChannels.boundPrompt', { name: selected.promptVersion.name })}</p>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantChannels.boundPrompt', { name: selected.promptVersion.name })}</p>
           )}
 
-          <button onClick={saveChannel} disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50">
+          <button onClick={saveChannel} disabled={saving} className="btn-primary">
             {saving ? t('tenantChannels.actions.saving') : t('tenantChannels.actions.save')}
           </button>
 

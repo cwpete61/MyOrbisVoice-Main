@@ -2398,7 +2398,11 @@
       "title": "Configuración completa — llama a tu número para probarlo",
       "descriptionPrefix": "Tu recepcionista de IA ya está activo. Llama a tu número para confirmar que todo funciona y revisa la conversación en",
       "conversationsLink": "Conversaciones",
-      "descriptionSuffix": "."
+      "descriptionSuffix": ".",
+      "freeTitle": "Configuración completa — actualiza tu plan para empezar a recibir llamadas",
+      "freeDescriptionPrefix": "Para probar el widget, llamadas entrantes o salientes, ",
+      "freeDescriptionLink": "actualiza a un plan de pago",
+      "freeDescriptionSuffix": "."
     }
   },
   "tenantStaff": {

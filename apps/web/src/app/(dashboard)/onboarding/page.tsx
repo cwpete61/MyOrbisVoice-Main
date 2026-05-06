@@ -178,16 +178,31 @@ export default function OnboardingPage() {
         })}
       </div>
 
-      {data.allComplete && (
-        <div className="rounded-xl p-5 text-center" style={{ background: 'oklch(96% 0.05 160)', border: '1px solid oklch(80% 0.10 160)' }}>
-          <p className="text-sm font-semibold mb-1" style={{ color: 'oklch(35% 0.16 160)' }}>{t('tenantOnboarding.complete.title')}</p>
-          <p className="text-xs" style={{ color: 'oklch(45% 0.10 160)' }}>
-            {t('tenantOnboarding.complete.descriptionPrefix')}{' '}
-            <Link href="/conversations" className="underline">{t('tenantOnboarding.complete.conversationsLink')}</Link>
-            {t('tenantOnboarding.complete.descriptionSuffix')}
-          </p>
-        </div>
-      )}
+      {data.allComplete && (() => {
+        const hasLocked = data.steps.some((s) => s.locked)
+        return (
+          <div className="rounded-xl p-5 text-center" style={{ background: 'oklch(96% 0.05 160)', border: '1px solid oklch(80% 0.10 160)' }}>
+            <p className="text-sm font-semibold mb-1" style={{ color: 'oklch(35% 0.16 160)' }}>
+              {hasLocked ? t('tenantOnboarding.complete.freeTitle') : t('tenantOnboarding.complete.title')}
+            </p>
+            <p className="text-xs" style={{ color: 'oklch(45% 0.10 160)' }}>
+              {hasLocked ? (
+                <>
+                  {t('tenantOnboarding.complete.freeDescriptionPrefix')}
+                  <Link href="/billing" className="underline">{t('tenantOnboarding.complete.freeDescriptionLink')}</Link>
+                  {t('tenantOnboarding.complete.freeDescriptionSuffix')}
+                </>
+              ) : (
+                <>
+                  {t('tenantOnboarding.complete.descriptionPrefix')}{' '}
+                  <Link href="/conversations" className="underline">{t('tenantOnboarding.complete.conversationsLink')}</Link>
+                  {t('tenantOnboarding.complete.descriptionSuffix')}
+                </>
+              )}
+            </p>
+          </div>
+        )
+      })()}
     </div>
   )
 }

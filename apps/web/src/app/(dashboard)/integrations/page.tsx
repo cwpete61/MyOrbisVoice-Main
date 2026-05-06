@@ -40,7 +40,7 @@ const STATUS_LABEL_KEY: Record<string, string> = {
   DISABLED:           'tenantIntegrations.statusPill.disabled',
 }
 
-const inp = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500'
+const inp = 'input'
 
 export default function IntegrationsPage() {
   const t = useT()

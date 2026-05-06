@@ -2398,7 +2398,11 @@
       "title": "Setup complete — call your number to test",
       "descriptionPrefix": "Your AI receptionist is live. Call your number to confirm everything works, then check the conversation in",
       "conversationsLink": "Conversations",
-      "descriptionSuffix": "."
+      "descriptionSuffix": ".",
+      "freeTitle": "Setup complete — upgrade to start taking calls",
+      "freeDescriptionPrefix": "To test the widget, inbound, or outbound calls, ",
+      "freeDescriptionLink": "upgrade to a paid plan",
+      "freeDescriptionSuffix": "."
     }
   },
   "tenantStaff": {

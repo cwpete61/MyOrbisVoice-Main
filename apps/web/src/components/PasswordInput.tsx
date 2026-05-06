@@ -21,7 +21,8 @@ export function PasswordInput({ className = '', ...props }: Props) {
         onClick={() => setVisible((v) => !v)}
         tabIndex={-1}
         aria-label={visible ? 'Hide password' : 'Show password'}
-        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+        className="absolute inset-y-0 right-0 flex items-center px-3"
+        style={{ color: 'var(--text-tertiary)' }}
       >
         {visible ? (
           // Eye-off
