@@ -209,6 +209,35 @@
   .btn-primary:active { transform: translateY(1px); }
   .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
+  /* AI-assist pill — used wherever a "Generate with AI" affordance lives.
+     Vivid teal-to-indigo gradient + sparkle + shadow makes it read as a
+     distinct, primary AI action. Visible against both light and dark
+     surfaces (no dependence on theme tokens). */
+  .ai-assist-pill {
+    background:    linear-gradient(135deg, oklch(62% 0.16 193) 0%, oklch(58% 0.18 285) 100%);
+    color:         #ffffff;
+    border:        1px solid oklch(50% 0.18 285 / 0.5);
+    box-shadow:    0 2px 8px oklch(55% 0.16 230 / 0.30);
+    transition:    transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+    cursor:        pointer;
+    letter-spacing: 0.01em;
+  }
+  .ai-assist-pill:hover {
+    transform:  translateY(-1px);
+    box-shadow: 0 4px 14px oklch(55% 0.16 230 / 0.45);
+    filter:     brightness(1.05);
+  }
+  .ai-assist-pill:active {
+    transform:  translateY(0);
+    box-shadow: 0 1px 4px oklch(55% 0.16 230 / 0.35);
+  }
+  .ai-assist-pill:disabled {
+    opacity:    0.55;
+    cursor:     not-allowed;
+    transform:  none;
+    box-shadow: none;
+  }
+
   /* Ghost button */
   .btn-ghost {
     display: inline-flex;

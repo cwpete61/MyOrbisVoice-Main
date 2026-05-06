@@ -157,14 +157,9 @@ export function GenerateWithAi({ section, currentValue, identitySnapshot, onAppl
       <button
         type="button"
         onClick={openModal}
-        className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
-        style={{
-          background:  'oklch(19% 0.04 193 / 0.5)',
-          color:       'oklch(72% 0.12 193)',
-          border:      '1px solid oklch(37% 0.08 193 / 0.45)',
-        }}
+        className="ai-assist-pill inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded-full"
       >
-        <span>✨</span>
+        <span aria-hidden="true">✨</span>
         <span>Generate with AI</span>
       </button>
 

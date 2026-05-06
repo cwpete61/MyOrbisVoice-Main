@@ -63,9 +63,12 @@ function patch(value: DNASection, partial: Record<string, unknown>): DNASection 
   return { ...value, ...partial }
 }
 
-/** Small row that hosts the "Generate with AI" pill above a section's fields. */
+/** Small row that hosts the "Generate with AI" pill above a section's fields.
+ *  Left-aligned so the pill sits in the natural reading flow under the
+ *  section header, instead of floating in the top-right corner where users
+ *  miss it. */
 function AiAssistRow({ children }: { children: React.ReactNode }) {
-  return <div className="flex items-center justify-end">{children}</div>
+  return <div className="flex items-center justify-start">{children}</div>
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
