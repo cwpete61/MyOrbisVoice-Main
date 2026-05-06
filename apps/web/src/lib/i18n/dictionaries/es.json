@@ -2059,25 +2059,7 @@
       "description": "Selecciona tu industria para que te recomendemos las plantillas de campaña adecuadas para tu negocio.",
       "label": "Sector",
       "helper": "Esto determina qué plantillas de campaña aparecen en tu Biblioteca de Campañas.",
-      "options": {
-        "GENERAL": "General",
-        "ACCOUNTING": "Contabilidad / Impuestos",
-        "AUTO_REPAIR": "Taller automotriz",
-        "BEAUTY": "Belleza y bienestar",
-        "CHILDCARE": "Cuidado infantil / Guardería",
-        "DENTAL": "Dental",
-        "EDUCATION": "Educación",
-        "FINANCIAL": "Servicios financieros",
-        "FITNESS": "Gimnasio y fitness",
-        "HOME_SERVICES": "Servicios para el hogar",
-        "HOSPITALITY": "Hospitalidad",
-        "INSURANCE": "Seguros",
-        "LEGAL": "Legal",
-        "MEDICAL": "Medicina / Clínica",
-        "PROPERTY_MANAGEMENT": "Administración de propiedades",
-        "REAL_ESTATE": "Bienes raíces",
-        "VETERINARY": "Veterinaria"
-      }
+      "searchPlaceholder": "Escribe para buscar industrias…"
     },
     "profile": {
       "title": "Perfil del negocio",

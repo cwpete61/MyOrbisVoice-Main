@@ -6,6 +6,7 @@ import { PushNotificationToggle } from '@/components/PushNotificationToggle'
 import { Tooltip } from '@/components/Tooltip'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { BackToOnboarding } from '@/components/BackToOnboarding'
+import { IndustryAutocomplete } from '@/components/IndustryAutocomplete'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
 
@@ -20,25 +21,6 @@ interface Tenant {
   industryVertical: string
 }
 
-const INDUSTRY_VERTICAL_CODES = [
-  'GENERAL',
-  'ACCOUNTING',
-  'AUTO_REPAIR',
-  'BEAUTY',
-  'CHILDCARE',
-  'DENTAL',
-  'EDUCATION',
-  'FINANCIAL',
-  'FITNESS',
-  'HOME_SERVICES',
-  'HOSPITALITY',
-  'INSURANCE',
-  'LEGAL',
-  'MEDICAL',
-  'PROPERTY_MANAGEMENT',
-  'REAL_ESTATE',
-  'VETERINARY',
-] as const
 
 interface BusinessProfile {
   brandName: string
@@ -334,15 +316,12 @@ export default function SettingsPage() {
       >
         <div>
           <label className="label">{t('tenantSettings.industry.label')}</label>
-          <select
+          <IndustryAutocomplete
             value={(tenantForm as Tenant).industryVertical ?? 'GENERAL'}
-            onChange={e => setTenantForm({ ...tenantForm, industryVertical: e.target.value })}
-            className="input"
-          >
-            {INDUSTRY_VERTICAL_CODES.map(code => (
-              <option key={code} value={code}>{t(`tenantSettings.industry.options.${code}`)}</option>
-            ))}
-          </select>
+            onChange={code => setTenantForm({ ...tenantForm, industryVertical: code })}
+            locale={locale === 'es' ? 'es' : 'en'}
+            placeholder={t('tenantSettings.industry.searchPlaceholder')}
+          />
           <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
             {t('tenantSettings.industry.helper')}
           </p>

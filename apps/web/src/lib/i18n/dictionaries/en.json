@@ -2059,25 +2059,7 @@
       "description": "Select your industry so we can recommend the right campaign templates for your business.",
       "label": "Industry vertical",
       "helper": "This determines which campaign templates appear in your Campaign Library.",
-      "options": {
-        "GENERAL": "General",
-        "ACCOUNTING": "Accounting / Tax",
-        "AUTO_REPAIR": "Auto Repair",
-        "BEAUTY": "Beauty & Wellness",
-        "CHILDCARE": "Childcare / Nursery",
-        "DENTAL": "Dental",
-        "EDUCATION": "Education",
-        "FINANCIAL": "Financial Services",
-        "FITNESS": "Fitness & Gym",
-        "HOME_SERVICES": "Home Services",
-        "HOSPITALITY": "Hospitality",
-        "INSURANCE": "Insurance",
-        "LEGAL": "Legal",
-        "MEDICAL": "Medical / Clinic",
-        "PROPERTY_MANAGEMENT": "Property Management",
-        "REAL_ESTATE": "Real Estate",
-        "VETERINARY": "Veterinary"
-      }
+      "searchPlaceholder": "Type to search industries…"
     },
     "profile": {
       "title": "Business profile",
