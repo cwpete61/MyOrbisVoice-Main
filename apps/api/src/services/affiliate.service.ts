@@ -787,10 +787,72 @@ export async function regeneratePartnerCode(id: string) {
   })
 }
 
-export async function deletePartner(id: string) {
-  // Hard delete — cascades to clicks, conversions, commissions, payout requests
-  // via the `onDelete: Cascade` rules on those models.
-  return prisma.affiliateAccount.delete({ where: { id } })
+export async function deletePartner(
+  id: string,
+  opts: { actorUserId?: string; reason?: string } = {},
+) {
+  // Full erasure — when an admin deletes a partner, every piece of their
+  // contact + identity data is wiped, NOT just the AffiliateAccount row.
+  // Steps in order:
+  //   1. Tear down the Stripe Connect Express account (best-effort — if Stripe
+  //      rejects we still wipe local data so PII doesn't linger here).
+  //   2. Delete the underlying User record. Schema cascade rules then
+  //      automatically wipe:
+  //        - AffiliateAccount → AffiliateClick / Conversion / Commission /
+  //          PayoutRequest / CustomLink
+  //        - TenantMember (any tenant memberships the partner had)
+  //        - PushSubscription
+  //        - RefreshToken
+  //        - ImpersonationSession (started by this user, if any)
+  //      Audit logs they appear in have actorUserId SET NULL (record stays,
+  //      identity is anonymized — correct compliance pattern).
+  //      Prompts they authored have createdByUserId SET NULL similarly.
+  //   3. Write an audit log of the deletion itself, intentionally without the
+  //      deleted user's email or personal data — purpose of the operation is
+  //      erasure.
+  const account = await prisma.affiliateAccount.findUnique({
+    where:   { id },
+    include: { user: { select: { id: true } } },
+  })
+  if (!account) {
+    // Already gone — idempotent
+    return { deleted: false, reason: 'not_found' as const }
+  }
+
+  // Step 1 — Stripe Connect account teardown
+  let stripeDeleteError: string | undefined
+  if (account.stripeConnectAccountId) {
+    try {
+      const stripe = getStripe()
+      await stripe.accounts.del(account.stripeConnectAccountId)
+    } catch (err) {
+      stripeDeleteError = (err as Error).message
+      console.error(`[deletePartner] Stripe accounts.del failed for ${account.stripeConnectAccountId}: ${stripeDeleteError}`)
+      // Non-fatal — continue with local erasure
+    }
+  }
+
+  // Step 2 — hard-delete the User. All cascade chains fire.
+  await prisma.user.delete({ where: { id: account.userId } })
+
+  // Step 3 — audit
+  const { writeAuditLog } = await import('../lib/audit.js')
+  await writeAuditLog({
+    actorType:    'ADMIN',
+    actorUserId:  opts.actorUserId,
+    action:       'partner.deleted',
+    targetType:   'AffiliateAccount',
+    targetId:     id,
+    metadataJson: {
+      affiliateAccountId:     id,
+      stripeConnectAccountId: account.stripeConnectAccountId,
+      stripeDeleteError,
+      reason:                 opts.reason,
+      // Intentionally NOT recording email / name / etc. — purpose is erasure.
+    },
+  })
+
+  return { deleted: true, stripeAccountDeleted: !!account.stripeConnectAccountId && !stripeDeleteError, stripeDeleteError }
 }
 
 export async function getDailyClickStats(affiliateAccountId: string, days = 30) {

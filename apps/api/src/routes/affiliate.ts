@@ -244,7 +244,14 @@ adminRouter.post('/affiliates/:id/regenerate-code', async (req, res, next) => {
 })
 
 adminRouter.delete('/affiliates/:id', async (req, res, next) => {
-  try { await affiliateService.deletePartner(req.params.id!); res.sendStatus(204) } catch (err) { next(err) }
+  try {
+    const reason = (req.body as { reason?: string } | undefined)?.reason
+    const result = await affiliateService.deletePartner(req.params.id!, {
+      actorUserId: req.user!.id,
+      reason,
+    })
+    res.json({ data: result })
+  } catch (err) { next(err) }
 })
 
 adminRouter.post('/affiliates/:id/approve',   async (req, res, next) => { try { res.json({ data: await affiliateService.approveAffiliate(req.params.id!) }) } catch (err) { next(err) } })
