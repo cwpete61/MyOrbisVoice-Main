@@ -1688,7 +1688,7 @@ Items below are confirmed product requirements. Implement them in order of depen
 | 17 | Twilio testing path completion | 🟡 IN-FLIGHT |
 | 18 | WhatsApp dispatch | 🔵 DEFERRED — pending Meta Business verification |
 | 19 | Outbound voice carrier reputation | 🔵 DEFERRED — pending A2P 10DLC + STIR/SHAKEN attestation |
-| 20 | Self-service A2P 10DLC registration wizard (tenants AND admin) | ❌ TODO — build AFTER soft-launch when manual-A2P pain is observed; ~8-11 working days; same wizard runs on tenant dashboard (registers tenant subaccount) AND admin dashboard (registers platform master account for MyOrbisVoice's own numbers); full Twilio Trust Hub API automation, no Console clicking |
+| 20 | Self-service A2P 10DLC registration wizard (tenants AND admin) | 🟡 PARTIAL — data-capture form already shipped (schema + 3 API routes + tenant UI page at `/a2p`). Remaining: Twilio Trust Hub integration, multi-step wizard polish with gap-handling UX, admin dashboard mount, status webhook receiver, auto-link to phone numbers. ~5-7 days from current state |
 
 **Open work — incremental, not blocking launch:**
 - **#3 Agent latency tuning** — telemetry now captures real distributions; tune VAD / prompt-size only after baseline data exists across real production calls
@@ -2254,7 +2254,34 @@ A help center with stale or missing screenshots erodes user trust and increases 
 
 ---
 
-### 20. Self-service A2P 10DLC registration wizard (TENANTS + ADMIN) — ❌ TODO
+### 20. Self-service A2P 10DLC registration wizard (TENANTS + ADMIN) — 🟡 PARTIAL
+
+**Already built (audited 2026-05-05):**
+
+| Piece | Where | Status |
+|---|---|---|
+| `TenantA2PApplication` Prisma model — 29 fields covering legal identity, address, auth rep, use case, sample messages, Twilio SIDs, status enum (DRAFT / SUBMITTED / APPROVED / REJECTED) | [prisma/schema.prisma:670](prisma/schema.prisma#L670) | ✅ shipped |
+| API: `GET /api/a2p` returns the tenant's current application | [routes/a2p.ts:44](apps/api/src/routes/a2p.ts#L44) | ✅ shipped |
+| API: `PUT /api/a2p` upserts form data (zod-validated, EIN format check, sample-message length bounds) | [routes/a2p.ts:51](apps/api/src/routes/a2p.ts#L51) | ✅ shipped |
+| API: `POST /api/a2p/submit` flips DRAFT → SUBMITTED + audit log | [routes/a2p.ts:113](apps/api/src/routes/a2p.ts#L113) | ✅ shipped — but only flips status; no Twilio API call yet |
+| Tenant UI form at `/a2p` (single-page, all fields) — bilingual, status pill, rejection reason display | [a2p/page.tsx](apps/web/src/app/(dashboard)/a2p/page.tsx) | ✅ shipped |
+| Onboarding checklist integration (#6 step "SMS Compliance" reads `TenantA2PApplication.status`) | [routes/onboarding.ts](apps/api/src/routes/onboarding.ts) | ✅ shipped |
+
+**Functional today:** A tenant can fill the form, save it as DRAFT, edit it freely, and click Submit which flips status to SUBMITTED. Admin/ops can then take that data + post to Twilio Trust Hub manually via Console. Ships value as a "structured data capture" today even before the full automation lands.
+
+**Remaining work to finish:**
+
+| Piece | Estimate | Why it's left |
+|---|---|---|
+| Twilio Trust Hub integration on `/a2p/submit` (8 sequential API calls, retry logic, Customer Profile → Supporting Documents → End User → Trust Product → Evaluation → Brand → Campaign → Phone Number link) | 2-3 days | Requires Twilio ISV approval for Trust Hub access — confirm we have it |
+| Multi-step wizard refactor with the 4 gap-handling patterns (gap scan, inline editor + back-fill, pause-and-resume, Brand-vs-Campaign phase split) | 1-2 days | Current UI is single-page; for production-friendliness on real tenants, the wizard pattern is what makes it bulletproof |
+| Admin-side mount at `/admin/a2p` for platform-owned numbers (MyOrbisVoice LLC) | half-day | Reuses tenant wizard component with scope=`platform` |
+| Twilio status webhook receiver — flip `status` from SUBMITTED → APPROVED / REJECTED automatically | 1 day | Requires the Trust Hub integration to be live first |
+| Auto-link approved campaign to tenant's `IncomingPhoneNumbers` after status flips to APPROVED | half-day | Same logic for both scopes |
+| File upload for supporting documents (EIN letter PDF, gov ID) | half-day | Forwards to Twilio's `SupportingDocuments` endpoint |
+| **Total remaining** | **~5-7 working days** | — |
+
+**⚠ Scope clarification — TENANTS + PLATFORM, NOT PARTNERS.** A2P 10DLC is the carrier-required registration for sending SMS in the US. It applies to two distinct accounts:
 
 **⚠ Scope clarification — TENANTS + PLATFORM, NOT PARTNERS.** A2P 10DLC is the carrier-required registration for sending SMS in the US. It applies to two distinct accounts:
 
@@ -2263,7 +2290,7 @@ A help center with stale or missing screenshots erodes user trust and increases 
 
 Partners (who refer customers and get paid via Stripe Connect) are a completely separate flow and never touch A2P.
 
-**What:** A multi-step wizard that runs on EITHER the tenant dashboard OR the admin dashboard. Same UI component, same form fields, same 8 Twilio Trust Hub API calls underneath — only difference is which Twilio client (subaccount vs master) the calls route through and which DB scope the resulting A2PRegistration row attaches to.
+**What:** Multi-step wizard that runs on EITHER the tenant dashboard OR the admin dashboard. Same UI component, same form fields, same 8 Twilio Trust Hub API calls underneath — only difference is which Twilio client (subaccount vs master) the calls route through and which DB scope the application row attaches to (current schema only has `tenantId`; admin-scope flow needs `tenantId` nullable to support platform-level applications).
 
 **Where it lives:**
 - **Tenant surface** — `/phone-numbers` page. "Register for SMS" CTA appears after the tenant has purchased their first subaccount number.
