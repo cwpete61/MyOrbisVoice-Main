@@ -2197,6 +2197,14 @@
       "submitting": "Enviando…",
       "submit": "Enviar para revisión",
       "helper": "Guardaremos el borrador y luego lo enviaremos a Twilio. Puedes volver aquí para ver el estado."
+    },
+    "tooltips": {
+      "legalName": "Debe coincidir exactamente con lo que aparece en tu registro de EIN. Si te registraste como 'Juan Pérez DBA Acme Co', usa eso aquí — no solo 'Acme Co'. Las discrepancias son la razón #1 por la que los operadores rechazan registros de marca.",
+      "ein": "Número federal de identificación del empleador (EIN) de 9 dígitos del IRS, formato XX-XXXXXXX. Lo encontrarás en tu carta CP-575 o en cualquier declaración de impuestos. Los empresarios individuales que usan su SSN pueden dejarlo en blanco.",
+      "businessType": "Debe coincidir con lo que registraste en el IRS. Sole Prop = sin entidad formal (usa tu SSN). LLC = compañía de responsabilidad limitada. Corp = S-corp o C-corp. Non-Profit = solo 501(c)(3). Partnership = LP/LLP.",
+      "vertical": "Elige la opción más cercana a lo que realmente hace tu negocio. Los operadores rechazan registros de marca vagos — ser específico ayuda. 'Other' está bien si nada coincide, pero podrías recibir preguntas de seguimiento.",
+      "useCase": "Customer Care tiene el menor escrutinio del operador y la mayor tasa de aprobación. Mixed da flexibilidad pero tarda más en aprobarse. Marketing tiene la revisión más estricta. 2FA y Utility son categorías estrechas — solo elígelas si ese es tu único uso.",
+      "sampleMessages": "Ejemplos reales de lo que enviará el agente. Incluye al menos uno con 'Reply STOP to unsubscribe' (exigido por los operadores). Usa {firstName} para personalización. No los inventes — deben coincidir con tu flujo real, porque los operadores los cruzan con tu tráfico en vivo más adelante."
     }
   },
   "tenantAgentStudio": {

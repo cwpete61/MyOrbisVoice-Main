@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { Tooltip } from '@/components/Tooltip'
 
 interface A2PApplication {
   id?:                string
@@ -153,16 +154,24 @@ export default function A2PPage() {
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantA2p.identity.title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>{t('tenantA2p.identity.legalName')}</label>
+              <label className={labelCls}>
+                <Tooltip content={t('tenantA2p.tooltips.legalName')}>{t('tenantA2p.identity.legalName')}</Tooltip>
+              </label>
               <input className={inputCls} value={form.legalName} onChange={e => set('legalName', e.target.value)} placeholder={t('tenantA2p.identity.legalNamePlaceholder')} />
               <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.identity.legalNameHelp')}</p>
             </div>
             <div>
-              <label className={labelCls}>{t('tenantA2p.identity.einLabel')} <span style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.identity.einOptional')}</span></label>
+              <label className={labelCls}>
+                <Tooltip content={t('tenantA2p.tooltips.ein')}>
+                  {t('tenantA2p.identity.einLabel')} <span style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.identity.einOptional')}</span>
+                </Tooltip>
+              </label>
               <input className={inputCls} value={form.ein} onChange={e => set('ein', e.target.value)} placeholder="12-3456789" />
             </div>
             <div>
-              <label className={labelCls}>{t('tenantA2p.identity.businessType')}</label>
+              <label className={labelCls}>
+                <Tooltip content={t('tenantA2p.tooltips.businessType')}>{t('tenantA2p.identity.businessType')}</Tooltip>
+              </label>
               <select className={inputCls} value={form.businessType} onChange={e => set('businessType', e.target.value as A2PApplication['businessType'])}>
                 <option value="SOLE_PROP">{t('tenantA2p.identity.businessTypeOptions.soleProp')}</option>
                 <option value="LLC">{t('tenantA2p.identity.businessTypeOptions.llc')}</option>
@@ -172,7 +181,9 @@ export default function A2PPage() {
               </select>
             </div>
             <div>
-              <label className={labelCls}>{t('tenantA2p.identity.vertical')}</label>
+              <label className={labelCls}>
+                <Tooltip content={t('tenantA2p.tooltips.vertical')}>{t('tenantA2p.identity.vertical')}</Tooltip>
+              </label>
               <select className={inputCls} value={form.vertical} onChange={e => set('vertical', e.target.value)}>
                 <option value="">{t('tenantA2p.identity.verticalOptions.choose')}</option>
                 <option value="healthcare">{t('tenantA2p.identity.verticalOptions.healthcare')}</option>
@@ -229,7 +240,9 @@ export default function A2PPage() {
         <section className="rounded-xl p-5 space-y-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('tenantA2p.useCase.title')}</h2>
           <div>
-            <label className={labelCls}>{t('tenantA2p.useCase.useCaseLabel')}</label>
+            <label className={labelCls}>
+              <Tooltip content={t('tenantA2p.tooltips.useCase')}>{t('tenantA2p.useCase.useCaseLabel')}</Tooltip>
+            </label>
             <select className={inputCls} value={form.useCase} onChange={e => set('useCase', e.target.value as A2PApplication['useCase'])}>
               <option value="customer_care">{t('tenantA2p.useCase.options.customerCare')}</option>
               <option value="mixed">{t('tenantA2p.useCase.options.mixed')}</option>
@@ -239,7 +252,11 @@ export default function A2PPage() {
             </select>
           </div>
           <div>
-            <label className={labelCls}>{t('tenantA2p.useCase.sampleMessages')} <span style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.useCase.sampleMessagesCount')}</span></label>
+            <label className={labelCls}>
+              <Tooltip content={t('tenantA2p.tooltips.sampleMessages')}>
+                {t('tenantA2p.useCase.sampleMessages')} <span style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.useCase.sampleMessagesCount')}</span>
+              </Tooltip>
+            </label>
             <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>{t('tenantA2p.useCase.sampleMessagesHelp')}</p>
             <div className="space-y-2">
               {form.sampleMessagesJson.map((m, i) => (

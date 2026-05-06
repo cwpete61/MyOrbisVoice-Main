@@ -34,9 +34,14 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 **Why:** The framework is shipped (commit bb6ce54) but only one slot is annotated. Help center renders placeholder boxes for the other 79.
 
-**Gated by:** Tenant feature-testing sprint per backlog #14's own dependency note ("capturing screenshots against a buggy UI = wasted effort"). Re-open after that sprint stabilizes the UI.
+**Gated by:** Browser-based feature-testing sprint stabilizing the UI. The 2026-05-06 audit pass shipped a code-level pattern fix (global ZodError handler — 15+ silent 500s now properly 422'd) but did NOT include per-page click-through testing. That second part is what's gating this item: running screenshot capture against a UI that hasn't been clicked through end-to-end produces PNGs that rot the moment the first UI bug is fixed.
 
-**Owner:** Me, once feature-testing has surfaced and fixed the major UI bugs.
+**Owner:** Me, once browser feature-testing has surfaced and fixed the major UI bugs.
+
+**Sequencing for whoever picks this up next:**
+  1. Spin up a fresh tenant in a real browser, walk every flow (signup → onboarding → Business DNA → prompts → agents → channels → integrations → billing → first call → conversation review → partner referral). Catalog every UI bug, copy issue, broken state.
+  2. Fix the high-impact ones until the UI is stable.
+  3. THEN annotate screenshot slots + seed demo tenant + run Playwright capture script.
 
 **Verifies done when:** All ~80 screenshot slots show real PNGs, no placeholder boxes left in either help center.
 

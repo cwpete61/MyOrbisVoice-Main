@@ -2197,6 +2197,14 @@
       "submitting": "Submitting…",
       "submit": "Submit for review",
       "helper": "We'll save the draft, then submit to Twilio. You can come back here to track status."
+    },
+    "tooltips": {
+      "legalName": "Must match exactly what's on your EIN registration document. If you registered as 'John Smith DBA Acme Co', use that here — not just 'Acme Co'. Mismatches are the #1 reason carriers reject brand registrations.",
+      "ein": "9-digit federal Employer Identification Number from the IRS, in XX-XXXXXXX format. Find it on your CP-575 letter or any tax filing. Sole proprietors using their SSN can leave this blank.",
+      "businessType": "Match exactly what you registered with the IRS. Sole Prop = no formal entity (uses your SSN). LLC = limited liability company. Corp = S-corp or C-corp. Non-Profit = 501(c)(3) only. Partnership = LP/LLP.",
+      "vertical": "Pick the closest match to what your business actually does. Carriers reject vague brand registrations — being specific helps. 'Other' is fine if nothing fits, but you may get follow-up questions.",
+      "useCase": "Customer Care has the lowest carrier scrutiny and highest approval rate. Mixed gives flexibility but takes longer to approve. Marketing has the heaviest review. 2FA and Utility are narrow categories — only pick if that's your only use.",
+      "sampleMessages": "Real examples of what the agent will send. Include at least one with 'Reply STOP to unsubscribe' (required by carriers). Use {firstName} for personalization. Don't make these up — they should match your actual flow, because carriers cross-check against your live traffic later."
     }
   },
   "tenantAgentStudio": {
