@@ -1688,14 +1688,14 @@ Items below are confirmed product requirements. Implement them in order of depen
 | 17 | Twilio testing path completion | 🟡 IN-FLIGHT |
 | 18 | WhatsApp dispatch | 🔵 DEFERRED — pending Meta Business verification |
 | 19 | Outbound voice carrier reputation | 🔵 DEFERRED — pending A2P 10DLC + STIR/SHAKEN attestation |
-| 20 | Self-service A2P 10DLC registration wizard (tenants only) | ❌ TODO — build AFTER soft-launch when manual-A2P pain is observed; ~7-10 working days; full Twilio Trust Hub API automation, no Console clicking |
+| 20 | Self-service A2P 10DLC registration wizard (tenants AND admin) | ❌ TODO — build AFTER soft-launch when manual-A2P pain is observed; ~8-11 working days; same wizard runs on tenant dashboard (registers tenant subaccount) AND admin dashboard (registers platform master account for MyOrbisVoice's own numbers); full Twilio Trust Hub API automation, no Console clicking |
 
 **Open work — incremental, not blocking launch:**
 - **#3 Agent latency tuning** — telemetry now captures real distributions; tune VAD / prompt-size only after baseline data exists across real production calls
 - **#6 Tooltips per-field sweep** — editorial work across remaining pages, driven by user-confusion feedback rather than a single big push
 - **#14 Screenshot capture** — gated by feature-testing sprint (intentional)
 - **#15-19 Twilio / outbound voice** — all blocked on external approvals (A2P 10DLC, toll-free verification, Meta Business, carrier reputation)
-- **#20 A2P self-service wizard (tenants only)** — gated by post-soft-launch friction signal; no use building it until we know which fields actually trip tenants up
+- **#20 A2P self-service wizard (tenants AND admin)** — gated by post-soft-launch friction signal; no use building it until we know which fields actually trip tenants up. Same wizard reused on the admin dashboard for registering MyOrbisVoice's own master-account numbers.
 
 There are no remaining TODO items the team can close without external signal.
 
@@ -2254,13 +2254,21 @@ A help center with stale or missing screenshots erodes user trust and increases 
 
 ---
 
-### 20. Self-service A2P 10DLC registration wizard (TENANTS ONLY) — ❌ TODO
+### 20. Self-service A2P 10DLC registration wizard (TENANTS + ADMIN) — ❌ TODO
 
-**⚠ Scope clarification — TENANTS ONLY, NOT PARTNERS.** A2P 10DLC is the carrier-required registration for sending SMS in the US. It applies to *tenants* — the businesses using MyOrbisVoice as their AI receptionist who want to send outbound SMS from their tenant-subaccount Twilio numbers. Partners (who refer customers and get paid via Stripe Connect) are a completely separate flow and never touch A2P.
+**⚠ Scope clarification — TENANTS + PLATFORM, NOT PARTNERS.** A2P 10DLC is the carrier-required registration for sending SMS in the US. It applies to two distinct accounts:
 
-**What:** A multi-step wizard that lets a tenant (or admin acting on their behalf via impersonation) register for A2P 10DLC entirely from the MyOrbisVoice dashboard. No Twilio Console clicking required from the tenant.
+1. **Tenants** — the businesses using MyOrbisVoice as their AI receptionist who want to send SMS from their *tenant-subaccount* Twilio numbers. Wizard registers the tenant's brand + campaign on their own subaccount.
+2. **Admin / platform owner** (MyOrbisVoice itself) — has master-account phone numbers used for the platform's own outbound SMS (test sends, support comms, ops notifications). Same wizard registers MyOrbisVoice LLC as the brand on the master account.
 
-**Where it lives:** Tenant dashboard. The "Register for SMS" CTA appears on `/phone-numbers` after the tenant has purchased their first Twilio subaccount number. Admin can also trigger via impersonation if a tenant needs help.
+Partners (who refer customers and get paid via Stripe Connect) are a completely separate flow and never touch A2P.
+
+**What:** A multi-step wizard that runs on EITHER the tenant dashboard OR the admin dashboard. Same UI component, same form fields, same 8 Twilio Trust Hub API calls underneath — only difference is which Twilio client (subaccount vs master) the calls route through and which DB scope the resulting A2PRegistration row attaches to.
+
+**Where it lives:**
+- **Tenant surface** — `/phone-numbers` page. "Register for SMS" CTA appears after the tenant has purchased their first subaccount number.
+- **Admin surface** — new `/admin/a2p` page. Lists existing master-account A2P registrations (if any) and offers the same wizard to register MyOrbisVoice's own platform numbers.
+- Admin can also trigger the tenant flow via impersonation if a specific tenant needs help.
 
 **Why this matters:** Today, the tenant's path to send SMS is "go log into Twilio Console, navigate the maze, register A2P manually." That's a competitive disadvantage versus other CPaaS resellers, and at scale (50+ tenants) it becomes operationally impossible to support. Self-service registration is a meaningful product moat.
 
@@ -2285,21 +2293,24 @@ Status transitions tracked via webhooks (`twilio-approved`, `in-review`, `twilio
 
 | Piece | Estimate |
 |---|---|
-| `A2PRegistration` Prisma model + state-machine fields | half-day |
-| Multi-step wizard UI (4-5 screens), bilingual EN+ES | 1-2 days |
-| Backend Trust Hub integration (8 sequential POSTs with retry/error handling) | 2-3 days |
+| `A2PRegistration` Prisma model with `tenantId String?` (null = platform-level) + state-machine fields | half-day |
+| Multi-step wizard UI component (4-5 screens), bilingual EN+ES — shared between tenant and admin surfaces | 1-2 days |
+| Backend Trust Hub integration (8 sequential POSTs with retry/error handling) — accepts `scope: 'tenant' \| 'platform'` to pick subaccount vs master client | 2-3 days |
 | File upload + forwarding to SupportingDocuments | half-day |
-| Twilio status webhook receiver + DB state updates | 1 day |
-| Auto-link approved campaign to tenant's IncomingPhoneNumbers | half-day |
-| Admin "view all tenant A2P submissions" dashboard | 1 day |
-| Test against Twilio sandbox + one real submission end-to-end | 1-2 days |
-| **Total** | **~7-10 working days** |
+| Twilio status webhook receiver + DB state updates (single handler covers both scopes) | 1 day |
+| Auto-link approved campaign to IncomingPhoneNumbers (tenant's subaccount numbers OR master account numbers, same logic) | half-day |
+| Tenant page mount (`/phone-numbers` CTA → wizard) | half-day |
+| Admin page mount (`/admin/a2p` page + wizard) | half-day |
+| Admin "view all A2P submissions across the platform" dashboard (tenant + platform rows) | 1 day |
+| Test against Twilio sandbox + one real submission end-to-end (test both scopes) | 1-2 days |
+| **Total** | **~8-11 working days** |
 
 **Architecture notes:**
-- The wizard runs on the **tenant's Twilio subaccount**, NOT the master account. Each tenant's brand + campaign is independent. The wizard auth-flows through `getSubaccountClient(tenantId)`.
-- `BusinessProfile` data we already store (legal name, address, EIN once we add that field) auto-fills the wizard — partial pre-fill from existing tenant data reduces friction.
-- Carrier review queue (1-4 weeks at AT&T/Verizon/T-Mobile) is **external and unavoidable** even with perfect API automation. The wizard doesn't shorten that — it just makes the submission painless.
-- Fees pass through to the tenant or absorbed in their plan tier (decision needed at build time): TCR brand registration $4-44 one-time, plus per-campaign monthly fees ~$10-15.
+- **Scope-driven Twilio client:** the registration service accepts `{ scope: 'tenant' \| 'platform', tenantId?: string }`. When scope=`tenant`, it uses `getSubaccountClient(tenantId)`. When scope=`platform`, it uses the master `getStripe()`-equivalent — `getMasterTwilioClient()`. Same 8 API calls, different Twilio account context.
+- **Schema:** `A2PRegistration { id, tenantId String?, scope, brandSid, campaignSid, status, ... }`. `tenantId IS NULL` = platform-level row. Index on `(tenantId, status)` covers tenant queries; full-table scan for platform rows is fine (there's only 1).
+- **`BusinessProfile` reuse:** for tenant scope, pre-fills from `BusinessProfile` (the tenant's stored info). For platform scope, pre-fills from a new `PlatformProfile` entry in `SystemConfig` (legal name MyOrbisVoice LLC, EIN, Allentown PA address — the values from `docs/stripe-config.md`).
+- **Carrier review queue** (1-4 weeks at AT&T/Verizon/T-Mobile) is external and unavoidable for both scopes. The wizard doesn't shorten it, only makes submission painless.
+- **Fees** pass through differently per scope: tenant-scope fees billed to the tenant (or absorbed in plan tier — decision at build time); platform-scope fees billed to MyOrbisVoice's own Stripe customer for the master account.
 
 **Limitations / what can still go wrong:**
 - Wrong sample messages or vague message-flow descriptions → campaign rejected at TCR review. Wizard should validate format + provide examples per use case.
