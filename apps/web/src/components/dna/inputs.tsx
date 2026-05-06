@@ -696,32 +696,3 @@ export function KeyValueMap({
   )
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
- * UnrecognizedFields — collapsible pane that shows JSON for any keys we
- * don't recognise in the section's schema. Lets users keep extra data
- * without losing it on save.
- * ──────────────────────────────────────────────────────────────────────── */
-
-export function UnrecognizedFields({ extras }: { extras: Record<string, unknown> }) {
-  const keys = Object.keys(extras)
-  if (keys.length === 0) return null
-  return (
-    <details
-      className="rounded-lg"
-      style={{ background: 'var(--surface-overlay)', border: '1px dashed var(--border-subtle)' }}
-    >
-      <summary
-        className="px-3 py-2 cursor-pointer text-xs font-medium select-none"
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        Other fields ({keys.length}) — kept as-is
-      </summary>
-      <pre
-        className="px-3 py-2 text-xs overflow-x-auto"
-        style={{ color: 'var(--text-tertiary)' }}
-      >
-        {JSON.stringify(extras, null, 2)}
-      </pre>
-    </details>
-  )
-}

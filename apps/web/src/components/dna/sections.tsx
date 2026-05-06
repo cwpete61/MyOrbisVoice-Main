@@ -4,9 +4,10 @@
  * Per-section form components for the Business DNA editor.
  *
  * Each section receives the raw JSONB blob from the API and renders the right
- * form fields. Unknown keys (legacy or future) are preserved via
- * `<UnrecognizedFields>` so saving never loses data. Missing fields render
- * empty inputs.
+ * form fields. Missing fields render empty inputs. Unknown keys are still
+ * preserved on save (the value object is sent as-is to PATCH) — they just
+ * aren't surfaced in the UI; tenants who want to preserve background
+ * reference content should use the Knowledge Base section instead.
  *
  * Every section component is `(value, onChange, disabled?) => JSX` so the
  * page can render them uniformly.
@@ -14,7 +15,7 @@
 
 import {
   TextField, TextArea, Select, NumberField, StringList,
-  ObjectList, HoursGrid, KeyValueMap, UnrecognizedFields,
+  ObjectList, HoursGrid, KeyValueMap,
   type ObjectFieldSchema,
 } from './inputs'
 import { GenerateWithAi } from './generate-with-ai'
@@ -57,15 +58,6 @@ function asObject(v: unknown): Record<string, unknown> {
   return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {}
 }
 
-/** Pluck unrecognised keys from the section so they can be displayed as-is. */
-function extras(value: DNASection, known: string[]): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(value)) {
-    if (!known.includes(k)) out[k] = v
-  }
-  return out
-}
-
 /** Update one field while preserving unrecognised keys. */
 function patch(value: DNASection, partial: Record<string, unknown>): DNASection {
   return { ...value, ...partial }
@@ -81,11 +73,6 @@ function AiAssistRow({ children }: { children: React.ReactNode }) {
  * Schema: { businessName, tagline, shortDescription, elevatorPitch, tone,
  *           voicePreference, industry, targetCustomers }
  * ──────────────────────────────────────────────────────────────────────── */
-
-const KNOWN_IDENTITY = [
-  'businessName', 'agentName', 'tagline', 'shortDescription', 'elevatorPitch',
-  'tone', 'voicePreference', 'industry', 'targetCustomers',
-]
 
 export function IdentitySection({ value, onChange, disabled }: SectionProps) {
   const t = useT()
@@ -185,7 +172,6 @@ export function IdentitySection({ value, onChange, disabled }: SectionProps) {
         description={t('tenantBusinessDna.identity.targetCustomers.description')}
         disabled={disabled}
       />
-      <UnrecognizedFields extras={extras(value, KNOWN_IDENTITY)} />
     </div>
   )
 }
@@ -196,7 +182,6 @@ export function IdentitySection({ value, onChange, disabled }: SectionProps) {
  *           agentCapabilities: [string] }
  * ──────────────────────────────────────────────────────────────────────── */
 
-const KNOWN_SERVICES = ['channels', 'agentCapabilities']
 
 export function ServicesSection({ value, onChange, disabled }: SectionProps) {
   const t = useT()
@@ -226,7 +211,6 @@ export function ServicesSection({ value, onChange, disabled }: SectionProps) {
         emptyText={t('tenantBusinessDna.services.agentCapabilities.empty')}
         disabled={disabled}
       />
-      <UnrecognizedFields extras={extras(value, KNOWN_SERVICES)} />
     </div>
   )
 }
@@ -237,7 +221,6 @@ export function ServicesSection({ value, onChange, disabled }: SectionProps) {
  *           discountPolicy }
  * ──────────────────────────────────────────────────────────────────────── */
 
-const KNOWN_PRICING = ['plans', 'overageRate', 'freeTrial', 'discountPolicy']
 
 export function PricingSection({ value, onChange, disabled }: SectionProps) {
   const t = useT()
@@ -283,7 +266,6 @@ export function PricingSection({ value, onChange, disabled }: SectionProps) {
         description={t('tenantBusinessDna.pricing.discountPolicy.description')}
         disabled={disabled}
       />
-      <UnrecognizedFields extras={extras(value, KNOWN_PRICING)} />
     </div>
   )
 }
@@ -294,7 +276,6 @@ export function PricingSection({ value, onChange, disabled }: SectionProps) {
  *           holidays, afterHoursBehavior }
  * ──────────────────────────────────────────────────────────────────────── */
 
-const KNOWN_OPERATIONS = ['timezone', 'businessHours', 'holidays', 'afterHoursBehavior']
 
 export function OperationsSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
   const t = useT()
@@ -357,7 +338,6 @@ export function OperationsSection({ value, onChange, disabled, identitySnapshot 
         description={t('tenantBusinessDna.operations.afterHoursBehavior.description')}
         disabled={disabled}
       />
-      <UnrecognizedFields extras={extras(value, KNOWN_OPERATIONS)} />
     </div>
   )
 }
@@ -368,7 +348,6 @@ export function OperationsSection({ value, onChange, disabled, identitySnapshot 
  *           demoFlow, objectionHandling: { ... } }
  * ──────────────────────────────────────────────────────────────────────── */
 
-const KNOWN_SALES = ['qualificationCriteria', 'discoveryQuestions', 'demoFlow', 'objectionHandling']
 
 export function SalesSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
   const t = useT()
@@ -423,7 +402,6 @@ export function SalesSection({ value, onChange, disabled, identitySnapshot }: Se
         emptyText={t('tenantBusinessDna.sales.objectionHandling.empty')}
         disabled={disabled}
       />
-      <UnrecognizedFields extras={extras(value, KNOWN_SALES)} />
     </div>
   )
 }
@@ -434,7 +412,6 @@ export function SalesSection({ value, onChange, disabled, identitySnapshot }: Se
  *           bookingPolicy, cancellationPolicy }
  * ──────────────────────────────────────────────────────────────────────── */
 
-const KNOWN_APPOINTMENT = ['defaultDuration', 'appointmentTypes', 'bookingPolicy', 'cancellationPolicy']
 
 export function AppointmentSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
   const t = useT()
@@ -492,7 +469,6 @@ export function AppointmentSection({ value, onChange, disabled, identitySnapshot
         description={t('tenantBusinessDna.appointments.cancellationPolicy.description')}
         disabled={disabled}
       />
-      <UnrecognizedFields extras={extras(value, KNOWN_APPOINTMENT)} />
     </div>
   )
 }
@@ -503,7 +479,6 @@ export function AppointmentSection({ value, onChange, disabled, identitySnapshot
  *           supportEmail, founderContact }
  * ──────────────────────────────────────────────────────────────────────── */
 
-const KNOWN_SUPPORT = ['commonIssues', 'escalationRules', 'supportEmail', 'founderContact']
 
 export function SupportSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
   const t = useT()
@@ -559,7 +534,6 @@ export function SupportSection({ value, onChange, disabled, identitySnapshot }: 
         description={t('tenantBusinessDna.support.founderContact.description')}
         disabled={disabled}
       />
-      <UnrecognizedFields extras={extras(value, KNOWN_SUPPORT)} />
     </div>
   )
 }
@@ -570,7 +544,6 @@ export function SupportSection({ value, onChange, disabled, identitySnapshot }: 
  *           vocabularyPreferences: [string], prohibitedLanguage: [string] }
  * ──────────────────────────────────────────────────────────────────────── */
 
-const KNOWN_LANGUAGE = ['primaryLanguage', 'supportedLanguages', 'vocabularyPreferences', 'prohibitedLanguage']
 
 export function LanguageSection({ value, onChange, disabled, identitySnapshot }: SectionProps) {
   const t = useT()
@@ -630,7 +603,6 @@ export function LanguageSection({ value, onChange, disabled, identitySnapshot }:
         emptyText={t('tenantBusinessDna.language.prohibitedLanguage.empty')}
         disabled={disabled}
       />
-      <UnrecognizedFields extras={extras(value, KNOWN_LANGUAGE)} />
     </div>
   )
 }
@@ -640,10 +612,6 @@ export function LanguageSection({ value, onChange, disabled, identitySnapshot }:
  * Schema: { callRecordingConsent, dataHandling, phoneCompliance,
  *           smsCompliance, ageRestrictions }
  * ──────────────────────────────────────────────────────────────────────── */
-
-const KNOWN_COMPLIANCE = [
-  'callRecordingConsent', 'dataHandling', 'phoneCompliance', 'smsCompliance', 'ageRestrictions',
-]
 
 export function ComplianceSection({ value, onChange, disabled }: SectionProps) {
   const t = useT()
@@ -694,7 +662,6 @@ export function ComplianceSection({ value, onChange, disabled }: SectionProps) {
         description={t('tenantBusinessDna.compliance.ageRestrictions.description')}
         disabled={disabled}
       />
-      <UnrecognizedFields extras={extras(value, KNOWN_COMPLIANCE)} />
     </div>
   )
 }
