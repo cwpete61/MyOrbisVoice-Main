@@ -30,6 +30,7 @@ import {
   type SectionProps,
 } from '@/components/dna/sections'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { BackToOnboarding } from '@/components/BackToOnboarding'
 
 interface DNAVersion {
   id: string
@@ -276,6 +277,7 @@ export default function BusinessDNAPage() {
   if (loading) {
     return (
       <div className="space-y-4 animate-pulse">
+        <BackToOnboarding />
         <div className="h-7 w-44 rounded-lg" style={{ background: 'var(--border-subtle)' }} />
         <div
           className="h-80 rounded-xl"

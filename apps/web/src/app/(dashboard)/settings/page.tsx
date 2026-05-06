@@ -5,6 +5,7 @@ import { apiFetch, apiUploadFile, useApi } from '@/hooks/useApi'
 import { PushNotificationToggle } from '@/components/PushNotificationToggle'
 import { Tooltip } from '@/components/Tooltip'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { BackToOnboarding } from '@/components/BackToOnboarding'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
 
@@ -86,6 +87,7 @@ function LogoUpload({
 
   return (
     <div>
+      <BackToOnboarding />
       <label className="label">{t('tenantSettings.logo.label')}</label>
       <div className="flex items-center gap-4">
         <div

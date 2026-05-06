@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { Tooltip } from '@/components/Tooltip'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { BackToOnboarding } from '@/components/BackToOnboarding'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
 
@@ -112,6 +113,7 @@ function ContactPicker({ value, onChange, t }: { value: string; onChange: (v: st
 
   return (
     <div ref={ref} className="relative">
+      <BackToOnboarding />
       <input
         value={value}
         onFocus={() => setOpen(true)}

@@ -5,6 +5,7 @@ import { apiFetch, useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { getTokenPayload } from '@/lib/auth'
 import { NumberSearch, type SearchFilters, type SearchResult } from '@/components/numbers/NumberSearch'
+import { BackToOnboarding } from '@/components/BackToOnboarding'
 
 interface PhoneNumber {
   id: string
@@ -89,6 +90,7 @@ export default function PhoneNumbersPage() {
 
   return (
     <div className="p-8 max-w-3xl">
+      <BackToOnboarding />
       <div className="flex items-start justify-between mb-1">
         <div>
           <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>

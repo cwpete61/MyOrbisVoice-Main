@@ -2342,6 +2342,10 @@
     "important": "IMPORTANT",
     "noResults": "No results for “{query}”"
   },
+  "backToOnboarding": {
+    "message": "When you're done here, click the button to return to the Get Started checklist. Anything you save on this page is auto-detected — you don't have to mark it complete.",
+    "action": "Back to Get Started →"
+  },
   "tenantOnboarding": {
     "title": "Get started",
     "subtitle": "Finish these steps to get your AI receptionist running. {done} of {total} done.",
@@ -2349,10 +2353,12 @@
     "allSetSubtitle": "Everything is configured. Your receptionist agent is live.",
     "progress": "Progress",
     "optional": "Optional",
+    "lockedPill": "Plan upgrade",
     "actions": {
       "refresh": "Refresh status",
       "configure": "Configure →",
-      "edit": "Edit →"
+      "edit": "Edit →",
+      "upgradeToUnlock": "Upgrade plan to unlock →"
     },
     "statusPill": {
       "complete": "Complete"

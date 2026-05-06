@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { Tooltip } from '@/components/Tooltip'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { BackToOnboarding } from '@/components/BackToOnboarding'
 
 interface Agent {
   id: string; agentRoleType: string; displayName: string
@@ -72,6 +73,7 @@ export default function AgentsPage() {
 
   if (loading) return (
     <div className="space-y-6 animate-pulse">
+      <BackToOnboarding />
       <div className="h-7 w-32 rounded-lg" style={{ background: 'var(--border-subtle)' }} />
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {[...Array(6)].map((_, i) => <div key={i} className="h-24 rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }} />)}

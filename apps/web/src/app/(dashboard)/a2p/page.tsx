@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { Tooltip } from '@/components/Tooltip'
+import { BackToOnboarding } from '@/components/BackToOnboarding'
 
 interface A2PApplication {
   id?:                string
@@ -118,6 +119,7 @@ export default function A2PPage() {
 
   return (
     <div className="space-y-6 max-w-4xl">
+      <BackToOnboarding />
       <div>
         <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{t('tenantA2p.title')}</h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>

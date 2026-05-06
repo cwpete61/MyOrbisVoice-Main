@@ -2342,6 +2342,10 @@
     "important": "IMPORTANTE",
     "noResults": "Sin resultados para «{query}»"
   },
+  "backToOnboarding": {
+    "message": "Cuando termines aquí, haz clic en el botón para volver a la lista de Comenzar. Lo que guardes en esta página se detecta automáticamente — no tienes que marcarla como completa.",
+    "action": "Volver a Comenzar →"
+  },
   "tenantOnboarding": {
     "title": "Comenzar",
     "subtitle": "Termina estos pasos para que tu recepcionista de IA empiece a funcionar. {done} de {total} listos.",
@@ -2349,10 +2353,12 @@
     "allSetSubtitle": "Todo está configurado. Tu agente recepcionista ya está activo.",
     "progress": "Progreso",
     "optional": "Opcional",
+    "lockedPill": "Mejorar plan",
     "actions": {
       "refresh": "Actualizar estado",
       "configure": "Configurar →",
-      "edit": "Editar →"
+      "edit": "Editar →",
+      "upgradeToUnlock": "Mejorar plan para desbloquear →"
     },
     "statusPill": {
       "complete": "Listo"

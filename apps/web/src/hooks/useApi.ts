@@ -44,17 +44,39 @@ function redirectToLogin() {
   }
 }
 
+/** Wraps fetch() with one silent retry on transient network failures (e.g.
+ *  Chromium's ERR_NETWORK_CHANGED when WiFi/VPN flips mid-request, or a
+ *  ECONNRESET on a flaky connection). These surface as a thrown TypeError
+ *  with no Response object, distinguished from HTTP errors which return a
+ *  Response with res.ok === false. We only retry the throw case — HTTP
+ *  errors are the server's answer, not a network blip.
+ *
+ *  Single retry after 500ms. Doesn't add latency on the happy path.
+ *  Eliminates the "click again, it works" UX reported during feature-test
+ *  sprint. */
+async function fetchWithNetworkRetry(input: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init)
+  } catch (err) {
+    // Only retry on TypeError (= network failure / DNS / connection drop).
+    // AbortError, RangeError, etc. are not transient network issues.
+    if (!(err instanceof TypeError)) throw err
+    await new Promise(r => setTimeout(r, 500))
+    return fetch(input, init)
+  }
+}
+
 export async function apiFetchRaw(path: string, options: RequestInit = {}): Promise<Response> {
   const token = getAccessToken()
   const extraHeaders = options.headers as Record<string, string> | undefined
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetchWithNetworkRetry(`${API_BASE}${path}`, {
     ...options,
     headers: buildHeaders(token, extraHeaders),
   })
   if (res.status === 401) {
     const newToken = await tryRefresh()
     if (!newToken) { redirectToLogin(); throw new Error('Session expired') }
-    return fetch(`${API_BASE}${path}`, { ...options, headers: buildHeaders(newToken, extraHeaders) })
+    return fetchWithNetworkRetry(`${API_BASE}${path}`, { ...options, headers: buildHeaders(newToken, extraHeaders) })
   }
   return res
 }
@@ -63,7 +85,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const token = getAccessToken()
   const extraHeaders = options.headers as Record<string, string> | undefined
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetchWithNetworkRetry(`${API_BASE}${path}`, {
     ...options,
     headers: buildHeaders(token, extraHeaders),
   })
@@ -75,7 +97,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
       redirectToLogin()
       throw new Error('Session expired. Please sign in again.')
     }
-    const retry = await fetch(`${API_BASE}${path}`, {
+    const retry = await fetchWithNetworkRetry(`${API_BASE}${path}`, {
       ...options,
       headers: buildHeaders(newToken, extraHeaders),
     })
