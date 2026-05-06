@@ -160,4 +160,76 @@ router.post('/me/change-password', authenticate, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ── Forgot-password / reset-password (public, no auth) ────────────────────
+//
+// Step 1: user submits email at /forgot-password → /api/auth/forgot-password.
+// We send them a one-time reset link IF the email exists. The response is
+// always success-shaped to defend against account-enumeration attacks.
+//
+// Step 2: user clicks the link → /reset-password?token=… → submits new
+// password → /api/auth/reset-password. We verify token, set password,
+// revoke all refresh tokens (forces re-login on every device).
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+})
+
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const parsed = forgotPasswordSchema.safeParse(req.body)
+    if (!parsed.success) {
+      // Even validation errors return success-shaped — don't leak whether
+      // the email format was valid via a different response code.
+      res.json({ data: { ok: true } })
+      return
+    }
+
+    const result = await authService.startPasswordReset(parsed.data.email)
+    if (result) {
+      // Email exists — fire the reset email asynchronously. .catch wraps so
+      // SMTP failure doesn't fail the request (we still return success-
+      // shaped to the caller).
+      const { sendPasswordResetEmail } = await import('../services/email.service.js')
+      const { getEnv } = await import('@voiceautomation/config')
+      const appBase = getEnv().APP_BASE_URL
+      const resetUrl = `${appBase}/reset-password?token=${encodeURIComponent(result.rawToken)}`
+      sendPasswordResetEmail({
+        to:                result.email,
+        firstName:         result.firstName,
+        resetUrl,
+        expiresInMinutes:  15,
+      }).catch(e => console.error('[forgot-password] email send failed (non-fatal):', e?.message ?? e))
+
+      writeAuditLogFromRequest(req, {
+        actorType:    'USER',
+        action:       'auth.password_reset_requested',
+        targetType:   'User',
+        metadataJson: { email: result.email, ip: req.ip },
+      }).catch(e => console.error('[audit] write failed:', e))
+    }
+    // Same shape regardless — protect against enumeration.
+    res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
+
+const resetPasswordSchema = z.object({
+  token:       z.string().min(1),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+})
+
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const parsed = resetPasswordSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid input', 422)
+    await authService.completePasswordReset(parsed.data.token, parsed.data.newPassword)
+    writeAuditLogFromRequest(req, {
+      actorType:    'USER',
+      action:       'auth.password_reset_completed',
+      targetType:   'User',
+      metadataJson: { ip: req.ip },
+    }).catch(e => console.error('[audit] write failed:', e))
+    res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
+
 export default router

@@ -10,7 +10,15 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ## 🔴 Pre-launch must-do (blocks first paying customer)
 
-*(empty — see Closed at the bottom)*
+### M1. Pick a contact email for the marketing site footer — open 2026-05-06
+
+**What:** The marketing site (myorbisvoice.com) has no contact mechanism — no `support@`, `hello@`, or contact form anywhere. Footer has only the legal address. Prospects can't ask pre-sales questions before signing up, and once they're signed up, the only contact is "reply to the welcome email."
+
+**Required from you:** Pick the email address — `support@myorbisvoice.com` is the standard choice but `hello@myorbisvoice.com` works too. Confirm the inbox is set up and being monitored. Then I'll add it to the marketing-site footer (EN + ES) and the welcome email signature, and ship a quick `mailto:` Contact link.
+
+**Verifies done when:** Footer of every marketing page shows a contact email; clicking opens the user's mail client; emails to that address actually land in a real inbox.
+
+---
 
 ---
 

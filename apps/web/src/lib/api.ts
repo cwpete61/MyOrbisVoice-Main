@@ -80,3 +80,17 @@ export async function apiLogout(refreshToken: string) {
 export async function apiMe(token: string) {
   return apiCall<{ user: unknown; memberships: unknown[] }>('/api/auth/me', { token })
 }
+
+export async function apiForgotPassword(email: string) {
+  return apiCall<{ ok: boolean }>('/api/auth/forgot-password', {
+    method: 'POST',
+    body: { email },
+  })
+}
+
+export async function apiResetPassword(token: string, newPassword: string) {
+  return apiCall<{ ok: boolean }>('/api/auth/reset-password', {
+    method: 'POST',
+    body: { token, newPassword },
+  })
+}

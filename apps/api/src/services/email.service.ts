@@ -142,3 +142,34 @@ export async function sendCallNotification(opts: {
     `,
   })
 }
+
+/** Password-reset email. Sends a one-shot URL with the raw token in the
+ *  query string. The token expires in 15 minutes and can only be used
+ *  once — token is hashed in the DB so a leak doesn't compromise pending
+ *  resets. Non-fatal if SMTP isn't configured. */
+export async function sendPasswordResetEmail(opts: {
+  to: string
+  firstName?: string | null
+  resetUrl: string  // already-built URL like https://app.myorbisvoice.com/reset-password?token=…
+  expiresInMinutes: number
+}) {
+  const greeting = opts.firstName ? `Hi ${opts.firstName},` : 'Hi there,'
+
+  await sendEmail({
+    to: opts.to,
+    subject: 'Reset your MyOrbisVoice password',
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#222;line-height:1.5">
+        <h2 style="color:#1a9898;margin-bottom:8px">Reset your password</h2>
+        <p>${greeting}</p>
+        <p>We got a request to reset the password for your MyOrbisVoice account. Click the button below to choose a new password:</p>
+        <a href="${opts.resetUrl}" style="display:inline-block;background:#1a9898;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:14px;margin:16px 0">
+          Reset password →
+        </a>
+        <p style="color:#666;font-size:13px">This link expires in <strong>${opts.expiresInMinutes} minutes</strong> and can only be used once. If you didn't request this, you can safely ignore this email — your password won't change.</p>
+        <p style="color:#888;font-size:12px;margin-top:24px;border-top:1px solid #eee;padding-top:16px">If the button doesn't work, paste this URL into your browser:<br/><a href="${opts.resetUrl}" style="color:#1a9898;word-break:break-all">${opts.resetUrl}</a></p>
+        <p style="color:#bbb;font-size:11px;margin-top:8px">MyOrbisVoice · 716 Washington St Suite 2, Allentown PA 18102</p>
+      </div>
+    `,
+  })
+}

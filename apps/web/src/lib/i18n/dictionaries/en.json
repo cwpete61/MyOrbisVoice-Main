@@ -179,7 +179,32 @@
     "createAccount": "Create account",
     "businessName": "Business name",
     "loggingIn": "Logging in…",
-    "creatingAccount": "Creating account…"
+    "creatingAccount": "Creating account…",
+    "forgot": {
+      "title": "Forgot your password?",
+      "subtitle": "Enter the email on your account and we'll send you a link to reset your password. The link expires in 15 minutes and can only be used once.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "successTitle": "Check your email",
+      "successBody": "If an account exists for that email, we've sent a reset link. Check your inbox (and spam folder) within the next few minutes. The link expires in 15 minutes.",
+      "backToLogin": "← Back to sign in"
+    },
+    "reset": {
+      "title": "Choose a new password",
+      "subtitle": "Pick a password you haven't used before. Setting a new password will sign you out everywhere else.",
+      "newPasswordLabel": "New password",
+      "newPasswordPlaceholder": "At least 8 characters",
+      "confirmPasswordLabel": "Confirm new password",
+      "submit": "Reset password",
+      "submitting": "Resetting…",
+      "mismatchError": "Passwords don't match.",
+      "missingTokenError": "This reset link is missing the token. Open the link from your email again, or request a new reset link.",
+      "successTitle": "Password reset",
+      "successBody": "Your password has been changed. You can sign in with the new one now.",
+      "goToLogin": "Sign in →"
+    }
   },
   "empty": {
     "noConversations": "No conversations yet. Calls and widget sessions appear here as they happen.",

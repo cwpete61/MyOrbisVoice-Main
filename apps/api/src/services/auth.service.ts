@@ -213,6 +213,73 @@ export async function changePassword(userId: string, currentPassword: string, ne
   await prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } })
 }
 
+const PASSWORD_RESET_TTL_MS = 15 * 60 * 1000  // 15 minutes
+
+/** Step 1 of forgot-password flow. Creates a one-shot reset token (15-min
+ *  TTL), stores its sha256 hash in PasswordResetToken, and returns the raw
+ *  token PLUS the user's email + firstName so the route can email them.
+ *
+ *  Returns null when no user matches — caller must NOT reveal that fact to
+ *  the requester (account-enumeration defense). The caller should return a
+ *  success-shaped response either way.
+ *
+ *  Also revokes any prior unused reset tokens for the same user, so a
+ *  fresh request invalidates older still-active tokens. */
+export async function startPasswordReset(email: string): Promise<{
+  rawToken: string
+  expiresAt: Date
+  email: string
+  firstName: string | null
+} | null> {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } })
+  if (!user) return null
+  if (user.status === 'DISABLED' || user.status === 'SUSPENDED') return null
+
+  // Invalidate any pending unused reset tokens for this user — reset
+  // requests are intentionally one-at-a-time. Older still-active tokens
+  // can't be used after a fresh request.
+  await prisma.passwordResetToken.updateMany({
+    where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } },
+    data:  { usedAt: new Date() },
+  })
+
+  const rawToken  = generateSecureToken(48)
+  const tokenHash = hashToken(rawToken)
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS)
+
+  await prisma.passwordResetToken.create({
+    data: { userId: user.id, tokenHash, expiresAt },
+  })
+
+  return { rawToken, expiresAt, email: user.email, firstName: user.firstName }
+}
+
+/** Step 2 of forgot-password flow. Verifies the raw token, checks TTL +
+ *  single-use, sets new password, marks token used, and revokes ALL the
+ *  user's existing refresh tokens (forces re-login everywhere — same as
+ *  changePassword). */
+export async function completePasswordReset(rawToken: string, newPassword: string): Promise<void> {
+  const tokenHash = hashToken(rawToken)
+  const record = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash },
+    include: { user: true },
+  })
+  if (!record) throw new AppError('UNAUTHORIZED', 'Reset link is invalid or expired', 401)
+  if (record.usedAt)            throw new AppError('UNAUTHORIZED', 'Reset link has already been used', 401)
+  if (record.expiresAt < new Date()) throw new AppError('UNAUTHORIZED', 'Reset link has expired', 401)
+
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS)
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
+    prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+    // Force re-login on all devices
+    prisma.refreshToken.updateMany({
+      where: { userId: record.userId, revokedAt: null },
+      data:  { revokedAt: new Date() },
+    }),
+  ])
+}
+
 export async function getMe(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },

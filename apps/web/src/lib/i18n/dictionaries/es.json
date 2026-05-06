@@ -179,7 +179,32 @@
     "createAccount": "Crear cuenta",
     "businessName": "Nombre del negocio",
     "loggingIn": "Iniciando sesión…",
-    "creatingAccount": "Creando cuenta…"
+    "creatingAccount": "Creando cuenta…",
+    "forgot": {
+      "title": "¿Olvidaste tu contraseña?",
+      "subtitle": "Ingresa el correo de tu cuenta y te enviaremos un enlace para restablecer tu contraseña. El enlace expira en 15 minutos y solo puede usarse una vez.",
+      "emailLabel": "Correo",
+      "emailPlaceholder": "tu@ejemplo.com",
+      "submit": "Enviar enlace de restablecimiento",
+      "submitting": "Enviando…",
+      "successTitle": "Revisa tu correo",
+      "successBody": "Si existe una cuenta con ese correo, te enviamos un enlace de restablecimiento. Revisa tu bandeja de entrada (y la carpeta de spam) en los próximos minutos. El enlace expira en 15 minutos.",
+      "backToLogin": "← Volver a iniciar sesión"
+    },
+    "reset": {
+      "title": "Elige una nueva contraseña",
+      "subtitle": "Elige una contraseña que no hayas usado antes. Establecer una nueva contraseña te cerrará la sesión en cualquier otro dispositivo.",
+      "newPasswordLabel": "Nueva contraseña",
+      "newPasswordPlaceholder": "Al menos 8 caracteres",
+      "confirmPasswordLabel": "Confirmar nueva contraseña",
+      "submit": "Restablecer contraseña",
+      "submitting": "Restableciendo…",
+      "mismatchError": "Las contraseñas no coinciden.",
+      "missingTokenError": "Este enlace de restablecimiento no tiene el token. Abre el enlace desde tu correo nuevamente, o solicita un enlace nuevo.",
+      "successTitle": "Contraseña restablecida",
+      "successBody": "Tu contraseña fue cambiada. Ya puedes iniciar sesión con la nueva.",
+      "goToLogin": "Iniciar sesión →"
+    }
   },
   "empty": {
     "noConversations": "Aún no hay conversaciones. Las llamadas y sesiones del widget aparecerán aquí en tiempo real.",

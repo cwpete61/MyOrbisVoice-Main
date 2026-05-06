@@ -86,13 +86,13 @@ export default function LoginPage() {
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="label" style={{ marginBottom: 0 }}>Password</label>
-              <a
-                href="https://app.myorbisvoice.com/forgot-password"
+              <Link
+                href="/forgot-password"
                 className="text-xs font-medium"
                 style={{ color: 'oklch(55% 0.11 193)' }}
               >
                 Forgot?
-              </a>
+              </Link>
             </div>
             <PasswordInput
               required
