@@ -93,9 +93,11 @@ export async function sendWelcomeEmail(opts: {
         </a>
 
         <p style="color:#888;font-size:13px;margin-top:32px;border-top:1px solid #eee;padding-top:16px">
-          Questions? Reply to this email and we'll get back to you. The Help Center
+          Questions? The Help Center
           (<a href="${opts.appBaseUrl}/help" style="color:#1a9898">${opts.appBaseUrl}/help</a>)
-          covers every feature with step-by-step guides.
+          covers every feature with step-by-step guides. You can also reach us directly:
+          <br/>General — <a href="mailto:admin@myorbisvoice.com" style="color:#1a9898">admin@myorbisvoice.com</a>
+          <br/>Technical support — <a href="mailto:support@myorbisvoice.com" style="color:#1a9898">support@myorbisvoice.com</a>
         </p>
         <p style="color:#bbb;font-size:11px;margin-top:8px">
           MyOrbisVoice · 716 Washington St Suite 2, Allentown PA 18102

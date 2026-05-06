@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { ADMIN_HELP_CONTENT } from '@/lib/adminHelpContent'
 import type { HelpArticle } from '@/lib/helpContent'
 import { HelpScreenshot } from '@/components/HelpScreenshot'
+import { ContactBlock } from '@/components/ContactBlock'
 
 function Icon({ d, size = 15 }: { d: string; size?: number }) {
   return (
@@ -81,6 +82,8 @@ function ArticleView({ article }: { article: HelpArticle }) {
           </ul>
         </div>
       )}
+
+      <ContactBlock />
     </div>
   )
 }

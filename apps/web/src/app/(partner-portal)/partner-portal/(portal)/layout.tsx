@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { clearTokens } from '@/lib/auth'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { ContactBlock } from '@/components/ContactBlock'
 
 const NAV = [
   { href: '/partner-portal/dashboard',   labelKey: 'partnerNav.dashboard',   icon: 'M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z' },
@@ -111,9 +112,15 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
         >
           <LanguageToggle />
         </div>
-        <div className="max-w-4xl mx-auto w-full px-8 py-8">
+        <div className="max-w-4xl mx-auto w-full px-8 py-8 flex-1">
           {children}
         </div>
+        {/* Contact emails — anchored at the bottom of the partner workspace */}
+        <footer className="px-8 py-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <div className="max-w-4xl mx-auto w-full">
+            <ContactBlock compact />
+          </div>
+        </footer>
       </main>
     </div>
   )

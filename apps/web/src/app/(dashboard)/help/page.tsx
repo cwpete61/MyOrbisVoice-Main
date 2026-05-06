@@ -5,6 +5,7 @@ import { HELP_CONTENT, type HelpArticle } from '@/lib/helpContent'
 import { HelpTemplateBlock } from '@/components/HelpTemplateBlock'
 import { HelpScreenshot } from '@/components/HelpScreenshot'
 import { WebsiteChecker } from '@/components/WebsiteChecker'
+import { ContactBlock } from '@/components/ContactBlock'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 function Icon({ d, size = 15 }: { d: string; size?: number }) {
@@ -102,6 +103,8 @@ function ArticleView({ article }: { article: HelpArticle }) {
           </ul>
         </div>
       )}
+
+      <ContactBlock />
     </div>
   )
 }

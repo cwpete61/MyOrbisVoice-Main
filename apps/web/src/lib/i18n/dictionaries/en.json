@@ -167,6 +167,17 @@
     "memberSince": "Member since",
     "statusLabel": "Status"
   },
+  "contact": {
+    "card": {
+      "title": "Still need help?",
+      "subtitle": "Two inboxes — both go to a real person on our team. Whichever you pick, we'll get back to you.",
+      "generalLabel": "General",
+      "supportLabel": "Technical support"
+    },
+    "compact": {
+      "label": "Need help?"
+    }
+  },
   "auth": {
     "welcome": "Welcome",
     "welcomeBack": "Welcome back",

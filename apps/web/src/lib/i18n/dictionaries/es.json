@@ -167,6 +167,17 @@
     "memberSince": "Miembro desde",
     "statusLabel": "Estado"
   },
+  "contact": {
+    "card": {
+      "title": "¿Aún necesitas ayuda?",
+      "subtitle": "Dos buzones — ambos llegan a una persona real de nuestro equipo. Cualquiera que elijas, te responderemos.",
+      "generalLabel": "General",
+      "supportLabel": "Soporte técnico"
+    },
+    "compact": {
+      "label": "¿Necesitas ayuda?"
+    }
+  },
   "auth": {
     "welcome": "Bienvenido",
     "welcomeBack": "Bienvenido de vuelta",
