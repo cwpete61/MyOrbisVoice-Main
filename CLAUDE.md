@@ -2317,4 +2317,23 @@ Status transitions tracked via webhooks (`twilio-approved`, `in-review`, `twilio
 - Some supporting docs require human verification on our side (we can sanity-check before forwarding to Twilio).
 - Tenants with no EIN (sole props using SSN) need a different flow path.
 
-**When to build:** AFTER the soft-launch period (first 5-20 customers). That window will surface which wizard fields trip people up most often, what use cases dominate, and whether tenants want full self-service or prefer admin-assisted. Building now without that signal risks designing the wizard around assumptions instead of real friction.
+**Data resilience — handling missing data gracefully (core UX pattern):**
+
+The wizard's value over Twilio Console is precisely that it handles incomplete data without failing. Four patterns it uses:
+
+1. **Pre-flight gap scan.** First wizard screen runs `gapAnalysis()` against all 11 required A2P fields, checks each against the auto-fill source (tenant's BusinessProfile or platform's PlatformProfile), and shows a gap summary: "We have 6 of 11. Here's what we need from you." Sets expectations before the user invests time.
+
+2. **Inline editors with back-fill option.** Each missing field has its own focused step. Editor includes a "Save this to my Business Profile so I don't have to enter it again" checkbox — back-fills the source of truth so future wizards (or other parts of the app) get it for free. Validates format inline (EIN format, URL format, email format).
+
+3. **Pause-and-resume for uploads / external actions.** For fields that need a file (EIN confirmation letter PDF, gov ID scan) or an external acquisition (privacy policy URL the tenant doesn't have yet), the wizard saves draft state to `A2PRegistration.draftJson` with status `DRAFT_PAUSED`. User comes back later, resumes at the exact step they left. Covers the "I need to track this down — I'll be back tomorrow" case.
+
+4. **Natural phase split (Brand vs Campaign).** Twilio's A2P API has two distinct registration phases — brand identity (legal name, EIN, address, vertical → Brand SID) and campaign details (sample messages, opt-in flow, use case → Campaign SID). The wizard surfaces these as Phase A and Phase B with a hard pause between. A tenant with solid business info but undrafted sample messages can complete Phase A today and Phase B next week.
+
+For specifically the "this URL/email/page doesn't exist yet" case (e.g., privacy policy URL):
+- Option A: paste an existing URL
+- Option B: generate from a platform template ("we'll publish it at `/privacy` on your tenant subdomain")
+- Option C: pause the wizard, come back when ready
+
+The wizard never silently submits with stub data — every gap is either filled by the tenant, flagged as deferrable (and submission blocks until resolved), or auto-generated from a documented platform template.
+
+**When to build:** AFTER the soft-launch period (first 5-20 customers). That window will surface which wizard fields trip people up most often, what use cases dominate, whether tenants want full self-service or prefer admin-assisted, and how often the pause-and-resume path actually gets used. Building now without that signal risks designing the wizard around assumptions instead of real friction.
