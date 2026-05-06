@@ -2454,6 +2454,12 @@
           "extensionLabel": "Extension",
           "extensionPlaceholder": "1042"
         },
+        "tooltips": {
+          "email": "Used for two things: (1) calendar invites for appointments routed to this staff member (Google sends them here), and (2) Google Calendar OAuth identity — the email below MUST match the Google account they connect on the Calendar tab. Mismatch breaks calendar routing.",
+          "phone": "Direct line where the AI agent transfers callers when they ask for this person by name. Format: E.164 (`+15551234567`). Leave blank if you don't want callers transferred to a direct line — the agent will offer to take a message instead.",
+          "timezone": "IANA zone (e.g. `America/New_York`, `Europe/Madrid`). Determines when this staff member is available — the schedule on the Calendar tab interprets day-of-week + time-of-day in THIS zone, not the tenant's zone. Wrong here = wrong booking windows.",
+          "extension": "Optional. If your office has a PBX, the agent will say 'transferring you to extension {N}' and DTMF-dial it after the transfer connects. Leave blank if you don't have an extension system — direct phone above is enough."
+        },
         "savingButton": "Saving…",
         "saveButton": "Save profile"
       },
@@ -2634,6 +2640,22 @@
       "disableConfirm":  "Disable code {code}? This is permanent and cannot be undone.",
       "disableSuccess":  "Code {code} disabled.",
       "disableFailed":   "Could not disable code: {reason}"
+    }
+  },
+  "adminSystemSettings": {
+    "tooltips": {
+      "googleRedirectUri": "Leave blank to use the default (https://api.myorbisvoice.com/api/integrations/google/callback). Override only if you've set a different redirect URI in Google Cloud Console. Whatever you put here MUST match exactly what's listed under 'Authorized redirect URIs' for the OAuth client — Google rejects mismatches with no useful error.",
+      "stripeSecretKey": "Must start with `sk_live_` for live mode, `sk_test_` for test mode. Found at dashboard.stripe.com → Developers → API keys → Secret key. NEVER paste a webhook secret (whsec_…) here — that's a separate field below. Wrong-format keys are caught by the validator on save.",
+      "stripePublishableKey": "Must start with `pk_live_` or `pk_test_`. Found right above the Secret Key in the same Stripe Dashboard view. This one is safe to ship to the browser (used by Stripe.js); the secret is server-only.",
+      "stripeWebhookSecret": "Paired with the platform-events Stripe webhook destination (`elegant-wonder` in the Stripe Workbench → Webhooks). Format: `whsec_…`. Each webhook destination has its own signing secret — Connect events use a different secret in the next field. Without this, ALL Stripe webhooks return 400 (signature verification fails).",
+      "stripeWebhookSecretConnect": "Paired with the Connect-events webhook destination (`empowering-dream` in Stripe Workbench). Different from the platform secret above because Stripe locks 'Events from' scope at destination creation — we run two destinations to capture both Account-level events (subscriptions, invoices) and Connect-account events (partner Stripe accounts). Both secrets must be set or Connect onboarding doesn't sync.",
+      "openAiApiKey": "Format: `sk-…`. Found at platform.openai.com → API keys. Used platform-wide for ALL tenants — usage charges on this single account. Updates take effect on the next call without container restart.",
+      "openAiModelOverride": "Default `gpt-4o-mini` is fast and cheap (recommended for production). `gpt-4o` is higher quality but ~10x cost — only worth it if call summaries are visibly poor. Leave blank to keep the current model.",
+      "geminiApiKey": "Format: `AIza…`. Get from aistudio.google.com → Get API Key. ⚠ Free-tier keys without GCP billing enabled expire periodically — enable billing on the Google Cloud project for a durable production key. Used for real-time voice on every channel (widget, inbound, outbound).",
+      "geminiModelOverride": "Default is `gemini-2.5-flash-native-audio-latest` — the only model that supports the live-audio bidirectional protocol we use. Don't change this unless you're testing a new Gemini Live model. Standard chat models will NOT work here.",
+      "bunnyStorageRegion": "Region code from your Bunny Storage Zone configuration (e.g. `de` for Frankfurt, `ny` for New York, `la` for Los Angeles). ⚠ The Frankfurt (DE) region uses `storage.bunnycdn.com` — the same hostname as NY. Setting region to `de` does NOT change the upload hostname (a common Bunny gotcha). Other regions use prefixed hostnames like `la.storage.bunnycdn.com`.",
+      "bunnyStorageZone": "The Storage Zone Name from bunny.net dashboard → Storage. This is the internal name (e.g. `orbisvoice`), NOT the CDN hostname. Used in the upload URL path. If you rename the zone in Bunny, update here AND ensure the CDN pull zone still points at the right storage zone.",
+      "bunnyCdnHostname": "The Pull Zone hostname from bunny.net → CDN → Pull Zones (e.g. `OrbisVoice.b-cdn.net`). DIFFERENT from the storage zone name above. Used to build public CDN URLs for recordings + transcripts. The pull zone MUST be linked to the storage zone in Bunny dashboard, otherwise CDN URLs return 404 and we fall back to API-proxied audio."
     }
   }
 }

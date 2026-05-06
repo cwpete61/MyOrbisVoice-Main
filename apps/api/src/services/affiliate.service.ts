@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js'
 import crypto from 'crypto'
+import { AppError } from '@voiceautomation/shared'
 import { getStripe } from '../lib/stripe.js'
 
 // ── Settings ──────────────────────────────────────────────────────────────────
@@ -69,7 +70,8 @@ export async function getAffiliateAccountById(id: string) {
 }
 
 export async function updatePayoutMethod(userId: string, data: Record<string, unknown>) {
-  const account = await prisma.affiliateAccount.findUniqueOrThrow({ where: { userId } })
+  const account = await prisma.affiliateAccount.findUnique({ where: { userId } })
+  if (!account) throw new AppError('NOT_FOUND', 'No partner account found for this user', 404)
   return prisma.affiliateAccount.update({
     where: { id: account.id },
     data: { payoutMethodJson: data as never },
@@ -183,10 +185,11 @@ export async function createConnectOnboardingLink(
   opts: { returnUrl: string; refreshUrl: string }
 ): Promise<{ url: string; accountId: string }> {
   const stripe = getStripe()
-  const account = await prisma.affiliateAccount.findUniqueOrThrow({
+  const account = await prisma.affiliateAccount.findUnique({
     where: { userId },
     include: { user: { select: { email: true } } },
   })
+  if (!account) throw new AppError('NOT_FOUND', 'No partner account found for this user', 404)
   if (account.status !== 'ACTIVE') {
     throw new Error('Partner account must be ACTIVE before connecting payouts')
   }
@@ -947,7 +950,8 @@ export async function bulkApproveCommissions(ids: string[]) {
 
 export async function requestPayout(userId: string) {
   const settings = await getSettings()
-  const account = await prisma.affiliateAccount.findUniqueOrThrow({ where: { userId } })
+  const account = await prisma.affiliateAccount.findUnique({ where: { userId } })
+  if (!account) throw new AppError('NOT_FOUND', 'No partner account found for this user', 404)
   if (account.status !== 'ACTIVE') throw new Error('Account not active')
 
   const agg = await prisma.affiliateCommission.aggregate({

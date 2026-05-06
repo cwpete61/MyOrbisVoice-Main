@@ -5,6 +5,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { Tooltip } from '@/components/Tooltip'
 
 interface StaffMember {
   id: string
@@ -176,14 +177,14 @@ export default function StaffDetailPage() {
 
   const calConnected = member.integrationConnection?.status === 'CONNECTED'
 
-  const profileFields: Array<{ key: keyof typeof profile; label: string; placeholder: string }> = [
+  const profileFields: Array<{ key: keyof typeof profile; label: string; placeholder: string; tooltip?: string }> = [
     { key: 'name',           label: t('tenantStaff.detail.profile.fields.nameLabel'),       placeholder: t('tenantStaff.detail.profile.fields.namePlaceholder')       },
     { key: 'title',          label: t('tenantStaff.detail.profile.fields.titleLabel'),      placeholder: t('tenantStaff.detail.profile.fields.titlePlaceholder')      },
     { key: 'department',     label: t('tenantStaff.detail.profile.fields.departmentLabel'), placeholder: t('tenantStaff.detail.profile.fields.departmentPlaceholder') },
-    { key: 'email',          label: t('tenantStaff.detail.profile.fields.emailLabel'),      placeholder: t('tenantStaff.detail.profile.fields.emailPlaceholder')      },
-    { key: 'phone',          label: t('tenantStaff.detail.profile.fields.phoneLabel'),      placeholder: t('tenantStaff.detail.profile.fields.phonePlaceholder')      },
-    { key: 'timezone',       label: t('tenantStaff.detail.profile.fields.timezoneLabel'),   placeholder: t('tenantStaff.detail.profile.fields.timezonePlaceholder')   },
-    { key: 'phoneExtension', label: t('tenantStaff.detail.profile.fields.extensionLabel'),  placeholder: t('tenantStaff.detail.profile.fields.extensionPlaceholder')  },
+    { key: 'email',          label: t('tenantStaff.detail.profile.fields.emailLabel'),      placeholder: t('tenantStaff.detail.profile.fields.emailPlaceholder'),      tooltip: t('tenantStaff.detail.profile.tooltips.email') },
+    { key: 'phone',          label: t('tenantStaff.detail.profile.fields.phoneLabel'),      placeholder: t('tenantStaff.detail.profile.fields.phonePlaceholder'),      tooltip: t('tenantStaff.detail.profile.tooltips.phone') },
+    { key: 'timezone',       label: t('tenantStaff.detail.profile.fields.timezoneLabel'),   placeholder: t('tenantStaff.detail.profile.fields.timezonePlaceholder'),   tooltip: t('tenantStaff.detail.profile.tooltips.timezone') },
+    { key: 'phoneExtension', label: t('tenantStaff.detail.profile.fields.extensionLabel'),  placeholder: t('tenantStaff.detail.profile.fields.extensionPlaceholder'),  tooltip: t('tenantStaff.detail.profile.tooltips.extension') },
   ]
 
   return (
@@ -242,7 +243,9 @@ export default function StaffDetailPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {profileFields.map(f => (
               <div key={f.key}>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{f.label}</label>
+                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  {f.tooltip ? <Tooltip content={f.tooltip}>{f.label}</Tooltip> : f.label}
+                </label>
                 <input
                   className="input w-full"
                   placeholder={f.placeholder}
@@ -348,12 +351,16 @@ export default function StaffDetailPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('tenantStaff.detail.phone.directPhoneLabel')}</label>
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+                <Tooltip content={t('tenantStaff.detail.profile.tooltips.phone')}>{t('tenantStaff.detail.phone.directPhoneLabel')}</Tooltip>
+              </label>
               <input className="input w-full" placeholder={t('tenantStaff.detail.phone.directPhonePlaceholder')} value={profile.phone}
                 onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('tenantStaff.detail.phone.extensionLabel')}</label>
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+                <Tooltip content={t('tenantStaff.detail.profile.tooltips.extension')}>{t('tenantStaff.detail.phone.extensionLabel')}</Tooltip>
+              </label>
               <input className="input w-full" placeholder={t('tenantStaff.detail.phone.extensionPlaceholder')} value={profile.phoneExtension}
                 onChange={e => setProfile(p => ({ ...p, phoneExtension: e.target.value }))} />
             </div>

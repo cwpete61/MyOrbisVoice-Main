@@ -2454,6 +2454,12 @@
           "extensionLabel": "Extensión",
           "extensionPlaceholder": "1042"
         },
+        "tooltips": {
+          "email": "Se usa para dos cosas: (1) las invitaciones de calendario para citas enrutadas a este miembro del personal (Google las envía aquí), y (2) la identidad de OAuth de Google Calendar — el correo de abajo DEBE coincidir con la cuenta de Google que conecten en la pestaña Calendario. Si no coinciden, falla el enrutamiento de calendario.",
+          "phone": "Línea directa a la que el agente de IA transfiere a quien pregunte por esta persona por su nombre. Formato: E.164 (`+15551234567`). Déjalo en blanco si no quieres transferencias directas — el agente ofrecerá tomar un mensaje en su lugar.",
+          "timezone": "Zona IANA (p. ej. `America/Mexico_City`, `Europe/Madrid`). Determina cuándo está disponible este miembro del personal — el horario de la pestaña Calendario interpreta el día de la semana + la hora del día en ESTA zona, no en la del tenant. Si está mal aquí = ventanas de reserva incorrectas.",
+          "extension": "Opcional. Si tu oficina tiene PBX, el agente dirá 'lo transferiré a la extensión {N}' y marcará los DTMF después de conectar la transferencia. Déjalo en blanco si no tienes sistema de extensiones — el teléfono directo de arriba es suficiente."
+        },
         "savingButton": "Guardando…",
         "saveButton": "Guardar perfil"
       },
@@ -2634,6 +2640,22 @@
       "disableConfirm":  "¿Desactivar el código {code}? Esto es permanente y no se puede deshacer.",
       "disableSuccess":  "Código {code} desactivado.",
       "disableFailed":   "No se pudo desactivar el código: {reason}"
+    }
+  },
+  "adminSystemSettings": {
+    "tooltips": {
+      "googleRedirectUri": "Déjalo en blanco para usar el predeterminado (https://api.myorbisvoice.com/api/integrations/google/callback). Sobrescríbelo solo si configuraste un redirect URI distinto en Google Cloud Console. Lo que pongas aquí DEBE coincidir exactamente con lo que aparece en 'Authorized redirect URIs' del cliente OAuth — Google rechaza diferencias sin un mensaje útil.",
+      "stripeSecretKey": "Debe empezar con `sk_live_` para modo en vivo, `sk_test_` para modo prueba. Encuéntralo en dashboard.stripe.com → Developers → API keys → Secret key. NUNCA pegues un webhook secret (whsec_…) aquí — ese es un campo separado abajo. El validador detecta formatos incorrectos al guardar.",
+      "stripePublishableKey": "Debe empezar con `pk_live_` o `pk_test_`. Está justo arriba del Secret Key en la misma vista del Stripe Dashboard. Esta es segura para enviar al navegador (la usa Stripe.js); la secret es solo del servidor.",
+      "stripeWebhookSecret": "Emparejado con el destino de webhook de eventos de plataforma (`elegant-wonder` en Stripe Workbench → Webhooks). Formato: `whsec_…`. Cada destino de webhook tiene su propia firma — los eventos de Connect usan una secret distinta en el siguiente campo. Sin esta, TODOS los webhooks de Stripe devuelven 400 (falla la verificación de firma).",
+      "stripeWebhookSecretConnect": "Emparejado con el destino de webhook de eventos de Connect (`empowering-dream` en Stripe Workbench). Distinto del secret de plataforma de arriba porque Stripe fija el alcance 'Events from' al crear el destino — corremos dos destinos para capturar tanto los eventos a nivel cuenta (suscripciones, facturas) como los eventos de cuenta Connect (cuentas Stripe de partners). Ambas secrets deben estar configuradas o el onboarding de Connect no se sincroniza.",
+      "openAiApiKey": "Formato: `sk-…`. Encuéntralo en platform.openai.com → API keys. Se usa en toda la plataforma para TODOS los tenants — el uso se cobra en esta única cuenta. Las actualizaciones surten efecto en la próxima llamada sin reiniciar el contenedor.",
+      "openAiModelOverride": "El predeterminado `gpt-4o-mini` es rápido y económico (recomendado para producción). `gpt-4o` es de mayor calidad pero ~10x el costo — solo vale la pena si los resúmenes de llamadas se ven visiblemente mal. Déjalo en blanco para mantener el modelo actual.",
+      "geminiApiKey": "Formato: `AIza…`. Obténlo en aistudio.google.com → Get API Key. ⚠ Las claves de capa gratuita sin facturación de GCP habilitada expiran periódicamente — habilita la facturación en el proyecto de Google Cloud para una clave de producción duradera. Se usa para voz en tiempo real en cada canal (widget, inbound, outbound).",
+      "geminiModelOverride": "El predeterminado es `gemini-2.5-flash-native-audio-latest` — el único modelo que soporta el protocolo bidireccional de audio en vivo que usamos. No lo cambies a menos que estés probando un nuevo modelo de Gemini Live. Los modelos de chat estándar NO funcionarán aquí.",
+      "bunnyStorageRegion": "Código de región de tu configuración de Bunny Storage Zone (p. ej. `de` para Frankfurt, `ny` para New York, `la` para Los Angeles). ⚠ La región de Frankfurt (DE) usa `storage.bunnycdn.com` — el mismo hostname que NY. Configurar la región como `de` NO cambia el hostname de subida (una trampa común de Bunny). Otras regiones usan hostnames con prefijo como `la.storage.bunnycdn.com`.",
+      "bunnyStorageZone": "El Storage Zone Name del panel bunny.net → Storage. Este es el nombre interno (p. ej. `orbisvoice`), NO el hostname del CDN. Se usa en la ruta de la URL de subida. Si renombras la zona en Bunny, actualízala aquí Y asegúrate de que la pull zone del CDN siga apuntando a la storage zone correcta.",
+      "bunnyCdnHostname": "El hostname de la Pull Zone del panel bunny.net → CDN → Pull Zones (p. ej. `OrbisVoice.b-cdn.net`). DIFERENTE del nombre de la storage zone de arriba. Se usa para construir las URLs públicas del CDN para grabaciones + transcripciones. La pull zone DEBE estar enlazada a la storage zone en el panel de Bunny, de lo contrario las URLs del CDN devuelven 404 y caemos al audio por API."
     }
   }
 }

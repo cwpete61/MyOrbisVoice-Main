@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { apiFetchRaw, useApi } from '@/hooks/useApi'
+import { useT } from '@/lib/i18n/I18nProvider'
+import { Tooltip } from '@/components/Tooltip'
 
 interface SystemSettings {
   google: { clientId: string | null; clientSecret: boolean; redirectUri: string | null }
@@ -94,6 +96,8 @@ function CardHeader({ title, subtitle, configured }: { title: string; subtitle: 
 }
 
 export default function SystemSettingsPage() {
+  // Aliased to `tr` (translate) — `t` is already the local Twilio form state.
+  const tr = useT()
   const { data, loading, reload } = useApi<SystemSettings>('/api/admin/system-settings')
   const { data: affSettings, reload: reloadAff } = useApi<AffiliateSettings>('/api/admin/affiliate/settings')
   const { data: tierData, reload: reloadTiers } = useApi<TierConfig[]>('/api/admin/storage-tiers')
@@ -464,7 +468,11 @@ export default function SystemSettingsPage() {
                 </div>
               </div>
               <div>
-                <label className={labelCls}>Redirect URI override <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span></label>
+                <label className={labelCls}>
+                  <Tooltip content={tr('adminSystemSettings.tooltips.googleRedirectUri')}>
+                    Redirect URI override <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span>
+                  </Tooltip>
+                </label>
                 <input className={inputCls} value={g.redirectUri} onChange={e => setG(p => ({ ...p, redirectUri: e.target.value }))}
                   placeholder={redirectUriDisplay} autoComplete="off" />
               </div>
@@ -512,13 +520,21 @@ export default function SystemSettingsPage() {
               </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelCls}>API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                  <label className={labelCls}>
+                    <Tooltip content={tr('adminSystemSettings.tooltips.openAiApiKey')}>
+                      API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span>
+                    </Tooltip>
+                  </label>
                   <input type="password" className={inputCls} value={oa.apiKey}
                     onChange={e => setOa(p => ({ ...p, apiKey: e.target.value }))}
                     placeholder="sk-…" autoComplete="new-password" />
                 </div>
                 <div>
-                  <label className={labelCls}>Model override <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span></label>
+                  <label className={labelCls}>
+                    <Tooltip content={tr('adminSystemSettings.tooltips.openAiModelOverride')}>
+                      Model override <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span>
+                    </Tooltip>
+                  </label>
                   <select className={inputCls} value={oa.model} onChange={e => setOa(p => ({ ...p, model: e.target.value }))}>
                     <option value="">Keep current ({data?.openai?.model ?? 'gpt-4o-mini'})</option>
                     <option value="gpt-4o-mini">gpt-4o-mini — fast, cost-efficient (recommended)</option>
@@ -570,13 +586,21 @@ export default function SystemSettingsPage() {
               </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelCls}>API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                  <label className={labelCls}>
+                    <Tooltip content={tr('adminSystemSettings.tooltips.geminiApiKey')}>
+                      API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span>
+                    </Tooltip>
+                  </label>
                   <input type="password" className={inputCls} value={gem.apiKey}
                     onChange={e => setGem(p => ({ ...p, apiKey: e.target.value }))}
                     placeholder="AIza…" autoComplete="new-password" />
                 </div>
                 <div>
-                  <label className={labelCls}>Model override <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span></label>
+                  <label className={labelCls}>
+                    <Tooltip content={tr('adminSystemSettings.tooltips.geminiModelOverride')}>
+                      Model override <span style={{ color: 'var(--text-tertiary)' }}>(optional)</span>
+                    </Tooltip>
+                  </label>
                   <input type="text" className={inputCls} value={gem.model}
                     onChange={e => setGem(p => ({ ...p, model: e.target.value }))}
                     placeholder={data?.gemini?.model ?? 'gemini-2.5-flash-native-audio-latest'} />
@@ -607,22 +631,36 @@ export default function SystemSettingsPage() {
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Keys are encrypted at rest. Leave blank to keep the current value.</p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className={labelCls}>Secret Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                  <label className={labelCls}>
+                    <Tooltip content={tr('adminSystemSettings.tooltips.stripeSecretKey')}>
+                      Secret Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span>
+                    </Tooltip>
+                  </label>
                   <input type="password" className={inputCls} value={s.secretKey} onChange={e => setS(p => ({ ...p, secretKey: e.target.value }))}
                     placeholder="sk_live_… or sk_test_…" autoComplete="new-password" />
                 </div>
                 <div>
-                  <label className={labelCls}>Publishable Key</label>
+                  <label className={labelCls}>
+                    <Tooltip content={tr('adminSystemSettings.tooltips.stripePublishableKey')}>Publishable Key</Tooltip>
+                  </label>
                   <input type="text" className={inputCls} value={s.publishableKey} onChange={e => setS(p => ({ ...p, publishableKey: e.target.value }))}
                     placeholder="pk_live_… or pk_test_…" autoComplete="off" />
                 </div>
                 <div>
-                  <label className={labelCls}>Webhook Secret — platform events <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                  <label className={labelCls}>
+                    <Tooltip content={tr('adminSystemSettings.tooltips.stripeWebhookSecret')}>
+                      Webhook Secret — platform events <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span>
+                    </Tooltip>
+                  </label>
                   <input type="password" className={inputCls} value={s.webhookSecret} onChange={e => setS(p => ({ ...p, webhookSecret: e.target.value }))}
                     placeholder="whsec_… (Your account scope)" autoComplete="new-password" />
                 </div>
                 <div>
-                  <label className={labelCls}>Webhook Secret — Connect events <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                  <label className={labelCls}>
+                    <Tooltip content={tr('adminSystemSettings.tooltips.stripeWebhookSecretConnect')}>
+                      Webhook Secret — Connect events <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span>
+                    </Tooltip>
+                  </label>
                   <input type="password" className={inputCls} value={s.webhookSecretConnect} onChange={e => setS(p => ({ ...p, webhookSecretConnect: e.target.value }))}
                     placeholder="whsec_… (Connected accounts scope)" autoComplete="new-password" />
                 </div>
@@ -764,7 +802,9 @@ export default function SystemSettingsPage() {
                     placeholder="Enter API key to replace current" autoComplete="new-password" />
                 </div>
                 <div>
-                  <label className={labelCls}>Storage Zone Name</label>
+                  <label className={labelCls}>
+                    <Tooltip content={tr('adminSystemSettings.tooltips.bunnyStorageZone')}>Storage Zone Name</Tooltip>
+                  </label>
                   <input className={inputCls} value={b.storageZone}
                     onChange={e => setB(p => ({ ...p, storageZone: e.target.value }))}
                     placeholder="myorbisvoice-recordings" autoComplete="off" />
@@ -776,13 +816,17 @@ export default function SystemSettingsPage() {
                     placeholder="Enter storage zone password" autoComplete="new-password" />
                 </div>
                 <div>
-                  <label className={labelCls}>CDN Hostname</label>
+                  <label className={labelCls}>
+                    <Tooltip content={tr('adminSystemSettings.tooltips.bunnyCdnHostname')}>CDN Hostname</Tooltip>
+                  </label>
                   <input className={inputCls} value={b.cdnHostname}
                     onChange={e => setB(p => ({ ...p, cdnHostname: e.target.value }))}
                     placeholder="recordings.b-cdn.net" autoComplete="off" />
                 </div>
                 <div>
-                  <label className={labelCls}>Storage Region</label>
+                  <label className={labelCls}>
+                    <Tooltip content={tr('adminSystemSettings.tooltips.bunnyStorageRegion')}>Storage Region</Tooltip>
+                  </label>
                   <select className={inputCls} value={b.storageRegion}
                     onChange={e => setB(p => ({ ...p, storageRegion: e.target.value }))}>
                     <option value="ny">New York (NY)</option>
