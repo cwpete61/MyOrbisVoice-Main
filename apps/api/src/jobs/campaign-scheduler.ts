@@ -40,6 +40,7 @@ interface DispatchContext {
   businessPhone:  string | null
   appointmentDate: string | null   // formatted date (e.g. "Tuesday, May 5")
   appointmentTime: string | null   // formatted time (e.g. "1:30 PM")
+  appointmentType: string | null   // type as passed to book_appointment (e.g. "Demo", "Tech Support")
 }
 
 /**
@@ -59,6 +60,7 @@ function renderTemplate(template: string, ctx: DispatchContext): string {
     businessPhone:   ctx.businessPhone,
     appointmentDate: ctx.appointmentDate,
     appointmentTime: ctx.appointmentTime,
+    appointmentType: ctx.appointmentType,
   }
 
   return template.replace(/\{(\w+)\}/g, (match, key) => {
@@ -100,8 +102,9 @@ async function buildContext(enrollment: EnrollmentWithRels): Promise<DispatchCon
   const meta = (enrollment.metaJson ?? {}) as Record<string, unknown>
   let apptDate = typeof meta['appointmentDate'] === 'string' ? meta['appointmentDate'] : null
   let apptTime = typeof meta['appointmentTime'] === 'string' ? meta['appointmentTime'] : null
+  let apptType = typeof meta['appointmentType'] === 'string' ? meta['appointmentType'] : null
 
-  if (!apptDate || !apptTime) {
+  if (!apptDate || !apptTime || !apptType) {
     const recentAppt = await prisma.appointment.findFirst({
       where: {
         tenantId:  enrollment.tenantId,
@@ -113,7 +116,7 @@ async function buildContext(enrollment: EnrollmentWithRels): Promise<DispatchCon
         startAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
       },
       orderBy: { createdAt: 'desc' },
-      select:  { startAt: true, timezone: true },
+      select:  { startAt: true, timezone: true, appointmentType: true },
     })
     if (recentAppt) {
       const tz    = recentAppt.timezone || 'UTC'
@@ -128,6 +131,9 @@ async function buildContext(enrollment: EnrollmentWithRels): Promise<DispatchCon
           hour: 'numeric', minute: '2-digit', timeZone: tz, timeZoneName: 'short',
         })
       }
+      if (!apptType) {
+        apptType = recentAppt.appointmentType ?? null
+      }
     }
   }
 
@@ -137,6 +143,7 @@ async function buildContext(enrollment: EnrollmentWithRels): Promise<DispatchCon
     businessPhone,
     appointmentDate: apptDate,
     appointmentTime: apptTime,
+    appointmentType: apptType,
   }
 }
 
