@@ -1180,6 +1180,16 @@
     "actions": {
       "save": "Save agent",
       "saving": "Saving…"
+    },
+    "templates": {
+      "browseButton": "Browse templates",
+      "title": "Agent templates",
+      "subtitle": "Pick a pre-built agent personality to apply to your workspace. You can customize the prompt afterward.",
+      "notForLabel": "Not for:",
+      "applyButton": "Apply this template →",
+      "applying": "Applying…",
+      "applied": "Template applied. Your agent is updated.",
+      "applyFailed": "Failed to apply template."
     }
   },
   "tenantBusinessDna": {

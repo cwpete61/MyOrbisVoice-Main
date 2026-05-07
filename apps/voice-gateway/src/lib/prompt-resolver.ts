@@ -42,9 +42,29 @@ export function resolveSystemPrompt(
   const channelPrompt = prompts.find(p => p.scope === 'CHANNEL' && p.channelType === channelType)
   if (channelPrompt) layers.push(channelPrompt.content)
 
-  // Layer 4 — role overlay (orchestrator default for widget)
-  const rolePrompt = prompts.find(p => p.scope === 'ROLE' && p.agentRoleType === 'ORCHESTRATOR')
-  if (rolePrompt) layers.push(rolePrompt.content)
+  // Layer 4 — role overlays. Previously only ORCHESTRATOR was loaded; now
+  // we load every published ROLE-scoped prompt for the tenant. When a
+  // tenant applies multiple role templates (e.g. Tech Support + Sales),
+  // the agent has access to all of them and self-routes based on caller
+  // intent. ORCHESTRATOR (if present) goes first as the meta-instruction;
+  // the rest follow in a stable order so the system prompt is deterministic.
+  const ROLE_ORDER: Array<string | null> = [
+    'ORCHESTRATOR',
+    'CUSTOMER_SERVICE',
+    'SALES',
+    'APPOINTMENT',
+    'SECRETARY',
+    'ASSISTANT',
+    'MARKETING',
+  ]
+  const rolePrompts = prompts
+    .filter(p => p.scope === 'ROLE')
+    .sort((a, b) => {
+      const ai = ROLE_ORDER.indexOf(a.agentRoleType)
+      const bi = ROLE_ORDER.indexOf(b.agentRoleType)
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+    })
+  for (const r of rolePrompts) layers.push(r.content)
 
   // Layer 5 — Business DNA injection
   if (dna) {

@@ -12,6 +12,17 @@ interface Agent {
   promptVersion: { id: string; name: string; status: string } | null
 }
 
+interface RoleTemplate {
+  id:                       string
+  name:                     string
+  shortLabel:               string
+  description:              string
+  roleType:                 string
+  iconHint:                 string
+  notFor:                   string
+  suggestedPrimaryServices: string[]
+}
+
 const ROLE_ICONS: Record<string, string> = {
   ORCHESTRATOR:    '🎯',
   APPOINTMENT:     '📅',
@@ -30,9 +41,12 @@ export default function AgentsPage() {
   void dateLocale
 
   const { data: agents, loading, error, reload } = useApi<Agent[]>('/api/agents')
+  const { data: templates } = useApi<RoleTemplate[]>('/api/platform/role-templates')
   const [selected, setSelected] = useState<Agent | null>(null)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [applyingId, setApplyingId] = useState<string | null>(null)
 
   function showToast(type: 'success' | 'error', text: string) {
     setToast({ type, text })
@@ -71,6 +85,21 @@ export default function AgentsPage() {
     finally { setSaving(false) }
   }
 
+  async function applyTemplate(templateId: string) {
+    setApplyingId(templateId)
+    try {
+      await apiFetch('/api/agents/seed-from-template', {
+        method: 'POST',
+        body:   JSON.stringify({ templateId }),
+      })
+      await reload()
+      setShowTemplates(false)
+      showToast('success', t('tenantAgents.templates.applied'))
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : t('tenantAgents.templates.applyFailed'))
+    } finally { setApplyingId(null) }
+  }
+
 
   if (loading) return (
     <div className="space-y-6 animate-pulse">
@@ -87,14 +116,81 @@ export default function AgentsPage() {
   return (
     <div className="space-y-6">
       <BackToOnboarding markStepKey="agent" />
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-          {t('tenantAgents.title')}
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          {t('tenantAgents.subtitle')}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            {t('tenantAgents.title')}
+          </h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            {t('tenantAgents.subtitle')}
+          </p>
+        </div>
+        <button
+          onClick={() => setShowTemplates(true)}
+          className="btn-secondary text-sm whitespace-nowrap"
+        >
+          {t('tenantAgents.templates.browseButton')}
+        </button>
       </div>
+
+      {showTemplates && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:p-8 overflow-y-auto"
+          style={{ background: 'rgba(0,0,0,0.55)' }}
+          onClick={() => setShowTemplates(false)}
+        >
+          <div
+            className="relative w-full max-w-3xl rounded-2xl"
+            style={{ background: 'var(--surface-base)', border: '1px solid var(--border-subtle)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {t('tenantAgents.templates.title')}
+                  </h2>
+                  <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                    {t('tenantAgents.templates.subtitle')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowTemplates(false)}
+                  className="text-2xl leading-none px-2"
+                  style={{ color: 'var(--text-tertiary)' }}
+                  aria-label={t('common.close')}
+                >×</button>
+              </div>
+            </div>
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(templates ?? []).map((tpl) => {
+                const isApplying = applyingId === tpl.id
+                return (
+                  <button
+                    key={tpl.id}
+                    onClick={() => applyTemplate(tpl.id)}
+                    disabled={isApplying || applyingId !== null}
+                    className="text-left rounded-xl p-4 transition-all disabled:opacity-50"
+                    style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg leading-none">{ROLE_ICONS[tpl.roleType] ?? '🤖'}</span>
+                      <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tpl.name}</span>
+                    </div>
+                    <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>{tpl.description}</p>
+                    <p className="text-xs italic" style={{ color: 'var(--text-tertiary)' }}>
+                      {t('tenantAgents.templates.notForLabel')} {tpl.notFor}
+                    </p>
+                    <div className="mt-3 text-xs font-medium" style={{ color: 'oklch(72% 0.12 193)' }}>
+                      {isApplying ? t('tenantAgents.templates.applying') : t('tenantAgents.templates.applyButton')}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && <div className={toast.type === 'success' ? 'alert-success' : 'alert-error'}>{toast.text}</div>}
 

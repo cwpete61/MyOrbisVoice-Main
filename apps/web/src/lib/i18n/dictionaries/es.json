@@ -1180,6 +1180,16 @@
     "actions": {
       "save": "Guardar agente",
       "saving": "Guardando…"
+    },
+    "templates": {
+      "browseButton": "Explorar plantillas",
+      "title": "Plantillas de agentes",
+      "subtitle": "Elige una personalidad de agente predefinida para aplicar a tu espacio de trabajo. Puedes personalizar el prompt después.",
+      "notForLabel": "No es para:",
+      "applyButton": "Aplicar esta plantilla →",
+      "applying": "Aplicando…",
+      "applied": "Plantilla aplicada. Tu agente está actualizado.",
+      "applyFailed": "No se pudo aplicar la plantilla."
     }
   },
   "tenantBusinessDna": {
