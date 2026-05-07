@@ -40,7 +40,7 @@ export function AdminNav() {
         // System Settings includes credential editing (Super only) — Support
         // shouldn't see this in nav at all (the page itself 403s anyway).
         { href: '/admin/system-settings', label: 'System Settings', icon: <SettingsIcon />, minTier: 'super_admin' },
-        { href: '/admin/team',            label: 'Team',            icon: <TeamIcon />,     minTier: 'super_admin' },
+        { href: '/admin/team',            label: 'Users',           icon: <TeamIcon />,     minTier: 'super_admin' },
         { href: '/admin/settings',        label: 'Platform Status', icon: <StatusIcon />,   minTier: 'admin' },
       ],
     },

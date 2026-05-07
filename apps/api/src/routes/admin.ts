@@ -1612,6 +1612,31 @@ async function getPlatformTenantId(): Promise<string> {
   return tenant.id
 }
 
+/** Hard rule (intentional, locked-in 2026-05-07): Super Admin accounts
+ *  are immutable from the team-management UI. No edit, no role change,
+ *  no disable, no revoke — even by another Super Admin. The only admin
+ *  action permitted on a Super Admin is `password-reset` (which sends
+ *  the user a 15-min reset link they have to act on themselves).
+ *
+ *  Removing a Super Admin requires direct DB access via SSH. That's
+ *  deliberate friction — Super Admin removal is a serious action and
+ *  shouldn't be possible from an admin session that might be hijacked.
+ *  Self-edits to email/name go through /admin/profile, not this surface. */
+async function assertNotSuperAdmin(userId: string): Promise<void> {
+  const platformTenantId = await getPlatformTenantId()
+  const member = await prisma.tenantMember.findFirst({
+    where:   { userId, tenantId: platformTenantId },
+    include: { roleDefinition: { select: { key: true } } },
+  })
+  if (member?.roleDefinition.key === 'platform_super_admin') {
+    throw new AppError(
+      'FORBIDDEN',
+      'Super Admin accounts cannot be modified from the team page. Only password reset is permitted. To remove a Super Admin, use direct DB access.',
+      403,
+    )
+  }
+}
+
 // GET /api/admin/platform-staff — list users with platform-level roles
 router.get('/platform-staff', requirePlatformSuperAdmin, async (_req, res, next) => {
   try {
@@ -1663,9 +1688,20 @@ router.post('/platform-staff/grant', requirePlatformSuperAdmin, async (req, res,
 
     const platformTenantId = await getPlatformTenantId()
     const existing = await prisma.tenantMember.findFirst({
-      where: { userId: user.id, tenantId: platformTenantId },
+      where:   { userId: user.id, tenantId: platformTenantId },
+      include: { roleDefinition: { select: { key: true } } },
     })
     if (existing) {
+      // If the existing role is Super Admin and we're being asked to change
+      // it to anything OTHER than Super Admin, block it. Super Admin is a
+      // one-way door — see assertNotSuperAdmin for the reasoning.
+      if (existing.roleDefinition.key === 'platform_super_admin' && roleKey !== 'platform_super_admin') {
+        throw new AppError(
+          'FORBIDDEN',
+          'Super Admin role cannot be changed once granted. To remove a Super Admin, use direct DB access.',
+          403,
+        )
+      }
       // Already a platform staff member — update their role instead
       await prisma.tenantMember.update({
         where: { id: existing.id },
@@ -1693,7 +1729,122 @@ router.post('/platform-staff/grant', requirePlatformSuperAdmin, async (req, res,
   } catch (err) { next(err) }
 })
 
-// DELETE /api/admin/platform-staff/:userId — revoke a user's platform-staff role
+const updatePlatformStaffSchema = z.object({
+  firstName: z.string().min(1).max(80).optional().or(z.literal('')),
+  lastName:  z.string().min(1).max(80).optional().or(z.literal('')),
+  username:  z.string().min(3).max(40).regex(/^[a-zA-Z0-9_.-]+$/).optional().or(z.literal('')),
+  email:     z.string().email().optional(),
+  status:    z.enum(['ACTIVE', 'INVITED', 'SUSPENDED', 'DISABLED']).optional(),
+})
+
+// PATCH /api/admin/platform-staff/:userId — edit a platform-staff member's
+// account info. Empty string clears optional fields (firstName, lastName,
+// username); undefined leaves them alone. Email must remain unique.
+//
+// Super Admin accounts are NOT editable from this endpoint — see
+// assertNotSuperAdmin. Only password-reset is allowed on a Super Admin.
+router.patch('/platform-staff/:userId', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const { userId } = req.params as { userId: string }
+    const parsed = updatePlatformStaffSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+
+    // Ensure target is actually a platform-staff member
+    const platformTenantId = await getPlatformTenantId()
+    const member = await prisma.tenantMember.findFirst({
+      where:   { userId, tenantId: platformTenantId },
+      include: { user: { select: { id: true, email: true } } },
+    })
+    if (!member) throw new AppError('NOT_FOUND', 'User is not a platform-staff member', 404)
+    await assertNotSuperAdmin(userId)
+
+    const data: Record<string, unknown> = {}
+    const { firstName, lastName, username, email, status } = parsed.data
+    if (firstName !== undefined) data['firstName'] = firstName === '' ? null : firstName
+    if (lastName  !== undefined) data['lastName']  = lastName  === '' ? null : lastName
+    if (username  !== undefined) data['username']  = username  === '' ? null : username
+    if (email     !== undefined) data['email']     = email.toLowerCase().trim()
+    if (status    !== undefined) data['status']    = status
+
+    if (Object.keys(data).length === 0) {
+      res.json({ data: { ok: true, noChanges: true } })
+      return
+    }
+
+    try {
+      const updated = await prisma.user.update({
+        where:  { id: userId },
+        data,
+        select: { id: true, email: true, username: true, firstName: true, lastName: true, status: true },
+      })
+      await writeAuditLogFromRequest(req, {
+        actorType:    'ADMIN',
+        actorUserId:  req.user!.id,
+        action:       'admin.platform_staff.updated',
+        targetType:   'User',
+        targetId:     userId,
+        metadataJson: { fields: Object.keys(data), email: updated.email, status: updated.status },
+      })
+      res.json({ data: updated })
+    } catch (e: unknown) {
+      const err = e as { code?: string; meta?: { target?: string[] } }
+      if (err.code === 'P2002' && err.meta?.target?.includes('email')) {
+        throw new AppError('CONFLICT', 'Another user already uses that email', 409)
+      }
+      if (err.code === 'P2002' && err.meta?.target?.includes('username')) {
+        throw new AppError('CONFLICT', 'Another user already uses that username', 409)
+      }
+      throw e
+    }
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/platform-staff/:userId/password-reset — trigger an
+// admin-initiated password reset email. The user receives the same
+// reset email a self-service "Forgot password" flow would send.
+router.post('/platform-staff/:userId/password-reset', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const { userId } = req.params as { userId: string }
+    const platformTenantId = await getPlatformTenantId()
+    const member = await prisma.tenantMember.findFirst({
+      where:   { userId, tenantId: platformTenantId },
+      include: { user: { select: { email: true, firstName: true, status: true } } },
+    })
+    if (!member) throw new AppError('NOT_FOUND', 'User is not a platform-staff member', 404)
+    if (member.user.status === 'DISABLED' || member.user.status === 'SUSPENDED') {
+      throw new AppError('CONFLICT', 'User account is disabled or suspended; restore it before sending a reset email.', 409)
+    }
+
+    const authService = await import('../services/auth.service.js')
+    const result = await authService.startPasswordReset(member.user.email)
+    if (!result) throw new AppError('NOT_FOUND', 'Could not start password reset for this user', 404)
+
+    const { sendPasswordResetEmail } = await import('../services/email.service.js')
+    const { getEnv } = await import('@voiceautomation/config')
+    const appBase = getEnv().APP_BASE_URL
+    const resetUrl = `${appBase}/reset-password?token=${encodeURIComponent(result.rawToken)}`
+    sendPasswordResetEmail({
+      to:               result.email,
+      firstName:        result.firstName,
+      resetUrl,
+      expiresInMinutes: 15,
+    }).catch(e => console.error('[admin][password-reset] email send failed:', e?.message ?? e))
+
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.platform_staff.password_reset_sent',
+      targetType:   'User',
+      targetId:     userId,
+      metadataJson: { email: result.email },
+    })
+    res.json({ data: { ok: true, sentTo: result.email } })
+  } catch (err) { next(err) }
+})
+
+// DELETE /api/admin/platform-staff/:userId — revoke a user's platform-staff role.
+// Super Admin accounts cannot be revoked (locked-in 2026-05-07) — see
+// assertNotSuperAdmin for the reasoning.
 router.delete('/platform-staff/:userId', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const { userId } = req.params as { userId: string }
@@ -1705,20 +1856,7 @@ router.delete('/platform-staff/:userId', requirePlatformSuperAdmin, async (req, 
       include: { user: { select: { email: true } }, roleDefinition: { select: { key: true } } },
     })
     if (!member) throw new AppError('NOT_FOUND', 'User is not a platform-staff member', 404)
-
-    // Safety: don't let the last Super Admin revoke their own role.
-    if (member.roleDefinition.key === 'platform_super_admin' && userId === requesterId) {
-      const otherSupers = await prisma.tenantMember.count({
-        where: {
-          tenantId: platformTenantId,
-          roleDefinition: { key: 'platform_super_admin' },
-          userId: { not: userId },
-        },
-      })
-      if (otherSupers === 0) {
-        throw new AppError('CONFLICT', 'You are the only Super Admin. Grant another user the role before removing yourself.', 409)
-      }
-    }
+    await assertNotSuperAdmin(userId)
 
     await prisma.tenantMember.delete({ where: { id: member.id } })
 
