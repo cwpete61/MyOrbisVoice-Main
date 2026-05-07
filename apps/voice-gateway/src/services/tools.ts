@@ -270,8 +270,18 @@ const handlers: Record<ToolName, ToolHandler> = {
       return { ok: false, error: 'from_iso, to_iso, and duration_minutes are required' }
     }
 
-    type Slot = { startAt: string; endAt: string; available: boolean }
-    const result = await callApi<{ ok: boolean; slots: Slot[]; alternateSlots: Slot[] }>(
+    // Each enriched slot is a `{ label, start_local_iso, end_iso }` triple.
+    // The agent reads `label` aloud to the caller and passes back
+    // `start_local_iso` to book_appointment — never the raw UTC. See the
+    // prompt rules in buildToolGuidanceBlock() and the searchAvailability
+    // service for the why.
+    type EnrichedSlot = { label: string; start_local_iso: string; end_iso: string }
+    const result = await callApi<{
+      ok: boolean
+      timezone: string
+      slots: EnrichedSlot[]
+      alternateSlots: EnrichedSlot[]
+    }>(
       '/api/internal/gateway/tools/search-availability',
       ctx.tenantId,
       { fromIso, toIso, durationMinutes },
@@ -279,11 +289,12 @@ const handlers: Record<ToolName, ToolHandler> = {
     if (!result.ok) return { ok: false, error: result.error }
     return {
       ok:              true,
+      timezone:        result.data.timezone,
       slots:           result.data.slots,
       alternate_slots: result.data.alternateSlots,
       message:         result.data.slots.length === 0
-        ? 'No open slots in that window. Try a different range.'
-        : `Found ${result.data.slots.length} open slot(s). Offer them to the caller and confirm before booking.`,
+        ? 'No open slots in that window. Try a different time range or a different day. Do NOT invent slot times — only offer slots returned by this tool.'
+        : `Found ${result.data.slots.length} open slot(s). Read the slot's "label" aloud verbatim when offering it. When booking, pass the slot's "start_local_iso" value as starts_at_iso (NOT the raw UTC, NOT a label).`,
     }
   },
 
@@ -483,9 +494,16 @@ export function buildToolGuidanceBlock(): string {
     'Rules — contact capture (mandatory):',
     '- ALWAYS collect the caller\'s full name AND phone number AND email address. All three. Never settle for one or the other.',
     '- If the caller has already given you a phone OR an email, ask for the other one too. Phrasing: "Can I also grab your [email/phone] in case we need to follow up?"',
-    '- Call save_contact as soon as you have all three. Don\'t wait until the end of the call.',
+    '- Call save_contact as soon as you have all three AND have read the email back to confirm. Don\'t wait until the end of the call.',
     '- NEVER tell the caller "I can\'t find you" or "you\'re not in our system." Just collect their info naturally and save it. They don\'t care about your database.',
     '- If the caller refuses to share a piece (genuinely refuses, not just hesitates), accept gracefully and save what you got — but ask for both first.',
+    '',
+    'Rules — email verification (mandatory before save_contact):',
+    '- ALWAYS read the caller\'s email back before save_contact. Email transcription is unreliable on phone audio — every email needs a confirmation pass.',
+    '- Read in this format: "Let me confirm — that\'s c-r-a-w-f-o-r-d dot p-e-t-e-r-s-o-n at gmail dot com. Is that correct?" Spell the local part letter-by-letter. Pronounce dots as "dot" and "@" as "at". Wait for a clean yes (see affirmation discipline rules) before save_contact.',
+    '- If the transcript looks garbled (e.g. "raw for d", "son senior", non-English fragments, fragments that don\'t form a real local part), do NOT silently guess from the caller\'s name. Spell back what you THINK you heard and ask the caller to correct it letter by letter. Pattern: "I want to make sure I have this right — I heard c-r-a-w-f-o-r-d dot p-e-t-e-r-s-o-n at gmail dot com. Did I get that?"',
+    '- If the caller corrects any letter, re-read the FULL corrected email back end-to-end before save_contact. Don\'t partial-confirm.',
+    '- The domain part ("gmail.com", "yahoo.com", etc.) usually transcribes cleanly — focus your spelling effort on the local part (before the @).',
     '',
     'Rules — turn-taking (critical for natural conversation):',
     '- Ask ONE question per turn. Stop and wait for the caller to answer before asking the next one. This rule is absolute — never combine "what\'s your name AND phone AND email" into a single ask, even at the start of contact capture.',
@@ -508,7 +526,14 @@ export function buildToolGuidanceBlock(): string {
     '- When you receive slots from search_availability, list them as discrete options with explicit "or" separators, NOT as a range. Example: "I have 9 AM, 11 AM, 2 PM, or 4 PM available — which works best for you?" NOT "I have slots between 9 AM and 4 PM".',
     '- Offer at most 4 slots in one turn. More than that is hard to track on a phone call.',
     '- Never pick a slot FOR the caller. Wait for them to name the one they want. If their response is unclear, re-list the same options and ask again.',
+    '- NEVER invent slot times. Only offer times that came back from search_availability for THIS call. If the tool returned no slots, tell the caller honestly ("nothing\'s open in that range — would another time work?") and search again.',
     '- When the caller specifies a preferred time ("9 AM Friday"), search a tight window: 1 hour before to 1 hour after the preferred time, on the same day. Don\'t search 32-hour ranges across multiple days unless the caller has no preference.',
+    '',
+    'Rules — timezone & slot ISO discipline (CRITICAL — prevents 4-hour booking errors):',
+    '- search_availability returns each slot as { label, start_local_iso, end_iso }. The `label` is a human-readable string in the BUSINESS\'S timezone like "9:30 AM EDT, Thursday, May 8". Use this when speaking to the caller — say it verbatim.',
+    '- When you call book_appointment after the caller picks a slot, set `starts_at_iso = <that slot\'s start_local_iso value, character-for-character>`. The start_local_iso already has the correct timezone offset built in (e.g. "2026-05-08T09:30:00-04:00") — do NOT change it, do NOT strip the offset, do NOT convert to UTC.',
+    '- NEVER read raw ISO timestamps to the caller. Strings like "2026-05-08T13:30:00Z" are UTC and the "13:30" in them is NOT a wall-clock time. Speaking that out loud causes a 4-hour booking error. Always use the slot\'s `label`.',
+    '- If you find yourself about to say a number like "13:30" or read the letters "T" or "Z" out loud — stop. You\'re reading a UTC ISO. Switch to the slot\'s label.',
     '',
     'Rules — booking (CRITICAL — read carefully):',
     '- NEVER tell the caller "I\'ve booked it" or "you\'re on the calendar" or any phrase implying success UNTIL you have just received a successful response from the book_appointment tool. The tool result is the source of truth. Your narration must follow reality, not lead it.',

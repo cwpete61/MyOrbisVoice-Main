@@ -278,12 +278,35 @@ router.post('/internal/gateway/tools/search-availability', async (req, res, next
   try {
     const tenantId = (req as any).internalTenantId as string
     const { fromIso, toIso, durationMinutes, timezone } = availabilitySchema.parse(req.body)
+    // Resolve to the tenant's timezone if the agent didn't pass one — the
+    // agent commonly omits it, and defaulting to UTC means slot labels come
+    // back as UTC strings the model misreads as wall-clock time. Forcing
+    // the business's timezone here keeps the agent honest.
+    const effectiveTz = await appointmentService.resolveTenantTimezone(tenantId, timezone)
+
     const result = await appointmentService.searchAvailability(tenantId, {
       preferredStartRange: { from: fromIso, to: toIso },
       durationMinutes,
-      timezone: timezone ?? 'UTC',
+      timezone: effectiveTz,
     })
-    res.json({ data: { ok: true, slots: result.slots, alternateSlots: result.alternateSlots } })
+
+    // Enrich each slot with a human-readable label + a timezone-aware ISO
+    // the model can pass back to book_appointment without having to do
+    // timezone math itself. This stops the "13:00 UTC misread as 1 PM" bug
+    // observed in the 2026-05-07 test calls.
+    const enrich = (s: { startAt: string; endAt: string }) => {
+      const utcMs = new Date(s.startAt).getTime()
+      const fmt = appointmentService.formatSlotForAgent(utcMs, effectiveTz)
+      return { label: fmt.label, start_local_iso: fmt.startLocalIso, end_iso: s.endAt }
+    }
+    res.json({
+      data: {
+        ok:              true,
+        timezone:        effectiveTz,
+        slots:           result.slots.map(enrich),
+        alternateSlots:  result.alternateSlots.map(enrich),
+      },
+    })
   } catch (err) { next(err) }
 })
 

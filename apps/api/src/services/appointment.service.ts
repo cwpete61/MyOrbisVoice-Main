@@ -42,6 +42,102 @@ function dayNameInTz(ms: number, timezone: string): string {
 }
 
 /**
+ * Compute the offset in minutes between a wall-clock interpretation in the
+ * given timezone and UTC. Positive when local is ahead of UTC. DST-aware
+ * because the calculation is done against `date` directly.
+ */
+function tzOffsetMinutes(date: Date, timeZone: string): number {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year:   'numeric',
+    month:  '2-digit',
+    day:    '2-digit',
+    hour:   '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+  const parts = dtf.formatToParts(date)
+  const map: Record<string, string> = {}
+  for (const p of parts) map[p.type] = p.value
+  // Reconstruct the local wall-clock as if it were UTC, then diff against
+  // the actual UTC ms — gives offset minutes. `hour: '2-digit'` returns "24"
+  // at midnight in some locales; normalise to "00".
+  const hour = map['hour'] === '24' ? '00' : map['hour']
+  const localAsUtc = Date.UTC(
+    Number(map['year']), Number(map['month']) - 1, Number(map['day']),
+    Number(hour), Number(map['minute']), Number(map['second']),
+  )
+  return Math.round((localAsUtc - date.getTime()) / 60000)
+}
+
+/**
+ * Build the agent-facing label + local ISO for a slot. The label is what
+ * the agent reads aloud to the caller ("9:30 AM EDT, Thursday, May 7"),
+ * which the model can speak verbatim without doing timezone math itself.
+ * The localIso is what the agent passes back into book_appointment so the
+ * booking time matches what the caller heard.
+ */
+export function formatSlotForAgent(utcMs: number, timeZone: string): { label: string; startLocalIso: string } {
+  const date = new Date(utcMs)
+
+  const time = date.toLocaleTimeString('en-US', {
+    hour:         'numeric',
+    minute:       '2-digit',
+    timeZone,
+    timeZoneName: 'short',
+  })
+  const day = date.toLocaleDateString('en-US', {
+    weekday:  'long',
+    month:    'long',
+    day:      'numeric',
+    timeZone,
+  })
+  const label = `${time}, ${day}`
+
+  // Build YYYY-MM-DDTHH:MM:SS in the target tz, then append ±HH:MM offset
+  const dtf = new Intl.DateTimeFormat('sv-SE', {
+    timeZone,
+    hour12: false,
+    year:   'numeric',
+    month:  '2-digit',
+    day:    '2-digit',
+    hour:   '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+  const parts = dtf.formatToParts(date)
+  const map: Record<string, string> = {}
+  for (const p of parts) map[p.type] = p.value
+  const hour = map['hour'] === '24' ? '00' : map['hour']
+  const wall = `${map['year']}-${map['month']}-${map['day']}T${hour}:${map['minute']}:${map['second']}`
+
+  const offsetMin = tzOffsetMinutes(date, timeZone)
+  const sign = offsetMin >= 0 ? '+' : '-'
+  const abs  = Math.abs(offsetMin)
+  const hh   = String(Math.floor(abs / 60)).padStart(2, '0')
+  const mm   = String(abs % 60).padStart(2, '0')
+  const startLocalIso = `${wall}${sign}${hh}:${mm}`
+
+  return { label, startLocalIso }
+}
+
+/**
+ * Resolve the effective timezone for a tenant — caller-provided value if
+ * usable, otherwise tenant default, otherwise UTC. Used so search results
+ * always come back framed in the business's timezone, never raw UTC, even
+ * when the agent didn't pass a timezone.
+ */
+export async function resolveTenantTimezone(tenantId: string, callerTz?: string): Promise<string> {
+  if (callerTz && callerTz !== 'UTC' && callerTz.length > 0) return callerTz
+  const tenant = await prisma.tenant.findUnique({
+    where:  { id: tenantId },
+    select: { timezone: true },
+  })
+  return tenant?.timezone || 'UTC'
+}
+
+/**
  * Slot must start AND end inside the business's open hours for the slot's
  * weekday in the tenant's timezone. Closed days reject everything. If
  * `businessHoursJson` is null or has no entry for the day, the slot is
