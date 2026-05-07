@@ -896,30 +896,42 @@
           <span class="tg-col-label tg-col-label-2">02 — Engine</span>
           <span class="tg-col-label tg-col-label-3">03 — Automations</span>
 
-          <!-- Connector lines (call → hub, hub → 4 cards) -->
+          <!-- Connector lines. ViewBox 1200×675 with preserveAspectRatio="none"
+               so coords map proportionally to the rendered stage.
+               Geometry from CSS:
+                 Call card:  left 4% width 28% → right edge x=384
+                             top 14% height 200px → mid Y = 194
+                 Hub:        left 50% top 50% width 130px (centered)
+                             → left edge 535, right edge 665, mid Y 337
+                 Auto cards: right 4% width 28% → left edge x=816
+                             tops at 9/30/51/72% → centers Y=100/240/380/520 -->
           <svg class="tg-connectors" viewBox="0 0 1200 675" preserveAspectRatio="none">
-            <!-- Call → hub: from right edge of call card (~36%) to left edge of hub (~44%) -->
+            <!-- Call (right-mid 384,194) → Hub (left-mid 535,337) -->
             <path class="tg-line"
-                  d="M 396 250 C 480 250, 540 300, 538 338"/>
+                  d="M 384 194 C 460 194, 470 337, 535 337"/>
             <path class="tg-line-active tg-line-call"
-                  d="M 396 250 C 480 250, 540 300, 538 338"/>
-            <!-- Hub → 4 automation cards -->
+                  d="M 384 194 C 460 194, 470 337, 535 337"/>
+
+            <!-- Hub (right-mid 665,337) → each auto card (left-mid 816,Y) -->
             <path class="tg-line"
-                  d="M 662 338 C 760 338, 760 100, 864 100"/>
+                  d="M 665 337 C 740 337, 740 100, 816 100"/>
             <path class="tg-line-active tg-line-out-1"
-                  d="M 662 338 C 760 338, 760 100, 864 100"/>
+                  d="M 665 337 C 740 337, 740 100, 816 100"/>
+
             <path class="tg-line"
-                  d="M 662 338 C 760 338, 800 245, 864 245"/>
+                  d="M 665 337 C 740 337, 740 240, 816 240"/>
             <path class="tg-line-active tg-line-out-2"
-                  d="M 662 338 C 760 338, 800 245, 864 245"/>
+                  d="M 665 337 C 740 337, 740 240, 816 240"/>
+
             <path class="tg-line"
-                  d="M 662 338 C 760 338, 800 410, 864 410"/>
+                  d="M 665 337 C 740 337, 740 380, 816 380"/>
             <path class="tg-line-active tg-line-out-3"
-                  d="M 662 338 C 760 338, 800 410, 864 410"/>
+                  d="M 665 337 C 740 337, 740 380, 816 380"/>
+
             <path class="tg-line"
-                  d="M 662 338 C 760 338, 760 555, 864 555"/>
+                  d="M 665 337 C 740 337, 740 520, 816 520"/>
             <path class="tg-line-active tg-line-out-4"
-                  d="M 662 338 C 760 338, 760 555, 864 555"/>
+                  d="M 665 337 C 740 337, 740 520, 816 520"/>
           </svg>
 
           <!-- Call card -->
@@ -928,7 +940,7 @@
               <div class="tg-call-avatar">MR</div>
               <div>
                 <div class="tg-call-name">Maya Rodriguez</div>
-                <div class="tg-call-phone">+1 (415) 555 · 0184</div>
+                <div class="tg-call-phone">(415) 555-0184</div>
               </div>
               <div class="tg-call-status">
                 <span class="tg-status-in-call">In Call</span>
@@ -951,11 +963,11 @@
               </div>
             </div>
             <div class="tg-call-meta">
-              <span>04:32 duration</span>
+              <span>04:32</span>
               <span class="tg-meta-sep">·</span>
               <span>Inbound</span>
               <span class="tg-meta-sep">·</span>
-              <span>Agent: Orbis AI</span>
+              <span>Orbis AI</span>
             </div>
           </div>
 
@@ -998,7 +1010,7 @@
             </div>
             <div class="tg-auto-text">
               <div class="tg-auto-title">Confirmation Email</div>
-              <div class="tg-auto-sub">Sent immediately · maya@rodriguez.co</div>
+              <div class="tg-auto-sub">Sent · maya@rodriguez.co</div>
             </div>
             <div class="tg-auto-status">
               <span class="tg-auto-status-text">
@@ -1017,7 +1029,7 @@
             </div>
             <div class="tg-auto-text">
               <div class="tg-auto-title">Day-Before Reminder</div>
-              <div class="tg-auto-sub">Scheduled · 23h 12m · Email + SMS</div>
+              <div class="tg-auto-sub">In 23h 12m · Email + SMS</div>
             </div>
             <div class="tg-auto-status">
               <span class="tg-auto-status-text">
@@ -1037,8 +1049,8 @@
               </svg>
             </div>
             <div class="tg-auto-text">
-              <div class="tg-auto-title">SMS / WhatsApp Message</div>
-              <div class="tg-auto-sub">Queued · WhatsApp · +1 (415) 555 · 0184</div>
+              <div class="tg-auto-title">SMS / WhatsApp</div>
+              <div class="tg-auto-sub">WhatsApp · (415) 555-0184</div>
             </div>
             <div class="tg-auto-status">
               <span class="tg-auto-status-text">
@@ -1057,7 +1069,7 @@
             </div>
             <div class="tg-auto-text">
               <div class="tg-auto-title">Follow-Up Campaign</div>
-              <div class="tg-auto-sub">Day 7 · post-visit · 4-step sequence</div>
+              <div class="tg-auto-sub">Day 7 · 4-step post-visit</div>
             </div>
             <div class="tg-auto-status">
               <span class="tg-auto-status-text">

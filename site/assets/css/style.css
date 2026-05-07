@@ -2816,16 +2816,23 @@ footer.site-footer {
 .tag-stage .tg-col-label-3 { right: 4%; top: 5%; }
 
 /* ── Call card (left) ──────────────────────────────────────────── */
+/* Fixed dimensions so the SVG connector geometry is deterministic.
+   At max-width 1200×675 stage: card at x=48-384, y=94-294.
+   Right-edge mid-Y = 194 (matches the call→hub SVG path start). */
 .tag-stage .tg-call {
   position: absolute;
   left: 4%;
   top: 14%;
   width: 28%;
+  height: 200px;
   padding: 18px;
   background: var(--tg-panel);
   border: 1px solid var(--tg-border);
   border-radius: 14px;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   transition: border-color 400ms, box-shadow 400ms;
   opacity: 0;
   transform: translateY(14px);
@@ -2846,8 +2853,8 @@ footer.site-footer {
 
 .tag-stage .tg-call-head {
   display: flex; align-items: center; gap: 10px;
-  margin-bottom: 14px;
 }
+.tag-stage .tg-call-head > div:nth-child(2) { flex: 1; min-width: 0; }
 .tag-stage .tg-call-avatar {
   width: 36px; height: 36px; border-radius: 50%;
   background: linear-gradient(135deg, oklch(70% 0.08 250), oklch(60% 0.08 280));
@@ -2857,10 +2864,12 @@ footer.site-footer {
 }
 .tag-stage .tg-call-name {
   font-size: 13px; font-weight: 600; color: var(--tg-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .tag-stage .tg-call-phone {
   font-family: var(--tg-mono); font-size: 10px; color: var(--tg-text-dim);
   margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .tag-stage .tg-call-status {
   margin-left: auto;
@@ -2919,7 +2928,7 @@ footer.site-footer {
 .tag-stage[data-step="6"] .tg-status-completed,
 .tag-stage[data-step="7"] .tg-status-completed { display: inline; }
 
-.tag-stage .tg-divider { height: 1px; background: var(--tg-border); margin: 14px 0; }
+.tag-stage .tg-divider { height: 1px; background: var(--tg-border); margin: 14px 0; flex-shrink: 0; }
 
 .tag-stage .tg-outcome-row { display: flex; align-items: center; justify-content: space-between; }
 .tag-stage .tg-outcome-eyebrow {
@@ -2969,13 +2978,17 @@ footer.site-footer {
 .tag-stage[data-step="7"] .tg-check { transform: scale(1); }
 
 .tag-stage .tg-call-meta {
-  display: flex; gap: 10px; margin-top: 12px;
-  font-family: var(--tg-mono); font-size: 9.5px;
+  display: flex; gap: 8px; margin-top: auto;
+  font-family: var(--tg-mono); font-size: 9px;
   color: var(--tg-text-dim);
+  white-space: nowrap; overflow: hidden;
 }
 .tag-stage .tg-call-meta .tg-meta-sep { color: var(--tg-text-mute); }
 
 /* ── Tag pill (animated path call → hub) ────────────────────────── */
+/* Pops out from below the call card outcome row, drifts toward
+   the workflow hub center, then absorbs (fade+shrink) into the hub.
+   At rest position (steps 1-2): hidden. */
 .tag-stage .tg-tag {
   position: absolute;
   display: flex; align-items: center; gap: 6px;
@@ -2989,31 +3002,38 @@ footer.site-footer {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   white-space: nowrap;
   z-index: 10;
-  /* Initial position: anchored under the call card outcome */
-  left: 6%;
-  top: 42%;
+  /* Initial: under the call card's outcome label (~y=270 in 675).
+     Stage 1200×675 → call card spans y=94-294, outcome row near
+     bottom of card. Tag emerges JUST below the card. */
+  left: 7%;
+  top: 46%;
   opacity: 0;
   transform: scale(0);
-  transition: opacity 300ms, transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), left 0.7s cubic-bezier(0.4, 0, 0.6, 1), top 0.7s cubic-bezier(0.4, 0, 0.6, 1);
+  transition:
+    opacity 300ms,
+    transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+    left 0.7s cubic-bezier(0.4, 0, 0.6, 1),
+    top 0.7s cubic-bezier(0.4, 0, 0.6, 1);
 }
 .tag-stage[data-step="3"] .tg-tag {
   opacity: 1;
   transform: scale(1);
 }
 .tag-stage[data-step="4"] .tg-tag {
+  /* Drift toward the hub: hub center is at (50%, 50%). Land just
+     before reaching hub left edge at ~44%. */
   opacity: 1;
-  transform: scale(0.92);
-  /* Drift toward the hub center */
-  left: 42%;
-  top: 47%;
+  transform: scale(0.9);
+  left: 38%;
+  top: 49%;
 }
 .tag-stage[data-step="5"] .tg-tag,
 .tag-stage[data-step="6"] .tg-tag,
 .tag-stage[data-step="7"] .tg-tag {
   opacity: 0;
-  transform: scale(0.4);
+  transform: scale(0.3);
   left: 47%;
-  top: 47%;
+  top: 49%;
 }
 
 /* ── Workflow Hub (center) ──────────────────────────────────────── */
@@ -3134,10 +3154,13 @@ footer.site-footer {
 .tag-stage[data-step="7"] .tg-line-active.tg-line-out-4 { stroke-dashoffset: 0; transition-delay: 0.54s; }
 
 /* ── Automation cards (right) ──────────────────────────────────── */
+/* Stage 1200×675. Cards: right 4% width 28% → x=816-1152.
+   Heights fixed at 78px. Tops at 9/30/51/72% → centers at 100/240/380/520. */
 .tag-stage .tg-auto {
   position: absolute;
   right: 4%;
   width: 28%;
+  height: 78px;
   padding: 11px 14px;
   background: var(--tg-panel);
   border: 1px solid var(--tg-border);
@@ -3150,10 +3173,10 @@ footer.site-footer {
     opacity 0.4s, transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
     border-color 400ms, box-shadow 400ms;
 }
-.tag-stage .tg-auto[data-tier="1"] { top: 10%; }
-.tag-stage .tg-auto[data-tier="2"] { top: 31%; }
-.tag-stage .tg-auto[data-tier="3"] { top: 52%; }
-.tag-stage .tg-auto[data-tier="4"] { top: 73%; }
+.tag-stage .tg-auto[data-tier="1"] { top: 9%;  }
+.tag-stage .tg-auto[data-tier="2"] { top: 30%; }
+.tag-stage .tg-auto[data-tier="3"] { top: 51%; }
+.tag-stage .tg-auto[data-tier="4"] { top: 72%; }
 
 .tag-stage[data-step="5"] .tg-auto[data-tier="1"],
 .tag-stage[data-step="6"] .tg-auto[data-tier="1"],
@@ -3241,19 +3264,21 @@ footer.site-footer {
 .tag-stage[data-step="7"] .tg-status-fired  { display: inline; }
 
 /* ── Metrics panel (bottom-left) ───────────────────────────────── */
+/* Stage 1200×675. Left=4% width=42% (wider than call card so it's
+   visually balanced under the hub's empty space). Bottom 6%. */
 .tag-stage .tg-metrics {
   position: absolute;
   left: 4%;
-  bottom: 5%;
-  width: 28%;
-  padding: 12px 16px;
+  bottom: 6%;
+  width: 42%;
+  padding: 14px 18px;
   background: var(--tg-panel);
   border: 1px solid var(--tg-border);
   border-radius: 12px;
   z-index: 2;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  gap: 14px;
   opacity: 0;
   transform: translateY(14px);
   transition: opacity 0.6s, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
@@ -3278,9 +3303,9 @@ footer.site-footer {
 /* Tablet */
 @media (max-width: 1024px) {
   .tag-stage { aspect-ratio: 16 / 10; }
-  .tag-stage .tg-call,
-  .tag-stage .tg-auto { width: 30%; }
-  .tag-stage .tg-metrics { width: 32%; }
+  .tag-stage .tg-call { width: 26%; height: 188px; }
+  .tag-stage .tg-auto { width: 26%; }
+  .tag-stage .tg-metrics { width: 44%; }
   .tag-stage .tg-call-name { font-size: 12px; }
   .tag-stage .tg-auto-title { font-size: 11px; }
 }
@@ -3289,36 +3314,37 @@ footer.site-footer {
 @media (max-width: 720px) {
   .tag-stage {
     aspect-ratio: auto;
-    min-height: 1100px;
+    min-height: 1180px;
     max-width: none;
   }
   .tag-stage .tg-col-label { display: none; }
   .tag-stage .tg-call {
     left: 5%; right: 5%; width: auto; top: 28px;
+    height: 200px;
   }
-  .tag-stage .tg-tag { left: 8%; top: 240px; }
+  .tag-stage .tg-tag { left: 8%; top: 244px; }
   .tag-stage[data-step="4"] .tg-tag,
   .tag-stage[data-step="5"] .tg-tag,
   .tag-stage[data-step="6"] .tg-tag,
-  .tag-stage[data-step="7"] .tg-tag { left: 8%; top: 290px; }
+  .tag-stage[data-step="7"] .tg-tag { left: 30%; top: 296px; }
   .tag-stage .tg-hub {
-    left: 50%; top: 320px; transform: translate(-50%, 0);
+    left: 50%; top: 332px; transform: translate(-50%, 0);
     width: 110px; height: 110px;
   }
   .tag-stage .tg-hub-ring.tg-ring-1,
   .tag-stage .tg-hub-ring.tg-ring-2 {
-    left: 50%; top: 376px; transform: translate(-50%, -50%);
+    left: 50%; top: 388px; transform: translate(-50%, -50%);
     width: 110px; height: 110px;
   }
   .tag-stage .tg-connectors { display: none; }
   .tag-stage .tg-auto {
     left: 5%; right: 5%; width: auto;
-    height: auto;
+    height: 78px;
   }
-  .tag-stage .tg-auto[data-tier="1"] { top: 470px; }
-  .tag-stage .tg-auto[data-tier="2"] { top: 550px; }
-  .tag-stage .tg-auto[data-tier="3"] { top: 630px; }
-  .tag-stage .tg-auto[data-tier="4"] { top: 710px; }
+  .tag-stage .tg-auto[data-tier="1"] { top: 480px; }
+  .tag-stage .tg-auto[data-tier="2"] { top: 568px; }
+  .tag-stage .tg-auto[data-tier="3"] { top: 656px; }
+  .tag-stage .tg-auto[data-tier="4"] { top: 744px; }
   .tag-stage .tg-metrics {
     left: 5%; right: 5%; width: auto; bottom: 28px;
   }
