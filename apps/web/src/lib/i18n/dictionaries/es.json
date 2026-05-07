@@ -491,7 +491,7 @@
     "welcomeWithName": "Bienvenido {name}",
     "commissionLine": "Ganas {pct}% de comisión recurrente por cada suscripción activa que refieres.",
     "applyTitle": "Únete al Programa de Partners",
-    "applyDesc": "Gana comisiones refiriendo clientes a OrbisVoice. Una vez aprobado, recibirás un enlace de referido único y seguimiento en tiempo real.",
+    "applyDesc": "Gana comisiones refiriendo clientes a MyOrbisVoice. Una vez aprobado, recibirás un enlace de referido único y seguimiento en tiempo real.",
     "applyButton": "Solicitar ser Partner",
     "submitting": "Enviando…",
     "applicationFailed": "La solicitud falló",
@@ -1867,7 +1867,7 @@
       "test": {
         "title": "Enviar un correo de prueba",
         "desc": "Verifica que el buzón de tu agente puede enviar correos despachando un mensaje de prueba desde la cuenta conectada.",
-        "defaultSubject": "Prueba desde OrbisVoice",
+        "defaultSubject": "Prueba desde MyOrbisVoice",
         "defaultBody": "Este es un correo de prueba enviado desde el buzón de tu agente de Google conectado.",
         "placeholderTo": "Correo del destinatario",
         "placeholderSubject": "Asunto",
@@ -1879,14 +1879,14 @@
     },
     "twilio": {
       "title": "Twilio (Voz y SMS)",
-      "subtitle": "Llamadas entrantes · Llamadas salientes · SMS — gestionado por OrbisVoice",
-      "intro": "No necesitas crear ni conectar una cuenta de Twilio. OrbisVoice maneja toda la voz y los SMS desde nuestra cuenta principal de Twilio, y te asignamos números de teléfono directamente desde nuestro grupo.",
+      "subtitle": "Llamadas entrantes · Llamadas salientes · SMS — gestionado por MyOrbisVoice",
+      "intro": "No necesitas crear ni conectar una cuenta de Twilio. MyOrbisVoice maneja toda la voz y los SMS desde nuestra cuenta principal de Twilio, y te asignamos números de teléfono directamente desde nuestro grupo.",
       "requestPrefix": "Para solicitar un número de teléfono, ve a ",
       "phoneNumbersLink": "Phone Numbers",
       "quotaMid": ". Tu cuota mensual de minutos / SMS depende de tu plan — consulta ",
       "billingLink": "Billing",
       "quotaSuffix": ".",
-      "footer": "Toda la facturación de voz / SMS está incluida en tu suscripción de OrbisVoice. No se requiere una cuenta de Twilio aparte."
+      "footer": "Toda la facturación de voz / SMS está incluida en tu suscripción de MyOrbisVoice. No se requiere una cuenta de Twilio aparte."
     },
     "gemini": {
       "title": "Gemini Live API",

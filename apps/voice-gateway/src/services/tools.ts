@@ -286,7 +286,18 @@ const handlers: Record<ToolName, ToolHandler> = {
       ctx.tenantId,
       { fromIso, toIso, durationMinutes },
     )
-    if (!result.ok) return { ok: false, error: result.error }
+    // System error (DNS, Google API down, auth expired). The agent must NOT
+    // tell the caller "the slot isn't available" — that misrepresents a
+    // calendar outage as unavailability. Caller should be told there's a
+    // technical issue and offered a callback or human transfer.
+    if (!result.ok) {
+      return {
+        ok:           false,
+        error_kind:   'SYSTEM_ERROR',
+        error:        result.error,
+        message:      'Calendar lookup failed (system error, NOT a real availability check). Tell the caller "I\'m having trouble accessing our calendar right now — let me take down your preferred time and have someone follow up to confirm." Then offer a callback or take a message. Do NOT say "that slot is unavailable" or anything implying you actually checked the calendar.',
+      }
+    }
     return {
       ok:              true,
       timezone:        result.data.timezone,

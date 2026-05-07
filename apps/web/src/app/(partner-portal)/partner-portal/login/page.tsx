@@ -50,7 +50,7 @@ export default function AffiliateLoginPage() {
             </svg>
           </div>
           <div>
-            <p className="font-bold text-sm leading-none" style={{ color: 'var(--text-primary)' }}>OrbisVoice</p>
+            <p className="font-bold text-sm leading-none" style={{ color: 'var(--text-primary)' }}>MyOrbisVoice</p>
             <p className="text-xs mt-0.5" style={{ color: 'oklch(65% 0.15 193)' }}>{t('partnerLogin.brandSubtitle')}</p>
           </div>
         </div>

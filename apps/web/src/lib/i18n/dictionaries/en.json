@@ -491,7 +491,7 @@
     "welcomeWithName": "Welcome {name}",
     "commissionLine": "You earn {pct}% recurring commission on every active subscription you refer.",
     "applyTitle": "Join the Partner Program",
-    "applyDesc": "Earn commissions by referring customers to OrbisVoice. Once approved, you'll get a unique referral link and real-time tracking.",
+    "applyDesc": "Earn commissions by referring customers to MyOrbisVoice. Once approved, you'll get a unique referral link and real-time tracking.",
     "applyButton": "Apply to Become a Partner",
     "submitting": "Submitting…",
     "applicationFailed": "Application failed",
@@ -1867,7 +1867,7 @@
       "test": {
         "title": "Send a test email",
         "desc": "Verify your agent mailbox can send by dispatching a test message from the connected account.",
-        "defaultSubject": "Test from OrbisVoice",
+        "defaultSubject": "Test from MyOrbisVoice",
         "defaultBody": "This is a test email sent from your connected Google agent mailbox.",
         "placeholderTo": "Recipient email",
         "placeholderSubject": "Subject",
@@ -1879,14 +1879,14 @@
     },
     "twilio": {
       "title": "Twilio (Voice & SMS)",
-      "subtitle": "Inbound calls · Outbound calls · SMS — managed by OrbisVoice",
-      "intro": "You don’t need to create or connect a Twilio account. OrbisVoice runs all voice and SMS through our master Twilio account, and we assign phone numbers directly to your tenant from our pool.",
+      "subtitle": "Inbound calls · Outbound calls · SMS — managed by MyOrbisVoice",
+      "intro": "You don’t need to create or connect a Twilio account. MyOrbisVoice runs all voice and SMS through our master Twilio account, and we assign phone numbers directly to your tenant from our pool.",
       "requestPrefix": "To request a phone number, go to ",
       "phoneNumbersLink": "Phone Numbers",
       "quotaMid": ". Your monthly minutes / SMS quota is set by your plan tier — see ",
       "billingLink": "Billing",
       "quotaSuffix": ".",
-      "footer": "All voice / SMS billing is included in your OrbisVoice subscription. No separate Twilio account required."
+      "footer": "All voice / SMS billing is included in your MyOrbisVoice subscription. No separate Twilio account required."
     },
     "gemini": {
       "title": "Gemini Live API",
