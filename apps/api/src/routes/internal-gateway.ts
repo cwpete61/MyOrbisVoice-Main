@@ -323,7 +323,13 @@ router.post('/internal/gateway/tools/book-appointment', async (req, res, next) =
 
     const startAt = new Date(data.startsAtIso)
     const endAt   = new Date(startAt.getTime() + data.durationMinutes * 60_000)
-    const tz      = data.timezone ?? 'UTC'
+    // Fall back to the tenant's timezone when the agent didn't pass one —
+    // the agent commonly omits `timezone` in book_appointment args, and
+    // defaulting to UTC stamps the wrong tz on the row even though the
+    // wall-clock booking time is correct. Downstream campaign emails read
+    // this column to format the appointment time, so a UTC stamp surfaces
+    // as a 4-hour-off display ("2:00 PM UTC" instead of "10:00 AM EDT").
+    const tz = await appointmentService.resolveTenantTimezone(tenantId, data.timezone)
 
     const appointment = await appointmentService.createAppointment(tenantId, null, {
       contactId:       contact?.id,

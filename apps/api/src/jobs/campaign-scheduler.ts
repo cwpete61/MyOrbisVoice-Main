@@ -68,7 +68,7 @@ function renderTemplate(template: string, ctx: DispatchContext): string {
 }
 
 async function buildContext(enrollment: EnrollmentWithRels): Promise<DispatchContext> {
-  const [profile, tenant] = await Promise.all([
+  const [profile, tenant, fallbackPhone] = await Promise.all([
     prisma.businessProfile.findFirst({
       where: { tenantId: enrollment.tenantId },
       select: { brandName: true },
@@ -77,19 +77,64 @@ async function buildContext(enrollment: EnrollmentWithRels): Promise<DispatchCon
       where: { id: enrollment.tenantId },
       select: { displayName: true, publicPhone: true },
     }),
+    // BusinessPhone fallback — if the tenant didn't fill `publicPhone`,
+    // use their first inbound-enabled Twilio number so the
+    // "call us at {businessPhone}" line in the Booking Confirmation
+    // template doesn't end up with the literal placeholder.
+    prisma.phoneNumber.findFirst({
+      where:   { tenantId: enrollment.tenantId, isInboundEnabled: true },
+      select:  { e164Number: true },
+      orderBy: { createdAt: 'asc' },
+    }),
   ])
-  const businessName = profile?.brandName || tenant?.displayName || 'our team'
+  const businessName  = profile?.brandName  || tenant?.displayName || 'our team'
+  const businessPhone = tenant?.publicPhone || fallbackPhone?.e164Number || null
 
   // Pull the enrollment's metaJson for any pre-baked appointment details
-  // (set by the appointment-reminder hook before scheduling the enrollment).
+  // (set by the appointment-reminder hook before scheduling the
+  // enrollment). For tag-driven enrollments (e.g. `booked` from the
+  // record_disposition tool), metaJson is empty — so we also look up
+  // the contact's most recent CONFIRMED appointment for this tenant
+  // and use that. Without this fallback the Booking Confirmation email
+  // ships with literal `{appointmentDate}` / `{appointmentTime}` text.
   const meta = (enrollment.metaJson ?? {}) as Record<string, unknown>
-  const apptDate = typeof meta['appointmentDate'] === 'string' ? meta['appointmentDate'] : null
-  const apptTime = typeof meta['appointmentTime'] === 'string' ? meta['appointmentTime'] : null
+  let apptDate = typeof meta['appointmentDate'] === 'string' ? meta['appointmentDate'] : null
+  let apptTime = typeof meta['appointmentTime'] === 'string' ? meta['appointmentTime'] : null
+
+  if (!apptDate || !apptTime) {
+    const recentAppt = await prisma.appointment.findFirst({
+      where: {
+        tenantId:  enrollment.tenantId,
+        contactId: enrollment.contact.id,
+        status:    'CONFIRMED',
+        // Within the last 24h OR upcoming — covers booking-confirmation
+        // (just-booked) and reminder (future) cases. Most recently
+        // created wins ties.
+        startAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+      orderBy: { createdAt: 'desc' },
+      select:  { startAt: true, timezone: true },
+    })
+    if (recentAppt) {
+      const tz    = recentAppt.timezone || 'UTC'
+      const start = new Date(recentAppt.startAt)
+      if (!apptDate) {
+        apptDate = start.toLocaleDateString('en-US', {
+          weekday: 'long', month: 'long', day: 'numeric', timeZone: tz,
+        })
+      }
+      if (!apptTime) {
+        apptTime = start.toLocaleTimeString('en-US', {
+          hour: 'numeric', minute: '2-digit', timeZone: tz, timeZoneName: 'short',
+        })
+      }
+    }
+  }
 
   return {
     contact: enrollment.contact,
     businessName,
-    businessPhone: tenant?.publicPhone ?? null,
+    businessPhone,
     appointmentDate: apptDate,
     appointmentTime: apptTime,
   }
