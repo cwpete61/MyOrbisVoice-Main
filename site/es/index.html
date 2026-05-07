@@ -840,15 +840,15 @@
 <!-- ─── CAMPAIGN AUTOMATION ─────────────────────────────────────────── -->
 <section class="section-soft" aria-labelledby="campaign-heading">
   <div class="container">
-    <div class="split">
-      <div>
+    <div class="split split--stacked">
+      <div class="split-text">
         <span class="eyebrow">Automatización de campañas</span>
         <h2 id="campaign-heading">Etiqueta a un contacto. <span class="accent-dark">Y mira disparar el mensaje correcto.</span></h2>
         <p class="lead">
           Cada resultado de llamada etiqueta automáticamente al contacto. Cada etiqueta dispara una campaña. Cada campaña se distribuye por teléfono, SMS, email y WhatsApp — independientes, en horario, con sustitución de plantillas.
         </p>
         <p>Cuatro campañas listas y operando por email desde el día uno:</p>
-        <ul class="bullets mt-4">
+        <ul class="bullets split-features">
           <li><strong>Confirmación de reserva</strong> — se dispara al instante cuando una llamada termina con resultado <code>BOOKED</code>. "Hola {firstName}, tu cita con {businessName} está confirmada para {appointmentDate} a las {appointmentTime}."</li>
           <li><strong>Recordatorio del día anterior</strong> — se dispara 24 horas antes de cualquier <code>appointment.startAt</code>. Se inscribe automáticamente desde el sistema de agendamiento.</li>
           <li><strong>Seguimiento de devolución de llamada</strong> — 4 horas de retraso después del resultado <code>CALLBACK_REQUESTED</code>. Reactivación suave.</li>
@@ -856,54 +856,247 @@
         </ul>
       </div>
 
-      <!-- Dashboard mockup -->
-      <div class="dashboard-mockup">
-        <div class="dash-header">
-          <h4>Campañas · últimos 30 días</h4>
-          <span>● En vivo</span>
-        </div>
-        <div class="dash-stats">
-          <div class="dash-stat">
-            <div class="dash-stat-label">Etiquetas disparadas</div>
-            <div class="dash-stat-val">847</div>
-            <div class="dash-stat-delta">↑ 23% vs últimos 30d</div>
+      <!-- Motor animado tag-a-seguimiento — llamada → etiqueta → motor → 4 automatizaciones -->
+      <div>
+        <div class="tag-stage" id="tagStage" aria-hidden="true" data-step="1">
+          <span class="tg-col-label tg-col-label-1">01 — Llamada</span>
+          <span class="tg-col-label tg-col-label-2">02 — Motor</span>
+          <span class="tg-col-label tg-col-label-3">03 — Automatizaciones</span>
+
+          <svg class="tg-connectors" viewBox="0 0 1200 675" preserveAspectRatio="none">
+            <path class="tg-line" d="M 396 250 C 480 250, 540 300, 538 338"/>
+            <path class="tg-line-active tg-line-call" d="M 396 250 C 480 250, 540 300, 538 338"/>
+            <path class="tg-line" d="M 662 338 C 760 338, 760 100, 864 100"/>
+            <path class="tg-line-active tg-line-out-1" d="M 662 338 C 760 338, 760 100, 864 100"/>
+            <path class="tg-line" d="M 662 338 C 760 338, 800 245, 864 245"/>
+            <path class="tg-line-active tg-line-out-2" d="M 662 338 C 760 338, 800 245, 864 245"/>
+            <path class="tg-line" d="M 662 338 C 760 338, 800 410, 864 410"/>
+            <path class="tg-line-active tg-line-out-3" d="M 662 338 C 760 338, 800 410, 864 410"/>
+            <path class="tg-line" d="M 662 338 C 760 338, 760 555, 864 555"/>
+            <path class="tg-line-active tg-line-out-4" d="M 662 338 C 760 338, 760 555, 864 555"/>
+          </svg>
+
+          <div class="tg-call">
+            <div class="tg-call-head">
+              <div class="tg-call-avatar">MR</div>
+              <div>
+                <div class="tg-call-name">Maya Rodríguez</div>
+                <div class="tg-call-phone">+1 (415) 555 · 0184</div>
+              </div>
+              <div class="tg-call-status">
+                <span class="tg-status-in-call">En llamada</span>
+                <span class="tg-status-completed">Completada</span>
+              </div>
+            </div>
+            <div class="tg-divider"></div>
+            <div class="tg-outcome-row">
+              <div>
+                <div class="tg-outcome-eyebrow">Resultado de la llamada</div>
+                <div class="tg-outcome-value">
+                  <span class="tg-outcome-pending">— — —</span>
+                  <span class="tg-outcome-booked">RESERVADA</span>
+                </div>
+              </div>
+              <div class="tg-check">
+                <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+                  <path d="M5 11.5L9 15.5L17 7" stroke="oklch(72% 0.16 152)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <div class="tg-call-meta">
+              <span>04:32 duración</span>
+              <span class="tg-meta-sep">·</span>
+              <span>Entrante</span>
+              <span class="tg-meta-sep">·</span>
+              <span>Agente: Orbis IA</span>
+            </div>
           </div>
-          <div class="dash-stat">
-            <div class="dash-stat-label">Emails enviados</div>
-            <div class="dash-stat-val">621</div>
-            <div class="dash-stat-delta">↑ 18%</div>
+
+          <div class="tg-tag">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+              <path d="M6.5 1.5h4v4L6 10.5l-4.5-4.5L6.5 1.5z" stroke="oklch(72% 0.16 152)" stroke-width="1.4" stroke-linejoin="round"/>
+              <circle cx="8.2" cy="3.8" r="0.8" fill="oklch(72% 0.16 152)"/>
+            </svg>
+            Cita reservada
           </div>
-          <div class="dash-stat">
-            <div class="dash-stat-label">Tasa de asistencia</div>
-            <div class="dash-stat-val">94%</div>
-            <div class="dash-stat-delta">↑ 8 pts</div>
+
+          <span class="tg-hub-ring tg-ring-1"></span>
+          <span class="tg-hub-ring tg-ring-2"></span>
+          <div class="tg-hub">
+            <div class="tg-hub-icon">
+              <svg width="28" height="28" viewBox="0 0 44 44" fill="none">
+                <circle cx="22" cy="10" r="3.5" stroke="currentColor" stroke-width="1.6"/>
+                <circle cx="10" cy="28" r="3.5" stroke="currentColor" stroke-width="1.6"/>
+                <circle cx="22" cy="34" r="3.5" stroke="currentColor" stroke-width="1.6"/>
+                <circle cx="34" cy="28" r="3.5" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M22 13.5v17M13 26L19 13.5M31 26L25 13.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="tg-hub-title">Motor de flujo</div>
+            <div class="tg-hub-state">
+              <span class="tg-hub-state-idle">En espera</span>
+              <span class="tg-hub-state-routing">Enrutando · 1 etiqueta</span>
+            </div>
           </div>
-        </div>
-        <div class="dash-rows">
-          <div class="dash-row">
-            <span class="dot"></span>
-            <strong>Sara M.</strong>
-            <span>BOOKED → confirmación enviada · 0:02s</span>
+
+          <div class="tg-auto" data-tier="1">
+            <div class="tg-auto-icon">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <rect x="2.5" y="4.5" width="15" height="11" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M3 5.5L10 11L17 5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="tg-auto-text">
+              <div class="tg-auto-title">Email de confirmación</div>
+              <div class="tg-auto-sub">Enviado de inmediato · maya@rodriguez.co</div>
+            </div>
+            <div class="tg-auto-status">
+              <span class="tg-auto-status-text">
+                <span class="tg-status-queued">En cola</span>
+                <span class="tg-status-fired">Disparado</span>
+              </span>
+            </div>
           </div>
-          <div class="dash-row">
-            <span class="dot"></span>
-            <strong>Jaime P.</strong>
-            <span>CALLBACK_REQUESTED → email programado para 2 PM</span>
+
+          <div class="tg-auto" data-tier="2">
+            <div class="tg-auto-icon">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="7.2" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M10 6V10L12.5 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="tg-auto-text">
+              <div class="tg-auto-title">Recordatorio del día anterior</div>
+              <div class="tg-auto-sub">Programado · 23h 12m · Email + SMS</div>
+            </div>
+            <div class="tg-auto-status">
+              <span class="tg-auto-status-text">
+                <span class="tg-status-queued">En cola</span>
+                <span class="tg-status-fired">Disparado</span>
+              </span>
+            </div>
           </div>
-          <div class="dash-row">
-            <span class="dot"></span>
-            <strong>Maya C.</strong>
-            <span>MISSED_CALL → SMS enviado · 0:11s</span>
+
+          <div class="tg-auto" data-tier="3">
+            <div class="tg-auto-icon">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <path d="M3 5.5C3 4.4 3.9 3.5 5 3.5H15C16.1 3.5 17 4.4 17 5.5V11.5C17 12.6 16.1 13.5 15 13.5H8L4.5 16.5V13.5H5C3.9 13.5 3 12.6 3 11.5V5.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                <circle cx="7" cy="8.5" r="0.9" fill="currentColor"/>
+                <circle cx="10" cy="8.5" r="0.9" fill="currentColor"/>
+                <circle cx="13" cy="8.5" r="0.9" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="tg-auto-text">
+              <div class="tg-auto-title">Mensaje SMS / WhatsApp</div>
+              <div class="tg-auto-sub">En cola · WhatsApp · +1 (415) 555 · 0184</div>
+            </div>
+            <div class="tg-auto-status">
+              <span class="tg-auto-status-text">
+                <span class="tg-status-queued">En cola</span>
+                <span class="tg-status-fired">Disparado</span>
+              </span>
+            </div>
           </div>
-          <div class="dash-row">
-            <span class="dot"></span>
-            <strong>Tomás R.</strong>
-            <span>appointment-scheduled → recordatorio para mañana 11 AM</span>
+
+          <div class="tg-auto" data-tier="4">
+            <div class="tg-auto-icon">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <path d="M10 2.5L11.5 7.5L16.5 9L11.5 10.5L10 15.5L8.5 10.5L3.5 9L8.5 7.5L10 2.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                <path d="M15.5 14L16.2 15.8L18 16.5L16.2 17.2L15.5 19L14.8 17.2L13 16.5L14.8 15.8L15.5 14Z" fill="currentColor"/>
+              </svg>
+            </div>
+            <div class="tg-auto-text">
+              <div class="tg-auto-title">Campaña de seguimiento</div>
+              <div class="tg-auto-sub">Día 7 · post-visita · 4 pasos</div>
+            </div>
+            <div class="tg-auto-status">
+              <span class="tg-auto-status-text">
+                <span class="tg-status-queued">En cola</span>
+                <span class="tg-status-fired">Disparado</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="tg-metrics">
+            <div>
+              <div class="tg-metric-eyebrow">Etiquetas disparadas</div>
+              <div class="tg-metric-value" id="tgMetric1">0</div>
+              <div class="tg-metric-delta">↑ 23%</div>
+            </div>
+            <div>
+              <div class="tg-metric-eyebrow">Emails enviados</div>
+              <div class="tg-metric-value" id="tgMetric2">0</div>
+              <div class="tg-metric-delta">↑ 18%</div>
+            </div>
+            <div>
+              <div class="tg-metric-eyebrow">Asistencia</div>
+              <div class="tg-metric-value" id="tgMetric3">0%</div>
+              <div class="tg-metric-delta">↑ 8 pts</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
+
+  <script>
+    (function () {
+      const stage = document.getElementById('tagStage');
+      if (!stage) return;
+      const m1 = document.getElementById('tgMetric1');
+      const m2 = document.getElementById('tgMetric2');
+      const m3 = document.getElementById('tgMetric3');
+      const timeline = [
+        { step: 1, dur: 1500 },
+        { step: 2, dur: 1300 },
+        { step: 3, dur: 1100 },
+        { step: 4, dur: 1300 },
+        { step: 5, dur: 1700 },
+        { step: 6, dur: 2200 },
+        { step: 7, dur: 2400 },
+      ];
+      const finalValues = [847, 621, 94];
+      const suffixes    = ['', '', '%'];
+      function animateMetric(el, to, suffix) {
+        if (!el) return;
+        const start = performance.now();
+        const duration = 1600;
+        function frame(now) {
+          const t = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - t, 3);
+          el.textContent = Math.round(to * eased) + suffix;
+          if (t < 1) requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      }
+      let i = 0;
+      function tick() {
+        const frame = timeline[i % timeline.length];
+        const prev = stage.dataset.step;
+        stage.dataset.step = String(frame.step);
+        if (frame.step === 6 && prev !== '6') {
+          animateMetric(m1, finalValues[0], suffixes[0]);
+          animateMetric(m2, finalValues[1], suffixes[1]);
+          animateMetric(m3, finalValues[2], suffixes[2]);
+        }
+        if (frame.step === 1 && prev !== '1' && prev !== undefined) {
+          if (m1) m1.textContent = '0';
+          if (m2) m2.textContent = '0';
+          if (m3) m3.textContent = '0%';
+        }
+        i = (i + 1) % timeline.length;
+        setTimeout(tick, frame.dur);
+      }
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        stage.dataset.step = '7';
+        if (m1) m1.textContent = '847';
+        if (m2) m2.textContent = '621';
+        if (m3) m3.textContent = '94%';
+      } else {
+        tick();
+      }
+    })();
+  </script>
 </section>
 
 <!-- ─── ROI CHART ───────────────────────────────────────────────────── -->
