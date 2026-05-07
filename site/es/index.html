@@ -49,7 +49,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../assets/css/style.css" />
 </head>
 <body>
@@ -101,8 +101,8 @@
 <!-- ─── HERO ────────────────────────────────────────────────────────── -->
 <section class="hero" aria-labelledby="hero-heading">
   <div class="container">
-    <div class="hero-grid">
-      <div>
+    <div class="hero-grid hero-grid--stacked">
+      <div class="hero-copy">
         <span class="hero-eyebrow">
           <span class="pulse" aria-hidden="true"></span>
           Impulsado por Gemini 2.5 Flash native-audio
@@ -123,31 +123,209 @@
         </ul>
       </div>
 
-      <!-- Hero visual — mockup de llamada en vivo con flujo de agendamiento -->
-      <div class="hero-visual" aria-hidden="true">
-        <div class="hero-call">
-          <div class="hero-call-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-            </svg>
-          </div>
-          <div class="hero-call-text">
-            <strong>Sara (716) 555-0142</strong>
-            <span>Entrante · Línea principal Lakewood Dental</span>
-          </div>
-          <span class="hero-call-status">● En vivo · 0:42</span>
+      <!-- Hero animation — llamada IA en vivo → agendamiento → confirmación -->
+      <div class="hero-stage" id="heroStage" aria-hidden="true" data-step="1" data-answered="0">
+        <!-- Marca -->
+        <div class="ov-brand">
+          <div class="ov-brand-mark"></div>
+          <div class="ov-brand-name">MyOrbisVoice</div>
+          <div class="ov-brand-tag">Powered by Gemini 2.5 Flash</div>
         </div>
-        <div class="hero-bubble">Hola Sara, soy la asistente de Lakewood Dental. Claro que sí, te agendo una limpieza de paciente nuevo. ¿Qué día te queda bien esta semana?</div>
-        <div class="hero-bubble user">Mañana a las 2 PM si tienen.</div>
-        <div class="hero-bubble">Mañana a las 2 PM está libre con el Dr. Lee. Es nuestro higienista más reciente y muy gentil — perfecto para una primera visita. ¿Te lo aparto?</div>
-        <div class="hero-bubble user">Sí, por favor.</div>
-        <div class="hero-action">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          Agendado en Google Calendar · Correo de confirmación enviado
+
+        <!-- Banner final (centro arriba, aparece tarde) -->
+        <div class="ov-banner">
+          <span class="ov-dot ov-pulse"></span>
+          <span class="ov-banner-green">Agendada</span>
+          <span class="ov-sep">·</span>
+          <span>Confirmada</span>
+          <span class="ov-sep">·</span>
+          <span>Seguimiento listo</span>
+        </div>
+
+        <!-- Tarjeta de llamada -->
+        <div class="ov-phone">
+          <div class="ov-phone-head">
+            <div class="ov-avatar">SM</div>
+            <div style="flex:1; min-width:0;">
+              <div class="ov-name">Sara Mitchell</div>
+              <div class="ov-meta">(716) 555-0142 · Lakewood Dental</div>
+            </div>
+            <div class="ov-status">
+              <span class="ov-dot ov-pulse"></span>
+              <span class="ov-status-text">Entrante</span>
+              <span class="ov-timer">· 0:08</span>
+            </div>
+          </div>
+
+          <div class="ov-answered">
+            <svg width="14" height="14" viewBox="0 0 16 16">
+              <path d="M3 8l3.5 3.5L13 5" stroke="oklch(74% 0.15 155)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="ov-answered-text">Contestada en 0.8s</span>
+            <span class="ov-answered-source">Gemini native-audio</span>
+          </div>
+
+          <div class="ov-soundwave-row">
+            <div class="ov-ai-label">IA · Aoede</div>
+            <div class="ov-soundwave">
+              <div class="ov-bar" style="height:40%;animation-delay:0.00s"></div>
+              <div class="ov-bar" style="height:60%;animation-delay:0.05s"></div>
+              <div class="ov-bar" style="height:80%;animation-delay:0.10s"></div>
+              <div class="ov-bar" style="height:55%;animation-delay:0.15s"></div>
+              <div class="ov-bar" style="height:90%;animation-delay:0.20s"></div>
+              <div class="ov-bar" style="height:45%;animation-delay:0.25s"></div>
+              <div class="ov-bar" style="height:70%;animation-delay:0.30s"></div>
+              <div class="ov-bar" style="height:35%;animation-delay:0.35s"></div>
+              <div class="ov-bar" style="height:85%;animation-delay:0.40s"></div>
+              <div class="ov-bar" style="height:50%;animation-delay:0.45s"></div>
+              <div class="ov-bar" style="height:75%;animation-delay:0.50s"></div>
+              <div class="ov-bar" style="height:40%;animation-delay:0.55s"></div>
+              <div class="ov-bar" style="height:65%;animation-delay:0.60s"></div>
+              <div class="ov-bar" style="height:30%;animation-delay:0.65s"></div>
+              <div class="ov-bar" style="height:80%;animation-delay:0.70s"></div>
+              <div class="ov-bar" style="height:55%;animation-delay:0.75s"></div>
+              <div class="ov-bar" style="height:45%;animation-delay:0.80s"></div>
+              <div class="ov-bar" style="height:70%;animation-delay:0.05s"></div>
+              <div class="ov-bar" style="height:35%;animation-delay:0.15s"></div>
+              <div class="ov-bar" style="height:60%;animation-delay:0.25s"></div>
+              <div class="ov-bar" style="height:50%;animation-delay:0.35s"></div>
+              <div class="ov-bar" style="height:75%;animation-delay:0.45s"></div>
+              <div class="ov-bar" style="height:40%;animation-delay:0.55s"></div>
+              <div class="ov-bar" style="height:65%;animation-delay:0.65s"></div>
+            </div>
+          </div>
+
+          <div class="ov-transcript">
+            <div class="ov-bubble ov-ai" data-step="2">Hola Sara — soy la asistente de Lakewood Dental. ¿Qué día te queda bien para una limpieza de paciente nuevo?</div>
+            <div class="ov-bubble ov-caller" data-step="3">Mañana a las 2 PM si tienen.</div>
+            <div class="ov-bubble ov-ai" data-step="4">Mañana 2 PM está libre con el Dr. Lee. ¿Te lo aparto?</div>
+            <div class="ov-bubble ov-caller" data-step="5">Sí, por favor.</div>
+          </div>
+        </div>
+
+        <!-- Línea de flujo —  llamada → calendario al confirmar la cita -->
+        <svg class="ov-flow" viewBox="0 0 1200 675" preserveAspectRatio="none" aria-hidden="true">
+          <path class="ov-flow-line" d="M 410 165 C 540 165, 660 165, 800 165"/>
+          <circle class="ov-flow-particle" r="3.5" cx="0" cy="0"/>
+        </svg>
+
+        <!-- Tarjeta calendario -->
+        <div class="ov-cal">
+          <div class="ov-cal-head">
+            <div>
+              <div class="ov-cal-eyebrow">Calendario · Dr. Lee</div>
+              <div class="ov-cal-day">Mañana · Mié, 8 May</div>
+            </div>
+            <div class="ov-synced">
+              <span class="ov-dot"></span>
+              <span>Sincronizado</span>
+            </div>
+          </div>
+
+          <div class="ov-slots">
+            <div class="ov-slot ov-busy">
+              <span class="ov-slot-time">9:00 AM</span>
+              <span class="ov-slot-label">Limpieza · 30m</span>
+            </div>
+            <div class="ov-slot">
+              <span class="ov-slot-time">10:30 AM</span>
+              <span class="ov-slot-label">Libre · 45m</span>
+            </div>
+            <div class="ov-slot ov-busy">
+              <span class="ov-slot-time">11:30 AM</span>
+              <span class="ov-slot-label">Reservada · J. Park</span>
+            </div>
+            <div class="ov-slot">
+              <span class="ov-slot-time">1:00 PM</span>
+              <span class="ov-slot-label">Libre · 45m</span>
+            </div>
+            <div class="ov-slot ov-target">
+              <span class="ov-slot-time">2:00 PM</span>
+              <span class="ov-slot-label">Sara Mitchell · Paciente nueva</span>
+              <span class="ov-selected">Seleccionado</span>
+              <span class="ov-checkmark">
+                <svg width="10" height="10" viewBox="0 0 12 12">
+                  <path d="M2.5 6l2.5 2.5L9.5 3.5" stroke="#0a0e18" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </div>
+            <div class="ov-slot">
+              <span class="ov-slot-time">3:30 PM</span>
+              <span class="ov-slot-label">Libre · 30m</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Confirmaciones -->
+        <div class="ov-confirms">
+          <div class="ov-chip ov-chip-blue">
+            <div class="ov-chip-icon">
+              <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                <rect x="2" y="4" width="14" height="10" rx="2" stroke="oklch(72% 0.13 250)" stroke-width="1.6"/>
+                <path d="M2.5 5l6.5 4.5L15.5 5" stroke="oklch(72% 0.13 250)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div>
+              <div class="ov-chip-title">Correo de confirmación enviado</div>
+              <div class="ov-chip-sub">sarah.m@gmail.com · 0.4s</div>
+            </div>
+          </div>
+          <div class="ov-chip ov-chip-green">
+            <div class="ov-chip-icon">
+              <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                <path d="M9 2H3v6l8 8 6-6-8-8z" stroke="oklch(74% 0.15 155)" stroke-width="1.6" stroke-linejoin="round"/>
+                <circle cx="6" cy="5" r="1" fill="oklch(74% 0.15 155)"/>
+              </svg>
+            </div>
+            <div>
+              <div class="ov-chip-title">Contacto etiquetado</div>
+              <div class="ov-chip-sub">Paciente nueva · Recordatorio listo</div>
+            </div>
+          </div>
+          <div class="ov-chip ov-chip-amber">
+            <div class="ov-chip-icon">
+              <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                <rect x="2" y="3" width="14" height="13" rx="2" stroke="oklch(80% 0.13 75)" stroke-width="1.6"/>
+                <path d="M2 7h14M6 1.5v3M12 1.5v3" stroke="oklch(80% 0.13 75)" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <div class="ov-chip-title">Recordatorio del día anterior</div>
+              <div class="ov-chip-sub">Mañana 2 PM · SMS + Correo</div>
+            </div>
+          </div>
         </div>
       </div>
+
+      <script>
+        (function () {
+          const stage = document.getElementById('heroStage');
+          if (!stage) return;
+          const timeline = [
+            { step: 1, dur: 1500, answered: 0 },
+            { step: 2, dur: 1800, answered: 1 },
+            { step: 3, dur: 1500, answered: 1 },
+            { step: 4, dur: 1700, answered: 1 },
+            { step: 5, dur: 1500, answered: 1 },
+            { step: 6, dur: 1500, answered: 1 },
+            { step: 7, dur: 2000, answered: 1 },
+          ];
+          let i = 0;
+          function tick() {
+            const frame = timeline[i % timeline.length];
+            stage.dataset.step = String(frame.step);
+            stage.dataset.answered = String(frame.answered);
+            i = (i + 1) % timeline.length;
+            setTimeout(tick, frame.dur);
+          }
+          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            stage.dataset.step = '7';
+            stage.dataset.answered = '1';
+          } else {
+            tick();
+          }
+        })();
+      </script>
     </div>
   </div>
 </section>
@@ -161,80 +339,213 @@
       <p>MyOrbisVoice unifica cada punto de contacto que tus clientes tienen con tu negocio. La misma IA que contesta el teléfono opera el widget del sitio web y orquesta el seguimiento — para que el contexto nunca se pierda entre canales.</p>
     </div>
 
-    <div class="arch-diagram">
-      <!-- Dashed connector lines (3 inputs → brain, brain → 4 outputs) -->
-      <div class="arch-connector-layer" aria-hidden="true">
-        <svg viewBox="0 0 1000 480" preserveAspectRatio="none">
-          <path d="M 230 80 C 320 80 340 220 400 240" />
-          <path d="M 230 240 C 320 240 360 240 400 240" />
-          <path d="M 230 400 C 320 400 340 260 400 240" />
-          <path d="M 600 240 C 660 80 680 60 770 60" />
-          <path d="M 600 240 C 660 180 680 180 770 180" />
-          <path d="M 600 240 C 660 300 680 300 770 300" />
-          <path d="M 600 240 C 660 420 680 420 770 420" />
-        </svg>
+    <!-- Diagrama animado — 3 entradas → motor IA → 4 salidas. Loop ~10s. -->
+    <div class="arch-stage" id="archStage" aria-hidden="true" data-step="1">
+      <span class="ax-label ax-label-in">Canales de cliente →</span>
+      <span class="ax-label ax-label-out">← Salidas automáticas</span>
+
+      <svg class="ax-connectors" viewBox="0 0 1280 656" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="axGradIn" x1="0" x2="1">
+            <stop offset="0%" stop-color="oklch(72% 0.14 280)" stop-opacity="0.1"/>
+            <stop offset="100%" stop-color="oklch(72% 0.14 280)" stop-opacity="0.9"/>
+          </linearGradient>
+          <linearGradient id="axGradOut" x1="0" x2="1">
+            <stop offset="0%" stop-color="oklch(68% 0.16 250)" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="oklch(68% 0.16 250)" stop-opacity="0.1"/>
+          </linearGradient>
+        </defs>
+        <path class="ax-line ax-in"  d="M 358 200 C 480 200, 540 320, 580 328"/>
+        <path class="ax-line ax-in"  d="M 358 328 C 460 328, 520 328, 580 328"/>
+        <path class="ax-line ax-in"  d="M 358 456 C 480 456, 540 336, 580 328"/>
+        <path class="ax-line ax-out" d="M 700 328 C 760 200, 800 160, 922 160"/>
+        <path class="ax-line ax-out" d="M 700 328 C 760 280, 800 274, 922 274"/>
+        <path class="ax-line ax-out" d="M 700 328 C 760 376, 800 390, 922 390"/>
+        <path class="ax-line ax-out" d="M 700 328 C 760 456, 800 504, 922 504"/>
+        <path class="ax-line-anim ax-in"  d="M 358 200 C 480 200, 540 320, 580 328" stroke="url(#axGradIn)"/>
+        <path class="ax-line-anim ax-in"  d="M 358 328 C 460 328, 520 328, 580 328" stroke="url(#axGradIn)"/>
+        <path class="ax-line-anim ax-in"  d="M 358 456 C 480 456, 540 336, 580 328" stroke="url(#axGradIn)"/>
+        <path class="ax-line-anim ax-out" d="M 700 328 C 760 200, 800 160, 922 160" stroke="url(#axGradOut)"/>
+        <path class="ax-line-anim ax-out" d="M 700 328 C 760 280, 800 274, 922 274" stroke="url(#axGradOut)"/>
+        <path class="ax-line-anim ax-out" d="M 700 328 C 760 376, 800 390, 922 390" stroke="url(#axGradOut)"/>
+        <path class="ax-line-anim ax-out" d="M 700 328 C 760 456, 800 504, 922 504" stroke="url(#axGradOut)"/>
+        <circle r="4" class="ax-pulse-in"  style="offset-path: path('M 358 200 C 480 200, 540 320, 580 328')"/>
+        <circle r="4" class="ax-pulse-in"  style="offset-path: path('M 358 328 C 460 328, 520 328, 580 328')"/>
+        <circle r="4" class="ax-pulse-in"  style="offset-path: path('M 358 456 C 480 456, 540 336, 580 328')"/>
+        <circle r="4" class="ax-pulse-out" style="offset-path: path('M 700 328 C 760 200, 800 160, 922 160')"/>
+        <circle r="4" class="ax-pulse-out" style="offset-path: path('M 700 328 C 760 280, 800 274, 922 274')"/>
+        <circle r="4" class="ax-pulse-out" style="offset-path: path('M 700 328 C 760 376, 800 390, 922 390')"/>
+        <circle r="4" class="ax-pulse-out" style="offset-path: path('M 700 328 C 760 456, 800 504, 922 504')"/>
+      </svg>
+
+      <!-- Tarjetas de entrada (izquierda) -->
+      <div class="ax-card ax-in ax-card-1">
+        <div class="ax-card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M5 4.5C5 3.7 5.7 3 6.5 3h2.2c.7 0 1.3.5 1.4 1.2l.6 3a1.5 1.5 0 0 1-.4 1.4l-1.4 1.4a12 12 0 0 0 5.7 5.7l1.4-1.4c.4-.4.9-.5 1.4-.4l3 .6c.7.1 1.2.7 1.2 1.4v2.2c0 .8-.7 1.5-1.5 1.5C10.6 19.6 4.4 13.4 5 4.5Z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="ax-card-text">
+          <div class="ax-card-label">Teléfono entrante</div>
+          <div class="ax-card-sub">voz → IA</div>
+        </div>
+      </div>
+      <div class="ax-card ax-in ax-card-2">
+        <div class="ax-card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v8a2.5 2.5 0 0 1-2.5 2.5H12l-4 3.5V17H6.5A2.5 2.5 0 0 1 4 14.5v-8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+            <circle cx="9" cy="10.5" r="0.9" fill="currentColor"/>
+            <circle cx="12" cy="10.5" r="0.9" fill="currentColor"/>
+            <circle cx="15" cy="10.5" r="0.9" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="ax-card-text">
+          <div class="ax-card-label">Widget del sitio web</div>
+          <div class="ax-card-sub">chat → IA</div>
+        </div>
+      </div>
+      <div class="ax-card ax-in ax-card-3">
+        <div class="ax-card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 10.5v3a1.5 1.5 0 0 0 1.5 1.5H7l1.5 4.2c.2.5.7.8 1.2.8h.6a1 1 0 0 0 1-1V15l9 3.5v-13L10.3 9H5.5A1.5 1.5 0 0 0 4 10.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="ax-card-text">
+          <div class="ax-card-label">Campañas salientes</div>
+          <div class="ax-card-sub">marca → IA</div>
+        </div>
       </div>
 
-      <div class="arch-grid">
-        <!-- Inputs -->
-        <div class="arch-col">
-          <h4>Tu cliente te contacta vía</h4>
-          <div class="arch-node">
-            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
-            <div><strong>Teléfono entrante</strong><span>Voice gateway de Twilio</span></div>
-          </div>
-          <div class="arch-node">
-            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
-            <div><strong>Widget del sitio web</strong><span>WebSocket en navegador</span></div>
-          </div>
-          <div class="arch-node">
-            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
-            <div><strong>Campañas salientes</strong><span>Programador por etiquetas</span></div>
-          </div>
-        </div>
-
-        <!-- Brain -->
-        <div class="arch-brain">
-          <span class="arch-brain-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/>
-              <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/>
+      <!-- Motor (centro) -->
+      <div class="ax-engine">
+        <span class="ax-engine-ring ax-ring-1"></span>
+        <span class="ax-engine-ring ax-ring-2"></span>
+        <div class="ax-engine-head">
+          <div class="ax-engine-spark">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/>
             </svg>
-          </span>
-          <h3>Motor de IA MyOrbisVoice</h3>
-          <p>Gemini 2.5 Flash native-audio<br>+ arquitectura de prompt de 5 capas<br>+ ADN de negocio por inquilino</p>
-          <span class="pill">7 roles · 7 voces</span>
+          </div>
+          <div class="ax-engine-eyebrow">Motor IA</div>
         </div>
+        <div>
+          <div class="ax-engine-name">MyOrbisVoice</div>
+          <div class="ax-engine-meta">Gemini 2.5 Flash<br>native-audio · ADN de negocio</div>
+        </div>
+        <div class="ax-engine-status">
+          <span class="ax-status-dot"></span>
+          <span class="ax-status-text-ready">Listo</span>
+          <span class="ax-status-text-busy">Procesando</span>
+        </div>
+      </div>
 
-        <!-- Outputs -->
-        <div class="arch-col">
-          <h4>Y automáticamente</h4>
-          <div class="arch-node">
-            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
-            <div><strong>Agenda la cita</strong><span>Google Calendar en vivo</span></div>
-          </div>
-          <div class="arch-node">
-            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
-            <div><strong>Envía email</strong><span>Gmail OAuth, tu dirección</span></div>
-          </div>
-          <div class="arch-node">
-            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
-            <div><strong>Envía SMS / WhatsApp</strong><span>Subcuenta Twilio por inquilino</span></div>
-          </div>
-          <div class="arch-node">
-            <span class="arch-node-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
-            <div><strong>Etiqueta al contacto</strong><span>Dispara la siguiente campaña</span></div>
-          </div>
+      <!-- Tarjetas de salida (derecha) -->
+      <div class="ax-card ax-out ax-card-1">
+        <div class="ax-card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <rect x="4" y="5.5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M4 10h16M9 3.5v4M15 3.5v4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <rect x="8" y="13" width="3" height="3" rx="0.5" fill="currentColor"/>
+          </svg>
         </div>
+        <div class="ax-card-text">
+          <div class="ax-card-label">Agenda la cita</div>
+          <div class="ax-card-sub">Google Calendar</div>
+        </div>
+        <span class="ax-check">
+          <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+            <path d="M3 7.5l2.8 2.8L11 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </div>
+      <div class="ax-card ax-out ax-card-2">
+        <div class="ax-card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <rect x="3.5" y="6" width="17" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M4 8l8 5.5L20 8" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="ax-card-text">
+          <div class="ax-card-label">Envía email</div>
+          <div class="ax-card-sub">Gmail</div>
+        </div>
+        <span class="ax-check">
+          <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+            <path d="M3 7.5l2.8 2.8L11 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </div>
+      <div class="ax-card ax-out ax-card-3">
+        <div class="ax-card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M5 5.5A2 2 0 0 1 7 3.5h10A2 2 0 0 1 19 5.5v8a2 2 0 0 1-2 2h-3l-3.5 3v-3H7a2 2 0 0 1-2-2v-8Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+            <path d="M9 9h6M9 11.5h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ax-card-text">
+          <div class="ax-card-label">Envía SMS / WhatsApp</div>
+          <div class="ax-card-sub">Twilio</div>
+        </div>
+        <span class="ax-check">
+          <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+            <path d="M3 7.5l2.8 2.8L11 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </div>
+      <div class="ax-card ax-out ax-card-4">
+        <div class="ax-card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 11V5a1 1 0 0 1 1-1h6l9 9-7 7-9-9Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+            <circle cx="8" cy="8" r="1.4" stroke="currentColor" stroke-width="1.4"/>
+          </svg>
+        </div>
+        <div class="ax-card-text">
+          <div class="ax-card-label">Etiqueta al contacto</div>
+          <div class="ax-card-sub">Actualización CRM</div>
+        </div>
+        <span class="ax-check">
+          <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+            <path d="M3 7.5l2.8 2.8L11 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
       </div>
     </div>
+
+    <script>
+      (function () {
+        const stage = document.getElementById('archStage');
+        if (!stage) return;
+        const timeline = [
+          { step: 1, dur: 1400 },
+          { step: 2, dur: 1200 },
+          { step: 3, dur: 1000 },
+          { step: 4, dur: 1200 },
+          { step: 5, dur: 1200 },
+          { step: 6, dur: 1200 },
+          { step: 7, dur: 2800 },
+        ];
+        let i = 0;
+        function tick() {
+          const frame = timeline[i % timeline.length];
+          stage.dataset.step = String(frame.step);
+          i = (i + 1) % timeline.length;
+          setTimeout(tick, frame.dur);
+        }
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          stage.dataset.step = '7';
+        } else {
+          tick();
+        }
+      })();
+    </script>
   </div>
 </section>
 
 <!-- ─── PROMPT LAYERING ─────────────────────────────────────────────── -->
 <section class="section-soft" aria-labelledby="dna-heading">
   <div class="container">
-    <div class="split">
+    <div class="split split--stacked">
       <div class="split-text">
         <span class="eyebrow">ADN del negocio</span>
         <h2 id="dna-heading">Una IA genérica suena genérica. <span class="accent-dark">MyOrbisVoice suena como tú.</span></h2>
@@ -249,36 +560,125 @@
         </ul>
       </div>
 
-      <!-- 5-layer prompt visualization -->
+      <!-- Visualización animada de las 5 capas — apilan, compilan, emiten -->
       <div>
-        <div class="prompt-stack">
-          <div class="prompt-layer l1">
-            <span class="prompt-layer-num">1</span>
-            <span class="label">Reglas de seguridad de plataforma<br><span class="what">No mientas · No prometas · Defiere a humanos</span></span>
+        <div class="dna-stage" id="dnaStage" aria-hidden="true" data-step="0">
+          <span class="dn-eyebrow">Prompt de cinco capas</span>
+
+          <div class="dn-frame"><span></span><span></span></div>
+
+          <div class="dn-layer" data-tier="1" data-hue="12">
+            <div class="dn-layer-head">
+              <span class="dn-layer-num">01</span>
+              <span class="dn-layer-title">Reglas de seguridad</span>
+            </div>
+            <div class="dn-layer-body">No mientas · No prometas · Defiere a humanos</div>
           </div>
-          <div class="prompt-layer l2">
-            <span class="prompt-layer-num">2</span>
-            <span class="label">Tu ADN de negocio<br><span class="what">Identidad · Servicios · Precios · Horarios · Reglas</span></span>
+          <div class="dn-layer" data-tier="2" data-hue="145">
+            <div class="dn-layer-head">
+              <span class="dn-layer-num">02</span>
+              <span class="dn-layer-title">ADN del negocio</span>
+            </div>
+            <div class="dn-layer-body">Servicios · Precios · Horarios · Reglas</div>
           </div>
-          <div class="prompt-layer l3">
-            <span class="prompt-layer-num">3</span>
-            <span class="label">Capa de canal<br><span class="what">Tono entrante vs. widget vs. saliente</span></span>
+          <div class="dn-layer" data-tier="3" data-hue="220">
+            <div class="dn-layer-head">
+              <span class="dn-layer-num">03</span>
+              <span class="dn-layer-title">Capa de canal</span>
+            </div>
+            <div class="dn-layer-body">Entrante · Widget · Saliente</div>
           </div>
-          <div class="prompt-layer l4">
-            <span class="prompt-layer-num">4</span>
-            <span class="label">Rol del agente<br><span class="what">Citas · Ventas · Servicio al cliente · Marketing</span></span>
+          <div class="dn-layer" data-tier="4" data-hue="285">
+            <div class="dn-layer-head">
+              <span class="dn-layer-num">04</span>
+              <span class="dn-layer-title">Rol del agente</span>
+            </div>
+            <div class="dn-layer-body">Citas · Ventas · Servicio al cliente</div>
           </div>
-          <div class="prompt-layer l5">
-            <span class="prompt-layer-num">5</span>
-            <span class="label">Contexto de sesión en vivo<br><span class="what">Historial del cliente · Hora del día · Últimos 6 turnos</span></span>
+          <div class="dn-layer" data-tier="5" data-hue="195">
+            <div class="dn-layer-head">
+              <span class="dn-layer-num">05</span>
+              <span class="dn-layer-title">Contexto de sesión en vivo</span>
+            </div>
+            <div class="dn-layer-body">Historial · Hora del día · Últimos 6 turnos</div>
           </div>
+
+          <div class="dn-compiler">
+            <div class="dn-compiler-head">
+              <span class="dn-compiler-icon">
+                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6h8M6 2v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <span class="dn-compiler-title">Prompt compilado</span>
+              <span class="dn-compiler-state">
+                <span class="dn-state-idle">EN ESPERA</span>
+                <span class="dn-state-compiling">COMPILANDO</span>
+                <span class="dn-state-ready">LISTO</span>
+              </span>
+            </div>
+            <div class="dn-progress"><div class="dn-progress-bar"></div></div>
+            <div class="dn-indicators">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+
+          <div class="dn-output">
+            <div class="dn-output-head">
+              <div class="dn-output-avatar">
+                <div class="dn-output-avatar-inner">
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                    <path d="M5.5 1v6M3 4v3M8 4v3M1.5 5.5v0M9.5 5.5v0" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+                  </svg>
+                </div>
+              </div>
+              <div>
+                <div class="dn-output-title">Suena como tu negocio</div>
+                <div class="dn-output-sub">Agente de voz · En vivo</div>
+              </div>
+              <div class="dn-output-live"></div>
+            </div>
+            <div class="dn-output-wave">
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
+          </div>
+
+          <div class="dn-bubble">"Te puedo agendar hoy. ¿Qué hora te queda mejor?"</div>
         </div>
-        <p class="text-center mt-6" style="font-size:0.85rem;color:var(--text-muted);">
-          Las cinco capas se compilan en un solo prompt al inicio de cada llamada.
-        </p>
       </div>
     </div>
   </div>
+
+  <script>
+    (function () {
+      const stage = document.getElementById('dnaStage');
+      if (!stage) return;
+      const timeline = [
+        { step: 1, dur: 1100 },
+        { step: 2, dur: 1100 },
+        { step: 3, dur: 1100 },
+        { step: 4, dur: 1100 },
+        { step: 5, dur: 1300 },
+        { step: 6, dur: 1700 },
+        { step: 7, dur: 2400 },
+        { step: 8, dur: 2200 },
+        { step: 0, dur: 600  },
+      ];
+      let i = 0;
+      function tick() {
+        const frame = timeline[i % timeline.length];
+        stage.dataset.step = String(frame.step);
+        i = (i + 1) % timeline.length;
+        setTimeout(tick, frame.dur);
+      }
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        stage.dataset.step = '7';
+      } else {
+        tick();
+      }
+    })();
+  </script>
 </section>
 
 <!-- ─── 7 VOICES ────────────────────────────────────────────────────── -->
