@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express'
 import { z } from 'zod'
 import { authenticate } from '../middleware/authenticate.js'
-import { requirePlatformAdmin } from '../middleware/rbac.js'
+import { requirePlatformAdmin, requirePlatformSuperAdmin, requirePlatformSupport } from '../middleware/rbac.js'
 import * as adminService from '../services/admin.service.js'
 import * as compCodeService from '../services/comp-code.service.js'
 import { AppError } from '@voiceautomation/shared'
@@ -12,7 +12,12 @@ import * as storageTierSvc from '../services/storage-tier.service.js'
 import { writeAuditLogFromRequest } from '../lib/audit.js'
 
 const router: IRouter = Router()
-router.use(authenticate, requirePlatformAdmin)
+// File-level guard is the WEAKEST platform-staff role (Support). Read-only
+// routes inherit this guard and need nothing more. Routes that perform
+// privileged writes get an extra `requirePlatformAdmin` middleware in
+// their definition below; credential-edit routes get an even stricter
+// `requirePlatformSuperAdmin`. Three tiers, enforced server-side.
+router.use(authenticate, requirePlatformSupport)
 
 router.get('/platform/status', async (_req, res, next) => {
   try {
@@ -75,7 +80,7 @@ router.get('/tenants/:tenantId', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-router.patch('/tenants/:tenantId', async (req, res, next) => {
+router.patch('/tenants/:tenantId', requirePlatformAdmin, async (req, res, next) => {
   try {
     const data = validate(adminService.adminUpdateTenantSchema, req.body)
     const tenant = await adminService.adminUpdateTenant(req.params['tenantId']!, req.user!.id, data)
@@ -83,14 +88,14 @@ router.patch('/tenants/:tenantId', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-router.post('/tenants/:tenantId/suspend', async (req, res, next) => {
+router.post('/tenants/:tenantId/suspend', requirePlatformAdmin, async (req, res, next) => {
   try {
     const tenant = await adminService.suspendTenant(req.params['tenantId']!, req.user!.id)
     res.json({ data: tenant })
   } catch (err) { next(err) }
 })
 
-router.post('/tenants/:tenantId/restore', async (req, res, next) => {
+router.post('/tenants/:tenantId/restore', requirePlatformAdmin, async (req, res, next) => {
   try {
     const tenant = await adminService.restoreTenant(req.params['tenantId']!, req.user!.id)
     res.json({ data: tenant })
@@ -100,7 +105,7 @@ router.post('/tenants/:tenantId/restore', async (req, res, next) => {
 // Admin grant-plan — bypasses Stripe entirely. Used for internal testing of
 // tier-gated features without creating real Stripe subscriptions or processing
 // payments. Audit-logged so it is never invisible.
-router.post('/tenants/:tenantId/grant-plan', async (req, res, next) => {
+router.post('/tenants/:tenantId/grant-plan', requirePlatformAdmin, async (req, res, next) => {
   try {
     const tenantId = req.params['tenantId']!
     const { planCode } = req.body as { planCode?: string }
@@ -147,7 +152,7 @@ router.post('/tenants/:tenantId/grant-plan', async (req, res, next) => {
 
 // Admin revoke-plan — cancels admin-granted sub, resets entitlements to free tier.
 // Does NOT touch real Stripe subscriptions (those have non-null stripeSubscriptionId).
-router.post('/tenants/:tenantId/revoke-plan', async (req, res, next) => {
+router.post('/tenants/:tenantId/revoke-plan', requirePlatformAdmin, async (req, res, next) => {
   try {
     const tenantId = req.params['tenantId']!
 
@@ -190,7 +195,7 @@ const googleSettingsSchema = z.object({
   redirectUri: z.string().url().optional(),
 })
 
-router.patch('/system-settings/google', async (req, res, next) => {
+router.patch('/system-settings/google', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = googleSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
@@ -232,7 +237,7 @@ const stripeSettingsSchema = z.object({
   webhookSecretConnect: stripeWebhookSecret.optional(),
 })
 
-router.patch('/system-settings/stripe', async (req, res, next) => {
+router.patch('/system-settings/stripe', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = stripeSettingsSchema.safeParse(req.body)
     if (!parsed.success) {
@@ -274,7 +279,7 @@ const twilioSettingsSchema = z.object({
   phoneNumber: z.string().min(1).optional(),
 })
 
-router.patch('/system-settings/twilio', async (req, res, next) => {
+router.patch('/system-settings/twilio', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = twilioSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
@@ -302,7 +307,7 @@ const twilioTestSettingsSchema = z.object({
   authToken:  z.string().min(1).optional(),
 })
 
-router.patch('/system-settings/twilio-test', async (req, res, next) => {
+router.patch('/system-settings/twilio-test', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = twilioTestSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
@@ -331,7 +336,7 @@ const testSmsSchema = z.object({
   mode: z.enum(['live', 'test']).default('test'),
 })
 
-router.post('/test-sms', async (req, res, next) => {
+router.post('/test-sms', requirePlatformAdmin, async (req, res, next) => {
   try {
     const parsed = testSmsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
@@ -352,7 +357,7 @@ const reoonSettingsSchema = z.object({
   mode: z.enum(['quick', 'power']).optional(),
 })
 
-router.patch('/system-settings/reoon', async (req, res, next) => {
+router.patch('/system-settings/reoon', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = reoonSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
@@ -379,7 +384,7 @@ const openaiSettingsSchema = z.object({
   model:  z.string().min(1).optional(),
 })
 
-router.patch('/system-settings/openai', async (req, res, next) => {
+router.patch('/system-settings/openai', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = openaiSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
@@ -409,7 +414,7 @@ const bunnySettingsSchema = z.object({
   storageRegion:   z.string().min(1).optional(),
 })
 
-router.patch('/system-settings/bunny', async (req, res, next) => {
+router.patch('/system-settings/bunny', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = bunnySettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
@@ -440,7 +445,7 @@ const storageSettingsSchema = z.object({
   retentionDays:       z.number().int().min(1).nullable().optional(),
 })
 
-router.patch('/system-settings/storage', async (req, res, next) => {
+router.patch('/system-settings/storage', requirePlatformAdmin, async (req, res, next) => {
   try {
     const parsed = storageSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
@@ -464,7 +469,7 @@ router.patch('/system-settings/storage', async (req, res, next) => {
 })
 
 // Per-tenant storage quota override
-router.patch('/tenants/:tenantId/storage-quota', async (req, res, next) => {
+router.patch('/tenants/:tenantId/storage-quota', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { tenantId } = req.params
     const { quotaGb } = z.object({ quotaGb: z.number().int().min(0).nullable() }).parse(req.body)
@@ -500,7 +505,7 @@ const updateTierSchema = z.object({
   gracePeriodDays: z.number().int().min(1).max(365).optional(),
 })
 
-router.patch('/storage-tiers/:tier', async (req, res, next) => {
+router.patch('/storage-tiers/:tier', requirePlatformAdmin, async (req, res, next) => {
   try {
     const tier   = req.params['tier']!.toUpperCase() as storageTierSvc.StorageTier
     if (!storageTierSvc.TIERS.includes(tier)) throw new AppError('NOT_FOUND', 'Unknown tier', 404)
@@ -520,7 +525,7 @@ router.patch('/storage-tiers/:tier', async (req, res, next) => {
 })
 
 // Assign a storage tier to a tenant
-router.post('/tenants/:tenantId/storage-tier', async (req, res, next) => {
+router.post('/tenants/:tenantId/storage-tier', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { tenantId } = req.params
     const { tier }     = z.object({ tier: z.enum(storageTierSvc.TIERS) }).parse(req.body)
@@ -557,7 +562,7 @@ const updateEntitlementSchema = z.object({
   })),
 })
 
-router.patch('/plans/:planId/entitlements', async (req, res, next) => {
+router.patch('/plans/:planId/entitlements', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { planId } = req.params as { planId: string }
     const { updates } = validate(updateEntitlementSchema, req.body)
@@ -598,7 +603,7 @@ const smtpSettingsSchema = z.object({
   from:     z.string().min(1).optional(),
 })
 
-router.patch('/system-settings/smtp', async (req, res, next) => {
+router.patch('/system-settings/smtp', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = smtpSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
@@ -628,7 +633,7 @@ const geminiSettingsSchema = z.object({
   model:  z.string().min(1).optional(),
 })
 
-router.patch('/system-settings/gemini', async (req, res, next) => {
+router.patch('/system-settings/gemini', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = geminiSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
@@ -653,7 +658,7 @@ const pricingSettingsSchema = z.object({
   overageMarkupPct: z.coerce.number().min(0).max(1000),
 })
 
-router.patch('/system-settings/pricing', async (req, res, next) => {
+router.patch('/system-settings/pricing', requirePlatformAdmin, async (req, res, next) => {
   try {
     const parsed = pricingSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
@@ -788,7 +793,7 @@ router.get('/errors', async (_req, res, next) => {
 // reserved test-only domain. Cascade-deletes wipe TenantMember, BusinessProfile,
 // ChannelConfig, AgentProfile, etc. — Prisma's onDelete: Cascade rules cover
 // the full graph. Audit-logs the count.
-router.delete('/test-tenants', async (req, res, next) => {
+router.delete('/test-tenants', requirePlatformAdmin, async (req, res, next) => {
   try {
     const before = await prisma.tenant.findMany({
       where: { registrationEmail: { endsWith: '@orbisvoice.test' } },
@@ -883,7 +888,7 @@ router.get('/a2p/:tenantId', async (req, res, next) => {
 
 // PUT /api/admin/a2p/platform — upsert the platform-scope (MyOrbisVoice's own)
 // A2P application. Status starts as DRAFT; submit endpoint flips it.
-router.put('/a2p/platform', async (req, res, next) => {
+router.put('/a2p/platform', requirePlatformAdmin, async (req, res, next) => {
   try {
     const data = a2pAdminSchema.parse(req.body)
     const userId = req.user!.id
@@ -918,7 +923,7 @@ router.put('/a2p/platform', async (req, res, next) => {
 // POST /api/admin/a2p/platform/submit — flip platform application DRAFT → SUBMITTED.
 // Until Trust Hub automation lands, this is a status-only flip; admin then
 // posts the captured data to Twilio Trust Hub Console manually.
-router.post('/a2p/platform/submit', async (req, res, next) => {
+router.post('/a2p/platform/submit', requirePlatformAdmin, async (req, res, next) => {
   try {
     const userId = req.user!.id
     const app = await prisma.tenantA2PApplication.findFirst({ where: { tenantId: null } })
@@ -949,7 +954,7 @@ router.post('/a2p/platform/submit', async (req, res, next) => {
 //
 // Guard: application must be SUBMITTED or REJECTED (i.e. the tenant filled
 // + submitted the form first). Blocks the DRAFT → APPROVED shortcut.
-router.post('/a2p/:applicationId/mark-approved', async (req, res, next) => {
+router.post('/a2p/:applicationId/mark-approved', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { applicationId } = req.params as { applicationId: string }
     const { brandSid, campaignSid, customerProfileSid } = req.body as {
@@ -990,7 +995,7 @@ router.post('/a2p/:applicationId/mark-approved', async (req, res, next) => {
 // Tenant sees the reason and can edit + resubmit.
 //
 // Guard: application must NOT be DRAFT — same form-first principle.
-router.post('/a2p/:applicationId/mark-rejected', async (req, res, next) => {
+router.post('/a2p/:applicationId/mark-rejected', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { applicationId } = req.params as { applicationId: string }
     const { reason } = req.body as { reason: string }
@@ -1153,7 +1158,7 @@ const adminSearchSchema = z.object({
   limit:       z.number().int().min(1).max(50).default(20),
 })
 
-router.post('/phone-numbers/search', async (req, res, next) => {
+router.post('/phone-numbers/search', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { areaCode, pattern, country, limit } = adminSearchSchema.parse(req.body)
     const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
@@ -1187,7 +1192,7 @@ const adminPurchaseSchema = z.object({
   friendlyName: z.string().max(120).optional(),
 })
 
-router.post('/phone-numbers/purchase', async (req, res, next) => {
+router.post('/phone-numbers/purchase', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { phoneNumber, friendlyName } = adminPurchaseSchema.parse(req.body)
     const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
@@ -1281,7 +1286,7 @@ const reassignSchema = z.object({
   confirmPhoneNumber: z.string().regex(/^\+[1-9]\d{7,14}$/, 'Must match the number being reassigned in E.164'),
 })
 
-router.post('/phone-numbers/:sid/reassign', async (req, res, next) => {
+router.post('/phone-numbers/:sid/reassign', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { sid } = req.params as { sid: string }
     if (!sid.startsWith('PN')) throw new AppError('VALIDATION_ERROR', 'Invalid Twilio number SID', 422)
@@ -1406,7 +1411,7 @@ router.post('/phone-numbers/:sid/reassign', async (req, res, next) => {
 })
 
 // DELETE /api/admin/phone-numbers/:sid — release a platform-owned number back to Twilio
-router.delete('/phone-numbers/:sid', async (req, res, next) => {
+router.delete('/phone-numbers/:sid', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { sid } = req.params as { sid: string }
     if (!sid.startsWith('PN')) throw new AppError('VALIDATION_ERROR', 'Invalid Twilio number SID', 422)
@@ -1517,7 +1522,7 @@ router.get('/comp-codes', async (req, res, next) => {
 })
 
 // POST /api/admin/comp-codes — generate a fresh single-use comp code
-router.post('/comp-codes', async (req, res, next) => {
+router.post('/comp-codes', requirePlatformAdmin, async (req, res, next) => {
   try {
     const body = validateCompCode(req.body)
     const created = await compCodeService.generateCompCode({
@@ -1545,7 +1550,7 @@ router.post('/comp-codes', async (req, res, next) => {
 })
 
 // DELETE /api/admin/comp-codes/:id — disable an unredeemed comp code
-router.delete('/comp-codes/:id', async (req, res, next) => {
+router.delete('/comp-codes/:id', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { id } = req.params as { id: string }
     const updated = await compCodeService.disableCompCode(id)

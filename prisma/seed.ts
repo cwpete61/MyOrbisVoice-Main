@@ -19,6 +19,7 @@ async function main() {
   const roles = [
     { key: 'platform_super_admin', name: 'Platform Super Admin', isPlatformRole: true },
     { key: 'platform_admin', name: 'Platform Admin', isPlatformRole: true },
+    { key: 'platform_support', name: 'Platform Support', isPlatformRole: true },
     { key: 'tenant_owner', name: 'Tenant Owner', isPlatformRole: false },
     { key: 'tenant_manager', name: 'Tenant Manager', isPlatformRole: false },
     { key: 'tenant_staff', name: 'Tenant Staff', isPlatformRole: false },

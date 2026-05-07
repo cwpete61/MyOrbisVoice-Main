@@ -38,6 +38,11 @@ export type SubscriptionStatus =
 export const ROLE_KEYS = {
   PLATFORM_SUPER_ADMIN: 'platform_super_admin',
   PLATFORM_ADMIN: 'platform_admin',
+  /// Platform Support — read + impersonate for help-desk staff. CAN view
+  /// tenants/conversations and impersonate (audit-logged); CANNOT edit
+  /// tenants, generate comp codes, edit plans/secrets, or manage other
+  /// platform staff. See docs/role-matrix.md for the full capability grid.
+  PLATFORM_SUPPORT: 'platform_support',
   TENANT_OWNER: 'tenant_owner',
   TENANT_MANAGER: 'tenant_manager',
   TENANT_STAFF: 'tenant_staff',
@@ -49,6 +54,20 @@ export type RoleKey = (typeof ROLE_KEYS)[keyof typeof ROLE_KEYS]
 export const PLATFORM_ROLES: RoleKey[] = [
   ROLE_KEYS.PLATFORM_SUPER_ADMIN,
   ROLE_KEYS.PLATFORM_ADMIN,
+  ROLE_KEYS.PLATFORM_SUPPORT,
+]
+
+/** Platform roles that can perform admin-level writes (suspend tenants,
+ *  generate comp codes, manage plans). Excludes Support. */
+export const PLATFORM_ADMIN_ROLES: RoleKey[] = [
+  ROLE_KEYS.PLATFORM_SUPER_ADMIN,
+  ROLE_KEYS.PLATFORM_ADMIN,
+]
+
+/** Super-admin-only roles — secrets, account-email visibility, platform
+ *  team management. */
+export const PLATFORM_SUPER_ADMIN_ROLES: RoleKey[] = [
+  ROLE_KEYS.PLATFORM_SUPER_ADMIN,
 ]
 
 export const TENANT_ROLES: RoleKey[] = [
