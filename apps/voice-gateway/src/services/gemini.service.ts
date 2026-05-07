@@ -123,12 +123,15 @@ export function openGeminiLiveSession(
             silence_duration_ms:         400,
           },
         },
-        // Lock both transcripts to English. Was unset (multilingual auto-
-        // detect) until 2026-05-07, when the test call captured turns in
-        // German/Telugu/Chinese — Gemini's transcriber misfiring on short
-        // audio. en-US lock prevents the language hop.
-        input_audio_transcription:  { language_codes: ['en-US'] },
-        output_audio_transcription: { language_codes: ['en-US'] },
+        // Transcription enabled (auto-detect language). Tried locking to
+        // en-US via `language_codes: ['en-US']` on 2026-05-07 to stop the
+        // German/Telugu/Chinese transcriber misfires seen in test calls,
+        // but Gemini Live rejected the setup with code 1007 "Unknown name
+        // 'language_codes' at 'setup.input_audio_transcription'". The
+        // BidiGenerateContent schema doesn't expose a language hint here
+        // — leave transcription as `{}` until/unless the API surfaces one.
+        input_audio_transcription:  {},
+        output_audio_transcription: {},
       }
 
       // Tools — only attach when the caller actually has any. Gemini accepts
