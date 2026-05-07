@@ -259,6 +259,34 @@ const bookSchema = z.object({
   conversationId:  z.string().uuid().optional(),
 })
 
+// ---------- tool: search_availability ----------
+//
+// Returns up to 5 open slots in the requested window, plus up to 3
+// alternates if the primary 5 are too few for the agent to offer.
+// Backed by the same searchAvailability service the tenant-side
+// /api/appointments/availability/search endpoint uses, so the slot
+// math is identical (Google Calendar busy-blocks → free slots).
+
+const availabilitySchema = z.object({
+  fromIso:           z.string().min(1),
+  toIso:             z.string().min(1),
+  durationMinutes:   z.number().int().min(5).max(480),
+  timezone:          z.string().min(1).optional(),
+})
+
+router.post('/internal/gateway/tools/search-availability', async (req, res, next) => {
+  try {
+    const tenantId = (req as any).internalTenantId as string
+    const { fromIso, toIso, durationMinutes, timezone } = availabilitySchema.parse(req.body)
+    const result = await appointmentService.searchAvailability(tenantId, {
+      preferredStartRange: { from: fromIso, to: toIso },
+      durationMinutes,
+      timezone: timezone ?? 'UTC',
+    })
+    res.json({ data: { ok: true, slots: result.slots, alternateSlots: result.alternateSlots } })
+  } catch (err) { next(err) }
+})
+
 router.post('/internal/gateway/tools/book-appointment', async (req, res, next) => {
   try {
     const tenantId = (req as any).internalTenantId as string

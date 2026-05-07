@@ -40,6 +40,31 @@ export type ToolResult = Record<string, unknown>
 // (uppercase per Google's spec).
 export const TOOL_DECLARATIONS = [
   {
+    name: 'search_availability',
+    description:
+      'Search for open appointment slots on the business calendar within a date/time range. ' +
+      'Call this BEFORE book_appointment to confirm a slot is actually available. ' +
+      'Returns up to 5 open slots; offer them to the caller and let them pick one.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        from_iso: {
+          type: 'STRING',
+          description: 'Start of the search window in ISO 8601 with timezone, e.g. "2026-05-10T09:00:00-04:00".',
+        },
+        to_iso: {
+          type: 'STRING',
+          description: 'End of the search window in ISO 8601 with timezone. Search at most a 7-day range to keep results focused.',
+        },
+        duration_minutes: {
+          type: 'INTEGER',
+          description: 'Length of the appointment the caller wants in minutes (typically 30 or 60).',
+        },
+      },
+      required: ['from_iso', 'to_iso', 'duration_minutes'],
+    },
+  },
+  {
     name: 'book_appointment',
     description:
       'Book an appointment on the business calendar after the caller has confirmed a specific date, time, and duration. ' +
@@ -236,6 +261,32 @@ async function callApi<T = unknown>(
 type ToolHandler = (args: Record<string, unknown>, ctx: ToolContext) => Promise<ToolResult>
 
 const handlers: Record<ToolName, ToolHandler> = {
+  async search_availability(args, ctx) {
+    const fromIso         = String(args['from_iso']         ?? '').trim()
+    const toIso           = String(args['to_iso']           ?? '').trim()
+    const durationMinutes = Number(args['duration_minutes'] ?? 0)
+
+    if (!fromIso || !toIso || !durationMinutes) {
+      return { ok: false, error: 'from_iso, to_iso, and duration_minutes are required' }
+    }
+
+    type Slot = { startAt: string; endAt: string; available: boolean }
+    const result = await callApi<{ ok: boolean; slots: Slot[]; alternateSlots: Slot[] }>(
+      '/api/internal/gateway/tools/search-availability',
+      ctx.tenantId,
+      { fromIso, toIso, durationMinutes },
+    )
+    if (!result.ok) return { ok: false, error: result.error }
+    return {
+      ok:              true,
+      slots:           result.data.slots,
+      alternate_slots: result.data.alternateSlots,
+      message:         result.data.slots.length === 0
+        ? 'No open slots in that window. Try a different range.'
+        : `Found ${result.data.slots.length} open slot(s). Offer them to the caller and confirm before booking.`,
+    }
+  },
+
   async book_appointment(args, ctx) {
     const startsAtIso     = String(args['starts_at_iso']           ?? '').trim()
     const durationMinutes = Number(args['duration_minutes']        ?? 0)
@@ -390,13 +441,14 @@ export async function executeTool(
 export function buildToolGuidanceBlock(): string {
   return [
     '--- Tools available ---',
-    'You have five tools you may call during this conversation. Use them when appropriate; do not announce them.',
+    'You have six tools you may call during this conversation. Use them when appropriate; do not announce them.',
     '',
     '1. lookup_contact(query) — Search for an existing customer by phone, email, or name. Call this once early when the caller has shared a phone or email so you can recognise returning customers.',
     '2. save_contact(full_name, phone_e164, email, notes?) — Save the caller\'s contact details to the database. ALWAYS call this after collecting the caller\'s full name, phone, AND email. Required on every call. Feeds campaigns and follow-up.',
-    '3. book_appointment(starts_at_iso, duration_minutes, contact_phone_or_email, notes?, appointment_type?, timezone?) — Book on the business calendar. Only after explicit confirmation of date, time, duration, and contact info.',
-    '4. send_followup_email(contact_id_or_phone, subject, body) — Send a follow-up email from the business\'s Gmail. Only call when the caller asks for something in writing.',
-    '5. record_disposition(outcome_code, notes?) — Record the call outcome near the end of the conversation. Allowed codes: BOOKED, QUALIFIED_LEAD, NOT_QUALIFIED, INFO_REQUEST, COMPLAINT, CALLBACK_REQUESTED, WRONG_NUMBER, SPAM, NO_ACTION.',
+    '3. search_availability(from_iso, to_iso, duration_minutes) — Find open appointment slots on the business calendar. ALWAYS call this BEFORE book_appointment to confirm the slot the caller wants is actually free. Returns a list of open slots; pick the closest match to what the caller asked for and confirm verbally.',
+    '4. book_appointment(starts_at_iso, duration_minutes, contact_phone_or_email, notes?, appointment_type?, timezone?) — Book on the business calendar. Only after explicit confirmation of date, time, duration, and contact info — AND only after search_availability confirmed the slot is open.',
+    '5. send_followup_email(contact_id_or_phone, subject, body) — Send a follow-up email from the business\'s Gmail. Only call when the caller asks for something in writing.',
+    '6. record_disposition(outcome_code, notes?) — Record the call outcome near the end of the conversation. Allowed codes: BOOKED, QUALIFIED_LEAD, NOT_QUALIFIED, INFO_REQUEST, COMPLAINT, CALLBACK_REQUESTED, WRONG_NUMBER, SPAM, NO_ACTION.',
     '',
     'Rules — contact capture (mandatory):',
     '- ALWAYS collect the caller\'s full name AND phone number AND email address. All three. Never settle for one or the other.',
@@ -409,6 +461,12 @@ export function buildToolGuidanceBlock(): string {
     '- Ask ONE question per turn. Stop and wait for the caller to answer before asking the next one.',
     '- Do NOT batch multiple questions into a single breath like "What\'s your name, phone number, and email?" — that\'s rude on a phone call. Ask for the name, wait for it, ask for the phone, wait for it, ask for the email, wait for it.',
     '- Keep your turns short. Two sentences max unless you\'re explaining something complex.',
+    '',
+    'Rules — booking (CRITICAL — read carefully):',
+    '- NEVER tell the caller "I\'ve booked it" or "you\'re on the calendar" or any phrase implying success UNTIL you have just received a successful response from the book_appointment tool. The tool result is the source of truth. Your narration must follow reality, not lead it.',
+    '- Booking workflow, in order: (1) collect name/phone/email and call save_contact, (2) ask the caller their preferred date/time/duration, (3) call search_availability for a window around their preference, (4) read open slots back to the caller and let them pick one, (5) call book_appointment with the confirmed slot, (6) ONLY THEN say "you\'re booked" — and only if book_appointment returned ok: true with an appointment_id.',
+    '- If book_appointment returns an error or doesn\'t return a successful response, do not say it succeeded. Tell the caller you had trouble booking and offer to try a different time, take a message, or schedule a callback.',
+    '- If you have not called book_appointment yet, language to use INSTEAD of "booked": "let me get that scheduled for you", "let me check that slot", "I\'m looking now". These are honest holding phrases. Switch to "you\'re booked" only AFTER the tool succeeds.',
     '',
     'Rules — general:',
     '- Confirm details verbally before any write tool (book_appointment, send_followup_email). Spell back email addresses character by character if needed.',

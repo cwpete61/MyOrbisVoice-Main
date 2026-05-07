@@ -289,12 +289,23 @@ export async function handleInboundCall(ws: WebSocket) {
           userBuffer += (userBuffer ? ' ' : '') + text
           resetSilenceTimer()
           if (GOODBYE_PATTERN.test(text)) {
-            console.log('[inbound] goodbye detected — hanging up')
+            console.log('[inbound] goodbye detected (user) — hanging up')
             stopSilenceTimer()
             setTimeout(() => hangUpCall(callSid, ownerAccountSid), 2000)
           }
         } else {
           agentBuffer += (agentBuffer ? ' ' : '') + text
+          // Detect AGENT goodbyes too — added 2026-05-07 after the test
+          // call showed agent + user trading goodbyes 3+ times before the
+          // call dropped. Watching only user goodbyes left the agent
+          // farewell unhandled until the silence watchdog timed out at
+          // 60s. 3s delay gives the agent's farewell sentence time to
+          // play out cleanly before Twilio drops the channel.
+          if (GOODBYE_PATTERN.test(text)) {
+            console.log('[inbound] goodbye detected (agent) — hanging up')
+            stopSilenceTimer()
+            setTimeout(() => hangUpCall(callSid, ownerAccountSid), 3000)
+          }
         }
       },
       onTurnComplete() {

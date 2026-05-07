@@ -116,11 +116,19 @@ export function openGeminiLiveSession(
             start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',
             end_of_speech_sensitivity:   'END_SENSITIVITY_HIGH',
             prefix_padding_ms:           20,
-            silence_duration_ms:         100,  // 100ms — explicit mic_stop signal is the primary trigger
+            // 400ms — was 100ms. Bumped 2026-05-07 after the test call
+            // showed callers spelling out emails/phone numbers got their
+            // turn cut mid-spelling at 100ms. 400ms gives enough buffer
+            // for natural pauses without making the agent feel sluggish.
+            silence_duration_ms:         400,
           },
         },
-        input_audio_transcription:  {},
-        output_audio_transcription: {},
+        // Lock both transcripts to English. Was unset (multilingual auto-
+        // detect) until 2026-05-07, when the test call captured turns in
+        // German/Telugu/Chinese — Gemini's transcriber misfiring on short
+        // audio. en-US lock prevents the language hop.
+        input_audio_transcription:  { language_codes: ['en-US'] },
+        output_audio_transcription: { language_codes: ['en-US'] },
       }
 
       // Tools — only attach when the caller actually has any. Gemini accepts
