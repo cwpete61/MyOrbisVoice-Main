@@ -182,29 +182,41 @@ router.post('/tenants/:tenantId/revoke-plan', requirePlatformAdmin, async (req, 
 })
 
 // System Settings
-router.get('/system-settings', async (_req, res, next) => {
+router.get('/system-settings', async (req, res, next) => {
   try {
     const settings = await systemConfig.getSystemSettings()
-    res.json({ data: settings })
+    // Account-email associations are Super-Admin-only — they reveal which
+    // login owns each API key. Lesser admins never see them, both because
+    // the field is omitted here and because the PATCH routes that write
+    // them are gated by requirePlatformSuperAdmin.
+    const isSuper = req.user?.roleKey === 'platform_super_admin'
+    const accountEmails = isSuper ? await systemConfig.getAccountEmails() : null
+    res.json({ data: { ...settings, accountEmails } })
   } catch (err) { next(err) }
 })
+
+/** Optional account-email field accepted by every credential PATCH.
+ *  Empty string clears, undefined leaves the existing value alone. */
+const accountEmailField = z.string().email().optional().or(z.literal(''))
 
 const googleSettingsSchema = z.object({
   clientId: z.string().min(1).optional(),
   clientSecret: z.string().min(1).optional(),
   redirectUri: z.string().url().optional(),
+  accountEmail: accountEmailField,
 })
 
 router.patch('/system-settings/google', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = googleSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
-    const { clientId, clientSecret, redirectUri } = parsed.data
+    const { clientId, clientSecret, redirectUri, accountEmail } = parsed.data
     const userId = req.user!.id
 
     if (clientId) await systemConfig.setConfigValue('google_client_id', clientId, false, userId)
     if (clientSecret) await systemConfig.setConfigValue('google_client_secret', clientSecret, true, userId)
     if (redirectUri) await systemConfig.setConfigValue('google_oauth_redirect_uri', redirectUri, false, userId)
+    if (accountEmail !== undefined) await systemConfig.setAccountEmail('google', accountEmail, userId)
 
     await writeAuditLogFromRequest(req, {
       actorType: 'USER',
@@ -235,6 +247,7 @@ const stripeSettingsSchema = z.object({
   publishableKey:       stripePublishableKey.optional(),
   webhookSecret:        stripeWebhookSecret.optional(),
   webhookSecretConnect: stripeWebhookSecret.optional(),
+  accountEmail:         accountEmailField,
 })
 
 router.patch('/system-settings/stripe', requirePlatformSuperAdmin, async (req, res, next) => {
@@ -249,13 +262,14 @@ router.patch('/system-settings/stripe', requirePlatformSuperAdmin, async (req, r
       }
       throw new AppError('VALIDATION_ERROR', 'Invalid Stripe key format', 422, fieldErrors)
     }
-    const { secretKey, publishableKey, webhookSecret, webhookSecretConnect } = parsed.data
+    const { secretKey, publishableKey, webhookSecret, webhookSecretConnect, accountEmail } = parsed.data
     const userId = req.user!.id
 
     if (secretKey) await systemConfig.setConfigValue('stripe_secret_key', secretKey, true, userId)
     if (publishableKey) await systemConfig.setConfigValue('stripe_publishable_key', publishableKey, false, userId)
     if (webhookSecret) await systemConfig.setConfigValue('stripe_webhook_secret', webhookSecret, true, userId)
     if (webhookSecretConnect) await systemConfig.setConfigValue('stripe_webhook_secret_connect', webhookSecretConnect, true, userId)
+    if (accountEmail !== undefined) await systemConfig.setAccountEmail('stripe', accountEmail, userId)
 
     // Reload the Stripe client so the swap takes effect immediately, no restart
     const { bootStripeFromConfig } = await import('../lib/stripe.js')
@@ -277,18 +291,20 @@ const twilioSettingsSchema = z.object({
   accountSid: z.string().min(1).optional(),
   authToken: z.string().min(1).optional(),
   phoneNumber: z.string().min(1).optional(),
+  accountEmail: accountEmailField,
 })
 
 router.patch('/system-settings/twilio', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = twilioSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
-    const { accountSid, authToken, phoneNumber } = parsed.data
+    const { accountSid, authToken, phoneNumber, accountEmail } = parsed.data
     const userId = req.user!.id
 
     if (accountSid) await systemConfig.setConfigValue('twilio_account_sid', accountSid, false, userId)
     if (authToken) await systemConfig.setConfigValue('twilio_auth_token', authToken, true, userId)
     if (phoneNumber) await systemConfig.setConfigValue('twilio_phone_number', phoneNumber, false, userId)
+    if (accountEmail !== undefined) await systemConfig.setAccountEmail('twilio', accountEmail, userId)
 
     await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
@@ -305,17 +321,19 @@ router.patch('/system-settings/twilio', requirePlatformSuperAdmin, async (req, r
 const twilioTestSettingsSchema = z.object({
   accountSid: z.string().min(1).optional(),
   authToken:  z.string().min(1).optional(),
+  accountEmail: accountEmailField,
 })
 
 router.patch('/system-settings/twilio-test', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = twilioTestSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
-    const { accountSid, authToken } = parsed.data
+    const { accountSid, authToken, accountEmail } = parsed.data
     const userId = req.user!.id
 
     if (accountSid) await systemConfig.setConfigValue('twilio_test_account_sid', accountSid, false, userId)
     if (authToken)  await systemConfig.setConfigValue('twilio_test_auth_token', authToken, true, userId)
+    if (accountEmail !== undefined) await systemConfig.setAccountEmail('twilioTest', accountEmail, userId)
 
     await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
@@ -355,17 +373,19 @@ router.post('/test-sms', requirePlatformAdmin, async (req, res, next) => {
 const reoonSettingsSchema = z.object({
   apiKey: z.string().min(1).optional(),
   mode: z.enum(['quick', 'power']).optional(),
+  accountEmail: accountEmailField,
 })
 
 router.patch('/system-settings/reoon', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = reoonSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
-    const { apiKey, mode } = parsed.data
+    const { apiKey, mode, accountEmail } = parsed.data
     const userId = req.user!.id
 
     if (apiKey) await systemConfig.setConfigValue('reoon_api_key', apiKey, true, userId)
     if (mode)   await systemConfig.setConfigValue('reoon_mode', mode, false, userId)
+    if (accountEmail !== undefined) await systemConfig.setAccountEmail('reoon', accountEmail, userId)
 
     await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
@@ -382,17 +402,19 @@ router.patch('/system-settings/reoon', requirePlatformSuperAdmin, async (req, re
 const openaiSettingsSchema = z.object({
   apiKey: z.string().min(1).optional(),
   model:  z.string().min(1).optional(),
+  accountEmail: accountEmailField,
 })
 
 router.patch('/system-settings/openai', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = openaiSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
-    const { apiKey, model } = parsed.data
+    const { apiKey, model, accountEmail } = parsed.data
     const userId = req.user!.id
 
     if (apiKey) await systemConfig.setConfigValue('openai_api_key', apiKey, true, userId)
     if (model)  await systemConfig.setConfigValue('openai_model', model, false, userId)
+    if (accountEmail !== undefined) await systemConfig.setAccountEmail('openai', accountEmail, userId)
 
     await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
@@ -412,13 +434,14 @@ const bunnySettingsSchema = z.object({
   storagePassword: z.string().min(1).optional(),
   cdnHostname:     z.string().min(1).optional(),
   storageRegion:   z.string().min(1).optional(),
+  accountEmail:    accountEmailField,
 })
 
 router.patch('/system-settings/bunny', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = bunnySettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
-    const { apiKey, storageZone, storagePassword, cdnHostname, storageRegion } = parsed.data
+    const { apiKey, storageZone, storagePassword, cdnHostname, storageRegion, accountEmail } = parsed.data
     const userId = req.user!.id
 
     if (apiKey)          await systemConfig.setConfigValue('bunny_api_key',          apiKey,          true,  userId)
@@ -426,6 +449,7 @@ router.patch('/system-settings/bunny', requirePlatformSuperAdmin, async (req, re
     if (storagePassword) await systemConfig.setConfigValue('bunny_storage_password',  storagePassword, true,  userId)
     if (cdnHostname)     await systemConfig.setConfigValue('bunny_cdn_hostname',      cdnHostname,     false, userId)
     if (storageRegion)   await systemConfig.setConfigValue('bunny_storage_region',    storageRegion,   false, userId)
+    if (accountEmail !== undefined) await systemConfig.setAccountEmail('bunny', accountEmail, userId)
 
     await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
@@ -601,13 +625,14 @@ const smtpSettingsSchema = z.object({
   user:     z.string().min(1).optional(),
   password: z.string().min(1).optional(),
   from:     z.string().min(1).optional(),
+  accountEmail: accountEmailField,
 })
 
 router.patch('/system-settings/smtp', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = smtpSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
-    const { host, port, user, password, from } = parsed.data
+    const { host, port, user, password, from, accountEmail } = parsed.data
     const userId = req.user!.id
 
     if (host)     await systemConfig.setConfigValue('smtp_host',     host,           false, userId)
@@ -615,6 +640,7 @@ router.patch('/system-settings/smtp', requirePlatformSuperAdmin, async (req, res
     if (user)     await systemConfig.setConfigValue('smtp_user',     user,           false, userId)
     if (password) await systemConfig.setConfigValue('smtp_password', password,       true,  userId)
     if (from)     await systemConfig.setConfigValue('smtp_from',     from,           false, userId)
+    if (accountEmail !== undefined) await systemConfig.setAccountEmail('smtp', accountEmail, userId)
 
     await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
@@ -631,6 +657,7 @@ router.patch('/system-settings/smtp', requirePlatformSuperAdmin, async (req, res
 const geminiSettingsSchema = z.object({
   apiKey: z.string().min(1).optional(),
   model:  z.string().min(1).optional(),
+  accountEmail: accountEmailField,
 })
 
 router.patch('/system-settings/gemini', requirePlatformSuperAdmin, async (req, res, next) => {
@@ -641,6 +668,7 @@ router.patch('/system-settings/gemini', requirePlatformSuperAdmin, async (req, r
 
     if (parsed.data.apiKey) await systemConfig.setConfigValue('gemini_api_key', parsed.data.apiKey, true,  userId)
     if (parsed.data.model)  await systemConfig.setConfigValue('gemini_model',   parsed.data.model,  false, userId)
+    if (parsed.data.accountEmail !== undefined) await systemConfig.setAccountEmail('gemini', parsed.data.accountEmail, userId)
 
     await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
@@ -1563,6 +1591,146 @@ router.delete('/comp-codes/:id', requirePlatformAdmin, async (req, res, next) =>
       metadataJson: { tier: updated.tier, code: updated.code },
     })
     res.json({ data: updated })
+  } catch (err) { next(err) }
+})
+
+// ── Platform team management ────────────────────────────────────────────
+// Super-admin-only endpoints for granting/revoking platform-staff roles
+// (platform_admin, platform_support). Roles are assigned via a TenantMember
+// row on the platform-tenant (slug `orbis-platform`) — same pattern as the
+// initial admin user gets in prisma/seed.ts. Granting a role to an existing
+// User by email is the v1 path; full email-magic-link invite flow is a v2
+// follow-up.
+
+const PLATFORM_TENANT_SLUG = 'orbis-platform'
+const ASSIGNABLE_ROLES = ['platform_super_admin', 'platform_admin', 'platform_support'] as const
+type AssignableRole = (typeof ASSIGNABLE_ROLES)[number]
+
+async function getPlatformTenantId(): Promise<string> {
+  const tenant = await prisma.tenant.findUnique({ where: { slug: PLATFORM_TENANT_SLUG } })
+  if (!tenant) throw new AppError('INTERNAL_ERROR', 'Platform tenant not found — seed may not have run', 500)
+  return tenant.id
+}
+
+// GET /api/admin/platform-staff — list users with platform-level roles
+router.get('/platform-staff', requirePlatformSuperAdmin, async (_req, res, next) => {
+  try {
+    const platformTenantId = await getPlatformTenantId()
+    const memberships = await prisma.tenantMember.findMany({
+      where: {
+        tenantId: platformTenantId,
+        roleDefinition: { isPlatformRole: true },
+      },
+      include: {
+        user:           { select: { id: true, email: true, username: true, firstName: true, lastName: true, status: true, lastLoginAt: true, createdAt: true } },
+        roleDefinition: { select: { key: true, name: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+    const data = memberships.map(m => ({
+      userId:    m.user.id,
+      email:     m.user.email,
+      username:  m.user.username,
+      firstName: m.user.firstName,
+      lastName:  m.user.lastName,
+      status:    m.user.status,
+      roleKey:   m.roleDefinition.key,
+      roleName:  m.roleDefinition.name,
+      lastLoginAt: m.user.lastLoginAt?.toISOString() ?? null,
+      grantedAt:   m.createdAt.toISOString(),
+    }))
+    res.json({ data })
+  } catch (err) { next(err) }
+})
+
+const grantRoleSchema = z.object({
+  email:   z.string().email(),
+  roleKey: z.enum(ASSIGNABLE_ROLES),
+})
+
+// POST /api/admin/platform-staff/grant — assign a platform role to an existing user by email
+router.post('/platform-staff/grant', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const parsed = grantRoleSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input — email and roleKey required', 422)
+    const { email, roleKey } = parsed.data
+
+    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
+    if (!user) throw new AppError('NOT_FOUND', `No user with email ${email} exists. They must sign up first, then a Super Admin can grant the role.`, 404)
+
+    const role = await prisma.roleDefinition.findUnique({ where: { key: roleKey } })
+    if (!role) throw new AppError('INTERNAL_ERROR', 'Role not found in seed', 500)
+
+    const platformTenantId = await getPlatformTenantId()
+    const existing = await prisma.tenantMember.findFirst({
+      where: { userId: user.id, tenantId: platformTenantId },
+    })
+    if (existing) {
+      // Already a platform staff member — update their role instead
+      await prisma.tenantMember.update({
+        where: { id: existing.id },
+        data:  { roleDefinitionId: role.id },
+      })
+    } else {
+      await prisma.tenantMember.create({
+        data: {
+          userId:           user.id,
+          tenantId:         platformTenantId,
+          roleDefinitionId: role.id,
+        },
+      })
+    }
+
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       existing ? 'admin.platform_staff.role_changed' : 'admin.platform_staff.granted',
+      targetType:   'User',
+      targetId:     user.id,
+      metadataJson: { email: user.email, roleKey, previousRole: existing ? 'unknown' : null },
+    })
+    res.status(201).json({ data: { userId: user.id, email: user.email, roleKey } })
+  } catch (err) { next(err) }
+})
+
+// DELETE /api/admin/platform-staff/:userId — revoke a user's platform-staff role
+router.delete('/platform-staff/:userId', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const { userId } = req.params as { userId: string }
+    const requesterId = req.user!.id
+
+    const platformTenantId = await getPlatformTenantId()
+    const member = await prisma.tenantMember.findFirst({
+      where:   { userId, tenantId: platformTenantId },
+      include: { user: { select: { email: true } }, roleDefinition: { select: { key: true } } },
+    })
+    if (!member) throw new AppError('NOT_FOUND', 'User is not a platform-staff member', 404)
+
+    // Safety: don't let the last Super Admin revoke their own role.
+    if (member.roleDefinition.key === 'platform_super_admin' && userId === requesterId) {
+      const otherSupers = await prisma.tenantMember.count({
+        where: {
+          tenantId: platformTenantId,
+          roleDefinition: { key: 'platform_super_admin' },
+          userId: { not: userId },
+        },
+      })
+      if (otherSupers === 0) {
+        throw new AppError('CONFLICT', 'You are the only Super Admin. Grant another user the role before removing yourself.', 409)
+      }
+    }
+
+    await prisma.tenantMember.delete({ where: { id: member.id } })
+
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  requesterId,
+      action:       'admin.platform_staff.revoked',
+      targetType:   'User',
+      targetId:     userId,
+      metadataJson: { email: member.user.email, roleKey: member.roleDefinition.key },
+    })
+    res.json({ data: { ok: true } })
   } catch (err) { next(err) }
 })
 

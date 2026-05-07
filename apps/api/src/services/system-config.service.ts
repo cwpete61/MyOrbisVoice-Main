@@ -50,6 +50,52 @@ export async function setConfigValue(key: string, value: string, isSecret: boole
   })
 }
 
+/** Provider-name → SystemConfig key for the "account email" associated
+ *  with that integration's API credentials. Super-admin-only feature —
+ *  surfaces which login owns each set of keys so future rotations are
+ *  obvious without digging through password managers. */
+const ACCOUNT_EMAIL_KEYS = {
+  google:     'google_account_email',
+  openai:     'openai_account_email',
+  gemini:     'gemini_account_email',
+  stripe:     'stripe_account_email',
+  twilio:     'twilio_account_email',
+  twilioTest: 'twilio_test_account_email',
+  reoon:      'reoon_account_email',
+  bunny:      'bunny_account_email',
+  smtp:       'smtp_account_email',
+} as const
+
+export type AccountEmailProvider = keyof typeof ACCOUNT_EMAIL_KEYS
+
+export async function setAccountEmail(provider: AccountEmailProvider, email: string, updatedBy: string): Promise<void> {
+  const trimmed = email.trim()
+  // Empty string clears the value (idempotent — no-op if it never existed).
+  if (!trimmed) {
+    await prisma.systemConfig.deleteMany({ where: { key: ACCOUNT_EMAIL_KEYS[provider] } })
+    return
+  }
+  await setConfigValue(ACCOUNT_EMAIL_KEYS[provider], trimmed, false, updatedBy)
+}
+
+/** Bulk-fetch all account-email rows. Returns a map keyed by provider
+ *  with null for any unset providers. Only call this when the requester
+ *  is Super Admin — these strings reveal which logins own which API
+ *  keys, and shouldn't surface to lesser admins. */
+export async function getAccountEmails(): Promise<Record<AccountEmailProvider, string | null>> {
+  const keys = Object.values(ACCOUNT_EMAIL_KEYS)
+  const rows = await prisma.systemConfig.findMany({ where: { key: { in: keys } } })
+  const out: Record<AccountEmailProvider, string | null> = {
+    google: null, openai: null, gemini: null, stripe: null,
+    twilio: null, twilioTest: null, reoon: null, bunny: null, smtp: null,
+  }
+  for (const [provider, key] of Object.entries(ACCOUNT_EMAIL_KEYS)) {
+    const row = rows.find(r => r.key === key)
+    if (row) out[provider as AccountEmailProvider] = row.value
+  }
+  return out
+}
+
 const DEFAULT_REDIRECT_URI = process.env['GOOGLE_OAUTH_REDIRECT_URI']
   || process.env['API_BASE_URL']?.replace(/\/$/, '') + '/api/integrations/google/callback'
   || 'https://api.myorbisvoice.com/api/integrations/google/callback'

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { apiFetchRaw, useApi } from '@/hooks/useApi'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { Tooltip } from '@/components/Tooltip'
+import { AccountEmailField } from '@/components/AccountEmailField'
 
 interface SystemSettings {
   google: { clientId: string | null; clientSecret: boolean; redirectUri: string | null }
@@ -17,6 +18,21 @@ interface SystemSettings {
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
   gemini: { apiKey: boolean; model: string }
+  /** Per-integration account emails. Only present when the requester is
+   *  Super Admin — the API redacts this field for lesser admins. Each
+   *  field is the email associated with the underlying provider account
+   *  (e.g. which Google account owns the OAuth client). */
+  accountEmails: {
+    google:     string | null
+    openai:     string | null
+    gemini:     string | null
+    stripe:     string | null
+    twilio:     string | null
+    twilioTest: string | null
+    reoon:      string | null
+    bunny:      string | null
+    smtp:       string | null
+  } | null
 }
 
 interface TierConfig {
@@ -480,6 +496,7 @@ export default function SystemSettingsPage() {
                 {gSaving ? 'Saving…' : 'Save Google credentials'}
               </button>
             </form>
+            <AccountEmailField provider="google" currentValue={data?.accountEmails?.google} onSaved={reload} />
           </div>
 
           {/* ── OpenAI ── */}
@@ -547,6 +564,7 @@ export default function SystemSettingsPage() {
                 {oaSaving ? 'Saving…' : 'Save OpenAI credentials'}
               </button>
             </form>
+            <AccountEmailField provider="openai" currentValue={data?.accountEmails?.openai} onSaved={reload} />
           </div>
 
           {/* ── Gemini ── */}
@@ -610,6 +628,7 @@ export default function SystemSettingsPage() {
                 {gemSaving ? 'Saving…' : 'Save Gemini credentials'}
               </button>
             </form>
+            <AccountEmailField provider="gemini" currentValue={data?.accountEmails?.gemini} onSaved={reload} />
           </div>
 
           {/* ── Stripe ── */}
@@ -669,6 +688,7 @@ export default function SystemSettingsPage() {
                 {sSaving ? 'Saving…' : 'Save Stripe credentials'}
               </button>
             </form>
+            <AccountEmailField provider="stripe" currentValue={data?.accountEmails?.stripe} onSaved={reload} />
           </div>
 
           {/* ── Storage Tiers ── */}
@@ -774,6 +794,7 @@ export default function SystemSettingsPage() {
                 {rSaving ? 'Saving…' : 'Save Reoon settings'}
               </button>
             </form>
+            <AccountEmailField provider="reoon" currentValue={data?.accountEmails?.reoon} onSaved={reload} />
           </div>
 
           {/* ── Bunny.net Storage ── */}
@@ -844,6 +865,7 @@ export default function SystemSettingsPage() {
                 {bSaving ? 'Saving…' : 'Save Bunny.net credentials'}
               </button>
             </form>
+            <AccountEmailField provider="bunny" currentValue={data?.accountEmails?.bunny} onSaved={reload} />
           </div>
 
           {/* ── Recording Storage Limits ── */}
@@ -1025,6 +1047,7 @@ export default function SystemSettingsPage() {
                 {tSaving ? 'Saving…' : 'Save Twilio credentials'}
               </button>
             </form>
+            <AccountEmailField provider="twilio" currentValue={data?.accountEmails?.twilio} onSaved={reload} />
           </div>
 
           {/* ── Twilio Test Credentials ── */}
@@ -1058,6 +1081,7 @@ export default function SystemSettingsPage() {
                 {tTestSaving ? 'Saving…' : 'Save Twilio Test credentials'}
               </button>
             </form>
+            <AccountEmailField provider="twilioTest" currentValue={data?.accountEmails?.twilioTest} onSaved={reload} />
           </div>
 
           {/* ── Send Test SMS ── */}
@@ -1170,6 +1194,7 @@ export default function SystemSettingsPage() {
             {smtpSaving ? 'Saving…' : 'Save SMTP settings'}
           </button>
         </form>
+        <AccountEmailField provider="smtp" currentValue={data?.accountEmails?.smtp} onSaved={reload} />
       </div>
 
       {/* ── Overage Pricing ─────────────────────────────────────────────────── */}

@@ -452,19 +452,46 @@ Do not send app notifications from normal staff inboxes.
 
 ## RBAC
 
-Roles include:
-- Platform Super Admin
-- Platform Admin
-- Tenant Owner
-- Tenant Manager
-- Tenant Staff
-- Affiliate
+Three platform roles, ranked from most → least privileged. Each guard
+admits the named role AND every role above it.
+
+**Platform Super Admin (`platform_super_admin`)** — full access. Only
+role that can edit credentials in System Settings, view the per-
+integration account-email associations, and manage other platform
+staff (`/admin/team` page).
+
+**Platform Admin (`platform_admin`)** — tenant management, plans,
+comp codes, A2P submissions, phone numbers, storage tiers, audit
+logs. CANNOT edit secrets/credentials, view account-email
+associations, or grant/revoke platform-staff roles.
+
+**Platform Support (`platform_support`)** — read-only access plus
+impersonation (audit-logged). Designed for help-desk staff who need
+to view tenant detail, listen to recordings, view A2P submissions,
+read audit logs, and impersonate to assist locked-out tenants.
+CANNOT edit anything that costs money or changes tenant state
+(suspend/grant plan/generate comp code/purchase phone numbers/
+approve A2P/etc).
+
+**Tenant-side roles (unchanged):**
+- Tenant Owner, Tenant Manager, Tenant Staff, Affiliate (Partner)
 
 Rules:
-- Platform admins can manage tenants without seeing plaintext secrets.
-- Tenant users can manage only their own workspace according to role.
-- Affiliates must be isolated to affiliate functions.
+- Platform Admins manage tenants without seeing plaintext secrets.
+- Platform Support can view + impersonate but never write privileged
+  changes; everything they do during impersonation is audit-logged
+  with their support user ID + the impersonation session ID.
+- Only Super Admin can grant/revoke platform-staff roles; the
+  /admin/team page is gated to that role server-side.
+- Tenant users manage only their own workspace per their role.
+- Affiliates are isolated to affiliate (partner) functions.
 - Tenant cross-access is forbidden.
+
+Server-side enforcement lives in `apps/api/src/middleware/rbac.ts`
+(`requirePlatformSupport` / `requirePlatformAdmin` /
+`requirePlatformSuperAdmin`). UI mirrors the matrix via
+`getPlatformRoleTier()` in `apps/web/src/lib/auth.ts`. Both layers
+must agree; any drift means the API will reject what the UI shows.
 
 ## Secrets policy
 

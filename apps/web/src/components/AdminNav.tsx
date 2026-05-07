@@ -2,27 +2,60 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { getPlatformRoleTier, type PlatformRoleTier } from '@/lib/auth'
+
+/** Minimum role required to see a nav item. Items without this default
+ *  to 'support' (anyone with platform access). */
+type RoleTier = Exclude<PlatformRoleTier, null>
+
+interface NavItem {
+  href:    string
+  label:   string
+  icon:    React.JSX.Element
+  /** If set, hide the item unless the user's role is at least this tier. */
+  minTier?: RoleTier
+}
+
+const TIER_RANK: Record<RoleTier, number> = {
+  support:     1,
+  admin:       2,
+  super_admin: 3,
+}
+
+function userMeetsTier(userTier: RoleTier | null, requiredTier: RoleTier | undefined): boolean {
+  if (!requiredTier) return true              // no requirement = visible to everyone
+  if (!userTier) return false                 // no role at all
+  return TIER_RANK[userTier] >= TIER_RANK[requiredTier]
+}
 
 export function AdminNav() {
   const pathname = usePathname()
+  const tier = getPlatformRoleTier()
 
-  const NAV = [
+  const NAV: { section: string; items: NavItem[] }[] = [
     {
       section: 'Platform',
       items: [
         { href: '/admin', label: 'Overview', icon: <GridIcon /> },
-        { href: '/admin/system-settings', label: 'System Settings', icon: <SettingsIcon /> },
-        { href: '/admin/settings', label: 'Platform Status', icon: <StatusIcon /> },
+        // System Settings includes credential editing (Super only) — Support
+        // shouldn't see this in nav at all (the page itself 403s anyway).
+        { href: '/admin/system-settings', label: 'System Settings', icon: <SettingsIcon />, minTier: 'super_admin' },
+        { href: '/admin/team',            label: 'Team',            icon: <TeamIcon />,     minTier: 'super_admin' },
+        { href: '/admin/settings',        label: 'Platform Status', icon: <StatusIcon />,   minTier: 'admin' },
       ],
     },
     {
       section: 'Management',
       items: [
+        // Tenants list/detail are readable by Support — they need to do real work
         { href: '/admin/tenants',     label: 'Tenants',          icon: <TenantsIcon /> },
-        { href: '/admin/plans',       label: 'Plans',            icon: <PlansIcon /> },
-        { href: '/admin/pricing',     label: 'Pricing',          icon: <PricingIcon /> },
-        { href: '/admin/comp-codes',  label: 'Comp Codes',       icon: <CompCodesIcon /> },
-        { href: '/admin/partners',    label: 'Partners',         icon: <AffiliatesIcon /> },
+        // Plans / Pricing / Comp Codes / Partners are write-heavy — Admin or above
+        { href: '/admin/plans',       label: 'Plans',            icon: <PlansIcon />,       minTier: 'admin' },
+        { href: '/admin/pricing',     label: 'Pricing',          icon: <PricingIcon />,     minTier: 'admin' },
+        { href: '/admin/comp-codes',  label: 'Comp Codes',       icon: <CompCodesIcon />,   minTier: 'admin' },
+        { href: '/admin/partners',    label: 'Partners',         icon: <AffiliatesIcon />,  minTier: 'admin' },
+        // Phone Numbers / A2P have read paths Support uses; the write actions
+        // inside those pages are individually role-gated
         { href: '/admin/phone-numbers', label: 'Phone Numbers',  icon: <PhoneIcon /> },
         { href: '/admin/twilio-logs', label: 'Twilio Call Logs', icon: <CallLogsIcon /> },
         { href: '/admin/a2p',         label: 'A2P 10DLC',        icon: <A2PIcon /> },
@@ -40,13 +73,16 @@ export function AdminNav() {
 
   return (
     <div className="space-y-5">
-      {NAV.map((group) => (
+      {NAV.map((group) => {
+        const visibleItems = group.items.filter(item => userMeetsTier(tier, item.minTier))
+        if (visibleItems.length === 0) return null
+        return (
         <div key={group.section}>
           <p className="px-3 mb-1 text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>
             {group.section}
           </p>
           <div className="space-y-0.5">
-            {group.items.map((item) => {
+            {visibleItems.map((item) => {
               const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href)
               return (
                 <Link
@@ -66,8 +102,20 @@ export function AdminNav() {
             })}
           </div>
         </div>
-      ))}
+        )
+      })}
     </div>
+  )
+}
+
+function TeamIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="5" cy="6" r="2.2" />
+      <circle cx="11" cy="6" r="2.2" />
+      <path d="M1.5 13c0-2 1.6-3.5 3.5-3.5S8.5 11 8.5 13" />
+      <path d="M7.5 13c0-2 1.6-3.5 3.5-3.5S14.5 11 14.5 13" />
+    </svg>
   )
 }
 

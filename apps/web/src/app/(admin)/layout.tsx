@@ -5,6 +5,7 @@ import { AdminNav } from '@/components/AdminNav'
 import { SignOutButton } from '@/components/SignOutButton'
 import { SidebarUserBadge } from '@/components/SidebarUserBadge'
 import { IdleTimeout } from '@/components/IdleTimeout'
+import { RoleBadge } from '@/components/RoleBadge'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -53,11 +54,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         <main className="flex-1 overflow-auto flex flex-col">
-          {/* Top bar — language toggle anchored top-right */}
+          {/* Top bar — role badge + language toggle anchored top-right */}
           <div
-            className="flex items-center justify-end px-8 py-3 flex-shrink-0"
+            className="flex items-center justify-end gap-3 px-8 py-3 flex-shrink-0"
             style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-sidebar)' }}
           >
+            <RoleBadge />
             <LanguageToggle />
           </div>
           <div className="w-full px-8 py-8">
