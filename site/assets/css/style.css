@@ -3349,3 +3349,353 @@ footer.site-footer {
     left: 5%; right: 5%; width: auto; bottom: 28px;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────
+   Savings Gap chart — adapted from Claude Design "Savings Gap"
+   (2026-05-07). Vanilla CSS+JS port. 5-year cumulative cost
+   comparison: receptionist $40k/yr vs MyOrbisVoice Pro $5,964/yr.
+   Two animated polylines + a gold-hatched savings fill polygon
+   between them, with a $170,180 count-up callout. ~9.5s loop.
+   Chart geometry (in viewBox 1200×600, preserveAspectRatio="none"):
+     Plot area: x 80-1140 (w=1060), y 40-540 (h=500)
+     Y mapping: $0=540, $200K=40 (linear: y = 540 - cost/400)
+     Year x-positions: 80, 292, 504, 716, 928, 1140 (212px apart)
+     Receptionist points (cumulative, $40K/yr):
+       (80,540) (292,440) (504,340) (716,240) (928,140) (1140,40)
+     MyOrbisVoice points ($5,964/yr):
+       (80,540) (292,525) (504,510) (716,495) (928,480) (1140,465)
+   ──────────────────────────────────────────────────────────────── */
+
+.savings-stage {
+  --sv-bg:        oklch(20% 0.018 250);  /* deep navy */
+  --sv-grid:      oklch(32% 0.015 250);
+  --sv-axis:      oklch(55% 0.012 250);
+  --sv-fg:        oklch(97% 0.005 250);
+  --sv-fg-dim:    oklch(72% 0.012 250);
+  --sv-fg-faint:  oklch(50% 0.012 250);
+  --sv-receptionist:      oklch(68% 0.16 25);   /* muted red */
+  --sv-receptionist-dim:  oklch(58% 0.14 25);
+  --sv-myorbis:           oklch(78% 0.12 195);  /* teal */
+  --sv-myorbis-dim:       oklch(68% 0.10 195);
+  --sv-savings:           oklch(82% 0.13 85);   /* gold */
+  --sv-savings-fill:      oklch(82% 0.13 85 / 0.18);
+  --sv-savings-hatch:     oklch(82% 0.13 85 / 0.22);
+  --sv-mono:              "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  margin: 32px auto 0;
+  aspect-ratio: 16 / 9;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--sv-bg);
+  border: 1px solid oklch(28% 0.018 250);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  font-family: Inter, system-ui, sans-serif;
+  color: var(--sv-fg);
+  isolation: isolate;
+  text-align: left;
+}
+
+/* Subtle grid backdrop with soft vignette */
+.savings-stage::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--sv-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--sv-grid) 1px, transparent 1px);
+  background-size: 60px 60px;
+  opacity: 0.18;
+  -webkit-mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, black 40%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Top corner labels */
+.savings-stage .sv-eyebrow {
+  position: absolute;
+  top: 28px;
+  font-family: var(--sv-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sv-fg-faint);
+  z-index: 5;
+}
+.savings-stage .sv-eyebrow-l { left: 32px; }
+.savings-stage .sv-eyebrow-r { right: 32px; }
+
+/* The actual chart fills most of the stage */
+.savings-stage .sv-chart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Y-axis grid + value labels */
+.savings-stage .sv-grid-line {
+  stroke: var(--sv-grid);
+  stroke-width: 1;
+  opacity: 0;
+  transition: opacity 600ms ease-out;
+}
+.savings-stage .sv-axis-baseline {
+  stroke: var(--sv-axis);
+  stroke-width: 1.5;
+  opacity: 0;
+  transition: opacity 600ms ease-out;
+}
+.savings-stage .sv-y-label {
+  fill: var(--sv-fg-faint);
+  font-family: var(--sv-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  transition: opacity 600ms ease-out;
+}
+.savings-stage[data-step="1"] .sv-grid-line,
+.savings-stage[data-step="2"] .sv-grid-line,
+.savings-stage[data-step="3"] .sv-grid-line,
+.savings-stage[data-step="4"] .sv-grid-line,
+.savings-stage[data-step="5"] .sv-grid-line,
+.savings-stage[data-step="6"] .sv-grid-line { opacity: 1; }
+.savings-stage[data-step="1"] .sv-axis-baseline,
+.savings-stage[data-step="2"] .sv-axis-baseline,
+.savings-stage[data-step="3"] .sv-axis-baseline,
+.savings-stage[data-step="4"] .sv-axis-baseline,
+.savings-stage[data-step="5"] .sv-axis-baseline,
+.savings-stage[data-step="6"] .sv-axis-baseline { opacity: 1; }
+.savings-stage[data-step="1"] .sv-y-label,
+.savings-stage[data-step="2"] .sv-y-label,
+.savings-stage[data-step="3"] .sv-y-label,
+.savings-stage[data-step="4"] .sv-y-label,
+.savings-stage[data-step="5"] .sv-y-label,
+.savings-stage[data-step="6"] .sv-y-label { opacity: 1; }
+
+/* Year markers — staggered fade-up */
+.savings-stage .sv-year {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+}
+.savings-stage[data-step="1"] .sv-year,
+.savings-stage[data-step="2"] .sv-year,
+.savings-stage[data-step="3"] .sv-year,
+.savings-stage[data-step="4"] .sv-year,
+.savings-stage[data-step="5"] .sv-year,
+.savings-stage[data-step="6"] .sv-year {
+  opacity: 1; transform: translateY(0);
+}
+.savings-stage .sv-year-tick {
+  stroke: var(--sv-axis);
+  stroke-width: 1.5;
+}
+.savings-stage .sv-year-label {
+  fill: var(--sv-fg-dim);
+  font-family: var(--sv-mono);
+  font-size: 14px;
+  font-weight: 500;
+  text-anchor: middle;
+}
+.savings-stage[data-step="1"] .sv-year[data-y="0"] { transition-delay: 0.0s; }
+.savings-stage[data-step="1"] .sv-year[data-y="1"] { transition-delay: 0.12s; }
+.savings-stage[data-step="1"] .sv-year[data-y="2"] { transition-delay: 0.24s; }
+.savings-stage[data-step="1"] .sv-year[data-y="3"] { transition-delay: 0.36s; }
+.savings-stage[data-step="1"] .sv-year[data-y="4"] { transition-delay: 0.48s; }
+.savings-stage[data-step="1"] .sv-year[data-y="5"] { transition-delay: 0.60s; }
+
+/* Receptionist polyline — total path length ≈ 1045, use 1080 for safety */
+.savings-stage .sv-line-recept {
+  fill: none;
+  stroke: var(--sv-receptionist);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 1080;
+  stroke-dashoffset: 1080;
+  filter: drop-shadow(0 0 6px oklch(68% 0.16 25 / 0.4));
+  transition: stroke-dashoffset 1.6s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.savings-stage[data-step="2"] .sv-line-recept,
+.savings-stage[data-step="3"] .sv-line-recept,
+.savings-stage[data-step="4"] .sv-line-recept,
+.savings-stage[data-step="5"] .sv-line-recept,
+.savings-stage[data-step="6"] .sv-line-recept { stroke-dashoffset: 0; }
+.savings-stage .sv-dot-recept {
+  fill: var(--sv-bg);
+  stroke: var(--sv-receptionist);
+  stroke-width: 2.5;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+.savings-stage[data-step="3"] .sv-dot-recept,
+.savings-stage[data-step="4"] .sv-dot-recept,
+.savings-stage[data-step="5"] .sv-dot-recept,
+.savings-stage[data-step="6"] .sv-dot-recept { opacity: 1; }
+
+/* MyOrbisVoice polyline — total path length ≈ 943, use 980 */
+.savings-stage .sv-line-myorbis {
+  fill: none;
+  stroke: var(--sv-myorbis);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 980;
+  stroke-dashoffset: 980;
+  filter: drop-shadow(0 0 6px oklch(78% 0.12 195 / 0.4));
+  transition: stroke-dashoffset 1.6s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.savings-stage[data-step="3"] .sv-line-myorbis,
+.savings-stage[data-step="4"] .sv-line-myorbis,
+.savings-stage[data-step="5"] .sv-line-myorbis,
+.savings-stage[data-step="6"] .sv-line-myorbis { stroke-dashoffset: 0; }
+.savings-stage .sv-dot-myorbis {
+  fill: var(--sv-bg);
+  stroke: var(--sv-myorbis);
+  stroke-width: 2.5;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+.savings-stage[data-step="4"] .sv-dot-myorbis,
+.savings-stage[data-step="5"] .sv-dot-myorbis,
+.savings-stage[data-step="6"] .sv-dot-myorbis { opacity: 1; }
+
+/* Savings polygon — clip-path animates left-to-right reveal */
+.savings-stage .sv-fill {
+  fill: var(--sv-savings-fill);
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 1.5s cubic-bezier(0.4, 0, 0.6, 1);
+}
+.savings-stage .sv-fill-hatch {
+  fill: url(#svHatch);
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 1.5s cubic-bezier(0.4, 0, 0.6, 1);
+}
+.savings-stage[data-step="4"] .sv-fill,
+.savings-stage[data-step="5"] .sv-fill,
+.savings-stage[data-step="6"] .sv-fill,
+.savings-stage[data-step="4"] .sv-fill-hatch,
+.savings-stage[data-step="5"] .sv-fill-hatch,
+.savings-stage[data-step="6"] .sv-fill-hatch { clip-path: inset(0 0% 0 0); }
+
+/* End-of-line labels at year 5 */
+.savings-stage .sv-end-label {
+  font-family: Inter, system-ui, sans-serif;
+  opacity: 0;
+  transition: opacity 500ms ease-out 0.2s;
+}
+.savings-stage[data-step="3"] .sv-end-label-recept,
+.savings-stage[data-step="4"] .sv-end-label-recept,
+.savings-stage[data-step="5"] .sv-end-label-recept,
+.savings-stage[data-step="6"] .sv-end-label-recept { opacity: 1; }
+.savings-stage[data-step="4"] .sv-end-label-myorbis,
+.savings-stage[data-step="5"] .sv-end-label-myorbis,
+.savings-stage[data-step="6"] .sv-end-label-myorbis { opacity: 1; }
+.savings-stage .sv-end-name { font-size: 16px; font-weight: 600; }
+.savings-stage .sv-end-value {
+  font-family: var(--sv-mono);
+  font-size: 17px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.savings-stage .sv-end-label-recept .sv-end-name  { fill: var(--sv-receptionist); }
+.savings-stage .sv-end-label-recept .sv-end-value { fill: var(--sv-fg-dim); }
+.savings-stage .sv-end-label-myorbis .sv-end-name  { fill: var(--sv-myorbis); }
+.savings-stage .sv-end-label-myorbis .sv-end-value { fill: var(--sv-fg-dim); }
+
+/* Big savings callout — overlaid in the middle of the chart */
+.savings-stage .sv-callout {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  transform: translate(-50%, 0);
+  text-align: center;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}
+.savings-stage[data-step="4"] .sv-callout,
+.savings-stage[data-step="5"] .sv-callout,
+.savings-stage[data-step="6"] .sv-callout { opacity: 1; }
+.savings-stage .sv-callout-eyebrow {
+  font-family: var(--sv-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--sv-savings);
+  margin-bottom: 6px;
+  opacity: 0.9;
+}
+.savings-stage .sv-callout-value {
+  font-size: 80px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  color: var(--sv-savings);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 4px 24px oklch(82% 0.13 85 / 0.3);
+}
+
+/* Bottom tagline */
+.savings-stage .sv-footer {
+  position: absolute;
+  left: 32px; right: 32px; bottom: 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 3;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.savings-stage[data-step="5"] .sv-footer,
+.savings-stage[data-step="6"] .sv-footer { opacity: 1; transform: translateY(0); }
+.savings-stage .sv-footer-line { display: flex; align-items: center; gap: 12px; }
+.savings-stage .sv-footer-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--sv-myorbis);
+  box-shadow: 0 0 8px var(--sv-myorbis);
+}
+.savings-stage .sv-footer-text {
+  font-size: 18px; font-weight: 500;
+  color: var(--sv-fg);
+  letter-spacing: -0.005em;
+}
+.savings-stage .sv-footer-meta {
+  font-family: var(--sv-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sv-fg-faint);
+}
+
+/* Tablet: keep the 2:1 ratio but slightly tighter */
+@media (max-width: 1024px) {
+  .savings-stage { aspect-ratio: 16 / 9; }
+  .savings-stage .sv-callout-value { font-size: 64px; }
+}
+
+/* Mobile: portrait stage with stacked content */
+@media (max-width: 720px) {
+  .savings-stage {
+    aspect-ratio: 4 / 5;
+    max-width: none;
+  }
+  .savings-stage .sv-eyebrow-l,
+  .savings-stage .sv-eyebrow-r { font-size: 9px; top: 16px; }
+  .savings-stage .sv-eyebrow-l { left: 16px; }
+  .savings-stage .sv-eyebrow-r { right: 16px; }
+  .savings-stage .sv-callout-value { font-size: 48px; }
+  .savings-stage .sv-callout-eyebrow { font-size: 9px; }
+  .savings-stage .sv-footer {
+    left: 16px; right: 16px; bottom: 16px;
+    flex-direction: column; gap: 6px; align-items: flex-start;
+  }
+  .savings-stage .sv-footer-text { font-size: 14px; }
+  .savings-stage .sv-footer-meta { font-size: 9px; }
+  .savings-stage .sv-end-name  { font-size: 13px; }
+  .savings-stage .sv-end-value { font-size: 13px; }
+}

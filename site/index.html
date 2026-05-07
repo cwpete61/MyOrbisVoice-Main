@@ -1181,23 +1181,172 @@
       <p>Here's what twelve months of front-desk coverage actually costs in 2026.</p>
     </div>
 
-    <div class="roi-chart">
-      <div class="roi-bars">
-        <div class="roi-bar">
-          <div class="roi-bar-fill expensive">$40,000</div>
-          <div class="roi-bar-label"><strong>Hire a receptionist</strong><span>$20/hr × 40 hrs × 50 weeks</span></div>
-        </div>
-        <div class="roi-bar">
-          <div class="roi-bar-fill cheap">$5,964</div>
-          <div class="roi-bar-label"><strong>MyOrbisVoice Pro</strong><span>$497/mo × 12 months</span></div>
-        </div>
+    <!-- Animated 5-year cost comparison: receptionist vs MyOrbisVoice Pro.
+         Replaces the static .roi-chart (2 bars). 9.5s loop, 6 steps. -->
+    <div class="savings-stage" id="savingsStage" aria-hidden="true" data-step="0">
+      <span class="sv-eyebrow sv-eyebrow-l">MyOrbisVoice · 5-Year Cost Analysis</span>
+      <span class="sv-eyebrow sv-eyebrow-r">Cumulative · USD</span>
+
+      <svg class="sv-chart" viewBox="0 0 1200 675" preserveAspectRatio="none">
+        <defs>
+          <pattern id="svHatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <line x1="0" y1="0" x2="0" y2="8" stroke="oklch(82% 0.13 85 / 0.22)" stroke-width="1"/>
+          </pattern>
+        </defs>
+
+        <!-- Plot area: x 80-1020 (w=940), y 80-580 (h=500).
+             Right margin 1020-1180 → end-of-line labels.
+             Top margin 0-80 → corner eyebrows.
+             Bottom margin 580-675 → year ticks/labels + footer.
+             Y mapping: $0=580, $200K=80 (linear: y = 580 - cost/200000*500).
+             Year x-positions (5 evenly): 80, 268, 456, 644, 832, 1020. -->
+        <line class="sv-grid-line" x1="80" y1="80"  x2="1020" y2="80"  stroke-dasharray="4 6"/>
+        <line class="sv-grid-line" x1="80" y1="180" x2="1020" y2="180" stroke-dasharray="4 6"/>
+        <line class="sv-grid-line" x1="80" y1="280" x2="1020" y2="280" stroke-dasharray="4 6"/>
+        <line class="sv-grid-line" x1="80" y1="380" x2="1020" y2="380" stroke-dasharray="4 6"/>
+        <line class="sv-grid-line" x1="80" y1="480" x2="1020" y2="480" stroke-dasharray="4 6"/>
+        <text class="sv-y-label" x="62" y="84"  text-anchor="end">$200k</text>
+        <text class="sv-y-label" x="62" y="184" text-anchor="end">$160k</text>
+        <text class="sv-y-label" x="62" y="284" text-anchor="end">$120k</text>
+        <text class="sv-y-label" x="62" y="384" text-anchor="end">$80k</text>
+        <text class="sv-y-label" x="62" y="484" text-anchor="end">$40k</text>
+        <text class="sv-y-label" x="62" y="584" text-anchor="end">$0</text>
+        <line class="sv-axis-baseline" x1="80" y1="580" x2="1020" y2="580"/>
+
+        <!-- Year markers (X axis ticks + labels) — labels y=608 keeps them
+             clear of the footer band that starts ~y=635 in viewBox space. -->
+        <g class="sv-year" data-y="0">
+          <line class="sv-year-tick" x1="80"   y1="580" x2="80"   y2="592"/>
+          <text class="sv-year-label" x="80"   y="610">Year 0</text>
+        </g>
+        <g class="sv-year" data-y="1">
+          <line class="sv-year-tick" x1="268"  y1="580" x2="268"  y2="592"/>
+          <text class="sv-year-label" x="268"  y="610">Year 1</text>
+        </g>
+        <g class="sv-year" data-y="2">
+          <line class="sv-year-tick" x1="456"  y1="580" x2="456"  y2="592"/>
+          <text class="sv-year-label" x="456"  y="610">Year 2</text>
+        </g>
+        <g class="sv-year" data-y="3">
+          <line class="sv-year-tick" x1="644"  y1="580" x2="644"  y2="592"/>
+          <text class="sv-year-label" x="644"  y="610">Year 3</text>
+        </g>
+        <g class="sv-year" data-y="4">
+          <line class="sv-year-tick" x1="832"  y1="580" x2="832"  y2="592"/>
+          <text class="sv-year-label" x="832"  y="610">Year 4</text>
+        </g>
+        <g class="sv-year" data-y="5">
+          <line class="sv-year-tick" x1="1020" y1="580" x2="1020" y2="592"/>
+          <text class="sv-year-label" x="1020" y="610">Year 5</text>
+        </g>
+
+        <!-- Savings polygon. Top edge = receptionist line going right;
+             bottom edge = myorbis line going left (back). Closed via Z. -->
+        <path class="sv-fill"
+              d="M 80,580 L 268,480 L 456,380 L 644,280 L 832,180 L 1020,80 L 1020,505 L 832,520 L 644,535 L 456,550 L 268,565 Z"/>
+        <path class="sv-fill-hatch"
+              d="M 80,580 L 268,480 L 456,380 L 644,280 L 832,180 L 1020,80 L 1020,505 L 832,520 L 644,535 L 456,550 L 268,565 Z"/>
+
+        <!-- Receptionist polyline ($40k/yr cumulative). Line length ≈ 1065. -->
+        <polyline class="sv-line-recept"
+                  points="80,580 268,480 456,380 644,280 832,180 1020,80"/>
+        <circle class="sv-dot-recept" cx="268"  cy="480" r="5"/>
+        <circle class="sv-dot-recept" cx="456"  cy="380" r="5"/>
+        <circle class="sv-dot-recept" cx="644"  cy="280" r="5"/>
+        <circle class="sv-dot-recept" cx="832"  cy="180" r="5"/>
+        <circle class="sv-dot-recept" cx="1020" cy="80"  r="5"/>
+
+        <!-- MyOrbisVoice polyline ($5,964/yr cumulative). Line length ≈ 945. -->
+        <polyline class="sv-line-myorbis"
+                  points="80,580 268,565 456,550 644,535 832,520 1020,505"/>
+        <circle class="sv-dot-myorbis" cx="268"  cy="565" r="5"/>
+        <circle class="sv-dot-myorbis" cx="456"  cy="550" r="5"/>
+        <circle class="sv-dot-myorbis" cx="644"  cy="535" r="5"/>
+        <circle class="sv-dot-myorbis" cx="832"  cy="520" r="5"/>
+        <circle class="sv-dot-myorbis" cx="1020" cy="505" r="5"/>
+
+        <!-- End-of-line labels in the right margin, anchored to line endpoints. -->
+        <g class="sv-end-label sv-end-label-recept">
+          <text class="sv-end-name"  x="1040" y="78">Receptionist</text>
+          <text class="sv-end-value" x="1040" y="100">$200,000</text>
+        </g>
+        <g class="sv-end-label sv-end-label-myorbis">
+          <text class="sv-end-name"  x="1040" y="503">Pro</text>
+          <text class="sv-end-value" x="1040" y="525">$29,820</text>
+        </g>
+      </svg>
+
+      <!-- Big savings callout — overlaid on the chart -->
+      <div class="sv-callout">
+        <div class="sv-callout-eyebrow">Saved over 5 years</div>
+        <div class="sv-callout-value" id="svCalloutValue">$0</div>
       </div>
-      <div class="roi-savings">
-        <strong>$34,036 saved every year</strong>
-        <span>And the AI works nights, weekends, holidays, and never takes vacation.</span>
+
+      <!-- Bottom tagline -->
+      <div class="sv-footer">
+        <div class="sv-footer-line">
+          <span class="sv-footer-dot"></span>
+          <span class="sv-footer-text">Full coverage. Predictable monthly cost.</span>
+        </div>
+        <div class="sv-footer-meta">MyOrbisVoice Pro · $5,964/yr</div>
       </div>
     </div>
   </div>
+
+  <script>
+    (function () {
+      const stage = document.getElementById('savingsStage');
+      if (!stage) return;
+      const counterEl = document.getElementById('svCalloutValue');
+      // Timeline (~9.5s loop):
+      //   1: chart frame + year markers stagger in
+      //   2: receptionist line draws (red, climbs steeply)
+      //   3: myorbis line draws (teal, climbs slowly)
+      //   4: gold savings area fills L→R + count-up animates to $170,180
+      //   5: tagline fades in at the bottom
+      //   6: hold final state, then loop
+      const timeline = [
+        { step: 1, dur: 1700 },
+        { step: 2, dur: 1700 },
+        { step: 3, dur: 1700 },
+        { step: 4, dur: 1700 },
+        { step: 5, dur: 1100 },
+        { step: 6, dur: 2200 },
+        { step: 0, dur: 600  },  // brief reset
+      ];
+      function fmt(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+      function countUp(to) {
+        if (!counterEl) return;
+        const start = performance.now();
+        const dur = 1500;
+        function frame(now) {
+          const t = Math.min(1, (now - start) / dur);
+          const eased = 1 - Math.pow(1 - t, 3);
+          counterEl.textContent = fmt(to * eased);
+          if (t < 1) requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      }
+      let i = 0;
+      function tick() {
+        const frame = timeline[i % timeline.length];
+        const prev = stage.dataset.step;
+        stage.dataset.step = String(frame.step);
+        if (frame.step === 4 && prev !== '4') countUp(170180);
+        if (frame.step === 0 || (frame.step === 1 && prev === '0')) {
+          if (counterEl) counterEl.textContent = '$0';
+        }
+        i = (i + 1) % timeline.length;
+        setTimeout(tick, frame.dur);
+      }
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        stage.dataset.step = '6';
+        if (counterEl) counterEl.textContent = '$170,180';
+      } else {
+        tick();
+      }
+    })();
+  </script>
 </section>
 
 <!-- ─── 5-YEAR SAVINGS + HOURS-COVERED CHARTS ───────────────────────── -->
