@@ -435,6 +435,36 @@ export async function executeTool(
   }
 }
 
+/**
+ * Best-effort rollback for a tool call that Gemini cancelled after it had
+ * already committed a side effect. Today only book_appointment has a
+ * meaningful rollback (delete the Calendar event + mark the row CANCELED);
+ * other tools are either no-ops, idempotent, or not safely reversible
+ * (e.g. send_followup_email — once the email left, it left).
+ */
+export async function rollbackToolCall(
+  name: string,
+  result: ToolResult,
+  ctx: ToolContext,
+): Promise<void> {
+  if (name !== 'book_appointment') return
+  if (!result || result['ok'] !== true) return
+  const appointmentId = result['appointment_id']
+  if (typeof appointmentId !== 'string' || !appointmentId) return
+
+  const cancel = await callApi<{ ok: boolean; appointmentId?: string; alreadyCanceled?: boolean; error?: string }>(
+    '/api/internal/gateway/tools/cancel-appointment',
+    ctx.tenantId,
+    { appointmentId, reason: 'tool_call_cancelled_by_model' },
+  )
+  if (!cancel.ok) {
+    console.warn(`[tools] rollback book_appointment ${appointmentId} failed: ${cancel.error}`)
+    return
+  }
+  console.log(`[tools] rolled back book_appointment ${appointmentId}` +
+              (cancel.data.alreadyCanceled ? ' (already canceled)' : ''))
+}
+
 // Short, model-friendly description block injected into the system prompt so
 // the model knows when each tool is appropriate. Kept brief — full schemas
 // already give the model the parameter contracts.

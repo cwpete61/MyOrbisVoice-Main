@@ -9,7 +9,7 @@ import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 import { sendCallNotificationEmail } from './services/notify.service.js'
 import { sendToTenant as sendPushToTenant } from './services/push.service.js'
-import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool } from './services/tools.js'
+import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
 import { hangUpTwilioCall } from './lib/twilio-call-control.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
@@ -101,6 +101,11 @@ export async function handleInboundCall(ws: WebSocket) {
   // One-shot diagnostic flags — see media-event handler below
   let firstMediaLogged       = false
   let firstTrackRejectLogged = false
+  // Tool-call lifecycle tracker — keyed by Gemini's tool-call id. Lets us
+  // compensate (e.g. cancel a freshly-booked appointment) when Gemini emits
+  // a `toolCallCancellation` AFTER the API call already committed.
+  type ToolCallEntry = { name: string; cancelled: boolean; result?: ToolResult }
+  const toolCallTracker = new Map<string, ToolCallEntry>()
 
   function sendAudioToTwilio(pcm24k: Buffer) {
     if (!streamSid || ws.readyState !== 1) return
@@ -341,6 +346,13 @@ export async function handleInboundCall(ws: WebSocket) {
         // Tool round-trips happen while the line is quiet — count them as
         // activity so the silence watchdog doesn't fire mid-tool.
         resetSilenceTimer()
+        // Track this call so we can compensate if Gemini cancels it after
+        // the API has already committed a side effect (book_appointment
+        // creates real DB rows + Google Calendar events). Map entry:
+        //   { name, cancelled, result? }
+        // Cancelled before API returns → compensate after; cancelled after
+        // API returned → the cancellation handler does the compensating.
+        toolCallTracker.set(call.id, { name: call.name, cancelled: false })
         try {
           const result = await executeTool(call.name, call.args, {
             tenantId,
@@ -348,7 +360,17 @@ export async function handleInboundCall(ws: WebSocket) {
             callSid,
             ownerAccountSid,
           })
+          const tracker = toolCallTracker.get(call.id)
+          if (tracker) tracker.result = result
           gemini?.sendToolResponse(call.id, call.name, result)
+          // If the cancellation arrived during the in-flight API call, the
+          // onToolCallCancellation handler set `cancelled=true` but couldn't
+          // compensate yet (no result). Now we have one — do it.
+          if (tracker?.cancelled) {
+            await rollbackToolCall(call.name, result, {
+              tenantId, externalCallId: callSid, callSid, ownerAccountSid,
+            })
+          }
         } catch (err) {
           console.error(`[inbound] tool ${call.name} failed:`, err)
           gemini?.sendToolResponse(call.id, call.name, {
@@ -359,6 +381,27 @@ export async function handleInboundCall(ws: WebSocket) {
           // Reset again now that the response went back to Gemini — keeps
           // the timer fresh while the model formulates its next reply.
           resetSilenceTimer()
+        }
+      },
+      onToolCallCancellation(ids) {
+        // Roll back any side effect we already committed for cancelled calls.
+        // If the API call is still in flight, we mark the tracker entry
+        // cancelled and let onToolCall do the compensating once the result
+        // lands.
+        for (const id of ids) {
+          const tracker = toolCallTracker.get(id)
+          if (!tracker) {
+            // Cancellation arrived for an unknown id — nothing to do, but
+            // record it in case the tool call message is still on the wire.
+            toolCallTracker.set(id, { name: '?', cancelled: true })
+            continue
+          }
+          tracker.cancelled = true
+          if (tracker.result) {
+            rollbackToolCall(tracker.name, tracker.result, {
+              tenantId, externalCallId: callSid, callSid, ownerAccountSid,
+            }).catch(err => console.warn('[inbound] rollback failed:', err))
+          }
         }
       },
       async onClose() {

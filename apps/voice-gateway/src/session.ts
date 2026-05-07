@@ -6,7 +6,7 @@ import { openGeminiLiveSession } from './services/gemini.service.js'
 import { generateSummary } from './services/summary.service.js'
 import { persistConversation, markSessionFailed, type TranscriptEntry } from './services/conversation.service.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
-import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool } from './services/tools.js'
+import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
 
 // Message types sent from the browser widget
 type ClientMsg =
@@ -77,6 +77,9 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
 
   const transcript: TranscriptEntry[] = []
   let conversationId: string | undefined
+  // Tool-call lifecycle tracker — see inbound.ts comment for rationale.
+  type ToolCallEntry = { name: string; cancelled: boolean; result?: ToolResult }
+  const toolCallTracker = new Map<string, ToolCallEntry>()
 
   console.log('[session] opening Gemini Live session')
 
@@ -141,18 +144,47 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
       send(ws, { type: 'turn_complete' })
     },
     async onToolCall(call) {
+      // See inbound.ts for the rationale — Gemini Live can emit a
+      // toolCallCancellation after the API has already committed a side
+      // effect (most importantly: book_appointment writes a row + Google
+      // event). The widget session reuses the same compensating logic.
+      toolCallTracker.set(call.id, { name: call.name, cancelled: false })
       try {
         const result = await executeTool(call.name, call.args, {
           tenantId:       session.tenantId,
           conversationId: conversationId,
         })
+        const tracker = toolCallTracker.get(call.id)
+        if (tracker) tracker.result = result
         gemini.sendToolResponse(call.id, call.name, result)
+        if (tracker?.cancelled) {
+          await rollbackToolCall(call.name, result, {
+            tenantId:       session.tenantId,
+            conversationId: conversationId,
+          })
+        }
       } catch (err) {
         console.error(`[session] tool ${call.name} failed:`, err)
         gemini.sendToolResponse(call.id, call.name, {
           ok: false,
           error: (err as Error).message ?? 'Internal tool error',
         })
+      }
+    },
+    onToolCallCancellation(ids) {
+      for (const id of ids) {
+        const tracker = toolCallTracker.get(id)
+        if (!tracker) {
+          toolCallTracker.set(id, { name: '?', cancelled: true })
+          continue
+        }
+        tracker.cancelled = true
+        if (tracker.result) {
+          rollbackToolCall(tracker.name, tracker.result, {
+            tenantId:       session.tenantId,
+            conversationId: conversationId,
+          }).catch(err => console.warn('[session] rollback failed:', err))
+        }
       }
     },
     async onClose() {

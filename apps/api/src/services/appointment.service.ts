@@ -384,7 +384,7 @@ export async function rescheduleAppointment(tenantId: string, userId: string, ap
   return updated
 }
 
-export async function cancelAppointment(tenantId: string, userId: string, appointmentId: string) {
+export async function cancelAppointment(tenantId: string, userId: string | null, appointmentId: string) {
   const appt = await prisma.appointment.findFirst({ where: { id: appointmentId, tenantId } })
   if (!appt) throw new AppError('NOT_FOUND', 'Appointment not found', 404)
 
@@ -405,11 +405,11 @@ export async function cancelAppointment(tenantId: string, userId: string, appoin
 
   await writeAuditLog({
     tenantId,
-    actorType: 'USER',
-    actorUserId: userId,
-    action: 'appointment.canceled',
-    targetType: 'Appointment',
-    targetId: appointmentId,
+    actorType:   userId ? 'USER' : 'SYSTEM',
+    actorUserId: userId ?? undefined,
+    action:      'appointment.canceled',
+    targetType:  'Appointment',
+    targetId:    appointmentId,
   })
 
   return updated

@@ -7,7 +7,7 @@ import { generateSummary, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
 import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
-import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool } from './services/tools.js'
+import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
 import { hangUpTwilioCall } from './lib/twilio-call-control.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
@@ -42,6 +42,9 @@ export async function handleOutboundCall(ws: WebSocket) {
   let userBuffer  = ''
   let agentBuffer = ''
   let lastRole: 'user' | 'assistant' | null = null
+  // Tool-call lifecycle tracker — see inbound.ts comment for rationale.
+  type ToolCallEntry = { name: string; cancelled: boolean; result?: ToolResult }
+  const toolCallTracker = new Map<string, ToolCallEntry>()
 
   function flushBuffer(role: 'user' | 'assistant') {
     const text = role === 'user' ? userBuffer.trim() : agentBuffer.trim()
@@ -245,6 +248,9 @@ export async function handleOutboundCall(ws: WebSocket) {
       async onToolCall(call) {
         // Tool round-trips count as activity — quiet line, but model is busy.
         resetInCallSilenceTimer()
+        // See inbound.ts for rationale — Gemini can cancel a tool call whose
+        // side effect (e.g. Calendar booking) already committed.
+        toolCallTracker.set(call.id, { name: call.name, cancelled: false })
         try {
           const result = await executeTool(call.name, call.args, {
             tenantId,
@@ -252,7 +258,14 @@ export async function handleOutboundCall(ws: WebSocket) {
             callSid,
             ownerAccountSid,
           })
+          const tracker = toolCallTracker.get(call.id)
+          if (tracker) tracker.result = result
           gemini?.sendToolResponse(call.id, call.name, result)
+          if (tracker?.cancelled) {
+            await rollbackToolCall(call.name, result, {
+              tenantId, externalCallId: callSid, callSid, ownerAccountSid,
+            })
+          }
         } catch (err) {
           console.error(`[outbound] tool ${call.name} failed:`, err)
           gemini?.sendToolResponse(call.id, call.name, {
@@ -261,6 +274,21 @@ export async function handleOutboundCall(ws: WebSocket) {
           })
         } finally {
           resetInCallSilenceTimer()
+        }
+      },
+      onToolCallCancellation(ids) {
+        for (const id of ids) {
+          const tracker = toolCallTracker.get(id)
+          if (!tracker) {
+            toolCallTracker.set(id, { name: '?', cancelled: true })
+            continue
+          }
+          tracker.cancelled = true
+          if (tracker.result) {
+            rollbackToolCall(tracker.name, tracker.result, {
+              tenantId, externalCallId: callSid, callSid, ownerAccountSid,
+            }).catch(err => console.warn('[outbound] rollback failed:', err))
+          }
         }
       },
       async onClose() {

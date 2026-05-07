@@ -339,6 +339,51 @@ router.post('/internal/gateway/tools/book-appointment', async (req, res, next) =
   } catch (err) { next(err) }
 })
 
+// ---------- internal: cancel an appointment created during this session ----------
+//
+// Used to compensate when Gemini Live emits a `toolCallCancellation` for a
+// book_appointment that already committed to Postgres + Google Calendar.
+// Without this, the cancelled call leaves a phantom event the model has
+// already moved on from. The gateway invokes this with the appointmentId
+// it captured from the original book_appointment response.
+
+const cancelSchema = z.object({
+  appointmentId: z.string().min(8).max(80),
+  reason:        z.string().max(200).optional(),
+})
+
+router.post('/internal/gateway/tools/cancel-appointment', async (req, res, next) => {
+  try {
+    const tenantId = (req as any).internalTenantId as string
+    const { appointmentId, reason } = cancelSchema.parse(req.body)
+
+    // Tenant-scoped lookup so a leaked id from one tenant cannot cancel
+    // another tenant's appointment.
+    const appt = await prisma.appointment.findFirst({ where: { id: appointmentId, tenantId } })
+    if (!appt) {
+      res.json({ data: { ok: false, error: 'Appointment not found' } })
+      return
+    }
+    if (appt.status === 'CANCELED') {
+      res.json({ data: { ok: true, alreadyCanceled: true } })
+      return
+    }
+
+    await appointmentService.cancelAppointment(tenantId, null, appointmentId)
+
+    await writeAuditLog({
+      tenantId,
+      actorType:    'SYSTEM',
+      action:       'gateway.tool.book_appointment_rolled_back',
+      targetType:   'Appointment',
+      targetId:     appointmentId,
+      metadataJson: { reason: reason ?? 'tool_call_cancelled_by_model' },
+    })
+
+    res.json({ data: { ok: true, appointmentId } })
+  } catch (err) { next(err) }
+})
+
 // ---------- tool: send_followup_email ----------
 
 const emailSchema = z.object({

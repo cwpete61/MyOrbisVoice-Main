@@ -37,6 +37,12 @@ export type GeminiSessionCallbacks = {
   onTurnComplete: () => void
   onInterrupted?: () => void  // model output was cut off by user speech
   onToolCall?: (call: GeminiToolCall) => void
+  /** Gemini Live emits this when the model abandons a previously-issued tool call
+   * (typically because new caller audio invalidated the model's plan). Side
+   * effects from already-committed tool calls (e.g. a Calendar event created
+   * by a successful book_appointment) must be compensated here, otherwise
+   * we leave phantom rows that the model has moved on from. */
+  onToolCallCancellation?: (ids: string[]) => void
   onError: (err: Error) => void
   onClose: () => void
 }
@@ -203,6 +209,18 @@ export function openGeminiLiveSession(
           }
           console.log(`[gemini] tool call → ${name} (id=${id})`)
           callbacks.onToolCall({ id, name, args })
+        }
+
+        // Tool-call cancellations — Gemini Live emits this when the model
+        // abandons a previously-issued tool call. Bare-bones shape:
+        //   { toolCallCancellation: { ids: ["function-call-..."] } }
+        const cancelledIds = msg?.toolCallCancellation?.ids
+        if (Array.isArray(cancelledIds) && cancelledIds.length > 0) {
+          const ids = cancelledIds.map(String).filter(Boolean)
+          if (ids.length > 0) {
+            console.log(`[gemini] tool call cancellations: ${ids.join(', ')}`)
+            callbacks.onToolCallCancellation?.(ids)
+          }
         }
       } catch {
         // binary frame or non-JSON — ignore
