@@ -119,14 +119,25 @@ export function openGeminiLiveSession(
         realtime_input_config: {
           automatic_activity_detection: {
             disabled: false,
-            start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',
-            end_of_speech_sensitivity:   'END_SENSITIVITY_HIGH',
+            // LOW (was HIGH on 2026-05-07): the HIGH setting was treating
+            // background noise, breaths, and "uh" sounds as start-of-speech,
+            // generating garbled transcripts (Thai/Chinese chars from
+            // ambient sounds) that triggered the agent's "if garbled,
+            // re-ask" rule — making the agent repeat itself mid-conversation
+            // and feel robotic. LOW only fires on clear human speech, which
+            // is what we actually want on phone audio.
+            start_of_speech_sensitivity: 'START_SENSITIVITY_LOW',
+            // LOW + 800ms silence gives natural pause room before the agent
+            // assumes the caller is done. HIGH was cutting people off mid-
+            // thought when they paused to think.
+            end_of_speech_sensitivity:   'END_SENSITIVITY_LOW',
             prefix_padding_ms:           20,
-            // 400ms — was 100ms. Bumped 2026-05-07 after the test call
-            // showed callers spelling out emails/phone numbers got their
-            // turn cut mid-spelling at 100ms. 400ms gives enough buffer
-            // for natural pauses without making the agent feel sluggish.
-            silence_duration_ms:         400,
+            // 800ms — was 400ms. Bumped 2026-05-07 (second pass) after a
+            // test call showed the agent re-asking confirmation questions
+            // when the caller breathed or said "uh". Production telephony
+            // sweet spot is 600-1000ms. 800ms = comfortable conversational
+            // pause without making the agent feel laggy.
+            silence_duration_ms:         800,
           },
         },
         // Transcription enabled (auto-detect language). Tried locking to
