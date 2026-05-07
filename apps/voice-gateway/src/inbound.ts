@@ -167,8 +167,9 @@ export async function handleInboundCall(ws: WebSocket) {
     tenantId        = params['tenantId']        ?? ''
     channelConfigId = params['channelConfigId'] ?? ''
     callSid         = params['callSid']         ?? callSid
+    const fromNumber = params['fromNumber'] ?? ''
 
-    console.log(`[inbound] init session tenantId=${tenantId} callSid=${callSid}`)
+    console.log(`[inbound] init session tenantId=${tenantId} callSid=${callSid} from=${fromNumber || '(blocked)'}`)
 
     if (!tenantId) {
       console.error('[inbound] missing tenantId in stream params')
@@ -260,11 +261,27 @@ export async function handleInboundCall(ws: WebSocket) {
       tag:   `call-${callSid}`,
     }).catch(() => {})
 
+    // Today's date stamp helps the agent disambiguate "Friday" vs "tomorrow"
+    // when both refer to the same day. Captured server-side so the model
+    // can't drift by guessing dates from training data.
+    const todayLabel = new Date().toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    })
+
+    // Caller-ID line — the agent reads this back when collecting contact info
+    // instead of asking the caller to recite digits. Caller ID can be blocked
+    // (empty / "Anonymous"); in that case the agent falls back to asking.
+    const callerIdLine = fromNumber
+      ? `Caller ID for this call: ${fromNumber}. Read this number back to the caller when confirming contact info — do not ask them to recite their phone number unless caller ID is missing.`
+      : `Caller ID is blocked or unavailable for this call — you will need to ask the caller for their phone number.`
+
     gemini = openGeminiLiveSession(systemPrompt, {
       onReady() {
         if (agentSpeaksFirst) {
           gemini?.sendText(
             `A call has just connected to ${businessName}. ` +
+            `Today is ${todayLabel}. ` +
+            `${callerIdLine} ` +
             `You must speak immediately — do not wait for the caller. ` +
             `Open with your professional greeting now.`
           )

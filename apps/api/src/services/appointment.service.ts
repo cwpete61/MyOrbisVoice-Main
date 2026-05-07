@@ -20,17 +20,85 @@ interface TimeSlot {
   available: boolean
 }
 
+type DayHours = { open?: string; close?: string; closed?: boolean }
+type BusinessHoursMap = Record<string, DayHours>
+
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
+
+function timeOfDayInTz(ms: number, timezone: string): string {
+  return new Date(ms).toLocaleTimeString('en-US', {
+    hour:     '2-digit',
+    minute:   '2-digit',
+    hour12:   false,
+    timeZone: timezone,
+  })
+}
+
+function dayNameInTz(ms: number, timezone: string): string {
+  return new Date(ms).toLocaleDateString('en-US', {
+    weekday:  'long',
+    timeZone: timezone,
+  }).toLowerCase()
+}
+
+/**
+ * Slot must start AND end inside the business's open hours for the slot's
+ * weekday in the tenant's timezone. Closed days reject everything. If
+ * `businessHoursJson` is null or has no entry for the day, the slot is
+ * accepted (no constraint configured = "we're open"). This stops 9 AM
+ * search requests from offering 9 PM slots when nothing is on the
+ * calendar that evening — the original bug from the 2026-05-07 test call.
+ */
+function isWithinBusinessHours(
+  slotStartMs: number,
+  slotEndMs:   number,
+  hours:       BusinessHoursMap | null,
+  timezone:    string,
+): boolean {
+  if (!hours) return true
+  const dayName = dayNameInTz(slotStartMs, timezone)
+  const dayHours = hours[dayName]
+  if (!dayHours) return true
+  if (dayHours.closed) return false
+  if (!dayHours.open || !dayHours.close) return true
+
+  const startTime = timeOfDayInTz(slotStartMs, timezone)
+  const endTime   = timeOfDayInTz(slotEndMs,   timezone)
+  return startTime >= dayHours.open && endTime <= dayHours.close
+}
+
 export async function searchAvailability(tenantId: string, params: SlotSearchParams): Promise<{
   slots: TimeSlot[]
   alternateSlots: TimeSlot[]
 }> {
+  // Pull business hours once per call so we can filter slots to opening
+  // hours only. Defensive parse — anything that doesn't look like the
+  // expected day-keyed object becomes null (= no constraint applied).
+  const profile = await prisma.businessProfile.findUnique({
+    where:  { tenantId },
+    select: { businessHoursJson: true },
+  })
+  const rawHours = profile?.businessHoursJson as Record<string, unknown> | null
+  let businessHours: BusinessHoursMap | null = null
+  if (rawHours && typeof rawHours === 'object') {
+    const parsed: BusinessHoursMap = {}
+    let any = false
+    for (const day of DAY_NAMES) {
+      const v = rawHours[day]
+      if (v && typeof v === 'object') {
+        parsed[day] = v as DayHours
+        any = true
+      }
+    }
+    businessHours = any ? parsed : null
+  }
+
   const client = await getAuthenticatedGoogleClient(tenantId)
   const calendar = google.calendar({ version: 'v3', auth: client })
 
   const timeMin = new Date(params.preferredStartRange.from)
   const timeMax = new Date(params.preferredStartRange.to)
 
-  // Fetch existing events in the range
   const eventsResp = await calendar.events.list({
     calendarId: 'primary',
     timeMin: timeMin.toISOString(),
@@ -43,26 +111,28 @@ export async function searchAvailability(tenantId: string, params: SlotSearchPar
     .filter(e => e.status !== 'cancelled')
     .map(e => ({
       start: new Date(e.start?.dateTime ?? e.start?.date ?? '').getTime(),
-      end: new Date(e.end?.dateTime ?? e.end?.date ?? '').getTime(),
+      end:   new Date(e.end?.dateTime   ?? e.end?.date   ?? '').getTime(),
     }))
     .filter(b => !Number.isNaN(b.start) && !Number.isNaN(b.end))
 
-  const durationMs = params.durationMinutes * 60 * 1000
+  const durationMs  = params.durationMinutes * 60 * 1000
   const incrementMs = DEFAULT_SLOT_INCREMENT_MINUTES * 60 * 1000
 
-  const slots: TimeSlot[] = []
+  const slots:          TimeSlot[] = []
   const alternateSlots: TimeSlot[] = []
 
   let cursor = timeMin.getTime()
   while (cursor + durationMs <= timeMax.getTime()) {
     const slotEnd = cursor + durationMs
-    const isBusy = busyBlocks.some(b => cursor < b.end && slotEnd > b.start)
-    const slot: TimeSlot = {
-      startAt: new Date(cursor).toISOString(),
-      endAt: new Date(slotEnd).toISOString(),
-      available: !isBusy,
-    }
-    if (!isBusy) {
+    const isBusy  = busyBlocks.some(b => cursor < b.end && slotEnd > b.start)
+    const inHours = isWithinBusinessHours(cursor, slotEnd, businessHours, params.timezone)
+
+    if (!isBusy && inHours) {
+      const slot: TimeSlot = {
+        startAt:   new Date(cursor).toISOString(),
+        endAt:     new Date(slotEnd).toISOString(),
+        available: true,
+      }
       if (slots.length < 5) {
         slots.push(slot)
       } else if (alternateSlots.length < 3) {

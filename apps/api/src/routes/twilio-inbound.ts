@@ -41,8 +41,9 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
       greetingMode:    channel?.greetingMode ?? null,
       escalationMode:  channel?.escalationMode ?? null,
       forwardingTarget: cfg['forwardingNumber'] ?? null,
-      hoursJson:       cfg['businessHours'] ?? profile?.hoursJson ?? null,
+      hoursJson:       cfg['businessHours'] ?? profile?.businessHoursJson ?? null,
       callSid:         CallSid,
+      fromNumber:      From || undefined,
     })
   } catch (err) {
     twiml = '<Response><Say voice="alice">We are unable to take your call right now. Please try again later.</Say><Hangup/></Response>'

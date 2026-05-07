@@ -46,6 +46,7 @@ export function buildInboundTwiml(opts: {
   forwardingTarget: string | null
   hoursJson:       any
   callSid:         string
+  fromNumber?:     string  // caller-ID E.164 — read back to caller instead of asking them to recite
 }): string {
   const VoiceResponse = twilio.twiml.VoiceResponse
   const response      = new VoiceResponse()
@@ -83,6 +84,9 @@ export function buildInboundTwiml(opts: {
   stream.parameter({ name: 'tenantId',        value: opts.tenantId })
   stream.parameter({ name: 'channelConfigId', value: opts.channelConfigId })
   stream.parameter({ name: 'callSid',         value: opts.callSid })
+  if (opts.fromNumber) {
+    stream.parameter({ name: 'fromNumber',    value: opts.fromNumber })
+  }
 
   return response.toString()
 }
