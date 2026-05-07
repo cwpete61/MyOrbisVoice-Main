@@ -48,7 +48,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="assets/css/style.css?v=3fe9e628b1" />
+  <link rel="stylesheet" href="assets/css/style.css?v=c60ef2c686" />
 </head>
 <body>
 
@@ -724,43 +724,103 @@
     </div>
 
     <div class="voice-picker">
-      <div class="voice-chip">
+      <div class="voice-chip" data-voice="zephyr">
+        <button class="voice-chip-play" type="button" aria-label="Play Zephyr voice sample">
+          <svg class="play-icon" width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 2 L11 7 L3 12 Z"/></svg>
+          <svg class="pause-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="3" height="8"/><rect x="7" y="2" width="3" height="8"/></svg>
+        </button>
         <div class="voice-chip-name">Zephyr</div>
         <div class="voice-chip-tone">Bright &amp; clear</div>
         <span class="voice-chip-tag">Female</span>
       </div>
-      <div class="voice-chip">
+      <div class="voice-chip" data-voice="despina">
+        <button class="voice-chip-play" type="button" aria-label="Play Despina voice sample">
+          <svg class="play-icon" width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 2 L11 7 L3 12 Z"/></svg>
+          <svg class="pause-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="3" height="8"/><rect x="7" y="2" width="3" height="8"/></svg>
+        </button>
         <div class="voice-chip-name">Despina</div>
         <div class="voice-chip-tone">Smooth &amp; polished</div>
         <span class="voice-chip-tag">Female</span>
       </div>
-      <div class="voice-chip">
+      <div class="voice-chip" data-voice="aoede">
+        <button class="voice-chip-play" type="button" aria-label="Play Aoede voice sample">
+          <svg class="play-icon" width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 2 L11 7 L3 12 Z"/></svg>
+          <svg class="pause-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="3" height="8"/><rect x="7" y="2" width="3" height="8"/></svg>
+        </button>
         <div class="voice-chip-name">Aoede</div>
         <div class="voice-chip-tone">Warm &amp; breezy</div>
         <span class="voice-chip-tag">Female</span>
       </div>
-      <div class="voice-chip">
+      <div class="voice-chip" data-voice="charon">
+        <button class="voice-chip-play" type="button" aria-label="Play Charon voice sample">
+          <svg class="play-icon" width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 2 L11 7 L3 12 Z"/></svg>
+          <svg class="pause-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="3" height="8"/><rect x="7" y="2" width="3" height="8"/></svg>
+        </button>
         <div class="voice-chip-name">Charon</div>
         <div class="voice-chip-tone">Deep &amp; authoritative</div>
         <span class="voice-chip-tag">Male</span>
       </div>
-      <div class="voice-chip" style="border-color: var(--teal-3);">
+      <div class="voice-chip" data-voice="fenrir" style="border-color: var(--teal-3);">
+        <button class="voice-chip-play" type="button" aria-label="Play Fenrir voice sample">
+          <svg class="play-icon" width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 2 L11 7 L3 12 Z"/></svg>
+          <svg class="pause-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="3" height="8"/><rect x="7" y="2" width="3" height="8"/></svg>
+        </button>
         <div class="voice-chip-name">Fenrir</div>
         <div class="voice-chip-tone">Warm &amp; approachable</div>
         <span class="voice-chip-tag" style="background: var(--teal-3); color: white;">Default</span>
       </div>
-      <div class="voice-chip">
+      <div class="voice-chip" data-voice="puck">
+        <button class="voice-chip-play" type="button" aria-label="Play Puck voice sample">
+          <svg class="play-icon" width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 2 L11 7 L3 12 Z"/></svg>
+          <svg class="pause-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="3" height="8"/><rect x="7" y="2" width="3" height="8"/></svg>
+        </button>
         <div class="voice-chip-name">Puck</div>
         <div class="voice-chip-tone">Upbeat &amp; conversational</div>
         <span class="voice-chip-tag">Male</span>
       </div>
-      <div class="voice-chip">
+      <div class="voice-chip" data-voice="sulafat">
+        <button class="voice-chip-play" type="button" aria-label="Play Sulafat voice sample">
+          <svg class="play-icon" width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 2 L11 7 L3 12 Z"/></svg>
+          <svg class="pause-icon" width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="3" height="8"/><rect x="7" y="2" width="3" height="8"/></svg>
+        </button>
         <div class="voice-chip-name">Sulafat</div>
         <div class="voice-chip-tone">Warm &amp; even</div>
         <span class="voice-chip-tag">Neutral</span>
       </div>
     </div>
   </div>
+
+  <script>
+    (function () {
+      // Single shared <audio> instance — only one voice plays at a time.
+      const audio = new Audio();
+      let currentBtn = null;
+      function stopAll() {
+        audio.pause();
+        audio.currentTime = 0;
+        if (currentBtn) currentBtn.classList.remove('is-playing');
+        currentBtn = null;
+      }
+      audio.addEventListener('ended', stopAll);
+      audio.addEventListener('error', stopAll);
+
+      document.querySelectorAll('.voice-chip[data-voice]').forEach((chip) => {
+        const voice = chip.getAttribute('data-voice');
+        const btn = chip.querySelector('.voice-chip-play');
+        if (!btn || !voice) return;
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          // Toggle off if already playing this voice
+          if (currentBtn === btn) { stopAll(); return; }
+          stopAll();
+          currentBtn = btn;
+          btn.classList.add('is-playing');
+          audio.src = 'assets/voice-samples/' + voice + '.mp3';
+          audio.play().catch(() => stopAll());
+        });
+      });
+    })();
+  </script>
 </section>
 
 <!-- ─── 7 AGENT ROLES ───────────────────────────────────────────────── -->

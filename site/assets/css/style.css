@@ -908,13 +908,25 @@ footer.site-footer {
 }
 
 /* ── Voice picker (7 voice options) ─────────────────────────────── */
+/* Flex layout with centered wrap so the 7th card on a second row
+   sits centered instead of dangling on the left. Each chip has a
+   fixed-ish width so they line up cleanly across breakpoints. */
 .voice-picker {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
 }
 .voice-chip {
   background: white; border: 1px solid var(--border); border-radius: var(--radius);
   padding: 16px; transition: var(--transition);
   cursor: default;
+  flex: 0 1 200px;
+  min-width: 180px;
+  max-width: 220px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 .voice-chip:hover { border-color: var(--teal-3); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .voice-chip-name { font-size: 1rem; font-weight: 700; color: var(--teal-6); margin-bottom: 4px; }
@@ -924,6 +936,53 @@ footer.site-footer {
   padding: 2px 8px; border-radius: 999px;
   font-size: 0.7rem; font-weight: 600;
   background: var(--bg-tinted); color: var(--teal-5);
+  align-self: flex-start;
+}
+
+/* Play button — appears in the top-right of each voice chip.
+   Uses CSS for both the idle (▶︎) and playing (■) states; the active
+   state is toggled by a `.is-playing` class added/removed in JS. */
+.voice-chip-play {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--teal-3);
+  background: var(--bg-tinted);
+  color: var(--teal-6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 200ms, transform 200ms, border-color 200ms;
+  padding: 0;
+}
+.voice-chip-play:hover {
+  background: var(--teal-3);
+  color: #fff;
+  transform: scale(1.06);
+}
+.voice-chip-play:focus-visible {
+  outline: 2px solid var(--teal-3);
+  outline-offset: 2px;
+}
+.voice-chip-play .play-icon { display: block; }
+.voice-chip-play .pause-icon { display: none; }
+.voice-chip-play.is-playing {
+  background: var(--teal-3);
+  color: #fff;
+  animation: voice-chip-play-pulse 1.4s ease-in-out infinite;
+}
+.voice-chip-play.is-playing .play-icon { display: none; }
+.voice-chip-play.is-playing .pause-icon { display: block; }
+@keyframes voice-chip-play-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(26, 152, 152, 0.45); }
+  50%      { box-shadow: 0 0 0 8px rgba(26, 152, 152, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-chip-play.is-playing { animation: none; }
 }
 
 /* ── Conversion funnel ──────────────────────────────────────────── */
