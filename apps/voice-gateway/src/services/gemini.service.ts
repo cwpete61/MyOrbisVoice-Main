@@ -119,24 +119,31 @@ export function openGeminiLiveSession(
         realtime_input_config: {
           automatic_activity_detection: {
             disabled: false,
-            // LOW (was HIGH on 2026-05-07): the HIGH setting was treating
-            // background noise, breaths, and "uh" sounds as start-of-speech,
-            // generating garbled transcripts (Thai/Chinese chars from
-            // ambient sounds) that triggered the agent's "if garbled,
-            // re-ask" rule — making the agent repeat itself mid-conversation
-            // and feel robotic. LOW only fires on clear human speech, which
-            // is what we actually want on phone audio.
-            start_of_speech_sensitivity: 'START_SENSITIVITY_LOW',
-            // LOW + 800ms silence gives natural pause room before the agent
-            // assumes the caller is done. HIGH was cutting people off mid-
-            // thought when they paused to think.
+            // HIGH is REQUIRED on telephony audio. Phone audio is 8kHz
+            // μ-law — already attenuated and compressed. We tried LOW
+            // briefly on 2026-05-07 to suppress noise-triggered re-asks
+            // (the "agent reset" symptom), but it broke calls outright:
+            // Gemini's VAD stopped registering most caller speech as
+            // utterances and the agent appeared deaf. Two test calls
+            // (CAc06c900462d35d5dc1129a2a4e8b4708,
+            //  CAd0e51ac919e85fc5234a3b935738b88a) had callers say
+            // verbatim "Yes, I was speaking you didn't answer" and
+            // "Are you working?" — confirming Gemini wasn't seeing
+            // their audio as speech. Reverted to HIGH; the noise issue
+            // is now mitigated at the prompt layer (softer "if garbled,
+            // re-ask" rule) instead of at the VAD layer.
+            start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',
+            // LOW + 800ms silence gives natural pause room before the
+            // agent assumes the caller is done. HIGH end-sensitivity
+            // was cutting people off mid-thought when they paused to
+            // think — that part of the 2026-05-07 tuning was correct
+            // and stays.
             end_of_speech_sensitivity:   'END_SENSITIVITY_LOW',
             prefix_padding_ms:           20,
-            // 800ms — was 400ms. Bumped 2026-05-07 (second pass) after a
-            // test call showed the agent re-asking confirmation questions
-            // when the caller breathed or said "uh". Production telephony
-            // sweet spot is 600-1000ms. 800ms = comfortable conversational
-            // pause without making the agent feel laggy.
+            // 800ms — production telephony sweet spot is 600-1000ms.
+            // Long enough that natural breath pauses don't trigger
+            // end-of-turn; short enough that the agent doesn't feel
+            // laggy.
             silence_duration_ms:         800,
           },
         },
