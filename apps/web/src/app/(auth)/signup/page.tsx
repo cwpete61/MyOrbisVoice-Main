@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { apiSignup, apiCreateCheckoutSession } from '@/lib/api'
 import { setTokens } from '@/lib/auth'
 import { PasswordInput } from '@/components/PasswordInput'
+import { PasswordRulesChecklist } from '@/components/PasswordRulesChecklist'
+import { isPasswordValid } from '@/lib/passwordRules'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -57,7 +59,7 @@ function SignupForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (password.length < 8) { setError(t('auth.signup.passwordTooShort')); return }
+    if (!isPasswordValid(password)) { setError(t('auth.signup.passwordTooWeak')); return }
     setLoading(true)
     try {
       const result = await apiSignup(username, email, password, businessName, refCode, planCode, locale)
@@ -207,6 +209,7 @@ function SignupForm() {
               className="input"
               placeholder={t('auth.signup.passwordPlaceholder')}
             />
+            <PasswordRulesChecklist value={password} />
           </div>
           <button type="submit" disabled={loading} className="btn-primary w-full mt-1">
             {loading

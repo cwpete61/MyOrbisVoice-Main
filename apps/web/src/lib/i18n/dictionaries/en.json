@@ -231,8 +231,9 @@
       "emailLabel": "Email address",
       "emailPlaceholder": "you@yourbusiness.com",
       "passwordLabel": "Password",
-      "passwordPlaceholder": "At least 8 characters",
+      "passwordPlaceholder": "8+ chars, capital, number, symbol",
       "passwordTooShort": "Password must be at least 8 characters.",
+      "passwordTooWeak": "Password must include at least 8 characters, one capital letter, one number, and one symbol.",
       "submit": "Create account",
       "submitting": "Creating account…",
       "submitError": "Sign up failed. Please try again.",
@@ -3025,6 +3026,12 @@
       "bunnyStorageZone": "The Storage Zone Name from bunny.net dashboard → Storage. This is the internal name (e.g. `orbisvoice`), NOT the CDN hostname. Used in the upload URL path. If you rename the zone in Bunny, update here AND ensure the CDN pull zone still points at the right storage zone.",
       "bunnyCdnHostname": "The Pull Zone hostname from bunny.net → CDN → Pull Zones (e.g. `OrbisVoice.b-cdn.net`). DIFFERENT from the storage zone name above. Used to build public CDN URLs for recordings + transcripts. The pull zone MUST be linked to the storage zone in Bunny dashboard, otherwise CDN URLs return 404 and we fall back to API-proxied audio."
     }
+  },
+  "passwordRules": {
+    "length":  "At least 8 characters",
+    "capital": "One capital letter (A-Z)",
+    "number":  "One number (0-9)",
+    "symbol":  "One symbol (e.g. ! @ # $ %)"
   },
   "marketingResources": {
     "title":    "Marketing Resources",

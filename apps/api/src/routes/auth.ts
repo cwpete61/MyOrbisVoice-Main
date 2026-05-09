@@ -4,13 +4,14 @@ import { authenticate } from '../middleware/authenticate.js'
 import * as authService from '../services/auth.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { writeAuditLogFromRequest } from '../lib/audit.js'
+import { passwordSchema } from '../lib/password-rules.js'
 
 const router: IRouter = Router()
 
 const signupSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters').max(30).regex(/^[a-zA-Z0-9_]+$/, 'Username may only contain letters, numbers, and underscores'),
   email: z.string().email(),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: passwordSchema,
   businessName: z.string().min(2, 'Business name must be at least 2 characters'),
   selectedPlanCode: z.string().optional(),
   affiliateCode: z.string().optional(),
@@ -20,7 +21,7 @@ const signupSchema = z.object({
 const affiliateSignupSchema = z.object({
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, 'Username may only contain letters, numbers, and underscores'),
   email: z.string().email(),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: passwordSchema,
   firstName: z.string().optional(),
   lastName: z.string().optional(),
 })
@@ -148,7 +149,7 @@ router.patch('/me', authenticate, async (req, res, next) => {
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
-  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  newPassword: passwordSchema,
 })
 
 router.post('/me/change-password', authenticate, async (req, res, next) => {
@@ -215,7 +216,7 @@ router.post('/forgot-password', async (req, res, next) => {
 
 const resetPasswordSchema = z.object({
   token:       z.string().min(1),
-  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  newPassword: passwordSchema,
 })
 
 router.post('/reset-password', async (req, res, next) => {

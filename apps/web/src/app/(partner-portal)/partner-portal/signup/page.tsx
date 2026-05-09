@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { apiAffiliateSignup } from '@/lib/api'
 import { setTokens } from '@/lib/auth'
 import { PasswordInput } from '@/components/PasswordInput'
+import { PasswordRulesChecklist } from '@/components/PasswordRulesChecklist'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -117,6 +118,7 @@ export default function AffiliateSignupPage() {
                 className="input"
                 placeholder={t('partnerSignup.passwordPlaceholder')}
               />
+              <PasswordRulesChecklist value={form.password} />
             </div>
 
             <div className="pt-1">

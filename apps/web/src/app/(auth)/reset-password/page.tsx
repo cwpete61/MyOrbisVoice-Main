@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { apiResetPassword } from '@/lib/api'
 import { PasswordInput } from '@/components/PasswordInput'
+import { PasswordRulesChecklist } from '@/components/PasswordRulesChecklist'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -117,6 +118,7 @@ function ResetPasswordInner() {
                   placeholder={t('auth.reset.newPasswordPlaceholder')}
                   minLength={8}
                 />
+                <PasswordRulesChecklist value={newPw} />
               </div>
               <div>
                 <label className="label">{t('auth.reset.confirmPasswordLabel')}</label>

@@ -231,8 +231,9 @@
       "emailLabel": "Correo electrónico",
       "emailPlaceholder": "tu@tunegocio.com",
       "passwordLabel": "Contraseña",
-      "passwordPlaceholder": "Al menos 8 caracteres",
+      "passwordPlaceholder": "8+ caracteres, mayúscula, número, símbolo",
       "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
+      "passwordTooWeak": "La contraseña debe incluir al menos 8 caracteres, una letra mayúscula, un número y un símbolo.",
       "submit": "Crear cuenta",
       "submitting": "Creando cuenta…",
       "submitError": "El registro falló. Inténtalo de nuevo.",
@@ -3025,6 +3026,12 @@
       "bunnyStorageZone": "El Storage Zone Name del panel bunny.net → Storage. Este es el nombre interno (p. ej. `orbisvoice`), NO el hostname del CDN. Se usa en la ruta de la URL de subida. Si renombras la zona en Bunny, actualízala aquí Y asegúrate de que la pull zone del CDN siga apuntando a la storage zone correcta.",
       "bunnyCdnHostname": "El hostname de la Pull Zone del panel bunny.net → CDN → Pull Zones (p. ej. `OrbisVoice.b-cdn.net`). DIFERENTE del nombre de la storage zone de arriba. Se usa para construir las URLs públicas del CDN para grabaciones + transcripciones. La pull zone DEBE estar enlazada a la storage zone en el panel de Bunny, de lo contrario las URLs del CDN devuelven 404 y caemos al audio por API."
     }
+  },
+  "passwordRules": {
+    "length":  "Al menos 8 caracteres",
+    "capital": "Una letra mayúscula (A-Z)",
+    "number":  "Un número (0-9)",
+    "symbol":  "Un símbolo (ej. ! @ # $ %)"
   },
   "marketingResources": {
     "title":    "Recursos de marketing",
