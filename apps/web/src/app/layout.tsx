@@ -37,11 +37,34 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const h = await headers()
   const initialLocale = detectLocaleFromAcceptLanguage(h.get('accept-language'))
 
+  // Inline pre-hydration theme bootstrap. Runs before React mounts so the
+  // theme class is correct on the first paint — no dark→light flash for users
+  // whose OS is in light mode or who have a stored 'light' preference.
+  // Precedence here mirrors ThemeProvider exactly:
+  //   localStorage va_theme → prefers-color-scheme → 'dark' fallback.
+  const themeBootstrap = `
+    (function() {
+      try {
+        var stored = localStorage.getItem('va_theme');
+        var t = (stored === 'light' || stored === 'dark')
+          ? stored
+          : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.classList.remove('dark', 'light');
+        document.documentElement.classList.add(t);
+      } catch (e) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  `
+
   return (
-    // Default class is "dark" — ThemeProvider replaces it on mount if the user has a stored preference.
-    // lang attribute mirrors the server-side Accept-Language detection; client hydration
-    // refines it from localStorage cache if present.
-    <html lang={initialLocale} className="dark" suppressHydrationWarning>
+    // className left off — themeBootstrap script populates it before paint.
+    // lang attribute mirrors the server-side Accept-Language detection; client
+    // hydration refines locale from localStorage cache if present (see I18nProvider).
+    <html lang={initialLocale} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
       <body style={{ background: 'var(--surface-app)', color: 'var(--text-primary)' }} className="antialiased">
         <ThemeProvider>
           <I18nProvider initialLocale={initialLocale}>{children}</I18nProvider>

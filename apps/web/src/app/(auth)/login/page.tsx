@@ -8,6 +8,7 @@ import { setTokens, clearTokens, isPlatformAdmin, getTokenPayload } from '@/lib/
 import { PasswordInput } from '@/components/PasswordInput'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -74,8 +75,9 @@ export default function LoginPage() {
       className="min-h-screen flex items-center justify-center px-4 py-12 relative"
       style={{ background: 'var(--surface-app)' }}
     >
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 flex items-center gap-2">
         <LanguageToggle />
+        <ThemeToggle />
       </div>
       <div
         className="w-full max-w-md rounded-2xl p-8"

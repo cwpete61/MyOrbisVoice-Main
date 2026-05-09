@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { clearTokens } from '@/lib/auth'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { ContactBlock } from '@/components/ContactBlock'
 import { IdleTimeout } from '@/components/IdleTimeout'
 
@@ -118,12 +119,13 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
 
       {/* Main */}
       <main className="flex-1 overflow-auto flex flex-col">
-        {/* Top bar — language toggle anchored top-right */}
+        {/* Top bar — language + theme toggles anchored top-right */}
         <div
-          className="flex items-center justify-end px-8 py-3 flex-shrink-0"
+          className="flex items-center justify-end gap-2 px-8 py-3 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-app)' }}
         >
           <LanguageToggle />
+          <ThemeToggle />
         </div>
         <div className="max-w-4xl mx-auto w-full px-8 py-8 flex-1">
           {children}

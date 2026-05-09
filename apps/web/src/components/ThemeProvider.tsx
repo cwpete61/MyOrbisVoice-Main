@@ -22,8 +22,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('va_theme') as Theme | null
-    // Default to dark — matches the product's intended dark-first experience
-    const initial = stored ?? 'dark'
+    // Precedence: explicit user choice (localStorage) → OS preference
+    // (prefers-color-scheme) → 'dark' fallback. Honoring the OS preference on
+    // first visit means a Mac user in light mode sees a light UI by default
+    // instead of being slammed with a dark surface they didn't ask for.
+    let initial: Theme
+    if (stored === 'light' || stored === 'dark') {
+      initial = stored
+    } else if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: light)').matches) {
+      initial = 'light'
+    } else {
+      initial = 'dark'
+    }
     setTheme(initial)
     applyTheme(initial)
   }, [])

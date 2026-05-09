@@ -8,6 +8,7 @@ import { setTokens } from '@/lib/auth'
 import { PasswordInput } from '@/components/PasswordInput'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 function getReferralCookie(): string | undefined {
   if (typeof document === 'undefined') return undefined
@@ -94,8 +95,9 @@ function SignupForm() {
       className="min-h-screen flex items-center justify-center px-4 py-12 relative"
       style={{ background: 'var(--surface-app)' }}
     >
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 flex items-center gap-2">
         <LanguageToggle />
+        <ThemeToggle />
       </div>
       <Suspense fallback={null}>
         <URLParamsCapture
