@@ -766,6 +766,8 @@ docker exec umoja-postgres pg_dump -U voiceautomation -d voiceautomation -F c \
 | Prisma pushed to api only | Gateway crashes on new models | Script pushes to BOTH containers |
 | Shell `$` in psql command | bcrypt hash corrupted silently | Always write SQL to a file, use `docker cp` + `psql -f` |
 | `apiFetch` strips `meta` | Paginated data silently empty | API must embed everything inside `{ data: { items, total } }` |
+| Partial `.next/` sync (web) | Prod runtime manifest stale; missing chunks return 404; `clientModules undefined` 500s | **Wipe FULL `/app/apps/web/.next/` before injection, not just `static/`. Inject via tar-pipe (`tar -cz \| ssh \| docker exec tar -xz`), NOT `docker cp .next/. container:.next/`** — the dot-glob silently drops files. Two prod incidents on 2026-05-09 traced here. Hardened in deploy.sh `step_web()` plus a post-sync sanity check on `BUILD_ID` + `_not-found/page.js` + `static/<BUILD_ID>/_buildManifest.js`. |
+| `redirect()` inside server component + async layout | 500 with `Cannot read properties of undefined (reading 'clientModules')` | Do redirects at the routing layer in `next.config.mjs` `redirects()`, not inside an `app/page.tsx` that returns `redirect(...)`. Next.js 14 RSC bug — see fix(web) commit b81d7c4. |
 
 ---
 

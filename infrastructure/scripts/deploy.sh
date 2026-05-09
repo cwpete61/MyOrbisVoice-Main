@@ -185,15 +185,51 @@ step_web() {
     fail "Web build failed — fix TypeScript errors before deploying"
   fi
   ensure_deps myorbisvoice-web apps/web
-  rsync -az --delete "$REPO_ROOT/apps/web/.next/" "$SERVER:$REMOTE/apps/web/.next/"
   # public/ contains static assets served at the root path (sw.js, favicon,
   # help-screenshots/, etc.). Next.js serves these from /app/apps/web/public/
   # — they aren't part of the .next/ build output, so we have to sync them
   # separately.
   rsync -az --delete "$REPO_ROOT/apps/web/public/" "$SERVER:$REMOTE/apps/web/public/"
-  # CRITICAL: wipe stale static chunks before injecting — old chunk hashes cause client crashes
-  ssh "$SERVER" "docker exec myorbisvoice-web sh -c 'rm -rf /app/apps/web/.next/static'"
-  ssh "$SERVER" "docker cp $REMOTE/apps/web/.next/. myorbisvoice-web:/app/apps/web/.next/ && docker exec myorbisvoice-web mkdir -p /app/apps/web/public && docker cp $REMOTE/apps/web/public/. myorbisvoice-web:/app/apps/web/public/"
+  # CRITICAL: wipe the FULL .next/ on the container before injecting (not just
+  # static/). Two prod incidents on 2026-05-09 traced back to partial sync:
+  # (1) runtime _buildManifest.js had no chunk references because new static
+  # was injected over an old server/ — the on-disk chunks existed but were
+  # invisible to the runtime; (2) `docker cp .next/. container:.next/` glob
+  # silently dropped page.js files for the root route, surfacing as a 500 on
+  # `/`. Both fixed by full nuke + bit-for-bit tar-pipe injection. Don't
+  # regress to partial-wipe + dot-glob cp without re-reading the postmortem
+  # in CLAUDE.md "Known Deploy Pitfalls".
+  ssh "$SERVER" "docker exec myorbisvoice-web rm -rf /app/apps/web/.next" || fail "wipe of .next/ on web container failed"
+  tar -czf - -C "$REPO_ROOT/apps/web" .next | ssh "$SERVER" "docker exec -i myorbisvoice-web tar -xzf - -C /app/apps/web" \
+    || fail "tar-pipe of .next/ to web container failed"
+  ssh "$SERVER" "docker exec myorbisvoice-web mkdir -p /app/apps/web/public && docker cp $REMOTE/apps/web/public/. myorbisvoice-web:/app/apps/web/public/" \
+    || fail "public/ sync to web container failed"
+  # Sanity check: required files must exist after sync. Fail fast if they
+  # don't — that way we never silently ship a half-broken web container
+  # like 2026-05-09. Files chosen here are UNIVERSAL — Next.js produces
+  # them on every build regardless of which routes the app defines, so the
+  # check stays valid as the route tree evolves.
+  #
+  # The two specific failure modes we're guarding against:
+  #   • Bug 1 (manifest corruption): runtime _buildManifest.js empty / out
+  #     of sync with on-disk chunks, so the runtime can't find any chunks.
+  #     Read BUILD_ID, then derive the path to that build's manifest.
+  #   • Bug 2 (silent file drop): `docker cp .next/. container:.next/` glob
+  #     dropping random server-side files. The _not-found/page.js bundle is
+  #     always present on every build and was empirically affected by the
+  #     same dot-glob bug.
+  BUILD_ID=$(ssh "$SERVER" "docker exec myorbisvoice-web cat /app/apps/web/.next/BUILD_ID 2>/dev/null") \
+    || fail "post-sync sanity: BUILD_ID missing on web container"
+  if [[ -z "$BUILD_ID" ]]; then fail "post-sync sanity: BUILD_ID empty on web container"; fi
+  for required in \
+    "/app/apps/web/.next/server/app/_not-found/page.js" \
+    "/app/apps/web/.next/server/app/_not-found/page_client-reference-manifest.js" \
+    "/app/apps/web/.next/static/$BUILD_ID/_buildManifest.js"
+  do
+    ssh "$SERVER" "docker exec myorbisvoice-web test -f $required" \
+      || fail "post-sync sanity: required file missing on web container: $required"
+  done
+  ok "Web .next/ + public/ injected (full wipe + tar-pipe + post-sync sanity)"
   # Commit the cp'd state AND fix the image's CMD (the original myorbisvoice-web:latest had `tail -f /dev/null` baked in
   # as a placeholder — we override via compose's `command:` directive but if anyone removes that override,
   # web silently won't start. Bake the correct CMD into the image so it's self-sufficient).
