@@ -318,26 +318,52 @@ function VideoCard(props: {
       className="rounded-xl overflow-hidden flex flex-col"
       style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', opacity: isComing ? 0.7 : 1 }}
     >
-      {/* Thumbnail surface */}
+      {/* Thumbnail surface — for live videos we render a muted <video> with
+          preload="metadata" so the browser fetches just enough to display
+          the first frame as a thumbnail. Click anywhere on the surface
+          opens the full-bleed modal player. For coming-soon cards the
+          gradient + lock icon remain. */}
       <div
-        className="relative flex items-center justify-center"
+        onClick={isComing ? undefined : onWatch}
+        className="relative flex items-center justify-center overflow-hidden"
         style={{
           aspectRatio: video.aspectRatio === 'horizontal' ? '16 / 9' : '9 / 16',
           background:  'linear-gradient(135deg, oklch(40% 0.10 193) 0%, oklch(20% 0.05 193) 100%)',
           maxHeight:   video.aspectRatio === 'horizontal' ? 200 : 320,
+          cursor:      isComing ? 'default' : 'pointer',
         }}
       >
-        {/* Play icon when available, lock when not */}
+        {!isComing && mp4Url && (
+          <video
+            src={mp4Url + '#t=0.5'}
+            preload="metadata"
+            muted
+            playsInline
+            // Don't show native controls on the card — that's reserved for
+            // the modal player. The card is a clickable poster.
+            controls={false}
+            // Ensure first frame paints in cards: jumping to t=0.5 forces
+            // most browsers to render a frame even when paused.
+            style={{
+              position: 'absolute', inset: 0, width: '100%', height: '100%',
+              objectFit: 'cover', display: 'block',
+            }}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Play icon when available, lock when not — sits on top of the
+            video poster frame. */}
         {isComing ? (
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeOpacity="0.6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeOpacity="0.6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'relative', zIndex: 2 }}>
             <rect x="3" y="11" width="18" height="11" rx="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
         ) : (
           <button
-            onClick={onWatch}
+            onClick={(e) => { e.stopPropagation(); onWatch() }}
             className="rounded-full flex items-center justify-center"
-            style={{ width: 56, height: 56, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', border: 'none', cursor: 'pointer' }}
+            style={{ width: 56, height: 56, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', border: 'none', cursor: 'pointer', position: 'relative', zIndex: 2 }}
             aria-label={tWatch}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
@@ -346,10 +372,10 @@ function VideoCard(props: {
           </button>
         )}
 
-        {/* Duration pill */}
+        {/* Duration pill — z-index 2 to sit above the video poster */}
         <span
           className="absolute bottom-2 right-2 text-[10px] px-1.5 py-0.5 rounded font-mono"
-          style={{ background: 'rgba(0,0,0,0.6)', color: 'white' }}
+          style={{ background: 'rgba(0,0,0,0.6)', color: 'white', zIndex: 2 }}
         >
           {fmtDuration(video.durationSec)}
         </span>
@@ -358,7 +384,7 @@ function VideoCard(props: {
         {isComing && (
           <span
             className="absolute top-2 left-2 text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider"
-            style={{ background: TEAL, color: '#fff', letterSpacing: '0.08em' }}
+            style={{ background: TEAL, color: '#fff', letterSpacing: '0.08em', zIndex: 2 }}
           >
             {tComingSoon}
           </span>
@@ -367,7 +393,7 @@ function VideoCard(props: {
         {/* Aspect indicator */}
         <span
           className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded font-semibold"
-          style={{ background: 'rgba(0,0,0,0.6)', color: 'white', letterSpacing: '0.04em' }}
+          style={{ background: 'rgba(0,0,0,0.6)', color: 'white', letterSpacing: '0.04em', zIndex: 2 }}
         >
           {video.aspectRatio === 'horizontal' ? '16:9' : '9:16'}
         </span>
