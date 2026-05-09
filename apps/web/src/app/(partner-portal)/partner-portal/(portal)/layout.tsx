@@ -9,6 +9,8 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { ContactBlock } from '@/components/ContactBlock'
 import { SocialLinks } from '@/components/SocialLinks'
 import { IdleTimeout } from '@/components/IdleTimeout'
+import { NotificationBell } from '@/components/NotificationBell'
+import { PartnerIdBadge } from '@/components/PartnerIdBadge'
 
 const NAV = [
   { href: '/partner-portal/dashboard',   labelKey: 'partnerNav.dashboard',   icon: 'M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z' },
@@ -47,9 +49,12 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--surface-app)' }}>
+    // h-screen + overflow-hidden anchors the sidebar to the viewport so it
+    // never scrolls with the content. Main is the only scroll surface.
+    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
       <IdleTimeout redirectTo="/partner-portal/login" />
-      {/* Sidebar */}
+      {/* Sidebar — fixed-height column, no internal scroll. The 7 nav items +
+          profile + sign-out fit comfortably in any reasonable viewport. */}
       <aside className="w-56 flex-shrink-0 flex flex-col" style={{ background: 'var(--surface-raised)', borderRight: '1px solid var(--border-subtle)' }}>
         {/* Brand */}
         <div className="px-5 py-5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
@@ -118,13 +123,21 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
         </div>
       </aside>
 
-      {/* Main */}
+      {/* Main — only scroll surface (sidebar above is anchored to viewport). */}
       <main className="flex-1 overflow-auto flex flex-col">
-        {/* Top bar — language + theme toggles anchored top-right */}
+        {/* Top bar — partner ID badge, notifications bell, language + theme.
+            Mirrors the tenant dashboard's top-right cluster so partners get
+            the same affordances. */}
         <div
           className="flex items-center justify-end gap-2 px-8 py-3 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-app)' }}
         >
+          <PartnerIdBadge />
+          <NotificationBell
+            endpoint="/api/affiliate/notifications"
+            readOne={(id) => `/api/affiliate/notifications/${id}/read`}
+            readAll="/api/affiliate/notifications/read-all"
+          />
           <LanguageToggle />
           <ThemeToggle />
         </div>

@@ -8,6 +8,7 @@ interface NavItem {
   href: string
   labelKey: string
   icon: React.ReactNode
+  comingSoon?: boolean
 }
 
 interface NavGroup {
@@ -64,6 +65,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/usage',    labelKey: 'nav.items.usage',    icon: <Icon d="M2 12h2V8H2zm3 0h2V4H5zm3 0h2V6H8zm3 0h2v-3h-2zM2 14h12" /> },
       { href: '/billing',  labelKey: 'nav.items.billing',  icon: <Icon d="M1 5h14v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5zm0-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2" /> },
+      { href: '/apps',     labelKey: 'nav.items.apps',     icon: <Icon d="M8 10v3m-3 0h6M4 2h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm2 3v3m4-3v3" />, comingSoon: true },
       { href: '/staff',    labelKey: 'nav.items.staff',    icon: <Icon d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4 4a3 3 0 0 0-3-2h-1" /> },
       { href: '/settings', labelKey: 'nav.items.settings', icon: <Icon d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4.3-1.3A4.5 4.5 0 0 0 12.5 8a4.5 4.5 0 0 0-.2-.7l1.5-1.2-1-1.7-1.8.6A4.5 4.5 0 0 0 9.7 4.2L9.5 2.5h-2l-.2 1.7A4.5 4.5 0 0 0 5.9 5 l-1.8-.6-1 1.7 1.5 1.2A4.5 4.5 0 0 0 4.5 8a4.5 4.5 0 0 0 .1.7L3.1 9.9l1 1.7 1.8-.6a4.5 4.5 0 0 0 1.4.8l.2 1.7h2l.2-1.7a4.5 4.5 0 0 0 1.4-.8l1.8.6 1-1.7z" /> },
       { href: '/help',     labelKey: 'nav.items.help',     icon: <Icon d="M8 2a6 6 0 1 1 0 12A6 6 0 0 1 8 2zm0 4a1.5 1.5 0 0 0-1.5 1.5h1a.5.5 0 0 1 1 0c0 .5-.5.75-.87 1.06A1.5 1.5 0 0 0 7 9.5h1c0-.34.13-.5.63-.84C9.38 8.25 10 7.75 10 6.5A2.5 2.5 0 0 0 8 4zM7.5 11h1v1h-1z" /> },
@@ -100,7 +102,15 @@ export function SidebarNav() {
                     }
                   >
                     <span style={{ opacity: active ? 1 : 0.7 }}>{item.icon}</span>
-                    {t(item.labelKey)}
+                    <span className="flex-1">{t(item.labelKey)}</span>
+                    {item.comingSoon && (
+                      <span
+                        className="text-[9px] px-1 py-0.5 rounded font-semibold uppercase tracking-wider flex-shrink-0"
+                        style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(65% 0.15 193)', letterSpacing: '0.08em' }}
+                      >
+                        {t('nav.soonPill')}
+                      </span>
+                    )}
                   </Link>
                 </li>
               )

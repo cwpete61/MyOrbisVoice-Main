@@ -92,6 +92,42 @@ tenantRouter.get('/affiliate/referrals', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Synthesized notification feed — drives the partner-portal bell. No schema
+// change; the feed is computed from conversion + commission rows and bounded
+// to the last 30 days. Returns { items, unreadCount } in the same shape the
+// NotificationBell component already consumes from /api/notifications.
+tenantRouter.get('/affiliate/notifications', async (req, res, next) => {
+  try {
+    const account = await affiliateService.getAffiliateAccount(req.user!.id)
+    if (!account) {
+      res.json({ data: { items: [], unreadCount: 0 } })
+      return
+    }
+    const items = await affiliateService.getPartnerNotifications(account.id)
+    // Read state is client-side. The bell sends ?since=<ISO> on poll; anything
+    // newer is unread. Default behavior (no `since` param): everything <24h is
+    // counted as unread so the badge shows fresh activity.
+    const since = (req.query as Record<string, string>).since
+    const cutoff = since ? new Date(since) : new Date(Date.now() - 86400_000)
+    const unreadCount = items.filter(i => new Date(i.createdAt) > cutoff).length
+    res.json({ data: { items, unreadCount } })
+  } catch (err) { next(err) }
+})
+
+// Mark all read — for the partner feed we just record the timestamp on the
+// client (localStorage). The endpoint exists to keep the bell component's
+// "Mark all read" button working; server returns ok.
+tenantRouter.post('/affiliate/notifications/read-all', (_req, res) => {
+  res.json({ data: { ok: true } })
+})
+
+// Per-item mark-read also a no-op on the server — synthesized items don't
+// have persistent read state. Kept so the bell's per-item click handler
+// doesn't 404.
+tenantRouter.post('/affiliate/notifications/:id/read', (_req, res) => {
+  res.json({ data: { ok: true } })
+})
+
 tenantRouter.post('/affiliate/payout/request', async (req, res, next) => {
   try {
     res.json({ data: await affiliateService.requestPayout(req.user!.id) })

@@ -41,8 +41,10 @@
       "twilioLogs": "Twilio Call Logs",
       "errors": "Errors",
       "systemSettings": "System Settings",
-      "platformStatus": "Platform Status"
-    }
+      "platformStatus": "Platform Status",
+      "apps": "Apps"
+    },
+    "soonPill": "Soon"
   },
   "partnerNav": {
     "dashboard": "Dashboard",
@@ -3010,6 +3012,38 @@
       "bunnyStorageZone": "The Storage Zone Name from bunny.net dashboard → Storage. This is the internal name (e.g. `orbisvoice`), NOT the CDN hostname. Used in the upload URL path. If you rename the zone in Bunny, update here AND ensure the CDN pull zone still points at the right storage zone.",
       "bunnyCdnHostname": "The Pull Zone hostname from bunny.net → CDN → Pull Zones (e.g. `OrbisVoice.b-cdn.net`). DIFFERENT from the storage zone name above. Used to build public CDN URLs for recordings + transcripts. The pull zone MUST be linked to the storage zone in Bunny dashboard, otherwise CDN URLs return 404 and we fall back to API-proxied audio."
     }
+  },
+  "widgetWp": {
+    "title": "WordPress plugin",
+    "subtitle": "Running on WordPress? Skip the manual embed — install the plugin, paste your public key, save. Mic button live in under a minute.",
+    "download": "Download plugin",
+    "step1": "1. Download the .zip above.",
+    "step2": "2. In WP admin, go to Plugins → Add New → Upload Plugin, upload the .zip, then activate.",
+    "step3": "3. Open Settings → OrbisVoice Widget, paste your public key (below), save."
+  },
+  "partnerIdBadge": {
+    "label": "Partner ID:",
+    "copied": "Copied!"
+  },
+  "apps": {
+    "title": "Mobile + Desktop apps",
+    "subtitle": "Native MyOrbisVoice apps for the road and your desk. Both are in active development — pick the platform you'll use most so we know what to ship first.",
+    "comingSoon": "Coming Soon",
+    "mobile": {
+      "title": "Mobile app",
+      "subtitle": "iOS + Android. Real-time call notifications, transcript playback, and one-tap callbacks.",
+      "bullet1": "Push alerts the second a call comes in — never miss a lead because you walked away from the dashboard.",
+      "bullet2": "Listen back to recordings + read transcripts on the go.",
+      "bullet3": "Tap a missed-call notification to dial back through the platform — keeps the caller-ID consistent and logs the conversation."
+    },
+    "desktop": {
+      "title": "Desktop app",
+      "subtitle": "macOS, Windows, Linux. The dashboard you already know, in a window that stays out of your browser.",
+      "bullet1": "System-tray notifications for inbound calls, voicemails, and new conversations.",
+      "bullet2": "Hotkey to open the live conversation queue from anywhere on your machine.",
+      "bullet3": "Same login, same data, same speed — but it survives the closing of your last browser tab."
+    },
+    "notify": "Want to be the first to know when these ship? Follow OrbisVoice on social — links in the footer. We'll announce there before the app stores list it."
   },
   "adminSocial": {
     "title": "Social Media",

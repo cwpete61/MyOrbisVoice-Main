@@ -34,7 +34,15 @@ function priorityDot(priority: string) {
   return 'bg-gray-300'
 }
 
-export function NotificationBell() {
+export function NotificationBell({
+  endpoint  = '/api/notifications',
+  readOne   = (id: string) => `/api/notifications/${id}/read`,
+  readAll   = '/api/notifications/read-all',
+}: {
+  endpoint?: string
+  readOne?:  (id: string) => string
+  readAll?:  string
+} = {}) {
   const [open, setOpen]         = useState(false)
   const [data, setData]         = useState<NotifData | null>(null)
   const [loading, setLoading]   = useState(false)
@@ -44,14 +52,14 @@ export function NotificationBell() {
   const fetchNotifications = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await apiFetchRaw('/api/notifications')
+      const res = await apiFetchRaw(endpoint)
       if (res.ok) {
         const json = await res.json() as { data: NotifData }
         setData(json.data)
       }
     } catch { /* non-fatal */ }
     finally { setLoading(false) }
-  }, [])
+  }, [endpoint])
 
   // Poll every 60 seconds
   useEffect(() => {
@@ -72,7 +80,7 @@ export function NotificationBell() {
   }, [open])
 
   async function markRead(id: string) {
-    await apiFetchRaw(`/api/notifications/${id}/read`, { method: 'POST' })
+    await apiFetchRaw(readOne(id), { method: 'POST' })
     setData(prev => prev ? {
       ...prev,
       unreadCount: Math.max(0, prev.unreadCount - 1),
@@ -81,7 +89,7 @@ export function NotificationBell() {
   }
 
   async function markAllRead() {
-    await apiFetchRaw('/api/notifications/read-all', { method: 'POST' })
+    await apiFetchRaw(readAll, { method: 'POST' })
     setData(prev => prev ? {
       unreadCount: 0,
       items: prev.items.map(n => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })),

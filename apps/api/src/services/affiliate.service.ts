@@ -665,6 +665,142 @@ export async function getReferrals(affiliateAccountId: string, limit = 100) {
   })
 }
 
+// ── Notifications (synthesized feed) ─────────────────────────────────────────
+//
+// Partners don't have tenant-scoped Notification rows. Instead we synthesize a
+// notification feed on-demand from AffiliateConversion + AffiliateCommission
+// data. This keeps the schema clean (no parallel UserNotification table) while
+// still giving partners a familiar bell + badge UX.
+//
+// Read state lives on the client (localStorage stores the last-opened
+// timestamp; anything newer counts as unread). Items in the last 30 days are
+// returned, capped at 50 entries newest-first.
+export async function getPartnerNotifications(affiliateAccountId: string) {
+  const since = new Date(Date.now() - 30 * 86400_000)
+
+  const [conversions, commissions] = await Promise.all([
+    prisma.affiliateConversion.findMany({
+      where:   { affiliateAccountId, occurredAt: { gte: since } },
+      orderBy: { occurredAt: 'desc' },
+      take:    50,
+      include: {
+        tenant: {
+          select: { displayName: true, businessProfile: { select: { brandName: true } } },
+        },
+      },
+    }),
+    prisma.affiliateCommission.findMany({
+      where:   { affiliateAccountId, createdAt: { gte: since } },
+      orderBy: { createdAt: 'desc' },
+      take:    50,
+    }),
+  ])
+
+  type Notif = {
+    id:        string
+    type:      string
+    priority:  string
+    title:     string
+    body:      string
+    linkPath:  string | null
+    readAt:    string | null
+    createdAt: string
+  }
+
+  const items: Notif[] = []
+
+  for (const c of conversions) {
+    const name = c.tenant?.businessProfile?.brandName ?? c.tenant?.displayName ?? 'A new business'
+    if (c.conversionType === 'signup') {
+      items.push({
+        id:        `conv-${c.id}`,
+        type:      'partner_signup',
+        priority:  'info',
+        title:     'New referral signed up',
+        body:      `${name} signed up using your referral link.`,
+        linkPath:  '/partner-portal/referrals',
+        readAt:    null,
+        createdAt: c.occurredAt.toISOString(),
+      })
+    } else if (c.conversionType === 'subscription') {
+      items.push({
+        id:        `conv-${c.id}`,
+        type:      'partner_paid_referral',
+        priority:  'info',
+        title:     'Referral subscribed to a paid plan',
+        body:      `${name} just upgraded to a paid plan — commission incoming.`,
+        linkPath:  '/partner-portal/commissions',
+        readAt:    null,
+        createdAt: c.occurredAt.toISOString(),
+      })
+    } else if (c.conversionType === 'one_time') {
+      items.push({
+        id:        `conv-${c.id}`,
+        type:      'partner_one_time',
+        priority:  'info',
+        title:     'One-time purchase from referral',
+        body:      `${name} completed a one-time purchase.`,
+        linkPath:  '/partner-portal/commissions',
+        readAt:    null,
+        createdAt: c.occurredAt.toISOString(),
+      })
+    }
+  }
+
+  for (const k of commissions) {
+    const dollars = '$' + (k.amountMinor / 100).toFixed(2)
+    if (k.status === 'PENDING') {
+      items.push({
+        id:        `comm-${k.id}-pending`,
+        type:      'partner_commission_pending',
+        priority:  'info',
+        title:     'Commission pending',
+        body:      `${dollars} commission is in the 30-day holdback window.`,
+        linkPath:  '/partner-portal/commissions',
+        readAt:    null,
+        createdAt: k.createdAt.toISOString(),
+      })
+    } else if (k.status === 'APPROVED') {
+      items.push({
+        id:        `comm-${k.id}-approved`,
+        type:      'partner_commission_approved',
+        priority:  'info',
+        title:     'Commission approved',
+        body:      `${dollars} commission cleared the holdback — scheduled for payout.`,
+        linkPath:  '/partner-portal/commissions',
+        readAt:    null,
+        createdAt: (k.approvedAt ?? k.updatedAt).toISOString(),
+      })
+    } else if (k.status === 'PAID') {
+      items.push({
+        id:        `comm-${k.id}-paid`,
+        type:      'partner_commission_paid',
+        priority:  'info',
+        title:     'Commission paid',
+        body:      `${dollars} commission has been paid out.`,
+        linkPath:  '/partner-portal/payouts',
+        readAt:    null,
+        createdAt: (k.paidAt ?? k.updatedAt).toISOString(),
+      })
+    } else if (k.status === 'REVERSED') {
+      items.push({
+        id:        `comm-${k.id}-reversed`,
+        type:      'partner_commission_reversed',
+        priority:  'warning',
+        title:     'Commission reversed',
+        body:      `${dollars} commission was reversed (refund or chargeback on the underlying purchase).`,
+        linkPath:  '/partner-portal/commissions',
+        readAt:    null,
+        createdAt: k.updatedAt.toISOString(),
+      })
+    }
+  }
+
+  // Newest first
+  items.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  return items.slice(0, 50)
+}
+
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
 export async function getAffiliateStats(affiliateAccountId: string) {

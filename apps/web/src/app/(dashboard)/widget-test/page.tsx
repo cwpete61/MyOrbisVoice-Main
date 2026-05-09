@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { useT } from '@/lib/i18n/I18nProvider'
 
 interface Channel {
   id: string
@@ -39,6 +40,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export default function WidgetTestPage() {
+  const t = useT()
   const { data: channels, loading } = useApi<Channel[]>('/api/channels')
   const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [testMsg, setTestMsg] = useState('')
@@ -182,6 +184,42 @@ export default function WidgetTestPage() {
             style={{ background: 'oklch(15% 0.02 193)', color: 'oklch(75% 0.15 145)' }}>
             {embedCode}
           </pre>
+        </section>
+      )}
+
+      {/* WordPress plugin download — easier install path for tenants on WP. */}
+      {publicKey && (
+        <section className="mb-8 rounded-xl p-6" style={sectionStyle}>
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'oklch(55% 0.11 193)' }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M2 12h20M12 2a15 15 0 0 0 0 20M12 2a15 15 0 0 1 0 20" />
+                </svg>
+                <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('widgetWp.title')}</h2>
+              </div>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                {t('widgetWp.subtitle')}
+              </p>
+            </div>
+            <a
+              href="/downloads/orbisvoice-widget.zip"
+              download="orbisvoice-widget.zip"
+              className="px-4 py-2 text-sm rounded-lg transition-colors flex-shrink-0 inline-flex items-center gap-1.5"
+              style={{ background: 'oklch(55% 0.11 193)', color: 'white', fontWeight: 500 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 1v10m0 0l4-4m-4 4l-4-4M2 13h12" />
+              </svg>
+              {t('widgetWp.download')}
+            </a>
+          </div>
+          <ol className="text-xs space-y-1 mt-3 ml-1" style={{ color: 'var(--text-secondary)' }}>
+            <li>{t('widgetWp.step1')}</li>
+            <li>{t('widgetWp.step2')}</li>
+            <li>{t('widgetWp.step3')}</li>
+          </ol>
         </section>
       )}
 

@@ -41,8 +41,10 @@
       "twilioLogs": "Registros de llamadas Twilio",
       "errors": "Errores",
       "systemSettings": "Ajustes del sistema",
-      "platformStatus": "Estado de la plataforma"
-    }
+      "platformStatus": "Estado de la plataforma",
+      "apps": "Apps"
+    },
+    "soonPill": "Pronto"
   },
   "partnerNav": {
     "dashboard": "Panel",
@@ -3010,6 +3012,38 @@
       "bunnyStorageZone": "El Storage Zone Name del panel bunny.net → Storage. Este es el nombre interno (p. ej. `orbisvoice`), NO el hostname del CDN. Se usa en la ruta de la URL de subida. Si renombras la zona en Bunny, actualízala aquí Y asegúrate de que la pull zone del CDN siga apuntando a la storage zone correcta.",
       "bunnyCdnHostname": "El hostname de la Pull Zone del panel bunny.net → CDN → Pull Zones (p. ej. `OrbisVoice.b-cdn.net`). DIFERENTE del nombre de la storage zone de arriba. Se usa para construir las URLs públicas del CDN para grabaciones + transcripciones. La pull zone DEBE estar enlazada a la storage zone en el panel de Bunny, de lo contrario las URLs del CDN devuelven 404 y caemos al audio por API."
     }
+  },
+  "widgetWp": {
+    "title": "Plugin de WordPress",
+    "subtitle": "¿Tu sitio está en WordPress? Sáltate la copia manual del código — instala el plugin, pega tu clave pública, guarda. El botón del micrófono aparece en menos de un minuto.",
+    "download": "Descargar plugin",
+    "step1": "1. Descarga el .zip de arriba.",
+    "step2": "2. En el admin de WP, ve a Plugins → Añadir nuevo → Subir plugin, sube el .zip y actívalo.",
+    "step3": "3. Abre Ajustes → OrbisVoice Widget, pega tu clave pública (abajo) y guarda."
+  },
+  "partnerIdBadge": {
+    "label": "ID de partner:",
+    "copied": "¡Copiado!"
+  },
+  "apps": {
+    "title": "Apps móvil + escritorio",
+    "subtitle": "Apps nativas de MyOrbisVoice para la calle y tu escritorio. Ambas están en desarrollo activo — elige la plataforma que más usarás para que sepamos cuál enviar primero.",
+    "comingSoon": "Próximamente",
+    "mobile": {
+      "title": "App móvil",
+      "subtitle": "iOS + Android. Notificaciones de llamadas en tiempo real, reproducción de transcripciones y devoluciones con un toque.",
+      "bullet1": "Alertas push en el momento en que entra una llamada — nunca pierdas un lead porque te alejaste del panel.",
+      "bullet2": "Escucha grabaciones y lee transcripciones en cualquier lugar.",
+      "bullet3": "Toca una notificación de llamada perdida para devolverla a través de la plataforma — mantiene el caller-ID consistente y registra la conversación."
+    },
+    "desktop": {
+      "title": "App de escritorio",
+      "subtitle": "macOS, Windows, Linux. El panel que ya conoces, en una ventana que no depende de tu navegador.",
+      "bullet1": "Notificaciones en la bandeja del sistema para llamadas entrantes, mensajes de voz y conversaciones nuevas.",
+      "bullet2": "Atajo de teclado para abrir la cola de conversaciones en vivo desde cualquier lugar de tu equipo.",
+      "bullet3": "Mismo inicio de sesión, mismos datos, misma velocidad — pero sobrevive al cierre de tu última pestaña."
+    },
+    "notify": "¿Quieres ser el primero en saber cuándo se envíen? Sigue a OrbisVoice en redes — los enlaces están en el pie de página. Anunciaremos allí antes de que aparezcan en las tiendas de apps."
   },
   "adminSocial": {
     "title": "Redes sociales",
