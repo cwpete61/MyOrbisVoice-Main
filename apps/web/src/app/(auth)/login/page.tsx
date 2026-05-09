@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { apiLogin } from '@/lib/api'
@@ -16,6 +16,39 @@ export default function LoginPage() {
   const [loginPw, setLoginPw] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Handle Google Sign-In callback redirects. The /api/auth/google/callback
+  // handler sends users back here with one of three URL fragment patterns:
+  //   #google=signin&at=…&rt=…   → existing user — pop tokens, log them in
+  //   ?google=access_denied      → user cancelled at Google's screen
+  //   ?google=error: ...         → callback error, show in the UI
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const hash = window.location.hash.replace(/^#/, '')
+    if (hash.startsWith('google=signin&')) {
+      const params = new URLSearchParams(hash.slice('google=signin&'.length))
+      const at = params.get('at'); const rt = params.get('rt')
+      if (at && rt) {
+        setTokens(at, rt)
+        // Clear the fragment so the tokens never sit in browser history.
+        window.history.replaceState({}, '', window.location.pathname)
+        const payload = getTokenPayload()
+        if (isPlatformAdmin()) router.push('/admin')
+        else if (payload?.roleKey === 'affiliate') router.push('/partner-portal/dashboard')
+        else router.push('/dashboard')
+        return
+      }
+    }
+    const search = new URLSearchParams(window.location.search)
+    const googleErr = search.get('google')
+    if (googleErr) {
+      if (googleErr === 'access_denied') setError(t('auth.googleSignIn.cancelled'))
+      else setError(t('auth.googleSignIn.error'))
+      // Strip the query so it doesn't persist on refresh.
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -120,8 +153,19 @@ export default function LoginPage() {
           <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
         </div>
 
-        <a
-          href="https://app.myorbisvoice.com/login"
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const apiBase = process.env['NEXT_PUBLIC_API_URL'] ?? 'https://api.myorbisvoice.com'
+              const res = await fetch(`${apiBase}/api/auth/google/start`)
+              const json = await res.json() as { data?: { url?: string } }
+              if (json.data?.url) window.location.href = json.data.url
+              else setError(t('auth.login.invalidCreds'))
+            } catch {
+              setError(t('auth.login.invalidCreds'))
+            }
+          }}
           className="btn-ghost w-full flex items-center justify-center gap-2.5"
         >
           <svg width="18" height="18" viewBox="0 0 24 24">
@@ -131,7 +175,7 @@ export default function LoginPage() {
             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
           </svg>
           {t('auth.login.continueWithGoogle')}
-        </a>
+        </button>
 
         <p className="text-center mt-5 text-sm" style={{ color: 'var(--text-tertiary)' }}>
           {t('auth.login.noAccount')}{' '}

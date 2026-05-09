@@ -29,12 +29,16 @@ import { twilioInboundRouter } from './twilio-inbound.js'
 import { outboundWebhooksRouter } from './outbound-webhooks.js'
 import internalGatewayRouter from './internal-gateway.js'
 import marketingAssetsRouter from './marketing-assets.js'
+import authGoogleRouter from './auth-google.js'
 import { validateTwilioWebhook } from '../middleware/twilio-signature.js'
 
 const router: IRouter = Router()
 
 router.use('/', healthRouter)
 router.use('/api/auth', authRouter)
+// Google Sign-In (Thing A) — anonymous OAuth, distinct from /api/integrations/google/*
+// (which connects an authenticated tenant's Gmail to the agent — Thing B).
+router.use('/api', authGoogleRouter)
 // Twilio webhooks — public (no auth). Signature-validated. Must precede auth-gated /api routers.
 router.use('/api', validateTwilioWebhook, twilioInboundRouter)
 router.use('/api', validateTwilioWebhook, outboundWebhooksRouter)

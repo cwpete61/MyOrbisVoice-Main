@@ -86,6 +86,90 @@ export async function signupUser(data: {
   return { user: sanitizeUser(user), tenant: sanitizeTenant(tenant), ...tokens }
 }
 
+/**
+ * Finish a Google-initiated signup: caller has already verified the Google
+ * profile (so email is known-good), now we collect username + businessName
+ * and create the User + Tenant + supporting rows.
+ *
+ * Differences from signupUser():
+ *   - passwordHash is null (Google-only). Caller can later set a password
+ *     via the change-password / set-password flow if they want both methods.
+ *   - googleId is stored at creation so future sign-ins are stable across
+ *     email changes on the Google side.
+ *   - firstName/lastName are pre-filled from the Google profile.
+ *   - No password validation (Google verified the email).
+ *
+ * Same as signupUser():
+ *   - Tenant created with TRIAL status, owner membership, business profile
+ *   - Stripe customer eagerly created
+ *   - FREE-tier entitlements seeded (paid plans gate on Stripe webhook —
+ *     see fix(auth) commit cee97b7)
+ *   - Affiliate attribution via referral code
+ *   - Welcome email fire-and-forget
+ */
+export async function signupUserFromGoogle(data: {
+  username:        string
+  email:           string
+  googleId:        string
+  businessName:    string
+  firstName?:      string | null
+  lastName?:       string | null
+  affiliateCode?:  string
+  preferredLocale?: string
+}) {
+  const [existingEmail, existingUsername] = await Promise.all([
+    prisma.user.findUnique({ where: { email: data.email } }),
+    prisma.user.findUnique({ where: { username: data.username } }),
+  ])
+  if (existingEmail)    throw new AppError('CONFLICT', 'Email already in use', 409)
+  if (existingUsername) throw new AppError('CONFLICT', 'Username already taken', 409)
+
+  const tenantOwnerRole = await prisma.roleDefinition.findUnique({ where: { key: 'tenant_owner' } })
+  if (!tenantOwnerRole) throw new AppError('INTERNAL_ERROR', 'Role configuration missing — run db:seed', 500)
+
+  const baseSlug = toSlug(data.businessName) || 'workspace'
+  const slug = `${baseSlug}-${Date.now().toString(36)}`
+  const locale = (data.preferredLocale === 'en' || data.preferredLocale === 'es') ? data.preferredLocale : 'en'
+
+  const { user, tenant } = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email:           data.email,
+        username:        data.username,
+        passwordHash:    null,                       // Google-only, no local password
+        googleId:        data.googleId,
+        firstName:       data.firstName ?? null,
+        lastName:        data.lastName  ?? null,
+        preferredLocale: locale,
+      },
+    })
+    const tenant = await tx.tenant.create({
+      data: { slug, displayName: data.businessName, registrationEmail: data.email, status: 'TRIAL' },
+    })
+    await tx.tenantMember.create({
+      data: { userId: user.id, tenantId: tenant.id, roleDefinitionId: tenantOwnerRole.id, isOwner: true },
+    })
+    await tx.businessProfile.create({
+      data: { tenantId: tenant.id, brandName: data.businessName },
+    })
+    return { user, tenant }
+  })
+
+  await getOrCreateStripeCustomer(tenant.id).catch(() => { /* non-fatal */ })
+
+  const freePlan = await prisma.plan.findFirst({ where: { code: 'free', isActive: true } })
+  if (freePlan) {
+    await syncEntitlementsFromPlan(tenant.id, freePlan.id).catch(() => { /* non-fatal */ })
+  }
+
+  if (data.affiliateCode) {
+    await attributeTenant(tenant.id, data.affiliateCode).catch(() => {})
+  }
+
+  const tokens = await issueTokens(user.id, user.email, tenant.id, 'tenant_owner', false)
+  return { user: sanitizeUser(user), tenant: sanitizeTenant(tenant), ...tokens }
+}
+
 export async function affiliateSignupUser(data: {
   username: string
   email: string
@@ -129,7 +213,10 @@ export async function loginUser(data: { login: string; password: string }) {
     },
   })
 
-  if (!user || !(await bcrypt.compare(data.password, user.passwordHash))) {
+  // Google-only users (passwordHash null) can't password-login; reject with
+  // generic UNAUTHORIZED rather than leaking the auth method, so we don't
+  // help an attacker enumerate which accounts use which sign-in method.
+  if (!user || !user.passwordHash || !(await bcrypt.compare(data.password, user.passwordHash))) {
     throw new AppError('UNAUTHORIZED', 'Invalid credentials', 401)
   }
   if (user.status !== 'ACTIVE') {
@@ -190,6 +277,38 @@ export async function refreshUserTokens(rawRefreshToken: string) {
   return issueTokens(user.id, user.email, tenantId, roleKey, isPlatformRole)
 }
 
+/**
+ * Issue a fresh token pair for an already-authenticated user.
+ * Used by the Google Sign-In flow once we've matched a Google profile to an
+ * existing User. Mirrors the membership/role resolution that login + refresh
+ * use, so a Google-signed-in user gets the same JWT payload as a password
+ * user (currentTenantId, roleKey, isPlatformRole). If the user has no
+ * memberships yet (rare: Google-signed-up but never finished a tenant flow)
+ * roleKey defaults to 'tenant_staff' and tenantId is null.
+ */
+export async function issueTokensForUserId(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      tenantMemberships: {
+        include: { roleDefinition: true },
+        orderBy: { createdAt: 'asc' },
+        take: 1,
+      },
+    },
+  })
+  if (!user || user.status !== 'ACTIVE') {
+    throw new AppError('UNAUTHORIZED', 'User not found or inactive', 401)
+  }
+  const membership      = user.tenantMemberships[0]
+  const tenantId        = membership?.tenantId ?? null
+  const roleKey         = (membership?.roleDefinition?.key ?? 'tenant_staff') as RoleKey
+  const isPlatformRole  = membership?.roleDefinition?.isPlatformRole ?? false
+
+  const tokens = await issueTokens(user.id, user.email, tenantId, roleKey, isPlatformRole)
+  return { user: sanitizeUser(user), ...tokens }
+}
+
 export async function logoutUser(rawRefreshToken: string): Promise<void> {
   const tokenHash = hashToken(rawRefreshToken)
   await prisma.refreshToken.updateMany({
@@ -216,6 +335,12 @@ export async function updateProfile(userId: string, data: { firstName?: string; 
 export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) throw new AppError('NOT_FOUND', 'User not found', 404)
+  // Google-only users have no local password to compare against. They need
+  // to set one first via a separate "set password" flow (not exposed yet —
+  // for now they stay Google-only and use Google sign-in to authenticate).
+  if (!user.passwordHash) {
+    throw new AppError('VALIDATION_ERROR', 'This account uses Google sign-in. Set a password from the profile page first to use password change.', 422)
+  }
   const valid = await bcrypt.compare(currentPassword, user.passwordHash)
   if (!valid) throw new AppError('UNAUTHORIZED', 'Current password is incorrect', 401)
   const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS)

@@ -366,7 +366,14 @@ model User {
   id                    String                 @id @default(uuid())
   email                 String                 @unique
   username              String?                @unique
-  passwordHash          String
+  /// Nullable: Google-only sign-in users have no local password. Existing
+  /// password users keep their hash. A user can have BOTH (if they signed up
+  /// with password then linked Google in profile).
+  passwordHash          String?
+  /// Stable Google identity (Google's `sub` claim). Lets us re-find a user
+  /// even if their Google email changes. Populated on first Google sign-in
+  /// (auto-linked to existing user when emails match) or on signup-via-Google.
+  googleId              String?                @unique
   firstName             String?
   lastName              String?
   preferredLocale       String                 @default("en")

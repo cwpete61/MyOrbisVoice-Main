@@ -236,6 +236,19 @@
       "noAccount": "¿No tienes cuenta?",
       "signUpFree": "Regístrate gratis"
     },
+    "googleSignIn": {
+      "cancelled": "Cancelaste el inicio de sesión con Google. No hay problema — puedes intentarlo de nuevo cuando quieras.",
+      "error": "Algo salió mal con el inicio de sesión con Google. Inténtalo de nuevo o usa tu contraseña."
+    },
+    "finishProfile": {
+      "title": "Casi listo",
+      "subtitle": "Elige un nombre de usuario y dinos el nombre de tu negocio para terminar de configurar tu cuenta.",
+      "submit": "Terminar configuración →",
+      "submitting": "Configurando…",
+      "submitError": "No pudimos terminar la configuración. Inténtalo de nuevo.",
+      "missingTokenError": "Esta página solo es accesible después del inicio de sesión con Google. El enlace expiró o no era válido.",
+      "startOver": "Comenzar el registro de nuevo →"
+    },
     "welcome": "Bienvenido",
     "welcomeBack": "Bienvenido de vuelta",
     "emailOrUsername": "Correo o nombre de usuario",

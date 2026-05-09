@@ -236,6 +236,19 @@
       "noAccount": "Don't have an account?",
       "signUpFree": "Sign up free"
     },
+    "googleSignIn": {
+      "cancelled": "You cancelled the Google sign-in. No problem — you can try again any time.",
+      "error": "Something went wrong with Google sign-in. Please try again or use your password."
+    },
+    "finishProfile": {
+      "title": "Almost there",
+      "subtitle": "Pick a username and tell us your business name to finish setting up your account.",
+      "submit": "Finish setup →",
+      "submitting": "Setting up…",
+      "submitError": "Couldn't finish setup. Please try again.",
+      "missingTokenError": "This page is only reachable after Google sign-in. The link expired or wasn't valid.",
+      "startOver": "Start signup again →"
+    },
     "welcome": "Welcome",
     "welcomeBack": "Welcome back",
     "emailOrUsername": "Email or username",
