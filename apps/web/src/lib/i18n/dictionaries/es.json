@@ -951,7 +951,10 @@
       "delayHoursHint": "Cuánto tiempo esperar después de aplicar la etiqueta antes de llamar.",
       "maxRetries": "Reintentos máximos",
       "maxRetriesHint": "Cuántas veces reintentar si no contestan.",
-      "retryInterval": "Intervalo entre reintentos (horas)"
+      "retryInterval": "Intervalo entre reintentos (horas)",
+      "aggressionTierLabel": "Voz de marketing (esta campaña)",
+      "aggressionTierHint": "Anula el valor predeterminado del workspace solo para esta campaña. Usa un nivel más alto para lanzamientos cortos; déjalo en predeterminado para campañas continuas.",
+      "aggressionTierInherit": "Usar predeterminado del workspace"
     },
     "tooltips": {
       "triggerTag": "Cuando un contacto recibe esta etiqueta (manualmente O auto-aplicada por resultados de llamada como BOOKED, MISSED_CALL, CALLBACK_REQUESTED, INFO_REQUEST, QUALIFIED_LEAD), la campaña se dispara en cada canal que habilites abajo. Usa minúsculas-con-guiones — los espacios se convierten automáticamente.",

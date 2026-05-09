@@ -5,6 +5,7 @@ import { useApi, apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { Tooltip } from '@/components/Tooltip'
 import { AiCampaignEmailGenerator } from '@/components/AiCampaignEmailGenerator'
+import { AggressionTierSelector, type AggressionTier } from '@/components/AggressionTierSelector'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface CampaignTemplate {
@@ -41,6 +42,9 @@ interface Campaign {
   whatsappBody: string | null
   emailSubject: string | null
   emailBody: string | null
+  // Per-campaign override of the tenant's marketing voice. null = use tenant
+  // default. See docs/marketing-style-guide.md.
+  aggressionTier: 'conservative' | 'balanced' | 'direct' | 'aggressive' | null
   createdAt: string
   template: { name: string; vertical: string } | null
   _count: { enrollments: number }
@@ -380,12 +384,12 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
 
-  const blankForm = { campaignType: 'FOLLOWUP_CUSTOMER_SERVICE', name: '', description: '', prompt: '', triggerTag: '', delayHours: 1, maxRetries: 2, retryIntervalHours: 24, isActive: false, enableVoice: true, enableSms: false, enableEmail: false, enableWhatsapp: false, smsBody: '', whatsappBody: '', emailSubject: '', emailBody: '' }
+  const blankForm = { campaignType: 'FOLLOWUP_CUSTOMER_SERVICE', name: '', description: '', prompt: '', triggerTag: '', delayHours: 1, maxRetries: 2, retryIntervalHours: 24, isActive: false, enableVoice: true, enableSms: false, enableEmail: false, enableWhatsapp: false, smsBody: '', whatsappBody: '', emailSubject: '', emailBody: '', aggressionTier: null as AggressionTier | null }
   const [form, setForm] = useState(blankForm)
 
   function startEdit(c: Campaign) {
     setEditing(c)
-    setForm({ campaignType: c.campaignType, name: c.name, description: c.description ?? '', prompt: c.prompt, triggerTag: c.triggerTag, delayHours: c.delayHours, maxRetries: c.maxRetries, retryIntervalHours: c.retryIntervalHours, isActive: c.isActive, enableVoice: c.enableVoice, enableSms: c.enableSms, enableEmail: c.enableEmail, enableWhatsapp: c.enableWhatsapp, smsBody: c.smsBody ?? '', whatsappBody: c.whatsappBody ?? '', emailSubject: c.emailSubject ?? '', emailBody: c.emailBody ?? '' })
+    setForm({ campaignType: c.campaignType, name: c.name, description: c.description ?? '', prompt: c.prompt, triggerTag: c.triggerTag, delayHours: c.delayHours, maxRetries: c.maxRetries, retryIntervalHours: c.retryIntervalHours, isActive: c.isActive, enableVoice: c.enableVoice, enableSms: c.enableSms, enableEmail: c.enableEmail, enableWhatsapp: c.enableWhatsapp, smsBody: c.smsBody ?? '', whatsappBody: c.whatsappBody ?? '', emailSubject: c.emailSubject ?? '', emailBody: c.emailBody ?? '', aggressionTier: c.aggressionTier ?? null })
     setShowNew(false)
   }
 
@@ -581,6 +585,22 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
                     placeholder={t('tenantCampaigns.form.whatsappBodyPlaceholder')} />
                 </Field>
               )}
+
+              {/* Per-campaign aggression override. Defaults to "Use workspace
+                  default" so the resolver picks up BusinessProfile.aggressionTier.
+                  Pick a different tier here for one-off launches / events. */}
+              <Field
+                label={t('tenantCampaigns.form.aggressionTierLabel')}
+                hint={t('tenantCampaigns.form.aggressionTierHint')}
+              >
+                <AggressionTierSelector
+                  value={form.aggressionTier}
+                  onChange={(tier) => setForm(f => ({ ...f, aggressionTier: tier }))}
+                  showSample={false}
+                  allowInherit
+                  inheritLabel={t('tenantCampaigns.form.aggressionTierInherit')}
+                />
+              </Field>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Field label={t('tenantCampaigns.form.delayHours')} hint={t('tenantCampaigns.form.delayHoursHint')} tooltip={t('tenantCampaigns.tooltips.delayHours')}>

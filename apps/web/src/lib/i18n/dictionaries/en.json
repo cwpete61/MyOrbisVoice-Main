@@ -951,7 +951,10 @@
       "delayHoursHint": "How long after the tag is applied before calling.",
       "maxRetries": "Max retries",
       "maxRetriesHint": "How many times to retry if no answer.",
-      "retryInterval": "Retry interval (hours)"
+      "retryInterval": "Retry interval (hours)",
+      "aggressionTierLabel": "Marketing voice (this campaign)",
+      "aggressionTierHint": "Override the workspace default for just this campaign. Use a higher tier for short launches; leave on default for steady-state.",
+      "aggressionTierInherit": "Use workspace default"
     },
     "tooltips": {
       "triggerTag": "When a contact gets this tag (manually OR auto-applied by call outcomes like BOOKED, MISSED_CALL, CALLBACK_REQUESTED, INFO_REQUEST, QUALIFIED_LEAD), the campaign fires for them on every channel you've enabled below. Use lowercase-with-dashes — spaces auto-convert.",
