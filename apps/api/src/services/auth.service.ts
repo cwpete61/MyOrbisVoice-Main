@@ -59,11 +59,15 @@ export async function signupUser(data: {
   // Create Stripe customer eagerly so billing flows work immediately
   await getOrCreateStripeCustomer(tenant.id).catch(() => { /* non-fatal — customer created on first checkout */ })
 
-  // Sync entitlements from the selected plan, defaulting to free tier
-  const planCode = data.selectedPlanCode ?? 'free'
-  const plan = await prisma.plan.findFirst({ where: { code: planCode, isActive: true } })
-  if (plan) {
-    await syncEntitlementsFromPlan(tenant.id, plan.id).catch(() => { /* non-fatal */ })
+  // Always seed FREE-tier entitlements at signup. Paid-plan entitlements are
+  // granted by the Stripe webhook after payment confirms (handleCheckoutCompleted
+  // for LTD, handleSubscriptionUpdated for recurring). selectedPlanCode is still
+  // honored by the frontend, which redirects to Stripe checkout — but if the user
+  // bails on checkout, they end up on the free tier instead of a paid plan they
+  // never paid for.
+  const freePlan = await prisma.plan.findFirst({ where: { code: 'free', isActive: true } })
+  if (freePlan) {
+    await syncEntitlementsFromPlan(tenant.id, freePlan.id).catch(() => { /* non-fatal */ })
   }
 
   // Wire referral attribution (non-fatal)
