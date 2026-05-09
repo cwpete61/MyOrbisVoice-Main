@@ -23,8 +23,17 @@ app.set('trust proxy', 1)
 // Security headers
 app.use(helmet())
 
-// CORS — allow configured origin(s)
-const allowedOrigins = [env.APP_BASE_URL, 'https://app.myorbisvoice.com'].filter(Boolean)
+// CORS — allow configured origin(s).
+// Marketing site (myorbisvoice.com + /es/) is allow-listed alongside the
+// app subdomain because the marketing footer fetches /api/public/social-links
+// cross-origin to render social icons. The /api/public/* paths are public by
+// design — auth-gated routes still require a session token regardless of CORS.
+const allowedOrigins = [
+  env.APP_BASE_URL,
+  'https://app.myorbisvoice.com',
+  'https://myorbisvoice.com',
+  'https://www.myorbisvoice.com',
+].filter(Boolean)
 app.use(
   cors({
     origin: (origin, cb) => {
