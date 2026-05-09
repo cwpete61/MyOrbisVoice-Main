@@ -19,9 +19,12 @@ export async function signupUser(data: {
   affiliateCode?: string
   preferredLocale?: string
 }) {
+  // Case-insensitive uniqueness check — prevents "Redkins" + "redkins" from
+  // co-existing. findFirst (not findUnique) because the column-level @unique
+  // constraint is case-sensitive at the DB; we enforce insensitivity here.
   const [existingEmail, existingUsername] = await Promise.all([
-    prisma.user.findUnique({ where: { email: data.email } }),
-    prisma.user.findUnique({ where: { username: data.username } }),
+    prisma.user.findFirst({ where: { email:    { equals: data.email,    mode: 'insensitive' } } }),
+    prisma.user.findFirst({ where: { username: { equals: data.username, mode: 'insensitive' } } }),
   ])
   if (existingEmail) throw new AppError('CONFLICT', 'Email already in use', 409)
   if (existingUsername) throw new AppError('CONFLICT', 'Username already taken', 409)
@@ -117,9 +120,12 @@ export async function signupUserFromGoogle(data: {
   affiliateCode?:  string
   preferredLocale?: string
 }) {
+  // Case-insensitive uniqueness check — prevents "Redkins" + "redkins" from
+  // co-existing. findFirst (not findUnique) because the column-level @unique
+  // constraint is case-sensitive at the DB; we enforce insensitivity here.
   const [existingEmail, existingUsername] = await Promise.all([
-    prisma.user.findUnique({ where: { email: data.email } }),
-    prisma.user.findUnique({ where: { username: data.username } }),
+    prisma.user.findFirst({ where: { email:    { equals: data.email,    mode: 'insensitive' } } }),
+    prisma.user.findFirst({ where: { username: { equals: data.username, mode: 'insensitive' } } }),
   ])
   if (existingEmail)    throw new AppError('CONFLICT', 'Email already in use', 409)
   if (existingUsername) throw new AppError('CONFLICT', 'Username already taken', 409)
@@ -177,9 +183,12 @@ export async function affiliateSignupUser(data: {
   firstName?: string
   lastName?: string
 }) {
+  // Case-insensitive uniqueness check — prevents "Redkins" + "redkins" from
+  // co-existing. findFirst (not findUnique) because the column-level @unique
+  // constraint is case-sensitive at the DB; we enforce insensitivity here.
   const [existingEmail, existingUsername] = await Promise.all([
-    prisma.user.findUnique({ where: { email: data.email } }),
-    prisma.user.findUnique({ where: { username: data.username } }),
+    prisma.user.findFirst({ where: { email:    { equals: data.email,    mode: 'insensitive' } } }),
+    prisma.user.findFirst({ where: { username: { equals: data.username, mode: 'insensitive' } } }),
   ])
   if (existingEmail) throw new AppError('CONFLICT', 'Email already in use', 409)
   if (existingUsername) throw new AppError('CONFLICT', 'Username already taken', 409)
@@ -197,11 +206,15 @@ export async function affiliateSignupUser(data: {
 }
 
 export async function loginUser(data: { login: string; password: string }) {
+  // Case-insensitive lookup on both email + username so users can type any
+  // capitalization at the login form. The DB stores the original casing the
+  // user chose at signup; this comparison ignores it on read. See also the
+  // case-insensitive uniqueness check in signup* helpers below.
   const user = await prisma.user.findFirst({
     where: {
       OR: [
-        { email: data.login },
-        { username: data.login },
+        { email:    { equals: data.login, mode: 'insensitive' } },
+        { username: { equals: data.login, mode: 'insensitive' } },
       ],
     },
     include: {
@@ -322,7 +335,7 @@ type Locale = typeof SUPPORTED_LOCALES[number]
 
 export async function updateProfile(userId: string, data: { firstName?: string; lastName?: string; username?: string; preferredLocale?: string }) {
   if (data.username) {
-    const existing = await prisma.user.findFirst({ where: { username: data.username, NOT: { id: userId } } })
+    const existing = await prisma.user.findFirst({ where: { username: { equals: data.username, mode: 'insensitive' }, NOT: { id: userId } } })
     if (existing) throw new AppError('CONFLICT', 'Username already taken', 409)
   }
   if (data.preferredLocale && !SUPPORTED_LOCALES.includes(data.preferredLocale as Locale)) {
@@ -367,7 +380,10 @@ export async function startPasswordReset(email: string): Promise<{
   email: string
   firstName: string | null
 } | null> {
-  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } })
+  // Case-insensitive lookup — the user might have signed up with mixed case
+  // and lowercase comparison-only would miss the row. findFirst + insensitive
+  // mode handles all stored capitalizations.
+  const user = await prisma.user.findFirst({ where: { email: { equals: email.trim(), mode: 'insensitive' } } })
   if (!user) return null
   if (user.status === 'DISABLED' || user.status === 'SUSPENDED') return null
 

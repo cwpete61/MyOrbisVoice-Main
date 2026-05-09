@@ -161,8 +161,11 @@ export async function handleGoogleCallback(code: string, state: string): Promise
   // attacker with a fresh Google account that happens to share an email with
   // a real user can't sign in because Google requires email verification on
   // their side AND we reject unverified emails above.
+  // Case-insensitive email fallback so a user who signed up password-style
+  // with "USER@gmail.com" still auto-links when Google reports the same
+  // address as "user@gmail.com" (Google sometimes lowercases the local part).
   let user = await prisma.user.findUnique({ where: { googleId: profile.googleId } })
-  if (!user) user = await prisma.user.findUnique({ where: { email: profile.email } })
+  if (!user) user = await prisma.user.findFirst({ where: { email: { equals: profile.email, mode: 'insensitive' } } })
 
   if (user) {
     // First-time Google sign-in for an existing password user → save the
