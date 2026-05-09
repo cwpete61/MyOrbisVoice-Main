@@ -346,6 +346,72 @@
   "partnerMarketingKit": {
     "title": "Kit de marketing",
     "subtitle": "Todo lo que necesitas para empezar a promover MyOrbisVoice — copia, pega, comparte.",
+    "videoLibrary": {
+      "title": "Biblioteca de videos",
+      "subtitle": "Elige el video adecuado para cada conversación — venderle el producto a un cliente, reclutar un nuevo partner o tomar un clip rápido para redes.",
+      "availableSuffix": "disponibles",
+      "comingSoonBadge": "Próximamente",
+      "watchAction": "Ver",
+      "downloadAction": "Descargar MP4",
+      "copyLinkAction": "Copiar enlace",
+      "tabs": {
+        "all": "Todos",
+        "pitchProduct": "Vender el producto",
+        "recruitPartners": "Reclutar partners",
+        "howToSell": "Cómo vender",
+        "socialCuts": "Cortes para redes"
+      },
+      "videos": {
+        "product-explainer-horizontal": {
+          "title": "Explicación del producto — 16:9",
+          "description": "El recorrido completo de 3 minutos de MyOrbisVoice. Úsalo en sitios web, en correos o como video embebido en YouTube."
+        },
+        "product-explainer-vertical": {
+          "title": "Explicación del producto — 9:16",
+          "description": "Mismo contenido, formato vertical. Para TikTok, Reels y YouTube Shorts."
+        },
+        "partner-recruiting-en": {
+          "title": "Conviértete en Partner",
+          "description": "Presenta el programa de partners: 30% recurrente, kit de marketing incluido, tú compartes el enlace, nosotros hacemos el resto."
+        },
+        "industry-dental": {
+          "title": "Demo para clínicas dentales",
+          "description": "Muestra al agente contestando llamadas dentales fuera de horario — agendando limpiezas, atendiendo dudas de nuevos pacientes, registrando datos del seguro."
+        },
+        "industry-legal": {
+          "title": "Demo para bufetes",
+          "description": "Llamadas de admisión bien manejadas — calificando tipos de caso, agendando consultas, capturando asuntos con plazos críticos."
+        },
+        "industry-home-services": {
+          "title": "Demo para servicios para el hogar",
+          "description": "HVAC, plomería, electricidad — el agente despacha solicitudes urgentes, agenda cotizaciones y filtra el área de servicio."
+        },
+        "industry-fitness": {
+          "title": "Demo para gimnasios / fitness",
+          "description": "Reservas de clases, agendamiento de prueba gratis, consultas de membresía — atendidas mientras el personal está en el piso."
+        },
+        "industry-beauty": {
+          "title": "Demo para salones / spas",
+          "description": "Reservas por servicio, preferencias de estilista, venta de tarjetas de regalo — el agente recorre precios y disponibilidad."
+        },
+        "how-to-sell-walkthrough": {
+          "title": "Cómo vender MyOrbisVoice",
+          "description": "Recorre todo el kit: qué video enviar para cada situación, cómo usar las plantillas de correo, cómo hacer seguimiento."
+        },
+        "social-hook-missed-calls": {
+          "title": "Gancho — Llamadas perdidas",
+          "description": "Apertura punzante de 25 seg: \"La mayoría de los pequeños negocios pierden 30% de sus prospectos por llamadas no contestadas.\" Para TikTok / Reels / Shorts."
+        },
+        "social-hook-247-coverage": {
+          "title": "Gancho — Cobertura 24/7",
+          "description": "22 seg llamando la atención con el servicio las 24 horas. Combínalo con un CTA hacia tu enlace de referido."
+        },
+        "social-hook-roi": {
+          "title": "Gancho — Se paga solo",
+          "description": "28 seg de matemáticas de ROI: un solo prospecto capturado al mes cubre la suscripción completa."
+        }
+      }
+    },
     "hero": {
       "title": "El video explicativo de 3 minutos",
       "subtitle": "Un recorrido pulido del producto. Inserta el video, compártelo o envía el archivo."

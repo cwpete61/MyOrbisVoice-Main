@@ -346,6 +346,72 @@
   "partnerMarketingKit": {
     "title": "Marketing Kit",
     "subtitle": "Everything you need to start promoting MyOrbisVoice — copy, paste, share.",
+    "videoLibrary": {
+      "title": "Video Library",
+      "subtitle": "Pick the right video for the conversation — pitch the product to a customer, recruit a new partner, or grab a quick clip for social.",
+      "availableSuffix": "available",
+      "comingSoonBadge": "Coming Soon",
+      "watchAction": "Watch",
+      "downloadAction": "Download MP4",
+      "copyLinkAction": "Copy share link",
+      "tabs": {
+        "all": "All",
+        "pitchProduct": "Pitch the Product",
+        "recruitPartners": "Recruit Partners",
+        "howToSell": "How to Sell",
+        "socialCuts": "Social Cuts"
+      },
+      "videos": {
+        "product-explainer-horizontal": {
+          "title": "Product Explainer — 16:9",
+          "description": "The full 3-minute walkthrough of MyOrbisVoice. Use on websites, in email, or as the YouTube embed."
+        },
+        "product-explainer-vertical": {
+          "title": "Product Explainer — 9:16",
+          "description": "Same content, vertical format. For TikTok, Reels, and YouTube Shorts."
+        },
+        "partner-recruiting-en": {
+          "title": "Become a Partner",
+          "description": "Pitches the partner program: 30% recurring, marketing kit included, you share the link, we do the rest."
+        },
+        "industry-dental": {
+          "title": "Dental Practice Demo",
+          "description": "Shows the agent answering after-hours dental calls — booking cleanings, handling new-patient questions, taking insurance info."
+        },
+        "industry-legal": {
+          "title": "Law Firm Demo",
+          "description": "Intake calls handled correctly — qualifying lead types, scheduling consults, capturing deadline-sensitive matters."
+        },
+        "industry-home-services": {
+          "title": "Home Services Demo",
+          "description": "HVAC, plumbing, electrical — the agent dispatches urgent requests, books estimates, handles service-area filtering."
+        },
+        "industry-fitness": {
+          "title": "Fitness / Gym Demo",
+          "description": "Class bookings, free-trial scheduling, membership inquiries — handled while staff are on the floor."
+        },
+        "industry-beauty": {
+          "title": "Salon / Spa Demo",
+          "description": "Service-specific bookings, stylist preferences, gift card sales — the agent talks through pricing and availability."
+        },
+        "how-to-sell-walkthrough": {
+          "title": "How to Sell MyOrbisVoice",
+          "description": "Walks through the full kit: which video to send for which scenario, how to use the email templates, how to follow up."
+        },
+        "social-hook-missed-calls": {
+          "title": "Hook — Missed Calls",
+          "description": "Punchy 25-sec opener: \"Most small businesses lose 30% of leads to missed calls.\" For TikTok / Reels / Shorts."
+        },
+        "social-hook-247-coverage": {
+          "title": "Hook — 24/7 Coverage",
+          "description": "22-sec attention-grabber on round-the-clock answering. Pair with a CTA to your referral link."
+        },
+        "social-hook-roi": {
+          "title": "Hook — Pays for Itself",
+          "description": "28-sec ROI math: one captured lead per month covers the whole subscription."
+        }
+      }
+    },
     "hero": {
       "title": "The 3-minute explainer video",
       "subtitle": "A polished walkthrough of the product. Embed it, share it, or send the file."

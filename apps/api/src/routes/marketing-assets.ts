@@ -7,8 +7,9 @@ const router: IRouter = Router()
 // Whitelist of partner-portal marketing-kit assets that may be served publicly.
 // Adding here is the only way to expose a Bunny path through this proxy.
 const ASSETS: Record<string, { path: string; contentType: string }> = {
-  'promo-horizontal.mp4': { path: 'marketing-kit/promo-horizontal.mp4', contentType: 'video/mp4' },
-  'promo-vertical.mp4':   { path: 'marketing-kit/promo-vertical.mp4',   contentType: 'video/mp4' },
+  'promo-horizontal.mp4':       { path: 'marketing-kit/promo-horizontal.mp4',       contentType: 'video/mp4' },
+  'promo-vertical.mp4':         { path: 'marketing-kit/promo-vertical.mp4',         contentType: 'video/mp4' },
+  'partner-recruiting-en.mp4':  { path: 'marketing-kit/partner-recruiting-en.mp4',  contentType: 'video/mp4' },
 }
 
 router.get('/public/marketing-asset/:filename', asyncHandler(async (req, res) => {
