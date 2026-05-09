@@ -78,6 +78,24 @@ export async function updatePayoutMethod(userId: string, data: Record<string, un
   })
 }
 
+// Partner-side aggression tier — drives AI-Assist generated pitch material
+// + future Bunny-hosted partner assets. See docs/marketing-style-guide.md.
+const VALID_TIERS = ['conservative', 'balanced', 'direct', 'aggressive'] as const
+type AggressionTier = (typeof VALID_TIERS)[number]
+
+export async function updateAggressionTier(userId: string, tier: AggressionTier) {
+  if (!(VALID_TIERS as readonly string[]).includes(tier)) {
+    throw new AppError('VALIDATION_ERROR', 'Invalid aggression tier', 422)
+  }
+  const account = await prisma.affiliateAccount.findUnique({ where: { userId } })
+  if (!account) throw new AppError('NOT_FOUND', 'No partner account found for this user', 404)
+  return prisma.affiliateAccount.update({
+    where: { id: account.id },
+    data: { aggressionTier: tier },
+    select: { id: true, aggressionTier: true },
+  })
+}
+
 // ── Stripe Connect Express onboarding ─────────────────────────────────────────
 //
 // Three-step flow:

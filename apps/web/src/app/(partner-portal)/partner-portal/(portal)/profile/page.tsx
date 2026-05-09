@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 import { useT } from '@/lib/i18n/I18nProvider'
+import { AggressionTierSelector, type AggressionTier } from '@/components/AggressionTierSelector'
 
 // AffiliateAccount shape from GET /api/affiliate/account
 type Account = {
@@ -10,6 +11,7 @@ type Account = {
   status: string
   referralCode: string
   payoutMethodJson: { type?: string; [k: string]: unknown } | null
+  aggressionTier: AggressionTier
   createdAt: string
 }
 
@@ -31,6 +33,29 @@ export default function AffiliateProfilePage() {
   const [method, setMethod] = useState('')
   const [details, setDetails] = useState('')
 
+  // Marketing voice intensity — see docs/marketing-style-guide.md
+  const [tier, setTier] = useState<AggressionTier>('balanced')
+  const [tierSaving, setTierSaving] = useState(false)
+  const [tierSaved, setTierSaved] = useState(false)
+
+  async function saveTier(next: AggressionTier | null) {
+    if (!next) return
+    setTier(next)
+    setTierSaving(true)
+    try {
+      await apiFetch('/api/affiliate/aggression-tier', {
+        method: 'PATCH',
+        body: JSON.stringify({ tier: next }),
+      })
+      setTierSaved(true)
+      setTimeout(() => setTierSaved(false), 2000)
+    } catch (e: unknown) {
+      alert((e as Error).message ?? t('partnerProfile.saveFailed'))
+    } finally {
+      setTierSaving(false)
+    }
+  }
+
   useEffect(() => {
     Promise.all([
       apiFetch<Account>('/api/affiliate/account').catch(() => null),
@@ -45,6 +70,7 @@ export default function AffiliateProfilePage() {
         const rest = Object.fromEntries(Object.entries(pmj).filter(([k]) => k !== 'type'))
         setDetails(Object.keys(rest).length > 0 ? JSON.stringify(rest, null, 2) : '')
       }
+      if (acc?.aggressionTier) setTier(acc.aggressionTier)
       setLoading(false)
     })
   }, [])
@@ -129,6 +155,23 @@ export default function AffiliateProfilePage() {
         >
           {saving ? t('partnerProfile.saving') : saved ? t('partnerProfile.saved') : t('partnerProfile.savePreferences')}
         </button>
+      </div>
+
+      {/* Marketing voice intensity — drives AI-Assist generated pitch material
+          + future per-partner Bunny-hosted assets. Auto-saves on change. */}
+      <div className="rounded-xl p-5 mt-6" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.aggressionTier.heading')}</p>
+          {tierSaved && (
+            <span className="text-xs" style={{ color: 'oklch(55% 0.18 145)' }}>✓ {t('partnerProfile.saved')}</span>
+          )}
+        </div>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>{t('partnerProfile.aggressionTier.description')}</p>
+        <AggressionTierSelector
+          value={tier}
+          onChange={saveTier}
+          saving={tierSaving}
+        />
       </div>
     </div>
   )

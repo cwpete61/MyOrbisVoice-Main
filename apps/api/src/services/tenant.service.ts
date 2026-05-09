@@ -25,6 +25,8 @@ export const updateBusinessProfileSchema = z.object({
   serviceAreasJson: z.unknown().optional().nullable(),
   businessHoursJson: z.unknown().optional().nullable(),
   fallbackNotificationEmail: z.string().email().optional().nullable(),
+  // Marketing voice intensity — see docs/marketing-style-guide.md
+  aggressionTier: z.enum(['conservative', 'balanced', 'direct', 'aggressive']).optional(),
 })
 
 export async function getTenant(tenantId: string) {

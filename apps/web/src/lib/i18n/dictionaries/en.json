@@ -633,7 +633,11 @@
     "saving": "Saving…",
     "saved": "Saved ✓",
     "savePreferences": "Save Preferences",
-    "saveFailed": "Save failed"
+    "saveFailed": "Save failed",
+    "aggressionTier": {
+      "heading":     "Marketing voice",
+      "description": "Pick how intense the pitch material we generate for you should sound. Drives the AI-generated outreach templates in your Marketing Kit + future custom landing pages."
+    }
   },
   "partnerLogin": {
     "brandSubtitle": "Partner Portal",
@@ -2350,6 +2354,11 @@
       "title": "Notifications",
       "description": "Per-device — enable on each browser you want to receive alerts on."
     },
+    "aggressionTier": {
+      "title":       "Marketing voice",
+      "description": "Pick how intense the AI-generated copy should sound on your outbound emails, SMS, and follow-up scripts. You can override per-campaign in the campaign editor.",
+      "save":        "Save marketing voice"
+    },
     "members": {
       "title": "Team members",
       "description": "Invite teammates to share access to this workspace. They must sign up first; then add them here by email.",
@@ -3012,6 +3021,49 @@
       "bunnyStorageZone": "The Storage Zone Name from bunny.net dashboard → Storage. This is the internal name (e.g. `orbisvoice`), NOT the CDN hostname. Used in the upload URL path. If you rename the zone in Bunny, update here AND ensure the CDN pull zone still points at the right storage zone.",
       "bunnyCdnHostname": "The Pull Zone hostname from bunny.net → CDN → Pull Zones (e.g. `OrbisVoice.b-cdn.net`). DIFFERENT from the storage zone name above. Used to build public CDN URLs for recordings + transcripts. The pull zone MUST be linked to the storage zone in Bunny dashboard, otherwise CDN URLs return 404 and we fall back to API-proxied audio."
     }
+  },
+  "aggressionTier": {
+    "tiers": {
+      "conservative": {
+        "label":       "Conservative",
+        "description": "Polite, factual, proof-stacked. Best for dental, legal, financial advisors, B2B services."
+      },
+      "balanced": {
+        "label":       "Balanced",
+        "description": "Modern direct-response. Emotional but credible. Default for most service businesses."
+      },
+      "direct": {
+        "label":       "Direct",
+        "description": "Story-led, urgency built in, hard offers. Best for coaching, courses, time-sensitive promotions."
+      },
+      "aggressive": {
+        "label":       "Aggressive",
+        "description": "High-intensity launch voice. Sparingly — best for short windows like Black Friday or product launches."
+      }
+    },
+    "samples": {
+      "conservative": {
+        "subject":   "We tried to reach you",
+        "firstLine": "Hi {firstName}, I noticed your call earlier today went to our after-hours line. I wanted to follow up personally to make sure you got the help you needed."
+      },
+      "balanced": {
+        "subject":   "About your call yesterday",
+        "firstLine": "Hi {firstName} — when you called yesterday at 7:42pm, our team had already gone home. I'm sorry you didn't get through. Here's what I can do today."
+      },
+      "direct": {
+        "subject":   "You called. Nobody picked up. Here's what happens now.",
+        "firstLine": "{firstName}, you called at 7:42pm yesterday. Nobody answered. That's the exact problem we built MyOrbisVoice to fix."
+      },
+      "aggressive": {
+        "subject":   "{firstName}, your call was lost. (Don't lose the next one.)",
+        "firstLine": "Last night at 7:42pm, you tried to reach us. We failed you. Here's the deal: 5 minutes from now, that won't happen again."
+      }
+    },
+    "samplePreviewLabel":   "Sample email preview",
+    "defaultBadge":         "Default",
+    "inheritLabel":         "Use workspace default",
+    "inheritDescription":   "Inherit the marketing voice from your workspace settings.",
+    "aggressiveWarning":    "Aggressive tone is best for short campaigns (launches, sales). Used as a baseline voice it burns prospect trust over time."
   },
   "widgetWp": {
     "title": "WordPress plugin",

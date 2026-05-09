@@ -23,6 +23,9 @@ export const createCampaignSchema = z.object({
   whatsappBody:        z.string().max(4000).optional().nullable(),
   emailSubject:        z.string().max(200).optional().nullable(),
   emailBody:           z.string().max(50000).optional().nullable(),
+  // Per-campaign aggression override (null = use tenant default).
+  // See docs/marketing-style-guide.md.
+  aggressionTier:      z.enum(['conservative', 'balanced', 'direct', 'aggressive']).optional().nullable(),
 })
 
 export const updateCampaignSchema = createCampaignSchema.partial()

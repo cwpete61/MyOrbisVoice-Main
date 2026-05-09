@@ -633,7 +633,11 @@
     "saving": "Guardando…",
     "saved": "Guardado ✓",
     "savePreferences": "Guardar preferencias",
-    "saveFailed": "Falló al guardar"
+    "saveFailed": "Falló al guardar",
+    "aggressionTier": {
+      "heading":     "Voz de marketing",
+      "description": "Elige qué tan intenso debe sonar el contenido de pitch que generamos para ti. Impulsa las plantillas de outreach generadas por IA en tu Marketing Kit + futuras landing pages personalizadas."
+    }
   },
   "partnerLogin": {
     "brandSubtitle": "Portal de Partners",
@@ -2350,6 +2354,11 @@
       "title": "Notificaciones",
       "description": "Por dispositivo — actívalas en cada navegador en el que quieras recibir alertas."
     },
+    "aggressionTier": {
+      "title":       "Voz de marketing",
+      "description": "Elige qué tan intenso debe sonar el contenido generado por IA en tus emails salientes, SMS y guiones de seguimiento. Puedes anularlo por campaña en el editor de campañas.",
+      "save":        "Guardar voz de marketing"
+    },
     "members": {
       "title": "Miembros del equipo",
       "description": "Invita a tu equipo a compartir acceso a este espacio de trabajo. Primero deben crear su cuenta; luego agrégalos aquí por correo.",
@@ -3012,6 +3021,49 @@
       "bunnyStorageZone": "El Storage Zone Name del panel bunny.net → Storage. Este es el nombre interno (p. ej. `orbisvoice`), NO el hostname del CDN. Se usa en la ruta de la URL de subida. Si renombras la zona en Bunny, actualízala aquí Y asegúrate de que la pull zone del CDN siga apuntando a la storage zone correcta.",
       "bunnyCdnHostname": "El hostname de la Pull Zone del panel bunny.net → CDN → Pull Zones (p. ej. `OrbisVoice.b-cdn.net`). DIFERENTE del nombre de la storage zone de arriba. Se usa para construir las URLs públicas del CDN para grabaciones + transcripciones. La pull zone DEBE estar enlazada a la storage zone en el panel de Bunny, de lo contrario las URLs del CDN devuelven 404 y caemos al audio por API."
     }
+  },
+  "aggressionTier": {
+    "tiers": {
+      "conservative": {
+        "label":       "Conservador",
+        "description": "Profesional, factual, respaldado con pruebas. Ideal para dentistas, abogados, asesores financieros, servicios B2B."
+      },
+      "balanced": {
+        "label":       "Balanceado",
+        "description": "Respuesta directa moderna. Emocional pero creíble. Predeterminado para la mayoría de los negocios de servicios."
+      },
+      "direct": {
+        "label":       "Directo",
+        "description": "Liderado por historias, urgencia incorporada, ofertas firmes. Ideal para coaching, cursos, promociones por tiempo limitado."
+      },
+      "aggressive": {
+        "label":       "Agresivo",
+        "description": "Voz de lanzamiento de alta intensidad. Úsalo con moderación — mejor para ventanas cortas como Black Friday o lanzamientos de producto."
+      }
+    },
+    "samples": {
+      "conservative": {
+        "subject":   "Intentamos comunicarnos contigo",
+        "firstLine": "Hola {firstName}, vi que tu llamada de hoy entró a nuestra línea fuera de horario. Quería darte seguimiento personalmente para asegurarme de que recibiste la ayuda que necesitabas."
+      },
+      "balanced": {
+        "subject":   "Sobre tu llamada de ayer",
+        "firstLine": "Hola {firstName} — cuando llamaste ayer a las 7:42pm, nuestro equipo ya se había ido. Lamento que no hayas podido comunicarte. Esto es lo que puedo hacer hoy."
+      },
+      "direct": {
+        "subject":   "Llamaste. Nadie contestó. Esto es lo que pasa ahora.",
+        "firstLine": "{firstName}, llamaste a las 7:42pm de ayer. Nadie contestó. Ese es exactamente el problema que MyOrbisVoice fue creado para resolver."
+      },
+      "aggressive": {
+        "subject":   "{firstName}, tu llamada se perdió. (No pierdas la siguiente.)",
+        "firstLine": "Anoche a las 7:42pm intentaste comunicarte con nosotros. Te fallamos. El trato es este: en 5 minutos, eso ya no volverá a pasar."
+      }
+    },
+    "samplePreviewLabel":   "Vista previa del email",
+    "defaultBadge":         "Predeterminado",
+    "inheritLabel":         "Usar predeterminado del workspace",
+    "inheritDescription":   "Hereda la voz de marketing de la configuración de tu workspace.",
+    "aggressiveWarning":    "El tono Agresivo es ideal para campañas cortas (lanzamientos, ventas). Usado como voz predeterminada quema la confianza de tus prospectos con el tiempo."
   },
   "widgetWp": {
     "title": "Plugin de WordPress",

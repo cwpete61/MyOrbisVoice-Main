@@ -7,6 +7,7 @@ import { Tooltip } from '@/components/Tooltip'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { BackToOnboarding } from '@/components/BackToOnboarding'
 import { IndustryAutocomplete } from '@/components/IndustryAutocomplete'
+import { AggressionTierSelector } from '@/components/AggressionTierSelector'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
 
@@ -31,6 +32,9 @@ interface BusinessProfile {
   postalCode: string | null
   country: string | null
   fallbackNotificationEmail: string | null
+  // Marketing voice intensity — drives AI-Assist generated copy + default
+  // campaign tone. See docs/marketing-style-guide.md for the spectrum.
+  aggressionTier: 'conservative' | 'balanced' | 'direct' | 'aggressive'
 }
 
 function LogoUpload({
@@ -353,6 +357,21 @@ export default function SettingsPage() {
             t={t}
           />
         ))}
+      </Section>
+
+      <Section
+        title={t('tenantSettings.aggressionTier.title')}
+        description={t('tenantSettings.aggressionTier.description')}
+        onSave={saveProfile}
+        saving={saving === 'profile'}
+        saveLabel={t('tenantSettings.aggressionTier.save')}
+        savingLabel={t('tenantSettings.actions.saving')}
+      >
+        <AggressionTierSelector
+          value={(profileForm.aggressionTier as 'conservative' | 'balanced' | 'direct' | 'aggressive') ?? 'balanced'}
+          onChange={(tier) => setProfileForm({ ...profileForm, aggressionTier: tier ?? 'balanced' })}
+          saving={saving === 'profile'}
+        />
       </Section>
 
       <section>

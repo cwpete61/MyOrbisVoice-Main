@@ -569,6 +569,10 @@ model BusinessProfile {
   serviceAreasJson          Json?
   businessHoursJson         Json?
   fallbackNotificationEmail String?
+  // Marketing voice intensity ('conservative' | 'balanced' | 'direct' | 'aggressive').
+  // Drives AI-Assist generated copy, default campaign tone, and outbound voice agent
+  // intensity. See docs/marketing-style-guide.md for the spectrum definition.
+  aggressionTier            String   @default("balanced")
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
   tenant                    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1161,6 +1165,10 @@ model AffiliateAccount {
   totalPaidCents         Int                      @default(0)
   approvedAt             DateTime?
   notes                  String?
+  // Partner's marketing voice intensity. Same scale as BusinessProfile.aggressionTier.
+  // Drives AI-Assist generated pitch material + future per-partner Bunny-hosted assets.
+  // See docs/marketing-style-guide.md for the spectrum definition.
+  aggressionTier         String                   @default("balanced")
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
   user                   User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1508,6 +1516,10 @@ model Campaign {
   whatsappBody       String?
   emailSubject       String?
   emailBody          String?
+  // Per-campaign aggression override (null = use BusinessProfile.aggressionTier).
+  // Lets a tenant pick a different intensity for a launch event vs steady-state
+  // campaigns. See docs/marketing-style-guide.md.
+  aggressionTier     String?
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)

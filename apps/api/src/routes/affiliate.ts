@@ -28,6 +28,14 @@ tenantRouter.patch('/affiliate/payout-method', async (req, res, next) => {
   try { res.json({ data: await affiliateService.updatePayoutMethod(req.user!.id, req.body as Record<string, unknown>) }) } catch (err) { next(err) }
 })
 
+// Marketing voice intensity — see docs/marketing-style-guide.md
+tenantRouter.patch('/affiliate/aggression-tier', async (req, res, next) => {
+  try {
+    const { tier } = req.body as { tier?: string }
+    res.json({ data: await affiliateService.updateAggressionTier(req.user!.id, tier as never) })
+  } catch (err) { next(err) }
+})
+
 tenantRouter.get('/affiliate/link', async (req, res, next) => {
   try { res.json({ data: await affiliateService.getReferralLink(req.user!.id) }) } catch (err) { next(err) }
 })
