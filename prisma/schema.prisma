@@ -407,6 +407,11 @@ model Tenant {
   /// configured what they care about can mark a step done even if
   /// non-required fields are blank. Null = nothing manually marked yet.
   onboardingMarkedDone      Json?
+  /// Tracks which onboarding emails have been sent + when. Shape:
+  /// { setupNudge: ISO, featureSpotlight: ISO, weekTwoCheckIn: ISO }.
+  /// Populated by the onboarding-emails job. Idempotent — once a key is set,
+  /// that email is never re-sent.
+  onboardingEmailsSent      Json?
   referredByCode            String?
   attributedAt              DateTime?
   industryVertical          IndustryVertical        @default(GENERAL)
