@@ -206,7 +206,10 @@ enum IndustryVertical {
   ACCOUNTING
   INSURANCE
   PROPERTY_MANAGEMENT
+  TRAVEL
+  EVENTS
   // Expanded list — see apps/web/src/lib/industries.ts for the bilingual
+  // (COACHING + CONSULTING already defined further down in the expanded list.)
   // labels and the canonical alphabetized presentation order.
   APPLIANCE_REPAIR
   ARCHITECTURE
@@ -1408,24 +1411,32 @@ model TwilioEventLog {
 
 // Platform-level pre-built campaign templates per vertical
 model CampaignTemplate {
-  id                        String           @id @default(uuid())
+  id                        String            @id @default(uuid())
   vertical                  IndustryVertical
   campaignType              CampaignType
+  subcategory               EventSubcategory?
   name                      String
   description               String
   defaultPrompt             String
   defaultTriggerTag         String
-  defaultDelayHours         Int              @default(1)
-  defaultMaxRetries         Int              @default(2)
-  defaultRetryIntervalHours Int              @default(24)
+  defaultDelayHours         Int               @default(1)
+  defaultMaxRetries         Int               @default(2)
+  defaultRetryIntervalHours Int               @default(24)
   suggestedTagsJson         Json?
-  isActive                  Boolean          @default(true)
-  createdAt                 DateTime         @default(now())
-  updatedAt                 DateTime         @updatedAt
+  isActive                  Boolean           @default(true)
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
   campaigns                 Campaign[]
 
-  @@unique([vertical, campaignType])
+  @@unique([vertical, campaignType, name])
   @@index([vertical])
+  @@index([subcategory])
+}
+
+enum EventSubcategory {
+  HOLIDAY
+  SALES_EVENT
+  SPECIAL_EVENT
 }
 
 // Tenant's activated campaign instance

@@ -10,6 +10,7 @@ interface CampaignTemplate {
   id: string
   vertical: string
   campaignType: string
+  subcategory: string | null
   name: string
   description: string
   defaultPrompt: string
@@ -60,7 +61,11 @@ const VERTICAL_ORDER = [
   'GENERAL','LEGAL','DENTAL','MEDICAL','FINANCIAL','HOME_SERVICES','AUTO_REPAIR',
   'REAL_ESTATE','FITNESS','BEAUTY','EDUCATION','HOSPITALITY',
   'VETERINARY','CHILDCARE','ACCOUNTING','INSURANCE','PROPERTY_MANAGEMENT',
+  'TRAVEL','COACHING','CONSULTING',
+  'EVENTS',
 ]
+
+const SUBCATEGORY_ORDER = ['HOLIDAY', 'SALES_EVENT', 'SPECIAL_EVENT'] as const
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-blue-50 text-blue-700', IN_PROGRESS: 'bg-yellow-50 text-yellow-700',
@@ -157,9 +162,13 @@ function TemplateLibrary({ onMsg }: { onMsg: (t: 'success' | 'error', m: string)
   const [expanded, setExpanded]       = useState<string | null>(null)
   const [search, setSearch]           = useState('')
   const [activeVertical, setActiveVertical] = useState('GENERAL')
+  const [activeSubcategory, setActiveSubcategory] = useState<string>('ALL')
 
   function verticalLabel(v: string) {
     return t(`tenantCampaigns.verticals.${v}`)
+  }
+  function subcategoryLabel(sc: string) {
+    return t(`tenantCampaigns.subcategories.${sc}`)
   }
 
   // Build counts per vertical from full template list
@@ -170,15 +179,26 @@ function TemplateLibrary({ onMsg }: { onMsg: (t: 'success' | 'error', m: string)
   // Verticals that actually have templates, in preferred order
   const presentVerticals = VERTICAL_ORDER.filter(v => countsByVertical[v])
 
-  // Filter by vertical tab + search
+  // Counts per subcategory (only meaningful when activeVertical === 'EVENTS')
+  const eventsTemplates = (allTemplates ?? []).filter(t => t.vertical === 'EVENTS')
+  const countsBySubcategory: Record<string, number> = {}
+  for (const tmpl of eventsTemplates) {
+    if (tmpl.subcategory) {
+      countsBySubcategory[tmpl.subcategory] = (countsBySubcategory[tmpl.subcategory] ?? 0) + 1
+    }
+  }
+
+  // Filter by vertical tab + subcategory (Events only) + search
   const query = search.toLowerCase().trim()
   const filtered = (allTemplates ?? []).filter(tmpl => {
     const matchesVertical = tmpl.vertical === activeVertical
+    const matchesSubcategory =
+      activeVertical !== 'EVENTS' || activeSubcategory === 'ALL' || tmpl.subcategory === activeSubcategory
     const matchesSearch   = !query ||
       tmpl.name.toLowerCase().includes(query) ||
       tmpl.description.toLowerCase().includes(query) ||
       tmpl.defaultTriggerTag.toLowerCase().includes(query)
-    return matchesVertical && matchesSearch
+    return matchesVertical && matchesSubcategory && matchesSearch
   })
 
   // Group filtered results by vertical
@@ -243,7 +263,7 @@ function TemplateLibrary({ onMsg }: { onMsg: (t: 'success' | 'error', m: string)
         {presentVerticals.map(v => (
           <button
             key={v}
-            onClick={() => setActiveVertical(v)}
+            onClick={() => { setActiveVertical(v); setActiveSubcategory('ALL') }}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${activeVertical === v ? 'border-teal-600 text-teal-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             {verticalLabel(v)}
@@ -251,6 +271,33 @@ function TemplateLibrary({ onMsg }: { onMsg: (t: 'success' | 'error', m: string)
           </button>
         ))}
       </div>
+
+      {/* Subcategory pills — only when Events tab is active */}
+      {activeVertical === 'EVENTS' && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setActiveSubcategory('ALL')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${activeSubcategory === 'ALL' ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          >
+            {subcategoryLabel('ALL')}
+            <span className={`px-1.5 py-0.5 rounded-full text-xs ${activeSubcategory === 'ALL' ? 'bg-white/20 text-white' : 'bg-white text-gray-500'}`}>{eventsTemplates.length}</span>
+          </button>
+          {SUBCATEGORY_ORDER.map(sc => {
+            const count = countsBySubcategory[sc] ?? 0
+            if (count === 0) return null
+            return (
+              <button
+                key={sc}
+                onClick={() => setActiveSubcategory(sc)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${activeSubcategory === sc ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                {subcategoryLabel(sc)}
+                <span className={`px-1.5 py-0.5 rounded-full text-xs ${activeSubcategory === sc ? 'bg-white/20 text-white' : 'bg-white text-gray-500'}`}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Results summary */}
       <p className="text-xs text-gray-400">
