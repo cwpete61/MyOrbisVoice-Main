@@ -48,14 +48,19 @@ interface I18nProviderProps {
 }
 
 export function I18nProvider({ children, initialLocale }: I18nProviderProps) {
-  // Start from explicit prop → cached preference → 'en'. Avoids the FOUC
-  // (flash of unlocalised content) on every navigation.
+  // Precedence (most → least authoritative):
+  //   1. localStorage cache  — the user's explicit prior choice on this device
+  //   2. initialLocale prop  — server-side Accept-Language detection
+  //   3. 'en' default
+  // On first server render localStorage isn't available, so we fall back to
+  // initialLocale. On client hydration the cached value (if present) takes
+  // over so returning users never see the auto-detect override their choice.
   const [locale, setLocaleState] = useState<Locale>(() => {
-    if (initialLocale && SUPPORTED_LOCALES.includes(initialLocale)) return initialLocale
     if (typeof window !== 'undefined') {
       const cached = window.localStorage.getItem(STORAGE_KEY)
       if (cached === 'en' || cached === 'es') return cached
     }
+    if (initialLocale && SUPPORTED_LOCALES.includes(initialLocale)) return initialLocale
     return 'en'
   })
 
