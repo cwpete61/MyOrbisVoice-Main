@@ -17,6 +17,7 @@
 
 import { AppError } from '@voiceautomation/shared'
 import { getOpenAiApiKey, getConfigValue } from './system-config.service.js'
+import { resolveAggressionTier, type AggressionTier } from '../lib/aggression-tier.js'
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 const REQUEST_TIMEOUT_MS = 30_000
@@ -165,12 +166,67 @@ const SECTION_SPECS: Record<DnaSection, SectionSpec> = {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+ * Marketing voice overlay — encodes the active Aggression Tier into a
+ * paragraph the model gets prepended to its system prompt. Source of truth:
+ * docs/marketing-style-guide.md (the 4-tier Aggression Spectrum + voice
+ * rules per tier). Universal anti-patterns are also injected so even
+ * Aggressive output stays truthful.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const TIER_VOICE: Record<AggressionTier, string> = {
+  conservative:
+    'Use a calm, professional, fact-based voice. No exclamation points. ' +
+    'No urgency tactics or scarcity language. CTAs are invitations ("Schedule a consultation," "Learn more"). ' +
+    'Statements over claims. Specific numbers cited where used. Tone matches what dental practices, law firms, ' +
+    'and B2B services expect from a vendor email — restrained, credible, never pushy.',
+  balanced:
+    'Use a modern direct-response voice — emotional but credible. Soft urgency only when there is a real ' +
+    'reason ("limited slots this week," "we onboard 5 tenants per month"). CTAs are direct but inviting ' +
+    '("Get your free walkthrough," "See if this fits"). Mix story and proof. PAS framing (problem → ' +
+    'agitate → solve) works well. This is the default tone for most service businesses; the reader should ' +
+    'feel respected, not sold-to.',
+  direct:
+    'Use a hard direct-response voice — story-led, urgency built in, hard offers. Specific deadlines and ' +
+    'real bonuses required. Cost-of-delay framing. Hard CTAs ("Claim your spot before midnight Sunday," ' +
+    '"This price ends Friday"). Some emotional intensity. AIDA structure (attention → interest → desire → ' +
+    'action). The reader should feel a clear choice in front of them, with consequences for not deciding.',
+  aggressive:
+    'Use a high-intensity launch voice. Caps and intensifiers used sparingly but deliberately for emphasis. ' +
+    'Stacked offers and bonuses. Pattern interrupts in subject lines. "STOP losing X" / "DO NOT miss this" ' +
+    'framing is allowed. ALL claims must remain truthful — invent nothing, cite real numbers. This tier is ' +
+    'for short windows (Black Friday, launches); use sparingly.',
+}
+
+const UNIVERSAL_RULES =
+  'Universal rules (apply at every tier — no exceptions): ' +
+  '(1) Numbers must be sourceable — cite Forbes / HBR / BIA-Kelsey / a stated industry source on every statistic, ' +
+  'or omit the number. ' +
+  '(2) Stories must be either real (with a real customer to point to) OR explicitly labeled hypothetical. ' +
+  'Never fabricate quoted customers. ' +
+  '(3) Urgency must be enforceable. Real deadlines must trigger; fake urgency burns trust. ' +
+  '(4) Avoid LLM hedging ("might be worth considering," "potentially," "just wanted to reach out"). ' +
+  '(5) Avoid owner-centered openings ("we are excited to..."). ' +
+  '(6) Avoid adjective stacking ("powerful, intuitive, beautiful platform") — stack proof, not adjectives. ' +
+  '(7) Avoid generic social proof ("trusted by businesses worldwide"); use specific numbers or none.'
+
+export function buildVoiceOverlay(tier: AggressionTier): string {
+  return [
+    `Marketing voice tier: ${tier.toUpperCase()}.`,
+    TIER_VOICE[tier],
+    '',
+    UNIVERSAL_RULES,
+  ].join('\n')
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
  * Prompt construction
  * ──────────────────────────────────────────────────────────────────────── */
 
-function buildSystemPrompt(section: DnaSection, tone: string): string {
+function buildSystemPrompt(section: DnaSection, tone: string, voiceOverlay: string): string {
   const spec = SECTION_SPECS[section]
   return [
+    voiceOverlay,
+    '',
     `You draft Business DNA content for a voice-agent SaaS. ${spec.description}`,
     '',
     'Hard rules:',
@@ -272,7 +328,7 @@ async function callOpenAi(
  * ──────────────────────────────────────────────────────────────────────── */
 
 export async function generateDnaSection(
-  _tenantId: string,
+  tenantId: string,
   section: DnaSection,
   seed: GenerationSeed,
 ): Promise<Record<string, unknown>> {
@@ -292,7 +348,13 @@ export async function generateDnaSection(
   const model = (await getConfigValue('openai_model')) || 'gpt-4o-mini'
   const tone = seed.tone?.trim() || 'professional, warm, conversational'
 
-  const systemPrompt = buildSystemPrompt(section, tone)
+  // Active marketing voice tier from the tenant's BusinessProfile (default
+  // 'balanced'). Per-call campaign overrides aren't relevant here because
+  // DNA generation is a tenant-level operation, not per-campaign.
+  const tier = await resolveAggressionTier(tenantId)
+  const voiceOverlay = buildVoiceOverlay(tier)
+
+  const systemPrompt = buildSystemPrompt(section, tone, voiceOverlay)
 
   // First attempt
   const first = await callOpenAi(apiKey, model, systemPrompt, buildUserPrompt(seed, false))
@@ -320,6 +382,116 @@ export async function generateDnaSection(
   throw new AppError(
     'AI_INVALID_RESPONSE',
     "AI couldn't generate valid content — try again or fill manually.",
+    422,
+  )
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Campaign email generator
+ *
+ * Given a brief + optional context (campaign name, trigger tag, business
+ * snippet), generate a subject line + body that follow the active marketing
+ * voice tier. Source frameworks: PAS (Balanced), AIDA (Direct), Caples-style
+ * subject formulas. Per-campaign aggressionTier overrides the tenant default
+ * via resolveAggressionTier(tenantId, campaignId).
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export interface CampaignEmailSeed {
+  brief:        string                  // What the email is about — "remind booked patients about tomorrow's appointment"
+  campaignName?: string                 // Optional context — "Booking Confirmation"
+  triggerTag?:   string                 // Optional context — "booked"
+  businessName?: string                 // Pulled from BusinessProfile when present
+  audience?:    string                  // "patients with confirmed appointments" / "leads who hung up"
+}
+
+export interface CampaignEmailDraft {
+  subject: string
+  body:    string
+  tier:    AggressionTier
+}
+
+export async function generateCampaignEmail(
+  tenantId: string,
+  seed: CampaignEmailSeed,
+  campaignId?: string | null,
+): Promise<CampaignEmailDraft> {
+  if (!seed.brief?.trim()) {
+    throw new AppError('BAD_REQUEST', 'Brief is required.', 400)
+  }
+
+  const apiKey = await getOpenAiApiKey()
+  if (!apiKey) {
+    throw new AppError(
+      'NOT_CONFIGURED',
+      'OpenAI API key is not set in system config.',
+      502,
+    )
+  }
+  const model = (await getConfigValue('openai_model')) || 'gpt-4o-mini'
+
+  const tier = await resolveAggressionTier(tenantId, campaignId ?? null)
+  const voiceOverlay = buildVoiceOverlay(tier)
+
+  // Framework guidance varies by tier — per docs/marketing-style-guide.md
+  const framework =
+    tier === 'conservative' ? 'BAB (Before, After, Bridge) or 4Ps (Promise, Picture, Proof, Push). Lead with the customer-as-hero, not the brand.'
+    : tier === 'balanced'   ? 'PAS (Problem, Agitate, Solve). State the situation, twist the knife once with a specific cost-of-inaction, then offer the solution.'
+    : tier === 'direct'     ? 'AIDA (Attention, Interest, Desire, Action). Open with a Caples-style specific-benefit hook. Build urgency with a real deadline. End with a hard CTA.'
+    : 'AIDA + Kennedy offer formula. Lead with a pattern interrupt. Stack a specific offer + real deadline + cost-of-delay. Close hard.'
+
+  const systemPrompt = [
+    voiceOverlay,
+    '',
+    'You are drafting a SINGLE outbound email for a small service business.',
+    '',
+    `Framework to follow: ${framework}`,
+    '',
+    'Structural rules:',
+    '- Subject line: 6-10 words, customer-focused, specific. Caples-style ("How to...", "Why...", "[Specific benefit] in [specific time]"). No emojis except at "aggressive" tier.',
+    '- Body: 80-180 words for conservative/balanced, 100-220 for direct/aggressive. Short paragraphs (1-3 sentences each). White space matters.',
+    '- Use {firstName}, {businessName}, {appointmentDate}, {appointmentTime} as merge tokens where contextually appropriate. Do not invent merge tokens.',
+    '- One CTA. The CTA reflects the tier (invitation at conservative; direct at balanced; hard at direct/aggressive).',
+    '- Plain text. No HTML tags, no markdown formatting, no signature block (the platform appends one).',
+    '',
+    'Return ONLY a single JSON object: { "subject": string, "body": string }. No prose, no markdown, no code fences.',
+  ].join('\n')
+
+  const userPrompt = [
+    'Brief from the tenant:',
+    seed.brief.trim(),
+    '',
+    'Context:',
+    `- Business name: ${seed.businessName?.trim() || '(pulled from {businessName} merge token at send time)'}`,
+    `- Campaign name: ${seed.campaignName?.trim() || '(not provided)'}`,
+    `- Trigger tag: ${seed.triggerTag?.trim() || '(not provided)'}`,
+    `- Audience: ${seed.audience?.trim() || '(infer from the brief)'}`,
+    '',
+    'Generate the email now. Return ONLY the JSON object.',
+  ].join('\n')
+
+  const tryParse = (raw: string): CampaignEmailDraft | null => {
+    let parsed: unknown
+    try { parsed = JSON.parse(raw) } catch { return null }
+    if (!isObj(parsed)) return null
+    const subject = parsed['subject']
+    const body    = parsed['body']
+    if (typeof subject !== 'string' || typeof body !== 'string') return null
+    if (subject.length < 4 || body.length < 30) return null
+    return { subject: subject.trim(), body: body.trim(), tier }
+  }
+
+  const first = await callOpenAi(apiKey, model, systemPrompt, userPrompt)
+  const parsed = tryParse(first)
+  if (parsed) return parsed
+
+  // Single retry with stricter user prompt
+  const second = await callOpenAi(apiKey, model, systemPrompt, userPrompt + '\n\nIMPORTANT: Your previous response was malformed. Return strictly { "subject": string, "body": string } with no surrounding text.')
+  const reparsed = tryParse(second)
+  if (reparsed) return reparsed
+
+  throw new AppError(
+    'AI_INVALID_RESPONSE',
+    "AI couldn't generate valid content — try again or write the email manually.",
     422,
   )
 }

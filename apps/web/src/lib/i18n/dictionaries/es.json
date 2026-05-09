@@ -3022,6 +3022,27 @@
       "bunnyCdnHostname": "El hostname de la Pull Zone del panel bunny.net → CDN → Pull Zones (p. ej. `OrbisVoice.b-cdn.net`). DIFERENTE del nombre de la storage zone de arriba. Se usa para construir las URLs públicas del CDN para grabaciones + transcripciones. La pull zone DEBE estar enlazada a la storage zone en el panel de Bunny, de lo contrario las URLs del CDN devuelven 404 y caemos al audio por API."
     }
   },
+  "aiEmailGen": {
+    "button":          "Generar con IA",
+    "title":           "Generar email con IA",
+    "subtitle":        "Describe qué debe decir el email. La IA sigue el nivel de voz de marketing que configuraste en tu workspace.",
+    "briefLabel":      "¿Qué debe decir este email?",
+    "briefPlaceholder": "Recordar a los pacientes con citas para mañana sobre su visita. Mencionar que traigan su tarjeta de seguro. Amigable, breve, sin tácticas de miedo.",
+    "briefHint":       "10-2000 caracteres. Sé específico sobre la situación, la audiencia y qué quieres que el destinatario haga.",
+    "briefTooShort":   "El brief es muy corto — dale a la IA al menos 10 caracteres de contexto.",
+    "audienceLabel":   "¿A quién va dirigido este email?",
+    "audiencePlaceholder": "pacientes con citas confirmadas",
+    "optional":        "opcional",
+    "previewLabel":    "Vista previa del borrador de IA",
+    "subjectLabel":    "Asunto",
+    "bodyLabel":       "Cuerpo",
+    "cancel":          "Cancelar",
+    "generate":        "Generar",
+    "regenerate":      "Regenerar",
+    "generating":      "Generando…",
+    "useThis":         "Usar este borrador",
+    "generateFailed":  "No se pudo generar — inténtalo de nuevo."
+  },
   "aggressionTier": {
     "tiers": {
       "conservative": {

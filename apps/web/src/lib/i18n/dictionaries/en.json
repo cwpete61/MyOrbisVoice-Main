@@ -3022,6 +3022,27 @@
       "bunnyCdnHostname": "The Pull Zone hostname from bunny.net → CDN → Pull Zones (e.g. `OrbisVoice.b-cdn.net`). DIFFERENT from the storage zone name above. Used to build public CDN URLs for recordings + transcripts. The pull zone MUST be linked to the storage zone in Bunny dashboard, otherwise CDN URLs return 404 and we fall back to API-proxied audio."
     }
   },
+  "aiEmailGen": {
+    "button":          "Generate with AI",
+    "title":           "Generate email with AI",
+    "subtitle":        "Describe what the email should say. The AI follows the marketing voice tier you've set in your workspace.",
+    "briefLabel":      "What should this email say?",
+    "briefPlaceholder": "Remind patients with appointments tomorrow about their visit. Mention they should bring their insurance card. Friendly, brief, no scare tactics.",
+    "briefHint":       "10-2000 characters. Be specific about the situation, audience, and what you want the recipient to do.",
+    "briefTooShort":   "Brief is too short — give the AI at least 10 characters of context.",
+    "audienceLabel":   "Who is this email going to?",
+    "audiencePlaceholder": "patients with confirmed appointments",
+    "optional":        "optional",
+    "previewLabel":    "AI draft preview",
+    "subjectLabel":    "Subject",
+    "bodyLabel":       "Body",
+    "cancel":          "Cancel",
+    "generate":        "Generate",
+    "regenerate":      "Regenerate",
+    "generating":      "Generating…",
+    "useThis":         "Use this draft",
+    "generateFailed":  "Could not generate — please try again."
+  },
   "aggressionTier": {
     "tiers": {
       "conservative": {

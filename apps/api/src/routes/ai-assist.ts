@@ -6,6 +6,7 @@ import { AppError } from '@voiceautomation/shared'
 import { writeAuditLogFromRequest } from '../lib/audit.js'
 import {
   generateDnaSection,
+  generateCampaignEmail,
   type DnaSection,
 } from '../services/ai-assist.service.js'
 
@@ -65,6 +66,49 @@ router.post('/ai-assist/generate-dna-section', async (req, res, next) => {
     })
 
     res.json({ data: { section, content } })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// Campaign email generator — produces { subject, body } at the active
+// marketing voice tier (resolved from tenant default + optional per-campaign
+// override). See docs/marketing-style-guide.md.
+const emailBodySchema = z.object({
+  brief:        z.string().trim().min(10).max(2000),
+  campaignName: z.string().trim().max(200).optional(),
+  triggerTag:   z.string().trim().max(100).optional(),
+  businessName: z.string().trim().max(200).optional(),
+  audience:     z.string().trim().max(500).optional(),
+  campaignId:   z.string().uuid().optional(),
+})
+
+router.post('/ai-assist/generate-campaign-email', async (req, res, next) => {
+  try {
+    const parsed = emailBodySchema.safeParse(req.body)
+    if (!parsed.success) {
+      throw new AppError('BAD_REQUEST', 'Invalid input — brief is required (10-2000 chars).', 400)
+    }
+    const { campaignId, ...seed } = parsed.data
+    const tenantId = req.user!.currentTenantId!
+
+    const draft = await generateCampaignEmail(tenantId, seed, campaignId ?? null)
+
+    void writeAuditLogFromRequest(req, {
+      tenantId,
+      actorType: 'USER',
+      actorUserId: req.user!.id,
+      action: 'ai_assist.campaign_email_generated',
+      targetType: 'Campaign',
+      ...(campaignId ? { targetId: campaignId } : {}),
+      metadataJson: {
+        tier: draft.tier,
+        briefLength: seed.brief.length,
+        hasCampaignContext: !!seed.campaignName,
+      },
+    })
+
+    res.json({ data: draft })
   } catch (err) {
     next(err)
   }

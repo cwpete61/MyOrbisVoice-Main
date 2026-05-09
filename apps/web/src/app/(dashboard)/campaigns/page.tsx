@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useApi, apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { Tooltip } from '@/components/Tooltip'
+import { AiCampaignEmailGenerator } from '@/components/AiCampaignEmailGenerator'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface CampaignTemplate {
@@ -554,6 +555,13 @@ function MyCampaigns({ onMsg }: { onMsg: (t: 'success' | 'error', m: string) => 
 
               {form.enableEmail && (
                 <>
+                  <div className="flex justify-end mb-1">
+                    <AiCampaignEmailGenerator
+                      campaignName={form.name}
+                      triggerTag={form.triggerTag}
+                      onApply={(subject, body) => setForm(f => ({ ...f, emailSubject: subject, emailBody: body }))}
+                    />
+                  </div>
                   <Field label={t('tenantCampaigns.form.emailSubject')} hint={t('tenantCampaigns.form.emailSubjectHint')}>
                     <input value={form.emailSubject} onChange={e => setForm(f => ({ ...f, emailSubject: e.target.value }))}
                       className={inp} placeholder={t('tenantCampaigns.form.emailSubjectPlaceholder')} />
