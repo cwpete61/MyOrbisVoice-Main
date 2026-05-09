@@ -134,8 +134,29 @@ async function extractText(buffer: Buffer, mimeType: string, filename: string): 
   if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
    || mimeType === 'application/vnd.ms-excel'
    || ext === 'xlsx' || ext === 'xls') {
+    // SheetJS 0.18.5 has known CVEs (prototype pollution + ReDoS) that are
+    // triggered by crafted XLSX content. We can't easily preempt synchronous
+    // parsing, but bounding the input size + cell count covers the practical
+    // exploitation paths while we wait for a SheetJS replacement.
+    const XLSX_MAX_BYTES = 5 * 1024 * 1024     // 5 MB raw upload
+    const XLSX_MAX_CELLS = 100_000             // 100k cells across all sheets
+    if (buffer.length > XLSX_MAX_BYTES) {
+      throw new Error(`Spreadsheet too large — max ${XLSX_MAX_BYTES / 1024 / 1024}MB. Save as CSV or split the sheet and try again.`)
+    }
     const xlsx = await import('xlsx')
     const wb = xlsx.read(buffer, { type: 'buffer' })
+    let totalCells = 0
+    for (const sheetName of wb.SheetNames) {
+      const sheet = wb.Sheets[sheetName]
+      if (!sheet?.['!ref']) continue
+      const range = xlsx.utils.decode_range(sheet['!ref'])
+      const rows  = (range.e.r - range.s.r) + 1
+      const cols  = (range.e.c - range.s.c) + 1
+      totalCells += rows * cols
+    }
+    if (totalCells > XLSX_MAX_CELLS) {
+      throw new Error(`Spreadsheet too dense — max ${XLSX_MAX_CELLS.toLocaleString()} cells across all sheets. Trim the sheet or save as CSV and try again.`)
+    }
     const lines: string[] = []
     for (const sheetName of wb.SheetNames) {
       lines.push(`--- Sheet: ${sheetName} ---`)
