@@ -14,6 +14,7 @@ const signupSchema = z.object({
   businessName: z.string().min(2, 'Business name must be at least 2 characters'),
   selectedPlanCode: z.string().optional(),
   affiliateCode: z.string().optional(),
+  preferredLocale: z.enum(['en', 'es']).optional(),
 })
 
 const affiliateSignupSchema = z.object({

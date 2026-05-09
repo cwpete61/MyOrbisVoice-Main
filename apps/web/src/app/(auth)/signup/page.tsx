@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { apiSignup, apiCreateCheckoutSession } from '@/lib/api'
 import { setTokens } from '@/lib/auth'
 import { PasswordInput } from '@/components/PasswordInput'
-import { useT } from '@/lib/i18n/I18nProvider'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
 
 function getReferralCookie(): string | undefined {
@@ -40,6 +40,7 @@ function URLParamsCapture({ onCapture }: { onCapture: (refCode?: string, planCod
 function SignupForm() {
   const router = useRouter()
   const t = useT()
+  const { locale } = useLocale()
   const [username, setUsername] = useState('')
   const [businessName, setBusinessName] = useState('')
   const [email, setEmail] = useState('')
@@ -58,7 +59,7 @@ function SignupForm() {
     if (password.length < 8) { setError(t('auth.signup.passwordTooShort')); return }
     setLoading(true)
     try {
-      const result = await apiSignup(username, email, password, businessName, refCode, planCode)
+      const result = await apiSignup(username, email, password, businessName, refCode, planCode, locale)
       setTokens(result.accessToken, result.refreshToken)
 
       // If a paid plan was selected, send the user to Stripe checkout immediately.

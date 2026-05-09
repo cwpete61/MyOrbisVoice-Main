@@ -2522,10 +2522,10 @@
     "allSetSubtitle": "Everything is configured. Your receptionist agent is live.",
     "progress": "Progress",
     "optional": "Optional",
-    "lockedPill": "Plan upgrade",
+    "lockedPill": "Locked",
     "actions": {
       "refresh": "Refresh status",
-      "configure": "Configure →",
+      "configure": "Set up →",
       "edit": "Edit →",
       "upgradeToUnlock": "Upgrade plan to unlock →"
     },
@@ -2535,19 +2535,19 @@
     "steps": {
       "profile": {
         "title": "Business Profile",
-        "description": "Set your business name, hours, and contact details so the agent knows who it is representing."
+        "description": "Set your business name, hours, and contact details. Takes about 2 minutes."
       },
       "dna": {
         "title": "Business DNA",
-        "description": "Define your services, pricing notes, and operating rules. The agent uses this on every call."
+        "description": "Define your services, pricing, hours, and operating rules. The agent reads this on every call. Takes about 5 minutes."
       },
       "agent": {
         "title": "Receptionist",
-        "description": "Pick a voice and tune the receptionist agent that will answer your calls."
+        "description": "Pick a voice and connect a published prompt to the agent that answers your calls. Takes about 3 minutes."
       },
       "channel": {
         "title": "Inbound Channel",
-        "description": "Enable the inbound receptionist channel and bind your published prompt."
+        "description": "Turn on the inbound channel so your AI agent can answer phone calls."
       },
       "number": {
         "title": "Phone Number",

@@ -2522,7 +2522,7 @@
     "allSetSubtitle": "Todo está configurado. Tu agente recepcionista ya está activo.",
     "progress": "Progreso",
     "optional": "Opcional",
-    "lockedPill": "Mejorar plan",
+    "lockedPill": "Bloqueado",
     "actions": {
       "refresh": "Actualizar estado",
       "configure": "Configurar →",
@@ -2535,19 +2535,19 @@
     "steps": {
       "profile": {
         "title": "Perfil del negocio",
-        "description": "Define el nombre de tu negocio, los horarios y los datos de contacto para que el agente sepa a quién representa."
+        "description": "Define el nombre de tu negocio, los horarios y los datos de contacto. Toma unos 2 minutos."
       },
       "dna": {
         "title": "ADN del negocio",
-        "description": "Define tus servicios, notas de precios y reglas operativas. El agente usa esto en cada llamada."
+        "description": "Define tus servicios, precios, horarios y reglas operativas. El agente lee esto en cada llamada. Toma unos 5 minutos."
       },
       "agent": {
         "title": "Recepcionista",
-        "description": "Elige una voz y ajusta el agente recepcionista que contestará tus llamadas."
+        "description": "Elige una voz y conecta un prompt publicado al agente que contestará tus llamadas. Toma unos 3 minutos."
       },
       "channel": {
         "title": "Canal entrante",
-        "description": "Activa el canal del recepcionista entrante y vincula tu prompt publicado."
+        "description": "Activa el canal entrante para que tu agente de IA pueda contestar llamadas telefónicas."
       },
       "number": {
         "title": "Número de teléfono",

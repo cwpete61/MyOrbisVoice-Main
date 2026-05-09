@@ -17,6 +17,7 @@ export async function signupUser(data: {
   businessName: string
   selectedPlanCode?: string
   affiliateCode?: string
+  preferredLocale?: string
 }) {
   const [existingEmail, existingUsername] = await Promise.all([
     prisma.user.findUnique({ where: { email: data.email } }),
@@ -33,7 +34,13 @@ export async function signupUser(data: {
   const slug = `${baseSlug}-${Date.now().toString(36)}`
 
   const { user, tenant } = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.create({ data: { email: data.email, username: data.username, passwordHash } })
+    // preferredLocale: only honor 'en' or 'es' (defaults to 'en' otherwise via the DB default).
+    // Set at signup time from Accept-Language detection (frontend reads useLocale() and passes
+    // current locale to apiSignup), so a Spanish-speaking visitor who saw Spanish auth pages
+    // continues seeing Spanish post-signup instead of having User.preferredLocale='en' override
+    // their chosen language on every /me hydration.
+    const locale = (data.preferredLocale === 'en' || data.preferredLocale === 'es') ? data.preferredLocale : 'en'
+    const user = await tx.user.create({ data: { email: data.email, username: data.username, passwordHash, preferredLocale: locale } })
     const tenant = await tx.tenant.create({
       data: {
         slug,
