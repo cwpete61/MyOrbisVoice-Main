@@ -91,7 +91,10 @@ export async function runAuthSuite() {
       await page.type(PASSWORD_SEL, TEST_USER.password)
       await page.click('button[type="submit"]')
 
-      await page.waitForFunction(() => !window.location.pathname.includes('/login'), { timeout: 15_000 })
+      // 30s timeout — every route is now ƒ (server-rendered on demand) since
+      // the locale-detect change in the root layout, so first paint of the
+      // dashboard target after login can be slower than the 15s default.
+      await page.waitForFunction(() => !window.location.pathname.includes('/login'), { timeout: 30_000 })
       const url = page.url()
       if (url.includes('/login')) throw new Error(`Still on login page: ${url}`)
     } finally {

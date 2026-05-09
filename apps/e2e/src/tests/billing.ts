@@ -2,11 +2,11 @@
 import { newPage, runTest, printResults } from '../harness.js'
 import { BASE_URL, API_URL } from '../config.js'
 
-async function signupAndGetToken(email: string): Promise<string> {
+async function signupAndGetToken(email: string, username: string): Promise<string> {
   const res = await fetch(`${API_URL}/api/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password: 'Test1234!', businessName: 'Billing Browser Test' }),
+    body: JSON.stringify({ username, email, password: 'Test1234!', businessName: 'Billing Browser Test' }),
   })
   const body = await res.json() as { data?: { accessToken?: string } }
   const token = body.data?.accessToken
@@ -16,8 +16,11 @@ async function signupAndGetToken(email: string): Promise<string> {
 
 export async function runBillingSuite() {
   const results = []
-  const email = `e2e-billing-${Date.now()}@test.local`
-  const token = await signupAndGetToken(email)
+  // @orbisvoice.test domain is reserved for tests + has the admin cleanup hook.
+  const ts       = Date.now()
+  const email    = `e2e-billing-${ts}@orbisvoice.test`
+  const username = `e2ebill${ts}`
+  const token    = await signupAndGetToken(email, username)
 
   results.push(await runTest('Billing page loads with authentication', async () => {
     const page = await newPage()
@@ -35,7 +38,7 @@ export async function runBillingSuite() {
     }
   }))
 
-  results.push(await runTest('Billing page shows 3 plan cards', async () => {
+  results.push(await runTest('Billing page shows the paid plan cards', async () => {
     const page = await newPage()
     try {
       await page.goto(`${BASE_URL}/login`)
@@ -49,13 +52,14 @@ export async function runBillingSuite() {
         { timeout: 10_000 },
       )
 
-      const bodyText = await page.evaluate(() => document.body.innerText)
-      const hasStarter = bodyText.toLowerCase().includes('starter')
-      const hasPro = bodyText.toLowerCase().includes('pro')
-      const hasEnterprise = bodyText.toLowerCase().includes('enterprise')
-      if (!hasStarter) throw new Error('Missing Starter plan')
-      if (!hasPro) throw new Error('Missing Pro plan')
-      if (!hasEnterprise) throw new Error('Missing Enterprise plan')
+      // Plan catalogue has shifted over time — current set is
+      // Free, Basic, Pro, Premier, Enterprise, LTD. Pin the test on
+      // a small stable subset (Basic + Pro + Enterprise) rather than
+      // every plan, so adding/renaming doesn't break the test.
+      const bodyText = await page.evaluate(() => document.body.innerText.toLowerCase())
+      for (const planName of ['basic', 'pro', 'enterprise']) {
+        if (!bodyText.includes(planName)) throw new Error(`Missing plan: ${planName}`)
+      }
     } finally {
       await page.close()
     }

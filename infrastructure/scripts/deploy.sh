@@ -262,24 +262,38 @@ else
   echo "  ⚠ Run \`pnpm preflight\` again to re-check after fixing."
 fi
 
-# ── 6b. Smoke test (opt-in via E2E_ADMIN_LOGIN_EMAIL) ─────────────────────
-# If admin credentials are present in the environment, run the customer-
-# journey smoke test (signup → onboarding → channels) and clean up the
-# disposable tenant afterward. Without admin creds we skip — better to not
-# run smoke than to run it and leak orphan @orbisvoice.test tenants every
-# deploy. Set E2E_ADMIN_LOGIN_EMAIL + E2E_ADMIN_LOGIN_PASSWORD in your
-# shell or .envrc to enable.
+# ── 6b. Post-deploy api smoke (always-on, no creds required) ─────────────
+# Hits prod's public API surface: health, plans, RBAC boundaries, full
+# auth flow (signup → /me → entitlements → /tenants/current → admin-block).
+# Browser-free (pure HTTP) so it doesn't need credentials in the env.
+# Creates one disposable @orbisvoice.test tenant per run; cleanup handled
+# by the admin /api/admin/test-tenants endpoint when run.
+log "Post-deploy api smoke (12 tests, ~3 sec)..."
+if E2E_API_URL=https://api.myorbisvoice.com pnpm --filter @voiceautomation/e2e test:api 2>&1 | tail -20; then
+  ok "API smoke: all checks green"
+else
+  echo ""
+  echo "  ⚠ API smoke detected a regression in the just-deployed API."
+  echo "  ⚠ Review the failed tests above. The deploy already shipped — "
+  echo "  ⚠ if any failure looks real, roll back via the procedure in CLAUDE.md."
+fi
+
+# ── 6c. Browser smoke (opt-in via E2E_ADMIN_LOGIN_EMAIL) ──────────────────
+# Heavier customer-journey flow (signup → onboarding → channels) requiring
+# admin creds for cleanup. Skipped without creds. Set
+# E2E_ADMIN_LOGIN_EMAIL + E2E_ADMIN_LOGIN_PASSWORD in your shell or .envrc
+# to enable.
 if [[ -n "${E2E_ADMIN_LOGIN_EMAIL:-}" && -n "${E2E_ADMIN_LOGIN_PASSWORD:-}" ]]; then
-  log "Smoke test (customer signup → onboarding flow)..."
+  log "Browser smoke test (customer signup → onboarding flow)..."
   if pnpm smoke-test 2>&1 | tail -15; then
-    ok "Smoke test: all checks green"
+    ok "Browser smoke test: all checks green"
   else
     echo ""
-    echo "  ⚠ Smoke test detected a regression in the customer signup flow."
+    echo "  ⚠ Browser smoke detected a regression in the customer signup flow."
     echo "  ⚠ Review screenshots saved to /tmp/smoke-test-fail-*.png"
   fi
 else
-  echo "   ⓘ Smoke test skipped — set E2E_ADMIN_LOGIN_EMAIL + E2E_ADMIN_LOGIN_PASSWORD to enable"
+  echo "   ⓘ Browser smoke skipped — set E2E_ADMIN_LOGIN_EMAIL + E2E_ADMIN_LOGIN_PASSWORD to enable"
 fi
 
 # ── 7. Post-deploy snapshot ────────────────────────────────────────────────

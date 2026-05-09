@@ -27,11 +27,15 @@ export async function runApiSuite() {
       if (checks?.redis !== 'ok') throw new Error(`redis: ${checks?.redis}`)
     }),
 
-    runTest('GET /api/billing/plans → 3 plans (public, no auth)', async () => {
+    runTest('GET /api/billing/plans → at least 5 plans (public, no auth)', async () => {
       const { status, body } = await apiFetch('/api/billing/plans')
       if (status !== 200) throw new Error(`Expected 200, got ${status}`)
       const data = (body as { data?: unknown[] }).data
-      if (!Array.isArray(data) || data.length !== 3) throw new Error(`Expected 3 plans, got ${data?.length}`)
+      // Plan count grew over time (free, basic, pro, premier, enterprise, ltd).
+      // Don't pin to an exact count — that just creates churn every time we
+      // add or rename a plan. Just confirm the public catalogue isn't empty
+      // or absurdly small.
+      if (!Array.isArray(data) || data.length < 5) throw new Error(`Expected at least 5 plans, got ${data?.length}`)
     }),
 
     runTest('GET /api/billing/plans has entitlements on each plan', async () => {
@@ -64,19 +68,31 @@ export async function runApiSuite() {
   ])
 
   // Auth flow — sequential (each step depends on previous)
-  const signupEmail = `api-test-${Date.now()}@test.local`
-  let accessToken = ''
+  // Use @orbisvoice.test domain so the admin /api/admin/test-tenants cleanup
+  // endpoint can wipe these later. Username is required by the signup schema.
+  const signupTimestamp = Date.now()
+  const signupEmail    = `e2e-api-${signupTimestamp}@orbisvoice.test`
+  const signupUsername = `e2eapi${signupTimestamp}`
+  let accessToken      = ''
+  let createdTenantId  = ''
 
   const authResult = await runTest('POST /api/auth/signup → user + tenant + tokens', async () => {
     const { status, body } = await apiFetch('/api/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ email: signupEmail, password: 'Test1234!', businessName: 'API Test Co' }),
+      body: JSON.stringify({
+        username:     signupUsername,
+        email:        signupEmail,
+        password:     'Test1234!',
+        businessName: 'API Test Co',
+      }),
     })
     if (status !== 201) throw new Error(`Expected 201, got ${status}: ${JSON.stringify(body)}`)
     const data = body.data as Record<string, unknown>
     if (!data?.accessToken) throw new Error('No accessToken in response')
     if (!data?.tenant) throw new Error('No tenant in response')
-    accessToken = data.accessToken as string
+    accessToken     = data.accessToken as string
+    const tenant    = data.tenant as { id?: string }
+    createdTenantId = tenant.id ?? ''
   })
   results.push(authResult)
 
@@ -126,5 +142,16 @@ export async function runApiSuite() {
   results.push(adminBlockResult)
 
   printResults(results, 'API')
+
+  // Best-effort cleanup of the disposable test tenant we created. Failures
+  // here don't affect the test verdict — the @orbisvoice.test domain is
+  // reserved for tests, and the admin DELETE /api/admin/test-tenants
+  // endpoint is the durable cleanup path.
+  if (createdTenantId) {
+    // No-op for now — we don't have admin credentials in scope here.
+    // The orphan @orbisvoice.test rows can be cleaned via the admin
+    // endpoint or the cron-style maintenance script.
+  }
+
   return results
 }

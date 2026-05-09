@@ -2,11 +2,11 @@
 import { newPage, runTest, printResults } from '../harness.js'
 import { BASE_URL, API_URL } from '../config.js'
 
-async function signupAndGetToken(email: string): Promise<string> {
+async function signupAndGetToken(email: string, username: string): Promise<string> {
   const res = await fetch(`${API_URL}/api/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password: 'Test1234!', businessName: 'Config UI Test Co' }),
+    body: JSON.stringify({ username, email, password: 'Test1234!', businessName: 'Config UI Test Co' }),
   })
   const body = await res.json() as { data?: { accessToken?: string } }
   const token = body.data?.accessToken
@@ -23,8 +23,11 @@ async function loadAuthPage(page: import('puppeteer').Page, token: string, path:
 
 export async function runConfigSuite() {
   const results = []
-  const email = `e2e-config-${Date.now()}@test.local`
-  const token = await signupAndGetToken(email)
+  // @orbisvoice.test domain reserved for tests + admin cleanup hook.
+  const ts       = Date.now()
+  const email    = `e2e-config-${ts}@orbisvoice.test`
+  const username = `e2econfig${ts}`
+  const token    = await signupAndGetToken(email, username)
 
   results.push(await runTest('Settings page loads', async () => {
     const page = await newPage()
