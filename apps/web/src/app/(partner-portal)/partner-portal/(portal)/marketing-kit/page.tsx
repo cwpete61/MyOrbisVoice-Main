@@ -50,10 +50,10 @@ const VIDEOS: VideoAsset[] = [
   // ── How-to-Sell (Phase 3: placeholder) ────────────────────────────────────
   { id: 'how-to-sell-walkthrough',     intent: 'how-to-sell',  durationSec: 150, aspectRatio: 'horizontal', comingSoon: true },
 
-  // ── Social Cuts (Phase 4: placeholders) ───────────────────────────────────
-  { id: 'social-hook-missed-calls',    intent: 'social-cuts',  durationSec: 25, aspectRatio: 'vertical', comingSoon: true },
-  { id: 'social-hook-247-coverage',    intent: 'social-cuts',  durationSec: 22, aspectRatio: 'vertical', comingSoon: true },
-  { id: 'social-hook-roi',             intent: 'social-cuts',  durationSec: 28, aspectRatio: 'vertical', comingSoon: true },
+  // ── Social Cuts (Phase 2A: live, stat-anchored 9:16 hooks) ────────────────
+  { id: 'social-hook-missed-calls', intent: 'social-cuts', durationSec: 18, aspectRatio: 'vertical', filename: 'social-cut-01-85-percent.mp4' },
+  { id: 'social-hook-247-coverage', intent: 'social-cuts', durationSec: 23, aspectRatio: 'vertical', filename: 'social-cut-02-five-minute.mp4' },
+  { id: 'social-hook-roi',          intent: 'social-cuts', durationSec: 20, aspectRatio: 'vertical', filename: 'social-cut-03-daily-math.mp4' },
 ]
 
 const BRAND_COLORS = [
@@ -125,9 +125,13 @@ export default function MarketingKitPage() {
   ]
 
   const emailTemplates = [
-    { key: 'cold',     subject: t('partnerMarketingKit.email.cold.subject'),     body: t('partnerMarketingKit.email.cold.body',     { url: referralUrl }) },
-    { key: 'warm',     subject: t('partnerMarketingKit.email.warm.subject'),     body: t('partnerMarketingKit.email.warm.body',     { url: referralUrl }) },
-    { key: 'reengage', subject: t('partnerMarketingKit.email.reengage.subject'), body: t('partnerMarketingKit.email.reengage.body', { url: referralUrl }) },
+    // Pattern-interrupt cold goes first — it's the highest-stopping-power
+    // option. The benefit-led "cold" comes second for partners who want a
+    // softer opener. Warm + reengage are conversational follow-ups.
+    { key: 'coldCallback', subject: t('partnerMarketingKit.email.coldCallback.subject'), body: t('partnerMarketingKit.email.coldCallback.body', { url: referralUrl }) },
+    { key: 'cold',         subject: t('partnerMarketingKit.email.cold.subject'),         body: t('partnerMarketingKit.email.cold.body',         { url: referralUrl }) },
+    { key: 'warm',         subject: t('partnerMarketingKit.email.warm.subject'),         body: t('partnerMarketingKit.email.warm.body',         { url: referralUrl }) },
+    { key: 'reengage',     subject: t('partnerMarketingKit.email.reengage.subject'),     body: t('partnerMarketingKit.email.reengage.body',     { url: referralUrl }) },
   ]
   const socialPosts = [
     { key: 'linkedin',  label: t('partnerMarketingKit.social.linkedin'),  text: t('partnerMarketingKit.social.linkedinPost',  { url: referralUrl }) },

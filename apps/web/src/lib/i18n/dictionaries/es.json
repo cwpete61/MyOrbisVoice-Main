@@ -399,16 +399,16 @@
           "description": "Recorre todo el kit: qué video enviar para cada situación, cómo usar las plantillas de correo, cómo hacer seguimiento."
         },
         "social-hook-missed-calls": {
-          "title": "Gancho — Llamadas perdidas",
-          "description": "Apertura punzante de 25 seg: \"La mayoría de los pequeños negocios pierden 30% de sus prospectos por llamadas no contestadas.\" Para TikTok / Reels / Shorts."
+          "title": "Gancho — \"85% no vuelve a llamar\"",
+          "description": "Apertura de 18 seg con cita de Forbes / BIA/Kelsey sobre la tasa de no-recall. Aterriza la pérdida: \"Pierde 5 llamadas hoy, 4 de ellas reservan con tu competidor.\""
         },
         "social-hook-247-coverage": {
-          "title": "Gancho — Cobertura 24/7",
-          "description": "22 seg llamando la atención con el servicio las 24 horas. Combínalo con un CTA hacia tu enlace de referido."
+          "title": "Gancho — \"Regla de los 5 minutos\"",
+          "description": "Gancho de 23 seg con urgencia citando el estudio de Harvard Business Review / MIT: espera 5 minutos y tus probabilidades de conversión caen 80%. El buzón de voz no son 5 minutos — son horas."
         },
         "social-hook-roi": {
-          "title": "Gancho — Se paga solo",
-          "description": "28 seg de matemáticas de ROI: un solo prospecto capturado al mes cubre la suscripción completa."
+          "title": "Gancho — \"Las cuentas diarias\"",
+          "description": "Desglose de ROI de 20 seg: 5 llamadas perdidas × $250 = $27,500 al mes, $330,000 al año caminando hacia tu competidor. Números directos, sin relleno."
         }
       }
     },
@@ -434,9 +434,14 @@
     },
     "email": {
       "title": "Plantillas de correo",
-      "subtitle": "Tres plantillas listas. Tu enlace de referido ya está insertado — solo pega, personaliza y envía.",
+      "subtitle": "Cuatro plantillas listas. Tu enlace de referido ya está insertado — solo pega, personaliza y envía.",
+      "coldCallback": {
+        "label": "FRÍO — INTERRUPCIÓN DE PATRÓN",
+        "subject": "Llamé a tu negocio ayer. Nadie contestó.",
+        "body": "{firstName},\n\nLlamé a tu negocio ayer por la tarde. Nadie contestó.\n\nEsto no es una queja — yo no era un cliente real.\nPero la próxima persona que lo intente probablemente sí lo será.\n\nLos datos son brutales:\n\n• El 85% de las personas que llaman no vuelven a llamar. Reservan con el siguiente listado. (Forbes)\n• Esperar 5 minutos para responder reduce tus probabilidades de conversión en un 80%. (Harvard Business Review)\n• Una llamada perdida promedio vale entre $200 y $1,200 en ingresos perdidos, según la industria.\n\nSi pierdes 5 llamadas al día, las cuentas son aproximadamente:\n$330,000 al año — caminando hacia quien conteste primero.\n\nMyOrbisVoice es una recepcionista de IA que contesta cada llamada entrante, 24/7, con voz natural. Agenda citas directamente en tu calendario. Reenvía lo urgente a quien tú indiques. La configuración toma 5 minutos, $197/mes plano — menos de lo que un solo cliente capturado paga.\n\nDemo en vivo, sin registro:\n{url}\n\nSi quieres conversar sobre si esto encaja con tu negocio, solo responde.\n\n— [Tu nombre]"
+      },
       "cold": {
-        "label": "PROSPECCIÓN EN FRÍO",
+        "label": "FRÍO — POR BENEFICIO",
         "subject": "Una recepcionista 24/7 que cuesta menos que un solo cliente perdido",
         "body": "Hola {firstName},\n\nUna pregunta rápida — ¿cuántas llamadas pierde tu negocio fuera del horario o en horas pico? Para la mayoría de los dueños con los que hablo, son al menos 3 o 4 a la semana. Cada una representa entre $200 y $2000 en ingresos perdidos.\n\nTrabajo con un servicio llamado MyOrbisVoice. Es una recepcionista de IA que contesta cada llamada las 24 horas con una voz natural, agenda citas directamente en Google Calendar y da seguimiento por SMS y correo. La configuración toma 5 minutos.\n\nLos planes comienzan en $197/mes — menos de lo que la mayoría de los negocios pierden por un solo cliente que no contestaron.\n\n¿Quieres probar la demo en vivo? Es gratis, sin necesidad de registrarte:\n{url}\n\nCon gusto te lo explico si prefieres conversar.\n\n— [Tu nombre]"
       },

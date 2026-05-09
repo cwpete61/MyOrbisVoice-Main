@@ -399,16 +399,16 @@
           "description": "Walks through the full kit: which video to send for which scenario, how to use the email templates, how to follow up."
         },
         "social-hook-missed-calls": {
-          "title": "Hook — Missed Calls",
-          "description": "Punchy 25-sec opener: \"Most small businesses lose 30% of leads to missed calls.\" For TikTok / Reels / Shorts."
+          "title": "Hook — \"85% don't call back\"",
+          "description": "18-sec stat-anchored opener for cold traffic. Cites Forbes / BIA/Kelsey on the never-called-back rate. Lands the loss with: \"Miss 5 calls today, 4 of them book your competitor.\""
         },
         "social-hook-247-coverage": {
-          "title": "Hook — 24/7 Coverage",
-          "description": "22-sec attention-grabber on round-the-clock answering. Pair with a CTA to your referral link."
+          "title": "Hook — \"5-minute response rule\"",
+          "description": "23-sec urgency hook citing the Harvard Business Review / MIT study: wait 5 minutes and your conversion odds drop 80%. Voicemail isn't 5 minutes — it's hours."
         },
         "social-hook-roi": {
-          "title": "Hook — Pays for Itself",
-          "description": "28-sec ROI math: one captured lead per month covers the whole subscription."
+          "title": "Hook — \"Daily math\"",
+          "description": "20-sec ROI breakdown: 5 missed calls × $250 = $27,500/month, $330,000/year walking to your competitor. Naked numbers, no fluff."
         }
       }
     },
@@ -434,9 +434,14 @@
     },
     "email": {
       "title": "Email swipes",
-      "subtitle": "Three pre-written templates. Your referral link is already inserted — just paste, personalize, and send.",
+      "subtitle": "Four pre-written templates. Your referral link is already inserted — just paste, personalize, and send.",
+      "coldCallback": {
+        "label": "COLD — PATTERN INTERRUPT",
+        "subject": "I called your business yesterday. Nobody answered.",
+        "body": "{firstName},\n\nI called your business yesterday afternoon. Nobody answered.\n\nThat's not a complaint — I wasn't actually a customer.\nBut the next person who tries probably is.\n\nThe data is brutal:\n\n• 85% of callers don't call back. They book the next listing. (Forbes)\n• Wait 5 minutes to respond, your conversion odds drop 80%. (Harvard Business Review)\n• Average missed call is worth $200–$1,200 in lost revenue, depending on industry.\n\nIf you're missing 5 calls a day, the math is roughly:\n$330,000/year — walking to whoever picks up first.\n\nMyOrbisVoice is an AI receptionist that answers every inbound call, 24/7, in a natural voice. Books appointments straight into your calendar. Forwards anything urgent to whoever you specify. Setup is 5 minutes, $197/month flat — less than one captured lead pays for.\n\nLive demo, no signup needed:\n{url}\n\nIf you want to talk through whether this fits your business, just reply.\n\n— [Your name]"
+      },
       "cold": {
-        "label": "COLD OUTREACH",
+        "label": "COLD — BENEFIT-LED",
         "subject": "A 24/7 receptionist that costs less than one missed lead",
         "body": "Hi {firstName},\n\nQuick question — how many calls does your business miss after hours or during peak times? For most owners I talk to, it's at least 3-4 a week. Each one is potentially $200-$2000 in lost revenue.\n\nI work with a service called MyOrbisVoice. It's an AI receptionist that answers every call 24/7 in a natural voice, books appointments straight into your Google Calendar, and follows up by text and email. Setup takes 5 minutes.\n\nPricing starts at $197/month — less than what most businesses lose to a single missed lead.\n\nWant to try the live demo? It's free, no signup required:\n{url}\n\nHappy to walk you through it if you'd rather chat.\n\n— [Your name]"
       },
