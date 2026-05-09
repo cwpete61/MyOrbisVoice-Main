@@ -11,6 +11,7 @@ import { SocialLinks } from '@/components/SocialLinks'
 import { IdleTimeout } from '@/components/IdleTimeout'
 import { NotificationBell } from '@/components/NotificationBell'
 import { PartnerIdBadge } from '@/components/PartnerIdBadge'
+import { useApi } from '@/hooks/useApi'
 
 const NAV = [
   { href: '/partner-portal/dashboard',   labelKey: 'partnerNav.dashboard',   icon: 'M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z' },
@@ -39,6 +40,12 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
   const pathname = usePathname()
   const router = useRouter()
   const t = useT()
+  // Pull username + name + email so we can show the partner who they're
+  // signed in as. JWT doesn't carry username so we go to /api/auth/me.
+  const { data: me } = useApi<{ user: { username: string; email: string; firstName: string | null; lastName: string | null } }>('/api/auth/me')
+  const username = me?.user?.username
+  const fullName = [me?.user?.firstName, me?.user?.lastName].filter(Boolean).join(' ').trim() || null
+  const initials = (username ?? me?.user?.email ?? '??').slice(0, 2).toUpperCase()
 
   function logout() {
     clearTokens()
@@ -90,8 +97,28 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
           })}
         </nav>
 
-        {/* Footer — Profile then Sign out, anchored to bottom of sidebar */}
+        {/* Footer — signed-in-as badge, then Profile, then Sign out.
+            Username row is the primary identifier; full name (if set)
+            shows below as a hint. Both clickable → Profile page. */}
         <div className="px-3 py-3 space-y-0.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          {username && (
+            <Link
+              href={PROFILE_NAV.href}
+              className="flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors mb-1"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold"
+                style={{ background: 'oklch(55% 0.11 193 / 0.18)', color: 'oklch(72% 0.12 193)' }}
+              >
+                {initials}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{username}</p>
+                {fullName && <p className="text-[11px] truncate" style={{ color: 'var(--text-tertiary)' }}>{fullName}</p>}
+              </div>
+            </Link>
+          )}
           {(() => {
             const active = pathname === PROFILE_NAV.href || pathname.startsWith(PROFILE_NAV.href + '/')
             return (
