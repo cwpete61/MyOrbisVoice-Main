@@ -55,6 +55,27 @@ ensure_deps() {
 
 cd "$REPO_ROOT"
 
+# ── 0. Pre-flight security audit ────────────────────────────────────────────
+# Block the deploy if production dependencies have a CRITICAL CVE. This is the
+# last line of defense — Dependabot + the weekly workflow should catch most
+# advisories upstream, but a freshly-published CVE could land between scans.
+# Override with SKIP_SECURITY_AUDIT=1 ./deploy.sh ... when the alternative is
+# worse than the risk (rare; document in the deploy reason).
+if [[ "${SKIP_SECURITY_AUDIT:-0}" == "1" ]]; then
+  log "Pre-flight security audit — SKIPPED via SKIP_SECURITY_AUDIT=1"
+else
+  log "Pre-flight security audit (critical CVEs gate the deploy)..."
+  set +e
+  AUDIT_OUT=$(pnpm audit --prod --audit-level=critical 2>&1)
+  AUDIT_EXIT=$?
+  set -e
+  if [[ "$AUDIT_EXIT" -ne 0 ]]; then
+    echo "$AUDIT_OUT" | tail -30
+    fail "Critical CVE in production dependencies — bump the affected package or re-run with SKIP_SECURITY_AUDIT=1 if intentional."
+  fi
+  ok "No critical CVEs in production deps"
+fi
+
 # ── 1. Pre-deploy snapshot ─────────────────────────────────────────────────
 log "Pre-deploy snapshot..."
 mkdir -p backups

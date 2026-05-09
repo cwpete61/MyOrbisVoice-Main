@@ -1,0 +1,66 @@
+name: security-audit
+
+# Runs `pnpm audit --prod` to surface known CVEs in the dependency tree.
+#
+# Triggered:
+#   - Weekly on Monday at 09:00 UTC (catches advisories published over the weekend)
+#   - On every PR that touches package.json or pnpm-lock.yaml
+#   - Manually via workflow_dispatch
+#
+# Fails the run if a CRITICAL or HIGH severity CVE is found in production
+# dependencies. Moderate / low are reported but don't fail — they're surfaced
+# for awareness, not gating.
+#
+# Why this exists: tonight's manual audit (2026-05-09) found 20 CVEs that had
+# accumulated silently, including a CRITICAL Next.js auth-bypass published
+# in March. Without automation those would still be sitting in the tree.
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'   # Monday 09:00 UTC
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'apps/*/package.json'
+      - 'packages/*/package.json'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit (production deps, fail on critical/high)
+        run: |
+          set +e
+          pnpm audit --prod --audit-level=high
+          AUDIT_EXIT=$?
+          set -e
+
+          # Always emit a full summary for visibility, even when the audit fails
+          echo ""
+          echo "═══ Full audit report (informational — moderate/low don't gate) ═══"
+          pnpm audit --prod || true
+
+          if [ "$AUDIT_EXIT" -ne 0 ]; then
+            echo ""
+            echo "✗ Critical or high CVEs found in production dependencies."
+            echo "  Bump the affected package(s) and re-run."
+            exit 1
+          fi
+          echo ""
+          echo "✓ No critical or high CVEs in production dependencies."

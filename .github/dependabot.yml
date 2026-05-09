@@ -1,0 +1,56 @@
+# Dependabot config — surfaces dependency updates as PRs.
+#
+# Two ecosystems we care about:
+#   1. npm/pnpm — the bulk of our supply chain risk (Next.js, Express,
+#      Prisma, etc). Weekly is plenty noisy; daily would drown us.
+#   2. github-actions — the workflows themselves can have CVEs in pinned
+#      action versions (actions/checkout, pnpm-action-setup, etc).
+#
+# Security updates auto-bumped on a faster cadence — these are advisory-driven,
+# not version-driven, so they fire whenever GitHub knows about a new CVE in
+# our tree.
+#
+# Why this exists: see comment on .github/workflows/security-audit.yml.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    # Group all minor + patch bumps from the same ecosystem into one PR
+    # to reduce noise. Major bumps stay individual since each requires
+    # its own breaking-change review.
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    # Ignore Next.js majors — Next 14 → 15 needs React 19 + async-params
+    # migration, not a one-line bump. Major bumps for that should be a
+    # planned project, not a Dependabot PR.
+    ignore:
+      - dependency-name: next
+        update-types: [version-update:semver-major]
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: UTC
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - github-actions
