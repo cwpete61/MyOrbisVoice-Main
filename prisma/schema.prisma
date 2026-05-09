@@ -948,6 +948,19 @@ model Contact {
   optedOutEmailAt     DateTime?
   optedOutWhatsapp    Boolean               @default(false)
   optedOutWhatsappAt  DateTime?
+  // CRM relationship fields — collected during OUTBOUND campaigns only.
+  // The inbound agent is instructed never to ask for these (privacy + flow).
+  // Outbound campaigns can opt-in per-campaign by listing fields to collect.
+  birthday               DateTime?  // anchor date; year is informational only
+  anniversary            DateTime?  // wedding / relationship anniversary
+  spouseName             String?
+  kidsInfoJson           Json?      // [{ name, age?, birthday?, notes? }]
+  petsInfoJson           Json?      // [{ name, type, age?, notes? }]
+  importantDatesJson     Json?      // [{ label, date, notes? }] — arbitrary recurring dates
+  hobbies                String?    // freeform / comma-separated interests
+  preferredContactTime   String?    // 'morning' | 'afternoon' | 'evening' | freeform
+  customerSince          DateTime?
+  personalNotes          String?    // freeform internal-only notes
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
   tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)

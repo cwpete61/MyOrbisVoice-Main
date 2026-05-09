@@ -162,6 +162,13 @@ router.post('/contacts/import', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Coerce date inputs that might come as either ISO string or "YYYY-MM-DD".
+// Empty string clears the field (translates to null in updateContact).
+const dateOrNull = z.preprocess(
+  v => (v === '' || v === null) ? null : v,
+  z.union([z.string(), z.date(), z.null()]).optional(),
+)
+
 const updateSchema = z.object({
   firstName: z.string().min(1).optional(),
   lastName:  z.string().min(1).optional(),
@@ -169,6 +176,20 @@ const updateSchema = z.object({
   email:     z.string().email().optional(),
   phoneE164: z.string().regex(/^\+[1-9]\d{7,14}$/, 'Must be E.164 format').optional(),
   source:    z.string().optional(),
+  // CRM relationship fields (collected via outbound campaigns, editable by tenant admin).
+  // The JSON-typed fields accept either structured objects (when the agent
+  // populates them via tool calls) or plain strings (when the tenant types
+  // free-form text in the UI). The DB column is JSONB; we don't enforce shape.
+  birthday:             dateOrNull,
+  anniversary:          dateOrNull,
+  spouseName:           z.string().max(200).optional().or(z.literal('')),
+  kidsInfoJson:         z.unknown().optional(),
+  petsInfoJson:         z.unknown().optional(),
+  importantDatesJson:   z.unknown().optional(),
+  hobbies:              z.string().max(500).optional().or(z.literal('')),
+  preferredContactTime: z.string().max(100).optional().or(z.literal('')),
+  customerSince:        dateOrNull,
+  personalNotes:        z.string().max(2000).optional().or(z.literal('')),
 })
 
 router.patch('/contacts/:id', async (req, res, next) => {

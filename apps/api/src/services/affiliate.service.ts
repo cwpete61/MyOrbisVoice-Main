@@ -340,6 +340,27 @@ export async function attributeTenant(tenantId: string, codeOrSlug: string) {
     where: { id: tenantId },
     data: { referredByCode: account.referralCode, attributedAt: new Date() },
   })
+  // Record a 'signup' conversion immediately so the partner sees the referral
+  // even when it never converts to a paid plan. Free-tier signups are real
+  // referrals — they just haven't generated a commission yet. The Stripe
+  // webhook later records a separate 'subscription' or 'one_time' conversion
+  // (with a non-zero value + commission row) when the tenant actually pays;
+  // both rows live side-by-side and tell the full referral story.
+  const dupe = await prisma.affiliateConversion.findFirst({
+    where: { affiliateAccountId: account.id, tenantId, conversionType: 'signup' },
+    select: { id: true },
+  })
+  if (!dupe) {
+    await prisma.affiliateConversion.create({
+      data: {
+        affiliateAccountId: account.id,
+        tenantId,
+        conversionType:  'signup',
+        conversionValue: 0,
+        occurredAt:      new Date(),
+      },
+    }).catch(() => null)
+  }
 }
 
 // ── Custom links (per-partner CRUD) ───────────────────────────────────────────
@@ -590,6 +611,58 @@ export async function recordConversion(opts: {
   }
 
   return conversion
+}
+
+// ── Referrals (every conversion, paid or not) ────────────────────────────────
+//
+// The partner sees ALL their referrals here, not just the ones that produced a
+// commission. A free-tier signup shows up with conversionType='signup' and a
+// commission status of 'NONE'. When that tenant later upgrades to paid, the
+// Stripe webhook records a separate row (conversionType='subscription' or
+// 'one_time') with the commission attached. Ordered newest-first.
+export async function getReferrals(affiliateAccountId: string, limit = 100) {
+  const conversions = await prisma.affiliateConversion.findMany({
+    where:   { affiliateAccountId },
+    orderBy: { occurredAt: 'desc' },
+    take:    limit,
+    include: {
+      tenant: {
+        select: {
+          id:              true,
+          displayName:     true,
+          businessProfile: { select: { brandName: true } },
+          subscriptions: {
+            select:  { plan: { select: { code: true, name: true } }, status: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+            take:    1,
+          },
+        },
+      },
+      commissions: {
+        select:  { id: true, amountMinor: true, currency: true, status: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take:    1,
+      },
+    },
+  })
+  return conversions.map(c => {
+    const sub = c.tenant?.subscriptions?.[0] ?? null
+    const com = c.commissions?.[0] ?? null
+    return {
+      id:               c.id,
+      occurredAt:       c.occurredAt,
+      conversionType:   c.conversionType,
+      conversionValue:  c.conversionValue,
+      tenant: {
+        id:        c.tenant?.id ?? c.tenantId,
+        name:      c.tenant?.businessProfile?.brandName ?? c.tenant?.displayName ?? 'Unknown',
+        planCode:  sub?.plan.code ?? 'free',
+        planName:  sub?.plan.name  ?? 'Free',
+      },
+      commissionStatus: com?.status ?? 'NONE',
+      commissionCents:  com?.amountMinor ?? 0,
+    }
+  })
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────

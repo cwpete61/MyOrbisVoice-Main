@@ -28,6 +28,16 @@ type CustomLink = {
   clicks: number
 }
 
+type Referral = {
+  id: string
+  occurredAt: string
+  conversionType: string
+  conversionValue: number | null
+  tenant: { id: string; name: string; planCode: string; planName: string }
+  commissionStatus: 'NONE' | 'PENDING' | 'APPROVED' | 'PAID' | 'REVERSED' | 'HOLD'
+  commissionCents: number
+}
+
 const APP_BASE = 'https://app.myorbisvoice.com'
 
 export default function ReferralsPage() {
@@ -37,6 +47,7 @@ export default function ReferralsPage() {
   const [link, setLink] = useState<ReferralLink | null>(null)
   const [clicks, setClicks] = useState<Click[]>([])
   const [customLinks, setCustomLinks] = useState<CustomLink[]>([])
+  const [referrals, setReferrals] = useState<Referral[]>([])
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState<string | null>(null)
 
@@ -77,10 +88,12 @@ export default function ReferralsPage() {
       apiFetch<ReferralLink>('/api/affiliate/link').catch(() => null),
       apiFetch<Click[]>('/api/affiliate/clicks').catch(() => []),
       loadCustomLinks(),
-    ]).then(([l, c, cl]) => {
+      apiFetch<Referral[]>('/api/affiliate/referrals').catch(() => []),
+    ]).then(([l, c, cl, r]) => {
       setLink(l)
       setClicks(c ?? [])
       setCustomLinks(cl ?? [])
+      setReferrals(r ?? [])
       setLoading(false)
     })
   }, [])
@@ -349,6 +362,57 @@ export default function ReferralsPage() {
           )}
         </section>
       ) : null}
+
+      {/* ─── All referrals (paid + free) ──────────────────────────────────
+          Every signup that came through this partner's link, regardless of
+          whether it produced a commission. Free-tier signups show "Free —
+          no commission yet"; paid plans show the commission status + amount. */}
+      <section className="mb-8">
+        <h2 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{t('partnerReferrals.referralsTitle')}</h2>
+        <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>{t('partnerReferrals.referralsSubtitle')}</p>
+        {referrals.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('partnerReferrals.noReferrals')}</p>
+        ) : (
+          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>{t('partnerReferrals.referralsDate')}</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>{t('partnerReferrals.referralsBusiness')}</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>{t('partnerReferrals.referralsPlan')}</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>{t('partnerReferrals.referralsType')}</th>
+                  <th className="text-right px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>{t('partnerReferrals.referralsCommission')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {referrals.map((r, i) => {
+                  const typeLabel = r.conversionType === 'signup'
+                    ? t('partnerReferrals.referralTypeSignup')
+                    : r.conversionType === 'subscription'
+                      ? t('partnerReferrals.referralTypeSubscription')
+                      : r.conversionType === 'one_time'
+                        ? t('partnerReferrals.referralTypeOneTime')
+                        : r.conversionType
+                  const hasCommission = r.commissionStatus !== 'NONE' && r.commissionCents > 0
+                  return (
+                    <tr key={r.id} style={{ background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{new Date(r.occurredAt).toLocaleDateString(dateLocale)}</td>
+                      <td className="px-4 py-2.5" style={{ color: 'var(--text-primary)' }}>{r.tenant.name}</td>
+                      <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{r.tenant.planName}</td>
+                      <td className="px-4 py-2.5" style={{ color: 'var(--text-tertiary)' }}>{typeLabel}</td>
+                      <td className="px-4 py-2.5 text-right" style={{ color: hasCommission ? 'var(--text-primary)' : 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                        {hasCommission
+                          ? '$' + (r.commissionCents / 100).toFixed(2)
+                          : t('partnerReferrals.noCommissionYet')}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{t('partnerReferrals.recentClicks')}</h2>
       {clicks.length === 0 ? (

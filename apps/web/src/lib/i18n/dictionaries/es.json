@@ -519,7 +519,19 @@
     "clicksDate": "Fecha",
     "clicksLanding": "Página de aterrizaje",
     "clicksReferrer": "Referente",
-    "clicksConverted": "Convertido"
+    "clicksConverted": "Convertido",
+    "referralsTitle": "Todos los referidos",
+    "referralsSubtitle": "Cada registro que llegó a través de tu enlace — pagado o gratis. Los registros del plan gratuito aún no generan comisión, pero el referido sí se cuenta.",
+    "noReferrals": "Aún no hay referidos. Comparte tu enlace para empezar a rastrear.",
+    "referralsDate": "Fecha",
+    "referralsBusiness": "Empresa",
+    "referralsPlan": "Plan",
+    "referralsType": "Tipo",
+    "referralsCommission": "Comisión",
+    "referralTypeSignup": "Registro",
+    "referralTypeSubscription": "Suscripción",
+    "referralTypeOneTime": "Pago único",
+    "noCommissionYet": "—"
   },
   "partnerCommissions": {
     "title": "Comisiones",
@@ -2998,5 +3010,44 @@
       "bunnyStorageZone": "El Storage Zone Name del panel bunny.net → Storage. Este es el nombre interno (p. ej. `orbisvoice`), NO el hostname del CDN. Se usa en la ruta de la URL de subida. Si renombras la zona en Bunny, actualízala aquí Y asegúrate de que la pull zone del CDN siga apuntando a la storage zone correcta.",
       "bunnyCdnHostname": "El hostname de la Pull Zone del panel bunny.net → CDN → Pull Zones (p. ej. `OrbisVoice.b-cdn.net`). DIFERENTE del nombre de la storage zone de arriba. Se usa para construir las URLs públicas del CDN para grabaciones + transcripciones. La pull zone DEBE estar enlazada a la storage zone en el panel de Bunny, de lo contrario las URLs del CDN devuelven 404 y caemos al audio por API."
     }
+  },
+  "adminSocial": {
+    "title": "Redes sociales",
+    "subtitle": "Las cuentas sociales propias de OrbisVoice. Aparecen en el pie del sitio de marketing y en el portal de partners. Deja un campo en blanco para omitir esa red.",
+    "youtubeUrl":   "URL de YouTube",
+    "linkedinUrl":  "URL de LinkedIn",
+    "tiktokUrl":    "URL de TikTok",
+    "instagramUrl": "URL de Instagram",
+    "pinterestUrl": "URL de Pinterest",
+    "xUrl":         "URL de X",
+    "save":         "Guardar URLs de redes sociales",
+    "saving":       "Guardando…"
+  },
+  "partnerSocial": {
+    "followUs":    "Sigue a OrbisVoice"
+  },
+  "contactCrm": {
+    "sectionTitle":          "Datos personales",
+    "sectionSubtitle":       "Recopilados durante campañas salientes. Las llamadas entrantes nunca preguntan por estos datos — pero puedes editarlos aquí en cualquier momento.",
+    "birthday":              "Cumpleaños",
+    "anniversary":           "Aniversario",
+    "spouseName":            "Nombre de pareja / cónyuge",
+    "kidsInfo":              "Hijos",
+    "kidsInfoPlaceholder":   "Nombres y edades, separados por comas",
+    "petsInfo":              "Mascotas",
+    "petsInfoPlaceholder":   "Nombres y tipos, separados por comas",
+    "hobbies":               "Pasatiempos / intereses",
+    "hobbiesPlaceholder":    "Separados por comas",
+    "preferredContactTime":  "Horario preferido de contacto",
+    "preferredContactTimePlaceholder": "mañana / tarde / noche",
+    "customerSince":         "Cliente desde",
+    "importantDates":        "Fechas importantes",
+    "importantDatesPlaceholder": "p. ej. Aniversario de boda: 12 de junio; Cumpleaños de la hija: 8 de septiembre",
+    "personalNotes":         "Notas personales",
+    "personalNotesPlaceholder": "Notas internas sobre este contacto",
+    "save":                  "Guardar datos personales",
+    "saving":                "Guardando…",
+    "saved":                 "Datos personales guardados.",
+    "saveError":             "No se pudo guardar — inténtalo de nuevo."
   }
 }

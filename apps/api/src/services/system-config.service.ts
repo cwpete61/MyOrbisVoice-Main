@@ -112,6 +112,14 @@ export async function getSystemSettings(): Promise<{
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
   gemini: { apiKey: boolean; model: string }
+  social: {
+    youtube:   string | null
+    linkedin:  string | null
+    tiktok:    string | null
+    instagram: string | null
+    pinterest: string | null
+    x:         string | null
+  }
 }> {
   const rows = await prisma.systemConfig.findMany({
     where: {
@@ -129,6 +137,8 @@ export async function getSystemSettings(): Promise<{
           'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from',
           'overage_markup_percent',
           'gemini_api_key', 'gemini_model',
+          'social_youtube_url', 'social_linkedin_url', 'social_tiktok_url',
+          'social_instagram_url', 'social_pinterest_url', 'social_x_url',
         ],
       },
     },
@@ -192,6 +202,14 @@ export async function getSystemSettings(): Promise<{
     gemini: {
       apiKey: !!(get('gemini_api_key') || process.env['GEMINI_API_KEY']),
       model:  get('gemini_model')?.value ?? process.env['GEMINI_LIVE_MODEL'] ?? 'gemini-2.5-flash-native-audio-latest',
+    },
+    social: {
+      youtube:   get('social_youtube_url')?.value   ?? null,
+      linkedin:  get('social_linkedin_url')?.value  ?? null,
+      tiktok:    get('social_tiktok_url')?.value    ?? null,
+      instagram: get('social_instagram_url')?.value ?? null,
+      pinterest: get('social_pinterest_url')?.value ?? null,
+      x:         get('social_x_url')?.value         ?? null,
     },
   }
 }

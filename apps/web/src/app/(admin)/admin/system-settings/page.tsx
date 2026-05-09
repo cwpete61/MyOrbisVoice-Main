@@ -18,6 +18,14 @@ interface SystemSettings {
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
   gemini: { apiKey: boolean; model: string }
+  social: {
+    youtube:   string | null
+    linkedin:  string | null
+    tiktok:    string | null
+    instagram: string | null
+    pinterest: string | null
+    x:         string | null
+  }
   /** Per-integration account emails. Only present when the requester is
    *  Super Admin — the API redacts this field for lesser admins. Each
    *  field is the email associated with the underlying provider account
@@ -303,6 +311,24 @@ export default function SystemSettingsPage() {
   const [pricingSaving, setPricingSaving] = useState(false)
   const [gem, setGem] = useState({ apiKey: '', model: '' })
   const [gemSaving, setGemSaving] = useState(false)
+  // Social media URLs — public values, no encryption. Empty string clears.
+  const [social, setSocial] = useState<Record<string, string>>({
+    youtube: '', linkedin: '', tiktok: '', instagram: '', pinterest: '', x: '',
+  })
+  const [socialSaving, setSocialSaving] = useState(false)
+  async function saveSocial(e: React.FormEvent) {
+    e.preventDefault()
+    const body: Record<string, string> = {}
+    for (const k of ['youtube', 'linkedin', 'tiktok', 'instagram', 'pinterest', 'x']) {
+      const v = social[k]
+      if (v !== undefined && v.trim().length > 0) body[k] = v.trim()
+    }
+    if (!Object.keys(body).length) { showToast('error', 'Enter at least one URL.'); return }
+    setSocialSaving(true)
+    const ok = await saveSection('social', body, 'Social Media')
+    if (ok) setSocial({ youtube: '', linkedin: '', tiktok: '', instagram: '', pinterest: '', x: '' })
+    setSocialSaving(false)
+  }
   async function saveOpenAi(e: React.FormEvent) {
     e.preventDefault()
     const body: Record<string, string> = {}
@@ -1195,6 +1221,50 @@ export default function SystemSettingsPage() {
           </button>
         </form>
         <AccountEmailField provider="smtp" currentValue={data?.accountEmails?.smtp} onSaved={reload} />
+      </div>
+
+      {/* ── Social Media ──────────────────────────────────────────────────────
+          Platform-level social URLs shown on the marketing-site footer + the
+          partner-portal "Follow us" section. Public values, not encrypted. */}
+      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+        <CardHeader
+          title={tr('adminSocial.title')}
+          subtitle={tr('adminSocial.subtitle')}
+          configured={!!(data?.social?.youtube || data?.social?.linkedin || data?.social?.tiktok || data?.social?.instagram || data?.social?.pinterest || data?.social?.x)}
+        />
+        <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+          <StatusRow label="YouTube"   value={data?.social?.youtube ?? null} />
+          <StatusRow label="LinkedIn"  value={data?.social?.linkedin ?? null} />
+          <StatusRow label="TikTok"    value={data?.social?.tiktok ?? null} />
+          <StatusRow label="Instagram" value={data?.social?.instagram ?? null} />
+          <StatusRow label="Pinterest" value={data?.social?.pinterest ?? null} />
+          <StatusRow label="X"         value={data?.social?.x ?? null} />
+        </div>
+        <form onSubmit={saveSocial} className="px-6 py-5 space-y-4">
+          {[
+            { key: 'youtube',   label: tr('adminSocial.youtubeUrl'),   ph: 'https://youtube.com/@myorbisvoice' },
+            { key: 'linkedin',  label: tr('adminSocial.linkedinUrl'),  ph: 'https://www.linkedin.com/company/myorbisvoice' },
+            { key: 'tiktok',    label: tr('adminSocial.tiktokUrl'),    ph: 'https://www.tiktok.com/@myorbisvoice' },
+            { key: 'instagram', label: tr('adminSocial.instagramUrl'), ph: 'https://www.instagram.com/myorbisvoice' },
+            { key: 'pinterest', label: tr('adminSocial.pinterestUrl'), ph: 'https://www.pinterest.com/myorbisvoice' },
+            { key: 'x',         label: tr('adminSocial.xUrl'),         ph: 'https://x.com/myorbisvoice' },
+          ].map(f => (
+            <div key={f.key}>
+              <label className={labelCls}>{f.label}</label>
+              <input
+                className={inputCls}
+                type="url"
+                value={social[f.key] ?? ''}
+                onChange={e => setSocial(p => ({ ...p, [f.key]: e.target.value }))}
+                placeholder={f.ph}
+                autoComplete="off"
+              />
+            </div>
+          ))}
+          <button type="submit" disabled={socialSaving} className="btn-primary">
+            {socialSaving ? tr('adminSocial.saving') : tr('adminSocial.save')}
+          </button>
+        </form>
       </div>
 
       {/* ── Overage Pricing ─────────────────────────────────────────────────── */}

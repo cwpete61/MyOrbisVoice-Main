@@ -519,7 +519,19 @@
     "clicksDate": "Date",
     "clicksLanding": "Landing Page",
     "clicksReferrer": "Referrer",
-    "clicksConverted": "Converted"
+    "clicksConverted": "Converted",
+    "referralsTitle": "All Referrals",
+    "referralsSubtitle": "Every signup that came through your link — paid or free. Free-tier signups don't earn a commission yet, but the referral is still counted.",
+    "noReferrals": "No referrals yet. Share your link to start tracking.",
+    "referralsDate": "Date",
+    "referralsBusiness": "Business",
+    "referralsPlan": "Plan",
+    "referralsType": "Type",
+    "referralsCommission": "Commission",
+    "referralTypeSignup": "Signup",
+    "referralTypeSubscription": "Subscription",
+    "referralTypeOneTime": "One-time",
+    "noCommissionYet": "—"
   },
   "partnerCommissions": {
     "title": "Commissions",
@@ -2998,5 +3010,44 @@
       "bunnyStorageZone": "The Storage Zone Name from bunny.net dashboard → Storage. This is the internal name (e.g. `orbisvoice`), NOT the CDN hostname. Used in the upload URL path. If you rename the zone in Bunny, update here AND ensure the CDN pull zone still points at the right storage zone.",
       "bunnyCdnHostname": "The Pull Zone hostname from bunny.net → CDN → Pull Zones (e.g. `OrbisVoice.b-cdn.net`). DIFFERENT from the storage zone name above. Used to build public CDN URLs for recordings + transcripts. The pull zone MUST be linked to the storage zone in Bunny dashboard, otherwise CDN URLs return 404 and we fall back to API-proxied audio."
     }
+  },
+  "adminSocial": {
+    "title": "Social Media",
+    "subtitle": "OrbisVoice's own social accounts. Shown on the marketing site footer and to partners. Leave a field blank to omit that network.",
+    "youtubeUrl":   "YouTube URL",
+    "linkedinUrl":  "LinkedIn URL",
+    "tiktokUrl":    "TikTok URL",
+    "instagramUrl": "Instagram URL",
+    "pinterestUrl": "Pinterest URL",
+    "xUrl":         "X URL",
+    "save":         "Save social media URLs",
+    "saving":       "Saving…"
+  },
+  "partnerSocial": {
+    "followUs":    "Follow OrbisVoice"
+  },
+  "contactCrm": {
+    "sectionTitle":          "Personal details",
+    "sectionSubtitle":       "Collected during outbound campaigns. Inbound calls never ask for these — but you can edit them here at any time.",
+    "birthday":              "Birthday",
+    "anniversary":           "Anniversary",
+    "spouseName":            "Spouse / partner name",
+    "kidsInfo":              "Kids",
+    "kidsInfoPlaceholder":   "Names + ages, comma-separated",
+    "petsInfo":              "Pets",
+    "petsInfoPlaceholder":   "Names + types, comma-separated",
+    "hobbies":               "Hobbies / interests",
+    "hobbiesPlaceholder":    "Comma-separated",
+    "preferredContactTime":  "Preferred contact time",
+    "preferredContactTimePlaceholder": "morning / afternoon / evening",
+    "customerSince":         "Customer since",
+    "importantDates":        "Important dates",
+    "importantDatesPlaceholder": "e.g. Wedding anniversary: June 12; Daughter's birthday: Sep 8",
+    "personalNotes":         "Personal notes",
+    "personalNotesPlaceholder": "Internal-only notes about this contact",
+    "save":                  "Save personal details",
+    "saving":                "Saving…",
+    "saved":                 "Personal details saved.",
+    "saveError":             "Could not save — please try again."
   }
 }

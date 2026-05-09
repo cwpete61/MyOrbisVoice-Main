@@ -551,6 +551,20 @@ footer.site-footer {
 .footer-bottom-links { display: flex; gap: 18px; }
 .footer-bottom-links a:hover { color: var(--teal-3); }
 
+/* Social media row in the footer. Hydrated by main.js fetching
+   /api/public/social-links — empty container collapses to nothing. */
+.footer-social {
+  display: flex; gap: 14px; align-items: center;
+  margin-top: 16px; padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.footer-social-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-muted); opacity: 0.75;
+  transition: var(--transition);
+}
+.footer-social-link:hover { color: var(--teal-3); opacity: 1; }
+
 /* ── Inline page header (pages other than home) ─────────────────── */
 .page-header {
   padding: 64px 0 48px;

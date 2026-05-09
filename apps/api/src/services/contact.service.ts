@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
 import { verifyEmail } from './reoon.service.js'
 
@@ -69,12 +70,41 @@ export async function updateContact(tenantId: string, id: string, data: {
   firstName?: string; lastName?: string; fullName?: string
   email?: string; phoneE164?: string
   addressLine1?: string; city?: string; region?: string; postalCode?: string; country?: string
+  // CRM relationship fields — null clears, undefined leaves untouched, value writes
+  birthday?: string | Date | null
+  anniversary?: string | Date | null
+  spouseName?: string
+  kidsInfoJson?: unknown
+  petsInfoJson?: unknown
+  importantDatesJson?: unknown
+  hobbies?: string
+  preferredContactTime?: string
+  customerSince?: string | Date | null
+  personalNotes?: string
 }) {
   const contact = await prisma.contact.findFirst({ where: { id, tenantId }, select: { email: true } })
 
+  // Build the update payload carefully — date strings need parsing, JSON
+  // fields use Prisma.JsonNull as the explicit clear sentinel, empty strings
+  // on optional text fields clear them. Undefined keys are dropped so we
+  // don't blow away fields the caller didn't touch.
+  const update: Record<string, unknown> = { updatedAt: new Date() }
+  for (const [k, v] of Object.entries(data)) {
+    if (v === undefined) continue
+    if (k === 'birthday' || k === 'anniversary' || k === 'customerSince') {
+      update[k] = v === null || v === '' ? null : (typeof v === 'string' ? new Date(v) : v)
+    } else if (k === 'kidsInfoJson' || k === 'petsInfoJson' || k === 'importantDatesJson') {
+      update[k] = v === null ? Prisma.JsonNull : (v as Prisma.InputJsonValue)
+    } else if (typeof v === 'string') {
+      update[k] = v.trim() === '' ? null : v
+    } else {
+      update[k] = v
+    }
+  }
+
   await prisma.contact.updateMany({
     where: { id, tenantId },
-    data: { ...data, updatedAt: new Date() },
+    data:  update as Prisma.ContactUpdateManyMutationInput,
   })
 
   // Re-verify if email changed

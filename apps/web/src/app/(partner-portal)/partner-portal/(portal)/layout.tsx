@@ -7,6 +7,7 @@ import { useT } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { ContactBlock } from '@/components/ContactBlock'
+import { SocialLinks } from '@/components/SocialLinks'
 import { IdleTimeout } from '@/components/IdleTimeout'
 
 const NAV = [
@@ -130,10 +131,11 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
         <div className="max-w-4xl mx-auto w-full px-8 py-8 flex-1">
           {children}
         </div>
-        {/* Contact emails — anchored at the bottom of the partner workspace */}
+        {/* Contact emails + social — anchored at the bottom of the partner workspace */}
         <footer className="px-8 py-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-          <div className="max-w-4xl mx-auto w-full">
+          <div className="max-w-4xl mx-auto w-full flex flex-wrap items-center justify-between gap-4">
             <ContactBlock compact />
+            <SocialLinks />
           </div>
         </footer>
       </main>

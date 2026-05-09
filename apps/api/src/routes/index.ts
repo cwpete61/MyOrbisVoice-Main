@@ -29,6 +29,7 @@ import { twilioInboundRouter } from './twilio-inbound.js'
 import { outboundWebhooksRouter } from './outbound-webhooks.js'
 import internalGatewayRouter from './internal-gateway.js'
 import marketingAssetsRouter from './marketing-assets.js'
+import publicRouter from './public.js'
 import authGoogleRouter from './auth-google.js'
 import { validateTwilioWebhook } from '../middleware/twilio-signature.js'
 
@@ -46,6 +47,7 @@ router.use('/api', validateTwilioWebhook, outboundWebhooksRouter)
 // not the standard auth/RBAC stack. Mounted before auth-gated routers.
 router.use('/api', internalGatewayRouter)
 router.use('/api', marketingAssetsRouter) // public /public/marketing-asset/:filename — no auth
+router.use('/api', publicRouter)        // public /public/social-links — no auth
 router.use('/api', billingRouter)       // before auth-gated routers — contains public /billing/plans
 router.use('/api', widgetRouter)        // contains public /public/widget/session
 router.use('/api', pushRouter)          // contains public /push/vapid-public-key — must precede tenantRouter

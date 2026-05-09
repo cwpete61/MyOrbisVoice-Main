@@ -347,6 +347,55 @@ router.patch('/system-settings/twilio-test', requirePlatformSuperAdmin, async (r
   } catch (err) { next(err) }
 })
 
+// Social media URLs — shown on the marketing site footer + partner portal
+// "Follow us" section. Public values; not encrypted. Empty string = clear.
+const socialUrl = z.string().url().or(z.literal(''))
+const socialSettingsSchema = z.object({
+  youtube:   socialUrl.optional(),
+  linkedin:  socialUrl.optional(),
+  tiktok:    socialUrl.optional(),
+  instagram: socialUrl.optional(),
+  pinterest: socialUrl.optional(),
+  x:         socialUrl.optional(),
+})
+
+router.patch('/system-settings/social', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const parsed = socialSettingsSchema.safeParse(req.body)
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string[]> = {}
+      for (const issue of parsed.error.issues) {
+        const key = issue.path.join('.') || 'root'
+        fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message]
+      }
+      throw new AppError('VALIDATION_ERROR', 'Invalid social media URL', 422, fieldErrors)
+    }
+    const userId = req.user!.id
+    const map: Record<string, string> = {
+      youtube:   'social_youtube_url',
+      linkedin:  'social_linkedin_url',
+      tiktok:    'social_tiktok_url',
+      instagram: 'social_instagram_url',
+      pinterest: 'social_pinterest_url',
+      x:         'social_x_url',
+    }
+    for (const [key, value] of Object.entries(parsed.data)) {
+      if (value === undefined) continue
+      const dbKey = map[key]
+      if (!dbKey) continue
+      await systemConfig.setConfigValue(dbKey, value, false, userId)
+    }
+    await writeAuditLogFromRequest(req, {
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.social.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
 const testSmsSchema = z.object({
   to:   z.string().min(3).max(40),
   body: z.string().min(1).max(1600),

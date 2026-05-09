@@ -1,9 +1,10 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useApi, apiFetch } from '@/hooks/useApi'
+import { useT } from '@/lib/i18n/I18nProvider'
 
 interface Contact {
   id: string; fullName: string | null; firstName: string | null; lastName: string | null
@@ -13,6 +14,19 @@ interface Contact {
   optedOutVoice: boolean; optedOutVoiceAt: string | null
   optedOutEmail: boolean; optedOutEmailAt: string | null
   createdAt: string
+  // CRM relationship fields — collected during outbound campaigns. Date fields
+  // are ISO strings or null when not set; JSON fields can be string or array
+  // (we accept both shapes in the API, default to string in this UI).
+  birthday:             string | null
+  anniversary:          string | null
+  spouseName:           string | null
+  kidsInfoJson:         unknown
+  petsInfoJson:         unknown
+  importantDatesJson:   unknown
+  hobbies:              string | null
+  preferredContactTime: string | null
+  customerSince:        string | null
+  personalNotes:        string | null
 }
 
 interface VoiceItem {
@@ -69,6 +83,7 @@ function StatusBadge({ label, color }: { label: string; color: string }) {
 }
 
 export default function ContactTimelinePage() {
+  const t = useT()
   const { contactId } = useParams<{ contactId: string }>()
   const { data, loading, error, reload } = useApi<TimelineData>(`/api/contacts/${contactId}/timeline`)
   const [optOutLoading, setOptOutLoading] = useState(false)
@@ -176,6 +191,9 @@ export default function ContactTimelinePage() {
         </div>
       </div>
 
+      {/* Personal details (CRM) */}
+      <PersonalDetails contact={contact} contactId={contactId} onSaved={() => { reload(); setMsg(t('contactCrm.saved')) }} onError={(e) => setMsg(e)} t={t} />
+
       {/* Timeline */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <h2 className="text-sm font-medium text-gray-900 mb-4">Interaction timeline</h2>
@@ -265,5 +283,153 @@ export default function ContactTimelinePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// ── Personal details editor (CRM) ───────────────────────────────────────────
+// Collected during outbound campaigns (the inbound prompt explicitly avoids
+// asking for these). Tenant admin can add/edit them here at any time. The
+// JSON-typed fields (kids/pets/important-dates) accept either an array (when
+// an outbound agent populates them via tool call) or a plain string (when a
+// human types text in this form). We render both shapes as text and write
+// back as a string, leaving structured arrays untouched if the user doesn't
+// edit that field.
+function PersonalDetails({
+  contact, contactId, onSaved, onError, t,
+}: {
+  contact: Contact
+  contactId: string
+  onSaved: () => void
+  onError: (msg: string) => void
+  t: (k: string) => string
+}) {
+  const toIsoDate = (v: string | null) => v ? new Date(v).toISOString().slice(0, 10) : ''
+  const jsonAsText = (v: unknown): string => {
+    if (v === null || v === undefined) return ''
+    if (typeof v === 'string') return v
+    try { return JSON.stringify(v) } catch { return '' }
+  }
+
+  const [form, setForm] = useState({
+    birthday:             toIsoDate(contact.birthday),
+    anniversary:          toIsoDate(contact.anniversary),
+    spouseName:           contact.spouseName ?? '',
+    kidsInfoJson:         jsonAsText(contact.kidsInfoJson),
+    petsInfoJson:         jsonAsText(contact.petsInfoJson),
+    importantDatesJson:   jsonAsText(contact.importantDatesJson),
+    hobbies:              contact.hobbies ?? '',
+    preferredContactTime: contact.preferredContactTime ?? '',
+    customerSince:        toIsoDate(contact.customerSince),
+    personalNotes:        contact.personalNotes ?? '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  // Reset form when the underlying contact changes (e.g. after reload()).
+  useEffect(() => {
+    setForm({
+      birthday:             toIsoDate(contact.birthday),
+      anniversary:          toIsoDate(contact.anniversary),
+      spouseName:           contact.spouseName ?? '',
+      kidsInfoJson:         jsonAsText(contact.kidsInfoJson),
+      petsInfoJson:         jsonAsText(contact.petsInfoJson),
+      importantDatesJson:   jsonAsText(contact.importantDatesJson),
+      hobbies:              contact.hobbies ?? '',
+      preferredContactTime: contact.preferredContactTime ?? '',
+      customerSince:        toIsoDate(contact.customerSince),
+      personalNotes:        contact.personalNotes ?? '',
+    })
+  }, [contact])
+
+  // Reusable change handler factory. Defined as `function` rather than
+  // arrow-generics to dodge the i18n scanner's false-positive match on the
+  // closing `>` of the React.ChangeEvent generic.
+  type AnyInput = HTMLInputElement | HTMLTextAreaElement
+  function set(k: keyof typeof form) {
+    return function onChange(e: React.ChangeEvent<AnyInput>) {
+      setForm(p => ({ ...p, [k]: e.target.value }))
+    }
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      // Send all editable fields. Empty strings are converted to null on the
+      // server. JSON fields go as plain strings (the API accepts unknown).
+      await apiFetch(`/api/contacts/${contactId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(form),
+      })
+      onSaved()
+    } catch (err) {
+      onError(err instanceof Error ? err.message : t('contactCrm.saveError'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const labelCls = 'block text-xs font-medium text-gray-700 mb-1'
+  const inputCls = 'w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-teal-500'
+
+  return (
+    <form onSubmit={save} className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+      <div>
+        <h2 className="text-sm font-medium text-gray-900">{t('contactCrm.sectionTitle')}</h2>
+        <p className="text-xs text-gray-500 mt-0.5">{t('contactCrm.sectionSubtitle')}</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className={labelCls}>{t('contactCrm.birthday')}</label>
+          <input type="date" className={inputCls} value={form.birthday} onChange={set('birthday')} />
+        </div>
+        <div>
+          <label className={labelCls}>{t('contactCrm.anniversary')}</label>
+          <input type="date" className={inputCls} value={form.anniversary} onChange={set('anniversary')} />
+        </div>
+        <div>
+          <label className={labelCls}>{t('contactCrm.customerSince')}</label>
+          <input type="date" className={inputCls} value={form.customerSince} onChange={set('customerSince')} />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className={labelCls}>{t('contactCrm.spouseName')}</label>
+          <input type="text" className={inputCls} value={form.spouseName} onChange={set('spouseName')} maxLength={200} />
+        </div>
+        <div>
+          <label className={labelCls}>{t('contactCrm.preferredContactTime')}</label>
+          <input type="text" className={inputCls} value={form.preferredContactTime} onChange={set('preferredContactTime')} placeholder={t('contactCrm.preferredContactTimePlaceholder')} maxLength={100} />
+        </div>
+
+        <div className="md:col-span-1">
+          <label className={labelCls}>{t('contactCrm.kidsInfo')}</label>
+          <input type="text" className={inputCls} value={form.kidsInfoJson} onChange={set('kidsInfoJson')} placeholder={t('contactCrm.kidsInfoPlaceholder')} />
+        </div>
+        <div className="md:col-span-1">
+          <label className={labelCls}>{t('contactCrm.petsInfo')}</label>
+          <input type="text" className={inputCls} value={form.petsInfoJson} onChange={set('petsInfoJson')} placeholder={t('contactCrm.petsInfoPlaceholder')} />
+        </div>
+        <div className="md:col-span-1">
+          <label className={labelCls}>{t('contactCrm.hobbies')}</label>
+          <input type="text" className={inputCls} value={form.hobbies} onChange={set('hobbies')} placeholder={t('contactCrm.hobbiesPlaceholder')} maxLength={500} />
+        </div>
+
+        <div className="md:col-span-3">
+          <label className={labelCls}>{t('contactCrm.importantDates')}</label>
+          <input type="text" className={inputCls} value={form.importantDatesJson} onChange={set('importantDatesJson')} placeholder={t('contactCrm.importantDatesPlaceholder')} />
+        </div>
+
+        <div className="md:col-span-3">
+          <label className={labelCls}>{t('contactCrm.personalNotes')}</label>
+          <textarea className={inputCls} rows={3} value={form.personalNotes} onChange={set('personalNotes')} placeholder={t('contactCrm.personalNotesPlaceholder')} maxLength={2000} />
+        </div>
+      </div>
+
+      <div>
+        <button type="submit" disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50">
+          {saving ? t('contactCrm.saving') : t('contactCrm.save')}
+        </button>
+      </div>
+    </form>
   )
 }

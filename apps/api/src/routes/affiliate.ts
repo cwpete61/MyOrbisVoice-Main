@@ -79,6 +79,19 @@ tenantRouter.get('/affiliate/clicks', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// All referrals — paid OR free. The /commissions endpoint above only returns
+// rows with an actual commission; this one returns every conversion, so a
+// partner can see "5 signups, 2 paid" instead of "0 conversions" when their
+// referrals are all on the free tier.
+tenantRouter.get('/affiliate/referrals', async (req, res, next) => {
+  try {
+    const account = await affiliateService.getAffiliateAccount(req.user!.id)
+    if (!account) { res.status(404).json({ errors: [{ code: 'NOT_FOUND', message: 'No affiliate account' }] }); return }
+    const limit = Math.max(1, Math.min(500, parseInt((req.query as Record<string, string>).limit ?? '100', 10) || 100))
+    res.json({ data: await affiliateService.getReferrals(account.id, limit) })
+  } catch (err) { next(err) }
+})
+
 tenantRouter.post('/affiliate/payout/request', async (req, res, next) => {
   try {
     res.json({ data: await affiliateService.requestPayout(req.user!.id) })
