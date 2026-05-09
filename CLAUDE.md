@@ -880,6 +880,10 @@ See [docs/feature-backlog.md](docs/feature-backlog.md) — 20 confirmed product 
 
 See [docs/product-overview.md](docs/product-overview.md) — canonical living description of what MyOrbisVoice offers (15 in-depth sections + changelog). Upstream source for marketing copy, video scripts, partner pitches, and onboarding content. **Update in the same commit as any user-visible feature change** — see memory rule `feedback_product_overview_doc.md`.
 
+## Marketing Style Guide
+
+See [docs/marketing-style-guide.md](docs/marketing-style-guide.md) — canonical persuasion + copywriting reference. Master copywriters (Caples, Halbert, Wiebe, Kennedy, Furey, Schwartz, Sugarman, Miller), frameworks (AIDA, PAS, BAB, 4Ps, StoryBrand, 5 Stages of Awareness), Cialdini's 7 principles, headline formulas, email patterns, per-vertical worked examples, anti-patterns, the **Aggression Spectrum** (4-tier tenant/partner setting). **Read this before writing any user-facing copy.** Generated content must follow the active tier's voice rules.
+
 ## Launch Blockers
 
 See [docs/launch-blockers.md](docs/launch-blockers.md) — open pre-launch items (real bugs + recommended-pre-launch + external-wait queues + closed). Re-reviewed weekly.
