@@ -50,6 +50,12 @@ router.get('/public/marketing-asset/:filename', asyncHandler(async (req, res) =>
   // and the asset whitelist is hardcoded — no chance of a content-type
   // confusion attack today, but the header costs nothing.
   res.setHeader('X-Content-Type-Options', 'nosniff')
+  // Allow cross-origin embedding from app.myorbisvoice.com — helmet's default
+  // is `same-origin` which blocks <video src="…api.myorbisvoice.com…"> with
+  // ERR_BLOCKED_BY_RESPONSE.NotSameOrigin in the partner marketing-kit grid.
+  // The whitelist above ensures only public marketing assets can be fetched
+  // through this proxy, so cross-origin is safe here.
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')
 
   const { Readable } = await import('stream')
   const nodeStream = Readable.fromWeb(upstream.body as any)
