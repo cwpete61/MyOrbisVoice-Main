@@ -339,6 +339,9 @@ router.get('/conversations/:id/recording', asyncHandler(async (req, res) => {
       const cl = upstream.headers.get('Content-Length')
       if (cl) res.setHeader('Content-Length', cl)
       res.setHeader('Accept-Ranges', 'bytes')
+      // Defense-in-depth: lock the Content-Type the browser uses to what we
+      // sent. We only ever stream audio/mpeg from Bunny here.
+      res.setHeader('X-Content-Type-Options', 'nosniff')
       const { Readable } = await import('stream')
       const nodeStream = Readable.fromWeb(upstream.body as any)
       nodeStream.pipe(res)

@@ -184,7 +184,7 @@ export async function handleStripeWebhook(rawBody: Buffer, signature: string): P
 
   const stripe = getStripe()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let event: { type: string; data: { object: any } } | null = null
+  let event: { id: string; type: string; data: { object: any } } | null = null
 
   // Try each configured signing secret. We run two destinations in Stripe
   // (platform-events + Connect-events), each with its own secret. The first
@@ -198,6 +198,26 @@ export async function handleStripeWebhook(rawBody: Buffer, signature: string): P
     }
   }
   if (!event) throw new AppError('BAD_REQUEST', 'Invalid webhook signature', 400)
+
+  // Idempotency: Stripe delivers events with at-least-once semantics. Without
+  // this dedup, the same event.id could fire its handler twice (and write
+  // duplicate audit rows + run downstream side-effects twice). Use Prisma
+  // create with a P2002 unique-violation catch — that's the atomic "first
+  // arriver wins" pattern. If we've seen this event before, return early.
+  try {
+    await prisma.stripeWebhookEvent.create({
+      data: { eventId: event.id, type: event.type },
+    })
+  } catch (e: unknown) {
+    // P2002 = unique constraint violation = duplicate event.id
+    if ((e as { code?: string })?.code === 'P2002') {
+      console.log(`[stripe-webhook] duplicate event ignored: ${event.id} (${event.type})`)
+      return
+    }
+    // Anything else is a real DB error — let it bubble up so we return non-2xx
+    // and Stripe will retry. Better to retry than to silently process+lose.
+    throw e
+  }
 
   switch (event.type) {
     case 'checkout.session.completed':

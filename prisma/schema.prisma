@@ -736,6 +736,26 @@ model StripeCustomerRef {
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
+/// Idempotency ledger for Stripe webhooks. Stripe delivers events with
+/// at-least-once semantics — the same event.id can arrive 2+ times if their
+/// retry logic fires. Without dedup, our handlers would write duplicate audit
+/// rows + run downstream side-effects twice (notifications, future emails,
+/// etc). The handler short-circuits if it sees an event.id already in this
+/// table.
+///
+/// We don't need to retain forever — purging rows older than 30 days is safe
+/// since Stripe stops retrying after ~3 days. Keep 30 for forensic margin.
+model StripeWebhookEvent {
+  /// The Stripe event.id (e.g. "evt_1ABC..."). Primary key — the dedupe key.
+  eventId   String   @id
+  /// Event type for forensic search ("customer.subscription.updated" etc).
+  type      String
+  /// Wall-clock receive time. Index supports the periodic cleanup query.
+  receivedAt DateTime @default(now())
+
+  @@index([receivedAt])
+}
+
 model Subscription {
   id                   String             @id @default(uuid())
   tenantId             String

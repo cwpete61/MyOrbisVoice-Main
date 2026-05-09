@@ -41,6 +41,11 @@ router.get('/public/marketing-asset/:filename', asyncHandler(async (req, res) =>
   const cr = upstream.headers.get('Content-Range');  if (cr) res.setHeader('Content-Range',  cr)
   res.setHeader('Accept-Ranges', 'bytes')
   res.setHeader('Cache-Control', 'public, max-age=86400, immutable')
+  // Defense-in-depth: prevent any browser MIME-sniffing override of our
+  // Content-Type. We serve only video/mp4 from this whitelisted endpoint,
+  // and the asset whitelist is hardcoded — no chance of a content-type
+  // confusion attack today, but the header costs nothing.
+  res.setHeader('X-Content-Type-Options', 'nosniff')
 
   const { Readable } = await import('stream')
   const nodeStream = Readable.fromWeb(upstream.body as any)
