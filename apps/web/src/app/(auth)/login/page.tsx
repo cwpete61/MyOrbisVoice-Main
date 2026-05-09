@@ -6,9 +6,12 @@ import Link from 'next/link'
 import { apiLogin } from '@/lib/api'
 import { setTokens, clearTokens, isPlatformAdmin, getTokenPayload } from '@/lib/auth'
 import { PasswordInput } from '@/components/PasswordInput'
+import { useT } from '@/lib/i18n/I18nProvider'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 export default function LoginPage() {
   const router = useRouter()
+  const t = useT()
   const [loginId, setLoginId] = useState('')
   const [loginPw, setLoginPw] = useState('')
   const [error, setError] = useState('')
@@ -27,7 +30,7 @@ export default function LoginPage() {
       else if (payload?.roleKey === 'affiliate') router.push('/partner-portal/dashboard')
       else router.push('/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid credentials.')
+      setError(err instanceof Error ? err.message : t('auth.login.invalidCreds'))
     } finally {
       setLoading(false)
     }
@@ -35,9 +38,12 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 py-12"
+      className="min-h-screen flex items-center justify-center px-4 py-12 relative"
       style={{ background: 'var(--surface-app)' }}
     >
+      <div className="absolute top-4 right-4">
+        <LanguageToggle />
+      </div>
       <div
         className="w-full max-w-md rounded-2xl p-8"
         style={{
@@ -61,17 +67,17 @@ export default function LoginPage() {
         </div>
 
         <h1 className="text-2xl font-bold tracking-tight mb-1.5" style={{ color: 'var(--text-primary)' }}>
-          Welcome back
+          {t('auth.login.title')}
         </h1>
         <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-          Enter your username or email to continue.
+          {t('auth.login.subtitle')}
         </p>
 
         {error && <div className="alert-error mb-5">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label">Username or email</label>
+            <label className="label">{t('auth.login.usernameLabel')}</label>
             <input
               type="text"
               required
@@ -80,18 +86,18 @@ export default function LoginPage() {
               value={loginId}
               onChange={(e) => setLoginId(e.target.value)}
               className="input"
-              placeholder="orbisadmin or you@example.com"
+              placeholder={t('auth.login.usernamePlaceholder')}
             />
           </div>
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="label" style={{ marginBottom: 0 }}>Password</label>
+              <label className="label" style={{ marginBottom: 0 }}>{t('auth.login.passwordLabel')}</label>
               <Link
                 href="/forgot-password"
                 className="text-xs font-medium"
                 style={{ color: 'oklch(55% 0.11 193)' }}
               >
-                Forgot?
+                {t('auth.login.forgotShort')}
               </Link>
             </div>
             <PasswordInput
@@ -100,17 +106,17 @@ export default function LoginPage() {
               value={loginPw}
               onChange={(e) => setLoginPw(e.target.value)}
               className="input"
-              placeholder="Your password"
+              placeholder={t('auth.login.passwordPlaceholder')}
             />
           </div>
           <button type="submit" disabled={loading} className="btn-primary w-full mt-1">
-            {loading ? 'Logging in…' : 'Log in to dashboard'}
+            {loading ? t('auth.login.submitting') : t('auth.login.submit')}
           </button>
         </form>
 
         <div className="flex items-center gap-3 my-5">
           <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
-          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>or continue with</span>
+          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('auth.login.orContinueWith')}</span>
           <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
         </div>
 
@@ -124,13 +130,13 @@ export default function LoginPage() {
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
           </svg>
-          Continue with Google
+          {t('auth.login.continueWithGoogle')}
         </a>
 
         <p className="text-center mt-5 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-          Don&apos;t have an account?{' '}
+          {t('auth.login.noAccount')}{' '}
           <Link href="/signup" className="font-semibold" style={{ color: 'oklch(55% 0.11 193)' }}>
-            Sign up free
+            {t('auth.login.signUpFree')}
           </Link>
         </p>
       </div>

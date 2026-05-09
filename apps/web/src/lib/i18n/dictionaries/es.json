@@ -6,7 +6,11 @@
       "operations": "Operaciones",
       "account": "Cuenta",
       "platform": "Plataforma",
-      "management": "Gestión"
+      "management": "Gestión",
+      "getStarted": "Comenzar",
+      "build": "Construye tu agente",
+      "connect": "Conectar",
+      "engage": "Atraer clientes"
     },
     "items": {
       "dashboard": "Panel",
@@ -45,6 +49,7 @@
     "referrals": "Enlaces de referido",
     "commissions": "Comisiones",
     "payouts": "Pagos",
+    "marketingKit": "Kit de marketing",
     "profile": "Perfil"
   },
   "actions": {
@@ -186,6 +191,51 @@
     }
   },
   "auth": {
+    "signup": {
+      "title": "Crea tu cuenta",
+      "subtitle": "Gratis para empezar — sin tarjeta de crédito.",
+      "usernameLabel": "Nombre de usuario",
+      "usernamePlaceholder": "tunombredeusuario",
+      "businessNameLabel": "Nombre del negocio",
+      "businessNamePlaceholder": "Servicios Acme S.A.",
+      "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "tu@tunegocio.com",
+      "passwordLabel": "Contraseña",
+      "passwordPlaceholder": "Al menos 8 caracteres",
+      "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
+      "submit": "Crear cuenta",
+      "submitting": "Creando cuenta…",
+      "submitError": "El registro falló. Inténtalo de nuevo.",
+      "orContinueWith": "o continúa con",
+      "continueWithGoogle": "Continuar con Google",
+      "termsPrefix": "Al registrarte aceptas nuestros",
+      "termsLink": "Términos",
+      "termsAnd": "y",
+      "privacyLink": "Política de Privacidad",
+      "haveAccount": "¿Ya tienes una cuenta?",
+      "logIn": "Inicia sesión",
+      "ltdBannerTitle": "Continuando con la compra de LTD",
+      "ltdBannerBody": "Después de crear tu cuenta, te enviaremos al pago para completar tu pago único de $497. (LTD está limitado a los primeros 100 clientes.)",
+      "paidBannerTitle": "Continuando al pago de {planName}",
+      "paidBannerBody": "Después de crear tu cuenta, te enviaremos a Stripe para completar tu suscripción.",
+      "redirectingToCheckout": "Redirigiendo al pago…"
+    },
+    "login": {
+      "title": "Bienvenido de nuevo",
+      "subtitle": "Ingresa tu nombre de usuario o correo para continuar.",
+      "usernameLabel": "Nombre de usuario o correo",
+      "usernamePlaceholder": "orbisadmin o tu@ejemplo.com",
+      "passwordLabel": "Contraseña",
+      "passwordPlaceholder": "Tu contraseña",
+      "forgotShort": "¿Olvidaste?",
+      "submit": "Iniciar sesión",
+      "submitting": "Iniciando sesión…",
+      "invalidCreds": "Credenciales inválidas.",
+      "orContinueWith": "o continúa con",
+      "continueWithGoogle": "Continuar con Google",
+      "noAccount": "¿No tienes cuenta?",
+      "signUpFree": "Regístrate gratis"
+    },
     "welcome": "Bienvenido",
     "welcomeBack": "Bienvenido de vuelta",
     "emailOrUsername": "Correo o nombre de usuario",
@@ -252,6 +302,70 @@
     "english": "English",
     "spanish": "Español",
     "switchTo": "Cambiar a {lang}"
+  },
+  "partnerMarketingKit": {
+    "title": "Kit de marketing",
+    "subtitle": "Todo lo que necesitas para empezar a promover MyOrbisVoice — copia, pega, comparte.",
+    "hero": {
+      "title": "El video explicativo de 3 minutos",
+      "subtitle": "Un recorrido pulido del producto. Inserta el video, compártelo o envía el archivo."
+    },
+    "assets": {
+      "title": "Recursos descargables",
+      "horizontal": {
+        "title": "Video promocional — Horizontal (16:9)",
+        "body": "MP4 de 1920×1080. Para YouTube, sitios web e inserciones en correos."
+      },
+      "vertical": {
+        "title": "Video promocional — Vertical (9:16)",
+        "body": "MP4 de 1080×1920. Para TikTok, Reels y Shorts."
+      },
+      "colors": {
+        "title": "Colores de marca",
+        "body": "Haz clic en cualquier muestra para copiar el código hexadecimal.",
+        "copyTooltip": "Haz clic para copiar el hex"
+      }
+    },
+    "email": {
+      "title": "Plantillas de correo",
+      "subtitle": "Tres plantillas listas. Tu enlace de referido ya está insertado — solo pega, personaliza y envía.",
+      "cold": {
+        "label": "PROSPECCIÓN EN FRÍO",
+        "subject": "Una recepcionista 24/7 que cuesta menos que un solo cliente perdido",
+        "body": "Hola {firstName},\n\nUna pregunta rápida — ¿cuántas llamadas pierde tu negocio fuera del horario o en horas pico? Para la mayoría de los dueños con los que hablo, son al menos 3 o 4 a la semana. Cada una representa entre $200 y $2000 en ingresos perdidos.\n\nTrabajo con un servicio llamado MyOrbisVoice. Es una recepcionista de IA que contesta cada llamada las 24 horas con una voz natural, agenda citas directamente en Google Calendar y da seguimiento por SMS y correo. La configuración toma 5 minutos.\n\nLos planes comienzan en $197/mes — menos de lo que la mayoría de los negocios pierden por un solo cliente que no contestaron.\n\n¿Quieres probar la demo en vivo? Es gratis, sin necesidad de registrarte:\n{url}\n\nCon gusto te lo explico si prefieres conversar.\n\n— [Tu nombre]"
+      },
+      "warm": {
+        "label": "INTRODUCCIÓN CÁLIDA",
+        "subject": "Sobre ese problema con la recepcionista que mencionaste",
+        "body": "Hola {firstName},\n\nMe acordé de nuestra plática sobre lo difícil que es tener personal en la recepción. Encontré algo que podría resolverlo de verdad.\n\nMyOrbisVoice es un agente de voz con IA que atiende llamadas entrantes 24/7. Suena realmente natural (nada del rollo robótico), agenda citas directamente en tu calendario, captura prospectos y reenvía lo urgente a quien tú indiques. Cuesta entre $197 y $497/mes según el volumen — tarifa fija, sin cargos por minuto.\n\nLa demo es la forma más fácil de probarlo: {url}\n\nSolo toma 2 minutos escuchar al agente en acción. Vale la pena echarle un ojo — me cuentas qué piensas.\n\n— [Tu nombre]"
+      },
+      "reengage": {
+        "label": "REACTIVACIÓN",
+        "subject": "Actualización rápida — MyOrbisVoice ahora también maneja SMS",
+        "body": "Hola {firstName},\n\nEspero que estés bien. Quería retomar contacto — la última vez que hablamos de MyOrbisVoice, la plataforma era principalmente voz entrante. Ha crecido.\n\nAhora maneja voz + SMS + seguimientos por correo + campañas salientes, todo desde un solo panel. La IA agenda, reprograma y confirma citas sin que un humano levante el teléfono. Además hay un Lifetime Deal a $497 pago único (limitado a los primeros 100 clientes) si la facturación mensual no es lo tuyo.\n\nVe la versión más reciente aquí: {url}\n\nSi el momento es mejor ahora, con gusto te lo explico.\n\n— [Tu nombre]"
+      }
+    },
+    "social": {
+      "title": "Publicaciones para redes sociales",
+      "subtitle": "Usa cualquiera de estas. Combina con el video vertical para Reels/TikTok/Shorts, o usa el video horizontal en LinkedIn/X.",
+      "linkedin": "LINKEDIN",
+      "linkedinPost": "La mayoría de los pequeños negocios pierden entre 30 y 40% de sus prospectos por llamadas no contestadas.\n\nNo porque el cliente no estuviera ahí. Porque nadie contestó.\n\nHe estado recomendando MyOrbisVoice — una recepcionista de IA que contesta cada llamada las 24 horas, agenda citas directamente en Google Calendar y da seguimiento por SMS y correo. La voz es realmente natural (Gemini Live, nada del rollo robótico viejo). La configuración toma unos 5 minutos.\n\nPara la mayoría de los negocios, un solo cliente capturado paga el mes completo.\n\nDemo en vivo, sin registro: {url}",
+      "x": "X",
+      "xPost": "Deja de perder prospectos por llamadas no contestadas.\n\nMyOrbisVoice = recepcionista de IA 24/7. Agenda citas. Suena humana. $197/mes plano.\n\nDemo en vivo, sin registro:\n{url}",
+      "instagram": "INSTAGRAM / FACEBOOK",
+      "instagramPost": "POV: cada llamada no contestada te cuesta un cliente 📞💸\n\nMyOrbisVoice contesta cada llamada, 24/7. Agenda la cita. Envía la confirmación. Listo.\n\n→ Planes desde $197/mes\n→ Configuración en 5 min\n→ Lifetime Deal disponible (primeros 100 clientes)\n\nProbá la demo en vivo — enlace en la bio:\n{url}\n\n#pequeñonegocio #automatizacion #ia #recepcionista"
+    },
+    "talkingPoints": {
+      "title": "Puntos clave y FAQ",
+      "subtitle": "Datos que puedes citar con confianza en llamadas, demos y DMs.",
+      "tp1": "Contesta cada llamada entrante 24/7 — nunca va al buzón de voz.",
+      "tp2": "Agenda citas directamente en el Google Calendar del cliente sin intervención humana.",
+      "tp3": "Suena realmente natural — usa audio nativo de Gemini Live, no la TTS robótica antigua.",
+      "tp4": "Los precios comienzan en $197/mes plano — sin cargos por minuto. LTD a $497 pago único (máximo 100 cupos).",
+      "tp5": "La configuración toma 5 minutos: conecta Google, elige una voz, define el horario y al aire.",
+      "tp6": "Grabaciones y transcripciones de cada llamada, buscables en el panel."
+    },
+    "footer": "¿Necesitas algo personalizado? Escribe a partners@myorbisvoice.com — lo construimos para ti."
   },
   "partnerReferrals": {
     "title": "Enlaces de referido",
@@ -636,7 +750,17 @@
       "CHILDCARE": "Guardería",
       "ACCOUNTING": "Contabilidad / Impuestos",
       "INSURANCE": "Seguros",
-      "PROPERTY_MANAGEMENT": "Administración de propiedades"
+      "PROPERTY_MANAGEMENT": "Administración de propiedades",
+      "TRAVEL": "Viajes",
+      "COACHING": "Coaching",
+      "CONSULTING": "Consultoría",
+      "EVENTS": "Eventos"
+    },
+    "subcategories": {
+      "ALL": "Todos los eventos",
+      "HOLIDAY": "Días festivos",
+      "SALES_EVENT": "Eventos de venta",
+      "SPECIAL_EVENT": "Eventos especiales"
     },
     "mine": {
       "loading": "Cargando…",
@@ -1970,6 +2094,10 @@
     "complianceBanner": {
       "title": "Sobre las aprobaciones de SMS (10DLC):",
       "body": " El envío de SMS requiere un registro único con la operadora que gestionamos en tu nombre. Las llamadas de voz e entrantes funcionan de inmediato en cualquier número que solicites. Lee la guía de aprobación de Twilio →"
+    },
+    "smsComplianceCta": {
+      "title": "Configura el cumplimiento de SMS →",
+      "body": " Regístrate para A2P 10DLC antes de enviar SMS desde tus números. Requerido por las operadoras de EE. UU. — toma 5 minutos."
     },
     "loading": "Cargando…",
     "empty": {

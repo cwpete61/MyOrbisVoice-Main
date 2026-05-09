@@ -49,10 +49,31 @@ export async function apiLogin(login: string, password: string) {
   })
 }
 
-export async function apiSignup(username: string, email: string, password: string, businessName: string, affiliateCode?: string) {
+export async function apiSignup(username: string, email: string, password: string, businessName: string, affiliateCode?: string, selectedPlanCode?: string) {
   return apiCall<{ user: unknown; tenant: unknown } & AuthTokens>('/api/auth/signup', {
     method: 'POST',
-    body: { username, email, password, businessName, ...(affiliateCode ? { affiliateCode } : {}) },
+    body: {
+      username, email, password, businessName,
+      ...(affiliateCode    ? { affiliateCode }    : {}),
+      ...(selectedPlanCode ? { selectedPlanCode } : {}),
+    },
+  })
+}
+
+// Create a Stripe checkout session for the given plan. Used right after signup
+// when a paid plan was selected, so the user is sent straight to Stripe.
+// The token is passed in explicitly because the signup-then-checkout flow
+// completes before the token is fully persisted to higher-layer state.
+export async function apiCreateCheckoutSession(
+  token: string,
+  planCode: string,
+  successUrl: string,
+  cancelUrl:  string,
+) {
+  return apiCall<{ url: string }>('/api/billing/checkout-session', {
+    method: 'POST',
+    token,
+    body: { planCode, successUrl, cancelUrl },
   })
 }
 

@@ -153,6 +153,22 @@ export default function PhoneNumbersPage() {
         ℹ️ <strong>{t('tenantPhoneNumbers.complianceBanner.title')}</strong>{t('tenantPhoneNumbers.complianceBanner.body')}
       </a>
 
+      {/* SMS Compliance (A2P) call-out — surfaces A2P registration as an
+          adjacent step in the Phone Numbers flow. Without this banner A2P is
+          a hard-to-discover sidebar item that ~30% of tenants ever find. */}
+      <a
+        href="/a2p"
+        className="block mt-3 px-4 py-3 rounded-xl text-sm font-medium"
+        style={{
+          background: 'oklch(55% 0.11 193 / 0.08)',
+          border: '1px solid oklch(55% 0.11 193 / 0.4)',
+          color: 'oklch(45% 0.13 193)',
+          textDecoration: 'none',
+        }}
+      >
+        📱 <strong>{t('tenantPhoneNumbers.smsComplianceCta.title')}</strong>{t('tenantPhoneNumbers.smsComplianceCta.body')}
+      </a>
+
       {/* Numbers list / empty state */}
       <div className="mt-6">
         {loading ? (

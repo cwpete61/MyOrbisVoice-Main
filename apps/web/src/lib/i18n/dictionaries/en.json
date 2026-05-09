@@ -6,7 +6,11 @@
       "operations": "Operations",
       "account": "Account",
       "platform": "Platform",
-      "management": "Management"
+      "management": "Management",
+      "getStarted": "Get Started",
+      "build": "Build Your Agent",
+      "connect": "Connect",
+      "engage": "Engage Customers"
     },
     "items": {
       "dashboard": "Dashboard",
@@ -45,6 +49,7 @@
     "referrals": "Referral Links",
     "commissions": "Commissions",
     "payouts": "Payouts",
+    "marketingKit": "Marketing Kit",
     "profile": "Profile"
   },
   "actions": {
@@ -186,6 +191,51 @@
     }
   },
   "auth": {
+    "signup": {
+      "title": "Create your account",
+      "subtitle": "Free to start — no credit card required.",
+      "usernameLabel": "Username",
+      "usernamePlaceholder": "yourhandle",
+      "businessNameLabel": "Business name",
+      "businessNamePlaceholder": "Acme Services LLC",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "you@yourbusiness.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "At least 8 characters",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "submitError": "Sign up failed. Please try again.",
+      "orContinueWith": "or continue with",
+      "continueWithGoogle": "Continue with Google",
+      "termsPrefix": "By signing up you agree to our",
+      "termsLink": "Terms",
+      "termsAnd": "and",
+      "privacyLink": "Privacy Policy",
+      "haveAccount": "Already have an account?",
+      "logIn": "Log in",
+      "ltdBannerTitle": "Continuing to LTD purchase",
+      "ltdBannerBody": "After you create your account, you'll be sent to checkout to complete your $497 one-time payment. (LTD is limited to the first 100 customers.)",
+      "paidBannerTitle": "Continuing to {planName} checkout",
+      "paidBannerBody": "After you create your account, you'll be sent to Stripe to complete your subscription.",
+      "redirectingToCheckout": "Redirecting to checkout…"
+    },
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Enter your username or email to continue.",
+      "usernameLabel": "Username or email",
+      "usernamePlaceholder": "orbisadmin or you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Your password",
+      "forgotShort": "Forgot?",
+      "submit": "Log in to dashboard",
+      "submitting": "Logging in…",
+      "invalidCreds": "Invalid credentials.",
+      "orContinueWith": "or continue with",
+      "continueWithGoogle": "Continue with Google",
+      "noAccount": "Don't have an account?",
+      "signUpFree": "Sign up free"
+    },
     "welcome": "Welcome",
     "welcomeBack": "Welcome back",
     "emailOrUsername": "Email or username",
@@ -252,6 +302,70 @@
     "english": "English",
     "spanish": "Español",
     "switchTo": "Switch to {lang}"
+  },
+  "partnerMarketingKit": {
+    "title": "Marketing Kit",
+    "subtitle": "Everything you need to start promoting MyOrbisVoice — copy, paste, share.",
+    "hero": {
+      "title": "The 3-minute explainer video",
+      "subtitle": "A polished walkthrough of the product. Embed it, share it, or send the file."
+    },
+    "assets": {
+      "title": "Downloadable assets",
+      "horizontal": {
+        "title": "Promo video — Horizontal (16:9)",
+        "body": "1920×1080 MP4. For YouTube, websites, email embeds."
+      },
+      "vertical": {
+        "title": "Promo video — Vertical (9:16)",
+        "body": "1080×1920 MP4. For TikTok, Reels, Shorts."
+      },
+      "colors": {
+        "title": "Brand colors",
+        "body": "Click any swatch to copy the hex code.",
+        "copyTooltip": "Click to copy hex"
+      }
+    },
+    "email": {
+      "title": "Email swipes",
+      "subtitle": "Three pre-written templates. Your referral link is already inserted — just paste, personalize, and send.",
+      "cold": {
+        "label": "COLD OUTREACH",
+        "subject": "A 24/7 receptionist that costs less than one missed lead",
+        "body": "Hi {firstName},\n\nQuick question — how many calls does your business miss after hours or during peak times? For most owners I talk to, it's at least 3-4 a week. Each one is potentially $200-$2000 in lost revenue.\n\nI work with a service called MyOrbisVoice. It's an AI receptionist that answers every call 24/7 in a natural voice, books appointments straight into your Google Calendar, and follows up by text and email. Setup takes 5 minutes.\n\nPricing starts at $197/month — less than what most businesses lose to a single missed lead.\n\nWant to try the live demo? It's free, no signup required:\n{url}\n\nHappy to walk you through it if you'd rather chat.\n\n— [Your name]"
+      },
+      "warm": {
+        "label": "WARM INTRO",
+        "subject": "About that receptionist problem you mentioned",
+        "body": "Hi {firstName},\n\nRemembered our conversation about how brutal it is staffing the front desk. Found something that might actually solve it.\n\nMyOrbisVoice is an AI voice agent that handles inbound calls 24/7. It sounds genuinely natural (not the robotic stuff), books appointments directly into your calendar, captures leads, and forwards anything urgent to whoever you specify. It runs about $197-$497/month depending on volume — flat rate, no per-minute pricing.\n\nThe demo is the easiest way to get a feel for it: {url}\n\nIt only takes 2 minutes to hear the agent in action. Worth a look — let me know what you think.\n\n— [Your name]"
+      },
+      "reengage": {
+        "label": "RE-ENGAGEMENT",
+        "subject": "Quick update — MyOrbisVoice now handles SMS too",
+        "body": "Hi {firstName},\n\nHope you're well. Wanted to circle back — last time we talked about MyOrbisVoice, the platform was mainly inbound voice. It's grown.\n\nNow it handles voice + SMS + email follow-ups + outbound campaigns, all from one dashboard. The AI books, reschedules, and confirms appointments without a human ever picking up. Plus there's a Lifetime Deal at $497 one-time (limited to the first 100 customers) if monthly billing isn't your style.\n\nSee the latest version here: {url}\n\nIf timing is better now, I'd love to walk you through it.\n\n— [Your name]"
+      }
+    },
+    "social": {
+      "title": "Social media captions",
+      "subtitle": "Drop in any of these. Pair with the vertical video for Reels/TikTok/Shorts, or use the horizontal video on LinkedIn/X.",
+      "linkedin": "LINKEDIN",
+      "linkedinPost": "Most small businesses lose 30-40% of their leads to missed calls.\n\nNot because the lead wasn't there. Because nobody answered.\n\nI've been recommending MyOrbisVoice — an AI receptionist that picks up every call 24/7, books appointments directly into Google Calendar, and follows up by SMS and email. The voice is genuinely natural (Gemini Live, not the older robotic stuff). Setup runs about 5 minutes.\n\nFor most businesses, one captured lead pays for the whole month.\n\nLive demo, no signup: {url}",
+      "x": "X",
+      "xPost": "Stop losing leads to missed calls.\n\nMyOrbisVoice = 24/7 AI receptionist. Books appointments. Sounds human. $197/mo flat.\n\nLive demo, no signup needed:\n{url}",
+      "instagram": "INSTAGRAM / FACEBOOK",
+      "instagramPost": "POV: every missed call costs you a customer 📞💸\n\nMyOrbisVoice answers every call, 24/7. Books the appointment. Sends the confirmation. Done.\n\n→ Plans from $197/mo\n→ Setup in 5 min\n→ Lifetime Deal available (first 100 customers)\n\nTry the live demo — link in bio:\n{url}\n\n#smallbusiness #automation #ai #receptionist"
+    },
+    "talkingPoints": {
+      "title": "Talking points & FAQ",
+      "subtitle": "Facts you can quote with confidence on calls, demos, and DMs.",
+      "tp1": "Answers every inbound call 24/7 — never goes to voicemail.",
+      "tp2": "Books appointments directly into the customer's Google Calendar with no human involved.",
+      "tp3": "Sounds genuinely natural — uses Gemini Live native audio, not older robotic TTS.",
+      "tp4": "Pricing starts at $197/month flat — no per-minute charges. LTD at $497 one-time (100 seats max).",
+      "tp5": "Setup is 5 minutes: connect Google, choose a voice, set business hours, go live.",
+      "tp6": "Recordings + transcripts of every call, searchable in the dashboard."
+    },
+    "footer": "Need something custom? Email partners@myorbisvoice.com — we'll build it for you."
   },
   "partnerReferrals": {
     "title": "Referral Links",
@@ -636,7 +750,17 @@
       "CHILDCARE": "Childcare / Nursery",
       "ACCOUNTING": "Accounting / Tax",
       "INSURANCE": "Insurance",
-      "PROPERTY_MANAGEMENT": "Property Management"
+      "PROPERTY_MANAGEMENT": "Property Management",
+      "TRAVEL": "Travel",
+      "COACHING": "Coaching",
+      "CONSULTING": "Consulting",
+      "EVENTS": "Events"
+    },
+    "subcategories": {
+      "ALL": "All events",
+      "HOLIDAY": "Holidays",
+      "SALES_EVENT": "Sales events",
+      "SPECIAL_EVENT": "Special events"
     },
     "mine": {
       "loading": "Loading…",
@@ -1970,6 +2094,10 @@
     "complianceBanner": {
       "title": "About SMS approvals (10DLC):",
       "body": " SMS sending requires a one-time carrier registration we manage on your behalf. Voice + inbound calls work immediately on any number you request. Read the Twilio approval guide →"
+    },
+    "smsComplianceCta": {
+      "title": "Set up SMS Compliance →",
+      "body": " Register for A2P 10DLC before sending SMS from your numbers. Required by US carriers — takes 5 minutes."
     },
     "loading": "Loading…",
     "empty": {

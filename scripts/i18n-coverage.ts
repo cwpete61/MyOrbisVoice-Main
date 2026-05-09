@@ -35,6 +35,7 @@ const SCAN_ROOTS = [
   'apps/web/src/app/(dashboard)',
   'apps/web/src/app/(partner-portal)',
   'apps/web/src/app/(admin)',
+  'apps/web/src/app/(auth)',
   'apps/web/src/components',
 ]
 

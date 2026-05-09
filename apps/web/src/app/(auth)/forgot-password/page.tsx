@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { apiForgotPassword } from '@/lib/api'
 import { useT } from '@/lib/i18n/I18nProvider'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 export default function ForgotPasswordPage() {
   const t = useT()
@@ -30,9 +31,12 @@ export default function ForgotPasswordPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-4 py-12"
+      className="min-h-screen flex items-center justify-center px-4 py-12 relative"
       style={{ background: 'var(--surface-app)' }}
     >
+      <div className="absolute top-4 right-4">
+        <LanguageToggle />
+      </div>
       <div
         className="w-full max-w-md rounded-2xl p-8"
         style={{
