@@ -50,7 +50,34 @@
     "commissions": "Commissions",
     "payouts": "Payouts",
     "marketingKit": "Marketing Kit",
+    "landingPage": "Landing Page Builder",
+    "marketVault": "Market Vault",
+    "soonPill": "Soon",
     "profile": "Profile"
+  },
+  "partnerLandingPage": {
+    "title": "Landing Page Builder",
+    "subtitle": "Generate a coming-soon landing page on your own custom URL — built around MyOrbisVoice with your branding so you can collect leads before launch.",
+    "soonBadge": "Coming Soon",
+    "heroTitle": "Your branded coming-soon page, in two clicks",
+    "heroBody": "Send prospects to a clean, professional landing page that captures their interest while you finish onboarding. We'll handle the URL, the hosting, and the email capture — you focus on driving traffic.",
+    "feature1": "Pick your custom URL slug — yourname.myorbisvoice.com or your own domain",
+    "feature2": "Drop in your logo, headline, and value prop — or use our AI to draft them from your business name alone",
+    "feature3": "Built-in waitlist email capture — leads pipe straight into your campaign engine",
+    "feature4": "One-click publish — no DNS setup, no hosting fees",
+    "notify": "We're building this for partners who want to start collecting leads before their full setup is complete. We'll let you know as soon as it's ready."
+  },
+  "partnerMarketVault": {
+    "title": "Market Vault",
+    "subtitle": "Step-by-step playbooks for selling MyOrbisVoice — where to find customers, what to say, and how to close.",
+    "soonBadge": "Coming Soon",
+    "heroTitle": "Sales workflows + customer-acquisition playbooks",
+    "heroBody": "We're building a vault of proven workflows from partners who are actually closing deals — niche-by-niche guides covering where to find prospects, the exact outreach sequence, demo scripts, and follow-up cadences.",
+    "feature1": "Vertical-specific playbooks — dental, legal, home services, fitness, beauty, more",
+    "feature2": "Lead-source guides — Facebook groups, LinkedIn search filters, local directories, referral plays",
+    "feature3": "Outreach scripts + objection handlers — cold email, DM, voicemail, and warm-intro templates",
+    "feature4": "Live deal walkthroughs — partner case studies showing the exact path from first touch to signed contract",
+    "notify": "Built from real partner sales playbooks. We'll let you know as soon as it's stocked."
   },
   "actions": {
     "save": "Save",

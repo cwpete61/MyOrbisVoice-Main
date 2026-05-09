@@ -14,6 +14,8 @@ const NAV = [
   { href: '/partner-portal/commissions', labelKey: 'partnerNav.commissions', icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' },
   { href: '/partner-portal/payouts',     labelKey: 'partnerNav.payouts',     icon: 'M1 5h14v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5zm0-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2' },
   { href: '/partner-portal/marketing-kit', labelKey: 'partnerNav.marketingKit', icon: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z' },
+  { href: '/partner-portal/landing-page',  labelKey: 'partnerNav.landingPage',  icon: 'M3 5h18v14H3zM3 9h18M7 5v14',                                                                                                                                                                                                                                                                              comingSoon: true },
+  { href: '/partner-portal/market-vault',  labelKey: 'partnerNav.marketVault',  icon: 'M5 7h14l-1 12H6L5 7zM9 7V5a3 3 0 0 1 6 0v2',                                                                                                                                                                                                                                                              comingSoon: true },
 ]
 
 // Profile + Sign out live at the bottom of the sidebar — separate from
@@ -67,7 +69,15 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
                   : { color: 'var(--text-secondary)' }}
               >
                 <span style={{ opacity: active ? 1 : 0.7 }}><Icon d={item.icon} /></span>
-                {t(item.labelKey)}
+                <span className="flex-1">{t(item.labelKey)}</span>
+                {('comingSoon' in item && item.comingSoon) && (
+                  <span
+                    className="text-[9px] px-1 py-0.5 rounded font-semibold uppercase tracking-wider flex-shrink-0"
+                    style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(65% 0.15 193)', letterSpacing: '0.08em' }}
+                  >
+                    {t('partnerNav.soonPill')}
+                  </span>
+                )}
               </Link>
             )
           })}

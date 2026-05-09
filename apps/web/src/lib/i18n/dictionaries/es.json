@@ -50,7 +50,34 @@
     "commissions": "Comisiones",
     "payouts": "Pagos",
     "marketingKit": "Kit de marketing",
+    "landingPage": "Generador de página",
+    "marketVault": "Bóveda de ventas",
+    "soonPill": "Pronto",
     "profile": "Perfil"
+  },
+  "partnerLandingPage": {
+    "title": "Generador de página de aterrizaje",
+    "subtitle": "Genera una página próximamente en tu URL personalizada — diseñada alrededor de MyOrbisVoice con tu marca para que captures prospectos antes del lanzamiento.",
+    "soonBadge": "Próximamente",
+    "heroTitle": "Tu página próximamente con tu marca, en dos clics",
+    "heroBody": "Envía a tus prospectos a una página de aterrizaje limpia y profesional que capture su interés mientras tú terminas la configuración. Nosotros nos encargamos de la URL, el alojamiento y la captura de correos — tú te concentras en llevar tráfico.",
+    "feature1": "Elige tu URL personalizada — tunombre.myorbisvoice.com o tu propio dominio",
+    "feature2": "Coloca tu logo, titular y propuesta de valor — o usa nuestra IA para escribirlos a partir del nombre de tu negocio",
+    "feature3": "Captura de correos para lista de espera integrada — los prospectos van directo a tu motor de campañas",
+    "feature4": "Publicación con un clic — sin configuración de DNS, sin tarifas de alojamiento",
+    "notify": "Lo estamos construyendo para los partners que quieren empezar a captar prospectos antes de terminar toda la configuración. Te avisaremos en cuanto esté listo."
+  },
+  "partnerMarketVault": {
+    "title": "Bóveda de ventas",
+    "subtitle": "Guías paso a paso para vender MyOrbisVoice — dónde encontrar clientes, qué decir y cómo cerrar.",
+    "soonBadge": "Próximamente",
+    "heroTitle": "Flujos de venta + guías para adquirir clientes",
+    "heroBody": "Estamos construyendo una bóveda con flujos probados de partners que están cerrando ventas — guías por nicho con dónde encontrar prospectos, la secuencia exacta de contacto, guiones de demo y cadencias de seguimiento.",
+    "feature1": "Guías por vertical — dental, legal, servicios para el hogar, fitness, belleza y más",
+    "feature2": "Guías de fuentes de prospectos — grupos de Facebook, filtros de búsqueda en LinkedIn, directorios locales, jugadas de referidos",
+    "feature3": "Guiones de contacto + manejo de objeciones — plantillas de correo en frío, DM, mensaje de voz e introducción cálida",
+    "feature4": "Casos de venta en vivo — estudios de partners que muestran el camino exacto del primer contacto al contrato firmado",
+    "notify": "Construido a partir de flujos reales de ventas de partners. Te avisaremos en cuanto esté listo."
   },
   "actions": {
     "save": "Guardar",
