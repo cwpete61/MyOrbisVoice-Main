@@ -43,17 +43,33 @@ export function errorHandler(
     return
   }
 
+  const e = err as Error
+  const message = e?.message ?? ''
+
+  // CORS origin rejections are correct security blocks, not unhandled errors.
+  // Vulnerability scanners and misconfigured clients hit us constantly from
+  // un-allowlisted origins; logging each rejection as system.error.unhandled
+  // floods the audit log and makes the platform look unhealthy when it's
+  // actually working as designed. Treat as a warning and respond 403 without
+  // an audit row.
+  if (message.startsWith('CORS: origin ')) {
+    console.warn('[api] CORS rejected:', message, req.method, req.originalUrl)
+    res.status(403).json({
+      errors: [{ code: 'CORS_REJECTED', message: 'Origin not allowed' }],
+    })
+    return
+  }
+
   console.error('[api] unhandled error:', err)
   // Persist unhandled errors to AuditLog so admins can see what's
   // breaking without SSH'ing into the container.
-  const e = err as Error
   writeAuditLog({
     actorType: 'SYSTEM',
     action:    'system.error.unhandled',
     metadataJson: {
       method:  req.method,
       path:    req.originalUrl,
-      message: e?.message ?? 'unknown',
+      message: message || 'unknown',
       stack:   e?.stack?.slice(0, 2000) ?? null,
       tenantId: (req as any).user?.currentTenantId ?? null,
     },
