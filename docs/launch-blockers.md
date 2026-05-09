@@ -2,7 +2,7 @@
 
 These are the items that **cannot be closed by code alone** — they require external signal (third-party approvals, off-repo actions, real-world data, or specific business decisions). They're tracked here so they don't get lost in conversation history but also don't block the build.
 
-**Last reviewed:** 2026-05-06.
+**Last reviewed:** 2026-05-09.
 
 Items below sorted by urgency. Re-review weekly. When an item is closed, move it to the **Closed** section at the bottom with the date and what unblocked it.
 
@@ -78,6 +78,82 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ---
 
+### S1. Next.js 14.2.35 → 15.x upgrade for two open CVEs
+
+**What:** Two high-severity Next.js advisories require ≥15.0.8 and ≥15.5.15:
+- GHSA-h25m-26qc-wcjf — HTTP request deserialization DoS via insecure RSC
+- GHSA-q4gf-8mx6-v5v3 — Server Components DoS
+
+**Why deferred:** 14 → 15 is a major-version bump touching App Router, RSC, middleware, redirects, and the manifest format. We already had two prod incidents (`bjcai7pph`/`bii3fr7ws`) tonight from Next.js manifest issues; rushing a major upgrade in the same session is exactly the wrong move. The CVEs are exploitable only via crafted RSC requests, and our exposure is bounded by Caddy rate limits + helmet headers + auth gating on most routes.
+
+**Owner:** Me, in a dedicated session.
+
+**Sequencing for whoever picks this up:**
+  1. Read Next.js 14 → 15 codemod docs and run `npx @next/codemod@canary upgrade`
+  2. Diff `next.config.mjs`, `app/layout.tsx`, all server components for breaking changes (async request APIs, fetch caching defaults, `params` is now Promise<>)
+  3. Verify tar-pipe deploy still works (the `/_not-found/page.js` sanity-check files may move in 15)
+  4. Test all 8 prod surfaces (200/307 check) + a real call flow + the Stripe webhook path
+  5. Re-run `pnpm audit --audit-level=high` and confirm Next.js entries are gone
+
+**Verifies done when:** `pnpm audit --audit-level=high` shows ≤1 high finding (or zero) AND prod smoke passes.
+
+---
+
+### S2. Wire Sentry SDK across api / web / voice-gateway
+
+**What:** Currently zero error-aggregation tooling — we rely on the in-house `system.error.unhandled` audit-log row and manual `docker logs` inspection. That's fine for low-volume launch but won't scale: source maps aren't symbolicated, errors aren't grouped, no email/Slack alerting on new patterns.
+
+**Why deferred:** Wiring Sentry across three services touches `index.ts`, error middleware, `next.config.mjs`, `instrumentation.ts`, and adds a new external dependency. Requires creating a Sentry project (user action) and getting DSNs. Doing this at the same time as a security patch + deploy hardening compounds risk — this is its own session.
+
+**Owner:** Me to wire the SDK + the user to create the Sentry project + paste DSN into `Admin → System Settings`.
+
+**Sequencing:**
+  1. User creates Sentry project; gets DSN per service (api, web, voice-gateway)
+  2. Add SDK wrapper in `apps/api/src/lib/sentry.ts` that no-ops if DSN is missing
+  3. Init at top of each `index.ts`; wire `Sentry.Handlers.errorHandler()` in api after routes but before our custom errorHandler (so both fire)
+  4. Web: `@sentry/nextjs` integration via `instrumentation.ts` + `sentry.client.config.ts` + `sentry.server.config.ts`
+  5. Voice-gateway: `@sentry/node` init at top of `index.ts` + manual capture in WebSocket handlers
+  6. Add `SENTRY_DSN_API`, `SENTRY_DSN_WEB`, `SENTRY_DSN_GATEWAY` to `.env.prod` template
+  7. Deploy each service separately, verify health, generate one synthetic error per service to confirm Sentry receives it
+
+**Verifies done when:** A deliberately-thrown test error in each of the three services appears in the Sentry dashboard within 60s.
+
+---
+
+### S3. Wire uptime monitoring (recommended: UptimeRobot free tier)
+
+**What:** Today, if `api.myorbisvoice.com` goes down at 3 AM, we find out when a customer complains. Need a passive watcher that pings every 5 min and emails on failure.
+
+**Why minimal effort:** UptimeRobot's free tier covers 50 monitors at 5-min intervals. ~5 min of user setup time:
+  1. Sign up at uptimerobot.com (free, no credit card)
+  2. Add monitors: `https://api.myorbisvoice.com/health` (HTTP keyword: `"status":"ok"`), `https://app.myorbisvoice.com/login` (HTTP 200), `https://myorbisvoice.com` (HTTP 200), `https://api.myorbisvoice.com/api/billing/plans` (HTTP keyword: `"plans"`)
+  3. Set notification email to admin@myorbisvoice.com + a backup personal address
+
+**Alternatives considered:** Better Stack ($), self-hosted Uptime Kuma (needs another machine), GitHub Actions cron (works but slow alerting). Free SaaS is the right choice for v1.
+
+**Owner:** User (5 min in UptimeRobot UI).
+
+**Verifies done when:** UptimeRobot dashboard shows 4 green monitors and a test pause on one of them produces an email within 10 min.
+
+---
+
+### S4. Voice runtime end-to-end retest (single real call)
+
+**What:** Place one real inbound call from a personal phone to the platform's Twilio number and verify the full pipeline:
+- Twilio routes inbound → gateway accepts WebSocket
+- Gemini Live session establishes; agent greets first
+- 2+ conversational turns complete cleanly without `code: 1008` (G1 watch)
+- Call ends; recording webhook fires; recording lands in Bunny
+- Conversation row in DB has `transcriptJson`, `summaryText`, `recordingRef`, `metadataJson.latency`
+
+**Why this is open:** Last verified 2026-05-06 — surfaced G1 (Gemini 1008 mid-call disconnect, separate item). Recently shipped: theme overhaul, Google sign-in, deploy-script hardening. None of those touched the voice path, but per the autonomous-verify rule we should re-test before claiming "voice is launch-ready" with confidence.
+
+**Owner:** User to place the call (from a phone NOT in their Google contacts to avoid the carrier reputation issue from #8).
+
+**Verifies done when:** One inbound call of 90+ seconds completes with all artifacts (recording + transcript + summary + latency) populated in the DB.
+
+---
+
 ### 6. Backlog #6 — Tooltips full per-field sweep across remaining pages
 
 **What:** Add `Tooltip` wrappers on misunderstood fields across pages that don't yet have any: business profile, agent role config, admin storage tier, integration setup forms.
@@ -136,6 +212,10 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 ## ✅ Closed
 
 *(items move here with a date + what unblocked them)*
+
+### S0. xlsx (SheetJS 0.18.5) prototype-pollution + ReDoS CVEs — closed 2026-05-09
+
+GHSA-4r6h-8v6p-xvw6 (prototype pollution) and GHSA-5pgg-2g8v-p4x9 (ReDoS) were both unfixable on npm because SheetJS pulled their package and only ships from `cdn.sheetjs.com`. Pinned `apps/api/package.json` `"xlsx"` to the official tarball `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, rebuilt, deployed (clean health check). Existing input-bound mitigations (5MB cap, 100k cell cap in `knowledge-base.service.ts`) remain as defense-in-depth. `pnpm audit --audit-level=high` now shows 2 highs (both Next.js — see S1) instead of 4.
 
 ### M1. Pick a contact email for the marketing site footer — closed 2026-05-06
 
