@@ -42,7 +42,8 @@
       "errors": "Errores",
       "systemSettings": "Ajustes del sistema",
       "platformStatus": "Estado de la plataforma",
-      "apps": "Apps"
+      "apps": "Apps",
+      "marketingResources": "Recursos de marketing"
     },
     "soonPill": "Pronto"
   },
@@ -3024,6 +3025,51 @@
       "bunnyStorageZone": "El Storage Zone Name del panel bunny.net → Storage. Este es el nombre interno (p. ej. `orbisvoice`), NO el hostname del CDN. Se usa en la ruta de la URL de subida. Si renombras la zona en Bunny, actualízala aquí Y asegúrate de que la pull zone del CDN siga apuntando a la storage zone correcta.",
       "bunnyCdnHostname": "El hostname de la Pull Zone del panel bunny.net → CDN → Pull Zones (p. ej. `OrbisVoice.b-cdn.net`). DIFERENTE del nombre de la storage zone de arriba. Se usa para construir las URLs públicas del CDN para grabaciones + transcripciones. La pull zone DEBE estar enlazada a la storage zone en el panel de Bunny, de lo contrario las URLs del CDN devuelven 404 y caemos al audio por API."
     }
+  },
+  "marketingResources": {
+    "title":    "Recursos de marketing",
+    "subtitle": "Una guía rápida para escribir copys de campaña, emails y material de pitch — basada en los frameworks canónicos de persuasión. Combínala con el ajuste de Voz de marketing en tu workspace.",
+    "tiers": {
+      "eyebrow":     "Voz de marketing",
+      "title":       "Espectro de intensidad",
+      "description": "Elige el nivel que mejor calza con tu negocio. El contenido generado por IA y el despacho saliente siguen esta configuración."
+    },
+    "frameworks": {
+      "eyebrow":     "Frameworks",
+      "title":       "Elige un framework antes de escribir una línea",
+      "description": "Cada framework organiza la misma gravedad persuasiva en un orden distinto. Usa el correcto para la superficie y la audiencia.",
+      "tierAll":     "todos los niveles",
+      "bestFor":     "Ideal para"
+    },
+    "cialdini": {
+      "eyebrow":     "Psicología de la persuasión",
+      "title":       "Los 7 principios de Cialdini",
+      "description": "Todos los frameworks se apoyan en estos. Stack para tráfico frío: Reciprocidad + Prueba social + Autoridad + Escasez. Para prospectos calientes: Compromiso + Unidad + Escasez."
+    },
+    "headlines": {
+      "eyebrow":     "Titulares",
+      "title":       "Fórmulas operacionales de titulares",
+      "description": "Estilo Caples. Cubren ~80% de lo que escribirás. La especificidad gana sobre lo ingenioso — siempre.",
+      "colPattern":  "Patrón",
+      "colExample":  "Ejemplo",
+      "colBest":     "Ideal para"
+    },
+    "verticals": {
+      "eyebrow":     "Por vertical",
+      "title":       "Ejemplos trabajados",
+      "description": "Mismo producto, distinto vertical, distinto encuadre. El nivel recomendado coincide con la tolerancia natural de la audiencia a la intensidad.",
+      "recommended": "Recomendado",
+      "hook":        "Gancho",
+      "pain":        "Dolor",
+      "offer":       "Oferta"
+    },
+    "antiPatterns": {
+      "eyebrow":     "Qué no hacer",
+      "title":       "Anti-patrones a evitar",
+      "description": "Estos son los patrones a los que regresa el copy generado por LLM. La inyección de AI-Assist los prohíbe explícitamente.",
+      "why":         "Por qué"
+    },
+    "footer":        "Esta página es una guía rápida — la guía de estilo de marketing completa vive en el repo en docs/marketing-style-guide.md. Las actualizaciones se envían en code reviews para que la superficie en-app y la guía canónica nunca se desvíen."
   },
   "aiEmailGen": {
     "button":          "Generar con IA",

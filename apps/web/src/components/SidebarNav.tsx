@@ -63,6 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'nav.groups.account',
     items: [
+      { href: '/marketing-resources', labelKey: 'nav.items.marketingResources', icon: <Icon d="M3 4h10v8H3zM3 8h10M5 11l3-2 3 2M2 14h12" /> },
       { href: '/usage',    labelKey: 'nav.items.usage',    icon: <Icon d="M2 12h2V8H2zm3 0h2V4H5zm3 0h2V6H8zm3 0h2v-3h-2zM2 14h12" /> },
       { href: '/billing',  labelKey: 'nav.items.billing',  icon: <Icon d="M1 5h14v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5zm0-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2" /> },
       { href: '/apps',     labelKey: 'nav.items.apps',     icon: <Icon d="M8 10v3m-3 0h6M4 2h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zm2 3v3m4-3v3" />, comingSoon: true },

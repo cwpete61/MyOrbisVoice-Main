@@ -42,7 +42,8 @@
       "errors": "Errors",
       "systemSettings": "System Settings",
       "platformStatus": "Platform Status",
-      "apps": "Apps"
+      "apps": "Apps",
+      "marketingResources": "Marketing Resources"
     },
     "soonPill": "Soon"
   },
@@ -3024,6 +3025,51 @@
       "bunnyStorageZone": "The Storage Zone Name from bunny.net dashboard → Storage. This is the internal name (e.g. `orbisvoice`), NOT the CDN hostname. Used in the upload URL path. If you rename the zone in Bunny, update here AND ensure the CDN pull zone still points at the right storage zone.",
       "bunnyCdnHostname": "The Pull Zone hostname from bunny.net → CDN → Pull Zones (e.g. `OrbisVoice.b-cdn.net`). DIFFERENT from the storage zone name above. Used to build public CDN URLs for recordings + transcripts. The pull zone MUST be linked to the storage zone in Bunny dashboard, otherwise CDN URLs return 404 and we fall back to API-proxied audio."
     }
+  },
+  "marketingResources": {
+    "title":    "Marketing Resources",
+    "subtitle": "A cheat sheet for writing campaign copy, emails, and pitch material — sourced from the canonical persuasion frameworks. Pair this with the Aggression Setting in your workspace.",
+    "tiers": {
+      "eyebrow":     "Marketing voice",
+      "title":       "Aggression spectrum",
+      "description": "Pick the tier that fits your business. AI-generated copy and outbound dispatch follow this setting."
+    },
+    "frameworks": {
+      "eyebrow":     "Frameworks",
+      "title":       "Pick a framework before you write a line",
+      "description": "Each framework arranges the same persuasion gravity in a different order. Use the right one for the surface and audience.",
+      "tierAll":     "all tiers",
+      "bestFor":     "Best for"
+    },
+    "cialdini": {
+      "eyebrow":     "Persuasion psychology",
+      "title":       "Cialdini's 7 principles",
+      "description": "Every framework leans on these. The cold-traffic workhorse stack: Reciprocity + Social Proof + Authority + Scarcity. Hot prospects: Commitment + Unity + Scarcity."
+    },
+    "headlines": {
+      "eyebrow":     "Headlines",
+      "title":       "Operational headline formulas",
+      "description": "Caples-style. Cover ~80% of what you'll ever write. Specificity beats cleverness — every time.",
+      "colPattern":  "Pattern",
+      "colExample":  "Example",
+      "colBest":     "Best for"
+    },
+    "verticals": {
+      "eyebrow":     "Per-vertical",
+      "title":       "Worked examples",
+      "description": "Same product, different vertical, different framing. Recommended tier matches the audience's natural tolerance for intensity.",
+      "recommended": "Recommended",
+      "hook":        "Hook",
+      "pain":        "Pain",
+      "offer":       "Offer"
+    },
+    "antiPatterns": {
+      "eyebrow":     "Don't",
+      "title":       "Anti-patterns to avoid",
+      "description": "These are the patterns LLM-generated copy regresses to. The AI-Assist injection explicitly prohibits them.",
+      "why":         "Why"
+    },
+    "footer":        "This page is a cheat sheet — the full marketing style guide lives in the repo at docs/marketing-style-guide.md. Updates ship in code reviews so the in-app surface and the canonical guide never drift."
   },
   "aiEmailGen": {
     "button":          "Generate with AI",
