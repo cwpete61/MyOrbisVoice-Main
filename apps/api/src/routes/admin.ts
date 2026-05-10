@@ -88,6 +88,68 @@ router.patch('/tenants/:tenantId', requirePlatformAdmin, async (req, res, next) 
   } catch (err) { next(err) }
 })
 
+// ── Bulk tenant delete ─────────────────────────────────────────────────────
+// Permanently deletes the listed tenants. Cascades through every FK on the
+// Tenant model (Prisma onDelete: Cascade across TenantMember, BusinessProfile,
+// BusinessDNA, ChannelConfig, AgentProfile, Subscription, PhoneNumber,
+// Contact, Conversation, Appointment, AffiliateConversion, AffiliateCommission,
+// MessageLog, etc.) — see prisma/schema.prisma. UNRECOVERABLE.
+//
+// Restricted to Platform Super Admin (same gate as Stripe-secret edits). The
+// non-Super Platform Admin role can suspend tenants but cannot delete them.
+//
+// Audit log captures each tenant's id + email + member/conversation counts
+// BEFORE deletion so there's a permanent record of what was wiped if recovery
+// is ever needed (would require restoring from a DB snapshot).
+router.post('/tenants/bulk-delete', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const body = req.body as { ids?: unknown }
+    if (!Array.isArray(body.ids) || body.ids.length === 0) {
+      throw new AppError('VALIDATION_ERROR', 'ids must be a non-empty array of tenant IDs', 422)
+    }
+    const ids = body.ids.filter((v): v is string => typeof v === 'string')
+    if (ids.length === 0) {
+      throw new AppError('VALIDATION_ERROR', 'No valid tenant IDs in payload', 422)
+    }
+    if (ids.length > 200) {
+      throw new AppError('VALIDATION_ERROR', 'Cannot delete more than 200 tenants in a single call', 422)
+    }
+
+    // Snapshot what we're about to wipe — for the audit log
+    const targets = await prisma.tenant.findMany({
+      where:   { id: { in: ids } },
+      select:  {
+        id: true, displayName: true, slug: true, registrationEmail: true, status: true,
+        _count: { select: { members: true, conversations: true } },
+      },
+    })
+
+    const result = await prisma.tenant.deleteMany({ where: { id: { in: ids } } })
+
+    await writeAuditLogFromRequest(req, {
+      actorType:   'USER',
+      actorUserId: req.user!.id,
+      action:      'admin.tenants_bulk_deleted',
+      targetType:  'Tenant',
+      metadataJson: {
+        deletedCount: result.count,
+        requestedIds: ids,
+        tenants:      targets.map(t => ({
+          id:                t.id,
+          displayName:       t.displayName,
+          slug:              t.slug,
+          registrationEmail: t.registrationEmail,
+          status:            t.status,
+          memberCount:       t._count.members,
+          conversationCount: t._count.conversations,
+        })),
+      },
+    })
+
+    res.json({ data: { deletedCount: result.count, deletedIds: targets.map(t => t.id) } })
+  } catch (err) { next(err) }
+})
+
 router.post('/tenants/:tenantId/suspend', requirePlatformAdmin, async (req, res, next) => {
   try {
     const tenant = await adminService.suspendTenant(req.params['tenantId']!, req.user!.id)
