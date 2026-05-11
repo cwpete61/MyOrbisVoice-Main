@@ -1,0 +1,37 @@
+port: 4747
+dashboardUrl: http://localhost:4747
+access:
+  requireAuth: false
+  defaultRole: operator
+  trustedHeaders:
+    enabled: false
+    provider: cloudflare-access
+    emailHeader: Cf-Access-Authenticated-User-Email
+    jwtHeader: Cf-Access-Jwt-Assertion
+preferences:
+  onboardingAcknowledged: false
+  codingAgent: claude-code
+  ide: vscode
+  markdownEditor: obsidian
+  modelAccess:
+    claudeCode: pro
+    codex: chatgpt
+    gemini: oauth
+    qwenCode: oauth
+  notifications:
+    soundEnabled: true
+    soundFile: abstract-sound-4
+projects:
+  myorbisvoice-main:
+    name: OrbisVoice2026
+    path: /home/orbis/Antigravity/OrbisVoice2026
+    repo: cwpete61/MyOrbisVoice-Main
+    agent: claude-code
+    defaultBranch: master
+    sessionPrefix: ov
+    workspace: worktree
+    runtime: direct
+    agentConfig:
+      permissions: skip
+    scm: github
+_generatedFromWorkspace: 2026-05-11T07:28:19.434052628+00:00
