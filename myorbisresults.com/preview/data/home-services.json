@@ -1,0 +1,83 @@
+{
+  "business": {
+    "name": "Valley HVAC",
+    "vertical": "home-services",
+    "tagline": "Heating, cooling, emergency service"
+  },
+  "kpis": {
+    "calls": 23,
+    "bookings": 16,
+    "bookings_revenue": 8730,
+    "noshow_pct": "4%",
+    "reviews_pending": 8
+  },
+  "live_message": "<strong>Theresa Mills</strong> is on a call right now. The agent is qualifying her — AC out, three-bedroom ranch, asking about same-day service.",
+  "live_message_es": "<strong>Theresa Mills</strong> está en una llamada ahora mismo. El agente la está calificando — AC sin funcionar, casa rancho de tres habitaciones, preguntando por servicio el mismo día.",
+  "calls": [
+    {
+      "name": "Theresa Mills",
+      "time": "12:14 PM",
+      "duration": "Live · 1m 56s",
+      "summary": "Currently on call — AC down, same-day request",
+      "status": "qualifying",
+      "transcript": [
+        { "role": "agent",  "text": "Valley HVAC, how can I help?" },
+        { "role": "caller", "text": "My air conditioning is dead. It's ninety-two degrees in here." },
+        { "role": "agent",  "text": "I can get a tech out today. What's your address and what kind of system do you have?" },
+        { "role": "caller", "text": "Twelve fifty-seven Cedar Lane. It's a central system, about ten years old. Carrier brand." },
+        { "role": "agent",  "text": "Got it. I have a tech who can be there between 4:00 and 6:00 PM. Diagnostic is $89, applied toward repair. Does that work?" },
+        { "role": "caller", "text": "Yes please." }
+      ],
+      "summary_long": "Theresa Mills, 1257 Cedar Lane, AC failure — 10yr Carrier central system. Booked same-day diagnostic 4:00-6:00 PM window, $89 diag fee applied to repair if she proceeds. Tech: Mike R. (auto-assigned by proximity). Call in progress to confirm phone number for ETA SMS."
+    },
+    {
+      "name": "Robert Chen",
+      "time": "11:48 AM",
+      "duration": "3m 27s",
+      "summary": "Booked today 4:00 PM — no heat",
+      "status": "booked",
+      "transcript": [
+        { "role": "agent",  "text": "Valley HVAC, how can I help?" },
+        { "role": "caller", "text": "My furnace stopped overnight. House is fifty-eight degrees." },
+        { "role": "agent",  "text": "That's a priority call. Are you a returning customer?" },
+        { "role": "caller", "text": "Yeah. Robert Chen, Maple Street." },
+        { "role": "agent",  "text": "I see you, Robert. Same furnace, the Lennox we serviced in twenty twenty-three. I can get a tech to you at 4:00 PM today. Diagnostic is waived for returning customers — you only pay if there's a repair." },
+        { "role": "caller", "text": "Perfect." },
+        { "role": "agent",  "text": "You're confirmed for today 4:00 PM. I'll text you the tech's ETA forty minutes out. Stay warm." }
+      ],
+      "summary_long": "Robert Chen — returning customer, Maple Street. Lennox furnace failure (last serviced 2023). Booked same-day 4:00 PM diagnostic. Returning-customer waiver applied — no diag fee. Tech ETA SMS scheduled."
+    },
+    { "name": "Anonymous caller",  "time": "11:22 AM",         "summary": "Asked about maintenance plans", "status": "faq" },
+    { "name": "Gloria Sanderson",  "time": "10:51 AM",         "summary": "Booked Thursday 9:00 AM — annual tune-up", "status": "booked" },
+    { "name": "Anonymous caller",  "time": "9:34 AM",          "summary": "Hours + service area question", "status": "faq" },
+    { "name": "Kevin Pace",        "time": "9:08 AM",          "summary": "Booked Friday 11:00 AM — duct cleaning estimate", "status": "booked" },
+    { "name": "Anonymous caller",  "time": "Yesterday 9:47 PM","summary": "After-hours — boiler making noise (callback queued)", "status": "missed" },
+    {
+      "name": "Marcus Olivier",
+      "time": "Yesterday 7:18 PM",
+      "duration": "4m 08s",
+      "summary": "After-hours booked Saturday 8:00 AM — emergency furnace",
+      "status": "booked",
+      "transcript": [
+        { "role": "agent",  "text": "Valley HVAC after-hours, how can I help?" },
+        { "role": "caller", "text": "Furnace just died. I have an infant in the house." },
+        { "role": "agent",  "text": "Understood. Where are you located?" },
+        { "role": "caller", "text": "South Whitehall, about ten minutes from your shop." },
+        { "role": "agent",  "text": "I have a tech finishing a call near there. He can be at your place by 8:30 PM tonight, or first thing Saturday at 8:00 AM. After-hours rate is $189 plus parts. Saturday morning is the regular $89 diag." },
+        { "role": "caller", "text": "If the baby's okay with the space heater, I'll do Saturday morning to save the money." },
+        { "role": "agent",  "text": "Smart call. Saturday 8:00 AM, first slot. Tech will text you Friday night to confirm. If conditions change tonight, call us back — we'll dispatch immediately." }
+      ],
+      "summary_long": "Marcus Olivier — South Whitehall, furnace failure with infant in house. Offered same-night after-hours dispatch ($189) vs. Saturday 8:00 AM regular ($89). Caller chose Saturday morning. Safety check applied — instructed to call back if conditions worsen. Booked Saturday 8:00 AM first slot."
+    },
+    { "name": "Sandra Ruiz",       "time": "Yesterday 5:32 PM","summary": "Booked Monday 10:00 AM — heat pump install quote", "status": "booked" },
+    { "name": "Anonymous caller",  "time": "Yesterday 2:14 PM","summary": "Asked about financing options", "status": "faq" }
+  ],
+  "calendar": [
+    { "customer": "Robert Chen",       "time": "Today 4:00 PM", "service": "No-heat diagnostic",            "duration": "60m" },
+    { "customer": "Marcus Olivier",    "time": "Sat 8:00 AM",   "service": "Emergency furnace repair",       "duration": "120m" },
+    { "customer": "Gloria Sanderson",  "time": "Thu 9:00 AM",   "service": "Annual HVAC tune-up",            "duration": "90m" },
+    { "customer": "Kevin Pace",        "time": "Fri 11:00 AM",  "service": "Duct cleaning estimate",         "duration": "45m" },
+    { "customer": "Sandra Ruiz",       "time": "Mon 10:00 AM",  "service": "Heat pump install quote",        "duration": "60m" },
+    { "customer": "Theresa Mills",     "time": "Today 6:00 PM", "service": "AC repair — same-day",           "duration": "90m" }
+  ]
+}

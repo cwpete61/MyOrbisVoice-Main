@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a9898" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="MyOrbisVoice" />
+  <title>MyOrbisVoice Preview</title>
+  <meta name="description" content="Preview the MyOrbisVoice agent dashboard. Demo only — sample data, no real connections." />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Ccircle cx='9' cy='9' r='3.5' fill='%231a9898'/%3E%3Ccircle cx='9' cy='9' r='7.5' stroke='%231a9898' stroke-opacity='0.5' stroke-width='2' fill='none'/%3E%3C/svg%3E" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/preview.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ─── ONBOARDING (first launch) ────────────────────────────── -->
+  <section id="onboard" class="onboard">
+    <div class="onboard-brand">
+      <svg class="orbit-mark" width="22" height="22" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="3.5" fill="currentColor"/>
+        <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-opacity="0.5" stroke-width="2"/>
+      </svg>
+      MyOrbisVoice <span class="demo-badge">Demo</span>
+    </div>
+    <h1 data-i18n="onboard.title">Pick your industry to see your version.</h1>
+    <p class="lead" data-i18n="onboard.lead">No signup. No commitment. Sample data, real screens. You can switch industries any time.</p>
+
+    <div class="industry-grid">
+      <button class="industry-card" data-industry="dental">
+        <div class="ind-icon">🦷</div>
+        <div class="ind-name" data-i18n="industry.dental">Dental</div>
+        <div class="ind-tag">Bright Smile Dental</div>
+      </button>
+      <button class="industry-card" data-industry="legal">
+        <div class="ind-icon">⚖️</div>
+        <div class="ind-name" data-i18n="industry.legal">Legal</div>
+        <div class="ind-tag">Garner Family Law</div>
+      </button>
+      <button class="industry-card" data-industry="home-services">
+        <div class="ind-icon">🔧</div>
+        <div class="ind-name" data-i18n="industry.home-services">Home services</div>
+        <div class="ind-tag">Valley HVAC</div>
+      </button>
+      <button class="industry-card" data-industry="beauty">
+        <div class="ind-icon">✂️</div>
+        <div class="ind-name" data-i18n="industry.beauty">Beauty & salon</div>
+        <div class="ind-tag">Queen Umoja Studio</div>
+      </button>
+      <button class="industry-card" data-industry="fitness">
+        <div class="ind-icon">🏋️</div>
+        <div class="ind-name" data-i18n="industry.fitness">Fitness</div>
+        <div class="ind-tag">Iron Peak Athletic</div>
+      </button>
+      <button class="industry-card" data-industry="medical">
+        <div class="ind-icon">⚕️</div>
+        <div class="ind-name" data-i18n="industry.medical">Medical</div>
+        <div class="ind-tag">Allentown Family Care</div>
+      </button>
+      <button class="industry-card" data-industry="coaching">
+        <div class="ind-icon">🎓</div>
+        <div class="ind-name" data-i18n="industry.coaching">Coaching</div>
+        <div class="ind-tag">Mason Cohen Consulting</div>
+      </button>
+      <button class="industry-card" data-industry="real-estate">
+        <div class="ind-icon">🔑</div>
+        <div class="ind-name" data-i18n="industry.real-estate">Real estate</div>
+        <div class="ind-tag">Cohen + Reyes Realty</div>
+      </button>
+    </div>
+
+    <p class="onboard-foot" data-i18n-html="onboard.foot">All data shown is sample data. No real customer information.<br/>Built on proprietary Orbis voice technology.</p>
+  </section>
+
+  <!-- ─── MAIN APP (shown after industry selected) ────────────── -->
+  <header id="topbar" class="topbar hidden">
+    <div class="brand">
+      <svg class="orbit-mark" width="22" height="22" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="9" r="3.5" fill="currentColor"/>
+        <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-opacity="0.5" stroke-width="2"/>
+      </svg>
+      MyOrbisVoice <span class="demo-badge">Demo</span>
+    </div>
+    <div style="display: flex; gap: 6px; align-items: center;">
+      <button class="industry-pill" id="lang-switch" aria-label="Language">
+        <span id="lang-current">EN</span>
+      </button>
+      <button class="industry-pill" id="industry-switch">
+        <span id="industry-current-icon">🦷</span>
+        <span id="industry-current-name">Dental</span>
+        <span class="chev">▾</span>
+      </button>
+    </div>
+  </header>
+
+  <main id="screens" class="hidden">
+    <!-- HOME / TODAY -->
+    <section class="screen active" data-screen="home">
+      <h2 id="biz-name">Bright Smile Dental</h2>
+      <p class="sub" id="biz-tag" data-i18n="home.biz-tag-default">Today · last 7 days</p>
+
+      <!-- KPIs -->
+      <div class="kpi-row">
+        <div class="kpi"><div class="label" data-i18n="kpi.calls">Calls answered</div><div class="value" id="kpi-calls">12</div><div class="delta" data-i18n="kpi.calls-delta">100% capture today</div></div>
+        <div class="kpi"><div class="label" data-i18n="kpi.bookings">Bookings</div><div class="value" id="kpi-bookings">8</div><div class="delta" id="kpi-bookings-delta">+$3,440</div></div>
+        <div class="kpi"><div class="label" data-i18n="kpi.noshows">No-shows</div><div class="value" id="kpi-noshows">7%</div><div class="delta" data-i18n="kpi.noshows-delta">−15 pts vs Q1</div></div>
+        <div class="kpi"><div class="label" data-i18n="kpi.reviews">Reviews</div><div class="value" id="kpi-reviews">4</div><div class="delta" data-i18n="kpi.reviews-delta">pending response</div></div>
+      </div>
+
+      <!-- Live activity -->
+      <div class="live-section">
+        <div class="live-header">
+          <span class="live-dot"></span>
+          <span class="live-label" data-i18n="home.live-now">Live right now</span>
+        </div>
+        <p class="live-msg" id="live-msg" data-i18n="home.loading">Loading…</p>
+      </div>
+
+      <!-- Recent calls -->
+      <div class="sec-head">
+        <h3 data-i18n="home.recent-calls">Recent calls</h3>
+        <a href="#" data-nav="calls" data-i18n="home.see-all">See all →</a>
+      </div>
+      <div class="call-list" id="home-calls"></div>
+    </section>
+
+    <!-- CALLS -->
+    <section class="screen" data-screen="calls">
+      <h2 data-i18n="calls.title">All calls</h2>
+      <p class="sub" data-i18n="calls.sub">Today's call activity. Tap any call to see the transcript and listen back.</p>
+      <div class="call-list" id="all-calls"></div>
+    </section>
+
+    <!-- CALENDAR (placeholder for v1) -->
+    <section class="screen" data-screen="calendar">
+      <h2 data-i18n="calendar.title">Calendar</h2>
+      <p class="sub" data-i18n="calendar.sub">Today's bookings. The voice agent puts these here automatically.</p>
+      <div class="call-list" id="calendar-list"></div>
+    </section>
+
+    <!-- CALL DETAIL (drill-down, no nav button) -->
+    <section class="screen" data-screen="call-detail">
+      <button class="back-btn" id="back-from-detail" aria-label="Back" data-i18n="detail.back">← Back</button>
+      <div class="call-detail-head">
+        <div class="call-avatar large" id="detail-avatar">--</div>
+        <div class="call-detail-meta">
+          <h2 id="detail-name">Caller</h2>
+          <p class="sub" id="detail-time">Today</p>
+          <span class="call-status" id="detail-status">BOOKED</span>
+        </div>
+      </div>
+
+      <div class="audio-bar" id="audio-bar">
+        <button class="audio-play-btn" id="audio-play" type="button">
+          <span class="audio-icon" id="audio-icon">▶</span>
+          <span id="audio-label" data-i18n="detail.play">Play call</span>
+        </button>
+        <div class="audio-status" id="audio-status" data-i18n="detail.tap-play">Tap play to hear the conversation</div>
+      </div>
+
+      <div class="sec-head"><h3 data-i18n="detail.transcript">Transcript</h3></div>
+      <div class="transcript-list" id="transcript-list"></div>
+
+      <div class="sec-head"><h3 data-i18n="detail.summary">Summary</h3></div>
+      <div class="summary-box" id="summary-box"></div>
+
+      <p class="detail-note" data-i18n="detail.note">Audio playback uses your browser's built-in voices. In the live product, you hear the actual recorded call.</p>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="screen" data-screen="settings">
+      <h2 data-i18n="settings.title">Settings</h2>
+      <p class="sub" data-i18n="settings.sub">This is a demo. Settings here are decorative — they show what configuration looks like in the real product.</p>
+      <div class="live-section">
+        <div class="live-header"><span class="live-label" style="color: var(--teal-5);" data-i18n="settings.voice-profile">Voice profile</span></div>
+        <p class="live-msg" data-i18n-html="settings.voice-profile-detail">Current: <strong>Warm Female</strong> — friendly, hospitality-tuned. The actual product offers 7 Orbis voice profiles.</p>
+      </div>
+      <div class="live-section">
+        <div class="live-header"><span class="live-label" style="color: var(--teal-5);" data-i18n="settings.brand-tier">Brand voice tier</span></div>
+        <p class="live-msg" data-i18n-html="settings.brand-tier-detail">Current: <strong>Balanced (default)</strong> — modern direct-response, emotional but credible.</p>
+      </div>
+      <div class="live-section">
+        <div class="live-header"><span class="live-label" style="color: var(--teal-5);" data-i18n="settings.coverage">Coverage</span></div>
+        <p class="live-msg" data-i18n-html="settings.coverage-detail"><strong>24 / 7</strong>, English and Latin American Spanish. Inbound phone + website widget + SMS + email triage.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ─── BOTTOM NAV ──────────────────────────────────────────── -->
+  <nav id="bottomnav" class="bottom-nav hidden">
+    <button class="nav-btn active" data-nav="home"><span class="nav-icon">🏠</span><span data-i18n="nav.home">Home</span></button>
+    <button class="nav-btn" data-nav="calls"><span class="nav-icon">📞</span><span data-i18n="nav.calls">Calls</span></button>
+    <button class="nav-btn" data-nav="calendar"><span class="nav-icon">📅</span><span data-i18n="nav.calendar">Calendar</span></button>
+    <button class="nav-btn" data-nav="settings"><span class="nav-icon">⚙️</span><span data-i18n="nav.settings">Settings</span></button>
+  </nav>
+</div>
+
+<!-- ─── INDUSTRY SWITCHER MODAL ───────────────────────────────── -->
+<div id="picker-modal" class="picker-modal">
+  <div class="picker-sheet">
+    <h3 data-i18n="picker.title">Switch industry</h3>
+    <p data-i18n="picker.lead">Pick a different industry to see how MyOrbisVoice looks for that business type.</p>
+    <div class="industry-grid" id="picker-grid"></div>
+  </div>
+</div>
+
+<script src="assets/js/app.js"></script>
+<script>
+  // Register service worker for PWA install
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
