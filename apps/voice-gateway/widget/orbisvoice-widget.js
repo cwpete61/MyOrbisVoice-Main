@@ -67,25 +67,18 @@
       .ov-body { padding: 20px 16px; flex: 1; }
       .ov-status { font-size: .82rem; color: #7aaaa8; text-align: center; margin-bottom: 16px; min-height: 18px; }
 
-      .ov-controls { display: flex; gap: 8px; }
-      .ov-mic-btn {
-        flex: 1; padding: 10px; border-radius: 10px;
-        background: #1a9898; border: none; cursor: pointer;
-        color: #061818; font-size: .85rem; font-weight: 700;
-        display: flex; align-items: center; justify-content: center; gap: 6px;
+      .ov-controls { display: flex; }
+      .ov-end-btn {
+        flex: 1; padding: 12px 14px; border-radius: 10px;
+        background: #c0392b; border: none;
+        color: #fff; font-size: .9rem; font-weight: 700; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
         transition: background .12s;
       }
-      .ov-mic-btn:hover { background: #2aabab; }
-      .ov-mic-btn:disabled { opacity: .4; cursor: not-allowed; }
-      .ov-mic-btn.recording { background: #c0392b; color: #fff; }
-      .ov-mic-btn.recording:hover { background: #e74c3c; }
-      .ov-end-btn {
-        padding: 10px 14px; border-radius: 10px;
-        background: transparent; border: 1px solid rgba(26,152,152,.3);
-        color: #7aaaa8; font-size: .82rem; cursor: pointer;
-        transition: background .12s, color .12s;
-      }
-      .ov-end-btn:hover { background: rgba(26,152,152,.1); color: #e8fafa; }
+      .ov-end-btn:hover { background: #e74c3c; }
+      .ov-end-btn:disabled { opacity: .4; cursor: not-allowed; }
+      /* Hang-up icon styling — receiver flipped 135° for the universal "end call" look */
+      .ov-end-btn svg { width: 16px; height: 16px; transform: rotate(135deg); }
 
       .ov-footer {
         padding: 10px 16px; border-top: 1px solid rgba(26,152,152,.1);
@@ -106,8 +99,7 @@
         }
         .ov-header { padding: 12px 14px; }
         .ov-body { padding: 16px 14px; }
-        .ov-mic-btn { padding: 14px; font-size: .95rem; }
-        .ov-end-btn { padding: 14px 14px; }
+        .ov-end-btn { padding: 16px 14px; font-size: 1rem; }
       }
 
       @media (max-width: 480px) and (orientation: landscape) {
@@ -178,23 +170,23 @@
         <div class="ov-body">
           <div class="ov-status" id="ov-status">Connecting…</div>
           <div class="ov-controls">
-            <button class="ov-mic-btn" id="ov-mic-btn" disabled>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <!-- Single control: End call (hang-up). The mic auto-starts on
+                 session-ready, so there's no Speak button to click — same
+                 mental model as a phone call. -->
+            <button class="ov-end-btn" id="ov-end-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
               </svg>
-              Connecting…
+              End call
             </button>
-            <button class="ov-end-btn" id="ov-end-btn">End</button>
           </div>
         </div>
         <div class="ov-footer">Powered by <a href="https://myorbisvoice.com" target="_blank">MyOrbisVoice</a></div>
       `
       document.body.appendChild(this.panel)
 
-      this.statusEl     = document.getElementById('ov-status')
-      this.micBtn       = document.getElementById('ov-mic-btn')
-      this.endBtn       = document.getElementById('ov-end-btn')
+      this.statusEl = document.getElementById('ov-status')
+      this.endBtn   = document.getElementById('ov-end-btn')
     }
 
     _bindEvents() {
@@ -204,18 +196,16 @@
         this._endNow()
         this._close()
       })
-      // Mic button — when recording the label is "Stop"; clicking it disconnects
-      // Orby immediately (per latest UX direction). When not recording (e.g. agent
-      // is speaking) clicking it starts the mic.
-      this.micBtn.addEventListener('click', () => this._toggleMic())
-      // End button — same effect as X but without closing the panel right away,
-      // so the visitor sees the "Session ended" line before it auto-closes.
+      // End call — the only in-panel control. Disconnects Orby immediately,
+      // then auto-closes the panel via the 'ended' message handler.
       this.endBtn.addEventListener('click', () => this._endNow())
     }
 
     async _open() {
       this.panel.classList.add('ov-open')
       if (this.ws) return
+      // Fresh session — reset any state left over from a prior ended call.
+      this.endBtn.disabled = false
       // Play a short dial-tone + ring intro to mimic placing a real phone call,
       // then connect. Browsers require a user gesture to start AudioContext,
       // which this click satisfies.
@@ -231,9 +221,10 @@
       this.panel.classList.remove('ov-open')
     }
 
-    /** Disconnect Orby immediately — used by Stop / X / End. Closes the WS
-     *  without waiting for the server roundtrip; the gateway interprets ws.close
-     *  as session-end and runs finalize (transcript + summary + persist). */
+    /** Disconnect Orby immediately — used by the End-call button and the X.
+     *  Closes the WS without waiting for the server roundtrip; the gateway
+     *  interprets ws.close as session-end and runs finalize (transcript +
+     *  summary + persist). */
     _endNow() {
       if (this.recording) this._stopRecording()
       this._resetPlayback()
@@ -243,7 +234,7 @@
         this.ws = null
       }
       this.geminiReady = false
-      this.micBtn.disabled = true
+      this.endBtn.disabled = true
       this._setStatus('Session ended.')
     }
 
@@ -274,18 +265,10 @@
       if (msg.type === 'ready') {
         this.geminiReady = true
         this._setStatus('Listening…', true)
-        this.micBtn.disabled = false
-        this.micBtn.innerHTML = `
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-          </svg>
-          Speak`
         // Auto-start the microphone the moment the session is ready. The agent
         // is already primed by the gateway to speak first (see session.ts onReady),
-        // so the visitor never has to click a "Speak" button — they hear Orby
-        // greet them and can reply immediately. The mic button still works to
-        // manually stop/resume if they want pause control.
+        // so the visitor hears Orby greet them and can reply immediately —
+        // identical mental model to a phone call (no "Speak" button to click).
         this._startRecording().catch(() => { /* permission error handled inside */ })
       }
 
@@ -302,7 +285,6 @@
 
       if (msg.type === 'ended') {
         this._setStatus('Session ended. Thank you!')
-        this.micBtn.disabled = true
         if (this.recording) this._stopRecording()
         if (this.ws) { try { this.ws.close() } catch {} this.ws = null }
         // Auto-close the panel after a brief pause so the visitor sees the
@@ -319,19 +301,7 @@
       if (this.recording) this._stopRecording()
       this._resetPlayback()
       this._setStatus('Disconnected.')
-      this.micBtn.disabled = true
       this.ws = null
-    }
-
-    async _toggleMic() {
-      // When recording, "Stop" fully disconnects Orby per latest UX (was
-      // previously a mic-pause). When not recording (agent is speaking and
-      // the visitor hasn't activated mic yet) it starts the mic.
-      if (this.recording) {
-        this._endNow()
-      } else {
-        await this._startRecording()
-      }
     }
 
     async _startRecording() {
@@ -352,8 +322,6 @@
         source.connect(this.processor)
         this.processor.connect(this.audioCtx.destination)
         this.recording = true
-        this.micBtn.textContent = '⏹ Stop'
-        this.micBtn.classList.add('recording')
         this._setStatus('Listening…', true)
       } catch {
         this._setStatus('Microphone access denied.')
@@ -366,14 +334,9 @@
       this.mediaStream?.getTracks().forEach(t => t.stop())
       this.audioCtx?.close()
       this.processor = this.mediaStream = this.audioCtx = null
-      this.micBtn.classList.remove('recording')
-      this.micBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-        </svg>
-        Speak`
-      this._setStatus('Processing…', true)
+      // No UI label change — the End-call button is always visible and the
+      // status text ("Session ended." / "Disconnected." / etc.) carries the
+      // mic-stopped signal on its own.
     }
 
     // ─── Dial-tone + ring intro (mimics placing a phone call) ──────────────
