@@ -10,7 +10,31 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ## 🔴 Pre-launch must-do (blocks first paying customer)
 
-*(none open — G1 closed 2026-05-12 by the model-snapshot pin from commit `a8721a8`; see Closed section below for the full audit trail.)*
+### D1. myorbisresults.com web hosting is DOWN — partner landing pages unreachable at the umbrella-brand URL — open 2026-05-12
+
+**What:** Every URL under `https://myorbisresults.com/*` and `https://www.myorbisresults.com/*` returns HTTP 530 (Cloudflare error 1016 — "Origin DNS error"). The DNS apex `myorbisresults.com` has no A record at Cloudflare, and the `www` CNAME targets the empty apex. Cloudflare can't resolve any origin to forward requests to.
+
+**Spaceship side is ready.** The Spaceship DNS UI shows their "Web Hosting" group is fully provisioned and "in propagation": `@ → 66.29.148.134`, `ftp → 66.29.148.134`, `webdisk → 66.29.148.134`, `www CNAME`, SPF for shared mail. They're not propagating because Cloudflare is the authoritative nameserver, not Spaceship — Spaceship's records can't reach the public DNS without Cloudflare relaying them.
+
+**Customer impact today:** Zero. No surface in the partner portal currently shows a `myorbisresults.com` URL to share — the Landing Page Builder is still a "Coming Soon" stub. The partner pages ARE reachable at `https://myorbisvoice.com/p/sample/voice-{1,2,3}/` (200, deployed via `deploy-partner-pages.sh`).
+
+**Customer impact when Landing Page Builder ships:** Real. Partners will be told to share their landing page URL — currently the code constructs `<slug>@myorbisresults.com` for the email alias, which implies the matching web URL is `myorbisresults.com/p/<slug>/...`. That URL is dead until this is fixed. Also breaks any external link to `myorbisresults.com` (Google indexing, the brand identity itself).
+
+**Fix — two parts:**
+
+1. **DNS (user, ~1 min at Cloudflare):**
+   - Add A record: `myorbisresults.com (@)` → `66.29.148.134` — DNS only (gray cloud) for now (origin TLS at Spaceship shared hosting doesn't match a Cloudflare-proxied cert without extra configuration; can flip to proxied once that's sorted).
+   - The existing `www CNAME → myorbisresults.com` will then resolve via the new apex.
+
+2. **Content (decide between two paths after DNS):**
+   - **(a) Spaceship cPanel alias** — recommended: in Spaceship cPanel, add `myorbisresults.com` as an Alias / Parked Domain on the existing `myorbisvoice.com` hosting account. The same docroot then serves both domains. Zero deploy-script change, single source of truth.
+   - **(b) Mirror via deploy script** — alternative: update `infrastructure/scripts/deploy-partner-pages.sh` to upload to BOTH `/home/palucuidzi/myorbisvoice.com/` AND `/home/palucuidzi/myorbisresults.com/`. More disk, but works if Spaceship insists on a separate docroot.
+
+**Verifies done when:** `curl -sI https://myorbisresults.com/p/sample/voice-1/` returns 200, AND the partner-hydrate.js at `https://myorbisresults.com/p/_assets/partner-hydrate.js` returns 200. Both currently 530.
+
+**Owner:** User clicks at Cloudflare + Spaceship; me to update the deploy script if path (b) is chosen.
+
+---
 
 ---
 
