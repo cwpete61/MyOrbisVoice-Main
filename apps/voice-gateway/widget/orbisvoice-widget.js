@@ -56,17 +56,6 @@
       .ov-body { padding: 20px 16px; flex: 1; }
       .ov-status { font-size: .82rem; color: #7aaaa8; text-align: center; margin-bottom: 16px; min-height: 18px; }
 
-      .ov-transcript {
-        max-height: 180px; overflow-y: auto;
-        display: flex; flex-direction: column; gap: 8px;
-        margin-bottom: 16px;
-      }
-      .ov-bubble {
-        padding: 8px 12px; border-radius: 10px; font-size: .82rem; line-height: 1.4; max-width: 85%;
-      }
-      .ov-bubble.user { background: rgba(26,152,152,.15); color: #e8fafa; align-self: flex-end; border-radius: 10px 10px 3px 10px; }
-      .ov-bubble.assistant { background: #0b1515; color: #c8eeee; align-self: flex-start; border: 1px solid rgba(26,152,152,.15); border-radius: 10px 10px 10px 3px; }
-
       .ov-controls { display: flex; gap: 8px; }
       .ov-mic-btn {
         flex: 1; padding: 10px; border-radius: 10px;
@@ -95,6 +84,24 @@
 
       @keyframes ov-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
       .ov-pulsing { animation: ov-pulse 1.2s ease-in-out infinite; }
+
+      @media (max-width: 480px) {
+        #ov-widget-btn { bottom: 16px; right: 16px; width: 56px; height: 56px; }
+        #ov-widget-btn svg { width: 24px; height: 24px; }
+        #ov-widget-panel {
+          bottom: 84px; right: 12px; left: 12px;
+          width: auto; max-width: none;
+          max-height: calc(100vh - 100px);
+        }
+        .ov-header { padding: 12px 14px; }
+        .ov-body { padding: 16px 14px; }
+        .ov-mic-btn { padding: 14px; font-size: .95rem; }
+        .ov-end-btn { padding: 14px 14px; }
+      }
+
+      @media (max-width: 480px) and (orientation: landscape) {
+        #ov-widget-panel { max-height: calc(100vh - 72px); bottom: 72px; }
+      }
     `
     document.head.appendChild(s)
   }
@@ -103,6 +110,7 @@
   class OrbisVoiceWidget {
     constructor(config) {
       this.publicKey    = config.publicKey
+      this.partnerSlug  = config.partnerSlug || null  // optional — set when loaded on /p/<slug>/ pages
       this.businessName = config.businessName || 'AI Assistant'
       this.ws           = null
       this.geminiReady  = false
@@ -110,7 +118,6 @@
       this.mediaStream  = null
       this.audioCtx     = null
       this.processor    = null
-      this.transcript   = []
 
       // Audio playback — chunks are batched every 60 ms then scheduled end-to-end
       this._playCtx   = null
@@ -159,8 +166,7 @@
           </button>
         </div>
         <div class="ov-body">
-          <div class="ov-status" id="ov-status">Press the button to start talking</div>
-          <div class="ov-transcript" id="ov-transcript"></div>
+          <div class="ov-status" id="ov-status">Connecting…</div>
           <div class="ov-controls">
             <button class="ov-mic-btn" id="ov-mic-btn" disabled>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -177,7 +183,6 @@
       document.body.appendChild(this.panel)
 
       this.statusEl     = document.getElementById('ov-status')
-      this.transcriptEl = document.getElementById('ov-transcript')
       this.micBtn       = document.getElementById('ov-mic-btn')
       this.endBtn       = document.getElementById('ov-end-btn')
     }
@@ -201,10 +206,12 @@
     async _connect() {
       this._setStatus('Connecting…', true)
       try {
+        const sessionBody = { publicKey: this.publicKey }
+        if (this.partnerSlug) sessionBody.partnerSlug = this.partnerSlug
         const res = await fetch(`${API_BASE}/api/public/widget/session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ publicKey: this.publicKey }),
+          body: JSON.stringify(sessionBody),
         })
         if (!res.ok) throw new Error('Failed to start session')
         const { data } = await res.json()
@@ -222,7 +229,7 @@
     _onMessage(msg) {
       if (msg.type === 'ready') {
         this.geminiReady = true
-        this._setStatus('Ready — press the mic to speak')
+        this._setStatus('Listening…', true)
         this.micBtn.disabled = false
         this.micBtn.innerHTML = `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -230,25 +237,33 @@
             <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
           </svg>
           Speak`
+        // Auto-start the microphone the moment the session is ready. The agent
+        // is already primed by the gateway to speak first (see session.ts onReady),
+        // so the visitor never has to click a "Speak" button — they hear Orby
+        // greet them and can reply immediately. The mic button still works to
+        // manually stop/resume if they want pause control.
+        this._startRecording().catch(() => { /* permission error handled inside */ })
       }
 
       if (msg.type === 'audio') {
         this._playAudio(msg.data)
       }
 
-      if (msg.type === 'transcript') {
-        this._addBubble(msg.role, msg.text)
-      }
+      // transcript messages are intentionally ignored — voice-only widget UX.
 
       if (msg.type === 'turn_complete') {
         this._resetPlayback()
-        this._setStatus('Your turn — press to speak')
+        // No status change — we stay in "Listening…" so the visitor can speak again.
       }
 
       if (msg.type === 'ended') {
         this._setStatus('Session ended. Thank you!')
         this.micBtn.disabled = true
-        this.ws = null
+        if (this.recording) this._stopRecording()
+        if (this.ws) { try { this.ws.close() } catch {} this.ws = null }
+        // Auto-close the panel after a brief pause so the visitor sees the
+        // "Thank you" message before it disappears.
+        setTimeout(() => this._close(), 2500)
       }
 
       if (msg.type === 'error') {
@@ -277,7 +292,7 @@
         this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } })
         this.audioCtx    = new AudioContext({ sampleRate: 16000 })
         const source     = this.audioCtx.createMediaStreamSource(this.mediaStream)
-        this.processor   = this.audioCtx.createScriptProcessor(512, 1, 1)
+        this.processor   = this.audioCtx.createScriptProcessor(4096, 1, 1)
 
         this.processor.onaudioprocess = (e) => {
           if (!this.ws || !this.recording) return
@@ -332,7 +347,7 @@
 
       // Start the flush timer if it isn't running
       if (!this._flushTimer) {
-        this._flushTimer = setInterval(() => this._flushAudio(), 20)
+        this._flushTimer = setInterval(() => this._flushAudio(), 60)
       }
     }
 
@@ -380,14 +395,6 @@
       this._flushTimer = null
       this._pcmQueue   = []
       this._playHead   = 0
-    }
-
-    _addBubble(role, text) {
-      const div = document.createElement('div')
-      div.className = `ov-bubble ${role}`
-      div.textContent = text
-      this.transcriptEl.appendChild(div)
-      this.transcriptEl.scrollTop = this.transcriptEl.scrollHeight
     }
 
     _setStatus(text, pulsing = false) {

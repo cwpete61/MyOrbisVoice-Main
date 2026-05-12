@@ -7,6 +7,10 @@ export async function createWidgetSession(tenantId: string, opts: {
   remoteIp?: string
   userAgent?: string
   draftConfig?: { voiceName: string | null; avatarId: string | null; channelType: string; isDraft: boolean }
+  /** Partner slug from /p/<slug>/ URLs. When set, we snapshot the partner's
+   *  identity onto metadataJson.partner so the gateway can inject "you are
+   *  demoing for Alex Rivera" into the agent's prompt context. */
+  partnerSlug?: string
 }) {
   const isDraft = !!opts.draftConfig
 
@@ -52,9 +56,37 @@ export async function createWidgetSession(tenantId: string, opts: {
     complianceJson:  dna.complianceJson,
   } : Prisma.JsonNull
 
-  const draftMeta: Prisma.InputJsonValue | typeof Prisma.JsonNull = opts.draftConfig
-    ? (opts.draftConfig as unknown as Prisma.InputJsonValue)
-    : Prisma.JsonNull
+  // Build metadata: combines draftConfig (test sessions) + partner context (when
+  // the widget was activated on /p/<slug>/). Both are optional. Stashed in
+  // metadataJson so the gateway picks them up at WebSocket open without needing
+  // extra DB lookups during a live call.
+  const metaPayload: Record<string, unknown> = {}
+  if (opts.draftConfig) metaPayload['draft'] = opts.draftConfig
+  if (opts.partnerSlug) {
+    const partner = await prisma.affiliateAccount.findUnique({
+      where: { slug: opts.partnerSlug },
+      include: { user: { select: { firstName: true, lastName: true, email: true } } },
+    })
+    if (partner?.partnerPageActive) {
+      const slug = partner.slug!
+      metaPayload['partner'] = {
+        id:           partner.id,
+        slug,
+        firstName:    partner.user.firstName ?? '',
+        lastName:     partner.user.lastName  ?? '',
+        displayName:  partner.displayName ?? (`${partner.user.firstName ?? ''} ${partner.user.lastName ?? ''}`.trim() || slug),
+        businessName: partner.businessName   ?? null,
+        partnerEmail: `${slug}@myorbisresults.com`,
+        avatarUrl:    partner.avatarUrl      ?? null,
+        bio:          partner.bio            ?? null,
+        partnerPhone: partner.partnerPhone   ?? null,
+      }
+    }
+  }
+  const metadataJson: Prisma.InputJsonValue | typeof Prisma.JsonNull =
+    Object.keys(metaPayload).length > 0
+      ? (metaPayload as unknown as Prisma.InputJsonValue)
+      : Prisma.JsonNull
 
   const session = await prisma.widgetSession.create({
     data: {
@@ -65,9 +97,8 @@ export async function createWidgetSession(tenantId: string, opts: {
       userAgent:       opts.userAgent ?? null,
       ...(channel ? { channelConfigId: channel.id } : {}),
       businessDNASnapshotJson: dnaSnashot,
-      promptSnapshotJson: prompts as unknown as Prisma.InputJsonValue,
-      // draftConfig stored in metadataJson so gateway can read ephemeral overrides
-      ...(opts.draftConfig ? { metadataJson: draftMeta } : {}),
+      promptSnapshotJson:      prompts as unknown as Prisma.InputJsonValue,
+      metadataJson,
     },
   })
 

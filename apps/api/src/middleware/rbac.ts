@@ -72,3 +72,27 @@ export function requireTenantContext(req: Request, _res: Response, next: NextFun
     next(Errors.forbidden('No tenant context'))
   })
 }
+
+/** Require that the authenticated user has an active Partner profile.
+ *  Used by /api/partner/* routes — gates the Mailbox / Profile / Dashboard
+ *  surfaces for the marketing-page partner program.
+ *
+ *  Adds `req.partnerAccountId` (the AffiliateAccount.id) so downstream
+ *  handlers don't have to re-query for it.
+ */
+export function requirePartnerContext(req: Request, _res: Response, next: NextFunction): void {
+  if (!req.user) { next(Errors.unauthorized()); return }
+  prisma.affiliateAccount.findUnique({
+    where: { userId: req.user.id },
+    select: { id: true, slug: true, partnerPageActive: true, status: true },
+  }).then((partner) => {
+    if (!partner) { next(Errors.forbidden('No partner profile for this user')); return }
+    if (partner.status !== 'ACTIVE') { next(Errors.forbidden(`Partner is ${partner.status.toLowerCase()}`)); return }
+    if (!partner.slug) { next(Errors.forbidden('Partner profile incomplete — no slug')); return }
+    ;(req as any).partnerAccountId = partner.id
+    ;(req as any).partnerSlug = partner.slug
+    next()
+  }).catch((err) => {
+    next(err)
+  })
+}

@@ -28,6 +28,7 @@ import knowledgeBaseRouter from './knowledge-base.js'
 import { twilioInboundRouter } from './twilio-inbound.js'
 import { outboundWebhooksRouter } from './outbound-webhooks.js'
 import internalGatewayRouter from './internal-gateway.js'
+import partnerRouter from './partner.js'
 import marketingAssetsRouter from './marketing-assets.js'
 import publicRouter from './public.js'
 import authGoogleRouter from './auth-google.js'
@@ -53,6 +54,9 @@ router.use('/api', widgetRouter)        // contains public /public/widget/sessio
 router.use('/api', pushRouter)          // contains public /push/vapid-public-key — must precede tenantRouter
 router.use('/api', integrationsRouter)  // contains public /integrations/google/callback — must precede tenantRouter
 router.use('/', affiliateRouter)        // contains public /api/public/track/click — must precede tenantRouter; also has user-scoped (non-tenant) routes for affiliates who don't have a tenant
+// Partner dashboard routes (/api/partner/*) — gated by requirePartnerContext.
+// Mounted BEFORE tenantRouter because partners are not tenant members.
+router.use('/api', partnerRouter)
 router.use('/api', tenantRouter)
 router.use('/api', businessDNARouter)
 router.use('/api', promptsRouter)

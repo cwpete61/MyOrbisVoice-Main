@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Imagina el miembro de tu equipo que siempre quisiste tener.</title>
+  <meta name="description" content="MyOrbisVoice es el miembro de tu equipo que siempre quisiste tener. Nunca duerme. Nunca deja que una llamada caiga al buzón. Te lo trae Alex Rivera, tu asesor de MyOrbisVoice." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/style.css" />
+  <script src="/p/_assets/partner-hydrate.js" defer></script>
+  <link rel="stylesheet" href="../partner-styles.css" />
+  <link rel="alternate" hreflang="en" href="https://myorbisvoice.com/p/sample/voice-3/" />
+  <link rel="alternate" hreflang="es" href="https://myorbisvoice.com/es/p/sample/voice-3/" />
+  <link rel="canonical" href="https://myorbisvoice.com/es/p/sample/voice-3/" />
+  <style>
+    /* Angle 3 signature: scene comparisons */
+    .scene-deep { max-width: 900px; margin: 0 auto; }
+    .scene-deep .scene-block { padding: 32px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); margin-bottom: 22px; }
+    .scene-deep .scene-title { color: var(--teal-6); font-size: 1.2rem; margin-bottom: 14px; font-weight: 700; }
+    .scene-deep .scene-body { color: var(--text); line-height: 1.75; font-size: 0.98rem; }
+    .scene-deep .scene-body p { margin-bottom: 16px; }
+    .scene-deep .scene-body p:last-child { margin-bottom: 0; }
+    .scene-deep .scene-body strong { color: var(--teal-6); }
+    .scene-deep .scene-without { border-left: 4px solid oklch(60% 0.20 30); }
+    .scene-deep .scene-with    { border-left: 4px solid oklch(55% 0.18 145); background: linear-gradient(135deg, oklch(98% 0.02 193) 0%, oklch(96% 0.04 193) 100%); }
+    .scene-deep .scene-label { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+    .scene-deep .scene-without .scene-label { color: oklch(45% 0.20 25); }
+    .scene-deep .scene-with .scene-label    { color: oklch(35% 0.18 145); }
+
+    /* Hours-saved table */
+    .hours-table { max-width: 900px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .hours-table table { width: 100%; border-collapse: collapse; }
+    .hours-table th, .hours-table td { padding: 14px 18px; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.92rem; }
+    .hours-table thead { background: var(--bg-tinted); }
+    .hours-table thead th { color: var(--teal-6); font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .hours-table tbody tr:last-child { background: oklch(96% 0.04 145); }
+    .hours-table tbody tr:last-child td { font-weight: 700; color: var(--teal-6); border-bottom: none; }
+    .hours-table tbody td:nth-child(2) { color: oklch(45% 0.20 25); text-align: center; font-family: 'JetBrains Mono', monospace; }
+    .hours-table tbody td:nth-child(3) { color: oklch(40% 0.18 145); text-align: center; font-family: 'JetBrains Mono', monospace; }
+    .hours-closer { max-width: 800px; margin: 24px auto 0; padding: 22px; background: var(--bg-tinted); border-radius: var(--radius-lg); color: var(--text); line-height: 1.65; }
+    .hours-closer strong { color: var(--teal-6); }
+
+    /* Final CTA dark */
+    .demo-cta { background: var(--bg-darker); color: white; padding: 96px 0; text-align: center; }
+    .demo-cta h2 { color: white; font-size: clamp(1.85rem, 3.4vw, 2.7rem); margin-bottom: 18px; }
+    .demo-cta p.demo-lead { color: rgba(255,255,255,0.85); font-size: 1.1rem; max-width: 640px; margin: 0 auto 14px; line-height: 1.65; }
+    .demo-cta .btn-primary { background: white; color: var(--teal-6); }
+    .demo-cta .btn-primary:hover { background: var(--bg-tinted); }
+
+    /* Preview / PWA install card */
+    .preview-card { max-width: 1000px; margin: 0 auto; padding: 40px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius-xl); display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; }
+    @media (max-width: 880px) { .preview-card { grid-template-columns: 1fr; gap: 28px; padding: 32px; } }
+    .preview-card .preview-copy h2 { color: var(--teal-6); font-size: clamp(1.55rem, 3vw, 2.1rem); margin-bottom: 14px; line-height: 1.15; letter-spacing: -0.015em; }
+    .preview-card .preview-copy .eyebrow { display: block; margin-bottom: 12px; }
+    .preview-card .preview-copy p { color: var(--text); line-height: 1.65; margin-bottom: 18px; }
+    .preview-card ul.preview-bullets { list-style: none; padding: 0; margin: 0 0 24px; }
+    .preview-card ul.preview-bullets li { padding: 6px 0 6px 22px; position: relative; color: var(--text); font-size: 0.92rem; line-height: 1.5; }
+    .preview-card ul.preview-bullets li::before { content: "→"; position: absolute; left: 0; color: var(--teal-3); font-weight: 700; }
+    .preview-card .preview-hint { font-size: 0.82rem; color: var(--text-muted); margin-top: 14px; }
+    .preview-mockup { background: var(--bg-app); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-md); }
+    .preview-mockup-head { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+    .preview-mockup-title { color: var(--teal-6); font-weight: 800; font-size: 1.05rem; margin-bottom: 4px; }
+    .preview-mockup-sub { color: var(--text-muted); font-size: 0.78rem; margin-bottom: 14px; }
+    .preview-mockup-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .preview-mockup-kpi { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+    .preview-mockup-kpi-label { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 4px; }
+    .preview-mockup-kpi-val { font-size: 1.1rem; color: var(--teal-6); font-weight: 800; line-height: 1; }
+    .preview-mockup-live { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    .preview-mockup-live-dot { display: inline-block; width: 7px; height: 7px; background: oklch(55% 0.18 145); border-radius: 50%; margin-right: 5px; vertical-align: middle; animation: pulseDot 1.6s ease-in-out infinite; }
+    @keyframes pulseDot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(1.3); } }
+    .preview-mockup-live-label { font-size: 0.62rem; color: oklch(40% 0.18 145); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .preview-mockup-live-text { font-size: 0.78rem; color: var(--text); line-height: 1.45; margin-top: 4px; }
+    .preview-mockup-live-text strong { color: var(--teal-6); }
+  </style>
+</head>
+<body>
+
+<!-- Partner ribbon -->
+<div class="partner-ribbon">
+  <div class="ribbon-inner">
+    <div class="ribbon-avatar"><img src="/assets/images/partners/sample-partner.jpg" alt="Alex Rivera" /></div>
+    <div class="ribbon-text">
+      <strong>Te lo trae Alex Rivera.</strong>
+      <span class="ribbon-role">Tu asesor dedicado de MyOrbisVoice.</span>
+    </div>
+    <div class="ribbon-actions">
+      <a href="tel:+15551234567" class="ribbon-btn">📞 Llamar</a>
+      <a href="sms:+15551234567" class="ribbon-btn">💬 Texto</a>
+      <a href="mailto:alex@myorbisresults.com" class="ribbon-btn">✉ Correo</a>
+    </div>
+  </div>
+</div>
+
+<!-- Nav -->
+<nav class="site-nav" aria-label="Navegación principal">
+  <div class="nav-inner">
+    <a href="https://myorbisresults.com/voice/" class="nav-logo" aria-label="MyOrbisVoice inicio">
+      <span class="nav-logo-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="3.5" fill="currentColor"/>
+          <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-opacity="0.5" stroke-width="2"/>
+        </svg>
+      </span>
+      MyOrbisVoice
+      <span class="nav-brandline">vía Alex Rivera</span>
+    </a>
+    <div class="nav-cta">
+      <a href="#demo" class="btn btn-primary btn-sm">Conoce a tu nuevo miembro del equipo</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<!-- HERO -->
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="container">
+    <div style="max-width: 880px;">
+      <span class="eyebrow">Para dueños que se quedaron sin horas, no sin ideas</span>
+      <h1 id="hero-heading" class="hero-headline" style="margin-top: 24px;">
+        <span class="line">Imagina el miembro del equipo</span>
+        <span class="line">que siempre quisiste tener.</span>
+      </h1>
+      <p class="hero-sub">
+        Nunca duerme. Nunca pide un aumento. Nunca deja que una llamada caiga al buzón. Reserva cada cita en tu calendario real. Manda la confirmación por texto. Recuerda el nombre del esposo de la clienta. Envía la tarjeta de cumpleaños. Llama después de la visita para preguntar si todo salió bien.
+      </p>
+      <p class="hero-sub" style="font-size: 1.0rem;"><strong style="color: var(--teal-6);">Ya deja de imaginarlo. El próximo lunes empieza a contestar tu teléfono.</strong></p>
+      <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+        <a href="#demo" class="btn btn-primary">Conoce a tu nuevo miembro del equipo con Alex</a>
+        <a href="#scenes" class="btn btn-ghost">Lo que hace en tu peor día ↓</a>
+      </div>
+      <p class="hero-trust">Hecho para consultorios dentales, despachos legales, servicios para el hogar, belleza, fitness, médico, coaching y bienes raíces. Inglés y español latinoamericano. Impulsado por la tecnología propietaria <strong>Orbis Voice</strong>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- The owner you used to be -->
+<section class="section-soft reveal" aria-labelledby="memory-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Hace unos años, antes de que se pusiera difícil</span>
+      <h2 id="memory-heading" style="margin-top: 18px;">¿Recuerdas cuando abriste las puertas?</h2>
+    </div>
+    <div style="max-width: 760px; margin: 0 auto; line-height: 1.75; color: var(--text); font-size: 1.04rem;">
+      <p style="margin-bottom: 18px;">Tenías energía. Contestabas cada llamada tú mismo. Recordabas el nombre de cada cliente regular. Te quedabas tarde para asegurarte de que el trabajo del día saliera bien. Conocías a cada cliente de vista.</p>
+      <p style="margin-bottom: 18px;">Después el negocio creció. Ahora el teléfono suena mientras estás con un cliente. La recepcionista está almorzando. El buzón de voz está lleno. Tu pareja te pregunta por qué revisas mensajes en la mesa.</p>
+      <p style="margin-bottom: 18px;"><strong style="color: var(--teal-6);">No perdiste el toque. Te quedaste sin horas.</strong></p>
+      <p>MyOrbisVoice te devuelve las horas. No te reemplaza. Carga el peso que no tienes tiempo de cargar, el trabajo que no necesita tu criterio pero sí necesita hacerse, las llamadas que entran mientras estás concentrado en el cliente que tienes enfrente.</p>
+    </div>
+  </div>
+</section>
+
+<!-- What your new team member actually does -->
+<section class="reveal" aria-labelledby="does-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Un día en la vida</span>
+      <h2 id="does-heading" style="margin-top: 18px;">Esto es lo que maneja tu nuevo miembro del equipo, mientras tú haces el trabajo que solo tú puedes hacer.</h2>
+    </div>
+    <div class="suite-grid">
+      <div class="suite-panel">
+        <h3>📞 Llamadas entrantes</h3>
+        <ul>
+          <li>Cada llamada, 24/7, en inglés o español</li>
+          <li>Contesta al segundo timbre, suena como tu negocio</li>
+          <li>Reserva en tu Google Calendar real</li>
+          <li>Manda la confirmación por texto, registra la llamada</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3>💬 Textos y chats</h3>
+        <ul>
+          <li>Responde mensajes con la voz de tu negocio</li>
+          <li>Chat web en tu página, mismo cerebro</li>
+          <li>Recuerda quién es ese cliente</li>
+          <li>También maneja el triage del correo</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3>📤 Seguimientos</h3>
+        <ul>
+          <li>Recordatorios por SMS, mensajes de cumpleaños, llamadas de reactivación</li>
+          <li>Secuencias multicanal con la voz de tu marca</li>
+          <li>Disparadas por etiquetas de contacto, automáticas</li>
+          <li>Las campañas que llevas años queriendo armar</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3>🧠 Memoria CRM</h3>
+        <ul>
+          <li>Captura detalles personales en cada llamada</li>
+          <li>Cumpleaños, hijos, mascotas, cliente desde cuándo</li>
+          <li>El carro que manejaba. El corte que ella quería.</li>
+          <li>La próxima vez les habla como un viejo amigo</li>
+        </ul>
+      </div>
+    </div>
+    <div class="suite-closer">
+      Todo impulsado por <strong>Orbis Voice</strong>. Nuestra plataforma propietaria de agentes de voz. No es un wrapper de chatbot. Es un compañero de equipo real.
+    </div>
+  </div>
+</section>
+
+<!-- Two scenes -->
+<section id="scenes" class="section-tinted reveal" aria-labelledby="scenes-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Momentos reales</span>
+      <h2 id="scenes-heading" style="margin-top: 18px;">Esta es la diferencia, en dos llamadas.</h2>
+    </div>
+    <div class="scene-deep">
+      <div class="scene-block scene-without">
+        <div class="scene-label">✗ Escena uno. Martes a la 1:48 PM. Sin tu nuevo miembro del equipo.</div>
+        <div class="scene-title">Maria llama. El teléfono suena. Contesta el buzón.</div>
+        <div class="scene-body">
+          <p>Una clienta regular llama. Se llama Maria. Lleva tres años viniendo a tu salón. La conoces. Te cae bien. El mes pasado trajo a su hermana. Tiene una hija que se llama Sofía. Su cumpleaños es en dos semanas.</p>
+          <p>Llama. El teléfono suena. Estás con otra clienta en la silla. Contesta el buzón. Ella cuelga porque no quiere dejar mensaje. Piensa que llamará más tarde. <strong>No lo hace.</strong> Dos semanas después, pasa su cumpleaños y no la contactaste. Se va alejando.</p>
+        </div>
+      </div>
+      <div class="scene-block scene-with">
+        <div class="scene-label">✓ Escena uno. Martes a la 1:48 PM. Con tu nuevo miembro del equipo.</div>
+        <div class="scene-title">Maria llama. El agente contesta. Maria le reenvía el mensaje de cumpleaños a su hermana.</div>
+        <div class="scene-body">
+          <p>Llama. El agente contesta. <em>"Hola Maria, qué bueno saber de ti. ¿Quieres reservar lo de siempre?"</em> (El CRM sabe cuál es su usual.) Maria reserva para el viernes a las 3 PM. El agente le manda una confirmación por texto y añade una nota sobre que Sofía empieza el kínder el próximo mes.</p>
+          <p>El día de su cumpleaños sale un texto automático con $20 de descuento y le pregunta cómo le fue a Sofía en su primera semana de escuela. <strong>Maria le reenvía el mensaje a su hermana con un emoji de corazón.</strong></p>
+          <p>Eso es una clienta. Un martes. Una reserva de $200 salvada. Una referencia. Una relación más profunda.</p>
+        </div>
+      </div>
+      <div class="scene-block scene-without" style="margin-top: 32px;">
+        <div class="scene-label">✗ Escena dos. Viernes a las 7:47 PM. Sin tu nuevo miembro del equipo.</div>
+        <div class="scene-title">Un prospecto nuevo llama. Contesta el buzón. Reserva con tu competencia antes de dormir.</div>
+        <div class="scene-body">
+          <p>Un prospecto nuevo llama. Acaba de llegar a casa del trabajo, vio tu letrero al pasar y decidió llamar. Es el tipo de cliente que te encantaría ganar. Está decidiendo esta noche, listo para reservar.</p>
+          <p>Llama. Contesta el buzón (cerraste a las 5). Cuelga. No va a volver a llamar mañana. Va a buscar en Google el siguiente negocio de tu categoría antes de irse a dormir. Ellos sí van a contestar. <strong>Va a reservar con ellos.</strong></p>
+        </div>
+      </div>
+      <div class="scene-block scene-with">
+        <div class="scene-label">✓ Escena dos. Viernes a las 7:47 PM. Con tu nuevo miembro del equipo.</div>
+        <div class="scene-title">Un prospecto nuevo llama. El agente contesta. Es un cliente para el lunes.</div>
+        <div class="scene-body">
+          <p>Llama. El agente contesta al segundo timbre. <em>"Gracias por llamar, habla [Tu Negocio]. ¿En qué te puedo ayudar esta noche?"</em> Él explica. El agente confirma disponibilidad para el sábado en la mañana, reserva, manda la confirmación por texto y registra sus datos para seguimiento.</p>
+          <p><strong>Cuando revises tu dashboard el lunes en la mañana, ya tienes un cliente nuevo.</strong></p>
+          <p>Esta es la diferencia. Cada día. Cada llamada. Cada conversación.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- What you stop doing (hours table) -->
+<section class="reveal" aria-labelledby="hours-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Las horas que recuperas</span>
+      <h2 id="hours-heading" style="margin-top: 18px;">Este es el tiempo que dejas de gastar en cosas que maneja tu nuevo miembro del equipo.</h2>
+    </div>
+    <div class="hours-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Tarea</th>
+            <th>Horas/semana hoy</th>
+            <th>Horas/semana con MyOrbisVoice</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Contestar y enrutar llamadas entrantes</td><td>6 – 12</td><td>0</td></tr>
+          <tr><td>Devolver llamadas perdidas y mensajes de voz</td><td>2 – 4</td><td>0</td></tr>
+          <tr><td>Enviar confirmaciones y recordatorios de citas</td><td>1 – 2</td><td>0</td></tr>
+          <tr><td>Escribir mensajes y correos de seguimiento</td><td>2 – 4</td><td>0.5 (revisión)</td></tr>
+          <tr><td>Perseguir reseñas</td><td>1 – 2</td><td>0</td></tr>
+          <tr><td>Actualizar el CRM a mano</td><td>1 – 3</td><td>0</td></tr>
+          <tr><td>Total de horas semanales recuperadas</td><td>—</td><td>13 – 27 hrs</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="hours-closer">
+      A un valor conservador de $40/hora del tiempo del dueño-operador, son <strong>$520 a $1,080 por semana</strong> de tu tiempo que ya no gastas en administración del teléfono. Más los ingresos de las llamadas que dejaste de perder. Más las relaciones que dejas de dejar caer. Esa es la cuenta que nadie pone en una página de software. La que más le importa a los dueños que se están quedando sin horas.
+    </div>
+  </div>
+</section>
+
+<!-- 15 minutes with Alex -->
+<section class="section-tinted reveal" aria-labelledby="fifteen-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Los 15 minutos</span>
+      <h2 id="fifteen-heading" style="margin-top: 18px;">Conoce a tu nuevo miembro del equipo. La demo dura 15 minutos.</h2>
+    </div>
+    <div class="demo-steps">
+      <div class="demo-step">
+        <div class="step-num">1</div>
+        <h4>La demo.</h4>
+        <p>Alex te muestra MyOrbisVoice corriendo en vivo. Ves al agente contestar una llamada, reservar una cita, mandar la confirmación. Escuchas la voz. Conoces a tu nuevo miembro del equipo.</p>
+      </div>
+      <div class="demo-step">
+        <div class="step-num">2</div>
+        <h4>La auditoría.</h4>
+        <p>Alex saca un estimado de cuántas llamadas perdidas tuvo tu negocio la semana pasada. Ves cuántos clientes tocaron la puerta cuando no había nadie en casa.</p>
+      </div>
+      <div class="demo-step">
+        <div class="step-num">3</div>
+        <h4>El plan.</h4>
+        <p>Alex te dice exactamente cómo se configuraría MyOrbisVoice para tu negocio. Qué perfil de voz va con tu marca. Qué roles de agente. Cómo se desarrollan los primeros 90 días.</p>
+      </div>
+    </div>
+    <div class="demo-closer">
+      <strong>Nada de pitch de precios en la llamada.</strong> El precio depende de lo que necesites. Si al final de la llamada no te interesa, <strong>te quedas con la auditoría y el plan.</strong> Alex igual trabajó para ti ese día.
+    </div>
+  </div>
+</section>
+
+<!-- DIY or DFY -->
+<section class="reveal" aria-labelledby="paths-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">La instalación, a tu manera</span>
+      <h2 id="paths-heading" style="margin-top: 18px;">Móntalo tú. O Alex lo monta por ti.</h2>
+    </div>
+    <div class="paths-grid">
+      <div class="path-card-large">
+        <div class="path-label">→ DIY (hazlo tú)</div>
+        <h4>Dashboard autoservicio.</h4>
+        <p>Tutoriales en cada pantalla. Guías en video. Plantillas listas para tu industria. La mayoría de los dueños corren su primera campaña en un fin de semana. Alex está disponible cuando lo necesites.</p>
+      </div>
+      <div class="path-card-large">
+        <div class="path-label">→ DFY (lo hacemos por ti)</div>
+        <h4>Alex se encarga.</h4>
+        <p>Business DNA, prompts, perfil de voz, sincronización con calendario, números de teléfono, primeras campañas. Tú respondes unas preguntas y una semana después recorres la plataforma ya configurada. La mayoría de las instalaciones DFY salen en vivo en <strong>14 días sin que tú muevas un dedo.</strong></p>
+      </div>
+    </div>
+    <p class="paths-closer">En cualquiera de los dos caminos, <strong>Alex se queda como tu punto de contacto dedicado.</strong> La misma persona durante el onboarding, el lanzamiento y el segundo año. Conoce tu negocio por nombre.</p>
+  </div>
+</section>
+
+<!-- Cases -->
+<section class="section-soft reveal" aria-labelledby="cases-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Dueños que recuperaron sus horas</span>
+      <h2 id="cases-heading" style="margin-top: 18px;">Algunos negocios como el tuyo.</h2>
+    </div>
+    <div class="cases-grid">
+      <div class="case-card">
+        <div class="case-photo"><img src="/assets/images/case-studies/bright-smile-dental.jpg" alt="Dentista en la recepción de un consultorio moderno" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Dental</span><span>Lehigh Valley, PA</span></div>
+          <h4>Bright Smile Dental</h4>
+          <p class="case-quote">"Perdíamos 18 de cada 47 llamadas. Después de 90 días: cada llamada atendida. Reactivamos 14 pacientes que no habían reservado su limpieza. Ahora salgo del consultorio a las 5 PM y no vuelvo a pensar en el teléfono hasta la mañana."</p>
+          <div class="case-attrib">— Perfil compuesto de dueño</div>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-photo"><img src="/assets/images/case-studies/valley-hvac.jpg" alt="Técnico de HVAC junto a su camioneta de servicio" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Servicios para el hogar</span><span>Allentown, PA</span></div>
+          <h4>Valley HVAC</h4>
+          <p class="case-quote">"Perdíamos cada llamada fuera de horario (41 al mes). Después de 90 días: cada llamada fuera de horario capturada. Añadí un segundo técnico porque la demanda creció. Hace 60 días que el teléfono no me despierta."</p>
+          <div class="case-attrib">— Perfil compuesto de dueño</div>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-photo"><img src="/assets/images/case-studies/queen-umoja-studio.jpg" alt="Dueña de salón peinando a una clienta" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Belleza</span><span>Lawrenceville, GA</span></div>
+          <h4>Queen Umoja Studio</h4>
+          <p class="case-quote">"Mandaba a mano cada recordatorio a cada clienta. Después de 90 días: cada recordatorio, confirmación, mensaje de cumpleaños y prompt de reserva, automatizados. Recuperé los sábados."</p>
+          <div class="case-attrib">— Perfil compuesto de dueño</div>
+        </div>
+      </div>
+    </div>
+    <p class="case-disclaimer">Perfiles compuestos de dueños basados en desempeño modelado. Casos reales de clientes los reemplazan a medida que los clientes completan su primer trimestre.</p>
+  </div>
+</section>
+
+<!-- Upgrade cross-sell -->
+<section class="reveal" aria-labelledby="upgrade-heading">
+  <div class="container">
+    <div class="upgrade-card">
+      <span class="eyebrow">El camino del upgrade</span>
+      <h2 id="upgrade-heading" style="margin-top: 18px;">Voice te devuelve tus horas. El sistema completo también te trae más clientes.</h2>
+      <p>MyOrbisVoice maneja a los clientes que ya estás recibiendo. Solo con eso se cierran las fugas y recuperas de 13 a 27 horas a la semana.</p>
+      <p>Si además quieres más clientes entrando por la puerta, el sistema completo de <strong>MyOrbisResults</strong> agrega <strong>MyOrbisLocal</strong>: te reconstruimos el sitio web, optimizamos tu Google Business Profile y te llevamos al Map Pack top 3 en 90 días. <strong>O 90 días más por nuestra cuenta. Si al día 180 todavía no estás ahí, te vas o te devolvemos tu dinero.</strong></p>
+      <p>Pregúntale a Alex durante la llamada de 15 minutos. Mismo partner. Misma conversación. Más upside.</p>
+      <a href="https://myorbisresults.com#promise" class="btn btn-primary">Ver la garantía completa del Map Pack →</a>
+    </div>
+  </div>
+</section>
+
+<!-- PWA Preview Install -->
+<section class="section-soft reveal" aria-labelledby="preview-heading">
+  <div class="container">
+    <div class="preview-card">
+      <div class="preview-copy">
+        <span class="eyebrow">Ver el dashboard</span>
+        <h2 id="preview-heading">Pasa cinco minutos en tu futuro.</h2>
+        <p>Estás a un toque de ver cómo se ve tu negocio cuando no se escapa nada. Abre el preview, elige tu industria y mira cómo se desarrolla tu martes como debió haber sido.</p>
+        <ul class="preview-bullets">
+          <li>Elige entre 8 industrias — dental, legal, HVAC, belleza, fitness, médico, coaching, bienes raíces.</li>
+          <li>Toca cualquier llamada para ver la transcripción de las dos partes y reproducir el audio.</li>
+          <li>Mira cómo el calendario se llena solo mientras tú estás ahí sentado sin hacer nada.</li>
+          <li>Instálalo en tu teléfono o computadora. Sin registro, sin cuenta.</li>
+        </ul>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <a href="#" class="btn btn-primary" onclick="event.preventDefault(); window.talkToOrby && window.talkToOrby();">🎙️ Habla con Orby ahora</a>
+          <a href="/preview/" class="btn btn-ghost">Abrir el preview</a>
+          <a href="#demo" class="btn btn-ghost">Reservar por correo</a>
+        </div>
+        <p class="preview-hint">Habla con el agente real ahora mismo — la misma tecnología Orbis Voice que recibe un cliente que paga. Sin registro.</p>
+      </div>
+      <div class="preview-mockup" aria-hidden="true">
+        <div class="preview-mockup-head">MyOrbisVoice · 10:47 AM</div>
+        <div class="preview-mockup-title">Bright Smile Dental</div>
+        <div class="preview-mockup-sub">Hoy · 17 llamadas atendidas</div>
+        <div class="preview-mockup-kpis">
+          <div class="preview-mockup-kpi"><div class="preview-mockup-kpi-label">Reservas</div><div class="preview-mockup-kpi-val">12</div></div>
+          <div class="preview-mockup-kpi"><div class="preview-mockup-kpi-label">Ingresos</div><div class="preview-mockup-kpi-val">$5,240</div></div>
+        </div>
+        <div class="preview-mockup-live">
+          <span class="preview-mockup-live-dot"></span>
+          <span class="preview-mockup-live-label">En vivo ahora</span>
+          <p class="preview-mockup-live-text"><strong>Maria Rodriguez</strong> está en una llamada. El agente la está calificando — limpieza semestral para su hija.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Final CTA -->
+<section class="demo-cta" id="demo" aria-labelledby="demo-heading">
+  <div class="container-narrow">
+    <h2 id="demo-heading">Recupera tus horas. Conoce a tu nuevo miembro del equipo.</h2>
+    <p class="demo-lead">Abriste esta página porque Alex te la mandó. Conoce cómo se ve tu semana. Conoce las llamadas que se quedan sin contestar y los clientes que se te escapan y la mesa donde sigues revisando el teléfono.</p>
+    <p class="demo-lead">El miembro del equipo que siempre quisiste tener es real. Empieza a trabajar el lunes.</p>
+    <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 16px;">
+      <a href="mailto:alex@myorbisresults.com?subject=Conoce%20a%20mi%20nuevo%20miembro%20del%20equipo" class="btn btn-primary">Conoce a tu nuevo miembro del equipo con Alex</a>
+    </div>
+    <div class="partner-card">
+      <div class="pc-avatar"><img src="/assets/images/partners/sample-partner.jpg" alt="Alex Rivera" /></div>
+      <div class="pc-info">
+        <strong>Alex Rivera</strong>
+        <p><a href="tel:+15551234567">+1 (555) 123-4567</a> · <a href="mailto:alex@myorbisresults.com">alex@myorbisresults.com</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-bottom">
+      <p>© 2026 MyOrbisVoice, un producto de MyOrbisResults. Construido sobre tecnología propietaria Orbis Voice. Te lo trae Alex Rivera.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); observer.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+<script src="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js"></script>
+<script>
+  var __orbisPartnerSlug = (location.pathname.match(/^\/(?:es\/)?p\/([^\/]+)\//) || [])[1] || "alex.rivera";
+  if (__orbisPartnerSlug === "sample") __orbisPartnerSlug = "alex.rivera";
+  OrbisVoice.init({
+    publicKey: "f8512971245c559ded6baf206b3adb9c4fca987f2ba6c571",
+    partnerSlug: __orbisPartnerSlug,
+  });
+  window.talkToOrby = function () {
+    let tries = 0;
+    (function poke() {
+      const btn = document.getElementById('ov-widget-btn');
+      if (btn) { btn.click(); return; }
+      if (++tries < 25) setTimeout(poke, 200);
+    })();
+  };
+</script>
+</body>
+</html>

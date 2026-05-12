@@ -33,6 +33,12 @@ const allowedOrigins = [
   'https://app.myorbisvoice.com',
   'https://myorbisvoice.com',
   'https://www.myorbisvoice.com',
+  'https://myorbisresults.com',
+  'https://www.myorbisresults.com',
+  // Local development — Python http.server preview at :8765 (preview PWA
+  // + partner pages) needs to be able to mint widget sessions against prod.
+  'http://localhost:8765',
+  'http://127.0.0.1:8765',
 ].filter(Boolean)
 app.use(
   cors({
@@ -46,6 +52,13 @@ app.use(
 
 // Stripe webhook — must receive raw body for signature verification, mounted before express.json()
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), webhooksRouter)
+
+// Mail ingestion — must receive raw RFC 5322 email body, mounted before express.json().
+// Auth + routing handled by /api/internal/mail/ingest (see routes/internal-mail.ts).
+app.use(
+  '/api/internal/mail',
+  express.raw({ type: ['message/rfc822', 'application/octet-stream', 'text/plain'], limit: '25mb' }),
+)
 
 // Serve uploaded files (logos, etc.) directly
 app.use('/uploads', express.static(process.env['UPLOADS_DIR'] ?? '/app/uploads'))

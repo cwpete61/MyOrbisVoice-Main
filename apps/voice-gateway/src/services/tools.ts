@@ -198,12 +198,28 @@ export const TOOL_DECLARATIONS = [
       required: ['outcome_code'],
     },
   },
-  // hangup_call temporarily removed — its presence in the registry was
-  // crashing Gemini Live with code 1008 "Operation is not implemented, or
-  // supported, or enabled." even after schema fixes. The agent's natural
-  // goodbye + silence watchdog (60s) handles call termination as a fallback.
-  // Re-introduce after isolating which schema field was triggering the
-  // server-side validator.
+  {
+    name: 'end_call',
+    description:
+      'Close the voice conversation cleanly AFTER you have finished saying goodbye. ' +
+      'Call this when the visitor has booked the demo and you have wrapped up, OR when ' +
+      'the visitor has declined and you have wished them well. Do NOT call this while ' +
+      'there are still open questions or pending actions. After this tool call, the ' +
+      'visitor will see a "Session ended" message and the widget will close itself.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        reason: {
+          type: 'STRING',
+          description:
+            'One of: demo_booked (demo successfully scheduled), declined (visitor said no thanks), ' +
+            'wrong_fit (not a service business or out of scope), off_topic (visitor not interested in product), ' +
+            'wrapping_up_generic (any other natural end).',
+        },
+      },
+      required: ['reason'],
+    },
+  },
 ] as const
 
 export type ToolName = (typeof TOOL_DECLARATIONS)[number]['name']
@@ -434,8 +450,13 @@ const handlers: Record<ToolName, ToolHandler> = {
     if (!result.ok) return { ok: false, error: result.error }
     return { ok: true, conversation_id: result.data.conversationId, message: `Disposition recorded as ${outcomeCode}.` }
   },
-  // hangup_call handler temporarily removed alongside its declaration above —
-  // the silence watchdog (60s) is the fallback termination path.
+  // end_call is intercepted in session.ts onToolCall BEFORE executeTool is
+  // invoked (the gateway closes the WebSocket itself — there's no API roundtrip).
+  // This handler exists only to satisfy the Record<ToolName, ToolHandler> type
+  // contract. If it ever fires, something has bypassed the session.ts interception.
+  async end_call() {
+    return { ok: true, message: 'end_call acknowledged (gateway closes the session directly).' }
+  },
 }
 
 // --- Public dispatcher -------------------------------------------------------

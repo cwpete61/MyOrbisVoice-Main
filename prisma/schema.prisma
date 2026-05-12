@@ -377,6 +377,11 @@ model User {
   firstName             String?
   lastName              String?
   preferredLocale       String                 @default("en")
+  /// User's preferred IANA time-zone name (e.g. "America/New_York", "Europe/Madrid").
+  /// Null means "follow the browser's detected zone" — set via the Profile page.
+  /// Independent of Tenant.timezone (which is the business default for things
+  /// like appointment booking + after-hours logic).
+  preferredTimezone     String?
   status                UserStatus             @default(ACTIVE)
   lastLoginAt           DateTime?
   createdAt             DateTime               @default(now())
@@ -497,13 +502,13 @@ model RoleDefinition {
 }
 
 model Plan {
-  id            String            @id @default(uuid())
-  code          String            @unique
-  name          String
-  description   String?
-  interval      PlanInterval
-  priceCents    Int               @default(0)
-  stripePriceId String?
+  id                     String            @id @default(uuid())
+  code                   String            @unique
+  name                   String
+  description            String?
+  interval               PlanInterval
+  priceCents             Int               @default(0)
+  stripePriceId          String?
   /// Optional second Stripe price ID, used for plans that bundle a one-time
   /// charge (`stripePriceId`) PLUS a recurring add-on (this field). Today
   /// only LTD uses this — $497 one-time for lifetime access plus $24.99/mo
@@ -515,12 +520,12 @@ model Plan {
   /// right price loaded — `?prefilled_email=` and `?prefilled_promo_code=`
   /// query params are appended at link-generation time. Created via the
   /// Stripe API once per plan and reused.
-  stripeBuyLinkUrl String?
-  isActive      Boolean           @default(true)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  entitlements  PlanEntitlement[]
-  subscriptions Subscription[]
+  stripeBuyLinkUrl       String?
+  isActive               Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  entitlements           PlanEntitlement[]
+  subscriptions          Subscription[]
 }
 
 model PlanEntitlement {
@@ -619,7 +624,7 @@ model KnowledgeBaseFile {
   uploadedAt       DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  tenant     Tenant @relation(fields: [tenantId],     references: [id], onDelete: Cascade)
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   uploadedBy User   @relation("KbFileUploadedBy", fields: [uploadedById], references: [id])
 
   @@index([tenantId, extractionStatus])
@@ -758,9 +763,9 @@ model StripeCustomerRef {
 /// since Stripe stops retrying after ~3 days. Keep 30 for forensic margin.
 model StripeWebhookEvent {
   /// The Stripe event.id (e.g. "evt_1ABC..."). Primary key — the dedupe key.
-  eventId   String   @id
+  eventId    String   @id
   /// Event type for forensic search ("customer.subscription.updated" etc).
-  type      String
+  type       String
   /// Wall-clock receive time. Index supports the periodic cleanup query.
   receivedAt DateTime @default(now())
 
@@ -924,57 +929,57 @@ model PushSubscription {
 }
 
 model Contact {
-  id                  String                @id @default(uuid())
-  tenantId            String
-  firstName           String?
-  lastName            String?
-  fullName            String?
-  email               String?
-  phoneE164           String?
-  addressLine1        String?
-  city                String?
-  region              String?
-  postalCode          String?
-  country             String?
-  source              String
-  tagsJson            Json?
-  metadataJson        Json?
-  emailStatus         String?
-  emailVerifiedAt     DateTime?
-  phoneStatus         String?
-  phoneVerifiedAt     DateTime?
-  agentConfirmedAt    DateTime?
-  optedOutSms         Boolean               @default(false)
-  optedOutSmsAt       DateTime?
-  optedOutVoice       Boolean               @default(false)
-  optedOutVoiceAt     DateTime?
-  optedOutEmail       Boolean               @default(false)
-  optedOutEmailAt     DateTime?
-  optedOutWhatsapp    Boolean               @default(false)
-  optedOutWhatsappAt  DateTime?
+  id                   String                @id @default(uuid())
+  tenantId             String
+  firstName            String?
+  lastName             String?
+  fullName             String?
+  email                String?
+  phoneE164            String?
+  addressLine1         String?
+  city                 String?
+  region               String?
+  postalCode           String?
+  country              String?
+  source               String
+  tagsJson             Json?
+  metadataJson         Json?
+  emailStatus          String?
+  emailVerifiedAt      DateTime?
+  phoneStatus          String?
+  phoneVerifiedAt      DateTime?
+  agentConfirmedAt     DateTime?
+  optedOutSms          Boolean               @default(false)
+  optedOutSmsAt        DateTime?
+  optedOutVoice        Boolean               @default(false)
+  optedOutVoiceAt      DateTime?
+  optedOutEmail        Boolean               @default(false)
+  optedOutEmailAt      DateTime?
+  optedOutWhatsapp     Boolean               @default(false)
+  optedOutWhatsappAt   DateTime?
   // CRM relationship fields — collected during OUTBOUND campaigns only.
   // The inbound agent is instructed never to ask for these (privacy + flow).
   // Outbound campaigns can opt-in per-campaign by listing fields to collect.
-  birthday               DateTime?  // anchor date; year is informational only
-  anniversary            DateTime?  // wedding / relationship anniversary
-  spouseName             String?
-  kidsInfoJson           Json?      // [{ name, age?, birthday?, notes? }]
-  petsInfoJson           Json?      // [{ name, type, age?, notes? }]
-  importantDatesJson     Json?      // [{ label, date, notes? }] — arbitrary recurring dates
-  hobbies                String?    // freeform / comma-separated interests
-  preferredContactTime   String?    // 'morning' | 'afternoon' | 'evening' | freeform
-  customerSince          DateTime?
-  personalNotes          String?    // freeform internal-only notes
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  conversations       Conversation[]
-  appointments        Appointment[]
-  messageLogs         MessageLog[]
-  callLogs            CallLog[]
-  outboundAttempts    OutboundCallAttempt[]
-  campaignEnrollments CampaignEnrollment[]
-  optOutLogs          OptOutLog[]
+  birthday             DateTime? // anchor date; year is informational only
+  anniversary          DateTime? // wedding / relationship anniversary
+  spouseName           String?
+  kidsInfoJson         Json? // [{ name, age?, birthday?, notes? }]
+  petsInfoJson         Json? // [{ name, type, age?, notes? }]
+  importantDatesJson   Json? // [{ label, date, notes? }] — arbitrary recurring dates
+  hobbies              String? // freeform / comma-separated interests
+  preferredContactTime String? // 'morning' | 'afternoon' | 'evening' | freeform
+  customerSince        DateTime?
+  personalNotes        String? // freeform internal-only notes
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations        Conversation[]
+  appointments         Appointment[]
+  messageLogs          MessageLog[]
+  callLogs             CallLog[]
+  outboundAttempts     OutboundCallAttempt[]
+  campaignEnrollments  CampaignEnrollment[]
+  optOutLogs           OptOutLog[]
 
   @@index([tenantId, email])
   @@index([tenantId, phoneE164])
@@ -1153,30 +1158,115 @@ model AffiliateSettings {
 }
 
 model AffiliateAccount {
-  id                     String                   @id @default(uuid())
-  userId                 String                   @unique
-  status                 AffiliateStatus          @default(PENDING)
-  referralCode           String                   @unique
-  stripeConnectAccountId String?                  @unique
+  id                     String          @id @default(uuid())
+  userId                 String          @unique
+  status                 AffiliateStatus @default(PENDING)
+  referralCode           String          @unique
+  stripeConnectAccountId String?         @unique
   payoutMethodJson       Json?
   taxProfileJson         Json?
   payoutRequestedAt      DateTime?
-  totalEarnedCents       Int                      @default(0)
-  totalPaidCents         Int                      @default(0)
+  totalEarnedCents       Int             @default(0)
+  totalPaidCents         Int             @default(0)
   approvedAt             DateTime?
   notes                  String?
   // Partner's marketing voice intensity. Same scale as BusinessProfile.aggressionTier.
   // Drives AI-Assist generated pitch material + future per-partner Bunny-hosted assets.
   // See docs/marketing-style-guide.md for the spectrum definition.
-  aggressionTier         String                   @default("balanced")
-  createdAt              DateTime                 @default(now())
-  updatedAt              DateTime                 @updatedAt
-  user                   User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clicks                 AffiliateClick[]
-  conversions            AffiliateConversion[]
-  commissions            AffiliateCommission[]
-  payoutRequests         AffiliatePayoutRequest[]
-  customLinks            AffiliateCustomLink[]
+  aggressionTier         String          @default("balanced")
+
+  // ── Marketing-page identity (Phase B Partner profile) ────────────────────
+  // The slug is the partner's permanent public identifier. It drives both:
+  //   1. URL routing — /p/<slug>/voice-1/  (their published partner pages)
+  //   2. Email alias — <slug>@myorbisresults.com  (their personalized sending address)
+  // Derived once at partner creation from firstName.lastName (with collision-handling
+  // suffix: alex.rivera -> alex.rivera2). Immutable after first save so external
+  // links and email threads don't break when a partner changes their display name.
+  slug                  String? @unique
+  avatarUrl             String?
+  displayName           String? // From-header label; null falls back to "First Last"
+  bio                   String? // shown on partner pages as short author copy
+  partnerPhone          String? // public-facing partner phone (distinct from User-level phone)
+  businessName          String?
+  emailSignature        String? // appended to every outbound email composed by this partner
+  calendarId            String? // Google Calendar ID for booking routing
+  forwardPlatformEmails Boolean @default(true) // copy inbound to user.email Gmail
+  partnerPageActive     Boolean @default(false) // /p/<slug>/ pages live + Mailbox accessible
+
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clicks         AffiliateClick[]
+  conversions    AffiliateConversion[]
+  commissions    AffiliateCommission[]
+  payoutRequests AffiliatePayoutRequest[]
+  customLinks    AffiliateCustomLink[]
+  emails         Email[]
+  emailTemplates EmailTemplate[]
+}
+
+/// Partner-scoped email storage powering the Mailbox UI in /partner.
+/// Every inbound message to a partner alias (e.g. alex.rivera@myorbisresults.com)
+/// and every outbound message sent through sendPartnerEmail() lands here.
+/// Threading uses RFC 5322 Message-ID / In-Reply-To when present, falling back
+/// to a heuristic thread group (same partner + normalized subject + last 14 days).
+/// Reusable email templates for the partner Mailbox Compose flow.
+/// Two flavors:
+///   - System templates (partnerId NULL): seeded by the platform, available to every partner.
+///     Standard library: "Follow-up after missed call", "Thank you for booking", etc.
+///   - Partner-owned (partnerId set): a partner's custom template, only they can see/edit it.
+///
+/// Variable substitution happens client-side at insert time. Supported tokens:
+///   {{partner.firstName}}     - partner's first name
+///   {{partner.displayName}}   - partner's display name (e.g. "Alex Rivera")
+///   {{partner.businessName}}  - partner's business
+///   {{partner.signature}}     - partner's email signature
+///   {{partner.partnerEmail}}  - partner's alias (e.g. alex.rivera@myorbisresults.com)
+///   {{prospect.firstName}}    - left as-is if not known; partner fills in before sending
+///   {{prospect.businessName}} - same
+model EmailTemplate {
+  id          String            @id @default(uuid())
+  partnerId   String?           // null = system template available to all partners
+  category    String            // followup | thankyou | callback | reengagement | intro | custom
+  name        String            // shown in the picker dropdown
+  description String?           // one-line help text
+  subject     String            // may contain {{variables}}
+  bodyHtml    String            // may contain {{variables}}
+  isSystem    Boolean           @default(false)  // true for platform-seeded library entries
+  sortOrder   Int               @default(100)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  partner     AffiliateAccount? @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, sortOrder])
+  @@index([isSystem, sortOrder])
+}
+
+model Email {
+  id              String           @id @default(uuid())
+  partnerId       String
+  threadId        String?
+  messageId       String?          @unique
+  inReplyTo       String?
+  direction       MessageDirection
+  fromAddress     String
+  toAddresses     Json
+  ccAddresses     Json?
+  bccAddresses    Json?
+  subject         String
+  htmlBody        String?
+  textBody        String?
+  attachmentsJson Json?
+  deliveryStatus  String?
+  readAt          DateTime?
+  receivedAt      DateTime?
+  sentAt          DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  partner         AffiliateAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, direction, createdAt])
+  @@index([partnerId, threadId])
 }
 
 model AffiliateCustomLink {
@@ -1372,7 +1462,7 @@ model PasswordResetToken {
   id        String    @id @default(uuid())
   userId    String
   tokenHash String    @unique
-  expiresAt DateTime  // 15 minutes from createdAt — short TTL is the security gate
+  expiresAt DateTime // 15 minutes from createdAt — short TTL is the security gate
   usedAt    DateTime? // single-use; set when the token is redeemed
   createdAt DateTime  @default(now())
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)

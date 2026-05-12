@@ -10,6 +10,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../../../assets/css/style.css" />
+  <script src="/p/_assets/partner-hydrate.js" defer></script>
+  <link rel="alternate" hreflang="en" href="https://myorbisvoice.com/p/sample/voice-3/" />
+  <link rel="alternate" hreflang="es" href="https://myorbisvoice.com/es/p/sample/voice-3/" />
+  <link rel="canonical" href="https://myorbisvoice.com/p/sample/voice-3/" />
   <link rel="stylesheet" href="../partner-styles.css" />
   <style>
     /* Angle 3 signature: scene comparisons */
@@ -45,6 +49,31 @@
     .demo-cta p.demo-lead { color: rgba(255,255,255,0.85); font-size: 1.1rem; max-width: 640px; margin: 0 auto 14px; line-height: 1.65; }
     .demo-cta .btn-primary { background: white; color: var(--teal-6); }
     .demo-cta .btn-primary:hover { background: var(--bg-tinted); }
+
+    /* Preview / PWA install card */
+    .preview-card { max-width: 1000px; margin: 0 auto; padding: 40px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius-xl); display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; }
+    @media (max-width: 880px) { .preview-card { grid-template-columns: 1fr; gap: 28px; padding: 32px; } }
+    .preview-card .preview-copy h2 { color: var(--teal-6); font-size: clamp(1.55rem, 3vw, 2.1rem); margin-bottom: 14px; line-height: 1.15; letter-spacing: -0.015em; }
+    .preview-card .preview-copy .eyebrow { display: block; margin-bottom: 12px; }
+    .preview-card .preview-copy p { color: var(--text); line-height: 1.65; margin-bottom: 18px; }
+    .preview-card ul.preview-bullets { list-style: none; padding: 0; margin: 0 0 24px; }
+    .preview-card ul.preview-bullets li { padding: 6px 0 6px 22px; position: relative; color: var(--text); font-size: 0.92rem; line-height: 1.5; }
+    .preview-card ul.preview-bullets li::before { content: "→"; position: absolute; left: 0; color: var(--teal-3); font-weight: 700; }
+    .preview-card .preview-hint { font-size: 0.82rem; color: var(--text-muted); margin-top: 14px; }
+    .preview-mockup { background: var(--bg-app); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-md); }
+    .preview-mockup-head { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+    .preview-mockup-title { color: var(--teal-6); font-weight: 800; font-size: 1.05rem; margin-bottom: 4px; }
+    .preview-mockup-sub { color: var(--text-muted); font-size: 0.78rem; margin-bottom: 14px; }
+    .preview-mockup-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .preview-mockup-kpi { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+    .preview-mockup-kpi-label { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.04em; margin-bottom: 4px; }
+    .preview-mockup-kpi-val { font-size: 1.1rem; color: var(--teal-6); font-weight: 800; line-height: 1; }
+    .preview-mockup-live { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    .preview-mockup-live-dot { display: inline-block; width: 7px; height: 7px; background: oklch(55% 0.18 145); border-radius: 50%; margin-right: 5px; vertical-align: middle; animation: pulseDot 1.6s ease-in-out infinite; }
+    @keyframes pulseDot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(1.3); } }
+    .preview-mockup-live-label { font-size: 0.62rem; color: oklch(40% 0.18 145); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .preview-mockup-live-text { font-size: 0.78rem; color: var(--text); line-height: 1.45; margin-top: 4px; }
+    .preview-mockup-live-text strong { color: var(--teal-6); }
   </style>
 </head>
 <body>
@@ -361,6 +390,45 @@
   </div>
 </section>
 
+<!-- PWA Preview Install -->
+<section class="section-soft reveal" aria-labelledby="preview-heading">
+  <div class="container">
+    <div class="preview-card">
+      <div class="preview-copy">
+        <span class="eyebrow">See the dashboard</span>
+        <h2 id="preview-heading">Spend five minutes in your future.</h2>
+        <p>You're a tap away from seeing what your business looks like when nothing slips. Open the preview, pick your industry, and watch your Tuesday play out the way it was supposed to.</p>
+        <ul class="preview-bullets">
+          <li>Pick from 8 industries — dental, legal, HVAC, beauty, fitness, medical, coaching, real estate.</li>
+          <li>Tap any call to see the party-to-party transcript and play the audio back.</li>
+          <li>Watch the calendar fill itself while you sit there doing nothing.</li>
+          <li>Install it on your phone or desktop. No signup, no account.</li>
+        </ul>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <a href="#" class="btn btn-primary" onclick="event.preventDefault(); window.talkToOrby && window.talkToOrby();">🎙️ Talk to Orby now</a>
+          <a href="/preview/" class="btn btn-ghost">Open the preview</a>
+          <a href="#demo" class="btn btn-ghost">Email to book</a>
+        </div>
+        <p class="preview-hint">Talk to the actual agent right now — same Orbis voice technology a paying customer gets. No signup.</p>
+      </div>
+      <div class="preview-mockup" aria-hidden="true">
+        <div class="preview-mockup-head">MyOrbisVoice · 10:47 AM</div>
+        <div class="preview-mockup-title">Bright Smile Dental</div>
+        <div class="preview-mockup-sub">Today · 17 calls answered</div>
+        <div class="preview-mockup-kpis">
+          <div class="preview-mockup-kpi"><div class="preview-mockup-kpi-label">Bookings</div><div class="preview-mockup-kpi-val">12</div></div>
+          <div class="preview-mockup-kpi"><div class="preview-mockup-kpi-label">Revenue</div><div class="preview-mockup-kpi-val">$5,240</div></div>
+        </div>
+        <div class="preview-mockup-live">
+          <span class="preview-mockup-live-dot"></span>
+          <span class="preview-mockup-live-label">Live right now</span>
+          <p class="preview-mockup-live-text"><strong>Maria Rodriguez</strong> is on a call. The agent is qualifying her — six-month cleaning for her daughter.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- Final CTA -->
 <section class="demo-cta" id="demo" aria-labelledby="demo-heading">
   <div class="container-narrow">
@@ -395,6 +463,24 @@
     entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); observer.unobserve(e.target); } });
   }, { threshold: 0.15 });
   document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+<script src="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js"></script>
+<script>
+  var __orbisPartnerSlug = (location.pathname.match(/^\/p\/([^\/]+)\//) || [])[1] || "alex.rivera";
+  if (__orbisPartnerSlug === "sample") __orbisPartnerSlug = "alex.rivera";
+  OrbisVoice.init({
+    publicKey: "f8512971245c559ded6baf206b3adb9c4fca987f2ba6c571",
+    partnerSlug: __orbisPartnerSlug,
+  });
+  window.talkToOrby = function () {
+    let tries = 0;
+    (function poke() {
+      const btn = document.getElementById('ov-widget-btn');
+      if (btn) { btn.click(); return; }
+      if (++tries < 25) setTimeout(poke, 200);
+    })();
+  };
 </script>
 </body>
 </html>
