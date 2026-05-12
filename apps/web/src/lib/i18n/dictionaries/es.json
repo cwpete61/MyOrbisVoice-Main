@@ -812,9 +812,24 @@
       "help":  "Cuando está activo, una copia de cada mensaje entrante también llega a {email}. Útil si revisas Gmail en tu teléfono."
     },
     "calendarHeading": "CALENDARIO",
+    "google": {
+      "connectedHeading":    "Google Calendar conectado",
+      "notConnectedHeading": "Google Calendar — no conectado",
+      "notConnectedHelp":    "Conecta tu cuenta de Google para que Orby pueda agendar demos directamente en tu calendario. Sin esto, el agente tiene que ofrecer una devolución de llamada manual.",
+      "calendarsLabel":      "calendarios",
+      "connectLabel":        "Conectar Google",
+      "disconnectLabel":     "Desconectar",
+      "working":             "Procesando…",
+      "confirmDisconnect":   "¿Desconectar tu cuenta de Google? Orby ya no podrá agendar demos en tu calendario.",
+      "connectedAs":         "Conectado como {email}.",
+      "disconnected":        "Google Calendar desconectado.",
+      "startFailed":         "No se pudo iniciar la conexión con Google. Inténtalo de nuevo.",
+      "disconnectFailed":    "Falló la desconexión. Inténtalo de nuevo.",
+      "oauthError":          "Falló la conexión con Google: {reason}"
+    },
     "calendarId": {
-      "label":       "ID de Google Calendar",
-      "help":        "Dónde Orby agenda demos para ti. Generalmente tu correo de trabajo. Búscalo en Google Calendar → Configuración → Integrar calendario.",
+      "label":       "Calendario alternativo (avanzado)",
+      "help":        "Opcional. Por defecto Orby agenda en el calendario primario de tu cuenta de Google conectada. Configura esto solo si quieres que las reservas lleguen a un calendario no primario (pega su ID de Calendario desde Google Calendar → Configuración → Integrar calendario).",
       "placeholder": "tu@tunegocio.com"
     }
   },

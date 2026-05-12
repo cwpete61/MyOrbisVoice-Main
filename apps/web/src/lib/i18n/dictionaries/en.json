@@ -812,9 +812,24 @@
       "help":  "When ON, a copy of every inbound message also lands at {email}. Useful if you check Gmail on your phone."
     },
     "calendarHeading": "CALENDAR",
+    "google": {
+      "connectedHeading":    "Google Calendar connected",
+      "notConnectedHeading": "Google Calendar — not connected",
+      "notConnectedHelp":    "Connect your Google account so Orby can book demos directly on your calendar. Without this, the agent has to fall back to a manual callback.",
+      "calendarsLabel":      "calendars",
+      "connectLabel":        "Connect Google",
+      "disconnectLabel":     "Disconnect",
+      "working":             "Working…",
+      "confirmDisconnect":   "Disconnect your Google account? Orby will no longer be able to book demos on your calendar.",
+      "connectedAs":         "Connected as {email}.",
+      "disconnected":        "Google Calendar disconnected.",
+      "startFailed":         "Could not start Google connection. Try again.",
+      "disconnectFailed":    "Disconnect failed. Try again.",
+      "oauthError":          "Google connection failed: {reason}"
+    },
     "calendarId": {
-      "label":       "Google Calendar ID",
-      "help":        "Where Orby books demos for you. Usually your work email. Find this in Google Calendar → Settings → Integrate calendar.",
+      "label":       "Calendar override (advanced)",
+      "help":        "Optional. By default Orby books on the primary calendar of your connected Google account. Set this only if you want bookings to land on a non-primary calendar (paste its Calendar ID from Google Calendar → Settings → Integrate calendar).",
       "placeholder": "you@yourbusiness.com"
     }
   },

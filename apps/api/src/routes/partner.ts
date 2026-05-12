@@ -8,6 +8,7 @@ import { authenticate } from '../middleware/authenticate.js'
 import { requirePartnerContext } from '../middleware/rbac.js'
 import { prisma } from '../lib/prisma.js'
 import * as partnerService from '../services/partner.service.js'
+import * as googleService from '../services/google.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { writeAuditLog } from '../lib/audit.js'
 
@@ -169,5 +170,42 @@ router.post(
     } catch (err) { next(err) }
   },
 )
+
+// ─── Per-partner Google Calendar OAuth (Phase E.0) ──────────────────────────
+//
+// Each partner can connect their OWN Google account. Tokens land on a
+// dedicated IntegrationConnection row (tenantId=null, linked from
+// AffiliateAccount.integrationConnectionId). Used by:
+//   - the agent's book_appointment when the widget runs on a partner page
+//     (E.2) — routes booking to THIS partner's calendar
+//   - the partner-portal calendar view (E.1)
+//   - the public prospect-booking page at /p/<slug>/book (E.4)
+//
+// OAuth callback hits the shared /api/integrations/google/callback route
+// (which dispatches on state metadata to handlePartnerGoogleCallback).
+
+router.get('/partner/integrations/google', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const status = await googleService.getPartnerGoogleConnection(partnerId)
+    res.json({ data: status })
+  } catch (err) { next(err) }
+})
+
+router.post('/partner/integrations/google/start', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const { url } = await googleService.startPartnerGoogleOAuth(partnerId, req.user!.id)
+    res.json({ data: { url } })
+  } catch (err) { next(err) }
+})
+
+router.delete('/partner/integrations/google', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    await googleService.disconnectPartnerGoogle(partnerId, req.user!.id)
+    res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
 
 export default router

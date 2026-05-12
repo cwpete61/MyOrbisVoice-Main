@@ -96,6 +96,66 @@ export default function AffiliateProfilePage() {
   const [tzSaved, setTzSaved] = useState(false)
   const [tzError, setTzError] = useState<string | null>(null)
 
+  // ─── Google Calendar OAuth (Phase E.0) ─────────────────────────────────────
+  type GoogleConn = { status: 'CONNECTED' | 'NOT_CONNECTED' | 'ERROR' | 'PENDING'; email: string | null; lastVerifiedAt: string | null; calendarIds: string[] }
+  const [googleConn, setGoogleConn] = useState<GoogleConn | null>(null)
+  const [googleBusy, setGoogleBusy] = useState(false)
+  const [googleMsg, setGoogleMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  async function loadGoogleConn() {
+    try {
+      const data = await apiFetch<GoogleConn>('/api/partner/integrations/google')
+      setGoogleConn(data)
+    } catch {
+      setGoogleConn({ status: 'NOT_CONNECTED', email: null, lastVerifiedAt: null, calendarIds: [] })
+    }
+  }
+
+  async function connectGoogle() {
+    setGoogleBusy(true)
+    setGoogleMsg(null)
+    try {
+      const { url } = await apiFetch<{ url: string }>('/api/partner/integrations/google/start', { method: 'POST' })
+      window.location.assign(url)   // browser leaves for Google consent
+    } catch (e: unknown) {
+      setGoogleMsg({ type: 'error', text: (e as Error).message ?? t('partnerProfile.google.startFailed') })
+      setGoogleBusy(false)
+    }
+  }
+
+  async function disconnectGoogle() {
+    if (!confirm(t('partnerProfile.google.confirmDisconnect'))) return
+    setGoogleBusy(true)
+    try {
+      await apiFetch('/api/partner/integrations/google', { method: 'DELETE' })
+      setGoogleMsg({ type: 'success', text: t('partnerProfile.google.disconnected') })
+      await loadGoogleConn()
+    } catch (e: unknown) {
+      setGoogleMsg({ type: 'error', text: (e as Error).message ?? t('partnerProfile.google.disconnectFailed') })
+    } finally {
+      setGoogleBusy(false)
+    }
+  }
+
+  // Read ?google=success&email=... / ?google=error&reason=... on mount
+  // (set by the shared OAuth callback that bounced the browser back here).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const g = params.get('google')
+    if (g === 'success') {
+      const email = params.get('email') ?? ''
+      setGoogleMsg({ type: 'success', text: t('partnerProfile.google.connectedAs').replace('{email}', email) })
+      // Strip query so a reload doesn't re-fire the toast
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (g === 'error') {
+      const reason = params.get('reason') ?? ''
+      setGoogleMsg({ type: 'error', text: t('partnerProfile.google.oauthError').replace('{reason}', reason) })
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+    loadGoogleConn()
+  }, [])
+
   useEffect(() => {
     Promise.all([
       apiFetch<Me>('/api/partner/me').catch(() => null),
@@ -411,6 +471,71 @@ export default function AffiliateProfilePage() {
         {/* ── Calendar (inside marketing block) ────────────────────────────── */}
         <div className="mt-6 pt-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.calendarHeading')}</p>
+
+          {/* Google OAuth connect/disconnect (Phase E.0). When connected, the agent
+              on this partner's landing page books to THIS partner's calendar (E.2),
+              the partner sees their calendar in the back office (E.1), and the
+              public booking page works (E.4). The free-text calendarId field
+              below is an advanced override (pick a non-primary calendar). */}
+          <div
+            className="mb-4 rounded-lg p-4"
+            style={{
+              background: googleConn?.status === 'CONNECTED' ? 'oklch(55% 0.18 145 / 0.10)' : 'var(--surface-app)',
+              border:     googleConn?.status === 'CONNECTED' ? '1px solid oklch(55% 0.18 145 / 0.40)' : '1px solid var(--border-subtle)',
+            }}
+          >
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {googleConn?.status === 'CONNECTED'
+                    ? `✓ ${t('partnerProfile.google.connectedHeading')}`
+                    : t('partnerProfile.google.notConnectedHeading')}
+                </div>
+                {googleConn?.status === 'CONNECTED' && googleConn.email && (
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    {googleConn.email}
+                    {googleConn.calendarIds.length > 0 && ` · ${googleConn.calendarIds.length} ${t('partnerProfile.google.calendarsLabel')}`}
+                  </div>
+                )}
+                {googleConn?.status !== 'CONNECTED' && (
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                    {t('partnerProfile.google.notConnectedHelp')}
+                  </div>
+                )}
+              </div>
+              {googleConn?.status === 'CONNECTED' ? (
+                <button
+                  onClick={disconnectGoogle}
+                  disabled={googleBusy}
+                  className="px-3 py-1.5 rounded-md text-xs flex-shrink-0"
+                  style={{ background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', opacity: googleBusy ? 0.5 : 1 }}
+                >
+                  {googleBusy ? t('partnerProfile.google.working') : t('partnerProfile.google.disconnectLabel')}
+                </button>
+              ) : (
+                <button
+                  onClick={connectGoogle}
+                  disabled={googleBusy}
+                  className="px-4 py-2 rounded-md text-xs font-semibold flex-shrink-0"
+                  style={{ background: 'var(--brand-500)', color: '#fff', opacity: googleBusy ? 0.5 : 1 }}
+                >
+                  {googleBusy ? t('partnerProfile.google.working') : t('partnerProfile.google.connectLabel')}
+                </button>
+              )}
+            </div>
+            {googleMsg && (
+              <div
+                className="text-xs mt-2 px-2 py-1 rounded"
+                style={{
+                  background: googleMsg.type === 'success' ? 'oklch(55% 0.18 145 / 0.15)' : 'oklch(60% 0.2 30 / 0.15)',
+                  color:      googleMsg.type === 'success' ? 'oklch(45% 0.18 145)' : 'oklch(55% 0.20 30)',
+                }}
+              >
+                {googleMsg.text}
+              </div>
+            )}
+          </div>
+
           <Field
             label={t('partnerProfile.calendarId.label')}
             help={t('partnerProfile.calendarId.help')}

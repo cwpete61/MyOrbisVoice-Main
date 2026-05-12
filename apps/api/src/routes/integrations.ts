@@ -7,13 +7,18 @@ import * as geminiService from '../services/gemini-integration.service.js'
 import { checkWebsite } from '../services/website-check.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { getEnv } from '@voiceautomation/config'
+import { prisma } from '../lib/prisma.js'
 
 const router: IRouter = Router()
 
 // PUBLIC route — must be registered BEFORE the authenticate middleware below.
 // Google redirects the caller's browser here after consent with no auth headers
-// attached; OAuth's `state` parameter (validated inside handleGoogleCallback)
+// attached; OAuth's `state` parameter (validated inside the per-flow handlers)
 // is what authenticates this request, not our JWT.
+//
+// Dispatches by state metadata: a connection's metadataJson holds the
+// staffMemberId or affiliateAccountId for staff / partner flows. Plain
+// tenant connections have neither, so they fall through to the tenant handler.
 router.get('/integrations/google/callback', async (req, res, next) => {
   try {
     const env = getEnv()
@@ -29,6 +34,26 @@ router.get('/integrations/google/callback', async (req, res, next) => {
       return
     }
 
+    // Peek at the connection's metadata to figure out which OAuth flow this is.
+    const conn = await prisma.integrationConnection.findFirst({
+      where: { provider: 'GOOGLE', metadataJson: { path: ['oauthState'], equals: state } },
+      select: { metadataJson: true },
+    })
+    const meta = (conn?.metadataJson ?? {}) as Record<string, string | undefined>
+
+    if (meta.affiliateAccountId) {
+      const { email } = await googleService.handlePartnerGoogleCallback(code, state)
+      res.redirect(`${env.APP_BASE_URL}/partner-portal/profile?google=success&email=${encodeURIComponent(email)}`)
+      return
+    }
+
+    if (meta.staffMemberId) {
+      const { staffMemberId, email } = await googleService.handleStaffGoogleCallback(code, state)
+      res.redirect(`${env.APP_BASE_URL}/staff/${staffMemberId}?tab=calendar&google=success&email=${encodeURIComponent(email)}`)
+      return
+    }
+
+    // Default: tenant-level Google connection.
     const { email } = await googleService.handleGoogleCallback(code, state)
     res.redirect(`${env.APP_BASE_URL}/integrations?google=success&email=${encodeURIComponent(email)}`)
   } catch (err) {

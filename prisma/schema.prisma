@@ -719,6 +719,11 @@ model IntegrationConnection {
   googleDetail        GoogleConnectionDetail?
   twilioDetail        TwilioConnectionDetail?
   staffMember         StaffMember?
+  // Set when this connection is owned by an AffiliateAccount (per-partner
+  // Google calendar). Mutually exclusive with tenant/staff ownership at the
+  // application layer — exactly one of (tenant, staffMember, affiliateAccount)
+  // should be populated per row.
+  affiliateAccount    AffiliateAccount?       @relation("PartnerGoogle")
 }
 
 model GoogleConnectionDetail {
@@ -1219,6 +1224,14 @@ model AffiliateAccount {
   commissions    AffiliateCommission[]
   payoutRequests AffiliatePayoutRequest[]
   customLinks    AffiliateCustomLink[]
+  // Per-partner Google Calendar OAuth (Phase E.0). The partner connects
+  // their OWN Google account via /api/partner/integrations/google/connect;
+  // OAuth tokens land in the linked IntegrationConnection. Used by the
+  // partner-portal calendar view (E.1), the agent's book_appointment when
+  // the widget runs on a partner page (E.2), and the public booking page (E.4).
+  integrationConnectionId String?               @unique
+  integrationConnection   IntegrationConnection? @relation("PartnerGoogle", fields: [integrationConnectionId], references: [id], onDelete: SetNull)
+
   emails         Email[]
   emailTemplates EmailTemplate[]
 }
