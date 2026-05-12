@@ -1983,4 +1983,76 @@ router.delete('/platform-staff/:userId', requirePlatformSuperAdmin, async (req, 
   } catch (err) { next(err) }
 })
 
+// ─── Demo Gallery (Phase D.1) ───────────────────────────────────────────────
+// PATCH /api/admin/conversations/:id/featured-demo — curate or un-curate a
+// Conversation for the public /demos gallery. Cross-tenant — admins can
+// feature any conversation in the platform. Audit-logged either way.
+
+const DEMO_CATEGORIES = ['dental', 'legal', 'hvac', 'beauty', 'fitness', 'real-estate', 'coaching', 'medical'] as const
+
+const featuredDemoSchema = z.object({
+  isFeatured: z.boolean(),
+  title:      z.string().min(1).max(160).optional(),
+  category:   z.enum(DEMO_CATEGORIES).optional(),
+  sortOrder:  z.number().int().min(0).max(99999).optional(),
+  summary:    z.string().max(4000).nullable().optional(),    // null clears the override (falls back to raw summaryText)
+  transcript: z.any().nullable().optional(),                  // null clears the override (falls back to raw transcriptJson)
+}).refine((d) => !d.isFeatured || (d.title && d.category), {
+  message: 'title and category are required when isFeatured=true',
+})
+
+router.patch('/conversations/:id/featured-demo', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const conversationId = req.params['id']
+    const parsed = featuredDemoSchema.safeParse(req.body)
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid input', 422)
+    }
+    const { isFeatured, title, category, sortOrder, summary, transcript } = parsed.data
+
+    const existing = await prisma.conversation.findUnique({ where: { id: conversationId } })
+    if (!existing) throw new AppError('NOT_FOUND', 'Conversation not found', 404)
+
+    const updated = await prisma.conversation.update({
+      where: { id: conversationId },
+      data: isFeatured
+        ? {
+            isFeaturedDemo:     true,
+            featuredTitle:      title!,
+            featuredCategory:   category!,
+            featuredSortOrder:  sortOrder ?? 100,
+            featuredSummary:    summary    === null ? null : (summary    ?? existing.featuredSummary),
+            featuredTranscript: transcript === null ? null : (transcript ?? existing.featuredTranscript ?? undefined),
+            featuredAt:         existing.isFeaturedDemo ? existing.featuredAt : new Date(),
+            featuredById:       req.user!.id,
+          }
+        : {
+            isFeaturedDemo:    false,
+            featuredTitle:     null,
+            featuredCategory:  null,
+            featuredAt:        null,
+            featuredById:      null,
+            // Intentionally keep featuredSummary + featuredTranscript so a
+            // re-featured conversation doesn't lose the admin's edits.
+          },
+    })
+
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       isFeatured ? 'admin.demo.featured' : 'admin.demo.unfeatured',
+      targetType:   'Conversation',
+      targetId:     conversationId,
+      metadataJson: { title: title ?? null, category: category ?? null },
+    })
+
+    res.json({
+      data: {
+        ...updated,
+        recordingSizeBytes: updated.recordingSizeBytes != null ? String(updated.recordingSizeBytes) : null,
+      },
+    })
+  } catch (err) { next(err) }
+})
+
 export default router

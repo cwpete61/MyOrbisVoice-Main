@@ -396,6 +396,7 @@ model User {
   a2pOperatorNotes      A2POperatorNote[]
   passwordResetTokens   PasswordResetToken[]
   uploadedKbFiles       KnowledgeBaseFile[]    @relation("KbFileUploadedBy")
+  featuredDemos         Conversation[]         @relation("DemoFeaturedBy")
 }
 
 model Tenant {
@@ -1008,10 +1009,26 @@ model Conversation {
   /// Free-form metadata about the call: per-turn latency, diagnostic flags, etc.
   /// Read by the latency-report CLI; written by the voice gateway on call finalize.
   metadataJson          Json?
+
+  // ── Demo Gallery (Phase D.1) ──────────────────────────────────────────────
+  // Conversations curated by admin as public demos at /demos/<id>.
+  // featuredSummary / featuredTranscript override the raw fields when set,
+  // letting admin redact PII before publishing without losing the originals.
+  isFeaturedDemo        Boolean               @default(false)
+  featuredTitle         String?               // e.g. "Bright Smile Dental — after-hours booking"
+  featuredCategory      String?               // dental | legal | hvac | beauty | fitness | real-estate | coaching | medical
+  featuredSortOrder     Int                   @default(100)
+  featuredAt            DateTime?
+  featuredById          String?               // FK to User (admin who curated it)
+  featuredSummary       String?               // redacted display summary (falls back to summaryText)
+  featuredTranscript    Json?                 // redacted transcript (falls back to transcriptJson)
+  featuredViewCount     Int                   @default(0)
+
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
   tenant                Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact               Contact?              @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  featuredBy            User?                 @relation("DemoFeaturedBy", fields: [featuredById], references: [id], onDelete: SetNull)
   appointments          Appointment[]
   messageLogs           MessageLog[]
   callLogs              CallLog[]
@@ -1020,6 +1037,7 @@ model Conversation {
   @@index([tenantId, startedAt])
   @@index([tenantId, channelType])
   @@index([externalCallId])
+  @@index([isFeaturedDemo, featuredCategory, featuredSortOrder])
 }
 
 model StaffMember {

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useApi, apiFetchRaw, apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
+import { canPerformAdminWrites } from '@/lib/auth'
 
 interface Contact { firstName: string | null; lastName: string | null; email: string | null; phoneE164: string | null }
 
@@ -20,7 +21,17 @@ interface Conversation {
   recordingStatus: string | null
   outcomeCode: string | null
   contact: Contact | null
+  // Demo Gallery (Phase D.1)
+  isFeaturedDemo?:    boolean
+  featuredTitle?:     string | null
+  featuredCategory?:  string | null
+  featuredSortOrder?: number
+  featuredSummary?:   string | null
+  featuredTranscript?: TranscriptEntry[] | null
+  featuredViewCount?: number
 }
+
+const DEMO_CATEGORIES = ['dental', 'legal', 'hvac', 'beauty', 'fitness', 'real-estate', 'coaching', 'medical'] as const
 
 // Tenant-editable disposition tags — what was the BUSINESS outcome of this call?
 // Distinct from `status` (technical: completed/missed/failed) and from
@@ -79,6 +90,59 @@ export default function ConversationsPage() {
   const [emailSending, setEmailSending] = useState(false)
   const [pdfDownloading, setPdfDownloading] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
+
+  // Demo Gallery (Phase D.1) — admin-only curation state. Hidden for tenant
+  // users via the canPerformAdminWrites() gate at render time.
+  const isAdmin = canPerformAdminWrites()
+  const [demoEditing,    setDemoEditing]    = useState(false)
+  const [demoTitle,      setDemoTitle]      = useState('')
+  const [demoCategory,   setDemoCategory]   = useState<typeof DEMO_CATEGORIES[number] | ''>('')
+  const [demoSortOrder,  setDemoSortOrder]  = useState<number>(100)
+  const [demoSummary,    setDemoSummary]    = useState('')
+  const [demoSaving,     setDemoSaving]     = useState(false)
+  useEffect(() => {
+    if (selected) {
+      setDemoTitle(selected.featuredTitle ?? '')
+      setDemoCategory((selected.featuredCategory as typeof DEMO_CATEGORIES[number]) ?? '')
+      setDemoSortOrder(selected.featuredSortOrder ?? 100)
+      setDemoSummary(selected.featuredSummary ?? '')
+      setDemoEditing(false)
+    }
+  }, [selected?.id])
+
+  async function saveFeatured(isFeatured: boolean) {
+    if (!selected) return
+    if (isFeatured && (!demoTitle.trim() || !demoCategory)) {
+      setToast({ type: 'error', text: t('demoCuration.titleAndCategoryRequired') })
+      setTimeout(() => setToast(null), 3500)
+      return
+    }
+    setDemoSaving(true)
+    try {
+      const body = isFeatured
+        ? {
+            isFeatured: true,
+            title:      demoTitle.trim(),
+            category:   demoCategory,
+            sortOrder:  demoSortOrder,
+            summary:    demoSummary.trim() || null,
+          }
+        : { isFeatured: false }
+      const updated = await apiFetch<Conversation>(`/api/admin/conversations/${selected.id}/featured-demo`, {
+        method: 'PATCH',
+        body:   JSON.stringify(body),
+      })
+      setSelected({ ...selected, ...updated })
+      setDemoEditing(false)
+      setToast({ type: 'success', text: isFeatured ? t('demoCuration.featuredSaved') : t('demoCuration.unfeatured') })
+      setTimeout(() => setToast(null), 3500)
+    } catch (e: unknown) {
+      setToast({ type: 'error', text: (e as Error).message ?? t('demoCuration.saveFailed') })
+      setTimeout(() => setToast(null), 4500)
+    } finally {
+      setDemoSaving(false)
+    }
+  }
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const limit = 20
 
@@ -604,6 +668,129 @@ export default function ConversationsPage() {
                   {t('tenantConversations.detail.summary')}
                 </div>
                 {selected.summaryText}
+              </div>
+            )}
+
+            {/* Demo Gallery curation — admin-only */}
+            {isAdmin && (
+              <div
+                className="mb-4 p-3 rounded-lg text-xs"
+                style={{
+                  background: selected.isFeaturedDemo ? 'oklch(55% 0.18 145 / 0.10)' : 'var(--surface-sunken)',
+                  border: selected.isFeaturedDemo ? '1px solid oklch(55% 0.18 145 / 0.40)' : '1px solid var(--border-subtle)',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {selected.isFeaturedDemo ? `★ ${t('demoCuration.featuredHeading')}` : t('demoCuration.curationHeading')}
+                  </div>
+                  {!demoEditing && (
+                    <button
+                      onClick={() => setDemoEditing(true)}
+                      className="text-xs underline"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      {selected.isFeaturedDemo ? t('demoCuration.editLabel') : t('demoCuration.curateLabel')}
+                    </button>
+                  )}
+                </div>
+
+                {!demoEditing && selected.isFeaturedDemo && (
+                  <div style={{ color: 'var(--text-tertiary)' }}>
+                    <div><span style={{ color: 'var(--text-secondary)' }}>{t('demoCuration.titleLabel')}:</span> {selected.featuredTitle}</div>
+                    <div><span style={{ color: 'var(--text-secondary)' }}>{t('demoCuration.categoryLabel')}:</span> {selected.featuredCategory && t(`demoCuration.categories.${selected.featuredCategory}`)}</div>
+                    <div className="mt-1 text-[11px]">{t('demoCuration.viewCount').replace('{n}', String(selected.featuredViewCount ?? 0))}</div>
+                  </div>
+                )}
+
+                {!demoEditing && !selected.isFeaturedDemo && (
+                  <div style={{ color: 'var(--text-tertiary)' }}>{t('demoCuration.notFeaturedHelp')}</div>
+                )}
+
+                {demoEditing && (
+                  <div className="space-y-2 mt-2">
+                    <div>
+                      <label className="block text-[11px] mb-1" style={{ color: 'var(--text-tertiary)' }}>{t('demoCuration.titleLabel')}</label>
+                      <input
+                        type="text"
+                        value={demoTitle}
+                        onChange={(e) => setDemoTitle(e.target.value)}
+                        placeholder={t('demoCuration.titlePlaceholder')}
+                        className="w-full rounded-md px-2 py-1 text-xs"
+                        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] mb-1" style={{ color: 'var(--text-tertiary)' }}>{t('demoCuration.categoryLabel')}</label>
+                        <select
+                          value={demoCategory}
+                          onChange={(e) => setDemoCategory(e.target.value as typeof DEMO_CATEGORIES[number] | '')}
+                          className="w-full rounded-md px-2 py-1 text-xs"
+                          style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                        >
+                          <option value="">{t('demoCuration.categoryPlaceholder')}</option>
+                          {DEMO_CATEGORIES.map(c => (
+                            <option key={c} value={c}>{t(`demoCuration.categories.${c}`)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] mb-1" style={{ color: 'var(--text-tertiary)' }}>{t('demoCuration.sortOrderLabel')}</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="99999"
+                          value={demoSortOrder}
+                          onChange={(e) => setDemoSortOrder(Number(e.target.value) || 100)}
+                          className="w-full rounded-md px-2 py-1 text-xs"
+                          style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] mb-1" style={{ color: 'var(--text-tertiary)' }}>{t('demoCuration.summaryOverrideLabel')}</label>
+                      <textarea
+                        value={demoSummary}
+                        onChange={(e) => setDemoSummary(e.target.value)}
+                        rows={3}
+                        placeholder={t('demoCuration.summaryOverridePlaceholder')}
+                        className="w-full rounded-md px-2 py-1 text-xs resize-none"
+                        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                      />
+                      <div className="text-[11px] mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('demoCuration.summaryOverrideHelp')}</div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => saveFeatured(true)}
+                        disabled={demoSaving}
+                        className="px-3 py-1.5 rounded-md text-xs font-semibold"
+                        style={{ background: 'var(--brand-500)', color: '#fff', opacity: demoSaving ? 0.5 : 1 }}
+                      >
+                        {demoSaving ? t('demoCuration.saving') : selected.isFeaturedDemo ? t('demoCuration.saveChanges') : t('demoCuration.publishToGallery')}
+                      </button>
+                      {selected.isFeaturedDemo && (
+                        <button
+                          onClick={() => saveFeatured(false)}
+                          disabled={demoSaving}
+                          className="px-3 py-1.5 rounded-md text-xs"
+                          style={{ background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+                        >
+                          {t('demoCuration.removeFromGallery')}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setDemoEditing(false)}
+                        disabled={demoSaving}
+                        className="px-3 py-1.5 rounded-md text-xs"
+                        style={{ background: 'transparent', color: 'var(--text-tertiary)' }}
+                      >
+                        {t('demoCuration.cancel')}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
