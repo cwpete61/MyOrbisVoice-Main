@@ -10,16 +10,26 @@ async function getTransporter() {
     systemConfig.getConfigValue('smtp_from'),
   ])
 
-  if (!host || !user || !pass) return null
+  if (!host) return null
 
+  // Auth is optional. Self-hosted Postfix on the Docker host trusts our
+  // bridge network via `mynetworks` and accepts mail without SMTP auth.
+  // For hosted providers (Postmark / Resend / SES / etc.) the user fills
+  // in smtp_user + smtp_password and we send authenticated.
+  const portNum = port ? parseInt(port, 10) : 25
   return {
     transporter: nodemailer.createTransport({
       host,
-      port: port ? parseInt(port, 10) : 587,
-      secure: port === '465',
-      auth: { user, pass },
+      port: portNum,
+      secure: portNum === 465,
+      // Opportunistic STARTTLS on 25/587, required on 465 (handled by `secure`).
+      // Allow self-signed certs since our local Postfix uses snakeoil out of
+      // the box; we trust the network, not the cert.
+      ignoreTLS: portNum === 25 && (!user || !pass),
+      tls: { rejectUnauthorized: false },
+      auth: (user && pass) ? { user, pass } : undefined,
     }),
-    from: from ?? user,
+    from: from ?? user ?? 'no-reply@localhost',
   }
 }
 
@@ -28,6 +38,13 @@ export interface EmailOptions {
   subject: string
   html: string
   text?: string
+  /** Override the From header. Partner emails pass "Alex Rivera <alex.rivera@myorbisresults.com>".
+   *  When unset, falls back to the SystemConfig.smtp_from value. */
+  from?: string
+  /** Optional Reply-To header. Useful when the From is a no-reply or an automation alias. */
+  replyTo?: string
+  /** Optional In-Reply-To header for threading (RFC 5322 message id). */
+  inReplyTo?: string
 }
 
 export async function sendEmail(opts: EmailOptions): Promise<void> {
@@ -37,11 +54,13 @@ export async function sendEmail(opts: EmailOptions): Promise<void> {
     return
   }
   await config.transporter.sendMail({
-    from: config.from,
-    to: opts.to,
-    subject: opts.subject,
-    html: opts.html,
-    text: opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
+    from:      opts.from ?? config.from,
+    to:        opts.to,
+    subject:   opts.subject,
+    html:      opts.html,
+    text:      opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
+    replyTo:   opts.replyTo,
+    inReplyTo: opts.inReplyTo,
   })
 }
 

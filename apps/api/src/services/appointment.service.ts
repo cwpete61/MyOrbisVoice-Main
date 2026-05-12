@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js'
 import { writeAuditLog } from '../lib/audit.js'
 import { AppError } from '@voiceautomation/shared'
 import { getAuthenticatedGoogleClient, sendGmailEmail } from './google.service.js'
+import { sendEmail } from './email.service.js'
 import type { Prisma } from '@prisma/client'
 
 const DEFAULT_SLOT_INCREMENT_MINUTES = 30
@@ -252,47 +253,65 @@ export async function createAppointment(tenantId: string, userId: string | null,
   notes?: string
   attendeeEmail?: string
 }) {
-  const client = await getAuthenticatedGoogleClient(tenantId)
-  const calendar = google.calendar({ version: 'v3', auth: client })
+  // Try the full Google-Calendar-integrated path. Tenants without a connected
+  // Google account (notably the MyOrbisResults Demo tenant Orby books against)
+  // get a PENDING DB-only appointment instead — emails still go out via the
+  // platform SMTP fallback. A human reschedules / confirms after review.
+  let providerEventId: string | undefined
+  let status: 'PENDING' | 'CONFIRMED' = 'CONFIRMED'
 
-  // Check for conflicts
-  const eventsResp = await calendar.events.list({
-    calendarId: 'primary',
-    timeMin: data.startAt,
-    timeMax: data.endAt,
-    singleEvents: true,
-  })
-  const conflicts = (eventsResp.data.items ?? []).filter(e => e.status !== 'cancelled')
-  if (conflicts.length > 0) {
-    throw new AppError('CONFLICT', 'The requested time slot is no longer available', 409)
+  try {
+    const client = await getAuthenticatedGoogleClient(tenantId)
+    const calendar = google.calendar({ version: 'v3', auth: client })
+
+    // Check for conflicts
+    const eventsResp = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: data.startAt,
+      timeMax: data.endAt,
+      singleEvents: true,
+    })
+    const conflicts = (eventsResp.data.items ?? []).filter(e => e.status !== 'cancelled')
+    if (conflicts.length > 0) {
+      throw new AppError('CONFLICT', 'The requested time slot is no longer available', 409)
+    }
+
+    // Create Google Calendar event
+    const event = await calendar.events.insert({
+      calendarId: 'primary',
+      requestBody: {
+        summary: data.appointmentType ?? 'Appointment',
+        location: data.location,
+        description: data.notes,
+        start: { dateTime: data.startAt, timeZone: data.timezone },
+        end: { dateTime: data.endAt, timeZone: data.timezone },
+        attendees: data.attendeeEmail ? [{ email: data.attendeeEmail }] : [],
+        reminders: { useDefault: true },
+      },
+      sendUpdates: 'all',
+    })
+    providerEventId = event.data.id ?? undefined
+  } catch (err) {
+    const e = err as AppError | Error
+    // Re-throw CONFLICT — that's a real "slot taken" signal Orby needs to hear.
+    if ((e as AppError).code === 'CONFLICT') throw e
+    // For "Google account not connected" / "credentials not found" / network
+    // errors talking to Google, degrade to a PENDING DB-only appointment.
+    console.warn('[appointment] Google unavailable, creating PENDING DB-only appointment:', e.message)
+    status = 'PENDING'
   }
-
-  // Create Google Calendar event
-  const event = await calendar.events.insert({
-    calendarId: 'primary',
-    requestBody: {
-      summary: data.appointmentType ?? 'Appointment',
-      location: data.location,
-      description: data.notes,
-      start: { dateTime: data.startAt, timeZone: data.timezone },
-      end: { dateTime: data.endAt, timeZone: data.timezone },
-      attendees: data.attendeeEmail ? [{ email: data.attendeeEmail }] : [],
-      reminders: { useDefault: true },
-    },
-    sendUpdates: 'all',
-  })
 
   const appointment = await prisma.appointment.create({
     data: {
       tenantId,
       contactId: data.contactId,
       conversationId: data.conversationId,
-      status: 'CONFIRMED',
+      status,
       appointmentType: data.appointmentType,
       startAt: new Date(data.startAt),
       endAt: new Date(data.endAt),
       timezone: data.timezone,
-      providerEventId: event.data.id ?? undefined,
+      providerEventId,
       location: data.location,
       notes: data.notes,
     },
@@ -305,7 +324,7 @@ export async function createAppointment(tenantId: string, userId: string | null,
     action: 'appointment.created',
     targetType: 'Appointment',
     targetId: appointment.id,
-    metadataJson: { googleEventId: event.data.id },
+    metadataJson: { googleEventId: providerEventId, status },
   })
 
   // Best-effort: send a branded confirmation email from the tenant's own
@@ -323,6 +342,22 @@ export async function createAppointment(tenantId: string, userId: string | null,
       notes:            data.notes,
     }).catch(err => console.warn('[appointment] confirmation email failed:', (err as Error).message))
   }
+
+  // Tenant-owner notification: fires regardless of whether the visitor gave
+  // an email. Sends to the tenant's registrationEmail so the owner sees every
+  // new booking. Critical for the demo tenant (where Crawford is the owner and
+  // needs to know when Orby books a demo on a partner page) and useful for any
+  // production tenant that wants a backstop besides the calendar invite.
+  sendTenantOwnerBookingNotification(tenantId, {
+    appointmentId:    appointment.id,
+    appointmentType:  data.appointmentType,
+    startAt:          data.startAt,
+    endAt:            data.endAt,
+    timezone:         data.timezone,
+    attendeeEmail:    data.attendeeEmail,
+    contactId:        data.contactId,
+    notes:            data.notes,
+  }).catch(err => console.warn('[appointment] owner notification failed:', (err as Error).message))
 
   // Best-effort: enroll the contact into any active "appointment-reminder"
   // campaign (trigger tag = `appointment-scheduled`). The scheduler fires
@@ -428,12 +463,110 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
     </div>
   `.trim()
 
-  await sendGmailEmail(tenantId, {
-    to:      opts.to,
-    subject: `${apptLabel} confirmed — ${dateStr}`,
-    body:    html,
-    isHtml:  true,
+  try {
+    await sendGmailEmail(tenantId, {
+      to:      opts.to,
+      subject: `${apptLabel} confirmed — ${dateStr}`,
+      body:    html,
+      isHtml:  true,
+    })
+  } catch (gmailErr) {
+    // Fall back to platform SMTP (self-hosted Postfix). Used by the demo
+    // tenant and any tenant without a Gmail integration. The booking
+    // confirmation still reaches the visitor; we lose only the per-tenant
+    // From-address branding (the platform SMTP From is set via SystemConfig).
+    await sendEmail({
+      to:      opts.to,
+      subject: `${apptLabel} confirmed — ${dateStr}`,
+      html,
+    })
+    await prisma.messageLog.create({
+      data: {
+        tenantId,
+        channel:        'EMAIL',
+        direction:      'OUTBOUND',
+        sender:         'platform-smtp',
+        recipient:      opts.to,
+        subject:        `${apptLabel} confirmed — ${dateStr}`,
+        bodyText:       html.replace(/<[^>]+>/g, ''),
+        deliveryStatus: 'sent',
+        sentAt:         new Date(),
+      },
+    }).catch(() => { /* non-fatal */ })
+  }
+}
+
+async function sendTenantOwnerBookingNotification(tenantId: string, opts: {
+  appointmentId:    string
+  appointmentType?: string
+  startAt:          string
+  endAt:            string
+  timezone:         string
+  attendeeEmail?:   string
+  contactId?:       string
+  notes?:           string
+}) {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { registrationEmail: true, displayName: true },
   })
+  if (!tenant?.registrationEmail) return
+
+  // Pull attendee name + phone off the Contact if we have one. Orby collects
+  // them during booking; the gateway tool routes them into the Contact record
+  // via findContact() before createAppointment() runs.
+  let attendeeName: string | null = null
+  let attendeePhone: string | null = null
+  if (opts.contactId) {
+    const c = await prisma.contact.findUnique({
+      where: { id: opts.contactId },
+      select: { fullName: true, firstName: true, lastName: true, phoneE164: true, email: true },
+    })
+    attendeeName = c?.fullName
+      ?? ([c?.firstName, c?.lastName].filter(Boolean).join(' ').trim() || null)
+    attendeePhone = c?.phoneE164 ?? null
+  }
+
+  const start   = new Date(opts.startAt)
+  const dateStr = start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: opts.timezone })
+  const timeStr = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone, timeZoneName: 'short' })
+  const apptLabel = opts.appointmentType || 'Appointment'
+
+  const html = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#222">
+      <h2 style="color:#1a9898;margin:0 0 8px">New booking on ${tenant.displayName ?? 'your account'}</h2>
+      <p style="color:#555;margin:0 0 20px">An appointment was just booked through the agent.</p>
+      <table style="width:100%;border-collapse:collapse;margin:0 0 20px">
+        <tr><td style="padding:8px 0;color:#888;width:120px;vertical-align:top">Type</td><td style="color:#222"><strong>${apptLabel}</strong></td></tr>
+        <tr><td style="padding:8px 0;color:#888;vertical-align:top">When</td><td style="color:#222"><strong>${dateStr}</strong><br>${timeStr}</td></tr>
+        ${attendeeName  ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Name</td><td style="color:#222">${attendeeName}</td></tr>` : ''}
+        ${opts.attendeeEmail ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Email</td><td style="color:#222">${opts.attendeeEmail}</td></tr>` : ''}
+        ${attendeePhone ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Phone</td><td style="color:#222">${attendeePhone}</td></tr>` : ''}
+        ${opts.notes    ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Notes</td><td style="color:#222">${opts.notes}</td></tr>` : ''}
+      </table>
+      <p style="color:#888;font-size:13px;margin:24px 0 0">Appointment ID: <code style="background:#f4f4f4;padding:2px 6px;border-radius:3px">${opts.appointmentId}</code></p>
+    </div>
+  `.trim()
+
+  await sendEmail({
+    to:      tenant.registrationEmail,
+    subject: `New booking: ${apptLabel} — ${dateStr}`,
+    html,
+  })
+
+  await prisma.messageLog.create({
+    data: {
+      tenantId,
+      channel:        'EMAIL',
+      direction:      'OUTBOUND',
+      sender:         'platform-smtp',
+      recipient:      tenant.registrationEmail,
+      subject:        `New booking: ${apptLabel} — ${dateStr}`,
+      bodyText:       html.replace(/<[^>]+>/g, ''),
+      deliveryStatus: 'sent',
+      sentAt:         new Date(),
+    },
+  }).catch(() => { /* non-fatal */ })
 }
 
 export async function rescheduleAppointment(tenantId: string, userId: string, appointmentId: string, data: {

@@ -28,7 +28,9 @@ import knowledgeBaseRouter from './knowledge-base.js'
 import { twilioInboundRouter } from './twilio-inbound.js'
 import { outboundWebhooksRouter } from './outbound-webhooks.js'
 import internalGatewayRouter from './internal-gateway.js'
+import internalMailRouter from './internal-mail.js'
 import partnerRouter from './partner.js'
+import partnerMailboxRouter from './partner-mailbox.js'
 import marketingAssetsRouter from './marketing-assets.js'
 import publicRouter from './public.js'
 import authGoogleRouter from './auth-google.js'
@@ -47,6 +49,9 @@ router.use('/api', validateTwilioWebhook, outboundWebhooksRouter)
 // Internal gateway tool endpoints — protected by shared-secret middleware,
 // not the standard auth/RBAC stack. Mounted before auth-gated routers.
 router.use('/api', internalGatewayRouter)
+// Internal mail ingestion — Postfix pipe -> POST raw RFC 5322 here.
+// Protected by MAIL_INGEST_TOKEN shared secret; raw body parser set in index.ts.
+router.use('/api', internalMailRouter)
 router.use('/api', marketingAssetsRouter) // public /public/marketing-asset/:filename — no auth
 router.use('/api', publicRouter)        // public /public/social-links — no auth
 router.use('/api', billingRouter)       // before auth-gated routers — contains public /billing/plans
@@ -57,6 +62,7 @@ router.use('/', affiliateRouter)        // contains public /api/public/track/cli
 // Partner dashboard routes (/api/partner/*) — gated by requirePartnerContext.
 // Mounted BEFORE tenantRouter because partners are not tenant members.
 router.use('/api', partnerRouter)
+router.use('/api', partnerMailboxRouter)
 router.use('/api', tenantRouter)
 router.use('/api', businessDNARouter)
 router.use('/api', promptsRouter)

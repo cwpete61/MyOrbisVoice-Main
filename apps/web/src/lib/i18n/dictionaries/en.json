@@ -49,6 +49,7 @@
   },
   "partnerNav": {
     "dashboard": "Dashboard",
+    "mailbox": "Mailbox",
     "referrals": "Referral Links",
     "commissions": "Commissions",
     "payouts": "Payouts",
@@ -57,6 +58,77 @@
     "marketVault": "Market Vault",
     "soonPill": "Soon",
     "profile": "Profile"
+  },
+  "partnerMailbox": {
+    "title":             "Mailbox",
+    "tabInbox":          "Inbox",
+    "tabSent":           "Sent",
+    "tabCompose":        "Compose",
+    "tabSearch":         "Search",
+    "composeCta":        "+ Compose",
+    "search": {
+      "placeholder":   "Search mail…",
+      "hint":          "Type at least 2 characters and press Enter to search.",
+      "resultsFor":    "Results for “{q}”",
+      "noResults":     "No messages match this search.",
+      "noResultsHelp": "Try a shorter or different keyword. Search covers subject, sender, and message body."
+    },
+    "loading":           "Loading…",
+    "loadMore":          "Load more",
+    "emptyInbox":        "No messages yet.",
+    "emptyInboxHelp":    "When someone emails your platform address, it shows up here.",
+    "emptySent":         "Nothing sent yet.",
+    "emptySentHelp":     "Click Compose to write your first message.",
+    "compose": {
+      "toLabel":            "To",
+      "toPlaceholder":      "prospect@example.com",
+      "subjectLabel":       "Subject",
+      "subjectPlaceholder": "What's this about?",
+      "bodyLabel":          "Message",
+      "bodyHelp":           "Use the toolbar to format your message. Your signature is appended automatically.",
+      "bodyPlaceholder":    "Hi there —",
+      "editor": {
+        "bold":            "Bold",
+        "italic":          "Italic",
+        "bulletList":      "Bullet list",
+        "orderedList":     "Numbered list",
+        "link":            "Insert link",
+        "linkLabel":       "Link",
+        "linkPrompt":      "Enter the URL:",
+        "clearFormatting": "Clear formatting",
+        "clearLabel":      "Clear"
+      },
+      "send":               "Send",
+      "sending":            "Sending…",
+      "cancel":             "Cancel",
+      "fillAllRequired":    "Fill in To, Subject, and Message before sending.",
+      "sendFailed":         "Send failed. Try again.",
+      "signatureNote":      "Sent from your partner address. Your saved signature is appended automatically.",
+      "templateLabel":      "Use a template",
+      "templateHelp":       "Pick a starting point. Your name + business get filled in automatically. Edit anything before sending.",
+      "templateNone":       "— Start from scratch —",
+      "templateCategory": {
+        "followup":     "Follow-ups",
+        "thankyou":     "Thank you / confirmations",
+        "callback":     "Callbacks",
+        "reengagement": "Re-engagement",
+        "intro":        "Cold intro",
+        "custom":       "My templates"
+      }
+    },
+    "detail": {
+      "from":             "From",
+      "to":               "To",
+      "deliveryStatus":   "Status",
+      "reply":            "Reply",
+      "backToInbox":      "Back to Inbox",
+      "backToSent":       "Back to Sent",
+      "thread": {
+        "messageCount":   "{n} messages in this conversation — click any to expand",
+        "received":       "Received",
+        "sent":           "Sent"
+      }
+    }
   },
   "partnerLandingPage": {
     "title": "Landing Page Builder",
@@ -145,6 +217,19 @@
     "error": "Error",
     "success": "Success",
     "warning": "Warning"
+  },
+  "timezone": {
+    "sectionTitle":  "Time zone",
+    "sectionDesc":   "Choose how dates and times are displayed across the dashboard. Saved to your account.",
+    "fieldLabel":    "Display time zone",
+    "autoDetect":    "Auto — use my browser ({tz})",
+    "commonGroup":   "Often used",
+    "allGroup":      "All zones",
+    "usingExplicit": "Times will display in {tz}.",
+    "usingAuto":     "Times will display in your browser's zone ({tz}).",
+    "saving":        "Saving…",
+    "saved":         "Time zone updated.",
+    "saveFailed":    "Couldn't save time zone. Try again."
   },
   "profile": {
     "title": "Profile",
@@ -639,6 +724,63 @@
     "aggressionTier": {
       "heading":     "Marketing voice",
       "description": "Pick how intense the pitch material we generate for you should sound. Drives the AI-generated outreach templates in your Marketing Kit + future custom landing pages."
+    },
+    "firstNameRow":         "First name",
+    "lastNameRow":          "Last name",
+    "registrationEmailRow": "Registration email",
+    "usernameRow":          "Username",
+    "slugRow":              "Slug",
+    "marketingHeading":     "MARKETING PROFILE",
+    "marketingSubtitle":    "How you appear on your partner pages and in the emails you send. Visible to your prospects.",
+    "saveMarketing":        "Save profile",
+    "savingMarketing":      "Saving…",
+    "avatar": {
+      "label":                "Avatar",
+      "help":                 "Shown on your partner pages and inside your Mailbox header. 2 MB max, PNG / JPEG / WebP / GIF.",
+      "upload":               "Upload photo",
+      "replace":              "Replace photo",
+      "uploading":            "Uploading…",
+      "errorUnsupportedType": "Unsupported file type. Use PNG, JPEG, WebP, or GIF.",
+      "errorTooLarge":        "File too large. Max 2 MB.",
+      "errorUploadFailed":    "Upload failed. Try again."
+    },
+    "displayName": {
+      "label": "Display name",
+      "help":  "The name shown to your prospects and in the From: header of emails you send. Defaults to your first + last name if left blank."
+    },
+    "businessName": {
+      "label":       "Business name",
+      "help":        "Your business or brand. Shown alongside your name on partner pages.",
+      "placeholder": "Rivera Local Marketing"
+    },
+    "partnerPhone": {
+      "label": "Phone (public)",
+      "help":  "The number prospects can call or text you on. Shown in the partner ribbon on your pages."
+    },
+    "bio": {
+      "label":       "Short bio",
+      "help":        "One or two sentences describing what you do. Shown on your partner pages as social proof.",
+      "placeholder": "Local marketing partner. Helps service businesses in the Lehigh Valley get more calls + bookings."
+    },
+    "emailHeading":      "EMAIL SETUP",
+    "partnerEmail": {
+      "label": "Your platform email",
+      "help":  "Auto-generated from your slug. Anyone can email this address; everything routes to your Mailbox. Send from this address using the Compose tab."
+    },
+    "emailSignature": {
+      "label":       "Email signature",
+      "help":        "HTML allowed. Appended to every email you send from your Mailbox. Keep it short and professional.",
+      "placeholder": "<p>— Alex<br>Rivera Local Marketing<br>📞 555-123-4567</p>"
+    },
+    "forwardEmails": {
+      "label": "Forward platform emails to my registration email",
+      "help":  "When ON, a copy of every inbound message also lands at {email}. Useful if you check Gmail on your phone."
+    },
+    "calendarHeading": "CALENDAR",
+    "calendarId": {
+      "label":       "Google Calendar ID",
+      "help":        "Where Orby books demos for you. Usually your work email. Find this in Google Calendar → Settings → Integrate calendar.",
+      "placeholder": "you@yourbusiness.com"
     }
   },
   "partnerLogin": {

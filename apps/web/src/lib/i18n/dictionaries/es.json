@@ -49,6 +49,7 @@
   },
   "partnerNav": {
     "dashboard": "Panel",
+    "mailbox": "Buzón",
     "referrals": "Enlaces de referido",
     "commissions": "Comisiones",
     "payouts": "Pagos",
@@ -57,6 +58,77 @@
     "marketVault": "Bóveda de ventas",
     "soonPill": "Pronto",
     "profile": "Perfil"
+  },
+  "partnerMailbox": {
+    "title":             "Buzón",
+    "tabInbox":          "Recibidos",
+    "tabSent":           "Enviados",
+    "tabCompose":        "Redactar",
+    "tabSearch":         "Búsqueda",
+    "composeCta":        "+ Redactar",
+    "search": {
+      "placeholder":   "Buscar mensajes…",
+      "hint":          "Escribe al menos 2 caracteres y pulsa Enter para buscar.",
+      "resultsFor":    "Resultados para “{q}”",
+      "noResults":     "Ningún mensaje coincide con esta búsqueda.",
+      "noResultsHelp": "Prueba con una palabra más corta o diferente. La búsqueda cubre asunto, remitente y cuerpo del mensaje."
+    },
+    "loading":           "Cargando…",
+    "loadMore":          "Cargar más",
+    "emptyInbox":        "Aún no hay mensajes.",
+    "emptyInboxHelp":    "Cuando alguien escriba a tu dirección de la plataforma, aparecerá aquí.",
+    "emptySent":         "Aún no has enviado nada.",
+    "emptySentHelp":     "Toca Redactar para escribir tu primer mensaje.",
+    "compose": {
+      "toLabel":            "Para",
+      "toPlaceholder":      "prospecto@ejemplo.com",
+      "subjectLabel":       "Asunto",
+      "subjectPlaceholder": "¿De qué se trata?",
+      "bodyLabel":          "Mensaje",
+      "bodyHelp":           "Usa la barra de herramientas para dar formato a tu mensaje. Tu firma se adjunta automáticamente.",
+      "bodyPlaceholder":    "Hola —",
+      "editor": {
+        "bold":            "Negrita",
+        "italic":          "Cursiva",
+        "bulletList":      "Lista con viñetas",
+        "orderedList":     "Lista numerada",
+        "link":            "Insertar enlace",
+        "linkLabel":       "Enlace",
+        "linkPrompt":      "Ingresa la URL:",
+        "clearFormatting": "Quitar formato",
+        "clearLabel":      "Limpiar"
+      },
+      "send":               "Enviar",
+      "sending":            "Enviando…",
+      "cancel":             "Cancelar",
+      "fillAllRequired":    "Completa Para, Asunto y Mensaje antes de enviar.",
+      "sendFailed":         "Falló el envío. Inténtalo de nuevo.",
+      "signatureNote":      "Enviado desde tu dirección de partner. Tu firma guardada se adjunta automáticamente.",
+      "templateLabel":      "Usar una plantilla",
+      "templateHelp":       "Elige un punto de partida. Tu nombre y negocio se completan automáticamente. Edita lo que quieras antes de enviar.",
+      "templateNone":       "— Empezar desde cero —",
+      "templateCategory": {
+        "followup":     "Seguimientos",
+        "thankyou":     "Agradecimientos / confirmaciones",
+        "callback":     "Devolver llamada",
+        "reengagement": "Reactivación",
+        "intro":        "Contacto en frío",
+        "custom":       "Mis plantillas"
+      }
+    },
+    "detail": {
+      "from":             "De",
+      "to":               "Para",
+      "deliveryStatus":   "Estado",
+      "reply":            "Responder",
+      "backToInbox":      "Volver a Recibidos",
+      "backToSent":       "Volver a Enviados",
+      "thread": {
+        "messageCount":   "{n} mensajes en esta conversación — haz clic en cualquiera para expandir",
+        "received":       "Recibido",
+        "sent":           "Enviado"
+      }
+    }
   },
   "partnerLandingPage": {
     "title": "Generador de página de aterrizaje",
@@ -145,6 +217,19 @@
     "error": "Error",
     "success": "Éxito",
     "warning": "Advertencia"
+  },
+  "timezone": {
+    "sectionTitle":  "Zona horaria",
+    "sectionDesc":   "Elige cómo se muestran las fechas y horas en el panel. Se guarda en tu cuenta.",
+    "fieldLabel":    "Zona horaria para mostrar",
+    "autoDetect":    "Automático — usar mi navegador ({tz})",
+    "commonGroup":   "Más usadas",
+    "allGroup":      "Todas las zonas",
+    "usingExplicit": "Los horarios se mostrarán en {tz}.",
+    "usingAuto":     "Los horarios se mostrarán en la zona de tu navegador ({tz}).",
+    "saving":        "Guardando…",
+    "saved":         "Zona horaria actualizada.",
+    "saveFailed":    "No se pudo guardar la zona horaria. Inténtalo de nuevo."
   },
   "profile": {
     "title": "Perfil",
@@ -639,6 +724,63 @@
     "aggressionTier": {
       "heading":     "Voz de marketing",
       "description": "Elige qué tan intenso debe sonar el contenido de pitch que generamos para ti. Impulsa las plantillas de outreach generadas por IA en tu Marketing Kit + futuras landing pages personalizadas."
+    },
+    "firstNameRow":         "Nombre",
+    "lastNameRow":          "Apellido",
+    "registrationEmailRow": "Correo de registro",
+    "usernameRow":          "Usuario",
+    "slugRow":              "Slug",
+    "marketingHeading":     "PERFIL DE MARKETING",
+    "marketingSubtitle":    "Cómo apareces en tus páginas de partner y en los correos que envías. Visible para tus prospectos.",
+    "saveMarketing":        "Guardar perfil",
+    "savingMarketing":      "Guardando…",
+    "avatar": {
+      "label":                "Foto",
+      "help":                 "Aparece en tus páginas de partner y en la cabecera de tu Buzón. Máximo 2 MB, formatos PNG / JPEG / WebP / GIF.",
+      "upload":               "Subir foto",
+      "replace":              "Reemplazar foto",
+      "uploading":            "Subiendo…",
+      "errorUnsupportedType": "Tipo de archivo no compatible. Usa PNG, JPEG, WebP o GIF.",
+      "errorTooLarge":        "Archivo demasiado grande. Máximo 2 MB.",
+      "errorUploadFailed":    "Falló la subida. Inténtalo de nuevo."
+    },
+    "displayName": {
+      "label": "Nombre para mostrar",
+      "help":  "El nombre que ven tus prospectos y que aparece en el campo De: de los correos que envías. Por defecto usa tu nombre + apellido si lo dejas vacío."
+    },
+    "businessName": {
+      "label":       "Nombre del negocio",
+      "help":        "Tu negocio o marca. Aparece junto a tu nombre en las páginas de partner.",
+      "placeholder": "Rivera Local Marketing"
+    },
+    "partnerPhone": {
+      "label": "Teléfono (público)",
+      "help":  "El número al que los prospectos pueden llamarte o escribirte. Aparece en el ribbon de partner en tus páginas."
+    },
+    "bio": {
+      "label":       "Bio corta",
+      "help":        "Una o dos frases describiendo lo que haces. Aparece en tus páginas de partner como prueba social.",
+      "placeholder": "Partner de marketing local. Ayudo a negocios de servicios en el Valle Lehigh a recibir más llamadas + reservas."
+    },
+    "emailHeading":      "CONFIGURACIÓN DE CORREO",
+    "partnerEmail": {
+      "label": "Tu correo de la plataforma",
+      "help":  "Generado automáticamente desde tu slug. Cualquiera puede enviarte aquí; todo llega a tu Buzón. Envía desde esta dirección usando la pestaña Redactar."
+    },
+    "emailSignature": {
+      "label":       "Firma de correo",
+      "help":        "Se permite HTML. Se adjunta a cada correo que envías desde tu Buzón. Mantenla corta y profesional.",
+      "placeholder": "<p>— Alex<br>Rivera Local Marketing<br>📞 555-123-4567</p>"
+    },
+    "forwardEmails": {
+      "label": "Reenviar correos de la plataforma a mi correo de registro",
+      "help":  "Cuando está activo, una copia de cada mensaje entrante también llega a {email}. Útil si revisas Gmail en tu teléfono."
+    },
+    "calendarHeading": "CALENDARIO",
+    "calendarId": {
+      "label":       "ID de Google Calendar",
+      "help":        "Dónde Orby agenda demos para ti. Generalmente tu correo de trabajo. Búscalo en Google Calendar → Configuración → Integrar calendario.",
+      "placeholder": "tu@tunegocio.com"
     }
   },
   "partnerLogin": {
