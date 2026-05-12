@@ -1,0 +1,99 @@
+/* ───────────────────────────────────────────────────────────────────
+   Shared styles for partner landing pages
+   Used by /p/sample/voice-1/, /voice-2/, /voice-3/ and any future
+   partner-published pages. Imported alongside /assets/css/style.css.
+   ─────────────────────────────────────────────────────────────────── */
+
+/* Partner ribbon (top of page) */
+.partner-ribbon { background: var(--teal-6); color: white; padding: 10px 0; font-size: 0.92rem; }
+.partner-ribbon .ribbon-inner { display: flex; align-items: center; gap: 14px; max-width: 1180px; margin: 0 auto; padding: 0 24px; flex-wrap: wrap; }
+.partner-ribbon .ribbon-avatar { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.4); }
+.partner-ribbon .ribbon-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.partner-ribbon .ribbon-text { flex: 1; min-width: 0; }
+.partner-ribbon .ribbon-text strong { color: white; }
+.partner-ribbon .ribbon-text .ribbon-role { color: rgba(255,255,255,0.7); font-size: 0.82rem; }
+.partner-ribbon .ribbon-actions { display: flex; gap: 6px; }
+.partner-ribbon .ribbon-btn { padding: 5px 12px; background: rgba(255,255,255,0.15); color: white; border-radius: var(--radius); font-size: 0.82rem; font-weight: 600; text-decoration: none; transition: var(--transition); }
+.partner-ribbon .ribbon-btn:hover { background: rgba(255,255,255,0.28); }
+
+/* Nav brandline (the "via [Partner]" hint) */
+.nav-brandline { display: inline-block; font-size: 0.72rem; color: var(--text-muted); margin-left: 8px; font-weight: 500; }
+@media (max-width: 720px) { .nav-brandline { display: none; } }
+
+/* Hero typography */
+.hero-headline { font-size: clamp(2rem, 4.8vw, 3.8rem); line-height: 1.06; }
+.hero-headline .line { display: block; }
+.hero-sub { font-size: 1.1rem; line-height: 1.65; max-width: 60ch; color: var(--text); margin: 24px 0 32px; }
+.hero-sub strong { color: var(--teal-6); font-weight: 700; }
+.hero-trust { margin-top: 28px; font-size: 0.86rem; color: var(--text-muted); }
+
+/* Suite grid (the 4-panel product overview) */
+.suite-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 1100px; margin: 0 auto; }
+@media (max-width: 920px) { .suite-grid { grid-template-columns: 1fr; } }
+.suite-panel { padding: 28px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); transition: var(--transition); }
+.suite-panel:hover { border-color: var(--teal-3); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.suite-panel h3 { color: var(--teal-6); font-size: 1.1rem; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.suite-panel ul { list-style: none; padding: 0; margin: 0; }
+.suite-panel li { padding: 8px 0 8px 22px; position: relative; color: var(--text); font-size: 0.92rem; line-height: 1.5; border-bottom: 1px solid var(--border); }
+.suite-panel li:last-child { border-bottom: none; }
+.suite-panel li::before { content: "→"; position: absolute; left: 0; color: var(--teal-3); font-weight: 700; }
+.suite-closer { max-width: 800px; margin: 40px auto 0; padding: 24px; background: var(--bg-tinted); border-radius: var(--radius-lg); text-align: center; color: var(--text); line-height: 1.65; }
+.suite-closer strong { color: var(--teal-6); }
+
+/* Case studies grid */
+.cases-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1200px; margin: 0 auto; }
+@media (max-width: 980px) { .cases-grid { grid-template-columns: 1fr; max-width: 560px; } }
+.case-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.case-photo { aspect-ratio: 4/3; overflow: hidden; }
+.case-photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.6s ease; }
+.case-card:hover .case-photo img { transform: scale(1.04); }
+.case-content { padding: 22px; }
+.case-meta { display: flex; gap: 8px; font-size: 0.76rem; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
+.case-meta span:not(:last-child)::after { content: "·"; margin-left: 8px; color: var(--border-strong); }
+.case-card h4 { font-size: 1.1rem; color: var(--teal-6); margin-bottom: 14px; }
+.case-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; padding: 12px; background: var(--bg-tinted); border-radius: var(--radius); }
+.case-col-label { font-size: 0.7rem; font-weight: 700; color: var(--teal-5); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.case-col ul { list-style: none; padding: 0; font-size: 0.8rem; color: var(--text); line-height: 1.55; }
+.case-quote { font-size: 0.88rem; color: var(--text-muted); font-style: italic; line-height: 1.5; margin: 12px 0 6px; }
+.case-attrib { font-size: 0.78rem; color: var(--text-subtle); font-weight: 600; }
+.case-disclaimer { max-width: 720px; margin: 28px auto 0; text-align: center; font-size: 0.78rem; color: var(--text-subtle); line-height: 1.55; font-style: italic; }
+
+/* Demo 1-2-3 steps cards */
+.demo-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 1000px; margin: 0 auto 28px; }
+@media (max-width: 920px) { .demo-steps { grid-template-columns: 1fr; } }
+.demo-step { padding: 26px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); position: relative; }
+.demo-step .step-num { position: absolute; top: -16px; left: 22px; width: 34px; height: 34px; background: var(--teal-3); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; box-shadow: var(--shadow-sm); }
+.demo-step h4 { color: var(--teal-6); font-size: 1.05rem; margin: 6px 0 10px; }
+.demo-step p { color: var(--text); line-height: 1.6; margin: 0; font-size: 0.92rem; }
+.demo-closer { max-width: 800px; margin: 28px auto 0; padding: 22px; background: var(--bg-tinted); border-radius: var(--radius-lg); color: var(--text); line-height: 1.65; }
+.demo-closer strong { color: var(--teal-6); }
+
+/* DIY/DFY paths */
+.paths-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; max-width: 1000px; margin: 0 auto 28px; }
+@media (max-width: 920px) { .paths-grid { grid-template-columns: 1fr; } }
+.path-card-large { padding: 30px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); }
+.path-card-large .path-label { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 700; color: var(--teal-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+.path-card-large h4 { color: var(--teal-6); font-size: 1.25rem; margin-bottom: 12px; }
+.path-card-large p { color: var(--text); line-height: 1.6; margin: 0; font-size: 0.94rem; }
+.path-card-large strong { color: var(--teal-6); }
+.paths-closer { max-width: 800px; margin: 28px auto 0; text-align: center; color: var(--text); line-height: 1.65; }
+.paths-closer strong { color: var(--teal-6); }
+
+/* Upgrade cross-sell card */
+.upgrade-card { max-width: 1000px; margin: 0 auto; padding: 40px; background: linear-gradient(135deg, oklch(96% 0.05 193) 0%, oklch(92% 0.10 193) 100%); border-radius: var(--radius-xl); border: 1px solid oklch(80% 0.12 193); }
+.upgrade-card h2 { color: var(--teal-6); margin-bottom: 14px; }
+.upgrade-card p { color: var(--text); line-height: 1.65; margin-bottom: 14px; }
+.upgrade-card p:last-of-type { margin-bottom: 24px; }
+.upgrade-card strong { color: var(--teal-6); font-weight: 700; }
+
+/* Partner card at bottom (in the dark CTA section) */
+.partner-card { max-width: 480px; margin: 40px auto 0; padding: 28px; background: rgba(255,255,255,0.08); border-radius: var(--radius-xl); display: flex; gap: 18px; align-items: center; text-align: left; }
+.partner-card .pc-avatar { width: 72px; height: 72px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 3px solid rgba(255,255,255,0.3); }
+.partner-card .pc-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.partner-card .pc-info strong { display: block; color: white; font-size: 1.05rem; margin-bottom: 4px; }
+.partner-card .pc-info p { color: rgba(255,255,255,0.7); font-size: 0.88rem; margin: 0; line-height: 1.5; }
+.partner-card .pc-info a { color: white; text-decoration: underline; }
+
+/* Scroll-reveal animation */
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+.reveal.in { opacity: 1; transform: translateY(0); }

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How much is your phone costing you this month?</title>
+  <meta name="description" content="A 60-second calculator that shows you exactly how much your business is losing to missed calls. Brought to you by Alex Rivera, your MyOrbisVoice advisor." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../../assets/css/style.css" />
+  <link rel="stylesheet" href="../partner-styles.css" />
+  <style>
+    /* Calculator widget */
+    .calc-hero { padding: 64px 0 80px; background: linear-gradient(180deg, var(--bg-tinted) 0%, var(--bg) 100%); }
+    .calc-card { max-width: 720px; margin: 32px auto 0; padding: 36px; background: var(--bg-card); border: 2px solid var(--teal-3); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); }
+    .calc-card h3 { color: var(--teal-6); margin-bottom: 20px; font-size: 1.1rem; }
+    .calc-field { margin-bottom: 18px; }
+    .calc-field label { display: block; color: var(--text); font-size: 0.92rem; font-weight: 600; margin-bottom: 6px; }
+    .calc-field select, .calc-field input { width: 100%; padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); font-size: 1rem; font-family: inherit; color: var(--text); background: var(--bg); }
+    .calc-field select:focus, .calc-field input:focus { outline: none; border-color: var(--teal-3); box-shadow: 0 0 0 3px oklch(80% 0.10 193 / 0.4); }
+    .calc-btn { width: 100%; padding: 14px; background: var(--teal-3); color: white; border: none; border-radius: var(--radius); font-size: 1.02rem; font-weight: 700; cursor: pointer; transition: var(--transition); }
+    .calc-btn:hover { background: var(--teal-5); }
+    .calc-output { margin-top: 24px; padding: 24px; background: linear-gradient(135deg, oklch(96% 0.05 25) 0%, oklch(94% 0.07 25) 100%); border: 1px solid oklch(85% 0.10 25); border-radius: var(--radius-lg); display: none; }
+    .calc-output.show { display: block; animation: fadeIn 0.6s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .calc-output .calc-row { display: grid; grid-template-columns: 1fr auto; gap: 16px; padding: 10px 0; border-bottom: 1px solid oklch(85% 0.08 25); align-items: baseline; }
+    .calc-output .calc-row:last-of-type { border-bottom: none; }
+    .calc-output .calc-row.headline { padding-top: 18px; margin-top: 12px; border-top: 2px solid oklch(70% 0.18 25); border-bottom: none; }
+    .calc-output .calc-row.headline .calc-label { font-weight: 700; color: oklch(35% 0.18 25); }
+    .calc-output .calc-row.headline .calc-value { font-size: 1.6rem; font-weight: 800; color: oklch(40% 0.20 25); }
+    .calc-output .calc-label { color: var(--text); font-size: 0.94rem; }
+    .calc-output .calc-value { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: oklch(45% 0.20 25); }
+    .calc-disclaimer { margin-top: 16px; font-size: 0.78rem; color: var(--text-subtle); line-height: 1.5; font-style: italic; }
+
+    /* Reused styles from Angle 1 */
+    .leak-list-compact { display: grid; gap: 16px; max-width: 800px; margin: 0 auto; }
+    .leak-row-compact { padding: 22px 26px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+    .leak-row-compact h3 { color: var(--teal-6); font-size: 1.05rem; margin-bottom: 6px; }
+    .leak-row-compact p { color: var(--text-muted); margin: 0; font-size: 0.92rem; line-height: 1.5; }
+
+    .compare-table { max-width: 900px; margin: 0 auto; }
+    .compare-table table { width: 100%; border-collapse: collapse; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .compare-table th, .compare-table td { padding: 14px 18px; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.92rem; }
+    .compare-table thead { background: var(--bg-tinted); }
+    .compare-table thead th { color: var(--teal-6); font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .compare-table tbody td:nth-child(2) { color: oklch(45% 0.20 25); font-weight: 600; }
+    .compare-table tbody td:nth-child(3) { color: var(--teal-6); font-weight: 700; }
+    .compare-table tbody td:nth-child(4) { color: oklch(40% 0.18 145); font-weight: 700; }
+    .compare-closer { max-width: 800px; margin: 28px auto 0; padding: 24px; background: var(--bg-tinted); border-radius: var(--radius-lg); color: var(--text); line-height: 1.65; }
+    .compare-closer strong { color: var(--teal-6); }
+
+    /* Final CTA dark */
+    .demo-cta { background: var(--bg-darker); color: white; padding: 96px 0; text-align: center; }
+    .demo-cta h2 { color: white; font-size: clamp(1.85rem, 3.4vw, 2.7rem); margin-bottom: 18px; }
+    .demo-cta p.demo-lead { color: rgba(255,255,255,0.85); font-size: 1.1rem; max-width: 640px; margin: 0 auto 14px; line-height: 1.65; }
+    .demo-cta .btn-primary { background: white; color: var(--teal-6); }
+    .demo-cta .btn-primary:hover { background: var(--bg-tinted); }
+
+    .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.in { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- Partner ribbon -->
+<div class="partner-ribbon">
+  <div class="ribbon-inner">
+    <div class="ribbon-avatar"><img src="../../../assets/images/partners/sample-partner.jpg" alt="Alex Rivera" /></div>
+    <div class="ribbon-text">
+      <strong>Brought to you by Alex Rivera.</strong>
+      <span class="ribbon-role">Your dedicated MyOrbisVoice advisor.</span>
+    </div>
+    <div class="ribbon-actions">
+      <a href="tel:+15551234567" class="ribbon-btn">📞 Call</a>
+      <a href="sms:+15551234567" class="ribbon-btn">💬 Text</a>
+      <a href="mailto:alex@myorbisresults.com" class="ribbon-btn">✉ Email</a>
+    </div>
+  </div>
+</div>
+
+<!-- Nav -->
+<nav class="site-nav" aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="https://myorbisresults.com/voice/" class="nav-logo" aria-label="MyOrbisVoice home">
+      <span class="nav-logo-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="3.5" fill="currentColor"/>
+          <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-opacity="0.5" stroke-width="2"/>
+        </svg>
+      </span>
+      MyOrbisVoice
+      <span class="nav-brandline">via Alex Rivera</span>
+    </a>
+    <div class="nav-cta">
+      <a href="#demo" class="btn btn-primary btn-sm">Book your 15-min audit</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<!-- ─── HERO + CALCULATOR ─────────────────────────────────────────── -->
+<section class="calc-hero" aria-labelledby="hero-heading">
+  <div class="container">
+    <div style="max-width: 760px; margin: 0 auto; text-align: center;">
+      <span class="eyebrow">A 60-second calculator that will ruin your week</span>
+      <h1 id="hero-heading" class="hero-headline" style="margin-top: 24px;">
+        <span class="line">How much is your phone</span>
+        <span class="line">costing you this month?</span>
+      </h1>
+      <p class="hero-sub" style="margin: 24px auto 32px;">
+        Most service business owners assume they answer "most" of their calls. The data says otherwise. Three questions below. The number this calculator returns is the revenue your business should be closing but isn't.
+      </p>
+    </div>
+    <div class="calc-card">
+      <h3>Your missed-call cost calculator</h3>
+      <div class="calc-field">
+        <label for="biz-type">Your business type</label>
+        <select id="biz-type">
+          <option value="200">Dental — avg ticket $200</option>
+          <option value="450" selected>HVAC / Home services — avg ticket $450</option>
+          <option value="350">Legal — avg ticket $350</option>
+          <option value="120">Beauty / Salon — avg ticket $120</option>
+          <option value="80">Fitness — avg ticket $80</option>
+          <option value="300">Medical — avg ticket $300</option>
+          <option value="500">Coaching — avg ticket $500</option>
+          <option value="350">Real estate — avg ticket $350</option>
+        </select>
+      </div>
+      <div class="calc-field">
+        <label for="calls">Roughly how many incoming calls per week?</label>
+        <input type="number" id="calls" value="50" min="5" max="500" />
+      </div>
+      <div class="calc-field">
+        <label for="answer-rate">Honestly, what % of calls does your team actually answer?</label>
+        <select id="answer-rate">
+          <option value="0.40">~40% (most calls miss)</option>
+          <option value="0.55">~55% (more than half miss)</option>
+          <option value="0.65" selected>~65% (industry average)</option>
+          <option value="0.80">~80% (we're doing OK)</option>
+        </select>
+      </div>
+      <button class="calc-btn" onclick="calcLoss()">Calculate my monthly loss →</button>
+      <div class="calc-output" id="calc-output">
+        <div class="calc-row"><span class="calc-label">Calls you're missing per week:</span><span class="calc-value" id="weekly-missed">—</span></div>
+        <div class="calc-row"><span class="calc-label">Calls you're missing per month:</span><span class="calc-value" id="monthly-missed">—</span></div>
+        <div class="calc-row"><span class="calc-label">Estimated bookings lost per month:</span><span class="calc-value" id="monthly-lost-bookings">—</span></div>
+        <div class="calc-row headline"><span class="calc-label">Revenue leaking per month:</span><span class="calc-value" id="monthly-loss">—</span></div>
+        <div class="calc-row"><span class="calc-label">Revenue leaking per year:</span><span class="calc-value" id="yearly-loss">—</span></div>
+      </div>
+      <p class="calc-disclaimer">Numbers modeled from BIA-Kelsey industry data and MyOrbisVoice customer benchmarks. Your actual loss will vary. Alex pulls your real number on the 15-minute audit.</p>
+    </div>
+    <div style="text-align: center; margin-top: 36px;">
+      <a href="#demo" class="btn btn-primary">Book your 15-minute audit with Alex</a>
+      <a href="#fix" class="btn btn-ghost" style="margin-left: 12px;">How we close the leak ↓</a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── WHERE THE MONEY IS GOING ──────────────────────────────────── -->
+<section class="section-soft reveal" aria-labelledby="where-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The math, broken down</span>
+      <h2 id="where-heading" style="margin-top: 18px;">Here's where the money you just lost actually went.</h2>
+      <p>That number above isn't theoretical. It's the result of four very specific leaks, all happening at the same time, every day, in your business.</p>
+    </div>
+    <div class="leak-list-compact">
+      <div class="leak-row-compact">
+        <h3>1. Calls you don't pick up.</h3>
+        <p>62% of business calls don't get answered. Lunch breaks. Weekends. After 5 PM. Your team's on another line. The caller hangs up. They don't leave a voicemail. They Google the next business.</p>
+      </div>
+      <div class="leak-row-compact">
+        <h3>2. After-hours callers you'll never hear from again.</h3>
+        <p>85% of people who call after hours and hit voicemail never call back. They book the next business on the list. By the time you check voicemail at 9 AM, that revenue is gone.</p>
+      </div>
+      <div class="leak-row-compact">
+        <h3>3. The contacts you're not following up with.</h3>
+        <p>Your CRM has roughly four months of contacts you haven't reached out to. Each one was worth $200 to $500 at the time. Most are now buying from somebody else.</p>
+      </div>
+      <div class="leak-row-compact">
+        <h3>4. The customers you're not bringing back.</h3>
+        <p>A patient who skipped their six-month cleaning is worth thousands over the years they don't come back. A salon client who didn't rebook is worth $2,000+ over the year you don't see her.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── STOP PAYING FOR IT ────────────────────────────────────────── -->
+<section id="fix" class="reveal" aria-labelledby="fix-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The fix</span>
+      <h2 id="fix-heading" style="margin-top: 18px;">One platform plugs all four leaks. It's called MyOrbisVoice.</h2>
+      <p>The AI voice agent system that takes over your phone, texts, inbound email, and follow-up campaigns. 24/7. English or Spanish. Built on proprietary Orbis voice technology.</p>
+    </div>
+    <div class="suite-grid">
+      <div class="suite-panel">
+        <h3>📞 Inbound</h3>
+        <ul>
+          <li>AI voice receptionist 24/7 in your business's voice</li>
+          <li>Website voice widget on your homepage</li>
+          <li>SMS inbound answered by your agent</li>
+          <li>Email triage and routing</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3>📤 Outbound</h3>
+        <ul>
+          <li>AI voice campaigns on a schedule</li>
+          <li>SMS sequences tag-triggered, A2P 10DLC</li>
+          <li>Email campaigns written in your voice</li>
+          <li>Multi-channel coordinated outreach</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3>📅 Booking + CRM</h3>
+        <ul>
+          <li>Real-time Google Calendar booking</li>
+          <li>Auto-confirmations and reminders</li>
+          <li>CRM with birthdays, family, customer-since</li>
+          <li>Conversation history per customer</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3>📊 Recording + analytics</h3>
+        <ul>
+          <li>Every call recorded, transcribed, searchable</li>
+          <li>Operational KPIs in real time</li>
+          <li>Revenue attribution per channel</li>
+          <li>HIPAA-aware mode for medical</li>
+        </ul>
+      </div>
+    </div>
+    <div class="suite-closer">
+      All powered by <strong>Orbis Voice</strong>. Our proprietary voice agent platform, designed end-to-end for service businesses. Not a chatbot wrapper. Not an answering service script.
+    </div>
+  </div>
+</section>
+
+<!-- ─── THE COMPARISON ─────────────────────────────────────────────── -->
+<section class="section-soft reveal" aria-labelledby="compare-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Three columns. One choice.</span>
+      <h2 id="compare-heading" style="margin-top: 18px;">The math that makes the decision obvious.</h2>
+    </div>
+    <div class="compare-table">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Today</th>
+            <th>MyOrbisVoice</th>
+            <th>Net</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Revenue leaking from missed calls</td><td>$3,000–$7,000/mo</td><td>$0</td><td>+$3K–$7K recovered</td></tr>
+          <tr><td>Vendor stack (5 tools)</td><td>$290–$830/mo</td><td>One bill, less than stack</td><td>Savings on top</td></tr>
+          <tr><td>Calls answered</td><td>62%</td><td>100%</td><td>+38% capture</td></tr>
+          <tr><td>After-hours captured</td><td>0%</td><td>100%</td><td>+100%</td></tr>
+          <tr><td>Customer follow-up</td><td>Manual or none</td><td>Automated, AI-written</td><td>System</td></tr>
+          <tr><td>Owner phone-admin hours</td><td>10–20 hrs/mo</td><td>0</td><td>Your time back</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="compare-closer">
+      Whatever MyOrbisVoice costs, it sits inside that math. <strong>Net cost reduction before it earns you a single new dollar.</strong> Recovered revenue is the multiplier on top. We don't show pricing on this page because pricing depends on your business size, the channels you want active, and whether you go DIY or done-for-you. Alex walks you through the exact number on the 15-minute call.
+    </div>
+  </div>
+</section>
+
+<!-- ─── CASE STUDIES ──────────────────────────────────────────────── -->
+<section class="reveal" aria-labelledby="cases-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Proof</span>
+      <h2 id="cases-heading" style="margin-top: 18px;">Here's what those numbers look like for real businesses.</h2>
+    </div>
+    <div class="cases-grid">
+      <div class="case-card">
+        <div class="case-photo"><img src="../../../assets/images/case-studies/bright-smile-dental.jpg" alt="Dentist at modern reception" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Dental</span><span>Lehigh Valley, PA</span></div>
+          <h4>Bright Smile Dental</h4>
+          <div class="case-comparison">
+            <div class="case-col"><div class="case-col-label">Before</div><ul><li>Answered: 29 (62%)</li><li>Bookings: 22</li><li>Revenue: baseline</li></ul></div>
+            <div class="case-col"><div class="case-col-label">After 90d</div><ul><li>Answered: 47 (100%)</li><li>Bookings: 51</li><li>+$42K in quarter</li></ul></div>
+          </div>
+          <p class="case-quote">"$42K more in revenue last quarter."</p>
+          <div class="case-attrib">— Composite owner persona</div>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-photo"><img src="../../../assets/images/case-studies/valley-hvac.jpg" alt="HVAC technician next to service van" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Home services</span><span>Allentown, PA</span></div>
+          <h4>Valley HVAC</h4>
+          <div class="case-comparison">
+            <div class="case-col"><div class="case-col-label">Before</div><ul><li>After-hours: 41/mo</li><li>Captured: 0</li><li>Reviews/mo: 1</li></ul></div>
+            <div class="case-col"><div class="case-col-label">After 90d</div><ul><li>After-hours: 41/mo</li><li>Captured: 100%</li><li>Reviews/mo: 17</li></ul></div>
+          </div>
+          <p class="case-quote">"Added a second tech to keep up."</p>
+          <div class="case-attrib">— Composite owner persona</div>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-photo"><img src="../../../assets/images/case-studies/queen-umoja-studio.jpg" alt="Salon owner styling client" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Beauty</span><span>Lawrenceville, GA</span></div>
+          <h4>Queen Umoja Studio</h4>
+          <div class="case-comparison">
+            <div class="case-col"><div class="case-col-label">Before</div><ul><li>Bookings: 38</li><li>No-shows: 22%</li><li>Rebook: 31%</li></ul></div>
+            <div class="case-col"><div class="case-col-label">After 90d</div><ul><li>Bookings: 74</li><li>No-shows: 8%</li><li>Rebook: 64%</li></ul></div>
+          </div>
+          <p class="case-quote">"Books the next visit before the client leaves the chair."</p>
+          <div class="case-attrib">— Composite owner persona</div>
+        </div>
+      </div>
+    </div>
+    <p class="case-disclaimer">Composite figures based on modeled performance. Real customer case studies replace these as customers complete their first quarter.</p>
+  </div>
+</section>
+
+<!-- ─── THE 15-MINUTE AUDIT ──────────────────────────────────────── -->
+<section class="section-tinted reveal" aria-labelledby="audit-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The conversation</span>
+      <h2 id="audit-heading" style="margin-top: 18px;">Book 15 minutes. Get your real number. Decide later.</h2>
+    </div>
+    <div class="demo-steps">
+      <div class="demo-step">
+        <div class="step-num">1</div>
+        <h4>Your real number.</h4>
+        <p>Before the call, Alex pulls an estimated count of calls your business actually missed last week. You see your real loss, not the calculator's estimate.</p>
+      </div>
+      <div class="demo-step">
+        <div class="step-num">2</div>
+        <h4>The demo.</h4>
+        <p>Alex shows MyOrbisVoice running live. You see the voice agent answer a call, qualify, book, text the confirmation.</p>
+      </div>
+      <div class="demo-step">
+        <div class="step-num">3</div>
+        <h4>The implementation plan.</h4>
+        <p>Alex tells you exactly how MyOrbisVoice would be configured for your business. Which agents. Which channels. What 90 days look like.</p>
+      </div>
+    </div>
+    <div class="demo-closer">
+      <strong>No pricing pitch on the call.</strong> Pricing depends on what you need. If after the call you're not interested, <strong>you keep the audit and the plan.</strong> No follow-up. No pressure.
+    </div>
+  </div>
+</section>
+
+<!-- ─── DIY OR DFY ───────────────────────────────────────────────── -->
+<section class="reveal" aria-labelledby="paths-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Setup, your way</span>
+      <h2 id="paths-heading" style="margin-top: 18px;">DIY or done-for-you. Alex is on call either way.</h2>
+    </div>
+    <div class="paths-grid">
+      <div class="path-card-large">
+        <div class="path-label">→ DIY</div>
+        <h4>Self-serve dashboard.</h4>
+        <p>Walkthroughs. Templates. Most owners running their first campaign in a weekend. Alex is on call for questions.</p>
+      </div>
+      <div class="path-card-large">
+        <div class="path-label">→ DFY</div>
+        <h4>Alex handles the setup.</h4>
+        <p>You answer a few questions and walk through the configured platform a week later. Most DFY setups go live in <strong>14 days with zero work from you.</strong></p>
+      </div>
+    </div>
+    <p class="paths-closer">Either path, <strong>Alex stays your dedicated point of contact.</strong> Same person through onboarding, launch, and year two.</p>
+  </div>
+</section>
+
+<!-- ─── UPGRADE CROSS-SELL ────────────────────────────────────────── -->
+<section class="section-soft reveal" aria-labelledby="upgrade-heading">
+  <div class="container">
+    <div class="upgrade-card">
+      <span class="eyebrow">Want more calls coming in?</span>
+      <h2 id="upgrade-heading" style="margin-top: 18px;">Voice fixes your phone. The full system gets you found.</h2>
+      <p>MyOrbisVoice handles the calls you're already getting. That alone recovers $3K-$7K/month.</p>
+      <p>If you also want more calls in the first place, the full <strong>MyOrbisResults</strong> system adds <strong>MyOrbisLocal</strong>: we rebuild your website, optimize your Google Business Profile, and put you in the Map Pack top 3 within 90 days. <strong>Or 90 more days at our cost. Still not there at day 180, you walk away or get your money back.</strong></p>
+      <p>Ask Alex about the upgrade during the 15-minute call.</p>
+      <a href="https://myorbisresults.com#promise" class="btn btn-primary">See the full Map Pack guarantee →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FINAL CTA ─────────────────────────────────────────────────── -->
+<section class="demo-cta" id="demo" aria-labelledby="demo-heading">
+  <div class="container-narrow">
+    <h2 id="demo-heading">Stop losing revenue every minute you stay on this page.</h2>
+    <p class="demo-lead">The calculator at the top of this page showed you a number. That's not a gimmick. It's the actual rate at which industry-average service businesses lose revenue to missed calls.</p>
+    <p class="demo-lead">Book a 15-minute call. Get your real number. Decide what to do with it.</p>
+    <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 16px;">
+      <a href="mailto:alex@myorbisresults.com?subject=Book%20my%2015-minute%20audit" class="btn btn-primary">Book your 15-minute audit with Alex</a>
+    </div>
+    <div class="partner-card">
+      <div class="pc-avatar"><img src="../../../assets/images/partners/sample-partner.jpg" alt="Alex Rivera" /></div>
+      <div class="pc-info">
+        <strong>Alex Rivera</strong>
+        <p><a href="tel:+15551234567">+1 (555) 123-4567</a> · <a href="mailto:alex@myorbisresults.com">alex@myorbisresults.com</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-bottom">
+      <p>© 2026 MyOrbisVoice, a product of MyOrbisResults. Built on proprietary Orbis Voice technology. Brought to you by Alex Rivera.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  function calcLoss() {
+    const ticket = parseFloat(document.getElementById('biz-type').value);
+    const callsPerWeek = parseInt(document.getElementById('calls').value, 10);
+    const answerRate = parseFloat(document.getElementById('answer-rate').value);
+    const weeklyMissed = Math.round(callsPerWeek * (1 - answerRate));
+    const monthlyMissed = weeklyMissed * 4.33;
+    const lostBookings = Math.round(monthlyMissed * 0.30);
+    const monthlyLossLow  = Math.round(lostBookings * ticket * 0.8);
+    const monthlyLossHigh = Math.round(lostBookings * ticket * 1.2);
+    const yearlyLossLow  = monthlyLossLow * 12;
+    const yearlyLossHigh = monthlyLossHigh * 12;
+    const fmt = n => '$' + n.toLocaleString();
+    document.getElementById('weekly-missed').textContent = '~' + weeklyMissed;
+    document.getElementById('monthly-missed').textContent = '~' + Math.round(monthlyMissed);
+    document.getElementById('monthly-lost-bookings').textContent = '~' + lostBookings;
+    document.getElementById('monthly-loss').textContent = fmt(monthlyLossLow) + ' – ' + fmt(monthlyLossHigh);
+    document.getElementById('yearly-loss').textContent = fmt(yearlyLossLow) + ' – ' + fmt(yearlyLossHigh);
+    document.getElementById('calc-output').classList.add('show');
+  }
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); observer.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyOrbisVoice — Every call. Every channel. Every customer captured.</title>
+  <meta name="description" content="MyOrbisVoice is the conversational AI half of MyOrbisResults. It answers your phone, your website chat, your texts, your emails, books on your real Google Calendar, and runs the follow-up campaigns that bring customers back. Built on proprietary Orbis voice technology, tuned for service businesses. English and Latin American Spanish." />
+  <meta name="keywords" content="AI voice receptionist, AI voice agent for service business, conversational AI phone, automated appointment booking, voice agent CRM, bilingual AI receptionist" />
+  <meta name="author" content="MyOrbisResults" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://myorbisresults.com/voice/" />
+  <link rel="alternate" hreflang="en" href="https://myorbisresults.com/voice/" />
+  <link rel="alternate" hreflang="es" href="https://myorbisresults.com/es/voice/" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://myorbisresults.com/voice/" />
+  <meta property="og:title" content="MyOrbisVoice — Every call. Every channel. Every customer captured." />
+  <meta property="og:description" content="The conversational AI platform that answers your phone, books appointments, and brings customers back. Built on proprietary Orbis voice technology." />
+  <meta property="og:site_name" content="MyOrbisResults" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "MyOrbisVoice",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "description": "Conversational AI voice agent platform for service businesses. Answers inbound calls, runs the website voice widget, dispatches outbound campaigns across phone/SMS/email/WhatsApp, books real Google Calendar appointments. Built on proprietary Orbis voice technology.",
+    "publisher": {
+      "@type": "Organization",
+      "name": "MyOrbisResults",
+      "url": "https://myorbisresults.com"
+    }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    /* Voice page specific component styles */
+    .nav-brandline { display: inline-block; font-size: 0.72rem; color: var(--text-muted); margin-left: 8px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+    @media (max-width: 720px) { .nav-brandline { display: none; } }
+
+    /* Hero with side image */
+    .hero-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 56px; align-items: center; }
+    @media (max-width: 920px) { .hero-grid { grid-template-columns: 1fr; gap: 32px; } }
+    .hero-headline { font-size: clamp(2.2rem, 5vw, 4.2rem); line-height: 1.05; }
+    .hero-headline .line { display: block; }
+    .hero-sub { font-size: 1.15rem; line-height: 1.6; max-width: 56ch; color: var(--text); margin: 24px 0 32px; }
+    .hero-sub strong { color: var(--teal-6); font-weight: 700; }
+    .hero-trust { margin-top: 28px; font-size: 0.88rem; color: var(--text-muted); }
+    .hero-image { border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-lg); position: relative; aspect-ratio: 16/10.7; }
+    .hero-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .hero-image .hero-image-frame { position: absolute; inset: 0; border-radius: var(--radius-xl); pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6); }
+
+    /* Cinematic SVG: voice waves */
+    @keyframes voice-pulse { 0%,100% { transform: scale(0.9); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
+    .voice-wave { animation: voice-pulse 3s ease-in-out infinite; transform-origin: center; }
+    .voice-wave-2 { animation-delay: 0.5s; }
+    .voice-wave-3 { animation-delay: 1s; }
+
+    /* Three leaks */
+    .leaks-grid { display: grid; gap: 18px; max-width: 800px; margin: 0 auto; }
+    .leak-row { display: grid; grid-template-columns: 80px 1fr; gap: 24px; padding: 28px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+    .leak-num { font-family: 'JetBrains Mono', monospace; font-size: 2.4rem; font-weight: 800; color: oklch(60% 0.20 30); line-height: 1; }
+    .leak-body h3 { color: var(--teal-6); font-size: 1.2rem; margin-bottom: 10px; }
+    .leak-body p { color: var(--text-muted); margin: 0; font-size: 0.96rem; line-height: 1.55; }
+    .leak-closer { max-width: 800px; margin: 40px auto 0; text-align: center; font-size: 1.1rem; color: var(--text); line-height: 1.6; }
+    .leak-closer strong { color: var(--teal-6); }
+
+    /* Cost callout */
+    .cost-callout { max-width: 800px; margin: 0 auto; padding: 40px; background: linear-gradient(135deg, oklch(96% 0.05 25) 0%, oklch(94% 0.07 25) 100%); border: 1px solid oklch(85% 0.10 25); border-radius: var(--radius-xl); }
+    .cost-callout .cost-figure { font-size: clamp(2.4rem, 4vw, 3.4rem); font-weight: 800; color: oklch(40% 0.20 25); line-height: 1.05; margin-bottom: 14px; letter-spacing: -0.02em; }
+    .cost-callout p { color: var(--text); line-height: 1.7; margin-bottom: 14px; font-size: 1.02rem; }
+    .cost-callout p:last-child { margin-bottom: 0; }
+
+    /* Communications suite */
+    .suite-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; max-width: 1100px; margin: 0 auto; }
+    @media (max-width: 920px) { .suite-grid { grid-template-columns: 1fr; } }
+    .suite-panel { padding: 32px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); transition: var(--transition); }
+    .suite-panel:hover { border-color: var(--teal-3); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .suite-panel h3 { color: var(--teal-6); font-size: 1.2rem; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+    .suite-panel .suite-icon { width: 32px; height: 32px; background: var(--bg-tinted); border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--teal-3); }
+    .suite-panel ul { list-style: none; padding: 0; margin: 0; }
+    .suite-panel li { padding: 12px 0 12px 24px; position: relative; color: var(--text); font-size: 0.94rem; line-height: 1.5; border-bottom: 1px solid var(--border); }
+    .suite-panel li:last-child { border-bottom: none; }
+    .suite-panel li::before { content: "→"; position: absolute; left: 0; color: var(--teal-3); font-weight: 700; }
+    .suite-panel li strong { color: var(--teal-6); font-weight: 700; }
+    .suite-closer { max-width: 800px; margin: 48px auto 0; padding: 32px; background: var(--bg-tinted); border-radius: var(--radius-lg); text-align: center; color: var(--text); line-height: 1.7; }
+    .suite-closer strong { color: var(--teal-6); }
+
+    /* 7 voices + 7 roles */
+    .voices-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1100px; margin: 0 auto; }
+    @media (max-width: 920px) { .voices-roles { grid-template-columns: 1fr; } }
+    .vr-card { padding: 28px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); }
+    .vr-card h3 { color: var(--teal-6); margin-bottom: 14px; font-size: 1.15rem; }
+    .vr-card p { color: var(--text-muted); margin-bottom: 18px; font-size: 0.94rem; line-height: 1.5; }
+    .vr-list { list-style: none; padding: 0; margin: 0; }
+    .vr-list li { padding: 10px 0 10px 28px; position: relative; color: var(--text); font-size: 0.94rem; border-bottom: 1px solid var(--border); }
+    .vr-list li:last-child { border-bottom: none; }
+    .vr-list li::before { content: ""; position: absolute; left: 8px; top: 16px; width: 8px; height: 8px; border-radius: 50%; background: var(--teal-3); }
+    .vr-list .vr-role-name { font-weight: 700; color: var(--teal-6); }
+    .vr-list .vr-role-desc { color: var(--text-muted); }
+    .orchestrator-note { max-width: 800px; margin: 32px auto 0; padding: 24px; background: var(--bg-tinted); border-radius: var(--radius-lg); text-align: center; color: var(--text); font-size: 1.0rem; line-height: 1.6; }
+
+    /* Recording deep dive */
+    .recording-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; max-width: 1100px; margin: 0 auto; align-items: center; }
+    @media (max-width: 920px) { .recording-grid { grid-template-columns: 1fr; } }
+    .recording-mockup { padding: 24px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; line-height: 1.7; color: var(--text-muted); }
+    .recording-mockup .rec-search { background: var(--bg-tinted); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; color: var(--teal-6); font-weight: 600; margin-bottom: 12px; }
+    .recording-mockup .rec-row { display: grid; grid-template-columns: 70px 1fr 70px; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .recording-mockup .rec-row:last-child { border-bottom: none; }
+    .recording-mockup .rec-time { color: var(--teal-3); }
+    .recording-mockup .rec-outcome { color: oklch(55% 0.18 145); text-align: right; }
+    .recording-uses { list-style: none; padding: 0; margin: 0; }
+    .recording-uses li { padding: 14px 0 14px 30px; position: relative; color: var(--text); border-bottom: 1px solid var(--border); }
+    .recording-uses li:last-child { border-bottom: none; }
+    .recording-uses li strong { color: var(--teal-6); display: block; margin-bottom: 4px; }
+    .recording-uses li::before { content: "✓"; position: absolute; left: 0; color: var(--teal-3); font-weight: 700; font-size: 1.1rem; }
+
+    /* Tuesday timeline */
+    .tuesday-timeline { max-width: 800px; margin: 0 auto; position: relative; padding-left: 40px; }
+    .tuesday-timeline::before { content: ""; position: absolute; left: 12px; top: 12px; bottom: 12px; width: 2px; background: var(--border-strong); }
+    .tuesday-event { position: relative; padding: 20px 0 28px; }
+    .tuesday-event::before { content: ""; position: absolute; left: -32px; top: 22px; width: 12px; height: 12px; background: var(--teal-3); border: 3px solid var(--bg); border-radius: 50%; box-shadow: 0 0 0 2px var(--teal-3); }
+    .tuesday-time { font-family: 'JetBrains Mono', monospace; font-size: 0.84rem; font-weight: 700; color: var(--teal-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .tuesday-event p { color: var(--text); line-height: 1.65; margin: 0; }
+    .tuesday-event strong { color: var(--teal-6); font-weight: 700; }
+    .tuesday-money { display: inline-block; margin-top: 6px; padding: 4px 10px; background: oklch(96% 0.06 145); color: oklch(40% 0.18 145); border-radius: 6px; font-weight: 600; font-size: 0.9rem; }
+
+    /* Flywheel cross-sell to Local */
+    .flywheel-cta { max-width: 1000px; margin: 0 auto; padding: 48px; background: linear-gradient(135deg, oklch(96% 0.05 193) 0%, oklch(92% 0.10 193) 100%); border-radius: var(--radius-xl); border: 1px solid oklch(80% 0.12 193); }
+    .flywheel-cta h2 { color: var(--teal-6); margin-bottom: 16px; }
+    .flywheel-cta p { color: var(--text); line-height: 1.65; margin-bottom: 18px; }
+    .flywheel-cta .fw-loop { background: var(--bg-card); border-radius: var(--radius-lg); padding: 24px; margin: 24px 0; font-family: 'JetBrains Mono', monospace; font-size: 0.94rem; line-height: 1.9; color: var(--text-muted); }
+    .flywheel-cta .fw-loop .num { color: var(--teal-3); font-weight: 700; }
+
+    /* Verticals grid */
+    .verticals-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; max-width: 1100px; margin: 0 auto; }
+    @media (max-width: 980px) { .verticals-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .verticals-grid { grid-template-columns: 1fr; } }
+    .vertical-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; transition: var(--transition); display: block; }
+    .vertical-card:hover { border-color: var(--teal-3); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .vertical-card h4 { color: var(--teal-6); font-size: 1.05rem; margin-bottom: 8px; }
+    .vertical-card p { color: var(--text-muted); font-size: 0.88rem; line-height: 1.5; margin: 0; }
+
+    /* Case studies */
+    .cases-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1200px; margin: 0 auto; }
+    @media (max-width: 980px) { .cases-grid { grid-template-columns: 1fr; max-width: 560px; } }
+    .case-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .case-photo { aspect-ratio: 4/3; overflow: hidden; }
+    .case-photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.6s ease; }
+    .case-card:hover .case-photo img { transform: scale(1.04); }
+    .case-content { padding: 24px; }
+    .case-meta { display: flex; gap: 8px; font-size: 0.78rem; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 12px; }
+    .case-meta span:not(:last-child)::after { content: "·"; margin-left: 8px; color: var(--border-strong); }
+    .case-card h4 { font-size: 1.15rem; color: var(--teal-6); margin-bottom: 16px; }
+    .case-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; padding: 14px; background: var(--bg-tinted); border-radius: var(--radius); }
+    .case-col-label { font-size: 0.7rem; font-weight: 700; color: var(--teal-5); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+    .case-col ul { list-style: none; padding: 0; font-size: 0.82rem; color: var(--text); line-height: 1.6; }
+    .case-quote { font-size: 0.9rem; color: var(--text-muted); font-style: italic; line-height: 1.5; margin: 14px 0 6px; }
+    .case-attrib { font-size: 0.8rem; color: var(--text-subtle); font-weight: 600; }
+    .case-disclaimer { max-width: 720px; margin: 32px auto 0; text-align: center; font-size: 0.78rem; color: var(--text-subtle); line-height: 1.55; font-style: italic; }
+
+    /* Demo steps */
+    .demo-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1000px; margin: 0 auto 32px; }
+    @media (max-width: 920px) { .demo-steps { grid-template-columns: 1fr; } }
+    .demo-step { padding: 28px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); position: relative; }
+    .demo-step .step-num { position: absolute; top: -16px; left: 24px; width: 36px; height: 36px; background: var(--teal-3); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.05rem; box-shadow: var(--shadow-sm); }
+    .demo-step h4 { color: var(--teal-6); font-size: 1.1rem; margin: 8px 0 12px; }
+    .demo-step p { color: var(--text); line-height: 1.6; margin: 0; font-size: 0.95rem; }
+    .demo-closer { max-width: 800px; margin: 32px auto 0; padding: 24px; background: var(--bg-tinted); border-radius: var(--radius-lg); color: var(--text); line-height: 1.65; }
+    .demo-closer strong { color: var(--teal-6); }
+
+    /* DIY/DFY paths */
+    .paths-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1000px; margin: 0 auto 32px; }
+    @media (max-width: 920px) { .paths-grid { grid-template-columns: 1fr; } }
+    .path-card-large { padding: 32px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); }
+    .path-card-large .path-label { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 700; color: var(--teal-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .path-card-large h4 { color: var(--teal-6); font-size: 1.3rem; margin-bottom: 14px; }
+    .path-card-large p { color: var(--text); line-height: 1.65; margin: 0; font-size: 0.96rem; }
+    .path-card-large strong { color: var(--teal-6); }
+    .paths-closer { max-width: 800px; margin: 32px auto 0; text-align: center; color: var(--text); line-height: 1.65; font-size: 1.0rem; }
+    .paths-closer strong { color: var(--teal-6); }
+
+    /* Final CTA */
+    .demo-cta { background: var(--bg-darker); color: white; padding: 96px 0; text-align: center; }
+    .demo-cta h2 { color: white; font-size: clamp(1.85rem, 3.4vw, 2.7rem); margin-bottom: 18px; }
+    .demo-cta p.demo-lead { color: rgba(255,255,255,0.85); font-size: 1.15rem; max-width: 640px; margin: 0 auto 32px; line-height: 1.6; }
+    .demo-cta .btn-primary { background: white; color: var(--teal-6); }
+    .demo-cta .btn-primary:hover { background: var(--bg-tinted); }
+    .demo-cta .btn-ghost { color: white; border-color: rgba(255,255,255,0.4); }
+    .demo-cta .btn-ghost:hover { border-color: white; background: rgba(255,255,255,0.08); }
+
+    /* Scroll-reveal animations */
+    .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    .reveal.in { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- ─── NAV ────────────────────────────────────────────────────────── -->
+<nav class="site-nav" aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="../index.html" class="nav-logo" aria-label="MyOrbisResults home">
+      <span class="nav-logo-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="3.5" fill="currentColor"/>
+          <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-opacity="0.5" stroke-width="2"/>
+        </svg>
+      </span>
+      MyOrbisResults
+      <span class="nav-brandline">We grow local service businesses.</span>
+    </a>
+    <div class="nav-links">
+      <a href="../voice/" class="active">Voice</a>
+      <a href="../local/">Local</a>
+      <a href="../index.html#flywheel">How it works</a>
+      <a href="../index.html#verticals">Verticals</a>
+      <a href="../index.html#demo">Book demo</a>
+    </div>
+    <div class="nav-cta">
+      <a href="../es/voice/" class="lang-toggle" hreflang="es"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>ES</a>
+      <a href="https://app.myorbisvoice.com/login" class="btn btn-ghost btn-sm">Log in</a>
+      <a href="#demo" class="btn btn-primary btn-sm">Book a demo</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<!-- ─── HERO ───────────────────────────────────────────────────────── -->
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <span class="eyebrow">MyOrbisVoice — the conversational AI half of MyOrbisResults</span>
+        <h1 id="hero-heading" class="hero-headline" style="margin-top: 24px;">
+          <span class="line">Every call.</span>
+          <span class="line">Every channel.</span>
+          <span class="line">Every customer captured.</span>
+        </h1>
+        <p class="hero-sub">
+          MyOrbisVoice answers your phone, your website chat, your texts, and your emails. It books on your real Google Calendar, captures every customer's history, and runs the follow-up campaigns that bring them back. Built on <strong>proprietary Orbis voice technology</strong>, tuned for service businesses. Bilingual native: English and Latin American Spanish.
+        </p>
+        <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+          <a href="#demo" class="btn btn-primary">Book a 15-minute demo</a>
+          <a href="#suite" class="btn btn-ghost">See it in action ↓</a>
+        </div>
+        <p class="hero-trust">Built for dental, legal, home services, beauty, fitness, medical, coaching, and real estate.</p>
+      </div>
+      <div class="hero-image">
+        <img src="../assets/images/hero/scroll-stopper-poster.jpg" alt="A small business owner stressed on the left, confident and in control on the right after MyOrbisVoice" loading="eager" />
+        <div class="hero-image-frame"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SECTION 1 — THE LEAK ──────────────────────────────────────── -->
+<section class="reveal" aria-labelledby="leak-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The gap</span>
+      <h2 id="leak-heading" style="margin-top: 18px;">Three out of five calls don't get answered. We change that today.</h2>
+    </div>
+    <div class="leaks-grid">
+      <div class="leak-row">
+        <div class="leak-num">01</div>
+        <div class="leak-body">
+          <h3>Your unanswered calls.</h3>
+          <p>62% of business calls don't get picked up. Lunch breaks. After 5 PM. Weekends. Your team's already on another line. Those calls don't leave voicemails. They don't try again later. They call your competitor.</p>
+        </div>
+      </div>
+      <div class="leak-row">
+        <div class="leak-num">02</div>
+        <div class="leak-body">
+          <h3>Your unreturned after-hours calls.</h3>
+          <p>85% of after-hours callers never call back. They book the next plumber on the list. The next dentist. The next salon. Whoever picks up first.</p>
+        </div>
+      </div>
+      <div class="leak-row">
+        <div class="leak-num">03</div>
+        <div class="leak-body">
+          <h3>Your dead CRM.</h3>
+          <p>Four months of contacts you've never followed up with. The customer who almost booked in October is buying from your competitor in February. The patient who skipped their six-month cleaning has been gone two years.</p>
+        </div>
+      </div>
+    </div>
+    <p class="leak-closer">You don't have a phone problem. You have three leaks in your phone, your inbox, and your CRM. <strong>MyOrbisVoice plugs all three.</strong> Here's the math first. Then the system.</p>
+  </div>
+</section>
+
+<!-- ─── SECTION 2 — COST OF ONE MORE MONTH ────────────────────────── -->
+<section class="section-soft reveal" aria-labelledby="cost-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The cost of waiting</span>
+      <h2 id="cost-heading" style="margin-top: 18px;">Every month you don't fix this, the leak gets bigger.</h2>
+    </div>
+    <div class="cost-callout">
+      <p>Take an average service business doing $40K/month. Industry data says you're missing 38 calls a month. Of those, around 30% would have booked. Average ticket in your space is $200 to $500.</p>
+      <div class="cost-figure">$2,280 — $5,700 / month</div>
+      <p>Just from missed phones. Add the after-hours callers who never call back. Add the CRM contacts you're not reactivating. Conservatively, you're losing <strong>$3,000 to $7,000 every month right now.</strong></p>
+      <p>Over the next 12 months, if nothing changes: <strong>$36,000 to $84,000</strong> in revenue your business should have closed and didn't. Every month you wait costs you twice. Once in revenue you don't earn. Once in customer trust your competitor builds while your phone rings out.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SECTION 3 — WHAT MYORBISVOICE DOES ────────────────────────── -->
+<section id="suite" class="reveal" aria-labelledby="suite-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The product</span>
+      <h2 id="suite-heading" style="margin-top: 18px;">Every conversation your business has, in one platform.</h2>
+      <p>Inbound. Outbound. Every channel a customer might reach you on. Every channel you'd reach them back on. Booked, written, sent, tracked.</p>
+    </div>
+    <div class="suite-grid">
+      <div class="suite-panel">
+        <h3><span class="suite-icon">📞</span> Inbound conversations</h3>
+        <ul>
+          <li><strong>AI voice receptionist.</strong> Answers 24/7 in English or Spanish. Books on your real calendar. Sends the confirmation. The customer never hits voicemail.</li>
+          <li><strong>Website voice widget.</strong> Visitors talk to your agent right on your homepage. Same brain as the phone.</li>
+          <li><strong>SMS inbound.</strong> Every text answered by your agent in your voice.</li>
+          <li><strong>Email triage.</strong> Reads, routes, replies when it can, escalates when it can't.</li>
+          <li><strong>WhatsApp inbound</strong> (coming).</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3><span class="suite-icon">📤</span> Outbound conversations</h3>
+        <ul>
+          <li><strong>AI voice campaigns.</strong> Calls leads on a schedule. Follows your retry policy. Logs every outcome.</li>
+          <li><strong>SMS sequences.</strong> Triggered by contact tags. Written by AI in your brand voice. A2P 10DLC compliant.</li>
+          <li><strong>Email campaigns.</strong> Drafts written by AI in your voice. Sent through your real mailbox.</li>
+          <li><strong>Multi-channel sequences.</strong> One campaign hits voice, SMS, and email in coordinated order.</li>
+          <li><strong>WhatsApp outbound</strong> (coming).</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3><span class="suite-icon">📅</span> Booking and scheduling</h3>
+        <ul>
+          <li><strong>Real-time Google Calendar booking</strong> from any channel.</li>
+          <li><strong>Auto-confirmations</strong> and reminders.</li>
+          <li><strong>No-show recovery</strong> and rebook automation.</li>
+          <li><strong>Multi-staff calendar</strong> coordination.</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3><span class="suite-icon">👥</span> Relationship CRM</h3>
+        <ul>
+          <li><strong>Personal details remembered</strong> — birthdays, anniversaries, family, hobbies, customer-since.</li>
+          <li><strong>Conversation history</strong> across every channel in one timeline.</li>
+          <li><strong>Personal notes</strong> captured by the agent on every call.</li>
+          <li><strong>Auto-tagging</strong> from call outcomes for follow-up campaigns.</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3><span class="suite-icon">📊</span> Intelligence and monitoring</h3>
+        <ul>
+          <li><strong>Every call recorded, transcribed, and stored.</strong> Searchable in two clicks.</li>
+          <li><strong>Operational KPIs</strong> in real time — calls, conversions, appointments, revenue.</li>
+          <li><strong>Revenue attribution</strong> per source, per channel, per campaign.</li>
+          <li><strong>Audit logs</strong> for every meaningful action.</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3><span class="suite-icon">🚀</span> Growth engine</h3>
+        <ul>
+          <li><strong>AI copy in your brand voice tier</strong> — Conservative, Balanced, Direct, Aggressive.</li>
+          <li><strong>Marketing resources</strong> cheat sheet — Caples, Halbert, Cialdini frameworks built in.</li>
+          <li><strong>Seven Orbis voice profiles, seven specialized agent roles.</strong></li>
+          <li><strong>Bilingual native</strong> — English and Latin American Spanish, agent voice included.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="suite-closer">
+      All powered by <strong>Orbis Voice</strong>. Our proprietary voice agent platform, designed and tuned end-to-end for service businesses. Not a chatbot wrapper. Not an answering service script. A real-time voice system that reads your Business DNA and acts like it works for you.
+    </div>
+  </div>
+</section>
+
+<!-- ─── SECTION 4 — 7 VOICES + 7 ROLES ────────────────────────────── -->
+<section class="section-tinted reveal" aria-labelledby="voices-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The voice that represents you</span>
+      <h2 id="voices-heading" style="margin-top: 18px;">Pick the voice. Assign the role. Watch it work.</h2>
+      <p>You don't get one canned voice and one generic script. You get seven Orbis voice profiles and seven specialized agent roles.</p>
+    </div>
+    <div class="voices-roles">
+      <div class="vr-card">
+        <h3>Seven Orbis voice profiles</h3>
+        <p>Each tuned for a different tone and audience. Pick the voice that represents your brand.</p>
+        <ul class="vr-list">
+          <li><span class="vr-role-name">Warm female</span> <span class="vr-role-desc">— hospitality, beauty, medical</span></li>
+          <li><span class="vr-role-name">Calm male</span> <span class="vr-role-desc">— legal, financial, professional services</span></li>
+          <li><span class="vr-role-name">Energetic</span> <span class="vr-role-desc">— fitness, coaching, real estate</span></li>
+          <li><span class="vr-role-name">Professional</span> <span class="vr-role-desc">— B2B, medical, accounting</span></li>
+          <li><span class="vr-role-name">Friendly</span> <span class="vr-role-desc">— home services, dental, family business</span></li>
+          <li><span class="vr-role-name">Authoritative</span> <span class="vr-role-desc">— law, security, specialty practices</span></li>
+          <li><span class="vr-role-name">Conversational</span> <span class="vr-role-desc">— retail, food service, customer-facing</span></li>
+        </ul>
+      </div>
+      <div class="vr-card">
+        <h3>Seven specialized agent roles</h3>
+        <p>Each tuned for the conversation it handles. A central Orchestrator agent routes every call to the right specialist.</p>
+        <ul class="vr-list">
+          <li><span class="vr-role-name">Receptionist</span> <span class="vr-role-desc">— answers, qualifies, routes</span></li>
+          <li><span class="vr-role-name">Appointment</span> <span class="vr-role-desc">— booking, rescheduling, reminders</span></li>
+          <li><span class="vr-role-name">Sales</span> <span class="vr-role-desc">— qualifies, presents the offer, closes</span></li>
+          <li><span class="vr-role-name">Customer Service</span> <span class="vr-role-desc">— issues, refunds, escalations</span></li>
+          <li><span class="vr-role-name">Marketing</span> <span class="vr-role-desc">— runs outbound campaigns and follow-ups</span></li>
+          <li><span class="vr-role-name">Assistant</span> <span class="vr-role-desc">— general inquiries, FAQ, hours, directions</span></li>
+          <li><span class="vr-role-name">Secretary</span> <span class="vr-role-desc">— admin tasks, messages, callbacks</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="orchestrator-note">
+      Your business doesn't sound like a chatbot. It sounds like a team.
+    </div>
+  </div>
+</section>
+
+<!-- ─── SECTION 5 — EVERY CALL RECORDED ───────────────────────────── -->
+<section class="reveal" aria-labelledby="recording-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The receipts</span>
+      <h2 id="recording-heading" style="margin-top: 18px;">Every call. Recorded. Transcribed. Searchable.</h2>
+    </div>
+    <div class="recording-grid">
+      <div class="recording-mockup">
+        <div class="rec-search">🔍 search: "leaky faucet"</div>
+        <div class="rec-row"><span class="rec-time">Mar 14</span><span>Maria Rodriguez · faucet drip · booked Thu</span><span class="rec-outcome">$240</span></div>
+        <div class="rec-row"><span class="rec-time">Feb 28</span><span>John Park · kitchen leak · DIY question</span><span class="rec-outcome">FAQ</span></div>
+        <div class="rec-row"><span class="rec-time">Feb 19</span><span>Sarah Liu · bathroom leak · booked Sat</span><span class="rec-outcome">$420</span></div>
+        <div class="rec-row"><span class="rec-time">Feb 11</span><span>David Cohen · sink drip · referred</span><span class="rec-outcome">REF</span></div>
+        <div class="rec-row"><span class="rec-time">Jan 30</span><span>Lisa Martinez · faucet replacement · booked</span><span class="rec-outcome">$680</span></div>
+      </div>
+      <ul class="recording-uses">
+        <li><strong>Train your team.</strong> Pull the calls that booked. Listen to what worked. Replicate.</li>
+        <li><strong>Settle the dispute.</strong> A customer says "your agent told me $400." Pull the call. Settle it in two clicks.</li>
+        <li><strong>Spot the pattern.</strong> "We lose 1 in 5 prospects when they ask about price." Adjust the script.</li>
+        <li><strong>Compliance archive.</strong> HIPAA-aware mode for medical. A2P 10DLC compliant for SMS. Encrypted at rest. Retention configurable.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SECTION 6 — THE MATH ──────────────────────────────────────── -->
+<section class="section-soft reveal" aria-labelledby="math-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The cost rationalization</span>
+      <h2 id="math-heading" style="margin-top: 18px;">What you're losing. What you're paying. Where MyOrbisVoice sits.</h2>
+    </div>
+    <div style="max-width: 800px; margin: 0 auto; padding: 40px; background: var(--bg-card); border-radius: var(--radius-xl); border: 1px solid var(--border);">
+      <p style="font-size: 1.0rem; color: var(--text); line-height: 1.7; margin-bottom: 24px;"><strong style="color: oklch(60% 0.20 30);">Your current losses:</strong> $3,000 to $7,000 every month, leaking from your phone, your inbox, and your CRM.</p>
+      <p style="font-size: 1.0rem; color: var(--text); line-height: 1.7; margin-bottom: 24px;"><strong style="color: var(--teal-6);">Your current stack:</strong> $290 to $830 every month for an answering service, a CRM, a calendar tool, an email marketing tool, and an SMS marketing tool that don't talk to each other.</p>
+      <p style="font-size: 1.0rem; color: var(--text); line-height: 1.7; margin-bottom: 24px;"><strong style="color: var(--teal-6);">MyOrbisVoice</strong> replaces the stack with one bill that's less than what you're already paying. MyOrbisVoice closes the three leaks. The platform is a <strong>net cost reduction before it earns you a single new dollar.</strong> Recovered revenue is the multiplier on top.</p>
+      <p style="font-size: 0.96rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 0;">We don't show pricing on this page because pricing depends on three things: your business size, the channels you want active, and whether you go DIY or done-for-you. Different businesses get different quotes. Book the 15-minute demo to get yours. The math, plainly: <strong style="color: var(--teal-6);">whatever MyOrbisVoice costs, it's a fraction of what staying still costs you.</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SECTION 7 — TUESDAY TIMELINE ─────────────────────────────── -->
+<section class="reveal" aria-labelledby="tuesday-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">A day in the life</span>
+      <h2 id="tuesday-heading" style="margin-top: 18px;">This is what one Tuesday looks like once MyOrbisVoice is running.</h2>
+    </div>
+    <div class="tuesday-timeline">
+      <div class="tuesday-event">
+        <div class="tuesday-time">9:47 AM</div>
+        <p>A new prospect calls your shop. You're with a customer in the back. The AI voice agent picks up on the second ring. It sounds like your business. It asks what they need. The caller wants to book for Thursday. The agent confirms availability on your real calendar, books the slot, texts a confirmation, and logs the call into the CRM. <span class="tuesday-money">Service ticket: $420</span></p>
+      </div>
+      <div class="tuesday-event">
+        <div class="tuesday-time">10:12 AM</div>
+        <p>Confirmation text lands on the prospect's phone. The agent also captured something during the call. The prospect mentioned her husband's name. The CRM saves it as a personal note for next time.</p>
+      </div>
+      <div class="tuesday-event">
+        <div class="tuesday-time">1:30 PM</div>
+        <p>A campaign you set up last month auto-fires. Fourteen patients you flagged for a six-month reminder get an SMS in your brand voice. Four book inside the hour. Three reply with questions. The agent answers all three, books two more. <strong>Six new bookings before lunch.</strong> <span class="tuesday-money">+ $2,520 in bookings</span></p>
+      </div>
+      <div class="tuesday-event">
+        <div class="tuesday-time">5:00 PM</div>
+        <p>You go home. On the way, you open the dashboard on your phone and listen to the morning's prospect call. You confirm the agent quoted the right price. Two minutes. The agent stays on while you eat dinner.</p>
+      </div>
+      <div class="tuesday-event">
+        <div class="tuesday-time">7:32 PM</div>
+        <p>An after-hours caller hits your number. Six months ago, that caller would have left a voicemail you'd never return. Tonight, the agent answers, qualifies them, books a Friday morning slot. <span class="tuesday-money">Service ticket: $680</span></p>
+      </div>
+      <div class="tuesday-event">
+        <div class="tuesday-time">Next Tuesday</div>
+        <p>That prospect from 9:47 AM last week? Today is her birthday. The CRM noticed. An automated text goes out at 9 AM with a $20 credit and a personal note that uses her husband's name. She rebooks the next afternoon. <strong>She forwards the text to her sister.</strong></p>
+      </div>
+      <div class="tuesday-event">
+        <div class="tuesday-time">Month-end</div>
+        <p><strong>Tuesday's books closed $4,360 more than the same Tuesday a year ago.</strong> Multiply that across the rest of the month. That's the financial edge a system gives you. Every day. Whether you're working on the business or off of it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SECTION 8 — FLYWHEEL CROSS-SELL TO LOCAL ────────────────── -->
+<section class="section-tinted reveal" aria-labelledby="flywheel-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Better together</span>
+      <h2 id="flywheel-heading" style="margin-top: 18px;">MyOrbisVoice closes calls. MyOrbisLocal makes more of them happen.</h2>
+    </div>
+    <div class="flywheel-cta">
+      <p>MyOrbisVoice works on its own. It answers the calls you're already getting. It books the appointments. It runs the follow-ups. The recovered revenue alone pays for it.</p>
+      <p>But the customers running <strong>both</strong> MyOrbisVoice and MyOrbisLocal see compounded growth. Here's why:</p>
+      <div class="fw-loop">
+        <span class="num">1</span>  MyOrbisLocal earns better Map Pack rank on Google.<br>
+        <span class="num">2</span>  More calls come in.<br>
+        <span class="num">3</span>  MyOrbisVoice answers every one and books the appointment.<br>
+        <span class="num">4</span>  Each booking triggers an automated review request.<br>
+        <span class="num">5</span>  New reviews boost your Map Pack rank.<br>
+        <span class="num">↺</span>  Loop tightens. Next month, the numbers are better than this month.
+      </div>
+      <p>Voice alone makes the most of the traffic you have today. Voice + Local makes you the dominant choice in your zip code over 12 months. <strong>Backed by the MyOrbis Map Pack top 3 guarantee.</strong></p>
+      <p style="margin-top: 24px;"><a href="../local/" class="btn btn-primary">Learn about MyOrbisLocal →</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SECTION 9 — BUILT FOR YOUR INDUSTRY ───────────────────────── -->
+<section class="reveal" aria-labelledby="verticals-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Built for service businesses</span>
+      <h2 id="verticals-heading" style="margin-top: 18px;">The call is the moment your business lives or dies.</h2>
+    </div>
+    <div class="verticals-grid">
+      <a href="../index.html#verticals" class="vertical-card"><h4>Dental</h4><p>Reactivate the 40% of patients who haven't booked their six-month cleaning.</p></a>
+      <a href="../index.html#verticals" class="vertical-card"><h4>Legal</h4><p>The intake call you can't afford to miss.</p></a>
+      <a href="../index.html#verticals" class="vertical-card"><h4>Home services</h4><p>Every $400 leak that goes to voicemail goes to your competitor.</p></a>
+      <a href="../index.html#verticals" class="vertical-card"><h4>Beauty &amp; salon</h4><p>Book the next visit while she's still in the chair.</p></a>
+      <a href="../index.html#verticals" class="vertical-card"><h4>Fitness</h4><p>Trial signups don't book themselves. Now they do.</p></a>
+      <a href="../index.html#verticals" class="vertical-card"><h4>Medical</h4><p>After-hours triage that doesn't break HIPAA.</p></a>
+      <a href="../index.html#verticals" class="vertical-card"><h4>Coaching</h4><p>The discovery call that closes itself.</p></a>
+      <a href="../index.html#verticals" class="vertical-card"><h4>Real estate</h4><p>The lead at 9 PM is buying a house from someone else.</p></a>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SECTION 10 — CASE STUDIES ──────────────────────────────────── -->
+<section class="section-soft reveal" aria-labelledby="cases-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Proof</span>
+      <h2 id="cases-heading" style="margin-top: 18px;">What 90 days on MyOrbisVoice actually looks like.</h2>
+    </div>
+    <div class="cases-grid">
+      <div class="case-card">
+        <div class="case-photo"><img src="../assets/images/case-studies/bright-smile-dental.jpg" alt="Female dentist at modern dental practice reception" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Dental</span><span>Lehigh Valley, PA</span></div>
+          <h4>Bright Smile Dental</h4>
+          <div class="case-comparison">
+            <div class="case-col">
+              <div class="case-col-label">Before</div>
+              <ul>
+                <li>Calls answered: 29 (62%)</li>
+                <li>Bookings/mo: 22</li>
+                <li>No-shows: 19%</li>
+                <li>Reactivated: 0</li>
+              </ul>
+            </div>
+            <div class="case-col">
+              <div class="case-col-label">After 90 days</div>
+              <ul>
+                <li>Calls answered: 47 (100%)</li>
+                <li>Bookings/mo: 51</li>
+                <li>No-shows: 7%</li>
+                <li>Reactivated: 14</li>
+              </ul>
+            </div>
+          </div>
+          <p class="case-quote">"We were paying an answering service AND losing patients to the practice across the street. MyOrbisVoice catches every single call. $42K more in revenue last quarter."</p>
+          <div class="case-attrib">— Composite owner persona</div>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-photo"><img src="../assets/images/case-studies/valley-hvac.jpg" alt="HVAC technician next to service van" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Home services</span><span>Allentown, PA</span></div>
+          <h4>Valley HVAC</h4>
+          <div class="case-comparison">
+            <div class="case-col">
+              <div class="case-col-label">Before</div>
+              <ul>
+                <li>After-hours: 41/mo</li>
+                <li>Captured: 0</li>
+                <li>Avg ticket: $480</li>
+                <li>Reviews/mo: 1</li>
+              </ul>
+            </div>
+            <div class="case-col">
+              <div class="case-col-label">After 90 days</div>
+              <ul>
+                <li>After-hours: 41/mo</li>
+                <li>Captured: 41 (100%)</li>
+                <li>Avg ticket: $520</li>
+                <li>Reviews/mo: 17</li>
+              </ul>
+            </div>
+          </div>
+          <p class="case-quote">"Every $400 service call that used to go to voicemail now gets booked. We added a second tech to keep up."</p>
+          <div class="case-attrib">— Composite owner persona</div>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-photo"><img src="../assets/images/case-studies/queen-umoja-studio.jpg" alt="Salon owner styling client's hair in modern salon interior" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Beauty</span><span>Lawrenceville, GA</span></div>
+          <h4>Queen Umoja Studio</h4>
+          <div class="case-comparison">
+            <div class="case-col">
+              <div class="case-col-label">Before</div>
+              <ul>
+                <li>Bookings/mo: 38</li>
+                <li>No-shows: 22%</li>
+                <li>Rebook: 31%</li>
+                <li>Follow-up: none</li>
+              </ul>
+            </div>
+            <div class="case-col">
+              <div class="case-col-label">After 90 days</div>
+              <ul>
+                <li>Bookings/mo: 74</li>
+                <li>No-shows: 8%</li>
+                <li>Rebook: 64%</li>
+                <li>Follow-up: automated</li>
+              </ul>
+            </div>
+          </div>
+          <p class="case-quote">"The agent books the next visit before the client leaves the chair. I haven't sent a manual reminder in three months."</p>
+          <div class="case-attrib">— Composite owner persona</div>
+        </div>
+      </div>
+    </div>
+    <p class="case-disclaimer">Composite figures based on modeled performance across MyOrbis service verticals. Signed customer case studies with verified numbers replace these as customers complete their first quarter.</p>
+  </div>
+</section>
+
+<!-- ─── SECTION 11 — THE 15 MINUTES ────────────────────────────────── -->
+<section class="reveal" aria-labelledby="fifteen-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The 15 minutes</span>
+      <h2 id="fifteen-heading" style="margin-top: 18px;">The demo. The audit. The implementation plan. All in 15 minutes.</h2>
+    </div>
+    <div class="demo-steps">
+      <div class="demo-step">
+        <div class="step-num">1</div>
+        <h4>The demo.</h4>
+        <p>We show MyOrbisVoice running live. You see the voice agent answer a call, qualify a lead, book a real appointment, send the confirmation text. Not a pre-recorded video. The real platform, talking in real time.</p>
+      </div>
+      <div class="demo-step">
+        <div class="step-num">2</div>
+        <h4>The audit.</h4>
+        <p>Before the call, we pull an estimated count of missed calls your business handled last week, modeled from your phone number's typical traffic patterns. You see the data. You see what's leaking and roughly how much.</p>
+      </div>
+      <div class="demo-step">
+        <div class="step-num">3</div>
+        <h4>The implementation plan.</h4>
+        <p>Based on what we see, we tell you exactly how MyOrbisVoice would be configured for your specific business. Which agents you'd run. Which channels. What the first 90 days look like.</p>
+      </div>
+    </div>
+    <div class="demo-closer">
+      <strong>No pricing pitch on the call.</strong> Pricing depends on what you need. We tailor the recommendation to your situation, and pricing follows from there if you decide to move forward. If after the call you're not interested, <strong>you keep the audit and the plan.</strong> No follow-up sequence. No sales pressure.
+    </div>
+  </div>
+</section>
+
+<!-- ─── SECTION 12 — DIY OR DFY ────────────────────────────────────── -->
+<section class="section-tinted reveal" aria-labelledby="paths-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Setup, your way</span>
+      <h2 id="paths-heading" style="margin-top: 18px;">DIY or done-for-you. You're never alone.</h2>
+    </div>
+    <div class="paths-grid">
+      <div class="path-card-large">
+        <div class="path-label">→ Path 1: DIY</div>
+        <h4>Do It Yourself.</h4>
+        <p>Self-serve dashboard with everything you need to onboard at your own pace. Walkthroughs on every screen. Video guides. Pre-built templates for your vertical. Most owners are running their first campaign within a weekend. Your rep is on call whenever you have a question.</p>
+      </div>
+      <div class="path-card-large">
+        <div class="path-label">→ Path 2: DFY</div>
+        <h4>Done For You.</h4>
+        <p>Your rep handles the setup themselves. Business DNA, prompts, voice profile, calendar sync, phone numbers, first campaigns. You answer a handful of questions about your business and walk through the configured platform a week later. Most DFY setups go live in <strong>14 days with zero work from you.</strong></p>
+      </div>
+    </div>
+    <p class="paths-closer">Either path, <strong>your MyOrbis rep stays your dedicated point of contact.</strong> No handoffs. No "success team" tickets that disappear. Same person from the first 15-minute call through onboarding, launch, and year two.</p>
+  </div>
+</section>
+
+<!-- ─── SECTION 13 — FINAL CTA ─────────────────────────────────────── -->
+<section class="demo-cta" id="demo" aria-labelledby="demo-heading">
+  <div class="container-narrow">
+    <h2 id="demo-heading">Stop letting your phone leak money.</h2>
+    <p class="demo-lead">You've been reading for a few minutes. In that time, your business probably missed at least one call. The caller didn't leave a voicemail. They called the next business on the list.</p>
+    <p class="demo-lead" style="font-size: 1.0rem; opacity: 0.7;">That's just the last few minutes. The next few minutes will look the same. The next few hours. The next few days. Until you fix it.</p>
+    <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 16px;">
+      <a href="mailto:hello@myorbisresults.com?subject=Book%20a%20MyOrbisVoice%20demo" class="btn btn-primary">Book your 15-minute demo</a>
+      <a href="../local/" class="btn btn-ghost">Or learn about MyOrbisLocal →</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ─── FOOTER ─────────────────────────────────────────────────────── -->
+<footer class="site-footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="nav-logo" style="margin-bottom: 12px;">
+          <span class="nav-logo-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <circle cx="9" cy="9" r="3.5" fill="currentColor"/>
+              <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-opacity="0.5" stroke-width="2"/>
+            </svg>
+          </span>
+          MyOrbisResults
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.55; max-width: 280px;">We grow local service businesses. Powered by <strong>MyOrbisVoice</strong> + <strong>MyOrbisLocal</strong>, built on proprietary <strong>Orbis Voice technology</strong>.</p>
+        <p style="color: var(--text-subtle); font-size: 0.82rem; margin-top: 16px;">716 Washington St, Suite 2<br/>Allentown, PA 18102</p>
+      </div>
+      <div class="footer-col">
+        <h5>Products</h5>
+        <a href="../voice/">MyOrbisVoice</a>
+        <a href="../local/">MyOrbisLocal</a>
+        <a href="https://app.myorbisvoice.com/signup">Start free</a>
+        <a href="https://app.myorbisvoice.com/login">Log in</a>
+      </div>
+      <div class="footer-col">
+        <h5>Verticals</h5>
+        <a href="../index.html#verticals">Dental</a>
+        <a href="../index.html#verticals">Legal</a>
+        <a href="../index.html#verticals">Home services</a>
+        <a href="../index.html#verticals">Beauty &amp; salon</a>
+        <a href="../index.html#verticals">Fitness</a>
+        <a href="../index.html#verticals">Medical</a>
+      </div>
+      <div class="footer-col">
+        <h5>Company</h5>
+        <a href="../index.html">Home</a>
+        <a href="../index.html#promise">The guarantee</a>
+        <a href="https://app.myorbisvoice.com/partner-portal/apply">Partners</a>
+        <a href="mailto:hello@myorbisresults.com">Contact</a>
+        <a href="../es/voice/" hreflang="es">Español</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 MyOrbisResults. All rights reserved. MyOrbisVoice and MyOrbisLocal are products of MyOrbisResults.</p>
+      <div class="footer-legal">
+        <a href="https://myorbisvoice.com/terms.html">Terms</a>
+        <a href="https://myorbisvoice.com/privacy.html">Privacy</a>
+        <a href="https://myorbisvoice.com/cookies.html">Cookies</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Scroll-reveal animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>

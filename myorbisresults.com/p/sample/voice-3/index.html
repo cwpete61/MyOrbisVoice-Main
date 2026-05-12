@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Imagine the team member you wish you had.</title>
+  <meta name="description" content="MyOrbisVoice is the team member you wish you had. Never sleeps. Never lets a call go to voicemail. Brought to you by Alex Rivera, your MyOrbisVoice advisor." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../../assets/css/style.css" />
+  <link rel="stylesheet" href="../partner-styles.css" />
+  <style>
+    /* Angle 3 signature: scene comparisons */
+    .scene-deep { max-width: 900px; margin: 0 auto; }
+    .scene-deep .scene-block { padding: 32px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); margin-bottom: 22px; }
+    .scene-deep .scene-title { color: var(--teal-6); font-size: 1.2rem; margin-bottom: 14px; font-weight: 700; }
+    .scene-deep .scene-body { color: var(--text); line-height: 1.75; font-size: 0.98rem; }
+    .scene-deep .scene-body p { margin-bottom: 16px; }
+    .scene-deep .scene-body p:last-child { margin-bottom: 0; }
+    .scene-deep .scene-body strong { color: var(--teal-6); }
+    .scene-deep .scene-without { border-left: 4px solid oklch(60% 0.20 30); }
+    .scene-deep .scene-with    { border-left: 4px solid oklch(55% 0.18 145); background: linear-gradient(135deg, oklch(98% 0.02 193) 0%, oklch(96% 0.04 193) 100%); }
+    .scene-deep .scene-label { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+    .scene-deep .scene-without .scene-label { color: oklch(45% 0.20 25); }
+    .scene-deep .scene-with .scene-label    { color: oklch(35% 0.18 145); }
+
+    /* Hours-saved table */
+    .hours-table { max-width: 900px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .hours-table table { width: 100%; border-collapse: collapse; }
+    .hours-table th, .hours-table td { padding: 14px 18px; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.92rem; }
+    .hours-table thead { background: var(--bg-tinted); }
+    .hours-table thead th { color: var(--teal-6); font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .hours-table tbody tr:last-child { background: oklch(96% 0.04 145); }
+    .hours-table tbody tr:last-child td { font-weight: 700; color: var(--teal-6); border-bottom: none; }
+    .hours-table tbody td:nth-child(2) { color: oklch(45% 0.20 25); text-align: center; font-family: 'JetBrains Mono', monospace; }
+    .hours-table tbody td:nth-child(3) { color: oklch(40% 0.18 145); text-align: center; font-family: 'JetBrains Mono', monospace; }
+    .hours-closer { max-width: 800px; margin: 24px auto 0; padding: 22px; background: var(--bg-tinted); border-radius: var(--radius-lg); color: var(--text); line-height: 1.65; }
+    .hours-closer strong { color: var(--teal-6); }
+
+    /* Final CTA dark */
+    .demo-cta { background: var(--bg-darker); color: white; padding: 96px 0; text-align: center; }
+    .demo-cta h2 { color: white; font-size: clamp(1.85rem, 3.4vw, 2.7rem); margin-bottom: 18px; }
+    .demo-cta p.demo-lead { color: rgba(255,255,255,0.85); font-size: 1.1rem; max-width: 640px; margin: 0 auto 14px; line-height: 1.65; }
+    .demo-cta .btn-primary { background: white; color: var(--teal-6); }
+    .demo-cta .btn-primary:hover { background: var(--bg-tinted); }
+  </style>
+</head>
+<body>
+
+<!-- Partner ribbon -->
+<div class="partner-ribbon">
+  <div class="ribbon-inner">
+    <div class="ribbon-avatar"><img src="../../../assets/images/partners/sample-partner.jpg" alt="Alex Rivera" /></div>
+    <div class="ribbon-text">
+      <strong>Brought to you by Alex Rivera.</strong>
+      <span class="ribbon-role">Your dedicated MyOrbisVoice advisor.</span>
+    </div>
+    <div class="ribbon-actions">
+      <a href="tel:+15551234567" class="ribbon-btn">📞 Call</a>
+      <a href="sms:+15551234567" class="ribbon-btn">💬 Text</a>
+      <a href="mailto:alex@myorbisresults.com" class="ribbon-btn">✉ Email</a>
+    </div>
+  </div>
+</div>
+
+<!-- Nav -->
+<nav class="site-nav" aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="https://myorbisresults.com/voice/" class="nav-logo" aria-label="MyOrbisVoice home">
+      <span class="nav-logo-icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="3.5" fill="currentColor"/>
+          <circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-opacity="0.5" stroke-width="2"/>
+        </svg>
+      </span>
+      MyOrbisVoice
+      <span class="nav-brandline">via Alex Rivera</span>
+    </a>
+    <div class="nav-cta">
+      <a href="#demo" class="btn btn-primary btn-sm">Meet your new team member</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<!-- HERO -->
+<section class="hero" aria-labelledby="hero-heading">
+  <div class="container">
+    <div style="max-width: 880px;">
+      <span class="eyebrow">For owners who are out of hours, not out of ideas</span>
+      <h1 id="hero-heading" class="hero-headline" style="margin-top: 24px;">
+        <span class="line">Imagine the team member</span>
+        <span class="line">you wish you had.</span>
+      </h1>
+      <p class="hero-sub">
+        Never sleeps. Never asks for a raise. Never lets a call go to voicemail. Books every appointment on your real calendar. Texts the confirmation. Remembers the customer's husband's name. Sends the birthday card. Calls back after the visit to ask if everything went well.
+      </p>
+      <p class="hero-sub" style="font-size: 1.0rem;"><strong style="color: var(--teal-6);">Now stop imagining. It starts answering your phone next Monday.</strong></p>
+      <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+        <a href="#demo" class="btn btn-primary">Meet your new team member with Alex</a>
+        <a href="#scenes" class="btn btn-ghost">What it does on your worst day ↓</a>
+      </div>
+      <p class="hero-trust">Built for dental, legal, home services, beauty, fitness, medical, coaching, and real estate. English and Latin American Spanish. Powered by proprietary <strong>Orbis voice technology</strong>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- The owner you used to be -->
+<section class="section-soft reveal" aria-labelledby="memory-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">A few years ago, before this got hard</span>
+      <h2 id="memory-heading" style="margin-top: 18px;">Remember when you opened the doors?</h2>
+    </div>
+    <div style="max-width: 760px; margin: 0 auto; line-height: 1.75; color: var(--text); font-size: 1.04rem;">
+      <p style="margin-bottom: 18px;">You had energy. You answered every call yourself. You remembered every regular's name. You stayed late to make sure the day's work got done right. You knew every customer by sight.</p>
+      <p style="margin-bottom: 18px;">Then the business grew. Now the phone rings while you're with a customer. The receptionist is at lunch. The voicemail box is full. Your spouse asks why you're checking texts at the dinner table.</p>
+      <p style="margin-bottom: 18px;"><strong style="color: var(--teal-6);">You haven't lost your touch. You've run out of hours.</strong></p>
+      <p>MyOrbisVoice gives you back the hours. It doesn't replace you. It carries the weight you don't have time for, the work that doesn't need your judgment but does need to get done, the calls that come in while you're focused on the customer in front of you.</p>
+    </div>
+  </div>
+</section>
+
+<!-- What your new team member actually does -->
+<section class="reveal" aria-labelledby="does-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">A day in the life</span>
+      <h2 id="does-heading" style="margin-top: 18px;">What your new team member handles, while you do the work only you can do.</h2>
+    </div>
+    <div class="suite-grid">
+      <div class="suite-panel">
+        <h3>📞 Inbound calls</h3>
+        <ul>
+          <li>Every call, 24/7, English or Spanish</li>
+          <li>Answers on the second ring, sounds like your business</li>
+          <li>Books on your real Google Calendar</li>
+          <li>Texts the confirmation, logs the call</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3>💬 Texts and chats</h3>
+        <ul>
+          <li>Replies to texts in your business voice</li>
+          <li>Web chat on your homepage, same brain</li>
+          <li>Remembers who that customer is</li>
+          <li>Handles email triage too</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3>📤 Follow-ups</h3>
+        <ul>
+          <li>SMS reminders, birthday texts, reactivation calls</li>
+          <li>Multi-channel sequences in your brand voice</li>
+          <li>Triggered by contact tags, automatic</li>
+          <li>The campaigns you've meant to set up for years</li>
+        </ul>
+      </div>
+      <div class="suite-panel">
+        <h3>🧠 CRM memory</h3>
+        <ul>
+          <li>Captures personal details on every call</li>
+          <li>Birthdays, kids, pets, customer-since</li>
+          <li>The car they drove. The hairstyle she wanted.</li>
+          <li>Talks to them like an old friend next time</li>
+        </ul>
+      </div>
+    </div>
+    <div class="suite-closer">
+      All powered by <strong>Orbis Voice</strong>. Our proprietary voice agent platform. Not a chatbot wrapper. A real teammate.
+    </div>
+  </div>
+</section>
+
+<!-- Two scenes -->
+<section id="scenes" class="section-tinted reveal" aria-labelledby="scenes-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Real moments</span>
+      <h2 id="scenes-heading" style="margin-top: 18px;">This is the difference, in two phone calls.</h2>
+    </div>
+    <div class="scene-deep">
+      <div class="scene-block scene-without">
+        <div class="scene-label">✗ Scene one. Tuesday at 1:48 PM. Without your new team member.</div>
+        <div class="scene-title">Maria calls. The phone rings. Voicemail picks up.</div>
+        <div class="scene-body">
+          <p>A regular customer calls. Her name is Maria. She's been coming to your salon for three years. You know her. You like her. She brought her sister last month. She has a daughter named Sofía. Her birthday is in two weeks.</p>
+          <p>She calls. The phone rings. You're with another customer in the chair. Voicemail picks up. She hangs up because she doesn't want to leave a message. She'll call back later, she thinks. <strong>She doesn't.</strong> Two weeks later, her birthday comes and goes and you didn't reach out. She drifts.</p>
+        </div>
+      </div>
+      <div class="scene-block scene-with">
+        <div class="scene-label">✓ Scene one. Tuesday at 1:48 PM. With your new team member.</div>
+        <div class="scene-title">Maria calls. The agent picks up. Maria forwards the birthday text to her sister.</div>
+        <div class="scene-body">
+          <p>She calls. The agent picks up. <em>"Hi Maria, good to hear from you. Are you looking to book your usual?"</em> (The CRM knows her usual.) Maria books for Friday at 3 PM. The agent texts a confirmation and adds a note about Sofía starting kindergarten next month.</p>
+          <p>On her birthday, an automated text goes out with $20 off and asks how Sofía's first week of school went. <strong>Maria forwards the text to her sister with a heart emoji.</strong></p>
+          <p>That's one customer. One Tuesday. One $200 booking saved. One referral. One relationship deepened.</p>
+        </div>
+      </div>
+      <div class="scene-block scene-without" style="margin-top: 32px;">
+        <div class="scene-label">✗ Scene two. Friday at 7:47 PM. Without your new team member.</div>
+        <div class="scene-title">A new prospect calls. Voicemail picks up. He books with your competitor before bed.</div>
+        <div class="scene-body">
+          <p>A new prospect calls. He just got home from work, saw your sign on the way past, decided to call. He's the kind of customer you'd love to win. Deciding tonight, ready to book.</p>
+          <p>He calls. Voicemail picks up (you closed at 5). He hangs up. He won't call back tomorrow. He'll Google the next business in your category before he goes to bed. They'll pick up. <strong>He'll book with them.</strong></p>
+        </div>
+      </div>
+      <div class="scene-block scene-with">
+        <div class="scene-label">✓ Scene two. Friday at 7:47 PM. With your new team member.</div>
+        <div class="scene-title">A new prospect calls. The agent picks up. He's a Monday customer.</div>
+        <div class="scene-body">
+          <p>He calls. The agent picks up on the second ring. <em>"Thanks for calling, this is [Your Business]. What can I help you with this evening?"</em> He explains. The agent confirms availability for Saturday morning, books, texts the confirmation, and logs his contact info for follow-up.</p>
+          <p><strong>By the time you check your dashboard Monday morning, you have a new customer.</strong></p>
+          <p>This is the difference. Every day. Every call. Every conversation.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- What you stop doing (hours table) -->
+<section class="reveal" aria-labelledby="hours-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The hours you get back</span>
+      <h2 id="hours-heading" style="margin-top: 18px;">Here's the time you stop spending on things your new team member handles.</h2>
+    </div>
+    <div class="hours-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Hours/week today</th>
+            <th>Hours/week with MyOrbisVoice</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Answering and routing inbound calls</td><td>6 – 12</td><td>0</td></tr>
+          <tr><td>Returning missed calls and voicemails</td><td>2 – 4</td><td>0</td></tr>
+          <tr><td>Sending appointment confirmations and reminders</td><td>1 – 2</td><td>0</td></tr>
+          <tr><td>Writing follow-up texts and emails</td><td>2 – 4</td><td>0.5 (review)</td></tr>
+          <tr><td>Chasing reviews</td><td>1 – 2</td><td>0</td></tr>
+          <tr><td>Manual CRM updates</td><td>1 – 3</td><td>0</td></tr>
+          <tr><td>Total weekly hours recovered</td><td>—</td><td>13 – 27 hrs</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="hours-closer">
+      At a conservative $40/hour for owner-operator time, that's <strong>$520 to $1,080 a week</strong> of your time you don't spend on phone admin anymore. Plus the revenue from calls you stopped missing. Plus the relationships you stop letting slip. That's the math nobody puts on a software page. It's the one that matters most to owners running out of hours.
+    </div>
+  </div>
+</section>
+
+<!-- 15 minutes with Alex -->
+<section class="section-tinted reveal" aria-labelledby="fifteen-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">The 15 minutes</span>
+      <h2 id="fifteen-heading" style="margin-top: 18px;">Meet your new team member. The demo is 15 minutes.</h2>
+    </div>
+    <div class="demo-steps">
+      <div class="demo-step">
+        <div class="step-num">1</div>
+        <h4>The demo.</h4>
+        <p>Alex shows MyOrbisVoice running live. You see the agent answer a call, book an appointment, send the confirmation. You hear the voice. You meet your new team member.</p>
+      </div>
+      <div class="demo-step">
+        <div class="step-num">2</div>
+        <h4>The audit.</h4>
+        <p>Alex pulls an estimated count of missed calls your business handled last week. You see how many customers came knocking when no one was home.</p>
+      </div>
+      <div class="demo-step">
+        <div class="step-num">3</div>
+        <h4>The plan.</h4>
+        <p>Alex tells you exactly how MyOrbisVoice would be set up for your business. Which voice profile fits your brand. Which agent roles. How the first 90 days unfold.</p>
+      </div>
+    </div>
+    <div class="demo-closer">
+      <strong>No pricing pitch on the call.</strong> Pricing depends on what you need. If after the call you're not interested, <strong>you keep the audit and the plan.</strong> Alex still works for you that day.
+    </div>
+  </div>
+</section>
+
+<!-- DIY or DFY -->
+<section class="reveal" aria-labelledby="paths-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Setup, your way</span>
+      <h2 id="paths-heading" style="margin-top: 18px;">Build it yourself. Or Alex builds it for you.</h2>
+    </div>
+    <div class="paths-grid">
+      <div class="path-card-large">
+        <div class="path-label">→ DIY</div>
+        <h4>Self-serve dashboard.</h4>
+        <p>Walkthroughs on every screen. Video guides. Pre-built templates for your vertical. Most owners running their first campaign within a weekend. Alex is on call whenever you need them.</p>
+      </div>
+      <div class="path-card-large">
+        <div class="path-label">→ DFY</div>
+        <h4>Alex handles it.</h4>
+        <p>Business DNA, prompts, voice profile, calendar sync, phone numbers, first campaigns. You answer a few questions and walk through the configured platform a week later. Most DFY setups go live in <strong>14 days with zero work from you.</strong></p>
+      </div>
+    </div>
+    <p class="paths-closer">Either path, <strong>Alex stays your dedicated point of contact.</strong> Same person through onboarding, launch, and year two. They know your business by name.</p>
+  </div>
+</section>
+
+<!-- Cases -->
+<section class="section-soft reveal" aria-labelledby="cases-heading">
+  <div class="container">
+    <div class="section-header">
+      <span class="eyebrow">Owners who got their hours back</span>
+      <h2 id="cases-heading" style="margin-top: 18px;">A few businesses like yours.</h2>
+    </div>
+    <div class="cases-grid">
+      <div class="case-card">
+        <div class="case-photo"><img src="../../../assets/images/case-studies/bright-smile-dental.jpg" alt="Dentist at modern practice reception" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Dental</span><span>Lehigh Valley, PA</span></div>
+          <h4>Bright Smile Dental</h4>
+          <p class="case-quote">"Was missing 18 of every 47 calls. After 90 days: every call caught. Reactivated 14 patients who hadn't booked their cleaning. I now leave the practice at 5 PM and don't think about the phone again until morning."</p>
+          <div class="case-attrib">— Composite owner persona</div>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-photo"><img src="../../../assets/images/case-studies/valley-hvac.jpg" alt="HVAC technician next to service van" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Home services</span><span>Allentown, PA</span></div>
+          <h4>Valley HVAC</h4>
+          <p class="case-quote">"Was losing every after-hours call (41 a month). After 90 days: every after-hours call captured. Added a second tech because demand grew. My phone hasn't woken me up in 60 days."</p>
+          <div class="case-attrib">— Composite owner persona</div>
+        </div>
+      </div>
+      <div class="case-card">
+        <div class="case-photo"><img src="../../../assets/images/case-studies/queen-umoja-studio.jpg" alt="Salon owner styling client" loading="lazy" /></div>
+        <div class="case-content">
+          <div class="case-meta"><span>Beauty</span><span>Lawrenceville, GA</span></div>
+          <h4>Queen Umoja Studio</h4>
+          <p class="case-quote">"Was hand-texting every client reminder. After 90 days: every reminder, confirmation, birthday note, and rebook prompt automated. I got Saturdays back."</p>
+          <div class="case-attrib">— Composite owner persona</div>
+        </div>
+      </div>
+    </div>
+    <p class="case-disclaimer">Composite owner personas based on modeled performance. Real customer case studies replace these as customers complete their first quarter.</p>
+  </div>
+</section>
+
+<!-- Upgrade cross-sell -->
+<section class="reveal" aria-labelledby="upgrade-heading">
+  <div class="container">
+    <div class="upgrade-card">
+      <span class="eyebrow">The upgrade path</span>
+      <h2 id="upgrade-heading" style="margin-top: 18px;">Voice gives you back your hours. The full system also brings you more customers.</h2>
+      <p>MyOrbisVoice handles the customers you're already getting. That alone closes the leaks and gives you 13 to 27 hours a week back.</p>
+      <p>If you also want more customers in the door, the full <strong>MyOrbisResults</strong> system adds <strong>MyOrbisLocal</strong>: we rebuild your website, optimize your Google Business Profile, and put you in the Map Pack top 3 within 90 days. <strong>Or 90 more days at our cost. Still not there at day 180, you walk away or get your money back.</strong></p>
+      <p>Ask Alex during the 15-minute call. Same partner. Same conversation. More upside.</p>
+      <a href="https://myorbisresults.com#promise" class="btn btn-primary">See the full Map Pack guarantee →</a>
+    </div>
+  </div>
+</section>
+
+<!-- Final CTA -->
+<section class="demo-cta" id="demo" aria-labelledby="demo-heading">
+  <div class="container-narrow">
+    <h2 id="demo-heading">Get your hours back. Meet your new team member.</h2>
+    <p class="demo-lead">You opened this page because Alex sent it to you. They know what your week looks like. They know the calls that go unanswered and the customers who slip away and the dinner table where you keep checking your phone.</p>
+    <p class="demo-lead">The team member you wish you had is real. It starts work on Monday.</p>
+    <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 16px;">
+      <a href="mailto:alex@myorbisresults.com?subject=Meet%20my%20new%20team%20member" class="btn btn-primary">Meet your new team member with Alex</a>
+    </div>
+    <div class="partner-card">
+      <div class="pc-avatar"><img src="../../../assets/images/partners/sample-partner.jpg" alt="Alex Rivera" /></div>
+      <div class="pc-info">
+        <strong>Alex Rivera</strong>
+        <p><a href="tel:+15551234567">+1 (555) 123-4567</a> · <a href="mailto:alex@myorbisresults.com">alex@myorbisresults.com</a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-bottom">
+      <p>© 2026 MyOrbisVoice, a product of MyOrbisResults. Built on proprietary Orbis Voice technology. Brought to you by Alex Rivera.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); observer.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
