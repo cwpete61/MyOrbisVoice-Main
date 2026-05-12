@@ -10,31 +10,7 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ## 🔴 Pre-launch must-do (blocks first paying customer)
 
-### D1. myorbisresults.com web hosting is DOWN — partner landing pages unreachable at the umbrella-brand URL — open 2026-05-12
-
-**What:** Every URL under `https://myorbisresults.com/*` and `https://www.myorbisresults.com/*` returns HTTP 530 (Cloudflare error 1016 — "Origin DNS error"). The DNS apex `myorbisresults.com` has no A record at Cloudflare, and the `www` CNAME targets the empty apex. Cloudflare can't resolve any origin to forward requests to.
-
-**Spaceship side is ready.** The Spaceship DNS UI shows their "Web Hosting" group is fully provisioned and "in propagation": `@ → 66.29.148.134`, `ftp → 66.29.148.134`, `webdisk → 66.29.148.134`, `www CNAME`, SPF for shared mail. They're not propagating because Cloudflare is the authoritative nameserver, not Spaceship — Spaceship's records can't reach the public DNS without Cloudflare relaying them.
-
-**Customer impact today:** Zero. No surface in the partner portal currently shows a `myorbisresults.com` URL to share — the Landing Page Builder is still a "Coming Soon" stub. The partner pages ARE reachable at `https://myorbisvoice.com/p/sample/voice-{1,2,3}/` (200, deployed via `deploy-partner-pages.sh`).
-
-**Customer impact when Landing Page Builder ships:** Real. Partners will be told to share their landing page URL — currently the code constructs `<slug>@myorbisresults.com` for the email alias, which implies the matching web URL is `myorbisresults.com/p/<slug>/...`. That URL is dead until this is fixed. Also breaks any external link to `myorbisresults.com` (Google indexing, the brand identity itself).
-
-**Fix — two parts:**
-
-1. **DNS (user, ~1 min at Cloudflare):**
-   - Add A record: `myorbisresults.com (@)` → `66.29.148.134` — DNS only (gray cloud) for now (origin TLS at Spaceship shared hosting doesn't match a Cloudflare-proxied cert without extra configuration; can flip to proxied once that's sorted).
-   - The existing `www CNAME → myorbisresults.com` will then resolve via the new apex.
-
-2. **Content (decide between two paths after DNS):**
-   - **(a) Spaceship cPanel alias** — recommended: in Spaceship cPanel, add `myorbisresults.com` as an Alias / Parked Domain on the existing `myorbisvoice.com` hosting account. The same docroot then serves both domains. Zero deploy-script change, single source of truth.
-   - **(b) Mirror via deploy script** — alternative: update `infrastructure/scripts/deploy-partner-pages.sh` to upload to BOTH `/home/palucuidzi/myorbisvoice.com/` AND `/home/palucuidzi/myorbisresults.com/`. More disk, but works if Spaceship insists on a separate docroot.
-
-**Verifies done when:** `curl -sI https://myorbisresults.com/p/sample/voice-1/` returns 200, AND the partner-hydrate.js at `https://myorbisresults.com/p/_assets/partner-hydrate.js` returns 200. Both currently 530.
-
-**Owner:** User clicks at Cloudflare + Spaceship; me to update the deploy script if path (b) is chosen.
-
----
+*(none open — D1 closed 2026-05-12 via Cloudflare 301 redirect; G1 closed earlier same day. See Closed section below.)*
 
 ---
 
@@ -207,6 +183,30 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 ## ✅ Closed
 
 *(items move here with a date + what unblocked them)*
+
+### D1. myorbisresults.com web hosting unreachable — closed 2026-05-12
+
+**What unblocked it:** Cloudflare 301 redirect rule at the edge. User added an A record `@ → 66.29.148.134` (orange-clouded / proxied) and a Redirect Rule that points all incoming requests to `concat("https://myorbisvoice.com", http.request.uri.path)` with status 301. Cloudflare intercepts before traffic ever reaches Spaceship, so the missing Addon-Domain + TLS-cert problem at the Spaceship origin becomes irrelevant.
+
+**Smoke verified end-to-end** (forced Cloudflare anycast IP to bypass local DNS cache during propagation):
+
+```
+https://myorbisresults.com/                        → 301 → https://myorbisvoice.com/                        → 200
+https://myorbisresults.com/p/sample/voice-1/       → 301 → https://myorbisvoice.com/p/sample/voice-1/       → 200
+https://myorbisresults.com/p/sample/voice-2/       → 301 → https://myorbisvoice.com/p/sample/voice-2/       → 200
+https://myorbisresults.com/p/sample/voice-3/       → 301 → https://myorbisvoice.com/p/sample/voice-3/       → 200
+https://myorbisresults.com/preview/                → 301 → https://myorbisvoice.com/preview/                → 200
+https://myorbisresults.com/p/_assets/partner-hydrate.js → 301 → ...                                        → 200
+https://www.myorbisresults.com/p/sample/voice-1/   → 301 → https://myorbisvoice.com/p/sample/voice-1/      → 200
+```
+
+**Side benefit:** the deploy-script-secondary-target feature shipped in `568d236` stays dormant (no `MOR_FTP_HOST` set) but is ready if a future decision needs partner pages to be served natively at `myorbisresults.com` (e.g. brand-strategy shift, or a customer-specific demand). Path to flip back: add Spaceship Addon Domain → add netrc entry → set `MOR_FTP_HOST` → remove Cloudflare redirect rule.
+
+**Two gotchas that cost ~30 min of debugging — captured here so future-me doesn't repeat them:**
+
+1. **Cloudflare Redirect Rules only fire when DNS is proxied (orange cloud), not DNS-only (gray cloud).** I initially recommended gray cloud thinking we'd serve from Spaceship origin; for the redirect path, that's wrong. Orange cloud is required because the rule runs at Cloudflare's edge, which only sees the request if Cloudflare is in the path.
+
+2. **Cloudflare's redirect URL field has Type=Static and Type=Dynamic.** Static treats whatever you type as a literal URL. Dynamic evaluates it as an expression. To preserve the request path with `concat("https://myorbisvoice.com", http.request.uri.path)`, you must pick **Dynamic**. If you pick Static and paste the expression, Cloudflare 301s every request to the literal string `concat(...)` — visible to curl, fatal to browsers.
 
 ### G1. Gemini Live WebSocket closing with code 1008 mid-call — closed 2026-05-12
 
