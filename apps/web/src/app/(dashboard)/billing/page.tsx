@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
 import { Tooltip } from '@/components/Tooltip'
 
 interface Plan {
@@ -72,14 +73,15 @@ function statusLabel(status: string, t: TFn): string {
   return status
 }
 
-function fmtDate(iso: string | null, dateLocale: string, t: TFn) {
+function fmtDate(iso: string | null, dateLocale: string, tz: string, t: TFn) {
   if (!iso) return t('tenantBilling.dash')
-  return new Date(iso).toLocaleDateString(dateLocale, { year: 'numeric', month: 'short', day: 'numeric' })
+  return formatInTimezone(iso, { tz, locale: dateLocale, year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 export default function BillingPage() {
   const t = useT()
   const { locale } = useLocale()
+  const tz = useUserTimezone()
   const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   const { data: subscription, loading: subLoading } = useApi<Subscription | null>('/api/billing/subscription')
   const { data: plans, loading: plansLoading } = useApi<Plan[]>('/api/billing/plans')
@@ -147,7 +149,7 @@ export default function BillingPage() {
               <div>
                 <p className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>{t('tenantBilling.currentPeriod')}</p>
                 <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {fmtDate(sub.currentPeriodStart, dateLocale, t)} – {fmtDate(sub.currentPeriodEnd, dateLocale, t)}
+                  {fmtDate(sub.currentPeriodStart, dateLocale, tz, t)} – {fmtDate(sub.currentPeriodEnd, dateLocale, tz, t)}
                 </p>
               </div>
               {sub.cancelAtPeriodEnd && (

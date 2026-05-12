@@ -3,6 +3,7 @@
 import { useApi } from '@/hooks/useApi'
 import { Tooltip } from '@/components/Tooltip'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
 
 interface ChannelUsage {
   sent: number
@@ -131,6 +132,7 @@ function ChannelCard({
 export default function UsagePage() {
   const t = useT()
   const { locale } = useLocale()
+  const tz = useUserTimezone()
   const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   const { data, loading } = useApi<UsageSummary>('/api/usage/summary')
 
@@ -146,7 +148,7 @@ export default function UsagePage() {
 
   if (!data) return null
 
-  const period = new Date(data.periodStart).toLocaleString(dateLocale, { month: 'long', year: 'numeric' })
+  const period = formatInTimezone(data.periodStart, { tz, locale: dateLocale, month: 'long', year: 'numeric' })
   const histMax = Math.max(1, ...data.history.map(h => h.minutes))
   const totalOverage = data.overageCharges.totalCents
 

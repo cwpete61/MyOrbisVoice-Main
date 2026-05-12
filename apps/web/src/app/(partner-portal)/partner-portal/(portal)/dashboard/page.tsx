@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
 
 // ─── API contracts ────────────────────────────────────────────────────────────
 type Account = {
@@ -76,15 +77,16 @@ function fmtPct(pct: number) {
   return pct.toFixed(2) + '%'
 }
 
-function fmtDate(iso: string, locale: string) {
+function fmtDate(iso: string, locale: string, tz: string) {
   const tag = locale === 'es' ? 'es-MX' : 'en-US'
-  return new Date(iso).toLocaleDateString(tag, { month: 'short', day: 'numeric', year: 'numeric' }) +
-    ' ' + new Date(iso).toLocaleTimeString(tag, { hour: 'numeric', minute: '2-digit' }).toLowerCase()
+  const date = formatInTimezone(iso, { tz, locale: tag, month: 'short', day: 'numeric', year: 'numeric' })
+  const time = formatInTimezone(iso, { tz, locale: tag, hour: 'numeric', minute: '2-digit' }).toLowerCase()
+  return `${date} ${time}`
 }
 
-function fmtLongDate(iso: string, locale: string) {
+function fmtLongDate(iso: string, locale: string, tz: string) {
   const tag = locale === 'es' ? 'es-MX' : 'en-US'
-  return new Date(iso).toLocaleDateString(tag, { month: 'long', day: 'numeric', year: 'numeric' })
+  return formatInTimezone(iso, { tz, locale: tag, month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 // ─── Card components ──────────────────────────────────────────────────────────
@@ -177,9 +179,10 @@ function GetPaidChecklist({
 }) {
   const t = useT()
   const { locale } = useLocale()
+  const tz = useUserTimezone()
   const reachedMin = approvedBalanceCents >= minPayoutCents
   const nextPayoutDateStr = nextPayoutCommission?.scheduledPayoutDate
-    ? fmtLongDate(nextPayoutCommission.scheduledPayoutDate, locale)
+    ? fmtLongDate(nextPayoutCommission.scheduledPayoutDate, locale, tz)
     : null
 
   const minAmount = (minPayoutCents / 100).toFixed(0)
@@ -300,6 +303,7 @@ function GetPaidChecklist({
 export default function PartnerDashboardPage() {
   const t = useT()
   const { locale } = useLocale()
+  const tz = useUserTimezone()
   const [account, setAccount]       = useState<Account | null>(null)
   const [allTime, setAllTime]       = useState<Stats | null>(null)
   const [period, setPeriod]         = useState<PeriodStats | null>(null)
@@ -580,7 +584,7 @@ export default function PartnerDashboardPage() {
                           {pill.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3" style={{ color: 'var(--text-tertiary)' }}>{fmtDate(c.createdAt, locale)}</td>
+                      <td className="px-4 py-3" style={{ color: 'var(--text-tertiary)' }}>{fmtDate(c.createdAt, locale, tz)}</td>
                     </tr>
                   )
                 })}

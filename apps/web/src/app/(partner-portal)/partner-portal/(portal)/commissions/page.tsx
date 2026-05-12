@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
 
 // Shape returned by GET /api/affiliate/commissions — see services/affiliate.service.ts:getCommissions
 // Maps directly to the AffiliateCommission Prisma model with the joined affiliateConversion.
@@ -44,6 +45,7 @@ function fmt(cents: number) { return '$' + (cents / 100).toFixed(2) }
 export default function CommissionsPage() {
   const t = useT()
   const { locale } = useLocale()
+  const tz = useUserTimezone()
   const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   const [result, setResult] = useState<PagedResult | null>(null)
   const [page, setPage] = useState(1)
@@ -105,17 +107,17 @@ export default function CommissionsPage() {
                   const showsPaysOn = c.status !== 'PAID' && c.status !== 'REVERSED' && c.scheduledPayoutDate
                   return (
                     <tr key={c.id} style={{ background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{new Date(c.createdAt).toLocaleDateString(dateLocale)}</td>
+                      <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{formatInTimezone(c.createdAt, { tz, locale: dateLocale, dateStyle: 'short' })}</td>
                       <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{c.affiliateConversion?.conversionType ?? '—'}</td>
                       <td className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--text-primary)' }}>{fmt(c.amountMinor ?? 0)}</td>
                       <td className="px-4 py-2.5">
                         <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: bg.bg, color: bg.text }}>{label}</span>
                       </td>
                       <td className="px-4 py-2.5" style={{ color: 'var(--text-tertiary)' }}>
-                        {showsPaysOn ? new Date(c.scheduledPayoutDate!).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                        {showsPaysOn ? formatInTimezone(c.scheduledPayoutDate!, { tz, locale: dateLocale, month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                       </td>
                       <td className="px-4 py-2.5" style={{ color: 'var(--text-tertiary)' }}>
-                        {c.paidAt ? new Date(c.paidAt).toLocaleDateString(dateLocale) : '—'}
+                        {c.paidAt ? formatInTimezone(c.paidAt, { tz, locale: dateLocale, dateStyle: 'short' }) : '—'}
                       </td>
                     </tr>
                   )

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useApi, apiFetchRaw, apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
 
 interface Contact { firstName: string | null; lastName: string | null; email: string | null; phoneE164: string | null }
 
@@ -57,6 +58,7 @@ function contactName(c: Contact | null): string {
 export default function ConversationsPage() {
   const t = useT()
   const { locale } = useLocale()
+  const tz = useUserTimezone()
   const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
 
   const [selected, setSelected] = useState<Conversation | null>(null)
@@ -438,7 +440,7 @@ export default function ConversationsPage() {
                         </span>
                       )}
                       <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                        {new Date(c.startedAt).toLocaleString(dateLocale)}
+                        {formatInTimezone(c.startedAt, { tz, locale: dateLocale, dateStyle: 'short', timeStyle: 'short' })}
                       </span>
                       <span className="text-xs ml-auto" style={{ color: 'var(--text-tertiary)' }}>
                         {formatDuration(c.startedAt, c.endedAt)}
@@ -519,7 +521,7 @@ export default function ConversationsPage() {
                 <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{contactName(selected.contact)}</div>
               )}
               <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                {new Date(selected.startedAt).toLocaleString(dateLocale)}
+                {formatInTimezone(selected.startedAt, { tz, locale: dateLocale, dateStyle: 'medium', timeStyle: 'short' })}
                 {selected.endedAt && ` · ${formatDuration(selected.startedAt, selected.endedAt)}`}
               </div>
               <span className="badge capitalize text-xs" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>

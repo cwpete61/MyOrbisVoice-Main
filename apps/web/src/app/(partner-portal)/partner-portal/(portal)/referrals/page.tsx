@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
 
 type ReferralLink = {
   url: string
@@ -43,6 +44,7 @@ const APP_BASE = 'https://app.myorbisvoice.com'
 export default function ReferralsPage() {
   const t = useT()
   const { locale } = useLocale()
+  const tz = useUserTimezone()
   const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   const [link, setLink] = useState<ReferralLink | null>(null)
   const [clicks, setClicks] = useState<Click[]>([])
@@ -396,7 +398,7 @@ export default function ReferralsPage() {
                   const hasCommission = r.commissionStatus !== 'NONE' && r.commissionCents > 0
                   return (
                     <tr key={r.id} style={{ background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
-                      <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{new Date(r.occurredAt).toLocaleDateString(dateLocale)}</td>
+                      <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{formatInTimezone(r.occurredAt, { tz, locale: dateLocale, dateStyle: 'short' })}</td>
                       <td className="px-4 py-2.5" style={{ color: 'var(--text-primary)' }}>{r.tenant.name}</td>
                       <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{r.tenant.planName}</td>
                       <td className="px-4 py-2.5" style={{ color: 'var(--text-tertiary)' }}>{typeLabel}</td>
@@ -431,12 +433,12 @@ export default function ReferralsPage() {
             <tbody>
               {clicks.map((c, i) => (
                 <tr key={c.id} style={{ background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{c.clickedAt ? new Date(c.clickedAt).toLocaleDateString(dateLocale) : '—'}</td>
+                  <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{c.clickedAt ? formatInTimezone(c.clickedAt, { tz, locale: dateLocale, dateStyle: 'short' }) : '—'}</td>
                   <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{c.landingPath ?? '—'}</td>
                   <td className="px-4 py-2.5" style={{ color: 'var(--text-tertiary)' }}>{c.referrer ? new URL(c.referrer).hostname : '—'}</td>
                   <td className="px-4 py-2.5">
                     {c.convertedAt
-                      ? <span style={{ color: 'oklch(55% 0.18 145)' }}>✓ {new Date(c.convertedAt).toLocaleDateString(dateLocale)}</span>
+                      ? <span style={{ color: 'oklch(55% 0.18 145)' }}>✓ {formatInTimezone(c.convertedAt, { tz, locale: dateLocale, dateStyle: 'short' })}</span>
                       : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                   </td>
                 </tr>

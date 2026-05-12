@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { apiFetch, apiFetchRaw, apiUploadFile, useApi } from '@/hooks/useApi'
 import { useT, useLocale, type Locale } from '@/lib/i18n/I18nProvider'
+import { TimezoneSelect } from '@/components/TimezoneSelect'
+import { getBrowserTimezone } from '@/lib/timezone'
 
 interface UserMe {
   user: {
@@ -12,6 +14,7 @@ interface UserMe {
     firstName: string | null
     lastName: string | null
     preferredLocale?: 'en' | 'es'
+    preferredTimezone?: string | null
     status: string
     createdAt: string
     lastLoginAt: string | null
@@ -104,6 +107,11 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileToast, setProfileToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  // Timezone form
+  const [timezone, setTimezone] = useState<string | null>(null)
+  const [timezoneSaving, setTimezoneSaving] = useState(false)
+  const [timezoneToast, setTimezoneToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
   // Password form
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -118,6 +126,7 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
       setFirstName(user.firstName ?? '')
       setLastName(user.lastName ?? '')
       setUsername(user.username ?? '')
+      setTimezone(user.preferredTimezone ?? null)
     }
   }, [user])
 
@@ -140,6 +149,29 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
       toast(setProfileToast, 'error', err instanceof Error ? err.message : t('profile.failedToSave'))
     } finally {
       setProfileSaving(false)
+    }
+  }
+
+  async function saveTimezone(next: string | null) {
+    setTimezone(next)
+    setTimezoneSaving(true)
+    try {
+      await apiFetch('/api/auth/me', {
+        method: 'PATCH',
+        body: JSON.stringify({ preferredTimezone: next }),
+      })
+      // Refresh the localStorage cache used by useUserTimezone() so other pages
+      // pick up the change on next render without waiting for /me to re-fetch.
+      try {
+        const effective = next ?? getBrowserTimezone()
+        window.localStorage.setItem('orbis.userTimezone', effective)
+      } catch { /* ignore quota errors */ }
+      reload()
+      toast(setTimezoneToast, 'success', t('timezone.saved'))
+    } catch (err) {
+      toast(setTimezoneToast, 'error', err instanceof Error ? err.message : t('timezone.saveFailed'))
+    } finally {
+      setTimezoneSaving(false)
     }
   }
 
@@ -317,6 +349,22 @@ export function ProfilePage({ showBilling = false }: ProfilePageProps) {
               </div>
             </div>
           </button>
+        </div>
+      </Section>
+
+      {/* Time zone */}
+      <Section title={t('timezone.sectionTitle')} description={t('timezone.sectionDesc')}>
+        {timezoneToast && <Toast {...timezoneToast} />}
+        <div className="max-w-md">
+          <label className="label">{t('timezone.fieldLabel')}</label>
+          <TimezoneSelect value={timezone} onChange={saveTimezone} />
+          <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
+            {timezoneSaving
+              ? t('timezone.saving')
+              : timezone
+                ? t('timezone.usingExplicit').replace('{tz}', timezone)
+                : t('timezone.usingAuto').replace('{tz}', getBrowserTimezone())}
+          </p>
         </div>
       </Section>
 

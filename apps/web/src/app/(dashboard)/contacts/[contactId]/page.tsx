@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useApi, apiFetch } from '@/hooks/useApi'
 import { useT } from '@/lib/i18n/I18nProvider'
+import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
 
 interface Contact {
   id: string; fullName: string | null; firstName: string | null; lastName: string | null
@@ -84,6 +85,7 @@ function StatusBadge({ label, color }: { label: string; color: string }) {
 
 export default function ContactTimelinePage() {
   const t = useT()
+  const tz = useUserTimezone()
   const { contactId } = useParams<{ contactId: string }>()
   const { data, loading, error, reload } = useApi<TimelineData>(`/api/contacts/${contactId}/timeline`)
   const [optOutLoading, setOptOutLoading] = useState(false)
@@ -128,7 +130,7 @@ export default function ContactTimelinePage() {
             ['Email', contact.email ?? '—'],
             ['Phone', contact.phoneE164 ?? '—'],
             ['Source', contact.source],
-            ['Added', new Date(contact.createdAt).toLocaleDateString()],
+            ['Added', formatInTimezone(contact.createdAt, { tz, dateStyle: 'medium' })],
           ].map(([k, v]) => (
             <div key={k} className="flex justify-between text-sm">
               <span className="text-gray-500">{k}</span>
@@ -157,7 +159,7 @@ export default function ContactTimelinePage() {
                 <div>
                   <span className="text-gray-700">{ch}</span>
                   {isOut && at && (
-                    <p className="text-xs text-gray-400">Since {new Date(at).toLocaleDateString()}</p>
+                    <p className="text-xs text-gray-400">Since {formatInTimezone(at, { tz, dateStyle: 'medium' })}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -207,8 +209,8 @@ export default function ContactTimelinePage() {
             <div key={i} className="flex gap-4 text-sm">
               {/* Time column */}
               <div className="w-32 shrink-0 text-xs text-gray-400 pt-0.5">
-                {new Date(item.at).toLocaleDateString()}<br />
-                <span className="text-gray-300">{new Date(item.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                {formatInTimezone(item.at, { tz, dateStyle: 'medium' })}<br />
+                <span className="text-gray-300">{formatInTimezone(item.at, { tz, hour: '2-digit', minute: '2-digit' })}</span>
               </div>
 
               {/* Content */}

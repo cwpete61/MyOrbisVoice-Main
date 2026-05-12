@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { apiFetchRaw, useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { formatInTimezone } from '@/lib/timezone'
 
 interface Appointment {
   id: string
@@ -155,11 +156,14 @@ export default function AppointmentsPage() {
                       </span>
                     </div>
                     <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {start.toLocaleDateString(dateLocale, { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {/* Render in the appointment's *booking* timezone (snapshot at time of booking),
+                          not the viewer's preferred zone. The customer was told "2pm EST" — that's
+                          what the dashboard must show, regardless of where the user is looking from. */}
+                      {formatInTimezone(start, { tz: appt.timezone, locale: dateLocale, weekday: 'short', month: 'short', day: 'numeric' })}
                       {' · '}
-                      {start.toLocaleTimeString(dateLocale, { hour: 'numeric', minute: '2-digit' })}
+                      {formatInTimezone(start, { tz: appt.timezone, locale: dateLocale, hour: 'numeric', minute: '2-digit' })}
                       {' – '}
-                      {end.toLocaleTimeString(dateLocale, { hour: 'numeric', minute: '2-digit' })}
+                      {formatInTimezone(end, { tz: appt.timezone, locale: dateLocale, hour: 'numeric', minute: '2-digit' })}
                       {appt.timezone && (
                         <span style={{ color: 'var(--text-tertiary)' }}> {appt.timezone}</span>
                       )}

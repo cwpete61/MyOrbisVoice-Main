@@ -136,6 +136,8 @@ const updateProfileSchema = z.object({
   lastName: z.string().max(50).optional(),
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, 'Username may only contain letters, numbers, and underscores').optional(),
   preferredLocale: z.enum(['en', 'es']).optional(),
+  // null clears the preference (falls back to browser zone client-side). Service validates IANA name.
+  preferredTimezone: z.union([z.string().max(64), z.null()]).optional(),
 })
 
 router.patch('/me', authenticate, async (req, res, next) => {

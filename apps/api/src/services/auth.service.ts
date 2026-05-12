@@ -333,7 +333,7 @@ export async function logoutUser(rawRefreshToken: string): Promise<void> {
 const SUPPORTED_LOCALES = ['en', 'es'] as const
 type Locale = typeof SUPPORTED_LOCALES[number]
 
-export async function updateProfile(userId: string, data: { firstName?: string; lastName?: string; username?: string; preferredLocale?: string }) {
+export async function updateProfile(userId: string, data: { firstName?: string; lastName?: string; username?: string; preferredLocale?: string; preferredTimezone?: string | null }) {
   if (data.username) {
     const existing = await prisma.user.findFirst({ where: { username: { equals: data.username, mode: 'insensitive' }, NOT: { id: userId } } })
     if (existing) throw new AppError('CONFLICT', 'Username already taken', 409)
@@ -341,8 +341,23 @@ export async function updateProfile(userId: string, data: { firstName?: string; 
   if (data.preferredLocale && !SUPPORTED_LOCALES.includes(data.preferredLocale as Locale)) {
     throw new AppError('VALIDATION_ERROR', `preferredLocale must be one of: ${SUPPORTED_LOCALES.join(', ')}`, 422)
   }
+  // Validate timezone via Intl. Null is allowed (clears the preference).
+  if (data.preferredTimezone !== undefined && data.preferredTimezone !== null) {
+    if (!isValidIanaTimezone(data.preferredTimezone)) {
+      throw new AppError('VALIDATION_ERROR', 'preferredTimezone must be a valid IANA time-zone name (e.g. "America/New_York")', 422)
+    }
+  }
   const user = await prisma.user.update({ where: { id: userId }, data })
   return sanitizeUser(user)
+}
+
+function isValidIanaTimezone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz })
+    return true
+  } catch {
+    return false
+  }
 }
 
 export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
@@ -478,6 +493,7 @@ function sanitizeUser(user: {
   firstName: string | null
   lastName: string | null
   preferredLocale?: string
+  preferredTimezone?: string | null
   status: string
   createdAt: Date
   lastLoginAt: Date | null
@@ -489,6 +505,7 @@ function sanitizeUser(user: {
     firstName: user.firstName,
     lastName: user.lastName,
     preferredLocale: user.preferredLocale ?? 'en',
+    preferredTimezone: user.preferredTimezone ?? null,
     status: user.status,
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,

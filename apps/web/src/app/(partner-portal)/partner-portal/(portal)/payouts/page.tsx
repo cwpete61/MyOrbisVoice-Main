@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
 
 // AffiliateAccount shape — see services/affiliate.service.ts:getAffiliateAccount
 type Account = {
@@ -51,6 +52,7 @@ type ConnectStatus = {
 export default function PayoutsPage() {
   const t = useT()
   const { locale } = useLocale()
+  const tz = useUserTimezone()
   const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
   const [account, setAccount] = useState<Account | null>(null)
   const [stats, setStats]   = useState<Stats | null>(null)
@@ -235,13 +237,13 @@ export default function PayoutsPage() {
                 const label = STATUS_LABEL[r.status] ?? STATUS_LABEL['PENDING']!
                 return (
                   <tr key={r.id} style={{ background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{new Date(r.requestedAt).toLocaleDateString(dateLocale)}</td>
+                    <td className="px-4 py-2.5" style={{ color: 'var(--text-secondary)' }}>{formatInTimezone(r.requestedAt, { tz, locale: dateLocale, dateStyle: 'short' })}</td>
                     <td className="px-4 py-2.5 text-right font-medium" style={{ color: 'var(--text-primary)' }}>{fmt(r.amountCents ?? 0)}</td>
                     <td className="px-4 py-2.5">
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: bg.bg, color: bg.text }}>{label}</span>
                     </td>
                     <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'var(--text-tertiary)' }}>{r.payoutRef ?? '—'}</td>
-                    <td className="px-4 py-2.5" style={{ color: 'var(--text-tertiary)' }}>{r.processedAt ? new Date(r.processedAt).toLocaleDateString(dateLocale) : '—'}</td>
+                    <td className="px-4 py-2.5" style={{ color: 'var(--text-tertiary)' }}>{r.processedAt ? formatInTimezone(r.processedAt, { tz, locale: dateLocale, dateStyle: 'short' }) : '—'}</td>
                   </tr>
                 )
               })}
