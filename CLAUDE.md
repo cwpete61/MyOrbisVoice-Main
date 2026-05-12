@@ -1,5 +1,40 @@
 # CLAUDE.md
 
+## ⚠️ Brand Context — READ FIRST
+
+**Brand hierarchy (do NOT confuse these):**
+
+- **MyOrbisResults** — parent company / umbrella brand
+- **MyOrbisVoice** — a product of MyOrbisResults ← **this repo**
+- **MyOrbisLocal** — a *different* product of MyOrbisResults (separate codebase)
+
+**MyOrbisVoice and MyOrbisLocal are SEPARATE products.** They have
+separate positioning, separate copy, separate audiences. One is NOT
+"a feature of" or "a service under" the other. They are siblings.
+
+**This repo (`MyOrbisVoice-Main` on GitHub, working tree at
+`/home/orbis/Antigravity/OrbisVoice2026/`) is where MyOrbisVoice
+development happens.** All MyOrbisVoice marketing pages, product
+pages, partner landing pages, Landing Page Builder, voice agent
+scripts, copy, and bilingual content belong here.
+
+**The sister MyOrbisLocal product codebase lives at
+`/home/orbis/Antigravity/MyOrbisLocal/`** (GitHub `cwpete61/MyOrbisLocal`).
+Do not import MyOrbisLocal's positioning, copy, or branding into
+MyOrbisVoice surfaces — they're a different product for a different
+audience. If a task is explicitly about MyOrbisLocal, recommend the
+user open that folder in a separate Antigravity window.
+
+**Cautionary tale (2026-05-11):** A session in the sister MyOrbisLocal
+repo misread the brand hierarchy as "MyOrbisLocal umbrella over
+MyOrbisVoice product." It moved this project's
+`docs/marketing-style-guide.md` into the MyOrbisLocal repo and built
+a `/marketing-copy` slash command there before being caught. Both
+projects' CLAUDE.md files now hard-code the sibling-product
+relationship at the top so future sessions don't drift.
+
+---
+
 ## Autonomous operation rule — MANDATORY
 
 Bypass-permissions mode is on for this project. The agent has standing authorization to run tools without per-call prompts. **In exchange, the agent must self-verify every step before moving on.** This is not optional — it replaces the human "approve each tool" gate.
