@@ -16,8 +16,8 @@ importers:
         specifier: ^2.4.6
         version: 2.4.6
       '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.39
+        specifier: ^25.7.0
+        version: 25.7.0
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
@@ -98,7 +98,7 @@ importers:
         version: 0.18.0
       stripe:
         specifier: ^22.1.0
-        version: 22.1.0(@types/node@20.19.39)
+        version: 22.1.0(@types/node@25.7.0)
       twilio:
         specifier: ^6.0.0
         version: 6.0.0
@@ -131,8 +131,8 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0
       '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.39
+        specifier: ^25.7.0
+        version: 25.7.0
       '@types/nodemailer':
         specifier: ^8.0.0
         version: 8.0.0
@@ -156,8 +156,8 @@ importers:
         version: 24.42.0(typescript@5.9.3)
     devDependencies:
       '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.39
+        specifier: ^25.7.0
+        version: 25.7.0
       tsx:
         specifier: ^4.15.0
         version: 4.21.0
@@ -190,8 +190,8 @@ importers:
         version: 3.25.76
     devDependencies:
       '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.39
+        specifier: ^25.7.0
+        version: 25.7.0
       '@types/nodemailer':
         specifier: ^8.0.0
         version: 8.0.0
@@ -224,8 +224,8 @@ importers:
         version: 3.8.1(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react-is@19.2.5)(react@18.3.1)(redux@5.0.1)
     devDependencies:
       '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.39
+        specifier: ^25.7.0
+        version: 25.7.0
       '@types/react':
         specifier: ^18.3.3
         version: 18.3.28
@@ -252,8 +252,8 @@ importers:
         version: 3.25.76
     devDependencies:
       '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.39
+        specifier: ^25.7.0
+        version: 25.7.0
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
@@ -261,8 +261,8 @@ importers:
   packages/shared:
     devDependencies:
       '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.39
+        specifier: ^25.7.0
+        version: 25.7.0
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
@@ -1000,8 +1000,8 @@ packages:
   '@types/node@18.19.130':
     resolution: {integrity: sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg==}
 
-  '@types/node@20.19.39':
-    resolution: {integrity: sha512-orrrD74MBUyK8jOAD/r0+lfa1I2MO6I+vAkmAWzMYbCcgrN4lCrmK52gRFQq/JRxfYPfonkr4b0jcY7Olqdqbw==}
+  '@types/node@25.7.0':
+    resolution: {integrity: sha512-z+pdZyxE+RTQE9AcboAZCb4otwcrvgHD+GlBpPgn0emDVt0ohrTMhAwlr2Wd9nZ+nihhYFxO2pThz3C5qSu2Eg==}
 
   '@types/nodemailer@8.0.0':
     resolution: {integrity: sha512-fyf8jWULsCo0d0BuoQ75i6IeoHs47qcqxWc7yUdUcV0pOZGjUTTOvwdG1PRXUDqN/8A64yQdQdnA2pZgcdi+cA==}
@@ -2686,8 +2686,8 @@ packages:
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
-  undici-types@6.21.0:
-    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+  undici-types@7.21.0:
+    resolution: {integrity: sha512-w9IMgQrz4O0YN1LtB7K5P63vhlIOvC7opSmouCJ+ZywlPAlO9gIkJ+otk6LvGpAs2wg4econaCz3TvQ9xPoyuQ==}
 
   unicode-properties@1.4.1:
     resolution: {integrity: sha512-CLjCCLQ6UuMxWnbIylkisbRj31qxHPAurvena/0iwSVbQ2G1VY5/HjV0IRabOEbDHlzZlRdCrD4NhB0JtU40Pg==}
@@ -3262,15 +3262,15 @@ snapshots:
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
 
   '@types/cors@2.8.19':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
 
   '@types/d3-array@3.2.2': {}
 
@@ -3298,7 +3298,7 @@ snapshots:
 
   '@types/express-serve-static-core@4.19.8':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
       '@types/qs': 6.15.0
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.1
@@ -3315,11 +3315,11 @@ snapshots:
   '@types/jsonwebtoken@9.0.10':
     dependencies:
       '@types/ms': 2.1.0
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
 
   '@types/mailparser@3.4.6':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
       iconv-lite: 0.6.3
 
   '@types/mime@1.3.5': {}
@@ -3332,24 +3332,24 @@ snapshots:
 
   '@types/node-fetch@2.6.13':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
       form-data: 4.0.5
 
   '@types/node@18.19.130':
     dependencies:
       undici-types: 5.26.5
 
-  '@types/node@20.19.39':
+  '@types/node@25.7.0':
     dependencies:
-      undici-types: 6.21.0
+      undici-types: 7.21.0
 
   '@types/nodemailer@8.0.0':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
 
   '@types/pdfkit@0.17.6':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
 
   '@types/prop-types@15.7.15': {}
 
@@ -3369,31 +3369,31 @@ snapshots:
   '@types/send@0.17.6':
     dependencies:
       '@types/mime': 1.3.5
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
 
   '@types/send@1.2.1':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
 
   '@types/serve-static@1.15.10':
     dependencies:
       '@types/http-errors': 2.0.5
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
       '@types/send': 0.17.6
 
   '@types/use-sync-external-store@0.0.6': {}
 
   '@types/web-push@3.6.4':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
     optional: true
 
   '@xmldom/xmldom@0.8.13': {}
@@ -5060,9 +5060,9 @@ snapshots:
 
   strip-json-comments@5.0.3: {}
 
-  stripe@22.1.0(@types/node@20.19.39):
+  stripe@22.1.0(@types/node@25.7.0):
     optionalDependencies:
-      '@types/node': 20.19.39
+      '@types/node': 25.7.0
 
   styled-jsx@5.1.1(react@18.3.1):
     dependencies:
@@ -5224,7 +5224,7 @@ snapshots:
 
   undici-types@5.26.5: {}
 
-  undici-types@6.21.0: {}
+  undici-types@7.21.0: {}
 
   unicode-properties@1.4.1:
     dependencies:
