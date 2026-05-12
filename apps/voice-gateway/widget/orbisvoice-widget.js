@@ -5,6 +5,17 @@
   const GW_BASE   = 'wss://gateway.myorbisvoice.com'
   const STYLES_ID = 'ov-widget-styles'
 
+  // Standard DTMF (Dual-Tone Multi-Frequency) — what your phone keypad
+  // actually generates when you press a digit. Used by _playDialIntro to
+  // simulate dialing a phone number before the WebSocket session begins.
+  // Frequencies in Hz: [low, high] per ITU-T Recommendation Q.23.
+  const DTMF_FREQS = {
+    '1': [697, 1209], '2': [697, 1336], '3': [697, 1477],
+    '4': [770, 1209], '5': [770, 1336], '6': [770, 1477],
+    '7': [852, 1209], '8': [852, 1336], '9': [852, 1477],
+    '0': [941, 1336],
+  }
+
   // ─── Inject CSS ──────────────────────────────────────────────────────────────
   function injectStyles() {
     if (document.getElementById(STYLES_ID)) return
@@ -131,16 +142,15 @@
     }
 
     _buildDOM() {
-      // Floating button
+      // Floating button — phone handset (Lucide-style). On click the widget
+      // plays a short dial-tone + ring intro to mimic placing a real phone
+      // call, then connects to the voice agent.
       this.btn = document.createElement('button')
       this.btn.id = 'ov-widget-btn'
-      this.btn.setAttribute('aria-label', 'Open voice assistant')
+      this.btn.setAttribute('aria-label', 'Call voice assistant')
       this.btn.innerHTML = `
         <svg viewBox="0 0 24 24" fill="none" stroke="#061818" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-          <line x1="12" y1="19" x2="12" y2="23"/>
-          <line x1="8" y1="23" x2="16" y2="23"/>
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
         </svg>`
       document.body.appendChild(this.btn)
 
@@ -189,18 +199,52 @@
 
     _bindEvents() {
       this.btn.addEventListener('click', () => this._open())
-      this.panel.querySelector('.ov-close-btn').addEventListener('click', () => this._close())
+      // X (close button in header) — disconnect Orby IMMEDIATELY and close the panel.
+      this.panel.querySelector('.ov-close-btn').addEventListener('click', () => {
+        this._endNow()
+        this._close()
+      })
+      // Mic button — when recording the label is "Stop"; clicking it disconnects
+      // Orby immediately (per latest UX direction). When not recording (e.g. agent
+      // is speaking) clicking it starts the mic.
       this.micBtn.addEventListener('click', () => this._toggleMic())
-      this.endBtn.addEventListener('click', () => this._endSession())
+      // End button — same effect as X but without closing the panel right away,
+      // so the visitor sees the "Session ended" line before it auto-closes.
+      this.endBtn.addEventListener('click', () => this._endNow())
     }
 
-    _open() {
+    async _open() {
       this.panel.classList.add('ov-open')
-      if (!this.ws) this._connect()
+      if (this.ws) return
+      // Play a short dial-tone + ring intro to mimic placing a real phone call,
+      // then connect. Browsers require a user gesture to start AudioContext,
+      // which this click satisfies.
+      try {
+        await this._playDialIntro()
+      } catch (e) {
+        console.warn('[OrbisVoice] dial intro skipped:', e)
+      }
+      this._connect()
     }
 
     _close() {
       this.panel.classList.remove('ov-open')
+    }
+
+    /** Disconnect Orby immediately — used by Stop / X / End. Closes the WS
+     *  without waiting for the server roundtrip; the gateway interprets ws.close
+     *  as session-end and runs finalize (transcript + summary + persist). */
+    _endNow() {
+      if (this.recording) this._stopRecording()
+      this._resetPlayback()
+      if (this.ws) {
+        try { this.ws.send(JSON.stringify({ type: 'end' })) } catch {}
+        try { this.ws.close() } catch {}
+        this.ws = null
+      }
+      this.geminiReady = false
+      this.micBtn.disabled = true
+      this._setStatus('Session ended.')
     }
 
     async _connect() {
@@ -280,8 +324,11 @@
     }
 
     async _toggleMic() {
+      // When recording, "Stop" fully disconnects Orby per latest UX (was
+      // previously a mic-pause). When not recording (agent is speaking and
+      // the visitor hasn't activated mic yet) it starts the mic.
       if (this.recording) {
-        this._stopRecording()
+        this._endNow()
       } else {
         await this._startRecording()
       }
@@ -329,13 +376,65 @@
       this._setStatus('Processing…', true)
     }
 
-    _endSession() {
-      if (this.ws) {
-        this.ws.send(JSON.stringify({ type: 'end' }))
-        if (this.recording) this._stopRecording()
-      } else {
-        this._close()
+    // ─── Dial-tone + ring intro (mimics placing a phone call) ──────────────
+    //
+    // Plays 10 random DTMF digit tones (~120 ms each, 80 ms gap) followed by
+    // 2 US-style ring cadences (440 Hz + 480 Hz, ~1.5 s on / 700 ms off).
+    // Total ~6 seconds of "I'm calling someone" theater before the live
+    // WebSocket session begins, so the visitor's mental model matches what's
+    // actually happening: it's a phone call to the agent.
+
+    async _playDialIntro() {
+      // Open the AudioContext on the click that triggered this — required for
+      // unmuted playback in all modern browsers.
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return
+      const ctx = new Ctx()
+      if (ctx.state === 'suspended') { try { await ctx.resume() } catch {} }
+
+      this._setStatus('Dialing…', true)
+      for (let i = 0; i < 10; i++) {
+        const digit = Math.floor(Math.random() * 10).toString()
+        await this._playDualTone(ctx, DTMF_FREQS[digit][0], DTMF_FREQS[digit][1], 0.12, 0.18)
+        await this._silence(80)
       }
+
+      await this._silence(300)
+      this._setStatus('Ringing…', true)
+      for (let i = 0; i < 2; i++) {
+        await this._playDualTone(ctx, 440, 480, 1.5, 0.22)
+        if (i < 1) await this._silence(700)
+      }
+
+      try { ctx.close() } catch {}
+      this._setStatus('Connecting…', true)
+    }
+
+    /** Play two sine-wave frequencies simultaneously (DTMF or ring). Returns
+     *  a promise that resolves when the tone is done. Short attack + release
+     *  envelopes avoid the audible click of a hard-edged start/stop. */
+    _playDualTone(ctx, freq1, freq2, durationSec, gain) {
+      return new Promise((resolve) => {
+        const now = ctx.currentTime
+        const osc1 = ctx.createOscillator()
+        const osc2 = ctx.createOscillator()
+        const g = ctx.createGain()
+        osc1.type = osc2.type = 'sine'
+        osc1.frequency.value = freq1
+        osc2.frequency.value = freq2
+        g.gain.setValueAtTime(0, now)
+        g.gain.linearRampToValueAtTime(gain, now + 0.005)
+        g.gain.setValueAtTime(gain, now + durationSec - 0.005)
+        g.gain.linearRampToValueAtTime(0, now + durationSec)
+        osc1.connect(g); osc2.connect(g); g.connect(ctx.destination)
+        osc1.start(now); osc2.start(now)
+        osc1.stop(now + durationSec); osc2.stop(now + durationSec)
+        setTimeout(resolve, durationSec * 1000)
+      })
+    }
+
+    _silence(ms) {
+      return new Promise((r) => setTimeout(r, ms))
     }
 
     _playAudio(base64) {

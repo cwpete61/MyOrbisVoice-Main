@@ -162,6 +162,13 @@ step_gateway() {
   ensure_deps myorbisvoice-gateway apps/voice-gateway
   rsync -az --delete "$REPO_ROOT/apps/voice-gateway/dist/" "$SERVER:$REMOTE/apps/voice-gateway/dist/"
   ssh "$SERVER" "docker cp $REMOTE/apps/voice-gateway/dist/. myorbisvoice-gateway:/app/apps/voice-gateway/dist/"
+  # Widget JS is a STATIC file served by the gateway (not compiled into dist/).
+  # Without this sync, changes to apps/voice-gateway/widget/*.js never reach
+  # prod — a real bug we hit on 2026-05-12 when the phone-icon + dial-intro
+  # widget changes deployed clean but the prod-served JS was still the older
+  # cached copy. Sync the widget folder alongside dist/ so widget edits actually ship.
+  rsync -az --delete "$REPO_ROOT/apps/voice-gateway/widget/" "$SERVER:$REMOTE/apps/voice-gateway/widget/"
+  ssh "$SERVER" "docker cp $REMOTE/apps/voice-gateway/widget/. myorbisvoice-gateway:/app/apps/voice-gateway/widget/"
   ssh "$SERVER" "docker commit myorbisvoice-gateway myorbisvoice-gateway:latest" >/dev/null && ok "Image updated"
   ssh "$SERVER" "docker restart myorbisvoice-gateway"
   sleep 5
