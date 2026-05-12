@@ -93,7 +93,12 @@ export function openGeminiLiveSession(
   type OutboundFrameSummary = { ts: number; kind: string; preview: string }
   const recentFrames: OutboundFrameSummary[] = []
   function recordFrame(kind: string, preview: string) {
-    recentFrames.push({ ts: Date.now(), kind, preview: preview.slice(0, 200) })
+    // 800-char preview lets us see full tool-response payloads (including the
+    // error message) when diagnosing a close. 200 chars was previously cutting
+    // off the very thing we needed to see — the bug-finding session on
+    // 2026-05-12 had to grep all gateway logs to piece together the truncated
+    // {"ok":false,"error":...} that record_disposition was returning.
+    recentFrames.push({ ts: Date.now(), kind, preview: preview.slice(0, 800) })
     if (recentFrames.length > 5) recentFrames.shift()
   }
   let messagesSentByKind: Record<string, number> = {

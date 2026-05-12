@@ -4,7 +4,7 @@ import { resolveSystemPrompt } from './lib/prompt-resolver.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { generateSummary } from './services/summary.service.js'
-import { persistConversation, markSessionFailed, type TranscriptEntry } from './services/conversation.service.js'
+import { persistConversation, markSessionFailed, startWidgetConversation, type TranscriptEntry } from './services/conversation.service.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
 
@@ -73,10 +73,28 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     console.error('[session] kb fetch failed (non-fatal):', e?.message ?? e)
     return null
   })
-  const systemPrompt = resolveSystemPrompt(prompts, dna, 'WIDGET', buildToolGuidanceBlock(), kbText)
+  // Partner context — set by widget session creation when the widget loaded on
+  // a partner's published page (/p/<slug>/). The resolver prepends a block
+  // telling the agent who they're demoing for.
+  const meta = session.metadataJson as Record<string, any> | null
+  const partner = (meta?.['partner'] && typeof meta['partner'] === 'object')
+    ? meta['partner']
+    : null
+  const systemPrompt = resolveSystemPrompt(prompts, dna, 'WIDGET', buildToolGuidanceBlock(), kbText, partner)
 
   const transcript: TranscriptEntry[] = []
+  // Create the Conversation row upfront so mid-call tools (record_disposition,
+  // save_contact, book_appointment with the convId param) have a target to
+  // attach to. Without this, those tools 422'd with "Provide conversationId
+  // or externalCallId" for every widget call. The row starts as OPEN and is
+  // flipped to COMPLETED by persistConversation() at session end.
   let conversationId: string | undefined
+  try {
+    conversationId = await startWidgetConversation({ tenantId: session.tenantId, sessionId: session.id })
+    console.log('[session] conversation created upfront:', conversationId)
+  } catch (err) {
+    console.error('[session] startWidgetConversation failed (non-fatal — tools will fall back to session end):', err)
+  }
   // Tool-call lifecycle tracker — see inbound.ts comment for rationale.
   type ToolCallEntry = { name: string; cancelled: boolean; result?: ToolResult }
   const toolCallTracker = new Map<string, ToolCallEntry>()
@@ -144,6 +162,21 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
       send(ws, { type: 'turn_complete' })
     },
     async onToolCall(call) {
+      // end_call is a gateway-only signal — no API roundtrip. We acknowledge
+      // the tool call back to Gemini Live immediately, send an `ended` message
+      // to the widget client, and close the WebSocket after a 2s delay so the
+      // goodbye audio finishes playing on the visitor's end.
+      if (call.name === 'end_call') {
+        const reason = (call.args as { reason?: string })?.reason ?? 'wrapping_up_generic'
+        console.log(`[session] end_call invoked by agent (reason=${reason})`)
+        gemini.sendToolResponse(call.id, call.name, { ok: true, reason })
+        send(ws, { type: 'ended' })
+        setTimeout(() => {
+          try { ws.close() } catch { /* already closed */ }
+        }, 2000)
+        return
+      }
+
       // See inbound.ts for the rationale — Gemini Live can emit a
       // toolCallCancellation after the API has already committed a side
       // effect (most importantly: book_appointment writes a row + Google

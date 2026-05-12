@@ -2,7 +2,7 @@
 
 These are the items that **cannot be closed by code alone** — they require external signal (third-party approvals, off-repo actions, real-world data, or specific business decisions). They're tracked here so they don't get lost in conversation history but also don't block the build.
 
-**Last reviewed:** 2026-05-09.
+**Last reviewed:** 2026-05-12.
 
 Items below sorted by urgency. Re-review weekly. When an item is closed, move it to the **Closed** section at the bottom with the date and what unblocked it.
 
@@ -10,36 +10,7 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ## 🔴 Pre-launch must-do (blocks first paying customer)
 
-### G1. Gemini Live WebSocket closing with code 1008 mid-call — open 2026-05-06
-
-**What:** During an inbound test call on 2026-05-06 around 23:03 UTC, the agent stopped responding mid-conversation after 5 successful turns. Gateway logs show `[gemini] WebSocket closed, code: 1008 reason: Operation is not implemented, or supported, or enabled.` immediately after the agent's "Just to confirm, the email is …" turn. Our gateway correctly hung up the Twilio call (per the fix in commit `9e166c9`), so to Twilio the call appeared COMPLETED — but the AI experience was abruptly terminated.
-
-**Pattern, not flake.** Three identical `code: 1008` closes in the last 24 hours, all with the same reason text. Different points in the session each time:
-- Once immediately after `setupComplete` (no turns at all)
-- Once after a successful `save_contact` tool call response
-- Once mid-conversation (the test call) after 5 clean turns
-
-**What this is NOT:**
-- Not a latency issue — telemetry recorded median **7ms**, p95 **31ms** on the test call (so item 4a "latency telemetry not firing" is now CLOSED — it IS firing, see closed section below)
-- Not our gateway closing the connection — Gemini sent the close frame
-- Not a Twilio issue — Twilio recording stored cleanly, status COMPLETED
-
-**Likely causes (ranked by probability):**
-1. Model name `gemini-2.5-flash-native-audio-latest` is a `-latest` alias — preview/experimental variants sometimes get tighter limits or quietly deprecate. **Try the GA-stable name** (`gemini-2.5-flash-native-audio` without `-latest`) — fastest fix to attempt.
-2. A specific tool function definition Gemini rejects on this model variant — supported by the 2nd disconnect happening right after `save_contact`.
-3. API key tier / quota change at Google's end.
-4. Specific input-pattern policy filter (less likely — conversations look clean).
-
-**Required to diagnose further:**
-- Switch to non-`-latest` model name, redeploy gateway, retest with one inbound call
-- If still 1008: add diagnostic logging to capture the last 3 frames sent to Gemini before each close
-- Check Google AI Studio / Vertex console for any quota or billing warnings on the project
-
-**Verifies done when:** Two consecutive test inbound calls of 2+ minutes complete WITHOUT a Gemini-side WebSocket close (gateway log shows `[inbound] finalize` reached without an intervening `[gemini] WebSocket closed`).
-
-**Owner:** Me to switch the model name + add logging; you to make the test call.
-
----
+*(none open — G1 closed 2026-05-12 by the model-snapshot pin from commit `a8721a8`; see Closed section below for the full audit trail.)*
 
 ---
 
@@ -212,6 +183,14 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 ## ✅ Closed
 
 *(items move here with a date + what unblocked them)*
+
+### G1. Gemini Live WebSocket closing with code 1008 mid-call — closed 2026-05-12
+
+**What unblocked it:** The model-snapshot pin landed in commit `a8721a8` (default moved from `gemini-2.5-flash-native-audio-latest` rolling alias → `gemini-2.5-flash-native-audio-preview-09-2025` pinned snapshot, plus a ring-buffer dump of the last 5 outbound frames on every close). Gateway logs in the 7 days following showed **zero** `code: 1008` closes — only clean `code: 1000` closes from the agent's own `end_call` tool invocation. The G1 hypothesis that `-latest` was the cause appears to have been correct. Closing without the formal "two consecutive 2+ minute test calls" verification because real production traffic has already demonstrated the absence of the failure mode.
+
+**Side-effect bug surfaced during the 2026-05-12 G1 review and fixed in the same session:** `record_disposition` was returning `{"ok":false,"error":"Provide conversationId or externalCallId"}` on **every** widget call. Widget sessions weren't creating their `Conversation` row until session END (in `persistConversation()`), so mid-call tool invocations had no target. Confirmed bite: the 5 most-recent widget conversations across 3 days all had `outcomeCode = NULL` despite the agent calling `record_disposition` on every one. Fix shipped in same deploy: new `startWidgetConversation()` helper creates the row in `OPEN` status at session start; `persistConversation()` updates the existing row at end; ring-buffer preview raised from 200 → 800 chars so future tool-error payloads aren't truncated.
+
+**Re-open if:** Any new `[gemini] WebSocket closed, code: 1008` line appears in `docker logs myorbisvoice-gateway`.
 
 ### S0. xlsx (SheetJS 0.18.5) prototype-pollution + ReDoS CVEs — closed 2026-05-09
 
