@@ -45,3 +45,7 @@ site/Site.zip
 *.dump
 snapshots/
 .gstack/
+
+# /graphify analysis output (graph.html / graph.json / GRAPH_REPORT.md / cache).
+# Regenerable from source any time via /graphify — never commit the artifacts.
+graphify-out/
