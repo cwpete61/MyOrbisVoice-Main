@@ -229,6 +229,11 @@ export default function AdminAffiliatesPage() {
       {/* ── AFFILIATES ── */}
       {tab === 'affiliates' && (
         <div className="space-y-4">
+          {/* F.4 — bulk email toggle for ALL active partners at once.
+              Disabling auto-pauses any RUNNING campaigns on next worker
+              tick. Suspension state is independent (not touched). */}
+          <BulkEmailToggle reload={reloadAff} showToast={showToast} />
+
           <div className="flex items-center gap-3">
             <input className="input-field text-sm flex-1 max-w-xs" placeholder="Search by name or email…"
               value={search} onChange={e => setSearch(e.target.value)} />
@@ -840,6 +845,76 @@ function TopPerformers({ partners }: { partners: PlatformStats['topPartners'] })
 
 function fmtMoney(cents: number): string {
   return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// ── F.4 bulk action: flip emailBulkEnabled for every ACTIVE partner ────────
+// Sits at the top of the partners tab. Two buttons with confirmation prompts.
+// The backend `bulk-email-toggle` endpoint only updates rows actually changing
+// (skips already-at-target) and returns the count.
+function BulkEmailToggle({
+  reload,
+  showToast,
+}: {
+  reload: () => void
+  showToast: (type: 'success' | 'error', text: string) => void
+}) {
+  const [working, setWorking] = useState<'enable' | 'disable' | null>(null)
+
+  async function flip(enabled: boolean) {
+    const verb = enabled ? 'ENABLE' : 'DISABLE'
+    const consequence = enabled
+      ? 'Every ACTIVE partner will gain access to create + start bulk email campaigns.'
+      : 'Every ACTIVE partner will lose bulk email access. Any RUNNING campaigns auto-pause on the next worker tick (within 15s). Suspension state is not touched.'
+    if (!confirm(`${verb} bulk email for ALL active partners?\n\n${consequence}\n\nClick OK to proceed.`)) return
+
+    setWorking(enabled ? 'enable' : 'disable')
+    try {
+      const res = await apiFetchRaw('/api/admin/partners/bulk-email-toggle', {
+        method: 'POST',
+        body:   JSON.stringify({ enabled }),
+      })
+      if (!res.ok) throw new Error('Bulk toggle failed')
+      const body = await res.json() as { data: { updated: number } }
+      showToast('success', `Bulk email ${enabled ? 'enabled' : 'disabled'} for ${body.data.updated} partner(s).`)
+      reload()
+    } catch (e) {
+      showToast('error', e instanceof Error ? e.message : 'Bulk toggle failed')
+    } finally {
+      setWorking(null)
+    }
+  }
+
+  return (
+    <div
+      className="flex items-center gap-3 p-3 rounded-xl"
+      style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)' }}
+    >
+      <div className="flex-1">
+        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+          Bulk email — all active partners
+        </p>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+          Master gate across every ACTIVE partner at once. Per-partner overrides are unaffected.
+        </p>
+      </div>
+      <button
+        onClick={() => flip(true)}
+        disabled={!!working}
+        className="text-xs px-3 py-1.5 rounded"
+        style={{ background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }}
+      >
+        {working === 'enable' ? 'Enabling…' : 'Enable for all'}
+      </button>
+      <button
+        onClick={() => flip(false)}
+        disabled={!!working}
+        className="text-xs px-3 py-1.5 rounded"
+        style={{ background: 'oklch(13% 0.04 25)', color: 'oklch(68% 0.20 25)' }}
+      >
+        {working === 'disable' ? 'Disabling…' : 'Disable for all'}
+      </button>
+    </div>
+  )
 }
 
 // ── F.4 inline editor: per-partner email policy ────────────────────────────

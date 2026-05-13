@@ -19,6 +19,7 @@ import { requirePlatformAdmin, requirePlatformSuperAdmin, requirePartnerContext 
 import {
   getPlatformPolicy, setPlatformPolicy,
   getPartnerPolicy, setPartnerOverrides, setPartnerBulkSuspension,
+  bulkSetAllPartnersBulkEnabled,
 } from '../services/email-bulk-policy.service.js'
 import {
   checkSuppression, addSuppression, removeSuppression, listSuppressions,
@@ -135,6 +136,27 @@ router.post('/admin/partners/:id/email-suspend', authenticate, requirePlatformAd
       metadataJson: { reason: reason ?? null },
     })
     res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
+
+// Sweeping action — flip emailBulkEnabled for EVERY ACTIVE partner.
+// Disabling auto-pauses any RUNNING campaigns for those partners on the
+// next worker tick (worker checks bulkEnabled every drain). Suspension
+// state is left untouched — bulk-enabling a suspended partner does not
+// un-suspend them, those flags are independent.
+router.post('/admin/partners/bulk-email-toggle', authenticate, requirePlatformAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body)
+    const result = await bulkSetAllPartnersBulkEnabled({ enabled })
+    await writeAuditLog({
+      actorType:   'ADMIN',
+      actorUserId: req.user!.id,
+      action:     enabled ? 'admin.partner_email.bulk_enabled_all' : 'admin.partner_email.bulk_disabled_all',
+      targetType: 'AffiliateAccount',
+      targetId:   'all',
+      metadataJson: { updated: result.updated },
+    })
+    res.json({ data: result })
   } catch (err) { next(err) }
 })
 

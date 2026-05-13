@@ -219,6 +219,31 @@ export async function setPartnerOverrides(opts: {
   await prisma.affiliateAccount.update({ where: { id: partnerId }, data })
 }
 
+/** Sweeping flip — set emailBulkEnabled on EVERY ACTIVE partner at once.
+ *  Returns the count actually updated. When disabling, RUNNING campaigns
+ *  for affected partners auto-pause on the next worker scan (worker checks
+ *  policy.bulkEnabled every tick and pauses with reason "bulk_disabled"
+ *  when it flips false mid-run) — no extra cleanup needed here.
+ *
+ *  Suspension state is NOT touched. Bulk-enabling a suspended partner
+ *  doesn't un-suspend them; bulk-disabling a non-suspended partner just
+ *  flips the gate. The two fields are deliberately independent.
+ */
+export async function bulkSetAllPartnersBulkEnabled(opts: {
+  enabled: boolean
+}): Promise<{ updated: number }> {
+  const result = await prisma.affiliateAccount.updateMany({
+    where: {
+      status: 'ACTIVE',
+      // Skip rows already at the target state so the count reflects
+      // actual change, not just "rows matched".
+      emailBulkEnabled: !opts.enabled,
+    },
+    data: { emailBulkEnabled: opts.enabled },
+  })
+  return { updated: result.count }
+}
+
 /** Admin manually suspends or unsuspends a partner's bulk sending. Suspended
  *  partners' RUNNING campaigns auto-pause on the next worker scan. */
 export async function setPartnerBulkSuspension(opts: {
