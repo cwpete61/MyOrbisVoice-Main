@@ -2,6 +2,7 @@ import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
+import { findContactIdByPhone, getContactHistory, formatContactHistoryForPrompt } from './lib/contact-history.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { generateSummary, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
@@ -225,12 +226,35 @@ export async function handleInboundCall(ws: WebSocket) {
       console.error('[inbound] kb fetch failed (non-fatal):', e?.message ?? e)
       return null
     })
+    // Phase E.7 — cross-session memory. If the caller ID matches a known
+    // contact, fetch their prior conversations + CRM facts and inject as a
+    // Caller Context layer in the system prompt. No-op when caller ID is
+    // blocked or the number has never called before — first-time callers get
+    // the normal cold-start flow.
+    let callerHistoryBlock: string | null = null
+    if (fromNumber) {
+      try {
+        const contactId = await findContactIdByPhone(tenantId, fromNumber)
+        if (contactId) {
+          const history = await getContactHistory(tenantId, contactId)
+          callerHistoryBlock = formatContactHistoryForPrompt(history)
+          if (callerHistoryBlock) {
+            console.log(`[inbound] caller history loaded for ${fromNumber} (${history?.totalConversations ?? 0} prior interactions)`)
+          }
+        }
+      } catch (e) {
+        console.error('[inbound] caller history fetch failed (non-fatal):', (e as Error).message)
+      }
+    }
+
     const systemPrompt = resolveSystemPrompt(
       prompts as any[],
       dnaSnap,
       'INBOUND',
       buildToolGuidanceBlock(),
       kbText,
+      null,                  // partner — inbound has no partner context
+      callerHistoryBlock,    // E.7 — Caller Context layer
     )
 
     // Look up tenant's Gemini API key; fall back to platform env key

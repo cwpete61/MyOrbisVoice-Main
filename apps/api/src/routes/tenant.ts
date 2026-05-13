@@ -58,19 +58,40 @@ router.patch('/business-profile', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ── Phase E.5 — Tenant booking preferences ──────────────────────────────────
+// Working hours + slot length + min notice + max advance + buffers + tenant
+// timezone. Drives searchAvailability for non-partner bookings. Same shape as
+// the partner equivalent at /api/partner/booking-preferences (E.3).
+
+router.get('/business-profile/booking-preferences', async (req, res, next) => {
+  try {
+    const prefs = await tenantService.getTenantBookingPreferences(req.user!.currentTenantId!)
+    res.json({ data: prefs })
+  } catch (err) { next(err) }
+})
+
+router.put('/business-profile/booking-preferences', async (req, res, next) => {
+  try {
+    const updated = await tenantService.updateTenantBookingPreferences(req.user!.currentTenantId!, req.body ?? {})
+    res.json({ data: updated })
+  } catch (err) { next(err) }
+})
+
 // Logo upload — raw binary stream, Content-Type carries the mime type
 // Frontend sends: fetch(url, { method: 'POST', headers: { 'Content-Type': 'image/png' }, body: file })
 router.post('/business-profile/logo', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
     const ct = req.headers['content-type']?.split(';')[0]?.trim() ?? ''
+    // Per project image rules (memory:image-rules) — only raster formats are
+    // accepted. SVG is intentionally excluded because partner-uploaded SVG is
+    // a known XSS vector when later inlined into emails or HTML templates.
     const allowed: Record<string, string> = {
       'image/png':     'png',
       'image/jpeg':    'jpg',
       'image/webp':    'webp',
-      'image/svg+xml': 'svg',
     }
-    if (!allowed[ct]) throw new AppError('VALIDATION_ERROR', 'Only PNG, JPG, WebP, and SVG are allowed', 422)
+    if (!allowed[ct]) throw new AppError('VALIDATION_ERROR', 'Only PNG, JPG, and WebP are allowed', 422)
 
     // Read raw body from stream
     const chunks: Buffer[] = []

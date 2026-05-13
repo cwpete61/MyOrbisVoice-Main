@@ -4,6 +4,7 @@ import { writeAuditLog } from '../lib/audit.js'
 import { AppError } from '@voiceautomation/shared'
 import { getAuthenticatedGoogleClient, sendGmailEmail } from './google.service.js'
 import { sendEmail } from './email.service.js'
+import { scheduleAppointmentReminders, cancelAppointmentReminders } from './reminder.service.js'
 import type { Prisma } from '@prisma/client'
 
 const DEFAULT_SLOT_INCREMENT_MINUTES = 30
@@ -27,12 +28,19 @@ type BusinessHoursMap = Record<string, DayHours>
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
 
 function timeOfDayInTz(ms: number, timezone: string): string {
-  return new Date(ms).toLocaleTimeString('en-US', {
+  const s = new Date(ms).toLocaleTimeString('en-US', {
     hour:     '2-digit',
     minute:   '2-digit',
     hour12:   false,
     timeZone: timezone,
   })
+  // The en-US locale + ICU on the production Node image renders midnight as
+  // "24:00" (and 00:30 as "24:30") instead of "00:00" / "00:30". This breaks
+  // the hours filter because "24:00" >= "09:00" is true lexicographically, so
+  // overnight slots silently pass the working-hours check. Normalize here so
+  // the rest of the file always sees 00–23. Same fix the formatSlotForAgent /
+  // tzOffsetMinutes helpers already apply on their own '24' branches.
+  return s.replace(/^24:/, '00:')
 }
 
 function dayNameInTz(ms: number, timezone: string): string {
@@ -164,56 +172,133 @@ function isWithinBusinessHours(
   return startTime >= dayHours.open && endTime <= dayHours.close
 }
 
+// Both partner (E.3) and tenant (E.5) store working hours with short day keys:
+//   { mon: { open: "09:00", close: "17:00" }, tue: {...}, sun: null }
+// The rest of this file (isWithinBusinessHours, etc.) uses full-name keys, so
+// this helper normalizes incoming JSON to the BusinessHoursMap shape.
+const SHORT_TO_LONG_DAY: Record<string, string> = {
+  sun: 'sunday', mon: 'monday', tue: 'tuesday', wed: 'wednesday',
+  thu: 'thursday', fri: 'friday', sat: 'saturday',
+}
+function shortHoursToBusinessHoursMap(raw: unknown): BusinessHoursMap | null {
+  if (!raw || typeof raw !== 'object') return null
+  const src = raw as Record<string, unknown>
+  const out: BusinessHoursMap = {}
+  let any = false
+  for (const [short, long] of Object.entries(SHORT_TO_LONG_DAY)) {
+    if (!(short in src)) continue
+    const v = src[short]
+    if (v === null) { out[long] = { closed: true }; any = true; continue }
+    if (v && typeof v === 'object') {
+      const obj = v as { open?: unknown; close?: unknown }
+      if (typeof obj.open === 'string' && typeof obj.close === 'string') {
+        out[long] = { open: obj.open, close: obj.close }
+        any = true
+      }
+    }
+  }
+  return any ? out : null
+}
+
 export async function searchAvailability(
   tenantId: string,
   params: SlotSearchParams,
   /** Phase E.2 — when set, free/busy is computed against the partner's
-   *  calendar instead of the tenant's. Business-hours constraints still
-   *  read from the tenant's BusinessProfile (the partner doesn't have
-   *  their own working-hours config yet — that lands in E.3). */
+   *  calendar. Phase E.3 — partner's own bookingHoursJson + slot/notice/
+   *  advance/buffer prefs are applied here too, overriding tenant defaults. */
   partnerId?: string,
+  /** Phase E.6 — when the caller is the public booking page (E.4) instead of
+   *  the agent, ask for `all` slots so the date picker can paint a full-day
+   *  grid. Default keeps the agent's existing curated "first 5 + 3 alternates"
+   *  contract so the voice script doesn't drown the caller in options. */
+  opts?: { primaryMax?: number; alternateMax?: number },
 ): Promise<{ slots: TimeSlot[]; alternateSlots: TimeSlot[] }> {
-  // Pull business hours once per call so we can filter slots to opening
-  // hours only. Defensive parse — anything that doesn't look like the
-  // expected day-keyed object becomes null (= no constraint applied).
-  const profile = await prisma.businessProfile.findUnique({
-    where:  { tenantId },
-    select: { businessHoursJson: true },
-  })
-  const rawHours = profile?.businessHoursJson as Record<string, unknown> | null
-  let businessHours: BusinessHoursMap | null = null
-  if (rawHours && typeof rawHours === 'object') {
-    const parsed: BusinessHoursMap = {}
-    let any = false
-    for (const day of DAY_NAMES) {
-      const v = rawHours[day]
-      if (v && typeof v === 'object') {
-        parsed[day] = v as DayHours
-        any = true
-      }
-    }
-    businessHours = any ? parsed : null
-  }
-
-  // Resolve Google client + target calendar — partner's when partnerId given,
-  // tenant's otherwise. Both paths land in the same downstream slot algorithm.
+  const primaryMax   = opts?.primaryMax   ?? 5
+  const alternateMax = opts?.alternateMax ?? 3
+  // Resolve Google client + target calendar + booking constraints. When
+  // partnerId is set, every constraint comes from the partner's row; when
+  // not, the tenant's BusinessProfile + caller params drive the search.
   let client
   let calendarTarget: string = 'primary'
+  let businessHours: BusinessHoursMap | null = null
+  let effectiveDurationMin = params.durationMinutes
+  let minNoticeMs = 0
+  let maxAdvanceMs = Number.POSITIVE_INFINITY
+  let bufferBeforeMs = 0
+  let bufferAfterMs  = 0
+  let effectiveTimezone = params.timezone
+
   if (partnerId) {
     const { getAuthenticatedGoogleClientForPartner } = await import('./google.service.js')
     client = await getAuthenticatedGoogleClientForPartner(partnerId)
     const partner = await prisma.affiliateAccount.findUnique({
       where:  { id: partnerId },
-      select: { calendarId: true },
+      select: {
+        calendarId:             true,
+        bookingHoursJson:       true,
+        bookingSlotDurationMin: true,
+        bookingMinNoticeMin:    true,
+        bookingMaxAdvanceDays:  true,
+        bookingBufferBeforeMin: true,
+        bookingBufferAfterMin:  true,
+        bookingTimezone:        true,
+      },
     })
-    calendarTarget = partner?.calendarId ?? 'primary'
+    calendarTarget        = partner?.calendarId ?? 'primary'
+    businessHours         = shortHoursToBusinessHoursMap(partner?.bookingHoursJson)
+    // params.durationMinutes is always set by callers, but if a caller passes
+    // 0/undefined we fall back to the partner's configured default.
+    if (!effectiveDurationMin || effectiveDurationMin <= 0) {
+      effectiveDurationMin = partner?.bookingSlotDurationMin ?? 30
+    }
+    minNoticeMs    = (partner?.bookingMinNoticeMin    ?? 0)  * 60 * 1000
+    maxAdvanceMs   = (partner?.bookingMaxAdvanceDays  ?? 60) * 24 * 60 * 60 * 1000
+    bufferBeforeMs = (partner?.bookingBufferBeforeMin ?? 0)  * 60 * 1000
+    bufferAfterMs  = (partner?.bookingBufferAfterMin  ?? 0)  * 60 * 1000
+    if (partner?.bookingTimezone) effectiveTimezone = partner.bookingTimezone
   } else {
     client = await getAuthenticatedGoogleClient(tenantId)
+    // Phase E.5 — pull both working hours and the tenant's booking prefs so
+    // the agent honors min-notice / max-advance / buffers / default slot
+    // length the same way partner-routed bookings do (E.3).
+    const profile = await prisma.businessProfile.findUnique({
+      where:  { tenantId },
+      select: {
+        businessHoursJson:      true,
+        bookingSlotDurationMin: true,
+        bookingMinNoticeMin:    true,
+        bookingMaxAdvanceDays:  true,
+        bookingBufferBeforeMin: true,
+        bookingBufferAfterMin:  true,
+      },
+    })
+    businessHours = shortHoursToBusinessHoursMap(profile?.businessHoursJson)
+    if (!effectiveDurationMin || effectiveDurationMin <= 0) {
+      effectiveDurationMin = profile?.bookingSlotDurationMin ?? 30
+    }
+    minNoticeMs    = (profile?.bookingMinNoticeMin    ?? 0)  * 60 * 1000
+    maxAdvanceMs   = (profile?.bookingMaxAdvanceDays  ?? 60) * 24 * 60 * 60 * 1000
+    bufferBeforeMs = (profile?.bookingBufferBeforeMin ?? 0)  * 60 * 1000
+    bufferAfterMs  = (profile?.bookingBufferAfterMin  ?? 0)  * 60 * 1000
   }
+
   const calendar = google.calendar({ version: 'v3', auth: client })
 
-  const timeMin = new Date(params.preferredStartRange.from)
-  const timeMax = new Date(params.preferredStartRange.to)
+  // Clamp the caller's requested window with min-notice and max-advance so
+  // the partner's "no same-minute" / "max 60 days out" rules win even if the
+  // agent asks for anything broader.
+  const nowMs = Date.now()
+  const reqMin = new Date(params.preferredStartRange.from).getTime()
+  const reqMax = new Date(params.preferredStartRange.to).getTime()
+  const windowStart = Math.max(reqMin, nowMs + minNoticeMs)
+  const windowEnd   = Math.min(reqMax, nowMs + maxAdvanceMs)
+  const timeMin = new Date(windowStart)
+  const timeMax = new Date(windowEnd)
+
+  if (windowEnd <= windowStart) {
+    // The partner's notice/advance window excludes the entire requested range.
+    return { slots: [], alternateSlots: [] }
+  }
 
   const eventsResp = await calendar.events.list({
     calendarId: calendarTarget,
@@ -226,12 +311,14 @@ export async function searchAvailability(
   const busyBlocks = (eventsResp.data.items ?? [])
     .filter(e => e.status !== 'cancelled')
     .map(e => ({
-      start: new Date(e.start?.dateTime ?? e.start?.date ?? '').getTime(),
-      end:   new Date(e.end?.dateTime   ?? e.end?.date   ?? '').getTime(),
+      // Buffers extend each busy block on both sides so the partner gets
+      // breathing room between back-to-back appointments.
+      start: new Date(e.start?.dateTime ?? e.start?.date ?? '').getTime() - bufferBeforeMs,
+      end:   new Date(e.end?.dateTime   ?? e.end?.date   ?? '').getTime() + bufferAfterMs,
     }))
     .filter(b => !Number.isNaN(b.start) && !Number.isNaN(b.end))
 
-  const durationMs  = params.durationMinutes * 60 * 1000
+  const durationMs  = effectiveDurationMin * 60 * 1000
   const incrementMs = DEFAULT_SLOT_INCREMENT_MINUTES * 60 * 1000
 
   const slots:          TimeSlot[] = []
@@ -241,7 +328,7 @@ export async function searchAvailability(
   while (cursor + durationMs <= timeMax.getTime()) {
     const slotEnd = cursor + durationMs
     const isBusy  = busyBlocks.some(b => cursor < b.end && slotEnd > b.start)
-    const inHours = isWithinBusinessHours(cursor, slotEnd, businessHours, params.timezone)
+    const inHours = isWithinBusinessHours(cursor, slotEnd, businessHours, effectiveTimezone)
 
     if (!isBusy && inHours) {
       const slot: TimeSlot = {
@@ -249,10 +336,15 @@ export async function searchAvailability(
         endAt:     new Date(slotEnd).toISOString(),
         available: true,
       }
-      if (slots.length < 5) {
+      if (slots.length < primaryMax) {
         slots.push(slot)
-      } else if (alternateSlots.length < 3) {
+      } else if (alternateSlots.length < alternateMax) {
         alternateSlots.push(slot)
+      } else {
+        // Both caps hit — short-circuit to avoid scanning the rest of the day
+        // for slots we'd just discard. The booking page (E.4) passes a high
+        // cap so it gets the full day; the agent path keeps the curated set.
+        break
       }
     }
     cursor += incrementMs
@@ -405,10 +497,27 @@ export async function createAppointment(tenantId: string, userId: string | null,
     notes:            data.notes,
   }).catch(err => console.warn('[appointment] owner notification failed:', (err as Error).message))
 
-  // Best-effort: enroll the contact into any active "appointment-reminder"
-  // campaign (trigger tag = `appointment-scheduled`). The scheduler fires
-  // these enrollments REMINDER_HOURS_BEFORE the appointment startAt.
+  // Phase E.6 — schedule reminders. Reads tenant config (offsets + channel
+  // toggles) from BusinessProfile; defaults are 24h + 1h before, both
+  // channels. Falls back to the legacy campaign-driven path below ONLY if
+  // the tenant has an active appointment-scheduled campaign — keeps any
+  // existing custom workflows working.
   if (data.contactId) {
+    const contact = await prisma.contact.findUnique({
+      where:  { id: data.contactId },
+      select: { email: true, phoneE164: true },
+    })
+    scheduleAppointmentReminders({
+      tenantId,
+      appointmentId: appointment.id,
+      contactId:     data.contactId,
+      startAt:       new Date(data.startAt),
+      contactEmail:  contact?.email     ?? null,
+      contactPhone:  contact?.phoneE164 ?? null,
+    }).catch(err => console.warn('[appointment] reminder scheduling failed:', (err as Error).message))
+
+    // Keep the legacy campaign enrollment path so tenants who built custom
+    // campaign flows (e.g. multi-touch reminder series) aren't broken.
     enrollAppointmentReminder(tenantId, data.contactId, appointment.id, {
       startAt:  data.startAt,
       timezone: data.timezone,
@@ -647,6 +756,27 @@ export async function rescheduleAppointment(tenantId: string, userId: string, ap
     },
   })
 
+  // Phase E.6 — re-schedule reminders against the new startAt. The upsert in
+  // scheduleAppointmentReminders resets status=PENDING + sentAt=null on rows
+  // that match the (appointmentId, channel, offsetMin) unique key, so any
+  // 24h reminder that already fired for the OLD date will re-fire for the
+  // NEW date if it's still in the future. Skip silently when there's no
+  // contact attached (e.g. ad-hoc admin-created appointments).
+  if (appt.contactId) {
+    const contact = await prisma.contact.findUnique({
+      where:  { id: appt.contactId },
+      select: { email: true, phoneE164: true },
+    })
+    scheduleAppointmentReminders({
+      tenantId,
+      appointmentId: appointmentId,
+      contactId:     appt.contactId,
+      startAt:       new Date(data.startAt),
+      contactEmail:  contact?.email     ?? null,
+      contactPhone:  contact?.phoneE164 ?? null,
+    }).catch(err => console.warn('[appointment] reschedule reminder update failed:', (err as Error).message))
+  }
+
   await writeAuditLog({
     tenantId,
     actorType: 'USER',
@@ -678,6 +808,14 @@ export async function cancelAppointment(tenantId: string, userId: string | null,
     data: { status: 'CANCELED' },
   })
 
+  // Phase E.6 — cancel any pending reminders so we don't text the customer
+  // "your appointment is tomorrow!" after they already cancelled. Best-effort:
+  // a stale reminder firing is embarrassing but recoverable, so failures don't
+  // block the cancel response.
+  cancelAppointmentReminders(appointmentId).catch(err =>
+    console.warn('[appointment] reminder cancel failed:', (err as Error).message),
+  )
+
   await writeAuditLog({
     tenantId,
     actorType:   userId ? 'USER' : 'SYSTEM',
@@ -708,8 +846,38 @@ export async function listAppointments(tenantId: string, query: {
   const limit = query.limit ?? 50
   const offset = query.offset ?? 0
   const [appointments, total] = await Promise.all([
-    prisma.appointment.findMany({ where, take: limit, skip: offset, orderBy: { startAt: 'desc' } }),
+    prisma.appointment.findMany({
+      where, take: limit, skip: offset, orderBy: { startAt: 'desc' },
+      // Phase E.6 — include a compact reminder summary so the appointments
+      // list can show "2 pending / 0 sent / 0 failed" without a second
+      // round-trip. Reminders are bounded (≤8 per appointment) so this is cheap.
+      include: { reminders: { select: { status: true, scheduledAt: true, channel: true } } },
+    }),
     prisma.appointment.count({ where }),
   ])
-  return { appointments, total, limit, offset }
+
+  // Flatten reminders into a small summary per appointment. The raw reminders
+  // array is dropped from the response to keep the wire format tight.
+  const enriched = appointments.map(appt => {
+    const r = appt.reminders
+    const pending = r.filter(x => x.status === 'PENDING').length
+    const sent    = r.filter(x => x.status === 'SENT').length
+    const failed  = r.filter(x => x.status === 'FAILED').length
+    const cancelled = r.filter(x => x.status === 'CANCELLED').length
+    // Soonest pending row (the next one that will actually fire).
+    const nextPending = r
+      .filter(x => x.status === 'PENDING')
+      .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime())[0]
+    const { reminders: _drop, ...rest } = appt
+    return {
+      ...rest,
+      reminderSummary: {
+        pending, sent, failed, cancelled,
+        nextScheduledAt: nextPending?.scheduledAt.toISOString() ?? null,
+        nextChannel:     nextPending?.channel ?? null,
+      },
+    }
+  })
+
+  return { appointments: enriched, total, limit, offset }
 }

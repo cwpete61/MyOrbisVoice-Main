@@ -96,6 +96,31 @@ export default function AffiliateProfilePage() {
   const [tzSaved, setTzSaved] = useState(false)
   const [tzError, setTzError] = useState<string | null>(null)
 
+  // ─── Booking preferences (Phase E.3) ───────────────────────────────────────
+  type DayHours = { open: string; close: string } | null
+  type BookingHours = Partial<Record<'sun'|'mon'|'tue'|'wed'|'thu'|'fri'|'sat', DayHours>>
+  type BookingPrefs = {
+    bookingHoursJson:       BookingHours | null
+    bookingSlotDurationMin: number
+    bookingMinNoticeMin:    number
+    bookingMaxAdvanceDays:  number
+    bookingBufferBeforeMin: number
+    bookingBufferAfterMin:  number
+    bookingTimezone:        string | null
+  }
+  const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
+  const DEFAULT_DAY: DayHours = { open: '09:00', close: '17:00' }
+  const [bookingHours, setBookingHours] = useState<BookingHours>({})
+  const [slotDuration, setSlotDuration] = useState(30)
+  const [minNotice, setMinNotice] = useState(60)
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState(60)
+  const [bufferBefore, setBufferBefore] = useState(0)
+  const [bufferAfter, setBufferAfter] = useState(0)
+  const [bookingTz, setBookingTz] = useState<string | null>(null)
+  const [savingBooking, setSavingBooking] = useState(false)
+  const [savedBooking, setSavedBooking] = useState(false)
+  const [bookingError, setBookingError] = useState<string | null>(null)
+
   // ─── Google Calendar OAuth (Phase E.0) ─────────────────────────────────────
   type GoogleConn = { status: 'CONNECTED' | 'NOT_CONNECTED' | 'ERROR' | 'PENDING'; email: string | null; lastVerifiedAt: string | null; calendarIds: string[] }
   const [googleConn, setGoogleConn] = useState<GoogleConn | null>(null)
@@ -161,7 +186,8 @@ export default function AffiliateProfilePage() {
       apiFetch<Me>('/api/partner/me').catch(() => null),
       apiFetch<Account>('/api/affiliate/account').catch(() => null),
       apiFetch<Settings>('/api/public/affiliate/settings').catch(() => null),
-    ]).then(([m, acc, sett]) => {
+      apiFetch<BookingPrefs>('/api/partner/booking-preferences').catch(() => null),
+    ]).then(([m, acc, sett, prefs]) => {
       setMe(m)
       setAccount(acc)
       setSettings(sett)
@@ -185,6 +211,15 @@ export default function AffiliateProfilePage() {
       }
       if (m?.user) {
         setTimezone(m.user.preferredTimezone ?? null)
+      }
+      if (prefs) {
+        setBookingHours(prefs.bookingHoursJson ?? {})
+        setSlotDuration(prefs.bookingSlotDurationMin)
+        setMinNotice(prefs.bookingMinNoticeMin)
+        setMaxAdvanceDays(prefs.bookingMaxAdvanceDays)
+        setBufferBefore(prefs.bookingBufferBeforeMin)
+        setBufferAfter(prefs.bookingBufferAfterMin)
+        setBookingTz(prefs.bookingTimezone)
       }
       setLoading(false)
     })
@@ -252,6 +287,41 @@ export default function AffiliateProfilePage() {
     }
   }
 
+  async function saveBookingPrefs() {
+    setSavingBooking(true)
+    setBookingError(null)
+    try {
+      await apiFetch('/api/partner/booking-preferences', {
+        method: 'PUT',
+        body: JSON.stringify({
+          bookingHoursJson:       bookingHours,
+          bookingSlotDurationMin: slotDuration,
+          bookingMinNoticeMin:    minNotice,
+          bookingMaxAdvanceDays:  maxAdvanceDays,
+          bookingBufferBeforeMin: bufferBefore,
+          bookingBufferAfterMin:  bufferAfter,
+          bookingTimezone:        bookingTz,
+        }),
+      })
+      setSavedBooking(true)
+      setTimeout(() => setSavedBooking(false), 2500)
+    } catch (e: unknown) {
+      setBookingError((e as Error).message ?? t('partnerProfile.booking.saveFailed'))
+    } finally {
+      setSavingBooking(false)
+    }
+  }
+
+  function setDayOpen(day: typeof DAY_KEYS[number], open: boolean) {
+    setBookingHours(prev => ({ ...prev, [day]: open ? (prev[day] ?? DEFAULT_DAY) : null }))
+  }
+  function setDayHours(day: typeof DAY_KEYS[number], part: 'open'|'close', value: string) {
+    setBookingHours(prev => {
+      const current = prev[day] ?? DEFAULT_DAY
+      return { ...prev, [day]: { ...current, [part]: value } }
+    })
+  }
+
   async function saveMarketing() {
     setSavingMarketing(true)
     try {
@@ -277,7 +347,8 @@ export default function AffiliateProfilePage() {
 
   async function handleAvatarFile(file: File) {
     setAvatarError(null)
-    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) {
+    // Allowed image formats — PNG, JPEG, WebP only (project image rules).
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
       setAvatarError(t('partnerProfile.avatar.errorUnsupportedType'))
       return
     }
@@ -369,7 +440,7 @@ export default function AffiliateProfilePage() {
             <input
               ref={fileRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
+              accept="image/png,image/jpeg,image/webp"
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleAvatarFile(f); e.target.value = '' }}
             />
@@ -561,6 +632,136 @@ export default function AffiliateProfilePage() {
         </button>
       </div>
 
+      {/* ── Booking preferences (Phase E.3) ─────────────────────────────────── */}
+      <div className="rounded-xl p-5 mb-6" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.heading')}</p>
+          {savedBooking && <span className="text-xs" style={{ color: 'oklch(55% 0.18 145)' }}>✓ {t('partnerProfile.saved')}</span>}
+        </div>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>{t('partnerProfile.booking.description')}</p>
+
+        {/* Working hours — one row per day, with "Open" checkbox + open/close time inputs. */}
+        <div className="mb-5">
+          <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{t('partnerProfile.booking.hoursLabel')}</p>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.hoursHelp')}</p>
+          <div className="space-y-2">
+            {DAY_KEYS.map(day => {
+              const dh = bookingHours[day]
+              const isOpen = !!dh
+              return (
+                <div key={day} className="flex items-center gap-3">
+                  <div className="w-12 text-xs font-semibold uppercase" style={{ color: 'var(--text-tertiary)' }}>
+                    {t(`partnerProfile.booking.days.${day}`)}
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer w-20">
+                    <input
+                      type="checkbox"
+                      checked={isOpen}
+                      onChange={e => setDayOpen(day, e.target.checked)}
+                    />
+                    <span className="text-xs" style={{ color: isOpen ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+                      {isOpen ? t('partnerProfile.booking.open') : t('partnerProfile.booking.closed')}
+                    </span>
+                  </label>
+                  {isOpen && (
+                    <>
+                      <input
+                        type="time"
+                        value={dh!.open}
+                        onChange={e => setDayHours(day, 'open', e.target.value)}
+                        className="rounded-md px-2 py-1 text-xs"
+                        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                      />
+                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.to')}</span>
+                      <input
+                        type="time"
+                        value={dh!.close}
+                        onChange={e => setDayHours(day, 'close', e.target.value)}
+                        className="rounded-md px-2 py-1 text-xs"
+                        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                      />
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Numeric prefs — slot duration, min notice, max advance, buffers */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+          <NumField
+            label={t('partnerProfile.booking.slotDuration.label')}
+            help={t('partnerProfile.booking.slotDuration.help')}
+            value={slotDuration}
+            min={5}
+            max={480}
+            onChange={setSlotDuration}
+          />
+          <NumField
+            label={t('partnerProfile.booking.minNotice.label')}
+            help={t('partnerProfile.booking.minNotice.help')}
+            value={minNotice}
+            min={0}
+            max={60 * 24 * 7}
+            onChange={setMinNotice}
+          />
+          <NumField
+            label={t('partnerProfile.booking.maxAdvance.label')}
+            help={t('partnerProfile.booking.maxAdvance.help')}
+            value={maxAdvanceDays}
+            min={1}
+            max={365}
+            onChange={setMaxAdvanceDays}
+          />
+          <NumField
+            label={t('partnerProfile.booking.bufferBefore.label')}
+            help={t('partnerProfile.booking.bufferBefore.help')}
+            value={bufferBefore}
+            min={0}
+            max={240}
+            onChange={setBufferBefore}
+          />
+          <NumField
+            label={t('partnerProfile.booking.bufferAfter.label')}
+            help={t('partnerProfile.booking.bufferAfter.help')}
+            value={bufferAfter}
+            min={0}
+            max={240}
+            onChange={setBufferAfter}
+          />
+        </div>
+
+        {/* Timezone — separate from User.preferredTimezone so the partner can
+            run their booking calendar in a different zone from their dashboard. */}
+        <div className="mb-4">
+          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+            {t('partnerProfile.booking.timezone.label')}
+          </label>
+          <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.timezone.help')}</p>
+          <TimezoneSelect value={bookingTz} onChange={setBookingTz} />
+        </div>
+
+        {bookingError && (
+          <div className="text-xs mb-3 px-2 py-1 rounded" style={{ background: 'oklch(60% 0.2 30 / 0.15)', color: 'oklch(55% 0.20 30)' }}>
+            {bookingError}
+          </div>
+        )}
+
+        <button
+          onClick={saveBookingPrefs}
+          disabled={savingBooking}
+          className="px-5 py-2.5 rounded-lg text-sm font-semibold"
+          style={{ background: savedBooking ? 'oklch(55% 0.18 145)' : 'var(--brand-500)', color: '#fff', opacity: savingBooking ? 0.6 : 1 }}
+        >
+          {savingBooking
+            ? t('partnerProfile.booking.saving')
+            : savedBooking
+              ? t('partnerProfile.saved')
+              : t('partnerProfile.booking.savePreferences')}
+        </button>
+      </div>
+
       {/* ── Time zone (auto-save on change) ─────────────────────────────────── */}
       <div className="rounded-xl p-5 mb-6" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
         <div className="flex items-center justify-between mb-1">
@@ -682,6 +883,34 @@ function FieldArea({ label, help, value, onChange, placeholder, rows, mono }: {
         rows={rows ?? 3}
         className="w-full rounded-lg px-3 py-2 text-sm resize-none"
         style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontFamily: mono ? 'monospace' : undefined }}
+      />
+    </div>
+  )
+}
+
+function NumField({ label, help, value, min, max, onChange }: {
+  label: string
+  help?: string
+  value: number
+  min: number
+  max: number
+  onChange: (v: number) => void
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+      {help && <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>{help}</p>}
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        onChange={e => {
+          const n = Number(e.target.value)
+          if (Number.isFinite(n)) onChange(Math.max(min, Math.min(max, Math.floor(n))))
+        }}
+        className="w-full rounded-lg px-3 py-2 text-sm"
+        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
       />
     </div>
   )

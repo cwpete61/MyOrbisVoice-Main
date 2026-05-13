@@ -116,6 +116,7 @@
       this.partnerSlug  = config.partnerSlug || null  // optional — set when loaded on /p/<slug>/ pages
       this.businessName = config.businessName || 'AI Assistant'
       this.ws           = null
+      this.connecting   = false  // covers the dial-intro window before ws exists, so X/Stop and a second click are both safe
       this.geminiReady  = false
       this.recording    = false
       this.mediaStream  = null
@@ -127,6 +128,10 @@
       this._playHead  = 0
       this._pcmQueue  = []    // Uint8Array chunks waiting to be flushed
       this._flushTimer = null
+
+      // Dial-intro state — held so X/Stop during the intro stops the oscillators immediately
+      this._dialCtx     = null
+      this._dialAborted = false
 
       injectStyles()
       this._buildDOM()
@@ -203,7 +208,10 @@
 
     async _open() {
       this.panel.classList.add('ov-open')
-      if (this.ws) return
+      // Guard against a second click during the ~6 s dial intro (before this.ws exists).
+      if (this.ws || this.connecting) return
+      this.connecting = true
+      this._dialAborted = false
       // Fresh session — reset any state left over from a prior ended call.
       this.endBtn.disabled = false
       // Play a short dial-tone + ring intro to mimic placing a real phone call,
@@ -213,6 +221,12 @@
         await this._playDialIntro()
       } catch (e) {
         console.warn('[OrbisVoice] dial intro skipped:', e)
+      }
+      // If the user clicked X/Stop during the intro, _endNow() already ran and
+      // cleared this.connecting — don't open a doomed WS in that case.
+      if (this._dialAborted) {
+        this.connecting = false
+        return
       }
       this._connect()
     }
@@ -226,13 +240,23 @@
      *  interprets ws.close as session-end and runs finalize (transcript +
      *  summary + persist). */
     _endNow() {
+      // Abort an in-progress dial intro: setting the flag exits the loop,
+      // closing the dial ctx immediately kills any sounding oscillators.
+      this._dialAborted = true
+      if (this._dialCtx) {
+        try { this._dialCtx.close() } catch {}
+        this._dialCtx = null
+      }
       if (this.recording) this._stopRecording()
-      this._resetPlayback()
+      // Hard stop: close the playback AudioContext so already-scheduled
+      // AudioBufferSourceNodes (Orby's in-flight sentence) stop immediately.
+      this._stopPlaybackHard()
       if (this.ws) {
         try { this.ws.send(JSON.stringify({ type: 'end' })) } catch {}
         try { this.ws.close() } catch {}
         this.ws = null
       }
+      this.connecting = false
       this.geminiReady = false
       this.endBtn.disabled = true
       this._setStatus('Session ended.')
@@ -255,7 +279,9 @@
         this.ws.addEventListener('message', (e) => this._onMessage(JSON.parse(e.data)))
         this.ws.addEventListener('close',   () => this._onDisconnect())
         this.ws.addEventListener('error',   () => this._setStatus('Connection error.'))
+        this.connecting = false
       } catch (err) {
+        this.connecting = false
         this._setStatus('Could not connect. Please try again.')
         console.error('[OrbisVoice]', err)
       }
@@ -286,7 +312,9 @@
       if (msg.type === 'ended') {
         this._setStatus('Session ended. Thank you!')
         if (this.recording) this._stopRecording()
+        this._stopPlaybackHard()
         if (this.ws) { try { this.ws.close() } catch {} this.ws = null }
+        this.connecting = false
         // Auto-close the panel after a brief pause so the visitor sees the
         // "Thank you" message before it disappears.
         setTimeout(() => this._close(), 2500)
@@ -299,9 +327,10 @@
 
     _onDisconnect() {
       if (this.recording) this._stopRecording()
-      this._resetPlayback()
+      this._stopPlaybackHard()
       this._setStatus('Disconnected.')
       this.ws = null
+      this.connecting = false
     }
 
     async _startRecording() {
@@ -353,23 +382,29 @@
       const Ctx = window.AudioContext || window.webkitAudioContext
       if (!Ctx) return
       const ctx = new Ctx()
+      this._dialCtx = ctx
       if (ctx.state === 'suspended') { try { await ctx.resume() } catch {} }
 
       this._setStatus('Dialing…', true)
       for (let i = 0; i < 10; i++) {
+        if (this._dialAborted) return
         const digit = Math.floor(Math.random() * 10).toString()
         await this._playDualTone(ctx, DTMF_FREQS[digit][0], DTMF_FREQS[digit][1], 0.12, 0.18)
+        if (this._dialAborted) return
         await this._silence(80)
       }
 
+      if (this._dialAborted) return
       await this._silence(300)
       this._setStatus('Ringing…', true)
       for (let i = 0; i < 2; i++) {
+        if (this._dialAborted) return
         await this._playDualTone(ctx, 440, 480, 1.5, 0.22)
         if (i < 1) await this._silence(700)
       }
 
       try { ctx.close() } catch {}
+      this._dialCtx = null
       this._setStatus('Connecting…', true)
     }
 
@@ -459,6 +494,18 @@
       this._playHead   = 0
     }
 
+    /** Hard stop for end-of-call: closes the playback AudioContext so
+     *  AudioBufferSourceNodes already scheduled into the future stop firing.
+     *  Clearing _pcmQueue alone (the soft _resetPlayback) does NOT stop audio
+     *  that has already been .start()'d — only context.close() does. */
+    _stopPlaybackHard() {
+      this._resetPlayback()
+      if (this._playCtx) {
+        try { this._playCtx.close() } catch {}
+        this._playCtx = null
+      }
+    }
+
     _setStatus(text, pulsing = false) {
       this.statusEl.textContent = text
       this.statusEl.classList.toggle('ov-pulsing', pulsing)
@@ -483,13 +530,19 @@
   }
 
   // ─── Public API ──────────────────────────────────────────────────────────────
+  // Singleton — one widget per page. If the script loads twice (CMS double-include,
+  // SPA route change re-running init, etc.) the second call returns the existing
+  // instance instead of spawning a parallel widget that could talk over the first.
+  let _instance = null
   global.OrbisVoice = {
     init(config) {
       if (!config?.publicKey) {
         console.error('[OrbisVoice] publicKey is required')
         return
       }
-      return new OrbisVoiceWidget(config)
+      if (_instance) return _instance
+      _instance = new OrbisVoiceWidget(config)
+      return _instance
     },
   }
 })(window)

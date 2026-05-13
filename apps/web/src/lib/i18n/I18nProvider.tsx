@@ -20,7 +20,7 @@ interface I18nContextValue {
   t: (key: string, vars?: Record<string, string | number>) => string
 }
 
-const I18nContext = createContext<I18nContextValue | null>(null)
+export const I18nContext = createContext<I18nContextValue | null>(null)
 
 function lookup(dict: Record<string, unknown>, key: string): string | undefined {
   // Dot-path lookup: "nav.items.dashboard" → dict.nav.items.dashboard

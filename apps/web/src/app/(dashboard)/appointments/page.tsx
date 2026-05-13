@@ -5,6 +5,15 @@ import { apiFetchRaw, useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { formatInTimezone } from '@/lib/timezone'
 
+interface ReminderSummary {
+  pending:        number
+  sent:           number
+  failed:         number
+  cancelled:      number
+  nextScheduledAt: string | null
+  nextChannel:    'EMAIL' | 'SMS' | null
+}
+
 interface Appointment {
   id: string
   status: string
@@ -15,6 +24,7 @@ interface Appointment {
   location: string | null
   notes: string | null
   createdAt: string
+  reminderSummary?: ReminderSummary
 }
 
 interface AppointmentsData {
@@ -173,6 +183,44 @@ export default function AppointmentsPage() {
                     )}
                     {appt.notes && (
                       <p className="text-xs mt-1 italic" style={{ color: 'var(--text-tertiary)' }}>{appt.notes}</p>
+                    )}
+                    {/* Phase E.6 — reminder summary. Only renders when the
+                        appointment has at least one reminder row (active OR
+                        historical) so we don't clutter cards for appointments
+                        booked before reminders shipped, or appointments
+                        without an attached contact. */}
+                    {appt.reminderSummary && (appt.reminderSummary.pending + appt.reminderSummary.sent + appt.reminderSummary.failed + appt.reminderSummary.cancelled > 0) && (
+                      <p className="text-xs mt-2 flex flex-wrap items-center gap-x-3 gap-y-1" style={{ color: 'var(--text-tertiary)' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{t('tenantAppointments.reminders.label')}</span>
+                        {appt.reminderSummary.pending > 0 && (
+                          <span style={{ color: 'oklch(72% 0.12 193)' }}>
+                            🔔 {t('tenantAppointments.reminders.pending', { n: appt.reminderSummary.pending })}
+                          </span>
+                        )}
+                        {appt.reminderSummary.sent > 0 && (
+                          <span style={{ color: 'oklch(60% 0.18 145)' }}>
+                            ✓ {t('tenantAppointments.reminders.sent', { n: appt.reminderSummary.sent })}
+                          </span>
+                        )}
+                        {appt.reminderSummary.failed > 0 && (
+                          <span style={{ color: 'oklch(60% 0.20 25)' }}>
+                            ⚠ {t('tenantAppointments.reminders.failed', { n: appt.reminderSummary.failed })}
+                          </span>
+                        )}
+                        {appt.reminderSummary.cancelled > 0 && (
+                          <span style={{ color: 'var(--text-tertiary)' }}>
+                            {t('tenantAppointments.reminders.cancelled', { n: appt.reminderSummary.cancelled })}
+                          </span>
+                        )}
+                        {appt.reminderSummary.nextScheduledAt && (
+                          <span>
+                            {t('tenantAppointments.reminders.nextAt', {
+                              when:    formatInTimezone(new Date(appt.reminderSummary.nextScheduledAt), { tz: appt.timezone, locale: dateLocale, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+                              channel: appt.reminderSummary.nextChannel ?? '',
+                            })}
+                          </span>
+                        )}
+                      </p>
                     )}
                   </div>
                   {appt.status !== 'CANCELED' && appt.status !== 'FAILED' && (

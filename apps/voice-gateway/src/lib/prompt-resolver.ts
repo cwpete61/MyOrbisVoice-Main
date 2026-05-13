@@ -41,6 +41,11 @@ export function resolveSystemPrompt(
   toolGuidance?: string,
   kbText?: string | null,
   partner?: PartnerContext | null,
+  /** Phase E.7 — Caller-history block emitted by formatContactHistoryForPrompt.
+   *  Set when the inbound/outbound flow could identify the caller before the
+   *  Gemini Live session opened. Goes right after the platform baseline so
+   *  the agent reads it as established context. */
+  callerHistoryBlock?: string | null,
 ): string {
   const layers: string[] = []
 
@@ -89,6 +94,13 @@ export function resolveSystemPrompt(
     'When the conversation has naturally ended — visitor booked a demo and you wrapped up, OR visitor declined and you wished them well, OR they are not a fit — say your farewell (one sentence), and THEN immediately call the end_call tool with the appropriate reason. ' +
     'Do not call end_call before saying goodbye. Do not call it while questions are still open. Do not announce the tool call out loud — just say the goodbye, then invoke end_call.'
   )
+
+  // Layer 1.5 — Caller history (Phase E.7). Only present when the gateway
+  // could pre-identify the caller (phone match for inbound, contactId on the
+  // enrollment for outbound). Goes BEFORE the tenant master prompt so the
+  // tenant's instructions read it as already-established truth about who's
+  // on the line.
+  if (callerHistoryBlock) layers.push(callerHistoryBlock)
 
   // Layer 2 — tenant master prompt
   const tenantPrompt = prompts.find(p => p.scope === 'TENANT')

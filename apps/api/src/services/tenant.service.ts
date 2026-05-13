@@ -78,3 +78,191 @@ export async function upsertBusinessProfile(tenantId: string, data: z.infer<type
     create: { tenantId, brandName: data.brandName ?? 'My Business', ...fields },
   })
 }
+
+// ─── Booking preferences (Phase E.5) ─────────────────────────────────────────
+// Tenant-side counterpart to AffiliateAccount.booking* (E.3). Lives on
+// BusinessProfile alongside businessHoursJson. searchAvailability consumes
+// these whenever a booking is NOT partner-routed.
+
+const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
+type DayKey = (typeof DAY_KEYS)[number]
+type DayHours = { open: string; close: string }
+type BookingHoursMap = Partial<Record<DayKey, DayHours | null>>
+
+export interface TenantBookingPreferences {
+  businessHoursJson:       BookingHoursMap | null
+  bookingSlotDurationMin:  number
+  bookingMinNoticeMin:     number
+  bookingMaxAdvanceDays:   number
+  bookingBufferBeforeMin:  number
+  bookingBufferAfterMin:   number
+  timezone:                string | null
+  // Phase E.6 — reminder configuration
+  reminderEnabled:         boolean
+  reminderOffsetsMin:      number[]
+  reminderEmailEnabled:    boolean
+  reminderSmsEnabled:      boolean
+}
+
+export async function getTenantBookingPreferences(tenantId: string): Promise<TenantBookingPreferences> {
+  const [profile, tenant] = await Promise.all([
+    prisma.businessProfile.findUnique({
+      where:  { tenantId },
+      select: {
+        businessHoursJson:      true,
+        bookingSlotDurationMin: true,
+        bookingMinNoticeMin:    true,
+        bookingMaxAdvanceDays:  true,
+        bookingBufferBeforeMin: true,
+        bookingBufferAfterMin:  true,
+        reminderEnabled:        true,
+        reminderOffsetsMin:     true,
+        reminderEmailEnabled:   true,
+        reminderSmsEnabled:     true,
+      },
+    }),
+    prisma.tenant.findUnique({ where: { id: tenantId }, select: { timezone: true } }),
+  ])
+  return {
+    businessHoursJson:      (profile?.businessHoursJson as BookingHoursMap | null) ?? null,
+    bookingSlotDurationMin: profile?.bookingSlotDurationMin ?? 30,
+    bookingMinNoticeMin:    profile?.bookingMinNoticeMin    ?? 60,
+    bookingMaxAdvanceDays:  profile?.bookingMaxAdvanceDays  ?? 60,
+    bookingBufferBeforeMin: profile?.bookingBufferBeforeMin ?? 0,
+    bookingBufferAfterMin:  profile?.bookingBufferAfterMin  ?? 0,
+    timezone:               tenant?.timezone ?? null,
+    reminderEnabled:        profile?.reminderEnabled        ?? true,
+    reminderOffsetsMin:     profile?.reminderOffsetsMin     ?? [1440, 60],
+    reminderEmailEnabled:   profile?.reminderEmailEnabled   ?? true,
+    reminderSmsEnabled:     profile?.reminderSmsEnabled     ?? true,
+  }
+}
+
+function validateHHmm(v: string): boolean { return /^([01]\d|2[0-3]):[0-5]\d$/.test(v) }
+
+function sanitizeBookingHours(input: unknown): BookingHoursMap | null {
+  if (input === null) return null
+  if (!input || typeof input !== 'object') {
+    throw new AppError('BAD_REQUEST', 'businessHoursJson must be an object or null', 400)
+  }
+  const out: BookingHoursMap = {}
+  const src = input as Record<string, unknown>
+  for (const day of DAY_KEYS) {
+    if (!(day in src)) continue
+    const v = src[day]
+    if (v === null) { out[day] = null; continue }
+    if (!v || typeof v !== 'object') {
+      throw new AppError('BAD_REQUEST', `businessHoursJson.${day} must be { open, close } or null`, 400)
+    }
+    const obj = v as { open?: unknown; close?: unknown }
+    if (typeof obj.open !== 'string' || typeof obj.close !== 'string' ||
+        !validateHHmm(obj.open) || !validateHHmm(obj.close)) {
+      throw new AppError('BAD_REQUEST',
+        `businessHoursJson.${day} open/close must be "HH:mm" 24-hour strings`, 400)
+    }
+    if (obj.open >= obj.close) {
+      throw new AppError('BAD_REQUEST', `businessHoursJson.${day}: open must be earlier than close`, 400)
+    }
+    out[day] = { open: obj.open, close: obj.close }
+  }
+  return out
+}
+
+export interface TenantBookingPreferencesUpdate {
+  businessHoursJson?:      unknown
+  bookingSlotDurationMin?: number
+  bookingMinNoticeMin?:    number
+  bookingMaxAdvanceDays?:  number
+  bookingBufferBeforeMin?: number
+  bookingBufferAfterMin?:  number
+  timezone?:               string | null
+  reminderEnabled?:        boolean
+  reminderOffsetsMin?:     unknown  // validated to number[] below
+  reminderEmailEnabled?:   boolean
+  reminderSmsEnabled?:     boolean
+}
+
+export async function updateTenantBookingPreferences(
+  tenantId: string,
+  data: TenantBookingPreferencesUpdate,
+): Promise<TenantBookingPreferences> {
+  const profileUpdate: Record<string, unknown> = {}
+
+  if (data.businessHoursJson !== undefined) {
+    const sanitized = sanitizeBookingHours(data.businessHoursJson)
+    profileUpdate['businessHoursJson'] = sanitized === null ? Prisma.JsonNull : (sanitized as Prisma.InputJsonValue)
+  }
+  const numField = (name: keyof TenantBookingPreferencesUpdate, min: number, max: number) => {
+    if (data[name] === undefined) return
+    const v = data[name] as number
+    if (!Number.isInteger(v) || v < min || v > max) {
+      throw new AppError('BAD_REQUEST', `${name} must be an integer in [${min}, ${max}]`, 400)
+    }
+    profileUpdate[name] = v
+  }
+  numField('bookingSlotDurationMin', 5, 480)
+  numField('bookingMinNoticeMin', 0, 60 * 24 * 7)
+  numField('bookingMaxAdvanceDays', 1, 365)
+  numField('bookingBufferBeforeMin', 0, 240)
+  numField('bookingBufferAfterMin', 0, 240)
+
+  // Phase E.6 — reminder config validation
+  if (data.reminderEnabled !== undefined) {
+    if (typeof data.reminderEnabled !== 'boolean') {
+      throw new AppError('BAD_REQUEST', 'reminderEnabled must be a boolean', 400)
+    }
+    profileUpdate['reminderEnabled'] = data.reminderEnabled
+  }
+  if (data.reminderEmailEnabled !== undefined) {
+    if (typeof data.reminderEmailEnabled !== 'boolean') {
+      throw new AppError('BAD_REQUEST', 'reminderEmailEnabled must be a boolean', 400)
+    }
+    profileUpdate['reminderEmailEnabled'] = data.reminderEmailEnabled
+  }
+  if (data.reminderSmsEnabled !== undefined) {
+    if (typeof data.reminderSmsEnabled !== 'boolean') {
+      throw new AppError('BAD_REQUEST', 'reminderSmsEnabled must be a boolean', 400)
+    }
+    profileUpdate['reminderSmsEnabled'] = data.reminderSmsEnabled
+  }
+  if (data.reminderOffsetsMin !== undefined) {
+    if (!Array.isArray(data.reminderOffsetsMin)) {
+      throw new AppError('BAD_REQUEST', 'reminderOffsetsMin must be an array of integers (minutes before)', 400)
+    }
+    const arr = data.reminderOffsetsMin as unknown[]
+    if (arr.length > 8) {
+      throw new AppError('BAD_REQUEST', 'reminderOffsetsMin: at most 8 offsets allowed', 400)
+    }
+    const cleaned: number[] = []
+    for (const v of arr) {
+      if (!Number.isInteger(v) || (v as number) < 1 || (v as number) > 60 * 24 * 30) {
+        throw new AppError('BAD_REQUEST', 'reminderOffsetsMin entries must be integers in [1, 43200] minutes', 400)
+      }
+      cleaned.push(v as number)
+    }
+    // Deduplicate and sort descending so the longest lead time fires first.
+    profileUpdate['reminderOffsetsMin'] = Array.from(new Set(cleaned)).sort((a, b) => b - a)
+  }
+
+  if (Object.keys(profileUpdate).length > 0) {
+    await prisma.businessProfile.upsert({
+      where:  { tenantId },
+      update: profileUpdate,
+      create: { tenantId, brandName: 'My Business', ...profileUpdate },
+    })
+  }
+
+  if (data.timezone !== undefined) {
+    const tz = data.timezone
+    if (tz !== null) {
+      if (typeof tz !== 'string' || tz.length > 64) {
+        throw new AppError('BAD_REQUEST', 'timezone must be a string IANA zone or null', 400)
+      }
+      try { new Intl.DateTimeFormat('en-US', { timeZone: tz }) }
+      catch { throw new AppError('BAD_REQUEST', `Unknown IANA timezone: ${tz}`, 400) }
+    }
+    await prisma.tenant.update({ where: { id: tenantId }, data: { timezone: tz ?? 'UTC' } })
+  }
+
+  return getTenantBookingPreferences(tenantId)
+}

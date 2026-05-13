@@ -798,7 +798,7 @@
       "upload":               "Upload photo",
       "replace":              "Replace photo",
       "uploading":            "Uploading…",
-      "errorUnsupportedType": "Unsupported file type. Use PNG, JPEG, WebP, or GIF.",
+      "errorUnsupportedType": "Unsupported file type. Use PNG, JPEG, or WebP.",
       "errorTooLarge":        "File too large. Max 2 MB.",
       "errorUploadFailed":    "Upload failed. Try again."
     },
@@ -854,6 +854,51 @@
       "label":       "Calendar override (advanced)",
       "help":        "Optional. By default Orby books on the primary calendar of your connected Google account. Set this only if you want bookings to land on a non-primary calendar (paste its Calendar ID from Google Calendar → Settings → Integrate calendar).",
       "placeholder": "you@yourbusiness.com"
+    },
+    "booking": {
+      "heading":          "BOOKING PREFERENCES",
+      "description":      "Control when prospects can book you — through Orby on your landing pages and through your public booking page. These rules cap what the agent can offer no matter what the caller asks for.",
+      "hoursLabel":       "Working hours",
+      "hoursHelp":        "Days you're available for new bookings. Unchecked days are closed and won't be offered.",
+      "open":             "Open",
+      "closed":           "Closed",
+      "to":               "to",
+      "days": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      },
+      "slotDuration": {
+        "label": "Slot length (minutes)",
+        "help":  "Default appointment length when the agent doesn't specify."
+      },
+      "minNotice": {
+        "label": "Minimum notice (minutes)",
+        "help":  "Hide any slot starting sooner than this from now. Prevents same-minute bookings during a live call."
+      },
+      "maxAdvance": {
+        "label": "Maximum advance (days)",
+        "help":  "How far in the future bookings are allowed."
+      },
+      "bufferBefore": {
+        "label": "Buffer before (minutes)",
+        "help":  "Padding before each existing event so prep time is protected."
+      },
+      "bufferAfter": {
+        "label": "Buffer after (minutes)",
+        "help":  "Padding after each existing event so back-to-back appointments have breathing room."
+      },
+      "timezone": {
+        "label": "Booking timezone",
+        "help":  "IANA zone used to interpret the open/close times above. Falls back to your account timezone if unset."
+      },
+      "savePreferences": "Save booking preferences",
+      "saving":          "Saving booking preferences…",
+      "saveFailed":      "Could not save booking preferences. Try again."
     }
   },
   "partnerLogin": {
@@ -977,6 +1022,15 @@
       "minTodoDetail": "Currently ${current} of ${target} needed. Commissions clear after a 30-day hold and pay on the 1st or 15th of each month.",
       "minTodoNextPayoutDetail": "Currently ${current} of ${target} needed. Next scheduled payout: {date}."
     },
+    "bookingLink": {
+      "heading":       "Your public booking page",
+      "descActive":    "Share this link so prospects can book a time on your calendar — no signup, no app needed.",
+      "descInactive":  "Activate your public page in Profile to start sharing your booking link.",
+      "copy":          "Copy link",
+      "copied":        "Copied",
+      "open":          "Open page",
+      "activate":      "Activate in Profile"
+    },
     "last30Days": "Last 30 days",
     "allTime": "All-time",
     "stats": {
@@ -1039,6 +1093,14 @@
       "cancelSuccess": "Appointment canceled.",
       "cancelFailed": "Cancel failed",
       "cancelException": "Failed to cancel appointment"
+    },
+    "reminders": {
+      "label":     "Reminders:",
+      "pending":   "{n} pending",
+      "sent":      "{n} sent",
+      "failed":    "{n} failed",
+      "cancelled": "{n} cancelled",
+      "nextAt":    "Next: {when} ({channel})"
     }
   },
   "tenantCampaigns": {
@@ -2496,14 +2558,44 @@
       "saveWorkspace": "Save workspace",
       "saveIndustry": "Save industry",
       "saveProfile": "Save profile",
+      "saveBooking": "Save booking preferences",
       "saveAndBackToOnboarding": "Save & Back to Get Started →",
       "cancel": "Cancel"
     },
     "toasts": {
       "workspaceSaved": "Workspace settings saved.",
       "profileSaved": "Business profile saved.",
+      "bookingSaved": "Booking preferences saved.",
       "logoUploaded": "Logo uploaded.",
       "saveFailed": "Save failed"
+    },
+    "booking": {
+      "title":       "Booking preferences",
+      "description": "Control when the agent can book appointments on your calendar — working hours, slot length, lead time, lookahead, and buffers. The agent honors these on every booking it places.",
+      "hoursLabel":  "Working hours",
+      "hoursHelp":   "Days the agent is allowed to book. Unchecked days are closed and won't be offered.",
+      "timezone": {
+        "label": "Business timezone",
+        "help":  "IANA zone used to interpret the open/close times above. The agent reads slots aloud in this zone."
+      }
+    },
+    "reminders": {
+      "heading":        "Appointment reminders",
+      "description":    "Automatically email and text your customers before their appointment. Reminders fire on every new booking — Orby calls, the public booking page, and any custom integrations.",
+      "on":             "On",
+      "off":            "Off",
+      "offsetsLabel":   "When to send",
+      "offsetsHelp":    "Pick one or more times to remind the customer before their appointment. We'll only send reminders that still lie in the future at booking time.",
+      "channelsLabel":  "How to send",
+      "channelEmail":   "Email",
+      "channelSms":     "Text message (SMS)",
+      "warnNoOffsets":  "Reminders are on, but no times are selected — pick at least one above.",
+      "warnNoChannels": "Reminders are on, but neither email nor SMS is enabled — pick at least one channel.",
+      "dayOne":         "1 day before",
+      "dayN":           "{n} days before",
+      "hourOne":        "1 hour before",
+      "hourN":          "{n} hours before",
+      "minuteN":        "{n} min before"
     },
     "logo": {
       "label": "Logo",
@@ -2511,9 +2603,9 @@
       "uploading": "Uploading…",
       "replace": "Replace logo",
       "upload": "Upload logo",
-      "constraints": "PNG, JPG, WebP, or SVG — max 2 MB",
+      "constraints": "PNG, JPG, or WebP — max 2 MB",
       "altText": "Logo",
-      "errorUnsupportedType": "Unsupported type. Use PNG, JPG, WebP, or SVG.",
+      "errorUnsupportedType": "Unsupported type. Use PNG, JPG, or WebP.",
       "errorTooLarge": "Logo must be under 2 MB.",
       "errorUploadFailed": "Upload failed"
     },
@@ -3427,5 +3519,38 @@
     "saving":                "Saving…",
     "saved":                 "Personal details saved.",
     "saveError":             "Could not save — please try again."
+  },
+  "publicBooking": {
+    "loading":           "Loading availability…",
+    "loadingSlots":      "Looking up open times…",
+    "pickDate":          "Pick a day",
+    "pickTime":          "Pick a time",
+    "noSlots":           "No open times this day. Try another day.",
+    "bookWith":          "Book with {name}",
+    "slotDurationLabel": "{min}-minute appointment",
+    "calendarNotReady":  "This partner is finishing setup. Bookings will be available shortly.",
+    "yourDetails":       "Your details",
+    "submitCta":         "Confirm booking",
+    "submitting":        "Booking…",
+    "submitFailed":      "Could not complete booking. Please try again or pick another time.",
+    "fields": {
+      "name":              "Full name",
+      "namePlaceholder":   "Jane Smith",
+      "email":             "Email",
+      "emailPlaceholder":  "you@example.com",
+      "phone":             "Phone",
+      "phonePlaceholder":  "+1 555 123 4567",
+      "notes":             "Anything you'd like us to know",
+      "notesPlaceholder":  "Optional context — what you're hoping to discuss."
+    },
+    "confirmed": {
+      "title":     "You're on the calendar.",
+      "body":      "We'll see you at the time below. {name} just got an email with the details.",
+      "emailHint": "Confirmation sent to {email}. Add it to your calendar from the Google invite."
+    },
+    "notFound": {
+      "title": "This booking page isn't available.",
+      "body":  "Double-check the link, or contact whoever sent it to you."
+    }
   }
 }

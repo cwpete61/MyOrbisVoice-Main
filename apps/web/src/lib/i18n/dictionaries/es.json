@@ -798,7 +798,7 @@
       "upload":               "Subir foto",
       "replace":              "Reemplazar foto",
       "uploading":            "Subiendo…",
-      "errorUnsupportedType": "Tipo de archivo no compatible. Usa PNG, JPEG, WebP o GIF.",
+      "errorUnsupportedType": "Tipo de archivo no compatible. Usa PNG, JPEG o WebP.",
       "errorTooLarge":        "Archivo demasiado grande. Máximo 2 MB.",
       "errorUploadFailed":    "Falló la subida. Inténtalo de nuevo."
     },
@@ -854,6 +854,51 @@
       "label":       "Calendario alternativo (avanzado)",
       "help":        "Opcional. Por defecto Orby agenda en el calendario primario de tu cuenta de Google conectada. Configura esto solo si quieres que las reservas lleguen a un calendario no primario (pega su ID de Calendario desde Google Calendar → Configuración → Integrar calendario).",
       "placeholder": "tu@tunegocio.com"
+    },
+    "booking": {
+      "heading":          "PREFERENCIAS DE RESERVA",
+      "description":      "Controla cuándo los prospectos pueden agendar contigo — a través de Orby en tus páginas y a través de tu página pública de reservas. Estas reglas limitan lo que el agente puede ofrecer, sin importar lo que pida el llamante.",
+      "hoursLabel":       "Horario de atención",
+      "hoursHelp":        "Días en los que estás disponible para nuevas reservas. Los días sin marcar quedan cerrados y no se ofrecerán.",
+      "open":             "Abierto",
+      "closed":           "Cerrado",
+      "to":               "a",
+      "days": {
+        "mon": "Lun",
+        "tue": "Mar",
+        "wed": "Mié",
+        "thu": "Jue",
+        "fri": "Vie",
+        "sat": "Sáb",
+        "sun": "Dom"
+      },
+      "slotDuration": {
+        "label": "Duración del slot (minutos)",
+        "help":  "Duración por defecto de la cita cuando el agente no la especifica."
+      },
+      "minNotice": {
+        "label": "Aviso mínimo (minutos)",
+        "help":  "Oculta cualquier slot que empiece antes de este tiempo desde ahora. Evita reservas de último minuto durante una llamada en curso."
+      },
+      "maxAdvance": {
+        "label": "Anticipación máxima (días)",
+        "help":  "Qué tan lejos en el futuro se permiten las reservas."
+      },
+      "bufferBefore": {
+        "label": "Margen antes (minutos)",
+        "help":  "Tiempo de respiro antes de cada evento existente para proteger tu preparación."
+      },
+      "bufferAfter": {
+        "label": "Margen después (minutos)",
+        "help":  "Tiempo de respiro después de cada evento existente para que las citas consecutivas no se peguen."
+      },
+      "timezone": {
+        "label": "Zona horaria de reserva",
+        "help":  "Zona IANA usada para interpretar los horarios de apertura/cierre de arriba. Usa la zona de tu cuenta si la dejas vacía."
+      },
+      "savePreferences": "Guardar preferencias de reserva",
+      "saving":          "Guardando preferencias de reserva…",
+      "saveFailed":      "No se pudieron guardar las preferencias de reserva. Inténtalo de nuevo."
     }
   },
   "partnerLogin": {
@@ -977,6 +1022,15 @@
       "minTodoDetail": "Actualmente tienes ${current} de ${target} necesarios. Las comisiones se liberan después de una retención de 30 días y se pagan el 1 o el 15 de cada mes.",
       "minTodoNextPayoutDetail": "Actualmente tienes ${current} de ${target} necesarios. Próximo pago programado: {date}."
     },
+    "bookingLink": {
+      "heading":       "Tu página pública de reservas",
+      "descActive":    "Comparte este enlace para que los prospectos reserven una hora en tu calendario — sin registro ni descarga de app.",
+      "descInactive":  "Activa tu página pública desde Perfil para empezar a compartir tu enlace de reservas.",
+      "copy":          "Copiar enlace",
+      "copied":        "Copiado",
+      "open":          "Abrir página",
+      "activate":      "Activar en Perfil"
+    },
     "last30Days": "Últimos 30 días",
     "allTime": "Histórico",
     "stats": {
@@ -1039,6 +1093,14 @@
       "cancelSuccess": "Cita cancelada.",
       "cancelFailed": "No se pudo cancelar",
       "cancelException": "No se pudo cancelar la cita"
+    },
+    "reminders": {
+      "label":     "Recordatorios:",
+      "pending":   "{n} pendiente(s)",
+      "sent":      "{n} enviado(s)",
+      "failed":    "{n} fallido(s)",
+      "cancelled": "{n} cancelado(s)",
+      "nextAt":    "Próximo: {when} ({channel})"
     }
   },
   "tenantCampaigns": {
@@ -2496,14 +2558,44 @@
       "saveWorkspace": "Guardar espacio de trabajo",
       "saveIndustry": "Guardar industria",
       "saveProfile": "Guardar perfil",
+      "saveBooking": "Guardar preferencias de reserva",
       "saveAndBackToOnboarding": "Guardar y volver a Comenzar →",
       "cancel": "Cancelar"
     },
     "toasts": {
       "workspaceSaved": "Ajustes del espacio de trabajo guardados.",
       "profileSaved": "Perfil del negocio guardado.",
+      "bookingSaved": "Preferencias de reserva guardadas.",
       "logoUploaded": "Logotipo subido.",
       "saveFailed": "No se pudo guardar."
+    },
+    "booking": {
+      "title":       "Preferencias de reserva",
+      "description": "Controla cuándo el agente puede agendar citas en tu calendario — horario de atención, duración del slot, aviso mínimo, anticipación y márgenes. El agente respeta estas reglas en cada reserva.",
+      "hoursLabel":  "Horario de atención",
+      "hoursHelp":   "Días en los que el agente puede agendar. Los días sin marcar quedan cerrados y no se ofrecerán.",
+      "timezone": {
+        "label": "Zona horaria del negocio",
+        "help":  "Zona IANA usada para interpretar los horarios de apertura/cierre de arriba. El agente lee los horarios en voz alta en esta zona."
+      }
+    },
+    "reminders": {
+      "heading":        "Recordatorios de cita",
+      "description":    "Envía correo y SMS a tus clientes antes de su cita automáticamente. Los recordatorios se programan en cada reserva nueva — llamadas de Orby, página pública de reservas y cualquier integración personalizada.",
+      "on":             "Activado",
+      "off":            "Desactivado",
+      "offsetsLabel":   "Cuándo enviar",
+      "offsetsHelp":    "Elige uno o más momentos para recordarle al cliente antes de su cita. Solo enviamos los recordatorios que queden en el futuro al momento de la reserva.",
+      "channelsLabel":  "Cómo enviar",
+      "channelEmail":   "Correo electrónico",
+      "channelSms":     "Mensaje de texto (SMS)",
+      "warnNoOffsets":  "Los recordatorios están activos, pero no hay momentos seleccionados — elige al menos uno arriba.",
+      "warnNoChannels": "Los recordatorios están activos, pero ni correo ni SMS están habilitados — elige al menos un canal.",
+      "dayOne":         "1 día antes",
+      "dayN":           "{n} días antes",
+      "hourOne":        "1 hora antes",
+      "hourN":          "{n} horas antes",
+      "minuteN":        "{n} min antes"
     },
     "logo": {
       "label": "Logotipo",
@@ -2511,9 +2603,9 @@
       "uploading": "Subiendo…",
       "replace": "Reemplazar logotipo",
       "upload": "Subir logotipo",
-      "constraints": "PNG, JPG, WebP o SVG — máximo 2 MB",
+      "constraints": "PNG, JPG o WebP — máximo 2 MB",
       "altText": "Logotipo",
-      "errorUnsupportedType": "Tipo no permitido. Usa PNG, JPG, WebP o SVG.",
+      "errorUnsupportedType": "Tipo no permitido. Usa PNG, JPG o WebP.",
       "errorTooLarge": "El logotipo debe pesar menos de 2 MB.",
       "errorUploadFailed": "No se pudo subir el archivo."
     },
@@ -3427,5 +3519,38 @@
     "saving":                "Guardando…",
     "saved":                 "Datos personales guardados.",
     "saveError":             "No se pudo guardar — inténtalo de nuevo."
+  },
+  "publicBooking": {
+    "loading":           "Cargando disponibilidad…",
+    "loadingSlots":      "Buscando horarios libres…",
+    "pickDate":          "Elige un día",
+    "pickTime":          "Elige una hora",
+    "noSlots":           "No hay horarios libres este día. Prueba otro día.",
+    "bookWith":          "Agenda con {name}",
+    "slotDurationLabel": "Cita de {min} minutos",
+    "calendarNotReady":  "Este partner está terminando la configuración. Las reservas estarán disponibles pronto.",
+    "yourDetails":       "Tus datos",
+    "submitCta":         "Confirmar reserva",
+    "submitting":        "Reservando…",
+    "submitFailed":      "No se pudo completar la reserva. Inténtalo de nuevo o elige otra hora.",
+    "fields": {
+      "name":              "Nombre completo",
+      "namePlaceholder":   "Juana Pérez",
+      "email":             "Correo electrónico",
+      "emailPlaceholder":  "tu@ejemplo.com",
+      "phone":             "Teléfono",
+      "phonePlaceholder":  "+1 555 123 4567",
+      "notes":             "Algo que quieras que sepamos",
+      "notesPlaceholder":  "Contexto opcional — qué te gustaría conversar."
+    },
+    "confirmed": {
+      "title":     "Estás en el calendario.",
+      "body":      "Nos vemos a la hora indicada. {name} acaba de recibir un correo con los detalles.",
+      "emailHint": "Confirmación enviada a {email}. Agrégalo a tu calendario desde la invitación de Google."
+    },
+    "notFound": {
+      "title": "Esta página de reserva no está disponible.",
+      "body":  "Revisa el enlace o contacta a quien te lo envió."
+    }
   }
 }

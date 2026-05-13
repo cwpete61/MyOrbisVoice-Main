@@ -27,6 +27,7 @@ Three live voice channels and three live messaging channels, all driven by the s
 - **Inbound voice** — phone calls answered by the AI receptionist (the front-door product most prospects know us for).
 - **Outbound voice** — the agent makes calls *for* the business: appointment confirmations, callback follow-ups, missed-call recovery, lead nurture, campaign dispatch.
 - **Website widget** — visitors click a mic button on the business's own site and have the same voice conversation, with no phone call required. Also installable as a one-click WordPress plugin (downloadable from the dashboard).
+- **Public booking page** — `/book/<slug>` on the app domain. A type-not-talk surface for prospects who don't want a voice conversation: 30-day date picker, time-slot grid honoring the tenant or partner's working hours, contact form, and a confirmation screen. Bilingual (en/es toggle in the header). Used both directly and as the secondary CTA on partner landing pages.
 - **SMS, email, WhatsApp** — outbound text, email, and WhatsApp messages dispatched through the same agent system using the same Business DNA. Email is fully live (real Gmail dispatch via OAuth). SMS uses platform-test credentials today; per-tenant SMS routing flips on once Twilio A2P 10DLC clears. Voice and WhatsApp are wired and parked behind external approvals.
 
 Add the partner portal on top and the platform speaks to four audiences at once: prospects, customers, the tenant's own staff, and partner affiliates.
@@ -83,6 +84,21 @@ The agent doesn't *describe* what it would do — it actually does it:
 - **Bunny CDN** — call recordings stored, transcripts indexed, both retrievable per tenant.
 
 Every call ends with a structured outcome (`BOOKED`, `CALLBACK_REQUESTED`, `INFO_REQUEST`, `MISSED_CALL`, `QUALIFIED_LEAD`), an AI-written summary, a full speaker-labeled transcript, and a recording. Tenants don't just read what the AI did — they listen and verify.
+
+**Booking engine — tenant-side and partner-side both fully configurable.** The agent doesn't pick times out of thin air. It honors:
+
+- **Working hours** — a 7-day grid editable per tenant (`/settings`) and per partner (`/partner-portal/profile`). Days you're closed are never offered.
+- **Slot length** — default 30 minutes, configurable per side.
+- **Minimum notice** — slots starting sooner than this from "now" are hidden. Prevents same-minute bookings during a live call.
+- **Maximum advance** — slots beyond this many days out are hidden. Default 60 days.
+- **Buffers before/after** — padding inserted around every busy block so back-to-back appointments have breathing room.
+- **Booking timezone** — IANA zone the agent reads slots aloud in.
+
+The same configuration drives the agent (`search_availability` + `book_appointment`), the public booking page, and any future integration that asks "what times are open?" — no parallel knobs to keep in sync.
+
+**Cross-session contact memory.** When a known caller reaches the agent (inbound phone with caller-ID match, outbound call with `OutboundCallAttempt.contactId`, or widget after the agent identifies them via `lookup_contact`), a Caller Context layer is auto-injected into the system prompt: prior conversation summaries, recent appointments, and CRM facts (customer-since, spouse, kids, pets, anniversaries, hobbies, preferred contact time, personal notes). Char-budgeted so the prompt stays compact. The agent is explicitly instructed to reference history naturally ("Welcome back — I see we got you in for X last time") but never to bring up sensitive facts unless the caller raises them first.
+
+**Automatic appointment reminders.** Every new booking schedules reminders out of the box — defaults are 24h + 1h before, email + SMS, both configurable per tenant in `/settings`. The reminder-runner job polls every 60 s, dispatches due rows via Gmail (with platform-SMTP fallback) or Twilio SMS, retries up to 3 times on failure. Cancelling or rescheduling an appointment auto-cancels or re-arms the matching reminders — no stale "your appointment is tomorrow!" text after a customer already cancelled.
 
 **Coming soon (placeholder cards already in the integrations page):** Outlook Calendar, Calendly, Cal.com.
 
@@ -288,7 +304,19 @@ These appear in the product as "Coming Soon" cards / nav items, with description
 
 Every change here corresponds to a commit. When you ship something user-visible, append a one-line entry with the date.
 
-### 2026-05-09 (today)
+### 2026-05-13
+
+- **Public booking page** — `/book/<slug>` on the app domain. Bilingual (en/es). 30-day date strip, time-slot grid honoring partner's working hours / slot length / min notice / max advance / buffers, contact form, confirmation. Linked from every partner landing page's "Pick a time instead" CTA (replaces the old mailto bridge). (Phase E.4)
+- **Tenant booking preferences UI** — new "Booking preferences" card in `/dashboard/settings` mirrors the partner-side E.3 fields. 7-day hours grid + 5 numeric prefs + IANA timezone selector. The agent honors these on every non-partner-routed booking. (Phase E.5)
+- **Partner booking preferences UI** — same surface in `/partner-portal/profile`. Each partner sets their own working hours / slot rules; partner-routed bookings honor them. (Phase E.3)
+- **Automatic appointment reminders** — new `AppointmentReminder` model + `reminder-runner` background job. Defaults 24h + 1h before, both email + SMS. Configurable per tenant in `/settings`. Reminders fire out of the box for every new booking — no campaign setup required. Cancelling or rescheduling an appointment auto-cancels / re-arms the matching reminders. (Phase E.6)
+- **Cross-session contact memory** — when a known caller reaches the agent (caller-ID match for inbound, contactId on enrollment for outbound, or `lookup_contact` mid-call for widget), a Caller Context layer is auto-injected into the system prompt with prior conversation summaries, recent appointments, and CRM facts. Char-budgeted so prompts stay tight. (Phase E.7)
+- **Partner dashboard "Your public booking page" card** — top of `/partner-portal/dashboard` shows the partner's `/book/<slug>` URL with Copy + Open buttons. Greyed-out CTA-to-Profile when the page isn't activated yet.
+- **Widget hardening** — single-instance guard prevents a second click during the dial intro from spawning a parallel session; closing the panel (X) now hard-stops Orby's in-flight audio by closing the playback AudioContext, not just clearing the queue.
+- **Booking-engine bug fixes** — `timeOfDayInTz` midnight normalization (prod Node was rendering `00:00` as `"24:00"`, causing overnight slots to leak through the working-hours filter); `searchAvailability` `opts` parameter lets the public booking page request the full-day grid instead of the agent's curated 5+3 slot cap.
+- **Image rules enforced** — logo upload (`/settings`) and partner avatar upload (`/partner-portal/profile`) now reject SVG and GIF respectively. Per project image rules: PNG/JPEG/WebP only, no base64 inlining anywhere.
+
+### 2026-05-09
 
 - **xlsx CVE patches** — SheetJS 0.18.5 → 0.20.3 from cdn.sheetjs.com. Closes 2 high CVEs. (Commit `85a0e87`)
 - **CRM relationship fields** — added 10 new fields to Contact (birthday, anniversary, spouse, kids/pets info, hobbies, preferred contact time, customer-since, important dates, personal notes). Editable on the contact detail page. Inbound agent never asks. (Commit `4195fc3`)

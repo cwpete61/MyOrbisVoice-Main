@@ -161,6 +161,155 @@ export async function updatePartnerProfile(userId: string, data: PartnerProfileU
   })
 }
 
+// ─── Booking preferences (Phase E.3) ─────────────────────────────────────────
+// Partner-side knobs that constrain when a prospect can book: working hours,
+// slot length, min notice, max advance window, and pre/post buffers. Consumed
+// by searchAvailability() when called with a partnerId, and by the public
+// /p/<slug>/book page (E.4).
+
+const DAY_NAMES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
+type DayKey = (typeof DAY_NAMES)[number]
+type DayHours = { open: string; close: string }
+type BookingHoursMap = Partial<Record<DayKey, DayHours | null>>
+
+export interface PartnerBookingPreferences {
+  bookingHoursJson: BookingHoursMap | null
+  bookingSlotDurationMin: number
+  bookingMinNoticeMin: number
+  bookingMaxAdvanceDays: number
+  bookingBufferBeforeMin: number
+  bookingBufferAfterMin: number
+  bookingTimezone: string | null
+}
+
+export async function getPartnerBookingPreferences(
+  userId: string,
+): Promise<PartnerBookingPreferences> {
+  const partner = await prisma.affiliateAccount.findUnique({
+    where: { userId },
+    select: {
+      bookingHoursJson:       true,
+      bookingSlotDurationMin: true,
+      bookingMinNoticeMin:    true,
+      bookingMaxAdvanceDays:  true,
+      bookingBufferBeforeMin: true,
+      bookingBufferAfterMin:  true,
+      bookingTimezone:        true,
+    },
+  })
+  if (!partner) {
+    throw new AppError('NOT_FOUND', 'No partner record for this user', 404)
+  }
+  return {
+    bookingHoursJson:       (partner.bookingHoursJson as BookingHoursMap | null) ?? null,
+    bookingSlotDurationMin: partner.bookingSlotDurationMin,
+    bookingMinNoticeMin:    partner.bookingMinNoticeMin,
+    bookingMaxAdvanceDays:  partner.bookingMaxAdvanceDays,
+    bookingBufferBeforeMin: partner.bookingBufferBeforeMin,
+    bookingBufferAfterMin:  partner.bookingBufferAfterMin,
+    bookingTimezone:        partner.bookingTimezone,
+  }
+}
+
+function validateHHmm(v: string): boolean {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(v)
+}
+
+function sanitizeBookingHours(input: unknown): BookingHoursMap | null {
+  if (input === null) return null
+  if (!input || typeof input !== 'object') {
+    throw new AppError('BAD_REQUEST', 'bookingHoursJson must be an object or null', 400)
+  }
+  const out: BookingHoursMap = {}
+  const src = input as Record<string, unknown>
+  for (const day of DAY_NAMES) {
+    if (!(day in src)) continue
+    const v = src[day]
+    if (v === null) { out[day] = null; continue }
+    if (!v || typeof v !== 'object') {
+      throw new AppError('BAD_REQUEST', `bookingHoursJson.${day} must be { open, close } or null`, 400)
+    }
+    const obj = v as { open?: unknown; close?: unknown }
+    if (typeof obj.open !== 'string' || typeof obj.close !== 'string' ||
+        !validateHHmm(obj.open) || !validateHHmm(obj.close)) {
+      throw new AppError(
+        'BAD_REQUEST',
+        `bookingHoursJson.${day} open/close must be "HH:mm" 24-hour strings`,
+        400,
+      )
+    }
+    if (obj.open >= obj.close) {
+      throw new AppError('BAD_REQUEST', `bookingHoursJson.${day}: open must be earlier than close`, 400)
+    }
+    out[day] = { open: obj.open, close: obj.close }
+  }
+  return out
+}
+
+export interface PartnerBookingPreferencesUpdate {
+  bookingHoursJson?:       unknown
+  bookingSlotDurationMin?: number
+  bookingMinNoticeMin?:    number
+  bookingMaxAdvanceDays?:  number
+  bookingBufferBeforeMin?: number
+  bookingBufferAfterMin?:  number
+  bookingTimezone?:        string | null
+}
+
+export async function updatePartnerBookingPreferences(
+  userId: string,
+  data: PartnerBookingPreferencesUpdate,
+): Promise<PartnerBookingPreferences> {
+  const partner = await prisma.affiliateAccount.findUnique({
+    where: { userId },
+    select: { id: true },
+  })
+  if (!partner) {
+    throw new AppError('NOT_FOUND', 'No partner record for this user', 404)
+  }
+
+  const update: Record<string, unknown> = {}
+
+  if (data.bookingHoursJson !== undefined) {
+    update.bookingHoursJson = sanitizeBookingHours(data.bookingHoursJson) ?? null
+  }
+  const numField = (
+    name: keyof PartnerBookingPreferencesUpdate,
+    min: number,
+    max: number,
+  ) => {
+    if (data[name] === undefined) return
+    const v = data[name] as number
+    if (!Number.isInteger(v) || v < min || v > max) {
+      throw new AppError('BAD_REQUEST', `${name} must be an integer in [${min}, ${max}]`, 400)
+    }
+    update[name] = v
+  }
+  numField('bookingSlotDurationMin', 5, 480)
+  numField('bookingMinNoticeMin', 0, 60 * 24 * 7)
+  numField('bookingMaxAdvanceDays', 1, 365)
+  numField('bookingBufferBeforeMin', 0, 240)
+  numField('bookingBufferAfterMin', 0, 240)
+
+  if (data.bookingTimezone !== undefined) {
+    const tz = data.bookingTimezone
+    if (tz !== null) {
+      if (typeof tz !== 'string' || tz.length > 64) {
+        throw new AppError('BAD_REQUEST', 'bookingTimezone must be a string IANA zone or null', 400)
+      }
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: tz })
+      } catch {
+        throw new AppError('BAD_REQUEST', `Unknown IANA timezone: ${tz}`, 400)
+      }
+    }
+    update.bookingTimezone = tz
+  }
+
+  await prisma.affiliateAccount.update({ where: { id: partner.id }, data: update })
+  return getPartnerBookingPreferences(userId)
+}
+
 // ─── Bootstrap helper (admin / seed only) ────────────────────────────────────
 
 export interface BootstrapPartnerInput {

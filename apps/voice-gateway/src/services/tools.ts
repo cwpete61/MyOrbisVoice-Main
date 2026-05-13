@@ -131,7 +131,12 @@ export const TOOL_DECLARATIONS = [
     description:
       'Search for an existing contact by phone number, email, or name. ' +
       'Call this early in the conversation if the caller mentions they have spoken with the business before, ' +
-      'or before sending an email / booking, to avoid creating a duplicate.',
+      'or before sending an email / booking, to avoid creating a duplicate. ' +
+      'When a match is found the response also includes a `historyPrompt` field — ' +
+      'a pre-formatted block of the caller\'s prior conversations, recent appointments, and CRM facts (name on file, customer since, etc). ' +
+      'Use that history naturally to make the caller feel remembered ' +
+      '(e.g. "Welcome back — I see we got you in for a cleaning back in March"), but do NOT bring up sensitive personal facts ' +
+      '(spouse, kids, anniversaries) unless the caller raises them first. Never claim to remember details that are not in the history block.',
     parameters: {
       type: 'OBJECT',
       properties: {

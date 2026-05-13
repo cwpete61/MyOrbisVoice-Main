@@ -33,6 +33,7 @@ import partnerRouter from './partner.js'
 import partnerMailboxRouter from './partner-mailbox.js'
 import marketingAssetsRouter from './marketing-assets.js'
 import publicRouter from './public.js'
+import { publicBookingRouter } from './public-booking.js'
 import authGoogleRouter from './auth-google.js'
 import { validateTwilioWebhook } from '../middleware/twilio-signature.js'
 
@@ -54,6 +55,7 @@ router.use('/api', internalGatewayRouter)
 router.use('/api', internalMailRouter)
 router.use('/api', marketingAssetsRouter) // public /public/marketing-asset/:filename — no auth
 router.use('/api', publicRouter)        // public /public/social-links — no auth
+router.use('/api', publicBookingRouter) // public /public/partners/:slug/booking-info|slots|bookings (E.4) — no auth
 router.use('/api', billingRouter)       // before auth-gated routers — contains public /billing/plans
 router.use('/api', widgetRouter)        // contains public /public/widget/session
 router.use('/api', pushRouter)          // contains public /push/vapid-public-key — must precede tenantRouter

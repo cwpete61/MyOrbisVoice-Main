@@ -113,12 +113,16 @@ router.patch('/partner/profile', async (req: Request, res: Response, next: NextF
 // ─── POST /api/partner/profile/avatar ───────────────────────────────────────
 // Avatar upload. 2MB cap, image/* mime check. Writes to /app/uploads/avatars/
 // and returns the public URL the dashboard should set as <img src>.
+// Per project image rules (memory:image-rules) — only PNG/JPEG/WebP are
+// accepted. SVG is excluded (XSS vector); GIF is excluded (animation causes
+// inconsistent cross-client rendering and bloats avatar storage).
+const AVATAR_ALLOWED_MIMES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp'])
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
   limits:  { fileSize: 2 * 1024 * 1024 },  // 2 MB
   fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
-      cb(new AppError('VALIDATION_ERROR', 'Avatar must be an image (JPEG, PNG, WebP)', 422))
+    if (!AVATAR_ALLOWED_MIMES.has(file.mimetype.toLowerCase())) {
+      cb(new AppError('VALIDATION_ERROR', 'Avatar must be a PNG, JPEG, or WebP image', 422))
       return
     }
     cb(null, true)
@@ -141,7 +145,7 @@ router.post(
       // prefix while still making the URL non-guessable.
       const extMap: Record<string, string> = {
         'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
-        'image/webp': 'webp', 'image/gif': 'gif',
+        'image/webp': 'webp',
       }
       const ext      = extMap[req.file.mimetype] ?? 'bin'
       const random   = randomBytes(6).toString('hex')
@@ -293,6 +297,35 @@ router.get('/partner/calendar/events', async (req: Request, res: Response, next:
     })
 
     res.json({ data: { events, notConnected: false, calendarId: targetCalendarId } })
+  } catch (err) { next(err) }
+})
+
+// ─── Partner booking preferences (Phase E.3) ────────────────────────────────
+//
+// Working hours, slot length, min notice, max advance window, and pre/post
+// buffer for partner-side bookings. These constrain what slots the agent can
+// offer (search_availability with partnerId) and what the public /p/<slug>/book
+// page (E.4) exposes to prospects.
+
+router.get('/partner/booking-preferences', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const prefs = await partnerService.getPartnerBookingPreferences(req.user!.id)
+    res.json({ data: prefs })
+  } catch (err) { next(err) }
+})
+
+router.put('/partner/booking-preferences', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const updated = await partnerService.updatePartnerBookingPreferences(req.user!.id, req.body ?? {})
+    await writeAuditLog({
+      actorUserId:  req.user!.id,
+      actorType:    'USER',
+      action:       'partner.booking_preferences.updated',
+      targetType:   'AffiliateAccount',
+      targetId:     (req as any).partnerAccountId,
+      metadataJson: { fields: Object.keys(req.body ?? {}) },
+    })
+    res.json({ data: updated })
   } catch (err) { next(err) }
 })
 

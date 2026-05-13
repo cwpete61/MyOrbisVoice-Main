@@ -2,6 +2,7 @@ import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
+import { getContactHistory, formatContactHistoryForPrompt } from './lib/contact-history.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { generateSummary, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
@@ -170,12 +171,38 @@ export async function handleOutboundCall(ws: WebSocket) {
       console.error('[outbound] kb fetch failed (non-fatal):', e?.message ?? e)
       return null
     })
+    // Phase E.7 — load callee history from the OutboundCallAttempt's contactId.
+    // Every outbound row has a contactId (unlike inbound where caller ID can
+    // be blocked), so this is the more reliable surface for cross-session
+    // memory. Resolves whatever rows the campaign-scheduler attached at
+    // dispatch time.
+    let callerHistoryBlock: string | null = null
+    if (attemptId) {
+      try {
+        const attempt = await prisma.outboundCallAttempt.findUnique({
+          where:  { id: attemptId },
+          select: { contactId: true },
+        })
+        if (attempt?.contactId) {
+          const history = await getContactHistory(tenantId, attempt.contactId)
+          callerHistoryBlock = formatContactHistoryForPrompt(history)
+          if (callerHistoryBlock) {
+            console.log(`[outbound] callee history loaded (${history?.totalConversations ?? 0} prior interactions)`)
+          }
+        }
+      } catch (e) {
+        console.error('[outbound] callee history fetch failed (non-fatal):', (e as Error).message)
+      }
+    }
+
     const systemPrompt = resolveSystemPrompt(
       prompts as any[],
       dnaSnap,
       'OUTBOUND',
       buildToolGuidanceBlock(),
       kbText,
+      null,                  // partner — outbound is never partner-routed
+      callerHistoryBlock,    // E.7 — Callee Context layer
     )
 
     // Build greeting from DNA business name + campaign description

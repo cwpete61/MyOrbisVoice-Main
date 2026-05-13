@@ -117,6 +117,13 @@ router.post('/internal/gateway/tools/lookup-contact', async (req, res, next) => 
       res.json({ data: { found: false } })
       return
     }
+    // Phase E.7 — return prior interactions + CRM facts alongside the match
+    // so the agent has cross-session memory the moment it identifies the
+    // caller mid-conversation (widget flow). Inbound/outbound paths inject
+    // the same data earlier via the system prompt.
+    const { getContactHistory, formatContactHistoryForPrompt } = await import('../services/contact-history.service.js')
+    const history = await getContactHistory(tenantId, contact.id)
+    const historyPrompt = formatContactHistoryForPrompt(history)
     res.json({
       data: {
         found: true,
@@ -128,6 +135,8 @@ router.post('/internal/gateway/tools/lookup-contact', async (req, res, next) => 
           email:     contact.email,
           phoneE164: contact.phoneE164,
         },
+        history:       history ?? null,         // structured (for callers that want fields)
+        historyPrompt: historyPrompt ?? null,   // formatted block for direct prompt injection
       },
     })
   } catch (err) { next(err) }

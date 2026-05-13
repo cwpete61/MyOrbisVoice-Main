@@ -8,6 +8,7 @@ import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { BackToOnboarding } from '@/components/BackToOnboarding'
 import { IndustryAutocomplete } from '@/components/IndustryAutocomplete'
 import { AggressionTierSelector } from '@/components/AggressionTierSelector'
+import { TimezoneSelect } from '@/components/TimezoneSelect'
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string
 
@@ -37,6 +38,41 @@ interface BusinessProfile {
   aggressionTier: 'conservative' | 'balanced' | 'direct' | 'aggressive'
 }
 
+// Booking preferences (Phase E.5) — short-key day shape matches partner side.
+type DayHours = { open: string; close: string } | null
+type DayKey = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat'
+type BookingHours = Partial<Record<DayKey, DayHours>>
+interface BookingPrefs {
+  businessHoursJson:       BookingHours | null
+  bookingSlotDurationMin:  number
+  bookingMinNoticeMin:     number
+  bookingMaxAdvanceDays:   number
+  bookingBufferBeforeMin:  number
+  bookingBufferAfterMin:   number
+  timezone:                string | null
+  // Phase E.6 — reminders
+  reminderEnabled:         boolean
+  reminderOffsetsMin:      number[]
+  reminderEmailEnabled:    boolean
+  reminderSmsEnabled:      boolean
+}
+
+// Friendly preset offsets for the reminders editor (minutes before appointment).
+const REMINDER_PRESET_OFFSETS: number[] = [
+  10080, // 1 week
+  4320,  // 3 days
+  2880,  // 2 days
+  1440,  // 1 day  ← default
+  720,   // 12 hours
+  240,   // 4 hours
+  120,   // 2 hours
+  60,    // 1 hour ← default
+  30,    // 30 min
+  15,    // 15 min
+]
+const BOOKING_DAY_KEYS: DayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+const BOOKING_DEFAULT_DAY: DayHours = { open: '09:00', close: '17:00' }
+
 function LogoUpload({
   currentUrl,
   onUploaded,
@@ -51,7 +87,8 @@ function LogoUpload({
   const [error, setError] = useState<string | null>(null)
 
   async function handleFile(file: File) {
-    if (!['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'].includes(file.type)) {
+    // Allowed image formats — PNG, JPEG, WebP only (project image rules).
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
       setError(t('tenantSettings.logo.errorUnsupportedType'))
       return
     }
@@ -105,7 +142,7 @@ function LogoUpload({
       <input
         ref={fileRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+        accept="image/png,image/jpeg,image/webp"
         className="hidden"
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
       />
@@ -219,14 +256,44 @@ export default function SettingsPage() {
 
   const { data: tenant, loading: tenantLoading, reload: reloadTenant } = useApi<Tenant>('/api/tenants/current')
   const { data: profile, loading: profileLoading, reload: reloadProfile } = useApi<BusinessProfile>('/api/business-profile')
+  const { data: bookingPrefs, loading: bookingLoading, reload: reloadBooking } =
+    useApi<BookingPrefs>('/api/business-profile/booking-preferences')
 
   const [tenantForm, setTenantForm] = useState<Partial<Tenant>>({})
   const [profileForm, setProfileForm] = useState<Partial<BusinessProfile>>({})
-  const [saving, setSaving] = useState<'workspace' | 'profile' | null>(null)
+  const [saving, setSaving] = useState<'workspace' | 'profile' | 'booking' | null>(null)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // ── Booking-preferences form state (Phase E.5) ──────────────────────────────
+  const [bookingHours, setBookingHours] = useState<BookingHours>({})
+  const [slotDuration, setSlotDuration] = useState(30)
+  const [minNotice, setMinNotice] = useState(60)
+  const [maxAdvanceDays, setMaxAdvanceDays] = useState(60)
+  const [bufferBefore, setBufferBefore] = useState(0)
+  const [bufferAfter, setBufferAfter] = useState(0)
+  const [bookingTz, setBookingTz] = useState<string | null>(null)
+  // Phase E.6 — reminder state
+  const [reminderEnabled, setReminderEnabled] = useState(true)
+  const [reminderOffsets, setReminderOffsets] = useState<number[]>([1440, 60])
+  const [reminderEmail, setReminderEmail] = useState(true)
+  const [reminderSms, setReminderSms] = useState(true)
 
   useEffect(() => { if (tenant) setTenantForm(tenant) }, [tenant])
   useEffect(() => { if (profile) setProfileForm(profile) }, [profile])
+  useEffect(() => {
+    if (!bookingPrefs) return
+    setBookingHours(bookingPrefs.businessHoursJson ?? {})
+    setSlotDuration(bookingPrefs.bookingSlotDurationMin)
+    setMinNotice(bookingPrefs.bookingMinNoticeMin)
+    setMaxAdvanceDays(bookingPrefs.bookingMaxAdvanceDays)
+    setBufferBefore(bookingPrefs.bookingBufferBeforeMin)
+    setBufferAfter(bookingPrefs.bookingBufferAfterMin)
+    setBookingTz(bookingPrefs.timezone)
+    setReminderEnabled(bookingPrefs.reminderEnabled)
+    setReminderOffsets(bookingPrefs.reminderOffsetsMin)
+    setReminderEmail(bookingPrefs.reminderEmailEnabled)
+    setReminderSms(bookingPrefs.reminderSmsEnabled)
+  }, [bookingPrefs])
 
   function showToast(type: 'success' | 'error', text: string) {
     setToast({ type, text })
@@ -259,8 +326,68 @@ export default function SettingsPage() {
     }
   }
 
+  async function saveBookingPrefs() {
+    setSaving('booking')
+    try {
+      await apiFetch('/api/business-profile/booking-preferences', {
+        method: 'PUT',
+        body: JSON.stringify({
+          businessHoursJson:      bookingHours,
+          bookingSlotDurationMin: slotDuration,
+          bookingMinNoticeMin:    minNotice,
+          bookingMaxAdvanceDays:  maxAdvanceDays,
+          bookingBufferBeforeMin: bufferBefore,
+          bookingBufferAfterMin:  bufferAfter,
+          timezone:               bookingTz,
+          reminderEnabled,
+          reminderOffsetsMin:     reminderOffsets,
+          reminderEmailEnabled:   reminderEmail,
+          reminderSmsEnabled:     reminderSms,
+        }),
+      })
+      await reloadBooking()
+      await reloadTenant()
+      showToast('success', t('tenantSettings.toasts.bookingSaved'))
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : t('tenantSettings.toasts.saveFailed'))
+    } finally {
+      setSaving(null)
+    }
+  }
 
-  if (tenantLoading || profileLoading) {
+  function toggleReminderOffset(offset: number) {
+    setReminderOffsets(prev => {
+      if (prev.includes(offset)) {
+        return prev.filter(o => o !== offset)
+      }
+      // Keep sorted descending (longest lead time first) for predictable display.
+      return [...prev, offset].sort((a, b) => b - a)
+    })
+  }
+  function formatOffset(min: number, t: TFn): string {
+    if (min >= 1440 && min % 1440 === 0) {
+      const d = min / 1440
+      return t(d === 1 ? 'tenantSettings.reminders.dayOne' : 'tenantSettings.reminders.dayN', { n: d })
+    }
+    if (min >= 60 && min % 60 === 0) {
+      const h = min / 60
+      return t(h === 1 ? 'tenantSettings.reminders.hourOne' : 'tenantSettings.reminders.hourN', { n: h })
+    }
+    return t('tenantSettings.reminders.minuteN', { n: min })
+  }
+
+  function setBookingDayOpen(day: DayKey, open: boolean) {
+    setBookingHours(prev => ({ ...prev, [day]: open ? (prev[day] ?? BOOKING_DEFAULT_DAY) : null }))
+  }
+  function setBookingDayHours(day: DayKey, part: 'open' | 'close', value: string) {
+    setBookingHours(prev => {
+      const current = prev[day] ?? BOOKING_DEFAULT_DAY
+      return { ...prev, [day]: { ...current, [part]: value } }
+    })
+  }
+
+
+  if (tenantLoading || profileLoading || bookingLoading) {
     return (
       <div className="space-y-2 pt-2">
         {[140, 80, 180].map((w) => (
@@ -372,6 +499,187 @@ export default function SettingsPage() {
           onChange={(tier) => setProfileForm({ ...profileForm, aggressionTier: tier ?? 'balanced' })}
           saving={saving === 'profile'}
         />
+      </Section>
+
+      <Section
+        title={t('tenantSettings.booking.title')}
+        description={t('tenantSettings.booking.description')}
+        onSave={saveBookingPrefs}
+        saving={saving === 'booking'}
+        saveLabel={t('tenantSettings.actions.saveBooking')}
+        savingLabel={t('tenantSettings.actions.saving')}
+      >
+        {/* Working hours grid — same shape as the partner UI so the engine
+            treats both sides identically (E.3 / E.5 share the converter). */}
+        <div>
+          <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+            {t('tenantSettings.booking.hoursLabel')}
+          </p>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>
+            {t('tenantSettings.booking.hoursHelp')}
+          </p>
+          <div className="space-y-2">
+            {BOOKING_DAY_KEYS.map(day => {
+              const dh = bookingHours[day]
+              const isOpen = !!dh
+              return (
+                <div key={day} className="flex items-center gap-3">
+                  <div className="w-12 text-xs font-semibold uppercase" style={{ color: 'var(--text-tertiary)' }}>
+                    {t(`partnerProfile.booking.days.${day}`)}
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer w-20">
+                    <input type="checkbox" checked={isOpen} onChange={e => setBookingDayOpen(day, e.target.checked)} />
+                    <span className="text-xs" style={{ color: isOpen ? 'var(--text-primary)' : 'var(--text-tertiary)' }}>
+                      {isOpen ? t('partnerProfile.booking.open') : t('partnerProfile.booking.closed')}
+                    </span>
+                  </label>
+                  {isOpen && (
+                    <>
+                      <input
+                        type="time"
+                        value={dh!.open}
+                        onChange={e => setBookingDayHours(day, 'open', e.target.value)}
+                        className="rounded-md px-2 py-1 text-xs"
+                        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                      />
+                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.to')}</span>
+                      <input
+                        type="time"
+                        value={dh!.close}
+                        onChange={e => setBookingDayHours(day, 'close', e.target.value)}
+                        className="rounded-md px-2 py-1 text-xs"
+                        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                      />
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Numeric prefs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <BookingNumField
+            label={t('partnerProfile.booking.slotDuration.label')}
+            help={t('partnerProfile.booking.slotDuration.help')}
+            value={slotDuration} min={5} max={480} onChange={setSlotDuration}
+          />
+          <BookingNumField
+            label={t('partnerProfile.booking.minNotice.label')}
+            help={t('partnerProfile.booking.minNotice.help')}
+            value={minNotice} min={0} max={60 * 24 * 7} onChange={setMinNotice}
+          />
+          <BookingNumField
+            label={t('partnerProfile.booking.maxAdvance.label')}
+            help={t('partnerProfile.booking.maxAdvance.help')}
+            value={maxAdvanceDays} min={1} max={365} onChange={setMaxAdvanceDays}
+          />
+          <BookingNumField
+            label={t('partnerProfile.booking.bufferBefore.label')}
+            help={t('partnerProfile.booking.bufferBefore.help')}
+            value={bufferBefore} min={0} max={240} onChange={setBufferBefore}
+          />
+          <BookingNumField
+            label={t('partnerProfile.booking.bufferAfter.label')}
+            help={t('partnerProfile.booking.bufferAfter.help')}
+            value={bufferAfter} min={0} max={240} onChange={setBufferAfter}
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+            {t('tenantSettings.booking.timezone.label')}
+          </label>
+          <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
+            {t('tenantSettings.booking.timezone.help')}
+          </p>
+          <TimezoneSelect value={bookingTz} onChange={setBookingTz} />
+        </div>
+
+        {/* ── Reminders (Phase E.6) ───────────────────────────────────────── */}
+        <div className="pt-4 mt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {t('tenantSettings.reminders.heading')}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                {t('tenantSettings.reminders.description')}
+              </p>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
+              <input
+                type="checkbox"
+                checked={reminderEnabled}
+                onChange={e => setReminderEnabled(e.target.checked)}
+              />
+              <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
+                {reminderEnabled ? t('tenantSettings.reminders.on') : t('tenantSettings.reminders.off')}
+              </span>
+            </label>
+          </div>
+
+          {reminderEnabled && (
+            <>
+              <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                {t('tenantSettings.reminders.offsetsLabel')}
+              </p>
+              <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>
+                {t('tenantSettings.reminders.offsetsHelp')}
+              </p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {REMINDER_PRESET_OFFSETS.map(offset => {
+                  const isOn = reminderOffsets.includes(offset)
+                  return (
+                    <button
+                      key={offset}
+                      type="button"
+                      onClick={() => toggleReminderOffset(offset)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                      style={{
+                        background: isOn ? 'var(--brand-500)'  : 'var(--surface-app)',
+                        border:     '1px solid ' + (isOn ? 'var(--brand-500)' : 'var(--border-subtle)'),
+                        color:      isOn ? '#fff' : 'var(--text-secondary)',
+                      }}
+                    >
+                      {formatOffset(offset, t)}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                {t('tenantSettings.reminders.channelsLabel')}
+              </p>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={reminderEmail} onChange={e => setReminderEmail(e.target.checked)} />
+                  <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
+                    {t('tenantSettings.reminders.channelEmail')}
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={reminderSms} onChange={e => setReminderSms(e.target.checked)} />
+                  <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
+                    {t('tenantSettings.reminders.channelSms')}
+                  </span>
+                </label>
+              </div>
+
+              {reminderOffsets.length === 0 && (
+                <p className="text-xs mt-3 px-2 py-1 rounded" style={{ background: 'oklch(70% 0.13 70 / 0.15)', color: 'oklch(45% 0.16 70)' }}>
+                  {t('tenantSettings.reminders.warnNoOffsets')}
+                </p>
+              )}
+              {reminderEnabled && reminderOffsets.length > 0 && !reminderEmail && !reminderSms && (
+                <p className="text-xs mt-3 px-2 py-1 rounded" style={{ background: 'oklch(70% 0.13 70 / 0.15)', color: 'oklch(45% 0.16 70)' }}>
+                  {t('tenantSettings.reminders.warnNoChannels')}
+                </p>
+              )}
+            </>
+          )}
+        </div>
       </Section>
 
       <section>
@@ -542,5 +850,33 @@ function MembersSection({
         })}
       </div>
     </section>
+  )
+}
+
+function BookingNumField({ label, help, value, min, max, onChange }: {
+  label: string
+  help?: string
+  value: number
+  min: number
+  max: number
+  onChange: (v: number) => void
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+      {help && <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>{help}</p>}
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        onChange={e => {
+          const n = Number(e.target.value)
+          if (Number.isFinite(n)) onChange(Math.max(min, Math.min(max, Math.floor(n))))
+        }}
+        className="w-full rounded-lg px-3 py-2 text-sm"
+        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+      />
+    </div>
   )
 }

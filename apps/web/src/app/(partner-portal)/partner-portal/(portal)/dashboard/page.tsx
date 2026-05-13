@@ -314,6 +314,10 @@ export default function PartnerDashboardPage() {
   const [applying, setApplying]     = useState(false)
   const [connect, setConnect]       = useState<{ payoutsEnabled: boolean; detailsSubmitted: boolean } | null>(null)
   const [connectStarting, setConnectStarting] = useState(false)
+  // Partner public-page state — slug + partnerPageActive drive the Share-your-
+  // booking-page card. Loaded via /api/partner/me alongside the existing fetches.
+  const [partnerInfo, setPartnerInfo] = useState<{ slug: string | null; partnerPageActive: boolean } | null>(null)
+  const [copiedBookingUrl, setCopiedBookingUrl] = useState(false)
 
   const STATUS_PILL: Record<string, { bg: string; fg: string; label: string }> = {
     PENDING:  { bg: 'oklch(95% 0.04 193)', fg: TEAL,                       label: t('partnerDashboard.statusPill.pending') },
@@ -330,13 +334,14 @@ export default function PartnerDashboardPage() {
       const acc = await apiFetch<Account>('/api/affiliate/account').catch(() => null)
       setAccount(acc)
       if (acc) {
-        const [s, p, sett, comms, me, conn] = await Promise.all([
+        const [s, p, sett, comms, me, conn, partnerMe] = await Promise.all([
           apiFetch<Stats>('/api/affiliate/stats').catch(() => null),
           apiFetch<PeriodStats>('/api/affiliate/stats/period?days=30').catch(() => null),
           apiFetch<Settings>('/api/public/affiliate/settings').catch(() => null),
           apiFetch<CommissionsResp>('/api/affiliate/commissions?page=1&limit=5').catch(() => ({ items: [], total: 0 })),
           apiFetch<{ user: { firstName: string | null } }>('/api/auth/me').catch(() => null),
           apiFetch<{ payoutsEnabled: boolean; detailsSubmitted: boolean }>('/api/affiliate/connect/status').catch(() => null),
+          apiFetch<{ partner: { slug: string | null; partnerPageActive: boolean } }>('/api/partner/me').catch(() => null),
         ])
         setAllTime(s)
         setPeriod(p)
@@ -344,6 +349,12 @@ export default function PartnerDashboardPage() {
         setRecent(comms?.items ?? [])
         setFirstName(me?.user?.firstName ?? '')
         setConnect(conn)
+        if (partnerMe?.partner) {
+          setPartnerInfo({
+            slug:              partnerMe.partner.slug,
+            partnerPageActive: partnerMe.partner.partnerPageActive,
+          })
+        }
       }
     } finally {
       setLoading(false)
@@ -471,6 +482,78 @@ export default function PartnerDashboardPage() {
         onStartConnect={startConnectOnboarding}
         connectStarting={connectStarting}
       />
+
+      {/* Your public booking page — shown when the partner has a slug AND
+          partnerPageActive=true. When inactive, surfaces a CTA to Profile. */}
+      {partnerInfo?.slug && (() => {
+        const bookingUrl = `https://app.myorbisvoice.com/book/${partnerInfo.slug}`
+        const isLive     = partnerInfo.partnerPageActive
+        return (
+          <section className="mb-10">
+            <div className="rounded-xl p-5"
+                 style={{
+                   background: isLive ? 'oklch(96% 0.04 193)' : 'var(--surface-raised)',
+                   border:     '1px solid ' + (isLive ? 'oklch(80% 0.10 193)' : 'var(--border-subtle)'),
+                 }}>
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-1"
+                     style={{ color: 'var(--text-tertiary)' }}>
+                    {t('partnerDashboard.bookingLink.heading')}
+                  </p>
+                  <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    {isLive
+                      ? t('partnerDashboard.bookingLink.descActive')
+                      : t('partnerDashboard.bookingLink.descInactive')}
+                  </p>
+                  <code className="block w-full text-xs px-3 py-2 rounded-md font-mono"
+                        style={{
+                          background: 'var(--surface-app)',
+                          border:     '1px solid var(--border-subtle)',
+                          color:      isLive ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                          opacity:    isLive ? 1 : 0.6,
+                          wordBreak:  'break-all',
+                        }}>
+                    {bookingUrl}
+                  </code>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  {isLive ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(bookingUrl)
+                            setCopiedBookingUrl(true)
+                            setTimeout(() => setCopiedBookingUrl(false), 2000)
+                          } catch { /* clipboard blocked — ignore */ }
+                        }}
+                        className="px-3 py-2 rounded-md text-xs font-semibold"
+                        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+                        {copiedBookingUrl
+                          ? `✓ ${t('partnerDashboard.bookingLink.copied')}`
+                          : t('partnerDashboard.bookingLink.copy')}
+                      </button>
+                      <a href={bookingUrl} target="_blank" rel="noopener noreferrer"
+                         className="px-3 py-2 rounded-md text-xs font-semibold"
+                         style={{ background: TEAL, color: '#fff', textDecoration: 'none' }}>
+                        {t('partnerDashboard.bookingLink.open')} ↗
+                      </a>
+                    </>
+                  ) : (
+                    <Link href="/partner-portal/profile"
+                          className="px-3 py-2 rounded-md text-xs font-semibold"
+                          style={{ background: TEAL, color: '#fff', textDecoration: 'none' }}>
+                      {t('partnerDashboard.bookingLink.activate')} →
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )
+      })()}
 
       {/* Last 30 days */}
       <section className="mb-10">

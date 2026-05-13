@@ -450,6 +450,7 @@ model Tenant {
   contacts                  Contact[]
   conversations             Conversation[]
   appointments              Appointment[]
+  appointmentReminders      AppointmentReminder[]
   staffMembers              StaffMember[]
   messageLogs               MessageLog[]
   workflowExecutions        WorkflowExecutionRef[]
@@ -579,7 +580,29 @@ model BusinessProfile {
   postalCode                String?
   country                   String?
   serviceAreasJson          Json?
+  // Working hours for the agent / booking engine. Short-key shape:
+  //   { mon: { open: "09:00", close: "17:00" }, tue: {...}, sun: null }
+  // Days omitted or set to null are closed. Drives searchAvailability for
+  // non-partner bookings (the partner equivalent is AffiliateAccount.bookingHoursJson).
   businessHoursJson         Json?
+  // Phase E.5 — tenant-side booking preferences. Mirror of the partner fields
+  // on AffiliateAccount (E.3) so a tenant's own booking flow honors the same
+  // notice / advance / buffer / slot rules without the agent having to guess.
+  bookingSlotDurationMin    Int      @default(30)
+  bookingMinNoticeMin       Int      @default(60)
+  bookingMaxAdvanceDays     Int      @default(60)
+  bookingBufferBeforeMin    Int      @default(0)
+  bookingBufferAfterMin     Int      @default(0)
+  // Phase E.6 — appointment reminder configuration. When enabled, every new
+  // booking with a contact email + reminderEmailEnabled (or contact phone +
+  // reminderSmsEnabled) gets an AppointmentReminder row per configured offset.
+  // Defaults: send 24h + 1h before, both channels on. The reminder-runner job
+  // polls AppointmentReminder.PENDING rows and dispatches via the existing
+  // email + SMS services. See apps/api/src/jobs/reminder-runner.ts.
+  reminderEnabled           Boolean  @default(true)
+  reminderOffsetsMin        Int[]    @default([1440, 60])  // 24h + 1h before
+  reminderEmailEnabled      Boolean  @default(true)
+  reminderSmsEnabled        Boolean  @default(true)
   fallbackNotificationEmail String?
   // Marketing voice intensity ('conservative' | 'balanced' | 'direct' | 'aggressive').
   // Drives AI-Assist generated copy, default campaign tone, and outbound voice agent
@@ -987,6 +1010,7 @@ model Contact {
   tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversations        Conversation[]
   appointments         Appointment[]
+  appointmentReminders AppointmentReminder[]
   messageLogs          MessageLog[]
   callLogs             CallLog[]
   outboundAttempts     OutboundCallAttempt[]
@@ -1109,8 +1133,52 @@ model Appointment {
   conversation    Conversation?     @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   staffMember     StaffMember?      @relation(fields: [staffMemberId], references: [id], onDelete: SetNull)
   partner         AffiliateAccount? @relation("PartnerAppointments", fields: [partnerId], references: [id], onDelete: SetNull)
+  reminders       AppointmentReminder[]
 
   @@index([partnerId])
+}
+
+// ─── Phase E.6 — Appointment reminders ──────────────────────────────────────
+// Decoupled from the campaign system so reminders fire without requiring the
+// tenant to configure a campaign. One row per (appointment, channel, offset).
+// The reminder-runner job polls PENDING rows where scheduledAt <= now and
+// dispatches through the existing email + SMS services. Offsets + channel
+// toggles live on BusinessProfile so the tenant edits them in /settings.
+
+enum ReminderChannel {
+  EMAIL
+  SMS
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED  // appointment was cancelled or rescheduled before the reminder fired
+}
+
+model AppointmentReminder {
+  id            String           @id @default(uuid())
+  tenantId      String
+  appointmentId String
+  contactId     String
+  channel       ReminderChannel
+  offsetMin     Int              // minutes before appointment.startAt — kept for audit / debug
+  scheduledAt   DateTime         // = appointment.startAt - offsetMin
+  status        ReminderStatus   @default(PENDING)
+  sentAt        DateTime?
+  errorReason   String?
+  attemptCount  Int              @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointment   Appointment      @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  contact       Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([appointmentId, channel, offsetMin])  // one reminder per (channel, offset) per appointment
+  @@index([status, scheduledAt])                  // scheduler hot path
+  @@index([tenantId, scheduledAt])
 }
 
 model MessageLog {
@@ -1238,6 +1306,28 @@ model AffiliateAccount {
   calendarId            String? // Google Calendar ID for booking routing
   forwardPlatformEmails Boolean @default(true) // copy inbound to user.email Gmail
   partnerPageActive     Boolean @default(false) // /p/<slug>/ pages live + Mailbox accessible
+
+  // ── Phase E.3 — Partner booking preferences ──────────────────────────────
+  // Controls when prospects can book the partner via the agent or the public
+  // /p/<slug>/book page (E.4). Same shape as BusinessProfile.businessHoursJson:
+  //   { mon: { open: "09:00", close: "17:00" }, tue: {...}, sun: null, ... }
+  // A day omitted or set to null means "closed that day".
+  bookingHoursJson        Json?
+  // Default appointment length in minutes — used when the agent/booker
+  // doesn't specify, and as the slot increment on the public booking page.
+  bookingSlotDurationMin  Int     @default(30)
+  // Minimum lead time: a slot starting less than this many minutes from "now"
+  // is hidden. Prevents same-minute bookings during a live conversation.
+  bookingMinNoticeMin     Int     @default(60)
+  // Maximum lookahead: slots more than this many days from "now" are hidden.
+  bookingMaxAdvanceDays   Int     @default(60)
+  // Buffer minutes inserted before / after each calendar busy block so the
+  // partner gets breathing room between back-to-back appointments.
+  bookingBufferBeforeMin  Int     @default(0)
+  bookingBufferAfterMin   Int     @default(0)
+  // IANA timezone used to interpret bookingHoursJson "09:00" labels.
+  // Falls back to user.preferredTimezone, then to America/New_York.
+  bookingTimezone         String?
 
   createdAt      DateTime                 @default(now())
   updatedAt      DateTime                 @updatedAt
