@@ -8,8 +8,22 @@ interface AffiliateAccount {
   id: string; status: 'PENDING' | 'ACTIVE' | 'PAUSED' | 'DISABLED'
   referralCode: string; createdAt: string; approvedAt: string | null
   totalEarnedCents: number; totalPaidCents: number; notes: string | null
+  // Phase F.4 — bulk-email policy fields (admin-controlled, partner read-only)
+  emailBulkEnabled: boolean
+  emailBulkSuspendedAt: string | null
+  emailBulkSuspendedReason: string | null
+  emailDailyCap: number | null
+  emailSendWindowStartHour: number | null
+  emailSendWindowEndHour: number | null
+  emailDripIntervalSecs: number | null
   user: AffiliateUser
   _count: { clicks: number; conversions: number; commissions: number }
+}
+interface PlatformEmailPolicy {
+  dailyCap: number
+  sendWindowStartHour: number
+  sendWindowEndHour: number
+  dripIntervalSecs: number
 }
 interface AffiliateList { items: AffiliateAccount[]; total: number }
 interface Commission {
@@ -57,6 +71,9 @@ export default function AdminAffiliatesPage() {
     `/api/admin/affiliates?${new URLSearchParams({ ...(statusFilter && { status: statusFilter }), ...(search && { search }) }).toString()}`,
     [statusFilter, search]
   )
+  // F.4 — per-partner email policy editor (inline expansion under each row)
+  const [emailPolicyOpen, setEmailPolicyOpen] = useState<string | null>(null)
+  const { data: emailDefaults } = useApi<PlatformEmailPolicy>('/api/admin/email-policy', [])
 
   // Commissions tab state
   const [commStatus, setCommStatus] = useState('')
@@ -248,8 +265,10 @@ export default function AdminAffiliatesPage() {
                 <tbody>
                   {affiliateData.items.map((a, i) => {
                     const s = STATUS_STYLE[a.status]!
+                    const isPolicyOpen = emailPolicyOpen === a.id
                     return (
-                      <tr key={a.id} style={{ borderBottom: i < affiliateData.items.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
+                      <>
+                      <tr key={a.id} style={{ borderBottom: !isPolicyOpen && i < affiliateData.items.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
                         <td className="px-3 py-3">
                           <p className="font-medium text-xs" style={{ color: 'var(--text-primary)' }}>{userName(a.user)}</p>
                           <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{a.user.email}</p>
@@ -298,9 +317,46 @@ export default function AdminAffiliatesPage() {
                             >
                               Delete
                             </button>
+                            <button
+                              onClick={() => setEmailPolicyOpen(isPolicyOpen ? null : a.id)}
+                              className="text-xs px-2 py-1 rounded"
+                              style={{
+                                background: a.emailBulkSuspendedAt
+                                  ? 'oklch(13% 0.04 25)'
+                                  : a.emailBulkEnabled
+                                    ? 'oklch(19% 0.04 193)'
+                                    : 'var(--surface-overlay)',
+                                color: a.emailBulkSuspendedAt
+                                  ? 'oklch(68% 0.20 25)'
+                                  : a.emailBulkEnabled
+                                    ? 'oklch(72% 0.12 193)'
+                                    : 'var(--text-secondary)',
+                                border: a.emailBulkEnabled || a.emailBulkSuspendedAt ? undefined : '1px solid var(--border-subtle)',
+                              }}
+                              title={a.emailBulkSuspendedAt
+                                ? `Bulk SUSPENDED: ${a.emailBulkSuspendedReason ?? ''}`
+                                : a.emailBulkEnabled
+                                  ? 'Bulk email is enabled — click to edit policy'
+                                  : 'Bulk email is disabled — click to enable + configure'}
+                            >
+                              Email {a.emailBulkSuspendedAt ? '(suspended)' : a.emailBulkEnabled ? '✓' : '·'}
+                            </button>
                           </div>
                         </td>
                       </tr>
+                      {isPolicyOpen && emailDefaults && (
+                        <tr key={a.id + '-policy'} style={{ background: 'var(--surface-overlay)', borderBottom: i < affiliateData.items.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
+                          <td colSpan={9} className="px-4 py-4">
+                            <PartnerEmailPolicyEditor
+                              partner={a}
+                              defaults={emailDefaults}
+                              onSaved={() => { reloadAff(); setEmailPolicyOpen(null); showToast('success', `Email policy saved for ${userName(a.user)}.`) }}
+                              onError={(m) => showToast('error', m)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                      </>
                     )
                   })}
                 </tbody>
@@ -784,4 +840,129 @@ function TopPerformers({ partners }: { partners: PlatformStats['topPartners'] })
 
 function fmtMoney(cents: number): string {
   return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// ── F.4 inline editor: per-partner email policy ────────────────────────────
+// Embedded under each partner row in the Affiliates tab. Wraps the existing
+// PUT /api/admin/partners/:id/email-policy + POST /api/admin/partners/:id/
+// email-suspend endpoints so admins don't need to flip flags via SQL.
+function PartnerEmailPolicyEditor({
+  partner,
+  defaults,
+  onSaved,
+  onError,
+}: {
+  partner: AffiliateAccount
+  defaults: PlatformEmailPolicy
+  onSaved: () => void
+  onError: (msg: string) => void
+}) {
+  const [bulkEnabled,         setBulkEnabled]         = useState(partner.emailBulkEnabled)
+  const [dailyCap,            setDailyCap]            = useState<string>(partner.emailDailyCap?.toString() ?? '')
+  const [sendWindowStartHour, setSendWindowStartHour] = useState<string>(partner.emailSendWindowStartHour?.toString() ?? '')
+  const [sendWindowEndHour,   setSendWindowEndHour]   = useState<string>(partner.emailSendWindowEndHour?.toString() ?? '')
+  const [dripIntervalSecs,    setDripIntervalSecs]    = useState<string>(partner.emailDripIntervalSecs?.toString() ?? '')
+  const [suspended,           setSuspended]           = useState(!!partner.emailBulkSuspendedAt)
+  const [suspendReason,       setSuspendReason]       = useState(partner.emailBulkSuspendedReason ?? '')
+  const [saving, setSaving] = useState(false)
+
+  function parseOverride(s: string): number | null {
+    if (s.trim() === '') return null
+    const n = parseInt(s, 10)
+    return Number.isFinite(n) ? n : null
+  }
+
+  async function save() {
+    setSaving(true)
+    try {
+      // Two endpoints: overrides + (separately) suspension toggle. Suspension
+      // call only fires when state actually changed — avoids spurious audit
+      // entries on every save.
+      const res1 = await apiFetchRaw(`/api/admin/partners/${partner.id}/email-policy`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          bulkEnabled,
+          dailyCap:             parseOverride(dailyCap),
+          sendWindowStartHour:  parseOverride(sendWindowStartHour),
+          sendWindowEndHour:    parseOverride(sendWindowEndHour),
+          dripIntervalSecs:     parseOverride(dripIntervalSecs),
+        }),
+      })
+      if (!res1.ok) throw new Error('Save failed')
+
+      const wasSuspended = !!partner.emailBulkSuspendedAt
+      if (suspended !== wasSuspended || (suspended && suspendReason !== (partner.emailBulkSuspendedReason ?? ''))) {
+        const res2 = await apiFetchRaw(`/api/admin/partners/${partner.id}/email-suspend`, {
+          method: 'POST',
+          body:   JSON.stringify({ suspended, reason: suspendReason || undefined }),
+        })
+        if (!res2.ok) throw new Error('Suspend save failed')
+      }
+      onSaved()
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inp  = 'input-field text-xs'
+  const lbl  = 'block text-xs font-medium mb-1'
+  const hint = 'text-[10px] mt-0.5'
+
+  return (
+    <div className="space-y-3" style={{ color: 'var(--text-primary)' }}>
+      <div>
+        <label className="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={bulkEnabled} onChange={(e) => setBulkEnabled(e.target.checked)} />
+          <span>Bulk email enabled</span>
+        </label>
+        <p className={hint} style={{ color: 'var(--text-tertiary)' }}>
+          Master gate. Partners cannot send bulk campaigns until you turn this on.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label className={lbl} style={{ color: 'var(--text-secondary)' }}>Daily cap override</label>
+          <input className={inp} type="number" min={1} max={100000} value={dailyCap} onChange={(e) => setDailyCap(e.target.value)} placeholder={`(default ${defaults.dailyCap})`} />
+          <p className={hint} style={{ color: 'var(--text-tertiary)' }}>Blank = inherit platform default.</p>
+        </div>
+        <div>
+          <label className={lbl} style={{ color: 'var(--text-secondary)' }}>Send window start (hour)</label>
+          <input className={inp} type="number" min={0} max={23} value={sendWindowStartHour} onChange={(e) => setSendWindowStartHour(e.target.value)} placeholder={`(default ${defaults.sendWindowStartHour})`} />
+          <p className={hint} style={{ color: 'var(--text-tertiary)' }}>0-23, partner&apos;s local time.</p>
+        </div>
+        <div>
+          <label className={lbl} style={{ color: 'var(--text-secondary)' }}>Send window end (hour)</label>
+          <input className={inp} type="number" min={0} max={23} value={sendWindowEndHour} onChange={(e) => setSendWindowEndHour(e.target.value)} placeholder={`(default ${defaults.sendWindowEndHour})`} />
+          <p className={hint} style={{ color: 'var(--text-tertiary)' }}>Inclusive end hour.</p>
+        </div>
+        <div>
+          <label className={lbl} style={{ color: 'var(--text-secondary)' }}>Drip interval (sec)</label>
+          <input className={inp} type="number" min={1} max={86400} value={dripIntervalSecs} onChange={(e) => setDripIntervalSecs(e.target.value)} placeholder={`(default ${defaults.dripIntervalSecs})`} />
+          <p className={hint} style={{ color: 'var(--text-tertiary)' }}>Seconds between sends.</p>
+        </div>
+      </div>
+
+      <div className="pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+        <label className="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={suspended} onChange={(e) => setSuspended(e.target.checked)} />
+          <span style={{ color: suspended ? 'oklch(68% 0.20 25)' : 'var(--text-primary)' }}>Suspended (block all bulk sending)</span>
+        </label>
+        {suspended && (
+          <div className="mt-2">
+            <label className={lbl} style={{ color: 'var(--text-secondary)' }}>Suspension reason (admin-visible only)</label>
+            <input className="input-field text-xs" value={suspendReason} onChange={(e) => setSuspendReason(e.target.value)} maxLength={500} placeholder="e.g. spam complaints from last campaign" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 pt-2">
+        <button onClick={save} disabled={saving} className="text-xs px-3 py-1.5 rounded" style={{ background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
 }

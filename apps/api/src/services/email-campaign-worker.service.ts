@@ -109,16 +109,19 @@ async function drainOne(camp: RunningCampaign): Promise<void> {
       })
       return
     }
-    // Send window check (partner-local hour; we use server time as a stand-in
-    // until we wire partner timezone — close enough at the resolution we care
-    // about for now).
-    const hour = new Date().getHours()
+    // Send-window check uses partner-local hour so a 9-5 window means
+    // 9-5 *for the partner*, not the server. Timezone resolves through:
+    // AffiliateAccount.bookingTimezone → User.preferredTimezone →
+    // America/New_York (same chain as bookingTimezone uses).
+    const partnerTz = await resolvePartnerTimezone(camp.partnerId)
+    const hour = getHourInTimezone(partnerTz)
     const inWindow = policy.sendWindowStartHour <= policy.sendWindowEndHour
       ? hour >= policy.sendWindowStartHour && hour < policy.sendWindowEndHour
       : hour >= policy.sendWindowStartHour || hour < policy.sendWindowEndHour
     if (!inWindow) return  // outside window — try again next tick
 
-    // Daily cap check — how many sends today for this partner?
+    // Daily cap check uses server-day boundary (UTC). Close enough for
+    // a soft cap; the user impact is bounded by drip + window anyway.
     const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0)
     const sentToday = await prisma.messageLog.count({
       where: {
@@ -262,4 +265,35 @@ async function drainOne(camp: RunningCampaign): Promise<void> {
   if (camp.partnerId) {
     void evaluatePartnerReputation(camp.partnerId).catch(() => null)
   }
+}
+
+// ── Timezone helpers ────────────────────────────────────────────────────────
+// Resolution chain: AffiliateAccount.bookingTimezone → User.preferredTimezone
+// → America/New_York. Same chain `bookingTimezone` doc-comment promises for
+// appointment booking, kept consistent so partner-local time means the same
+// thing across all surfaces.
+
+async function resolvePartnerTimezone(partnerId: string | null): Promise<string> {
+  if (!partnerId) return 'America/New_York'
+  const partner = await prisma.affiliateAccount.findUnique({
+    where:  { id: partnerId },
+    select: { bookingTimezone: true, user: { select: { preferredTimezone: true } } },
+  })
+  return partner?.bookingTimezone
+    ?? partner?.user?.preferredTimezone
+    ?? 'America/New_York'
+}
+
+/** Hour of day (0-23) in the given IANA timezone. Uses Intl.DateTimeFormat so
+ *  we don't need a timezone library — Node 18+ ships with full ICU data. */
+function getHourInTimezone(tz: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hour:     'numeric',
+    hour12:   false,
+  }).formatToParts(new Date())
+  const hourPart = parts.find(p => p.type === 'hour')?.value ?? '0'
+  // Intl can return "24" for midnight in some locales — normalize.
+  const n = parseInt(hourPart, 10)
+  return n === 24 ? 0 : n
 }
