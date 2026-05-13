@@ -50,6 +50,7 @@
   "partnerNav": {
     "dashboard": "Dashboard",
     "mailbox": "Mailbox",
+    "calendar": "Calendar",
     "referrals": "Referral Links",
     "commissions": "Commissions",
     "payouts": "Payouts",
@@ -58,6 +59,23 @@
     "marketVault": "Market Vault",
     "soonPill": "Soon",
     "profile": "Profile"
+  },
+  "partnerCalendar": {
+    "title":              "Calendar",
+    "viewWeek":           "Week",
+    "viewAgenda":         "Agenda",
+    "today":              "Today",
+    "prevWeek":           "Previous week",
+    "nextWeek":           "Next week",
+    "calendarHint":       "Showing events from your connected Google calendar ({calendar}).",
+    "loading":            "Loading calendar…",
+    "loadFailed":         "Couldn't load events. Try again.",
+    "empty":              "No events this week.",
+    "allDay":             "All day",
+    "bookedByOrby":       "Booked by Orby",
+    "notConnectedTitle":  "Google Calendar not connected",
+    "notConnectedBody":   "Connect your Google account on your Profile page so Orby can show your schedule here and book demos for you.",
+    "connectCta":         "Go to Profile to connect →"
   },
   "partnerMailbox": {
     "title":             "Mailbox",

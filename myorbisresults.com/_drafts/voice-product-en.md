@@ -131,6 +131,14 @@ All powered by **Orbis Voice** — our proprietary voice agent platform, designe
 
 **Eyebrow:** The voice that represents you
 
+<!--
+  The "seven specialized agent roles" claim below is load-bearing on
+  prisma/schema.prisma → enum AgentRoleType (7 values: ORCHESTRATOR,
+  APPOINTMENT, SALES, CUSTOMER_SERVICE, MARKETING, ASSISTANT, SECRETARY).
+  If the enum gains or loses a value, update this paragraph + the role
+  table below so the marketing promise matches what the product
+  actually does. Drift caught by /graphify on 2026-05-12.
+-->
 **Headline:** Pick the voice. Assign the role. Watch it work.
 
 You don't get one canned voice and one generic script. You get **seven Orbis voice profiles** (warm female, calm male, energetic, professional, friendly, authoritative, conversational) and **seven specialized agent roles**, each tuned for the conversation it handles.

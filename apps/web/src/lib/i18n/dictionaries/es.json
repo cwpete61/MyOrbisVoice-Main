@@ -50,6 +50,7 @@
   "partnerNav": {
     "dashboard": "Panel",
     "mailbox": "Buzón",
+    "calendar": "Calendario",
     "referrals": "Enlaces de referido",
     "commissions": "Comisiones",
     "payouts": "Pagos",
@@ -58,6 +59,23 @@
     "marketVault": "Bóveda de ventas",
     "soonPill": "Pronto",
     "profile": "Perfil"
+  },
+  "partnerCalendar": {
+    "title":              "Calendario",
+    "viewWeek":           "Semana",
+    "viewAgenda":         "Agenda",
+    "today":              "Hoy",
+    "prevWeek":           "Semana anterior",
+    "nextWeek":           "Próxima semana",
+    "calendarHint":       "Mostrando eventos de tu calendario de Google conectado ({calendar}).",
+    "loading":            "Cargando calendario…",
+    "loadFailed":         "No se pudieron cargar los eventos. Inténtalo de nuevo.",
+    "empty":              "Sin eventos esta semana.",
+    "allDay":             "Todo el día",
+    "bookedByOrby":       "Reservado por Orby",
+    "notConnectedTitle":  "Google Calendar no conectado",
+    "notConnectedBody":   "Conecta tu cuenta de Google en tu página de Perfil para que Orby pueda mostrar tu agenda aquí y agendar demos por ti.",
+    "connectCta":         "Ir al Perfil para conectar →"
   },
   "partnerMailbox": {
     "title":             "Buzón",

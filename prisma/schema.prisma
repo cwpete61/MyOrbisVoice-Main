@@ -50,6 +50,12 @@ enum ChannelType {
   OUTBOUND
 }
 
+/// Tenant agent role types. These 7 values are LOAD-BEARING on marketing copy:
+/// myorbisresults.com/_drafts/voice-product-en.md sells "Seven Voices, Seven
+/// Roles" as a brand promise. Adding or removing a value here without updating
+/// the marketing draft creates drift between what we promise and what the
+/// product actually does. Surfaced by /graphify on 2026-05-12 as a
+/// semantically_similar_to edge linking this enum to the marketing draft.
 enum AgentRoleType {
   ORCHESTRATOR
   APPOINTMENT

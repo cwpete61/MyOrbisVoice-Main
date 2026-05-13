@@ -208,4 +208,92 @@ router.delete('/partner/integrations/google', async (req: Request, res: Response
   } catch (err) { next(err) }
 })
 
+// ─── Partner Calendar (Phase E.1) ───────────────────────────────────────────
+//
+// GET /api/partner/calendar/events?from=ISO&to=ISO[&calendarId=...]
+// Fetches events from the partner's connected Google Calendar over the given
+// range. If calendarId is omitted, uses AffiliateAccount.calendarId (which is
+// auto-populated to the primary calendar on first OAuth connect — see E.0).
+// Returns normalized event shape suitable for direct rendering by the
+// <PartnerCalendarView> component.
+
+const calendarEventsSchema = z.object({
+  from: z.string().min(1, 'from is required (ISO datetime)'),
+  to:   z.string().min(1, 'to is required (ISO datetime)'),
+  calendarId: z.string().optional(),
+})
+
+router.get('/partner/calendar/events', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const parsed = calendarEventsSchema.safeParse(req.query)
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid query', 422)
+    }
+    const { from, to, calendarId } = parsed.data
+
+    // Validate ISO range — caller passes a window like "this week" or
+    // "next 30 days"; we trust them but defend against pathologically large
+    // ranges that would blow up the Google API quota.
+    const fromMs = new Date(from).getTime()
+    const toMs   = new Date(to).getTime()
+    if (Number.isNaN(fromMs) || Number.isNaN(toMs)) {
+      throw new AppError('VALIDATION_ERROR', 'from and to must be valid ISO datetimes', 422)
+    }
+    if (toMs - fromMs > 90 * 24 * 60 * 60 * 1000) {
+      throw new AppError('VALIDATION_ERROR', 'Range cannot exceed 90 days', 422)
+    }
+
+    const partner = await prisma.affiliateAccount.findUnique({ where: { id: partnerId } })
+    if (!partner) throw new AppError('NOT_FOUND', 'Partner not found', 404)
+
+    if (!partner.integrationConnectionId) {
+      // Partner hasn't connected Google yet — return an empty list with a
+      // structured signal the UI can render as a "Connect Google" CTA.
+      res.json({ data: { events: [], notConnected: true, calendarId: null } })
+      return
+    }
+
+    // Resolve which calendar to read. Caller can override (e.g. show a non-
+    // primary calendar) — falls back to whatever's stored on the partner row.
+    const targetCalendarId = calendarId ?? partner.calendarId ?? 'primary'
+
+    const { google } = await import('googleapis')
+    const client = await googleService.getAuthenticatedGoogleClientForPartner(partnerId)
+    const cal = google.calendar({ version: 'v3', auth: client })
+
+    const resp = await cal.events.list({
+      calendarId:  targetCalendarId,
+      timeMin:     from,
+      timeMax:     to,
+      singleEvents: true,                  // expands recurring events into instances
+      orderBy:     'startTime',
+      maxResults:  250,
+    })
+
+    // Normalize for the UI. Events with no `start.dateTime` are all-day —
+    // expose their `start.date` separately so the component can render them
+    // distinctly. Mark events that were created by MyOrbisVoice
+    // (extendedProperties.private.source = 'myorbisvoice') so the UI can
+    // tag them visually.
+    const events = (resp.data.items ?? []).map((e) => {
+      const isMOV = e.extendedProperties?.private?.['source'] === 'myorbisvoice'
+      return {
+        id:       e.id,
+        title:    e.summary ?? '(no title)',
+        start:    e.start?.dateTime ?? e.start?.date ?? null,
+        end:      e.end?.dateTime   ?? e.end?.date   ?? null,
+        allDay:   !e.start?.dateTime,
+        location: e.location ?? null,
+        attendees:(e.attendees ?? []).map(a => ({ email: a.email, name: a.displayName ?? null, response: a.responseStatus ?? null })),
+        organizerEmail: e.organizer?.email ?? null,
+        htmlLink: e.htmlLink ?? null,
+        source:   isMOV ? 'myorbisvoice' : 'external',
+      }
+    })
+
+    res.json({ data: { events, notConnected: false, calendarId: targetCalendarId } })
+  } catch (err) { next(err) }
+})
+
 export default router
