@@ -142,6 +142,10 @@ async function start() {
     // we can't resume the original buffer, so they get FAILED with a clear
     // message and the user can re-upload.
     recoverStuckExtractions().catch(e => console.error('[kb][recover] boot:', e))
+    // F.4 — bulk email campaign worker. Ticks every 15s; respects per-partner
+    // daily cap, send window, and drip interval. Safe to no-op when no
+    // RUNNING campaigns exist.
+    void import('./services/email-campaign-worker.service.js').then(m => m.startCampaignWorker())
   })
 }
 

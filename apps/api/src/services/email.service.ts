@@ -45,15 +45,154 @@ export interface EmailOptions {
   replyTo?: string
   /** Optional In-Reply-To header for threading (RFC 5322 message id). */
   inReplyTo?: string
+  /** Phase F.4 — suppression scope. Transactional sends bypass tenant/partner
+   *  suppression but still respect global hard bounces. Marketing/bulk
+   *  respects every scope. Default is transactional (safe for the existing
+   *  call sites — welcome, password reset, booking confirms, partner ad-hoc
+   *  compose are all transactional). Bulk campaigns must pass 'marketing'. */
+  kind?:      'transactional' | 'marketing'
+  tenantId?:  string | null
+  partnerId?: string | null
 }
 
-export async function sendEmail(opts: EmailOptions): Promise<void> {
-  const config = await getTransporter()
-  if (!config) {
-    console.warn('[email] SMTP not configured — skipping send to', opts.to)
-    return
+export type EmailProvider = 'postmark' | 'resend' | 'brevo' | 'smtp'
+
+export type SendResult =
+  | { sent: true; provider: EmailProvider; providerMessageId?: string }
+  | { sent: false; skipped: 'suppressed' | 'no_smtp' | 'no_provider'; reason?: string }
+
+/**
+ * Pick which provider should handle a given send.
+ *
+ * Phase F.4 routing:
+ *   1. kind=transactional (or unset)            → Postmark — best deliverability
+ *      for password resets, booking confirms, welcome, partner ad-hoc.
+ *   2. From-domain @myorbisresults.com           → Brevo — partner sends + the
+ *      domain Resend's free tier doesn't cover.
+ *   3. From-domain @myorbisvoice.com (marketing) → Resend — the verified domain
+ *      Resend already owns.
+ *   4. Anything else                             → SMTP — local Postfix relay.
+ *
+ * Provider failures fall back to SMTP at the caller layer.
+ */
+function pickProvider(opts: EmailOptions): EmailProvider {
+  if (opts.kind === 'transactional' || opts.kind == null) return 'postmark'
+  const fromAddr = (opts.from ?? '').toLowerCase()
+  if (fromAddr.includes('@myorbisresults.com')) return 'brevo'
+  if (fromAddr.includes('@myorbisvoice.com'))   return 'resend'
+  return 'smtp'  // default for unknown marketing domains
+}
+
+const POSTMARK_API = 'https://api.postmarkapp.com'
+const RESEND_API   = 'https://api.resend.com'
+const BREVO_API    = 'https://api.brevo.com/v3'
+
+/** Postmark email send. Returns the MessageID so webhook events can later
+ *  match back to the MessageLog row. Falls back to throwing on non-2xx so the
+ *  caller can route to SMTP. */
+async function sendViaPostmark(opts: EmailOptions): Promise<{ providerMessageId: string }> {
+  const token = await systemConfig.getConfigValue('email.postmark.server_token')
+  if (!token) throw new Error('postmark token unset')
+  const decryptedToken = systemConfig.decrypt(token)
+
+  const res = await fetch(`${POSTMARK_API}/email`, {
+    method:  'POST',
+    headers: {
+      'Accept':                  'application/json',
+      'Content-Type':            'application/json',
+      'X-Postmark-Server-Token': decryptedToken,
+    },
+    body: JSON.stringify({
+      From:          opts.from ?? 'notify@myorbisvoice.com',
+      To:            opts.to,
+      Subject:       opts.subject,
+      HtmlBody:      opts.html,
+      TextBody:      opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
+      ReplyTo:       opts.replyTo,
+      MessageStream: 'outbound',
+    }),
+  })
+  const body = await res.json() as { MessageID?: string; ErrorCode?: number; Message?: string }
+  if (!res.ok || body.ErrorCode) {
+    throw new Error(`postmark ${res.status}: ${body.Message ?? 'unknown error'}`)
   }
-  await config.transporter.sendMail({
+  return { providerMessageId: body.MessageID ?? '' }
+}
+
+/** Resend email send. Same contract as Postmark — returns id, throws on
+ *  non-2xx. */
+async function sendViaResend(opts: EmailOptions): Promise<{ providerMessageId: string }> {
+  const key = await systemConfig.getConfigValue('email.resend.api_key')
+  if (!key) throw new Error('resend api_key unset')
+  const decryptedKey = systemConfig.decrypt(key)
+
+  const res = await fetch(`${RESEND_API}/emails`, {
+    method:  'POST',
+    headers: {
+      'Accept':        'application/json',
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${decryptedKey}`,
+    },
+    body: JSON.stringify({
+      from:     opts.from ?? 'notify@myorbisvoice.com',
+      to:       opts.to,
+      subject:  opts.subject,
+      html:     opts.html,
+      text:     opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
+      reply_to: opts.replyTo,
+    }),
+  })
+  const body = await res.json() as { id?: string; statusCode?: number; message?: string }
+  if (!res.ok || body.statusCode) {
+    throw new Error(`resend ${res.status}: ${body.message ?? 'unknown error'}`)
+  }
+  return { providerMessageId: body.id ?? '' }
+}
+
+/** Brevo email send. The "messageId" comes back as an SMTP message-id with
+ *  angle brackets — we strip them for consistency with what our webhook
+ *  handler stores (it strips on receive). */
+async function sendViaBrevo(opts: EmailOptions): Promise<{ providerMessageId: string }> {
+  const key = await systemConfig.getConfigValue('email.brevo.api_key')
+  if (!key) throw new Error('brevo api_key unset')
+  const decryptedKey = systemConfig.decrypt(key)
+
+  // Brevo wants sender as {name, email}; parse "Display <addr@x>" or use raw.
+  const from = opts.from ?? 'noreply@myorbisresults.com'
+  const m = from.match(/^"?([^"<]+?)"?\s*<(.+?)>$/)
+  const sender = m
+    ? { name: m[1]!.trim(), email: m[2]!.trim() }
+    : { email: from.trim() }
+
+  const res = await fetch(`${BREVO_API}/smtp/email`, {
+    method:  'POST',
+    headers: {
+      'Accept':       'application/json',
+      'Content-Type': 'application/json',
+      'api-key':      decryptedKey,
+    },
+    body: JSON.stringify({
+      sender,
+      to:           [{ email: opts.to }],
+      subject:      opts.subject,
+      htmlContent:  opts.html,
+      textContent:  opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
+      replyTo:      opts.replyTo ? { email: opts.replyTo } : undefined,
+    }),
+  })
+  const body = await res.json() as { messageId?: string; code?: string; message?: string }
+  if (!res.ok || body.code) {
+    throw new Error(`brevo ${res.status}: ${body.message ?? 'unknown error'}`)
+  }
+  return { providerMessageId: (body.messageId ?? '').replace(/^<|>$/g, '') }
+}
+
+/** Local Postfix / authenticated SMTP fallback. Returns empty id (no upstream
+ *  to dedupe against) — callers wanting webhook correlation should use an ESP. */
+async function sendViaSmtp(opts: EmailOptions): Promise<{ providerMessageId: string }> {
+  const config = await getTransporter()
+  if (!config) throw new Error('smtp not configured')
+  const info = await config.transporter.sendMail({
     from:      opts.from ?? config.from,
     to:        opts.to,
     subject:   opts.subject,
@@ -62,6 +201,54 @@ export async function sendEmail(opts: EmailOptions): Promise<void> {
     replyTo:   opts.replyTo,
     inReplyTo: opts.inReplyTo,
   })
+  // nodemailer's `messageId` is the rfc822 Message-Id; strip angle brackets
+  // to match how the Brevo webhook normalizes incoming ids.
+  return { providerMessageId: (info.messageId ?? '').replace(/^<|>$/g, '') }
+}
+
+export async function sendEmail(opts: EmailOptions): Promise<SendResult> {
+  // Phase F.4 — short-circuit on the suppression list before touching the
+  // transport. Done first so we don't spend an SMTP/ESP round-trip on a known
+  // dead/complained address. Defaults: kind=transactional, no scope — which
+  // still triggers a global hard-bounce check. Bulk campaigns must pass kind
+  // = 'marketing' + the relevant tenantId/partnerId.
+  const { checkSuppression } = await import('./email-suppression.service.js')
+  const supp = await checkSuppression({
+    email:     opts.to,
+    kind:      opts.kind ?? 'transactional',
+    tenantId:  opts.tenantId  ?? null,
+    partnerId: opts.partnerId ?? null,
+  })
+  if (supp.suppressed) {
+    console.warn(`[email] suppressed (${supp.scope}/${supp.reason}) — skipping send to ${opts.to}`)
+    return { sent: false, skipped: 'suppressed', reason: `${supp.scope}:${supp.reason}` }
+  }
+
+  // Route to the right provider. On provider failure, fall back to SMTP so a
+  // misconfigured ESP doesn't take down the whole transactional flow.
+  const chosen = pickProvider(opts)
+  const sendFor: Record<EmailProvider, () => Promise<{ providerMessageId: string }>> = {
+    postmark: () => sendViaPostmark(opts),
+    resend:   () => sendViaResend(opts),
+    brevo:    () => sendViaBrevo(opts),
+    smtp:     () => sendViaSmtp(opts),
+  }
+
+  try {
+    const out = await sendFor[chosen]()
+    return { sent: true, provider: chosen, providerMessageId: out.providerMessageId || undefined }
+  } catch (err) {
+    console.warn(`[email] ${chosen} send failed for ${opts.to}: ${(err as Error).message} — falling back to SMTP`)
+    if (chosen === 'smtp') {
+      return { sent: false, skipped: 'no_smtp', reason: (err as Error).message }
+    }
+    try {
+      const out = await sendViaSmtp(opts)
+      return { sent: true, provider: 'smtp', providerMessageId: out.providerMessageId || undefined }
+    } catch (smtpErr) {
+      return { sent: false, skipped: 'no_provider', reason: `${chosen}: ${(err as Error).message}; smtp: ${(smtpErr as Error).message}` }
+    }
+  }
 }
 
 /** Welcome email fired once when a new tenant signs up. Steers them to the

@@ -32,6 +32,7 @@ import internalGatewayRouter from './internal-gateway.js'
 import internalMailRouter from './internal-mail.js'
 import partnerRouter from './partner.js'
 import partnerCrmRouter from './partner-crm.js'
+import partnerCampaignsRouter from './partner-campaigns.js'
 import partnerMailboxRouter from './partner-mailbox.js'
 import emailPolicyRouter from './email-policy.js'
 import marketingAssetsRouter from './marketing-assets.js'
@@ -74,6 +75,7 @@ router.use('/', affiliateRouter)        // contains public /api/public/track/cli
 // Mounted BEFORE tenantRouter because partners are not tenant members.
 router.use('/api', partnerRouter)
 router.use('/api', partnerCrmRouter)
+router.use('/api', partnerCampaignsRouter)
 router.use('/api', partnerMailboxRouter)
 router.use('/api', tenantRouter)
 router.use('/api', businessDNARouter)
