@@ -603,6 +603,13 @@ model BusinessProfile {
   reminderOffsetsMin        Int[]    @default([1440, 60])  // 24h + 1h before
   reminderEmailEnabled      Boolean  @default(true)
   reminderSmsEnabled        Boolean  @default(true)
+  // Phase E.8 — reminder copy customization. Optional overrides for the
+  // built-in reminder templates. NULL = use defaults. Variables supported:
+  // {firstName} {businessName} {appointmentType} {whenLabel} {dateStr}
+  // {timeStr} {location}. See reminder.service.ts:renderTemplate.
+  reminderEmailSubject      String?  @db.VarChar(200)
+  reminderEmailIntro        String?  @db.VarChar(1000)
+  reminderSmsBody           String?  @db.VarChar(320)
   fallbackNotificationEmail String?
   // Marketing voice intensity ('conservative' | 'balanced' | 'direct' | 'aggressive').
   // Drives AI-Assist generated copy, default campaign tone, and outbound voice agent
@@ -1306,6 +1313,20 @@ model AffiliateAccount {
   calendarId            String? // Google Calendar ID for booking routing
   forwardPlatformEmails Boolean @default(true) // copy inbound to user.email Gmail
   partnerPageActive     Boolean @default(false) // /p/<slug>/ pages live + Mailbox accessible
+  // Phase E.10 — partner notification preferences. Each Boolean controls a
+  // distinct partner-bound notification path. Set true by default — partners
+  // opt-OUT of noise rather than opting in. Wire new notifications through
+  // these flags so they respect the partner's stated preference.
+  notifyAppointmentsEnabled Boolean @default(true) // email when an appointment books on their calendar
+
+  // Phase E.12 — partner-side reminder preferences (mirror of E.6 on
+  // BusinessProfile). When a booking is routed to this partner's calendar
+  // (Appointment.partnerId set), the reminder runner reads these instead of
+  // the tenant defaults. Lets partners run different SLAs from the platform.
+  partnerReminderEnabled        Boolean  @default(true)
+  partnerReminderOffsetsMin     Int[]    @default([1440, 60])   // 24h + 1h before
+  partnerReminderEmailEnabled   Boolean  @default(true)
+  partnerReminderSmsEnabled     Boolean  @default(true)
 
   // ── Phase E.3 — Partner booking preferences ──────────────────────────────
   // Controls when prospects can book the partner via the agent or the public

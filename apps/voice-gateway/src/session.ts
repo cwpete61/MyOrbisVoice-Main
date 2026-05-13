@@ -83,6 +83,20 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
   const systemPrompt = resolveSystemPrompt(prompts, dna, 'WIDGET', buildToolGuidanceBlock(), kbText, partner)
 
   const transcript: TranscriptEntry[] = []
+  // Buffer streaming Gemini transcription deltas into complete turns. Without
+  // this, each delta (one word, sometimes a single character) is pushed as
+  // its own transcript row and the saved conversation reads as "ORBY / Hi /
+  // ORBY / I'm / ORBY / Orby / ORBY / —" instead of full sentences. Inbound +
+  // outbound already do this; the widget path was missed until 2026-05-13.
+  let userBuffer  = ''
+  let agentBuffer = ''
+  let lastRole: 'user' | 'assistant' | null = null
+  function flushBuffer(role: 'user' | 'assistant') {
+    const text = role === 'user' ? userBuffer.trim() : agentBuffer.trim()
+    if (text) transcript.push({ role, text, timestamp: Date.now() })
+    if (role === 'user') userBuffer = ''
+    else                 agentBuffer = ''
+  }
   // Create the Conversation row upfront so mid-call tools (record_disposition,
   // save_contact, book_appointment with the convId param) have a target to
   // attach to. Without this, those tools 422'd with "Provide conversationId
@@ -161,14 +175,25 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
       send(ws, { type: 'interrupted' })
     },
     onTranscriptDelta(role, text) {
-      transcript.push({ role, text, timestamp: Date.now() })
+      // Flush the other speaker's buffer on a role switch — that turn just ended.
+      if (lastRole && lastRole !== role) flushBuffer(lastRole)
+      lastRole = role
+      if (role === 'user') userBuffer  += (userBuffer  ? ' ' : '') + text
+      else                 agentBuffer += (agentBuffer ? ' ' : '') + text
+
+      // Wire-format messages stay per-delta so the live UX (status pulses,
+      // E.7 idle-timer reset on user transcript) sees activity in real time.
       send(ws, { type: 'transcript', role, text })
-      // Also send in draft-studio format so the live preview panel can display turns
       if (draftMeta?.['isDraft']) {
         ws.send(JSON.stringify({ type: 'transcript_delta', speaker: role === 'user' ? 'You' : 'Agent', text }))
       }
     },
     onTurnComplete() {
+      // Gemini signaled "agent done speaking" — flush whatever's pending so
+      // each persisted turn is a complete sentence/utterance, not a fragment.
+      if (agentBuffer.trim()) flushBuffer('assistant')
+      if (userBuffer.trim())  flushBuffer('user')
+      lastRole = null
       send(ws, { type: 'turn_complete' })
     },
     async onToolCall(call) {
@@ -273,6 +298,11 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
   // 5. Finalize — generate summary, persist conversation
   async function finalize(status: 'COMPLETED' | 'FAILED') {
     try {
+      // Flush any pending mid-turn buffer fragments so a session that ended
+      // before Gemini emitted its turn_complete still persists the last words.
+      if (userBuffer.trim())  flushBuffer('user')
+      if (agentBuffer.trim()) flushBuffer('assistant')
+
       if (status === 'COMPLETED' && transcript.length > 0) {
         const summary = await generateSummary(transcript)
         conversationId = await persistConversation({

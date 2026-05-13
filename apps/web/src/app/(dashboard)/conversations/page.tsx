@@ -53,6 +53,29 @@ const DISPOSITION_VALUES: { value: string; labelKey: string }[] = [
 interface ConversationsResponse { items: Conversation[]; total: number }
 type TranscriptEntry = { role: 'user' | 'assistant'; text: string; timestamp: number }
 
+/**
+ * Merge consecutive same-role turns into single utterances. Defensive fix for
+ * legacy conversations where the gateway pushed every Gemini streaming delta
+ * as its own row (one word per turn). New calls don't need this — the
+ * gateway buffers properly now (apps/voice-gateway/src/session.ts) — but it
+ * keeps old conversations rendering as paragraphs instead of word lists.
+ */
+function mergeTranscriptTurns(raw: TranscriptEntry[]): TranscriptEntry[] {
+  const out: TranscriptEntry[] = []
+  for (const turn of raw) {
+    const last = out[out.length - 1]
+    const text = (turn.text ?? '').trim()
+    if (!text) continue
+    if (last && last.role === turn.role) {
+      const needsSpace = !/\s$/.test(last.text) && !/^[,.!?;:'")\]]/.test(text)
+      last.text = last.text + (needsSpace ? ' ' : '') + text
+    } else {
+      out.push({ role: turn.role, text, timestamp: turn.timestamp })
+    }
+  }
+  return out
+}
+
 const CHANNEL_COLORS: Record<string, string> = {
   WIDGET: 'oklch(55% 0.11 193)',
   INBOUND: 'oklch(55% 0.14 140)',
@@ -358,6 +381,7 @@ export default function ConversationsPage() {
   } else if (selected?.transcriptRef) {
     try { transcript = JSON.parse(selected.transcriptRef) } catch { /* ignore */ }
   }
+  transcript = mergeTranscriptTurns(transcript)
 
   const totalCountText = total !== 1
     ? t('tenantConversations.list.totalPlural', { n: total })

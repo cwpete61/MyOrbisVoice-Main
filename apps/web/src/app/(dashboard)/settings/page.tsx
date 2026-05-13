@@ -55,6 +55,10 @@ interface BookingPrefs {
   reminderOffsetsMin:      number[]
   reminderEmailEnabled:    boolean
   reminderSmsEnabled:      boolean
+  // Phase E.8 — optional reminder copy templates (null = default)
+  reminderEmailSubject:    string | null
+  reminderEmailIntro:      string | null
+  reminderSmsBody:         string | null
 }
 
 // Friendly preset offsets for the reminders editor (minutes before appointment).
@@ -277,6 +281,10 @@ export default function SettingsPage() {
   const [reminderOffsets, setReminderOffsets] = useState<number[]>([1440, 60])
   const [reminderEmail, setReminderEmail] = useState(true)
   const [reminderSms, setReminderSms] = useState(true)
+  // Phase E.8 — template overrides (empty string = use default at save time)
+  const [reminderEmailSubject, setReminderEmailSubject] = useState('')
+  const [reminderEmailIntro,   setReminderEmailIntro]   = useState('')
+  const [reminderSmsBody,      setReminderSmsBody]      = useState('')
 
   useEffect(() => { if (tenant) setTenantForm(tenant) }, [tenant])
   useEffect(() => { if (profile) setProfileForm(profile) }, [profile])
@@ -293,6 +301,9 @@ export default function SettingsPage() {
     setReminderOffsets(bookingPrefs.reminderOffsetsMin)
     setReminderEmail(bookingPrefs.reminderEmailEnabled)
     setReminderSms(bookingPrefs.reminderSmsEnabled)
+    setReminderEmailSubject(bookingPrefs.reminderEmailSubject ?? '')
+    setReminderEmailIntro(bookingPrefs.reminderEmailIntro     ?? '')
+    setReminderSmsBody(bookingPrefs.reminderSmsBody           ?? '')
   }, [bookingPrefs])
 
   function showToast(type: 'success' | 'error', text: string) {
@@ -343,6 +354,11 @@ export default function SettingsPage() {
           reminderOffsetsMin:     reminderOffsets,
           reminderEmailEnabled:   reminderEmail,
           reminderSmsEnabled:     reminderSms,
+          // Empty string means "no override — use default"; the API treats
+          // null the same way, so we send null on blank.
+          reminderEmailSubject:   reminderEmailSubject.trim() ? reminderEmailSubject : null,
+          reminderEmailIntro:     reminderEmailIntro.trim()   ? reminderEmailIntro   : null,
+          reminderSmsBody:        reminderSmsBody.trim()      ? reminderSmsBody      : null,
         }),
       })
       await reloadBooking()
@@ -666,6 +682,77 @@ export default function SettingsPage() {
                   </span>
                 </label>
               </div>
+
+              {/* Phase E.8 — message templates (collapsed in details). Empty
+                  = use default copy. Variables list is shown inline so the
+                  tenant doesn't have to guess what's available. */}
+              <details className="mt-5">
+                <summary className="text-xs font-medium cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+                  {t('tenantSettings.reminders.templates.heading')}
+                </summary>
+                <div className="mt-3 space-y-3 pl-3" style={{ borderLeft: '2px solid var(--border-subtle)' }}>
+                  <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    {t('tenantSettings.reminders.templates.help')}{' '}
+                    <code style={{ fontFamily: 'monospace' }}>{'{firstName} {businessName} {appointmentType} {whenLabel} {dateStr} {timeStr} {location}'}</code>
+                  </p>
+
+                  {reminderEmail && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                          {t('tenantSettings.reminders.templates.emailSubjectLabel')}
+                        </label>
+                        <input
+                          type="text"
+                          value={reminderEmailSubject}
+                          onChange={e => setReminderEmailSubject(e.target.value)}
+                          placeholder={t('tenantSettings.reminders.templates.emailSubjectPlaceholder')}
+                          maxLength={200}
+                          className="w-full rounded-md px-2 py-1.5 text-xs font-mono"
+                          style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                          {t('tenantSettings.reminders.templates.emailIntroLabel')}
+                        </label>
+                        <textarea
+                          value={reminderEmailIntro}
+                          onChange={e => setReminderEmailIntro(e.target.value)}
+                          placeholder={t('tenantSettings.reminders.templates.emailIntroPlaceholder')}
+                          rows={3}
+                          maxLength={1000}
+                          className="w-full rounded-md px-2 py-1.5 text-xs font-mono resize-none"
+                          style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                        />
+                        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                          {t('tenantSettings.reminders.templates.emailIntroHelp')}
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {reminderSms && (
+                    <div>
+                      <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                        {t('tenantSettings.reminders.templates.smsBodyLabel')}
+                      </label>
+                      <textarea
+                        value={reminderSmsBody}
+                        onChange={e => setReminderSmsBody(e.target.value)}
+                        placeholder={t('tenantSettings.reminders.templates.smsBodyPlaceholder')}
+                        rows={3}
+                        maxLength={320}
+                        className="w-full rounded-md px-2 py-1.5 text-xs font-mono resize-none"
+                        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                      />
+                      <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                        {t('tenantSettings.reminders.templates.smsBodyHelp', { count: reminderSmsBody.length })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </details>
 
               {reminderOffsets.length === 0 && (
                 <p className="text-xs mt-3 px-2 py-1 rounded" style={{ background: 'oklch(70% 0.13 70 / 0.15)', color: 'oklch(45% 0.16 70)' }}>

@@ -131,6 +131,7 @@ export interface PartnerProfileUpdate {
   forwardPlatformEmails?: boolean
   partnerPageActive?: boolean
   aggressionTier?: string
+  notifyAppointmentsEnabled?: boolean
 }
 
 /**
@@ -144,7 +145,7 @@ export async function updatePartnerProfile(userId: string, data: PartnerProfileU
     throw new AppError('NOT_FOUND', 'No partner record for this user', 404)
   }
 
-  return prisma.affiliateAccount.update({
+  const updated = await prisma.affiliateAccount.update({
     where: { id: partner.id },
     data: {
       displayName:           data.displayName,
@@ -157,8 +158,32 @@ export async function updatePartnerProfile(userId: string, data: PartnerProfileU
       forwardPlatformEmails: data.forwardPlatformEmails,
       partnerPageActive:     data.partnerPageActive,
       aggressionTier:        data.aggressionTier,
+      notifyAppointmentsEnabled: data.notifyAppointmentsEnabled,
     },
   })
+
+  // Phase E.11 — fire-and-forget regen + FTP publish of this partner's 6
+  // landing pages whenever their profile saves AND the page is active. Any
+  // visible field (name / photo / phone / email / business / slug) might
+  // have changed, so we always republish rather than diff. Failures are
+  // logged but never block the profile save.
+  if (updated.partnerPageActive) {
+    (async () => {
+      try {
+        const { publishPartnerPages } = await import('./partner-page-publisher.service.js')
+        const result = await publishPartnerPages(partner.id)
+        if (result.ok) {
+          console.log(`[partner-page-publisher] ${partner.id} published — uploaded=${result.uploaded} generated=${result.generated}`)
+        } else {
+          console.warn(`[partner-page-publisher] ${partner.id} partial/failed — ${result.detail.join(', ').slice(0, 300)}`)
+        }
+      } catch (err) {
+        console.warn(`[partner-page-publisher] ${partner.id} crashed: ${(err as Error).message}`)
+      }
+    })()
+  }
+
+  return updated
 }
 
 // ─── Booking preferences (Phase E.3) ─────────────────────────────────────────
@@ -308,6 +333,87 @@ export async function updatePartnerBookingPreferences(
 
   await prisma.affiliateAccount.update({ where: { id: partner.id }, data: update })
   return getPartnerBookingPreferences(userId)
+}
+
+// ─── Reminder preferences (Phase E.12) ───────────────────────────────────────
+// Per-partner control over the reminder cadence + channels for partner-routed
+// bookings. The reminder runner (apps/api/src/services/reminder.service.ts)
+// prefers these over BusinessProfile defaults when Appointment.partnerId set.
+
+export interface PartnerReminderPreferences {
+  reminderEnabled:       boolean
+  reminderOffsetsMin:    number[]
+  reminderEmailEnabled:  boolean
+  reminderSmsEnabled:    boolean
+}
+
+export async function getPartnerReminderPreferences(userId: string): Promise<PartnerReminderPreferences> {
+  const partner = await prisma.affiliateAccount.findUnique({
+    where:  { userId },
+    select: {
+      partnerReminderEnabled:      true,
+      partnerReminderOffsetsMin:   true,
+      partnerReminderEmailEnabled: true,
+      partnerReminderSmsEnabled:   true,
+    },
+  })
+  if (!partner) throw new AppError('NOT_FOUND', 'No partner record for this user', 404)
+  return {
+    reminderEnabled:       partner.partnerReminderEnabled,
+    reminderOffsetsMin:    partner.partnerReminderOffsetsMin,
+    reminderEmailEnabled:  partner.partnerReminderEmailEnabled,
+    reminderSmsEnabled:    partner.partnerReminderSmsEnabled,
+  }
+}
+
+export interface PartnerReminderPreferencesUpdate {
+  reminderEnabled?:       boolean
+  reminderOffsetsMin?:    unknown  // validated to number[] below
+  reminderEmailEnabled?:  boolean
+  reminderSmsEnabled?:    boolean
+}
+
+export async function updatePartnerReminderPreferences(
+  userId: string,
+  data: PartnerReminderPreferencesUpdate,
+): Promise<PartnerReminderPreferences> {
+  const partner = await prisma.affiliateAccount.findUnique({ where: { userId }, select: { id: true } })
+  if (!partner) throw new AppError('NOT_FOUND', 'No partner record for this user', 404)
+
+  const update: Record<string, unknown> = {}
+
+  if (data.reminderEnabled !== undefined) {
+    if (typeof data.reminderEnabled !== 'boolean') throw new AppError('BAD_REQUEST', 'reminderEnabled must be a boolean', 400)
+    update['partnerReminderEnabled'] = data.reminderEnabled
+  }
+  if (data.reminderEmailEnabled !== undefined) {
+    if (typeof data.reminderEmailEnabled !== 'boolean') throw new AppError('BAD_REQUEST', 'reminderEmailEnabled must be a boolean', 400)
+    update['partnerReminderEmailEnabled'] = data.reminderEmailEnabled
+  }
+  if (data.reminderSmsEnabled !== undefined) {
+    if (typeof data.reminderSmsEnabled !== 'boolean') throw new AppError('BAD_REQUEST', 'reminderSmsEnabled must be a boolean', 400)
+    update['partnerReminderSmsEnabled'] = data.reminderSmsEnabled
+  }
+  if (data.reminderOffsetsMin !== undefined) {
+    if (!Array.isArray(data.reminderOffsetsMin)) {
+      throw new AppError('BAD_REQUEST', 'reminderOffsetsMin must be an array of integers (minutes before)', 400)
+    }
+    const arr = data.reminderOffsetsMin as unknown[]
+    if (arr.length > 8) throw new AppError('BAD_REQUEST', 'reminderOffsetsMin: at most 8 offsets allowed', 400)
+    const cleaned: number[] = []
+    for (const v of arr) {
+      if (!Number.isInteger(v) || (v as number) < 1 || (v as number) > 60 * 24 * 30) {
+        throw new AppError('BAD_REQUEST', 'reminderOffsetsMin entries must be integers in [1, 43200] minutes', 400)
+      }
+      cleaned.push(v as number)
+    }
+    update['partnerReminderOffsetsMin'] = Array.from(new Set(cleaned)).sort((a, b) => b - a)
+  }
+
+  if (Object.keys(update).length > 0) {
+    await prisma.affiliateAccount.update({ where: { id: partner.id }, data: update })
+  }
+  return getPartnerReminderPreferences(userId)
 }
 
 // ─── Bootstrap helper (admin / seed only) ────────────────────────────────────

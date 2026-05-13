@@ -105,6 +105,19 @@ FILES=(
   "assets/images/partners/sample-partner.jpg"
 )
 
+# Per-partner generated landing pages — auto-discovered. Output of
+# `pnpm generate:partner-pages` lands at p/<slug>/voice-N/index.html and
+# es/p/<slug>/voice-N/index.html. We glob those in here so the deploy
+# script picks up every active partner without anyone editing this list.
+# Excludes `sample/` (already hardcoded above as Alex's canonical preview).
+shopt -s nullglob
+for f in "$SRC_DIR"/p/*/voice-*/index.html "$SRC_DIR"/es/p/*/voice-*/index.html; do
+  rel="${f#"$SRC_DIR/"}"
+  [[ "$rel" == p/sample/* || "$rel" == es/p/sample/* ]] && continue
+  FILES+=("$rel")
+done
+shopt -u nullglob
+
 # Verify every file exists locally before any upload starts
 for REL in "${FILES[@]}"; do
   [[ -f "$SRC_DIR/$REL" ]] || { red "❌ Missing: $SRC_DIR/$REL"; exit 1; }

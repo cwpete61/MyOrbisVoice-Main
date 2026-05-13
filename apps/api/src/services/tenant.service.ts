@@ -102,6 +102,10 @@ export interface TenantBookingPreferences {
   reminderOffsetsMin:      number[]
   reminderEmailEnabled:    boolean
   reminderSmsEnabled:      boolean
+  // Phase E.8 — optional reminder copy templates (null = use defaults)
+  reminderEmailSubject:    string | null
+  reminderEmailIntro:      string | null
+  reminderSmsBody:         string | null
 }
 
 export async function getTenantBookingPreferences(tenantId: string): Promise<TenantBookingPreferences> {
@@ -119,6 +123,9 @@ export async function getTenantBookingPreferences(tenantId: string): Promise<Ten
         reminderOffsetsMin:     true,
         reminderEmailEnabled:   true,
         reminderSmsEnabled:     true,
+        reminderEmailSubject:   true,
+        reminderEmailIntro:     true,
+        reminderSmsBody:        true,
       },
     }),
     prisma.tenant.findUnique({ where: { id: tenantId }, select: { timezone: true } }),
@@ -135,6 +142,9 @@ export async function getTenantBookingPreferences(tenantId: string): Promise<Ten
     reminderOffsetsMin:     profile?.reminderOffsetsMin     ?? [1440, 60],
     reminderEmailEnabled:   profile?.reminderEmailEnabled   ?? true,
     reminderSmsEnabled:     profile?.reminderSmsEnabled     ?? true,
+    reminderEmailSubject:   profile?.reminderEmailSubject   ?? null,
+    reminderEmailIntro:     profile?.reminderEmailIntro     ?? null,
+    reminderSmsBody:        profile?.reminderSmsBody        ?? null,
   }
 }
 
@@ -180,6 +190,9 @@ export interface TenantBookingPreferencesUpdate {
   reminderOffsetsMin?:     unknown  // validated to number[] below
   reminderEmailEnabled?:   boolean
   reminderSmsEnabled?:     boolean
+  reminderEmailSubject?:   string | null
+  reminderEmailIntro?:     string | null
+  reminderSmsBody?:        string | null
 }
 
 export async function updateTenantBookingPreferences(
@@ -225,6 +238,27 @@ export async function updateTenantBookingPreferences(
     }
     profileUpdate['reminderSmsEnabled'] = data.reminderSmsEnabled
   }
+  // Phase E.8 — reminder template overrides. Length-capped to match the DB
+  // VarChar widths; null clears the override and reverts to the default.
+  const strField = (
+    name: 'reminderEmailSubject' | 'reminderEmailIntro' | 'reminderSmsBody',
+    max: number,
+  ) => {
+    if (data[name] === undefined) return
+    const v = data[name]
+    if (v === null) { profileUpdate[name] = null; return }
+    if (typeof v !== 'string') {
+      throw new AppError('BAD_REQUEST', `${name} must be a string or null`, 400)
+    }
+    if (v.length > max) {
+      throw new AppError('BAD_REQUEST', `${name} must be ${max} characters or fewer`, 400)
+    }
+    profileUpdate[name] = v
+  }
+  strField('reminderEmailSubject', 200)
+  strField('reminderEmailIntro',   1000)
+  strField('reminderSmsBody',      320)
+
   if (data.reminderOffsetsMin !== undefined) {
     if (!Array.isArray(data.reminderOffsetsMin)) {
       throw new AppError('BAD_REQUEST', 'reminderOffsetsMin must be an array of integers (minutes before)', 400)

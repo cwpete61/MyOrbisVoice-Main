@@ -1,11 +1,29 @@
-import { Router, type IRouter } from 'express'
+import { Router, type IRouter, type Request, type Response, type NextFunction } from 'express'
+import multer from 'multer'
 import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import { createWidgetSession } from '../services/widget-session.service.js'
 import { asyncHandler } from '../lib/async-handler.js'
 import { prisma } from '../lib/prisma.js'
+import * as bunny from '../services/bunny.service.js'
+import { AppError } from '@voiceautomation/shared'
 
 const router: IRouter = Router()
+
+// Cap the recording upload at 50 MB — generous for stereo PCM WAV at 24kHz
+// (~10 MB per 5 min) while preventing pathological uploads. The widget builds
+// stereo WAV at 24kHz × 2ch × 16-bit = 96 KB/s of audio, so 50 MB ≈ 8 min.
+const recordingUpload = multer({
+  storage: multer.memoryStorage(),
+  limits:  { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype !== 'audio/wav' && file.mimetype !== 'audio/x-wav') {
+      cb(new AppError('VALIDATION_ERROR', 'Recording must be a WAV file', 422))
+      return
+    }
+    cb(null, true)
+  },
+})
 
 // Public endpoint — called by the embedded widget JS on the visitor's browser.
 // Uses the tenant's public widget key (channelConfig.publicKey) to identify the tenant.
@@ -97,5 +115,88 @@ router.post('/widget/draft-session', authenticate, requireTenantContext, asyncHa
   })
   res.json({ data: result })
 }))
+
+// ── Widget call recording upload (Phase E.8) ────────────────────────────────
+//
+// Public endpoint — called by the widget JS on session end. The visitor's
+// browser captures both halves of the conversation as raw PCM, muxes them
+// to a stereo 24 kHz WAV, and POSTs the result here. We verify ownership
+// against the WidgetSession.token that opened the WebSocket, upload to
+// Bunny CDN, and write recordingRef / recordingBunnyPath / size + duration
+// onto the matching Conversation row.
+
+router.post(
+  '/public/widget/upload-recording',
+  recordingUpload.single('audio'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const conversationId = String((req.body as { conversationId?: string }).conversationId ?? '')
+      const sessionToken   = String((req.body as { sessionToken?: string }).sessionToken ?? '')
+      if (!conversationId || !sessionToken) {
+        throw new AppError('VALIDATION_ERROR', 'conversationId and sessionToken required', 422)
+      }
+      if (!req.file) {
+        throw new AppError('VALIDATION_ERROR', 'audio file required', 422)
+      }
+
+      // Ownership check — the widget session that opened the WS must match
+      // the conversation it's now claiming a recording for. Without this any
+      // caller with a conversationId UUID could overwrite the recording.
+      const session = await prisma.widgetSession.findUnique({
+        where:  { token: sessionToken },
+        select: { tenantId: true, conversationId: true },
+      })
+      if (!session || session.conversationId !== conversationId) {
+        throw new AppError('FORBIDDEN', 'session/conversation mismatch', 403)
+      }
+
+      // Defense against late-arriving duplicate uploads (e.g. browser retry
+      // after timeout). If a recording is already attached, accept-and-ignore.
+      const existing = await prisma.conversation.findUnique({
+        where:  { id: conversationId },
+        select: { recordingRef: true, tenantId: true, startedAt: true, endedAt: true },
+      })
+      if (!existing) {
+        throw new AppError('NOT_FOUND', 'Conversation not found', 404)
+      }
+      if (existing.recordingRef) {
+        res.json({ data: { ok: true, alreadyUploaded: true } })
+        return
+      }
+
+      const config = await bunny.getBunnyConfig()
+      if (!config) {
+        throw new AppError('NOT_CONFIGURED', 'Recording storage is not configured for this platform', 503)
+      }
+
+      const bunnyPath = bunny.buildBunnyPath(session.tenantId, conversationId, 'wav')
+      const { url, sizeBytes } = await bunny.uploadRecording(config, bunnyPath, req.file.buffer, 'audio/wav')
+
+      // Compute duration from conversation timestamps where available, else
+      // fall back to a sample-count estimate (stereo 24 kHz = 96 KB/sec).
+      const durationFromTimes = existing.endedAt && existing.startedAt
+        ? Math.max(1, Math.round((existing.endedAt.getTime() - existing.startedAt.getTime()) / 1000))
+        : null
+      const durationFromBytes = Math.max(1, Math.round(sizeBytes / (24000 * 2 * 2)))
+      const durationSecs = durationFromTimes ?? durationFromBytes
+
+      await prisma.conversation.update({
+        where: { id: conversationId },
+        data: {
+          recordingRef:          url,
+          recordingBunnyPath:    bunnyPath,
+          recordingSizeBytes:    BigInt(sizeBytes),
+          recordingDurationSecs: durationSecs,
+          recordingStatus:       'stored',
+        },
+      })
+
+      // Best-effort storage accounting — never fails the upload.
+      bunny.incrementStorageUsed(session.tenantId, sizeBytes).catch(() => {})
+
+      res.json({ data: { ok: true, sizeBytes, durationSecs } })
+    } catch (err) { next(err) }
+  },
+)
 
 export { router as widgetRouter }

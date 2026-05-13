@@ -329,4 +329,229 @@ router.put('/partner/booking-preferences', async (req: Request, res: Response, n
   } catch (err) { next(err) }
 })
 
+// ─── Partner landing-page analytics (Phase E.15) ────────────────────────────
+//
+// Per-variation visit + conversion stats for the partner's landing pages.
+// AffiliateClick rows already capture visits (each landing-page pageview
+// fires a beacon to /api/public/track/click). Conversions = Conversations
+// that share the partner's id, grouped by the landing path of the click that
+// preceded them. For the MVP we use a simple landingPath GROUP BY — a 1:1
+// click-to-conversation join would require cookie threading we don't have
+// across the static page → API hop today.
+
+router.get('/partner/landing-page-stats', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+
+    // Visits per variation — grouped by the URL path. We bucket by
+    // /voice-1/, /voice-2/, /voice-3/ (and their /es/ mirrors). Anything else
+    // (legacy or non-variation paths) is ignored.
+    const visits = await prisma.affiliateClick.groupBy({
+      by:    ['landingPath'],
+      where: { affiliateAccountId: partnerId, landingPath: { not: null } },
+      _count: { _all: true },
+    })
+
+    // Conversations per variation — Conversation.partnerId matches. We can't
+    // attribute each conversation back to the exact landing page (no
+    // referer-on-conversion threading yet), so the conversion total is the
+    // partner's total conversation count for now. A future enhancement would
+    // stash the landing-page slug on Conversation.metadataJson at session
+    // start so per-variation conversion rates are accurate, not bucket-level.
+    const totalConversations = await prisma.conversation.count({ where: { partnerId } })
+
+    // Bucket the visit data into clean per-variation rows so the UI doesn't
+    // have to know about Spanish mirrors or trailing slashes.
+    function bucket(path: string): number | null {
+      const m = /\/voice-(\d)\//.exec(path)
+      if (!m || !m[1]) return null
+      const n = parseInt(m[1], 10)
+      return [1, 2, 3].includes(n) ? n : null
+    }
+
+    const perVariation: Record<number, { visits: number }> = { 1: { visits: 0 }, 2: { visits: 0 }, 3: { visits: 0 } }
+    let totalVisits = 0
+    for (const v of visits) {
+      const n = v.landingPath ? bucket(v.landingPath) : null
+      if (n !== null) perVariation[n]!.visits += v._count._all
+      if (n !== null) totalVisits += v._count._all
+    }
+
+    res.json({
+      data: {
+        totalVisits,
+        totalConversations,
+        variations: [1, 2, 3].map(n => ({
+          variation: n,
+          visits:    perVariation[n]!.visits,
+        })),
+      },
+    })
+  } catch (err) { next(err) }
+})
+
+// ─── Partner Reminder Preferences (Phase E.12) ──────────────────────────────
+//
+// Per-partner override of the reminder cadence + channels for partner-routed
+// bookings. Same shape + validation as the tenant-side endpoint, but reads
+// from / writes to AffiliateAccount columns instead of BusinessProfile.
+
+router.get('/partner/reminder-preferences', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const prefs = await partnerService.getPartnerReminderPreferences(req.user!.id)
+    res.json({ data: prefs })
+  } catch (err) { next(err) }
+})
+
+router.put('/partner/reminder-preferences', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const updated = await partnerService.updatePartnerReminderPreferences(req.user!.id, req.body ?? {})
+    await writeAuditLog({
+      actorUserId:  req.user!.id,
+      actorType:    'USER',
+      action:       'partner.reminder_preferences.updated',
+      targetType:   'AffiliateAccount',
+      targetId:     (req as any).partnerAccountId,
+      metadataJson: { fields: Object.keys(req.body ?? {}) },
+    })
+    res.json({ data: updated })
+  } catch (err) { next(err) }
+})
+
+// ─── Partner Conversations (Phase E.9) ──────────────────────────────────────
+//
+// Surfaces every widget conversation that originated on this partner's
+// landing pages (Conversation.partnerId = this partner). Includes the
+// AI-generated summary, full speaker-labelled transcript, the audio recording
+// (when E.8 capture was successful), and any appointments that came out of
+// the call.
+
+const conversationsQuerySchema = z.object({
+  limit:  z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+})
+
+router.get('/partner/conversations', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const parsed = conversationsQuerySchema.safeParse(req.query)
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_ERROR', parsed.error.issues[0]?.message ?? 'Invalid query', 422)
+    }
+    const limit  = parsed.data.limit  ?? 50
+    const offset = parsed.data.offset ?? 0
+
+    const [conversations, total] = await Promise.all([
+      prisma.conversation.findMany({
+        where:   { partnerId },
+        orderBy: { startedAt: 'desc' },
+        take:    limit,
+        skip:    offset,
+        select: {
+          id:                    true,
+          channelType:           true,
+          startedAt:             true,
+          endedAt:               true,
+          status:                true,
+          summaryText:           true,
+          outcomeCode:           true,
+          recordingRef:          true,
+          recordingDurationSecs: true,
+          contact: {
+            select: { id: true, fullName: true, firstName: true, email: true, phoneE164: true },
+          },
+          appointments: {
+            select: { id: true, status: true, startAt: true, appointmentType: true },
+          },
+        },
+      }),
+      prisma.conversation.count({ where: { partnerId } }),
+    ])
+
+    res.json({
+      data: {
+        items: conversations.map(c => ({
+          id:                    c.id,
+          channelType:           c.channelType,
+          startedAt:             c.startedAt.toISOString(),
+          endedAt:               c.endedAt?.toISOString() ?? null,
+          status:                c.status,
+          summary:               c.summaryText,
+          outcomeCode:           c.outcomeCode,
+          hasRecording:          !!c.recordingRef,
+          recordingDurationSecs: c.recordingDurationSecs,
+          contact:               c.contact,
+          appointmentCount:      c.appointments.length,
+        })),
+        total,
+        limit,
+        offset,
+      },
+    })
+  } catch (err) { next(err) }
+})
+
+router.get('/partner/conversations/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const id = req.params['id']
+    if (!id) throw new AppError('VALIDATION_ERROR', 'id required', 422)
+
+    const conv = await prisma.conversation.findFirst({
+      where: { id, partnerId },  // ownership check — partner only sees their own
+      select: {
+        id:                    true,
+        channelType:           true,
+        startedAt:             true,
+        endedAt:               true,
+        status:                true,
+        summaryText:           true,
+        transcriptJson:        true,
+        outcomeCode:           true,
+        recordingRef:          true,
+        recordingBunnyPath:    true,
+        recordingDurationSecs: true,
+        contact: {
+          select: { id: true, fullName: true, firstName: true, lastName: true, email: true, phoneE164: true },
+        },
+        appointments: {
+          select: {
+            id: true, status: true, startAt: true, endAt: true,
+            appointmentType: true, timezone: true, location: true, notes: true,
+          },
+          orderBy: { startAt: 'asc' },
+        },
+      },
+    })
+    if (!conv) throw new AppError('NOT_FOUND', 'Conversation not found', 404)
+
+    res.json({
+      data: {
+        id:                    conv.id,
+        channelType:           conv.channelType,
+        startedAt:             conv.startedAt.toISOString(),
+        endedAt:               conv.endedAt?.toISOString() ?? null,
+        status:                conv.status,
+        summary:               conv.summaryText,
+        transcript:            (conv.transcriptJson as unknown[]) ?? [],
+        outcomeCode:           conv.outcomeCode,
+        hasRecording:          !!conv.recordingRef,
+        recordingUrl:          conv.recordingRef,
+        recordingDurationSecs: conv.recordingDurationSecs,
+        contact:               conv.contact,
+        appointments:          conv.appointments.map(a => ({
+          id:              a.id,
+          status:          a.status,
+          startAt:         a.startAt.toISOString(),
+          endAt:           a.endAt.toISOString(),
+          appointmentType: a.appointmentType,
+          timezone:        a.timezone,
+          location:        a.location,
+          notes:           a.notes,
+        })),
+      },
+    })
+  } catch (err) { next(err) }
+})
+
 export default router

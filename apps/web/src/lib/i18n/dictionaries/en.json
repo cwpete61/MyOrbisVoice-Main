@@ -51,14 +51,45 @@
     "dashboard": "Dashboard",
     "mailbox": "Mailbox",
     "calendar": "Calendar",
+    "conversations": "Conversations",
     "referrals": "Referral Links",
     "commissions": "Commissions",
     "payouts": "Payouts",
     "marketingKit": "Marketing Kit",
-    "landingPage": "Landing Page Builder",
+    "landingPage": "Landing Pages",
     "marketVault": "Market Vault",
+    "help": "Help",
     "soonPill": "Soon",
     "profile": "Profile"
+  },
+  "partnerHelp": {
+    "title":             "Partner Help",
+    "searchPlaceholder": "Search articles…",
+    "noResults":         "No articles match \"{query}\".",
+    "tips":              "TIPS",
+    "contactBlock":      "Still stuck? Email"
+  },
+  "partnerConversations": {
+    "title":               "Conversations",
+    "subtitle":            "Every call Orby took on your landing pages, with summary and transcript. Recordings appear when the visitor's browser supports our capture flow.",
+    "totalLabel":          "{n} total",
+    "loadFailed":          "Couldn't load conversations.",
+    "notFound":            "Conversation not found.",
+    "backToList":          "All conversations",
+    "anonymousCaller":     "Anonymous caller",
+    "bookedBadge":         "{n} booked",
+    "contactHeading":      "Contact",
+    "recordingHeading":    "Recording",
+    "summaryHeading":      "Summary",
+    "appointmentsHeading": "Appointments from this call",
+    "transcriptHeading":   "Transcript",
+    "turnUser":            "Caller",
+    "turnAgent":           "Orby",
+    "defaultAppointmentType": "Appointment",
+    "empty": {
+      "heading": "No conversations yet",
+      "body":    "When a prospect calls Orby from your landing pages or your public booking page, the conversation lands here with the AI summary, full speaker-labeled transcript, and (where available) the audio recording."
+    }
   },
   "partnerCalendar": {
     "title":              "Calendar",
@@ -156,6 +187,34 @@
   "partnerLandingPage": {
     "title": "Landing Page Builder",
     "subtitle": "Generate a coming-soon landing page on your own custom URL — built around MyOrbisVoice with your branding so you can collect leads before launch.",
+    "variationsTitle":    "Your Landing Pages",
+    "variationsSubtitle": "Three ready-to-use partner landing pages, each in a different voice. Pick whichever resonates with your audience, preview them live, and share the link with prospects. Each page has Orby's voice widget already embedded — every call books straight to your calendar.",
+    "statsTotalVisits":     "Total visits",
+    "statsTotalConvos":     "Conversations started",
+    "statsConversionRate":  "Conversation rate",
+    "visitsLabel":          "{n} visits",
+    "notActiveTitle":     "Your partner page isn't active yet.",
+    "notActiveBody":      "Activate it in Profile to start sharing your personalized version. The previews below show the variations as they appear today.",
+    "copyLink":           "Copy link",
+    "copied":             "Copied",
+    "preview":            "Preview",
+    "variations": {
+      "voice1": {
+        "name":        "The Story",
+        "headline":    "Your phone is ringing right now. You're not there. It just hung up.",
+        "description": "A narrative page that walks the prospect through a missed-call scene they've lived, then shows the version where MyOrbisVoice picks up. Best for service businesses (HVAC, plumbing, dental, legal)."
+      },
+      "voice2": {
+        "name":        "The Audit",
+        "headline":    "How much is your phone costing you this month?",
+        "description": "An audit-framed page that quantifies the cost of missed calls — designed for owners who respond to numbers more than narratives. Best for franchises, multi-location brands, and high-ticket service operators."
+      },
+      "voice3": {
+        "name":        "The Team Member",
+        "headline":    "Imagine the team member you wish you had.",
+        "description": "Positions MyOrbisVoice as the receptionist + sales assistant + scheduler the prospect always wanted but couldn't afford. Best for small teams, solopreneurs, and growing practices."
+      }
+    },
     "soonBadge": "Coming Soon",
     "heroTitle": "Your branded coming-soon page, in two clicks",
     "heroBody": "Send prospects to a clean, professional landing page that captures their interest while you finish onboarding. We'll handle the URL, the hosting, and the email capture — you focus on driving traffic.",
@@ -834,6 +893,13 @@
       "label": "Forward platform emails to my registration email",
       "help":  "When ON, a copy of every inbound message also lands at {email}. Useful if you check Gmail on your phone."
     },
+    "notifications": {
+      "heading": "NOTIFICATIONS",
+      "appointments": {
+        "label": "Email me when a prospect books on my calendar",
+        "help":  "When ON, every appointment booked from your landing pages or public booking page also pings {email} with the visitor's contact details. Off = quiet (the calendar invite still arrives via Google as normal)."
+      }
+    },
     "calendarHeading": "CALENDAR",
     "google": {
       "connectedHeading":    "Google Calendar connected",
@@ -899,6 +965,27 @@
       "savePreferences": "Save booking preferences",
       "saving":          "Saving booking preferences…",
       "saveFailed":      "Could not save booking preferences. Try again."
+    },
+    "reminders": {
+      "heading":         "REMINDERS",
+      "description":     "Automatic email and text reminders for visitors who book through your landing pages or public booking page. These override the platform defaults for partner-routed bookings only.",
+      "on":              "On",
+      "off":             "Off",
+      "offsetsLabel":    "When to send",
+      "offsetsHelp":     "Pick one or more times to remind the visitor before their appointment. Times in the past at booking time are skipped.",
+      "channelsLabel":   "How to send",
+      "channelEmail":    "Email",
+      "channelSms":      "Text message (SMS)",
+      "warnNoOffsets":   "Reminders are on, but no times are selected — pick at least one above.",
+      "warnNoChannels":  "Reminders are on, but neither email nor SMS is enabled — pick at least one channel.",
+      "dayOne":          "1 day before",
+      "dayN":            "{n} days before",
+      "hourOne":         "1 hour before",
+      "hourN":           "{n} hours before",
+      "minuteN":         "{n} min before",
+      "savePreferences": "Save reminder preferences",
+      "saving":          "Saving reminder preferences…",
+      "saveFailed":      "Could not save reminder preferences. Try again."
     }
   },
   "partnerLogin": {
@@ -1002,6 +1089,26 @@
     "applicationFailed": "Application failed",
     "pendingTitle": "Application under review.",
     "pendingDesc": "We'll notify you by email once your partner account is approved. You won't be able to track conversions until then.",
+    "setup": {
+      "title":                   "Finish setting up your partner page",
+      "desc":                    "Until these are done, prospects on your landing pages will see the demo content. Each step takes ~30 seconds.",
+      "profileTitle":            "Add your name + a short bio",
+      "profileDoneDetail":       "Your display name and bio are set.",
+      "profileTodoDetail":       "Your name and bio appear on every landing page prospects see — set them now.",
+      "openProfile":             "Open profile",
+      "avatarTitle":             "Upload a photo",
+      "avatarDoneDetail":        "Photo is on file.",
+      "avatarTodoDetail":        "A face goes a long way on landing pages. PNG / JPEG / WebP, under 2 MB.",
+      "uploadPhoto":             "Upload photo",
+      "googleTitle":             "Connect Google Calendar",
+      "googleDoneDetail":        "Google Calendar connected — bookings go straight to your calendar.",
+      "googleTodoDetail":        "Required for the booking flow. Without this, the agent can't actually book on your calendar.",
+      "connectGoogle":           "Connect",
+      "activateTitle":           "Activate your partner page",
+      "activateDoneDetail":      "Your personalized landing pages are live.",
+      "activateTodoDetail":      "Toggle 'Partner page active' in your profile to switch prospects from the demo to your personalized pages.",
+      "activatePage":            "Activate"
+    },
     "checklist": {
       "title": "What you need to get paid",
       "desc": "Complete these steps to start receiving commissions. You can earn referrals before completing them — payment just won't process until everything is checked.",
@@ -2591,6 +2698,18 @@
       "channelSms":     "Text message (SMS)",
       "warnNoOffsets":  "Reminders are on, but no times are selected — pick at least one above.",
       "warnNoChannels": "Reminders are on, but neither email nor SMS is enabled — pick at least one channel.",
+      "templates": {
+        "heading":                  "Customize message copy (optional)",
+        "help":                     "Leave blank to use our defaults. Available variables:",
+        "emailSubjectLabel":        "Email subject",
+        "emailSubjectPlaceholder":  "Reminder: {appointmentType} {whenLabel} — {dateStr}",
+        "emailIntroLabel":          "Email intro paragraph",
+        "emailIntroHelp":           "Renders above the appointment details table. Plain text — the layout, time/location box, and footer stay consistent across tenants.",
+        "emailIntroPlaceholder":    "{greeting} this is a quick reminder of your upcoming {apptLower} with {businessName}.",
+        "smsBodyLabel":             "SMS body",
+        "smsBodyHelp":              "{count} of 320 characters used. Single-segment SMS is 160 characters; messages over that bill as multiple segments.",
+        "smsBodyPlaceholder":       "{greeting}reminder: your {apptLower} with {businessName} is {whenLabel}, {dateShort} at {timeShort}."
+      },
       "dayOne":         "1 day before",
       "dayN":           "{n} days before",
       "hourOne":        "1 hour before",

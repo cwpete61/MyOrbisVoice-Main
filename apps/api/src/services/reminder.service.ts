@@ -41,32 +41,70 @@ export async function scheduleAppointmentReminders(opts: {
   contactEmail:  string | null
   contactPhone:  string | null
 }): Promise<{ scheduled: number }> {
-  const profile = await prisma.businessProfile.findUnique({
-    where:  { tenantId: opts.tenantId },
-    select: {
-      reminderEnabled:      true,
-      reminderOffsetsMin:   true,
-      reminderEmailEnabled: true,
-      reminderSmsEnabled:   true,
-    },
+  // Phase E.12 — if the appointment is partner-routed (Appointment.partnerId
+  // set), the partner's reminder preferences take precedence over the tenant's.
+  // Falls back to tenant config when the partner has none or partner reminders
+  // are disabled. This lets partners run their own SLA different from the
+  // platform default without each partner needing tenant-admin access.
+  const appointment = await prisma.appointment.findUnique({
+    where:  { id: opts.appointmentId },
+    select: { partnerId: true },
   })
-  if (!profile || !profile.reminderEnabled) return { scheduled: 0 }
-  if (!profile.reminderOffsetsMin || profile.reminderOffsetsMin.length === 0) {
-    return { scheduled: 0 }
+
+  let enabled:       boolean = false
+  let offsets:       number[] = []
+  let emailEnabled:  boolean = false
+  let smsEnabled:    boolean = false
+
+  if (appointment?.partnerId) {
+    const partner = await prisma.affiliateAccount.findUnique({
+      where:  { id: appointment.partnerId },
+      select: {
+        partnerReminderEnabled:      true,
+        partnerReminderOffsetsMin:   true,
+        partnerReminderEmailEnabled: true,
+        partnerReminderSmsEnabled:   true,
+      },
+    })
+    if (partner) {
+      enabled      = partner.partnerReminderEnabled
+      offsets      = partner.partnerReminderOffsetsMin
+      emailEnabled = partner.partnerReminderEmailEnabled
+      smsEnabled   = partner.partnerReminderSmsEnabled
+    }
+  } else {
+    const profile = await prisma.businessProfile.findUnique({
+      where:  { tenantId: opts.tenantId },
+      select: {
+        reminderEnabled:      true,
+        reminderOffsetsMin:   true,
+        reminderEmailEnabled: true,
+        reminderSmsEnabled:   true,
+      },
+    })
+    if (profile) {
+      enabled      = profile.reminderEnabled
+      offsets      = profile.reminderOffsetsMin
+      emailEnabled = profile.reminderEmailEnabled
+      smsEnabled   = profile.reminderSmsEnabled
+    }
   }
+
+  if (!enabled) return { scheduled: 0 }
+  if (!offsets || offsets.length === 0) return { scheduled: 0 }
 
   // Resolve which channels are eligible for this contact. A contact can be
   // reminded by email only, SMS only, or both — never neither.
   const channels: ReminderChannel[] = []
-  if (profile.reminderEmailEnabled && opts.contactEmail) channels.push('EMAIL')
-  if (profile.reminderSmsEnabled   && opts.contactPhone) channels.push('SMS')
+  if (emailEnabled && opts.contactEmail) channels.push('EMAIL')
+  if (smsEnabled   && opts.contactPhone) channels.push('SMS')
   if (channels.length === 0) return { scheduled: 0 }
 
   const now = Date.now()
   const startMs = opts.startAt.getTime()
   let scheduled = 0
 
-  for (const offsetMin of profile.reminderOffsetsMin) {
+  for (const offsetMin of offsets) {
     const scheduledAt = new Date(startMs - offsetMin * 60 * 1000)
     // Skip reminders whose fire-time is already in the past (e.g. a booking
     // made <1h before the appointment when the offset is 60 min).
@@ -220,6 +258,25 @@ function formatOffsetHumanReadable(offsetMin: number): string {
   return `in ${offsetMin} minute${offsetMin === 1 ? '' : 's'}`
 }
 
+/**
+ * Substitute {variable} placeholders in a tenant-authored template. Unknown
+ * variables are left as-is (no exception) so a typo in the editor doesn't
+ * crash the runner. Variables map to the same set used by the built-in
+ * defaults — keep them in sync with the UI help text in /settings.
+ */
+export function renderReminderTemplate(template: string, vars: Record<string, string | null>): string {
+  return template.replace(/\{(\w+)\}/g, (match, name: string) => {
+    const v = vars[name]
+    return typeof v === 'string' ? v : match
+  })
+}
+
+// Default SMS template — kept here so the customization UI can preview the
+// fallback exactly as the runner would render it.
+export const DEFAULT_REMINDER_SMS = '{greeting}reminder: your {apptLower} with {businessName} is {whenLabel}, {dateShort} at {timeShort}.'
+export const DEFAULT_REMINDER_EMAIL_SUBJECT = 'Reminder: {appointmentType} {whenLabel} — {dateStr}'
+export const DEFAULT_REMINDER_EMAIL_INTRO   = '{greeting} this is a quick reminder of your upcoming {apptLower} with {businessName}.'
+
 async function sendReminderEmail(opts: {
   tenantId:        string
   to:              string
@@ -235,7 +292,13 @@ async function sendReminderEmail(opts: {
 
   const [tenant, profile] = await Promise.all([
     prisma.tenant.findUnique({ where: { id: opts.tenantId }, select: { displayName: true } }),
-    prisma.businessProfile.findUnique({ where: { tenantId: opts.tenantId }, select: { brandName: true, fallbackNotificationEmail: true } }),
+    prisma.businessProfile.findUnique({
+      where: { tenantId: opts.tenantId },
+      select: {
+        brandName: true, fallbackNotificationEmail: true,
+        reminderEmailSubject: true, reminderEmailIntro: true,
+      },
+    }),
   ])
   const businessName = profile?.brandName || tenant?.displayName || 'our team'
   const apptLabel    = opts.appointmentType || 'Appointment'
@@ -244,11 +307,30 @@ async function sendReminderEmail(opts: {
   const whenLabel    = formatOffsetHumanReadable(opts.offsetMin)
   const greeting     = opts.firstName ? `Hi ${opts.firstName},` : 'Hi,'
 
-  const subject = `Reminder: ${apptLabel} ${whenLabel} — ${dateStr}`
+  // Tenant-authored templates override the built-in defaults when set. The
+  // appointment-details table and the platform footer stay constant — the
+  // template only governs the subject line and the intro paragraph, so a
+  // poorly-edited template can't break the visual layout.
+  const vars: Record<string, string> = {
+    firstName:        opts.firstName ?? '',
+    greeting,
+    businessName,
+    appointmentType:  apptLabel,
+    apptLower:        apptLabel.toLowerCase(),
+    whenLabel,
+    dateStr,
+    timeStr,
+    dateShort:        opts.startAt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: opts.timezone }),
+    timeShort:        opts.startAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone }),
+    location:         opts.location ?? '',
+  }
+  const subject = renderReminderTemplate(profile?.reminderEmailSubject ?? DEFAULT_REMINDER_EMAIL_SUBJECT, vars)
+  const intro   = renderReminderTemplate(profile?.reminderEmailIntro   ?? DEFAULT_REMINDER_EMAIL_INTRO,   vars)
+
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#222">
       <h2 style="color:#1a9898;margin:0 0 8px">Reminder: ${apptLabel} ${whenLabel}</h2>
-      <p style="color:#555;margin:0 0 20px">${greeting} this is a quick reminder of your upcoming ${apptLabel.toLowerCase()} with ${businessName}.</p>
+      <p style="color:#555;margin:0 0 20px">${intro}</p>
       <table style="width:100%;border-collapse:collapse;margin:0 0 20px">
         <tr><td style="padding:8px 0;color:#888;width:120px;vertical-align:top">When</td><td style="color:#222"><strong>${dateStr}</strong><br>${timeStr}</td></tr>
         ${opts.location ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Where</td><td style="color:#222">${opts.location}</td></tr>` : ''}
@@ -300,9 +382,27 @@ async function sendReminderSms(opts: {
   const business   = opts.businessName ?? 'us'
   const greeting   = opts.firstName ? `Hi ${opts.firstName}, ` : ''
 
-  // Keep SMS short — single segment when possible. Sender ID + STOP language
-  // are appended automatically by Twilio's 10DLC / messaging config.
-  const body = `${greeting}reminder: your ${apptLabel} with ${business} is ${whenLabel}, ${dateStr} at ${timeStr}.`
+  // Tenant-authored SMS template overrides the default. Variables follow the
+  // same set as the email template so users can copy/paste between fields.
+  // Keep result short — single segment (≤160 chars) when possible. Sender ID
+  // + STOP language are appended automatically by Twilio's 10DLC config.
+  const profile = await prisma.businessProfile.findUnique({
+    where:  { tenantId: opts.tenantId },
+    select: { reminderSmsBody: true },
+  })
+  const vars: Record<string, string> = {
+    firstName:       opts.firstName ?? '',
+    greeting,
+    businessName:    business,
+    appointmentType: apptLabel,
+    apptLower:       apptLabel.toLowerCase(),
+    whenLabel,
+    dateShort:       dateStr,
+    timeShort:       timeStr,
+    dateStr,
+    timeStr,
+  }
+  const body = renderReminderTemplate(profile?.reminderSmsBody ?? DEFAULT_REMINDER_SMS, vars)
 
   // Resolve a sending number — required by sendSms. Tenants without any Twilio
   // number can't send SMS reminders; we surface that as a clear error so the

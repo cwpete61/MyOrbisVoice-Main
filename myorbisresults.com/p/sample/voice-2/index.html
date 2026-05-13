@@ -523,6 +523,28 @@
     publicKey: "f8512971245c559ded6baf206b3adb9c4fca987f2ba6c571",
     partnerSlug: __orbisPartnerSlug,
   });
+
+  // Phase E.15 — track this pageview as an AffiliateClick so the partner can
+  // see per-variation conversion stats on /partner-portal/landing-page.
+  // sessionStorage gate prevents counting hard refreshes as separate visits.
+  try {
+    var __ovKey = 'ov_tracked_' + location.pathname;
+    if (!sessionStorage.getItem(__ovKey)) {
+      sessionStorage.setItem(__ovKey, '1');
+      fetch('https://api.myorbisvoice.com/api/public/track/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ref:          __orbisPartnerSlug,
+          landingPath:  location.pathname,
+          referrer:     document.referrer || null,
+          sessionId:    Math.random().toString(36).slice(2),
+        }),
+        keepalive: true,
+      }).catch(function () { /* silent */ });
+    }
+  } catch (e) { /* silent */ }
+
   window.talkToOrby = function () {
     let tries = 0;
     (function poke() {

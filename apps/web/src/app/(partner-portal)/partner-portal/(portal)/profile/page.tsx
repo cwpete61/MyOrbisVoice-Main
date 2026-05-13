@@ -31,6 +31,7 @@ type Me = {
     emailSignature:        string | null
     calendarId:            string | null
     forwardPlatformEmails: boolean
+    notifyAppointmentsEnabled: boolean
     aggressionTier:        AggressionTier
     partnerEmail:          string | null
     referralCode:          string
@@ -82,6 +83,7 @@ export default function AffiliateProfilePage() {
   const [emailSignature, setEmailSignature] = useState('')
   const [calendarId, setCalendarId] = useState('')
   const [forwardPlatformEmails, setForwardPlatformEmails] = useState(true)
+  const [notifyAppointmentsEnabled, setNotifyAppointmentsEnabled] = useState(true)
   const [savingMarketing, setSavingMarketing] = useState(false)
   const [savedMarketing, setSavedMarketing] = useState(false)
 
@@ -120,6 +122,22 @@ export default function AffiliateProfilePage() {
   const [savingBooking, setSavingBooking] = useState(false)
   const [savedBooking, setSavedBooking] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
+
+  // ─── Reminder preferences (Phase E.12) — partner-side overrides ────────────
+  type ReminderPrefs = {
+    reminderEnabled:       boolean
+    reminderOffsetsMin:    number[]
+    reminderEmailEnabled:  boolean
+    reminderSmsEnabled:    boolean
+  }
+  const REMINDER_PRESET_OFFSETS: number[] = [10080, 4320, 2880, 1440, 720, 240, 120, 60, 30, 15]
+  const [reminderEnabled, setReminderEnabled] = useState(true)
+  const [reminderOffsets, setReminderOffsets] = useState<number[]>([1440, 60])
+  const [reminderEmail,   setReminderEmail]   = useState(true)
+  const [reminderSms,     setReminderSms]     = useState(true)
+  const [savingReminder, setSavingReminder] = useState(false)
+  const [savedReminder,  setSavedReminder]  = useState(false)
+  const [reminderError,  setReminderError]  = useState<string | null>(null)
 
   // ─── Google Calendar OAuth (Phase E.0) ─────────────────────────────────────
   type GoogleConn = { status: 'CONNECTED' | 'NOT_CONNECTED' | 'ERROR' | 'PENDING'; email: string | null; lastVerifiedAt: string | null; calendarIds: string[] }
@@ -187,7 +205,8 @@ export default function AffiliateProfilePage() {
       apiFetch<Account>('/api/affiliate/account').catch(() => null),
       apiFetch<Settings>('/api/public/affiliate/settings').catch(() => null),
       apiFetch<BookingPrefs>('/api/partner/booking-preferences').catch(() => null),
-    ]).then(([m, acc, sett, prefs]) => {
+      apiFetch<ReminderPrefs>('/api/partner/reminder-preferences').catch(() => null),
+    ]).then(([m, acc, sett, prefs, reminderPrefs]) => {
       setMe(m)
       setAccount(acc)
       setSettings(sett)
@@ -208,6 +227,7 @@ export default function AffiliateProfilePage() {
         setEmailSignature(m.partner.emailSignature ?? '')
         setCalendarId(m.partner.calendarId ?? '')
         setForwardPlatformEmails(m.partner.forwardPlatformEmails)
+        setNotifyAppointmentsEnabled(m.partner.notifyAppointmentsEnabled)
       }
       if (m?.user) {
         setTimezone(m.user.preferredTimezone ?? null)
@@ -220,6 +240,12 @@ export default function AffiliateProfilePage() {
         setBufferBefore(prefs.bookingBufferBeforeMin)
         setBufferAfter(prefs.bookingBufferAfterMin)
         setBookingTz(prefs.bookingTimezone)
+      }
+      if (reminderPrefs) {
+        setReminderEnabled(reminderPrefs.reminderEnabled)
+        setReminderOffsets(reminderPrefs.reminderOffsetsMin)
+        setReminderEmail(reminderPrefs.reminderEmailEnabled)
+        setReminderSms(reminderPrefs.reminderSmsEnabled)
       }
       setLoading(false)
     })
@@ -322,6 +348,46 @@ export default function AffiliateProfilePage() {
     })
   }
 
+  async function saveReminderPrefs() {
+    setSavingReminder(true)
+    setReminderError(null)
+    try {
+      await apiFetch('/api/partner/reminder-preferences', {
+        method: 'PUT',
+        body: JSON.stringify({
+          reminderEnabled,
+          reminderOffsetsMin:    reminderOffsets,
+          reminderEmailEnabled:  reminderEmail,
+          reminderSmsEnabled:    reminderSms,
+        }),
+      })
+      setSavedReminder(true)
+      setTimeout(() => setSavedReminder(false), 2500)
+    } catch (e: unknown) {
+      setReminderError((e as Error).message ?? t('partnerProfile.reminders.saveFailed'))
+    } finally {
+      setSavingReminder(false)
+    }
+  }
+
+  function toggleReminderOffset(offset: number) {
+    setReminderOffsets(prev => prev.includes(offset)
+      ? prev.filter(o => o !== offset)
+      : [...prev, offset].sort((a, b) => b - a),
+    )
+  }
+  function formatOffset(min: number): string {
+    if (min >= 1440 && min % 1440 === 0) {
+      const d = min / 1440
+      return t(d === 1 ? 'partnerProfile.reminders.dayOne' : 'partnerProfile.reminders.dayN', { n: d })
+    }
+    if (min >= 60 && min % 60 === 0) {
+      const h = min / 60
+      return t(h === 1 ? 'partnerProfile.reminders.hourOne' : 'partnerProfile.reminders.hourN', { n: h })
+    }
+    return t('partnerProfile.reminders.minuteN', { n: min })
+  }
+
   async function saveMarketing() {
     setSavingMarketing(true)
     try {
@@ -335,6 +401,7 @@ export default function AffiliateProfilePage() {
           emailSignature:        emailSignature.trim() || null,
           calendarId:            calendarId.trim() || null,
           forwardPlatformEmails,
+          notifyAppointmentsEnabled,
         }),
       })
       setSavedMarketing(true)
@@ -537,6 +604,30 @@ export default function AffiliateProfilePage() {
               </span>
             </span>
           </label>
+
+          {/* Phase E.10 — Notifications subsection. Today's single toggle
+              controls the "new booking on your calendar" email. When more
+              partner-bound notifications get wired (commission earned,
+              payout sent, etc.) they belong here too. */}
+          <div className="pt-3 mt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-tertiary)' }}>
+              {t('partnerProfile.notifications.heading')}
+            </p>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notifyAppointmentsEnabled}
+                onChange={e => setNotifyAppointmentsEnabled(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="block text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{t('partnerProfile.notifications.appointments.label')}</span>
+                <span className="block text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  {t('partnerProfile.notifications.appointments.help', { email: me.user.email })}
+                </span>
+              </span>
+            </label>
+          </div>
         </div>
 
         {/* ── Calendar (inside marketing block) ────────────────────────────── */}
@@ -759,6 +850,105 @@ export default function AffiliateProfilePage() {
             : savedBooking
               ? t('partnerProfile.saved')
               : t('partnerProfile.booking.savePreferences')}
+        </button>
+      </div>
+
+      {/* ── Reminders (Phase E.12) — partner-side overrides for partner-routed bookings ─── */}
+      <div className="rounded-xl p-5 mb-6" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
+              {t('partnerProfile.reminders.heading')}
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+              {t('partnerProfile.reminders.description')}
+            </p>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
+            <input
+              type="checkbox"
+              checked={reminderEnabled}
+              onChange={e => setReminderEnabled(e.target.checked)}
+            />
+            <span className="text-xs" style={{ color: 'var(--text-primary)' }}>
+              {reminderEnabled ? t('partnerProfile.reminders.on') : t('partnerProfile.reminders.off')}
+            </span>
+          </label>
+        </div>
+
+        {reminderEnabled && (
+          <>
+            <p className="text-xs font-medium mb-2 mt-3" style={{ color: 'var(--text-secondary)' }}>
+              {t('partnerProfile.reminders.offsetsLabel')}
+            </p>
+            <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>
+              {t('partnerProfile.reminders.offsetsHelp')}
+            </p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {REMINDER_PRESET_OFFSETS.map(offset => {
+                const isOn = reminderOffsets.includes(offset)
+                return (
+                  <button
+                    key={offset}
+                    type="button"
+                    onClick={() => toggleReminderOffset(offset)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium"
+                    style={{
+                      background: isOn ? 'var(--brand-500)' : 'var(--surface-app)',
+                      border:     '1px solid ' + (isOn ? 'var(--brand-500)' : 'var(--border-subtle)'),
+                      color:      isOn ? '#fff' : 'var(--text-secondary)',
+                    }}
+                  >
+                    {formatOffset(offset)}
+                  </button>
+                )
+              })}
+            </div>
+
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+              {t('partnerProfile.reminders.channelsLabel')}
+            </p>
+            <div className="flex gap-4 mb-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={reminderEmail} onChange={e => setReminderEmail(e.target.checked)} />
+                <span className="text-xs" style={{ color: 'var(--text-primary)' }}>{t('partnerProfile.reminders.channelEmail')}</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={reminderSms} onChange={e => setReminderSms(e.target.checked)} />
+                <span className="text-xs" style={{ color: 'var(--text-primary)' }}>{t('partnerProfile.reminders.channelSms')}</span>
+              </label>
+            </div>
+
+            {reminderEnabled && reminderOffsets.length === 0 && (
+              <p className="text-xs mb-3 px-2 py-1 rounded" style={{ background: 'oklch(70% 0.13 70 / 0.15)', color: 'oklch(45% 0.16 70)' }}>
+                {t('partnerProfile.reminders.warnNoOffsets')}
+              </p>
+            )}
+            {reminderEnabled && reminderOffsets.length > 0 && !reminderEmail && !reminderSms && (
+              <p className="text-xs mb-3 px-2 py-1 rounded" style={{ background: 'oklch(70% 0.13 70 / 0.15)', color: 'oklch(45% 0.16 70)' }}>
+                {t('partnerProfile.reminders.warnNoChannels')}
+              </p>
+            )}
+          </>
+        )}
+
+        {reminderError && (
+          <div className="text-xs mb-3 px-2 py-1 rounded" style={{ background: 'oklch(60% 0.2 30 / 0.15)', color: 'oklch(55% 0.20 30)' }}>
+            {reminderError}
+          </div>
+        )}
+
+        <button
+          onClick={saveReminderPrefs}
+          disabled={savingReminder}
+          className="px-5 py-2.5 rounded-lg text-sm font-semibold"
+          style={{ background: savedReminder ? 'oklch(55% 0.18 145)' : 'var(--brand-500)', color: '#fff', opacity: savingReminder ? 0.6 : 1 }}
+        >
+          {savingReminder
+            ? t('partnerProfile.reminders.saving')
+            : savedReminder
+              ? t('partnerProfile.saved')
+              : t('partnerProfile.reminders.savePreferences')}
         </button>
       </div>
 

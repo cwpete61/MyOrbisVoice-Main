@@ -23,7 +23,8 @@
     "preflight": "tsx scripts/preflight.ts",
     "smoke-test": "tsx scripts/smoke-test.ts",
     "latency-report": "tsx scripts/latency-report.ts",
-    "watch-partner-onboarding": "tsx scripts/watch-partner-onboarding.ts"
+    "watch-partner-onboarding": "tsx scripts/watch-partner-onboarding.ts",
+    "generate:partner-pages": "tsx scripts/generate-partner-pages.ts"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

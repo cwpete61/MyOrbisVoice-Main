@@ -497,6 +497,23 @@ export async function createAppointment(tenantId: string, userId: string | null,
     notes:            data.notes,
   }).catch(err => console.warn('[appointment] owner notification failed:', (err as Error).message))
 
+  // Phase E.10 — partner-routed bookings also notify the partner directly
+  // (gated by AffiliateAccount.notifyAppointmentsEnabled). Different audience
+  // from the tenant-owner notification above: the partner doesn't see the
+  // OrbisVoice admin tenant inbox, so they need their own ping.
+  if (data.partnerId) {
+    sendPartnerBookingNotification(data.partnerId, {
+      appointmentId:    appointment.id,
+      appointmentType:  data.appointmentType,
+      startAt:          data.startAt,
+      endAt:            data.endAt,
+      timezone:         data.timezone,
+      attendeeEmail:    data.attendeeEmail,
+      contactId:        data.contactId,
+      notes:            data.notes,
+    }).catch(err => console.warn('[appointment] partner notification failed:', (err as Error).message))
+  }
+
   // Phase E.6 — schedule reminders. Reads tenant config (offsets + channel
   // toggles) from BusinessProfile; defaults are 24h + 1h before, both
   // channels. Falls back to the legacy campaign-driven path below ONLY if
@@ -721,6 +738,87 @@ async function sendTenantOwnerBookingNotification(tenantId: string, opts: {
       deliveryStatus: 'sent',
       sentAt:         new Date(),
     },
+  }).catch(() => { /* non-fatal */ })
+}
+
+/**
+ * Phase E.10 — partner-routed bookings notify the partner directly. Gated by
+ * AffiliateAccount.notifyAppointmentsEnabled (true by default; partners opt
+ * out via /partner-portal/profile). Sent to the partner's User.email (their
+ * personal inbox where they actually read mail — not the slug@myorbisresults
+ * forwarding alias). Uses platform SMTP since the partner has no tenant.
+ */
+async function sendPartnerBookingNotification(partnerId: string, opts: {
+  appointmentId:    string
+  appointmentType?: string
+  startAt:          string
+  endAt:            string
+  timezone:         string
+  attendeeEmail?:   string
+  contactId?:       string
+  notes?:           string
+}) {
+  const partner = await prisma.affiliateAccount.findUnique({
+    where: { id: partnerId },
+    select: {
+      notifyAppointmentsEnabled: true,
+      displayName:               true,
+      user:                      { select: { email: true, firstName: true } },
+    },
+  })
+  if (!partner) return
+  if (!partner.notifyAppointmentsEnabled) return
+  if (!partner.user.email) return
+
+  let attendeeName: string | null = null
+  let attendeePhone: string | null = null
+  if (opts.contactId) {
+    const c = await prisma.contact.findUnique({
+      where:  { id: opts.contactId },
+      select: { fullName: true, firstName: true, lastName: true, phoneE164: true },
+    })
+    attendeeName  = c?.fullName ?? ([c?.firstName, c?.lastName].filter(Boolean).join(' ').trim() || null)
+    attendeePhone = c?.phoneE164 ?? null
+  }
+
+  const start    = new Date(opts.startAt)
+  const dateStr  = start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: opts.timezone })
+  const timeStr  = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone, timeZoneName: 'short' })
+  const apptLabel = opts.appointmentType || 'Appointment'
+  const greeting  = partner.user.firstName ? `Hi ${partner.user.firstName},` : 'Hi,'
+
+  const html = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#222">
+      <h2 style="color:#1a9898;margin:0 0 8px">New booking on your calendar</h2>
+      <p style="color:#555;margin:0 0 20px">${greeting} Orby just booked an appointment on your landing page.</p>
+      <table style="width:100%;border-collapse:collapse;margin:0 0 20px">
+        <tr><td style="padding:8px 0;color:#888;width:120px;vertical-align:top">Type</td><td style="color:#222"><strong>${apptLabel}</strong></td></tr>
+        <tr><td style="padding:8px 0;color:#888;vertical-align:top">When</td><td style="color:#222"><strong>${dateStr}</strong><br>${timeStr}</td></tr>
+        ${attendeeName  ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Name</td><td style="color:#222">${attendeeName}</td></tr>` : ''}
+        ${opts.attendeeEmail ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Email</td><td style="color:#222">${opts.attendeeEmail}</td></tr>` : ''}
+        ${attendeePhone ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Phone</td><td style="color:#222">${attendeePhone}</td></tr>` : ''}
+        ${opts.notes    ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Notes</td><td style="color:#222">${opts.notes}</td></tr>` : ''}
+      </table>
+      <p style="color:#666;font-size:14px;margin:0 0 8px">It's already on your Google Calendar. Open <a href="https://app.myorbisvoice.com/partner-portal/calendar" style="color:#1a9898">your partner portal calendar</a> to see everything in one view.</p>
+      <p style="color:#888;font-size:12px;margin:24px 0 0">Want to turn these emails off? Go to <a href="https://app.myorbisvoice.com/partner-portal/profile" style="color:#1a9898">Profile → Notifications</a>.</p>
+    </div>
+  `.trim()
+
+  await sendEmail({
+    to:      partner.user.email,
+    subject: `New booking: ${apptLabel} — ${dateStr}`,
+    html,
+  })
+
+  // MessageLog skipped here — that table is tenant-scoped (tenantId NOT NULL)
+  // and partner notifications don't have a tenant context. AuditLog covers
+  // the platform-side observability we need.
+  await writeAuditLog({
+    actorType:    'SYSTEM',
+    action:       'partner.booking_notification.sent',
+    targetType:   'AffiliateAccount',
+    targetId:     partnerId,
+    metadataJson: { appointmentId: opts.appointmentId, recipientEmail: partner.user.email },
   }).catch(() => { /* non-fatal */ })
 }
 

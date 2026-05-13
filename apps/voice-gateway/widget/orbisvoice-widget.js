@@ -5,6 +5,13 @@
   const GW_BASE   = 'wss://gateway.myorbisvoice.com'
   const STYLES_ID = 'ov-widget-styles'
 
+  // Auto-close the panel + end the session after this many ms of conversational
+  // silence (no agent audio chunks AND no user transcript deltas). Walked-away
+  // visitors stop holding a Gemini Live session open indefinitely. Tick interval
+  // is the cadence we re-check; tighter = faster reaction, looser = lower CPU.
+  const IDLE_TIMEOUT_MS  = 30_000
+  const IDLE_TICK_MS     = 5_000
+
   // Standard DTMF (Dual-Tone Multi-Frequency) — what your phone keypad
   // actually generates when you press a digit. Used by _playDialIntro to
   // simulate dialing a phone number before the WebSocket session begins.
@@ -80,6 +87,15 @@
       /* Hang-up icon styling — receiver flipped 135° for the universal "end call" look */
       .ov-end-btn svg { width: 16px; height: 16px; transform: rotate(135deg); }
 
+      .ov-rec-notice {
+        font-size: .7rem; color: #3d6666; text-align: center;
+        padding: 8px 16px 0; line-height: 1.3;
+      }
+      .ov-rec-notice::before {
+        content: "●"; color: #c0392b; margin-right: 6px; font-size: .9rem;
+        animation: ov-pulse 1.8s ease-in-out infinite;
+      }
+
       .ov-footer {
         padding: 10px 16px; border-top: 1px solid rgba(26,152,152,.1);
         font-size: .72rem; color: #3d6666; text-align: center;
@@ -132,6 +148,22 @@
       // Dial-intro state — held so X/Stop during the intro stops the oscillators immediately
       this._dialCtx     = null
       this._dialAborted = false
+
+      // Idle-timeout state — last time we observed agent audio or user speech.
+      // The check timer is armed on session 'ready' and disarmed in _endNow.
+      this._lastActivityAt = 0
+      this._idleTimer      = null
+
+      // Recording capture — accumulate both halves of the conversation in the
+      // browser, time-stamped, then mux to a stereo WAV at session end and
+      // upload to the API which hands off to Bunny CDN. Visitor mic is 16k
+      // PCM mono (already converted in _startRecording); agent audio is 24k
+      // PCM mono (already decoded in _playAudio). We upsample visitor to 24k
+      // at mux time so both channels share one rate.
+      this._recVisitor    = []   // [{ at: ms-since-start, pcm: Int16Array }]
+      this._recAgent      = []   // [{ at: ms-since-start, pcm: Int16Array }]
+      this._recStartedAt  = 0    // performance.now() epoch
+      this._recUploading  = false
 
       injectStyles()
       this._buildDOM()
@@ -186,6 +218,7 @@
             </button>
           </div>
         </div>
+        <div class="ov-rec-notice">Calls are recorded for quality.</div>
         <div class="ov-footer">Powered by <a href="https://myorbisvoice.com" target="_blank">MyOrbisVoice</a></div>
       `
       document.body.appendChild(this.panel)
@@ -251,6 +284,7 @@
       // Hard stop: close the playback AudioContext so already-scheduled
       // AudioBufferSourceNodes (Orby's in-flight sentence) stop immediately.
       this._stopPlaybackHard()
+      this._disarmIdleTimer()
       if (this.ws) {
         try { this.ws.send(JSON.stringify({ type: 'end' })) } catch {}
         try { this.ws.close() } catch {}
@@ -260,6 +294,40 @@
       this.geminiReady = false
       this.endBtn.disabled = true
       this._setStatus('Session ended.')
+    }
+
+    // ─── Idle auto-close ──────────────────────────────────────────────────
+    // Once the session is 'ready', we mark activity whenever Orby speaks
+    // (agent audio chunk arrives) OR the visitor speaks (user transcript
+    // delta arrives — Gemini sends one whenever it detects speech, much
+    // more reliable than counting raw mic frames). If neither happens for
+    // IDLE_TIMEOUT_MS, we end the call + close the panel back to the icon.
+
+    _armIdleTimer() {
+      this._lastActivityAt = Date.now()
+      if (this._idleTimer) return
+      this._idleTimer = setInterval(() => {
+        if (!this._lastActivityAt) return
+        if (Date.now() - this._lastActivityAt < IDLE_TIMEOUT_MS) return
+        // Idle threshold crossed — close the session gracefully. Show a brief
+        // explanation on the status line so a visitor who happens to be
+        // looking knows why the panel collapsed.
+        this._setStatus('Closed (no activity).')
+        this._endNow()
+        setTimeout(() => this._close(), 1500)
+      }, IDLE_TICK_MS)
+    }
+
+    _disarmIdleTimer() {
+      if (this._idleTimer) {
+        clearInterval(this._idleTimer)
+        this._idleTimer = null
+      }
+      this._lastActivityAt = 0
+    }
+
+    _markActivity() {
+      this._lastActivityAt = Date.now()
     }
 
     async _connect() {
@@ -274,6 +342,10 @@
         })
         if (!res.ok) throw new Error('Failed to start session')
         const { data } = await res.json()
+        // Keep the session token around for the recording upload — same token
+        // the WS just authenticated with, used by the API to verify the
+        // visitor actually owned this conversation.
+        this._sessionToken = data.sessionToken
 
         this.ws = new WebSocket(`${GW_BASE}/ws/widget?token=${data.sessionToken}`)
         this.ws.addEventListener('message', (e) => this._onMessage(JSON.parse(e.data)))
@@ -296,13 +368,29 @@
         // so the visitor hears Orby greet them and can reply immediately —
         // identical mental model to a phone call (no "Speak" button to click).
         this._startRecording().catch(() => { /* permission error handled inside */ })
+        this._armIdleTimer()
+        // Anchor the recording timeline to the moment the session is live.
+        // Capture-side timestamps (visitor frames + agent chunks) are stored
+        // as ms-since-this-mark so the WAV mux can place them in a single
+        // timeline. Cleared in _resetRecording at the end of the call.
+        this._recStartedAt = performance.now()
+        this._recVisitor   = []
+        this._recAgent     = []
       }
 
       if (msg.type === 'audio') {
+        this._markActivity()
         this._playAudio(msg.data)
       }
 
-      // transcript messages are intentionally ignored — voice-only widget UX.
+      // transcript messages — UI ignores the text, but a user-role transcript
+      // delta is the cleanest signal that the visitor is actively speaking.
+      // (We can't use raw mic audio frames because the browser sends them every
+      // 256 ms regardless of whether the visitor is silent or making sound —
+      // they would block the idle-timer from ever firing.)
+      if (msg.type === 'transcript' && msg.role === 'user') {
+        this._markActivity()
+      }
 
       if (msg.type === 'turn_complete') {
         this._resetPlayback()
@@ -310,14 +398,24 @@
       }
 
       if (msg.type === 'ended') {
-        this._setStatus('Session ended. Thank you!')
         if (this.recording) this._stopRecording()
         this._stopPlaybackHard()
+        this._disarmIdleTimer()
         if (this.ws) { try { this.ws.close() } catch {} this.ws = null }
         this.connecting = false
-        // Auto-close the panel after a brief pause so the visitor sees the
-        // "Thank you" message before it disappears.
-        setTimeout(() => this._close(), 2500)
+        // Upload the call recording before showing the "Thank you" screen,
+        // so the visitor sees a "Saving recording…" status while the WAV is
+        // on the wire. msg.conversationId is set by the gateway only after
+        // persistConversation finishes, so we know the FK target exists.
+        const finishUp = () => {
+          this._setStatus('Session ended. Thank you!')
+          setTimeout(() => this._close(), 2500)
+        }
+        if (msg.conversationId) {
+          this._uploadRecording(msg.conversationId).finally(finishUp)
+        } else {
+          finishUp()
+        }
       }
 
       if (msg.type === 'error') {
@@ -328,6 +426,7 @@
     _onDisconnect() {
       if (this.recording) this._stopRecording()
       this._stopPlaybackHard()
+      this._disarmIdleTimer()
       this._setStatus('Disconnected.')
       this.ws = null
       this.connecting = false
@@ -346,6 +445,15 @@
           const pcm16   = this._float32ToPCM16(float32)
           const b64     = this._bufferToBase64(pcm16)
           this.ws.send(JSON.stringify({ type: 'audio', data: b64 }))
+          // Stash a typed view of the same PCM for the call recording. We
+          // store Int16Array (not the raw ArrayBuffer) so the mux step can
+          // index without re-wrapping.
+          if (this._recStartedAt) {
+            this._recVisitor.push({
+              at:  performance.now() - this._recStartedAt,
+              pcm: new Int16Array(pcm16),
+            })
+          }
         }
 
         source.connect(this.processor)
@@ -442,6 +550,16 @@
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
       this._pcmQueue.push(bytes)
 
+      // Stash an Int16 view of the same chunk in the call-recording buffer.
+      // Agent stream is 24kHz mono PCM — used as-is in the WAV mux.
+      if (this._recStartedAt) {
+        const samples = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2)
+        this._recAgent.push({
+          at:  performance.now() - this._recStartedAt,
+          pcm: new Int16Array(samples),  // copy so the playback path can mutate freely
+        })
+      }
+
       // Start the flush timer if it isn't running
       if (!this._flushTimer) {
         this._flushTimer = setInterval(() => this._flushAudio(), 60)
@@ -509,6 +627,127 @@
     _setStatus(text, pulsing = false) {
       this.statusEl.textContent = text
       this.statusEl.classList.toggle('ov-pulsing', pulsing)
+    }
+
+    // ─── Call recording mux + upload ──────────────────────────────────────
+    //
+    // Builds a stereo 24kHz WAV from the two captured streams. Left channel
+    // is the visitor (upsampled from 16kHz by linear interpolation); right
+    // channel is the agent (native 24kHz). Both chunks are time-placed using
+    // their performance.now() offsets so a 3-second pause in the conversation
+    // appears as 3 seconds of silence in the recording, not a jump-cut.
+    //
+    // Output: a Blob('audio/wav') ready for POST to the upload endpoint.
+
+    _buildRecordingBlob() {
+      const RATE = 24000  // shared output sample rate
+      const v = this._recVisitor
+      const a = this._recAgent
+      if (v.length === 0 && a.length === 0) return null
+
+      // Total duration in ms — last chunk's `at` plus its own duration.
+      const lastVisitorEnd = v.length === 0 ? 0
+        : v[v.length - 1].at + (v[v.length - 1].pcm.length / 16000) * 1000
+      const lastAgentEnd   = a.length === 0 ? 0
+        : a[a.length - 1].at + (a[a.length - 1].pcm.length / 24000) * 1000
+      const totalMs = Math.max(lastVisitorEnd, lastAgentEnd)
+      if (totalMs <= 0) return null
+
+      const totalSamples = Math.ceil((totalMs / 1000) * RATE)
+      const left  = new Int16Array(totalSamples)
+      const right = new Int16Array(totalSamples)
+
+      // Place visitor chunks (16k → 24k linear upsample). Ratio is 1.5x so
+      // every 2 visitor samples produce 3 output samples — fine for voice
+      // intelligibility, far cheaper than a polyphase resampler.
+      for (const chunk of v) {
+        const startSample = Math.floor((chunk.at / 1000) * RATE)
+        const src         = chunk.pcm
+        const outLen      = Math.floor(src.length * (RATE / 16000))
+        for (let i = 0; i < outLen; i++) {
+          const srcPos = i * (16000 / RATE)
+          const lo     = Math.floor(srcPos)
+          const hi     = Math.min(lo + 1, src.length - 1)
+          const frac   = srcPos - lo
+          const sample = src[lo] * (1 - frac) + src[hi] * frac
+          const idx    = startSample + i
+          if (idx < totalSamples) left[idx] = sample | 0
+        }
+      }
+
+      // Place agent chunks (native 24k).
+      for (const chunk of a) {
+        const startSample = Math.floor((chunk.at / 1000) * RATE)
+        const src         = chunk.pcm
+        for (let i = 0; i < src.length; i++) {
+          const idx = startSample + i
+          if (idx < totalSamples) right[idx] = src[i]
+        }
+      }
+
+      return this._encodeWavStereo(left, right, RATE)
+    }
+
+    /** Encode two Int16Array channels as a 16-bit PCM stereo WAV blob. */
+    _encodeWavStereo(left, right, sampleRate) {
+      const frames    = left.length  // assumed equal to right.length
+      const dataBytes = frames * 2 /* ch */ * 2 /* bytes/sample */
+      const buf       = new ArrayBuffer(44 + dataBytes)
+      const dv        = new DataView(buf)
+      let p = 0
+      function writeStr(s) { for (let i = 0; i < s.length; i++) dv.setUint8(p++, s.charCodeAt(i)) }
+      function writeU32(n) { dv.setUint32(p, n, true); p += 4 }
+      function writeU16(n) { dv.setUint16(p, n, true); p += 2 }
+      // RIFF header
+      writeStr('RIFF'); writeU32(36 + dataBytes); writeStr('WAVE')
+      // fmt chunk
+      writeStr('fmt '); writeU32(16)
+      writeU16(1)                       // PCM
+      writeU16(2)                       // channels
+      writeU32(sampleRate)
+      writeU32(sampleRate * 2 * 2)      // byte rate
+      writeU16(4)                       // block align (channels * bytes/sample)
+      writeU16(16)                      // bits per sample
+      // data chunk
+      writeStr('data'); writeU32(dataBytes)
+      for (let i = 0; i < frames; i++) {
+        dv.setInt16(p, left[i],  true); p += 2
+        dv.setInt16(p, right[i], true); p += 2
+      }
+      return new Blob([buf], { type: 'audio/wav' })
+    }
+
+    /** Best-effort upload. Sets recUploading + a "Saving recording…" status
+     *  while in flight. Non-fatal: if the upload fails (network blip, browser
+     *  closing) the call still ends normally; the recording is just lost. */
+    async _uploadRecording(conversationId) {
+      if (this._recUploading) return
+      if (!conversationId) return
+      const blob = this._buildRecordingBlob()
+      if (!blob || blob.size < 100) return  // nothing useful captured
+
+      this._recUploading = true
+      this._setStatus('Saving recording…', true)
+      try {
+        const form = new FormData()
+        form.append('conversationId', conversationId)
+        form.append('sessionToken',   this._sessionToken ?? '')
+        form.append('audio', blob, `widget-${conversationId}.wav`)
+        const res = await fetch(`${API_BASE}/api/public/widget/upload-recording`, {
+          method: 'POST',
+          body:   form,
+        })
+        if (!res.ok) {
+          console.warn('[OrbisVoice] recording upload non-OK:', res.status)
+        }
+      } catch (err) {
+        console.warn('[OrbisVoice] recording upload failed:', err)
+      } finally {
+        this._recUploading = false
+        this._recVisitor   = []
+        this._recAgent     = []
+        this._recStartedAt = 0
+      }
     }
 
     _float32ToPCM16(float32) {

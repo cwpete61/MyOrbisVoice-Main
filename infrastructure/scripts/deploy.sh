@@ -137,6 +137,19 @@ step_api() {
   rsync -az --delete "$REPO_ROOT/apps/api/dist/" "$SERVER:$REMOTE/apps/api/dist/"
   # schema.prisma already synced + db pushed in the global Prisma section above
   ssh "$SERVER" "docker cp $REMOTE/apps/api/dist/. myorbisvoice-api:/app/apps/api/dist/"
+
+  # Phase E.11 — the partner-page publisher (apps/api/src/services/
+  # partner-page-publisher.service.ts) reads templates from
+  # /app/myorbisresults.com/p/sample/ + /app/myorbisresults.com/es/p/sample/
+  # at runtime. Sync them so auto-regen-on-profile-save can actually find
+  # them — without this the publisher silently logs "template missing" on
+  # every save.
+  rsync -az --delete \
+    --include='/p/' --include='/p/sample/' --include='/p/sample/**' \
+    --include='/es/' --include='/es/p/' --include='/es/p/sample/' --include='/es/p/sample/**' \
+    --exclude='*' \
+    "$REPO_ROOT/myorbisresults.com/" "$SERVER:$REMOTE/myorbisresults.com/"
+  ssh "$SERVER" "docker exec myorbisvoice-api mkdir -p /app/myorbisresults.com/p/sample /app/myorbisresults.com/es/p/sample && docker cp $REMOTE/myorbisresults.com/p/sample/. myorbisvoice-api:/app/myorbisresults.com/p/sample/ && docker cp $REMOTE/myorbisresults.com/es/p/sample/. myorbisvoice-api:/app/myorbisresults.com/es/p/sample/" || true
   # CRITICAL: commit the running container back into the image so force-recreate doesn't revert code.
   # Without this, any subsequent `docker compose up --force-recreate` (e.g. after env changes) reverts
   # to the original image and loses everything we just injected via docker cp.

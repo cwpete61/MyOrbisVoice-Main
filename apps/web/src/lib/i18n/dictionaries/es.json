@@ -51,14 +51,45 @@
     "dashboard": "Panel",
     "mailbox": "Buzón",
     "calendar": "Calendario",
+    "conversations": "Conversaciones",
     "referrals": "Enlaces de referido",
     "commissions": "Comisiones",
     "payouts": "Pagos",
     "marketingKit": "Kit de marketing",
-    "landingPage": "Generador de página",
+    "landingPage": "Páginas de aterrizaje",
     "marketVault": "Bóveda de ventas",
+    "help": "Ayuda",
     "soonPill": "Pronto",
     "profile": "Perfil"
+  },
+  "partnerHelp": {
+    "title":             "Ayuda para Partners",
+    "searchPlaceholder": "Buscar artículos…",
+    "noResults":         "Ningún artículo coincide con \"{query}\".",
+    "tips":              "CONSEJOS",
+    "contactBlock":      "¿Sigues atorado? Escríbenos a"
+  },
+  "partnerConversations": {
+    "title":               "Conversaciones",
+    "subtitle":            "Cada llamada que Orby atendió en tus páginas de aterrizaje, con resumen y transcripción. Las grabaciones aparecen cuando el navegador del visitante soporta nuestro flujo de captura.",
+    "totalLabel":          "{n} en total",
+    "loadFailed":          "No se pudieron cargar las conversaciones.",
+    "notFound":            "Conversación no encontrada.",
+    "backToList":          "Todas las conversaciones",
+    "anonymousCaller":     "Llamante anónimo",
+    "bookedBadge":         "{n} reservada(s)",
+    "contactHeading":      "Contacto",
+    "recordingHeading":    "Grabación",
+    "summaryHeading":      "Resumen",
+    "appointmentsHeading": "Citas de esta llamada",
+    "transcriptHeading":   "Transcripción",
+    "turnUser":            "Llamante",
+    "turnAgent":           "Orby",
+    "defaultAppointmentType": "Cita",
+    "empty": {
+      "heading": "Aún no hay conversaciones",
+      "body":    "Cuando un prospecto llama a Orby desde tus páginas de aterrizaje o tu página pública de reservas, la conversación aparece aquí con el resumen IA, la transcripción completa por interlocutor y (cuando esté disponible) la grabación de audio."
+    }
   },
   "partnerCalendar": {
     "title":              "Calendario",
@@ -156,6 +187,34 @@
   "partnerLandingPage": {
     "title": "Generador de página de aterrizaje",
     "subtitle": "Genera una página próximamente en tu URL personalizada — diseñada alrededor de MyOrbisVoice con tu marca para que captures prospectos antes del lanzamiento.",
+    "variationsTitle":    "Tus páginas de aterrizaje",
+    "variationsSubtitle": "Tres páginas de aterrizaje listas para usar, cada una con una voz distinta. Elige la que conecte con tu audiencia, previsualízalas en vivo y comparte el enlace con tus prospectos. Cada página tiene el widget de voz de Orby ya integrado — todas las llamadas se agendan directo en tu calendario.",
+    "statsTotalVisits":     "Visitas totales",
+    "statsTotalConvos":     "Conversaciones iniciadas",
+    "statsConversionRate":  "Tasa de conversación",
+    "visitsLabel":          "{n} visitas",
+    "notActiveTitle":     "Tu página de partner aún no está activa.",
+    "notActiveBody":      "Actívala en Perfil para empezar a compartir tu versión personalizada. Las vistas previas de abajo muestran las variaciones como están hoy.",
+    "copyLink":           "Copiar enlace",
+    "copied":             "Copiado",
+    "preview":            "Vista previa",
+    "variations": {
+      "voice1": {
+        "name":        "La Historia",
+        "headline":    "Tu teléfono está sonando ahora mismo. Tú no estás. Acaba de colgar.",
+        "description": "Una página narrativa que lleva al prospecto por una escena de llamada perdida que ha vivido, y luego muestra la versión donde MyOrbisVoice contesta. Ideal para negocios de servicios (HVAC, plomería, dental, legal)."
+      },
+      "voice2": {
+        "name":        "La Auditoría",
+        "headline":    "¿Cuánto te está costando tu teléfono este mes?",
+        "description": "Una página enmarcada como auditoría que cuantifica el costo de las llamadas perdidas — diseñada para dueños que responden mejor a números que a historias. Ideal para franquicias, marcas con varias ubicaciones y operadores de servicios de alto ticket."
+      },
+      "voice3": {
+        "name":        "El Miembro del Equipo",
+        "headline":    "Imagina el miembro del equipo que siempre quisiste tener.",
+        "description": "Posiciona MyOrbisVoice como la recepcionista + asistente de ventas + agendadora que el prospecto siempre quiso pero no podía pagar. Ideal para equipos pequeños, emprendedores solos y consultorios en crecimiento."
+      }
+    },
     "soonBadge": "Próximamente",
     "heroTitle": "Tu página próximamente con tu marca, en dos clics",
     "heroBody": "Envía a tus prospectos a una página de aterrizaje limpia y profesional que capture su interés mientras tú terminas la configuración. Nosotros nos encargamos de la URL, el alojamiento y la captura de correos — tú te concentras en llevar tráfico.",
@@ -834,6 +893,13 @@
       "label": "Reenviar correos de la plataforma a mi correo de registro",
       "help":  "Cuando está activo, una copia de cada mensaje entrante también llega a {email}. Útil si revisas Gmail en tu teléfono."
     },
+    "notifications": {
+      "heading": "NOTIFICACIONES",
+      "appointments": {
+        "label": "Avísame por correo cuando un prospecto agende en mi calendario",
+        "help":  "Cuando está activo, cada cita reservada desde tus páginas de aterrizaje o tu página pública de reservas también te avisa por correo a {email} con los datos de contacto del visitante. Desactivado = sin ruido (la invitación de Google Calendar llega normal igual)."
+      }
+    },
     "calendarHeading": "CALENDARIO",
     "google": {
       "connectedHeading":    "Google Calendar conectado",
@@ -899,6 +965,27 @@
       "savePreferences": "Guardar preferencias de reserva",
       "saving":          "Guardando preferencias de reserva…",
       "saveFailed":      "No se pudieron guardar las preferencias de reserva. Inténtalo de nuevo."
+    },
+    "reminders": {
+      "heading":         "RECORDATORIOS",
+      "description":     "Recordatorios automáticos por correo y SMS para visitantes que reserven desde tus páginas de aterrizaje o tu página pública de reservas. Estos anulan los valores predeterminados de la plataforma solo para reservas dirigidas al partner.",
+      "on":              "Activado",
+      "off":             "Desactivado",
+      "offsetsLabel":    "Cuándo enviar",
+      "offsetsHelp":     "Elige uno o más momentos para recordarle al visitante antes de su cita. Los momentos que ya pasaron al hacer la reserva se omiten.",
+      "channelsLabel":   "Cómo enviar",
+      "channelEmail":    "Correo electrónico",
+      "channelSms":      "Mensaje de texto (SMS)",
+      "warnNoOffsets":   "Los recordatorios están activos, pero no hay momentos seleccionados — elige al menos uno arriba.",
+      "warnNoChannels":  "Los recordatorios están activos, pero ni correo ni SMS están habilitados — elige al menos un canal.",
+      "dayOne":          "1 día antes",
+      "dayN":            "{n} días antes",
+      "hourOne":         "1 hora antes",
+      "hourN":           "{n} horas antes",
+      "minuteN":         "{n} min antes",
+      "savePreferences": "Guardar preferencias de recordatorios",
+      "saving":          "Guardando preferencias de recordatorios…",
+      "saveFailed":      "No se pudieron guardar las preferencias de recordatorios. Inténtalo de nuevo."
     }
   },
   "partnerLogin": {
@@ -1002,6 +1089,26 @@
     "applicationFailed": "La solicitud falló",
     "pendingTitle": "Solicitud en revisión.",
     "pendingDesc": "Te notificaremos por correo cuando tu cuenta de partner sea aprobada. Hasta entonces no podrás rastrear conversiones.",
+    "setup": {
+      "title":                   "Termina de configurar tu página de partner",
+      "desc":                    "Hasta que esto esté listo, los prospectos en tus páginas verán el contenido demo. Cada paso toma ~30 segundos.",
+      "profileTitle":            "Agrega tu nombre y una bio corta",
+      "profileDoneDetail":       "Tu nombre para mostrar y bio están configurados.",
+      "profileTodoDetail":       "Tu nombre y bio aparecen en cada página de aterrizaje que ven los prospectos — configúralos ya.",
+      "openProfile":             "Abrir perfil",
+      "avatarTitle":             "Sube una foto",
+      "avatarDoneDetail":        "Foto en archivo.",
+      "avatarTodoDetail":        "Una cara hace mucha diferencia en las páginas. PNG / JPEG / WebP, menos de 2 MB.",
+      "uploadPhoto":             "Subir foto",
+      "googleTitle":             "Conecta Google Calendar",
+      "googleDoneDetail":        "Google Calendar conectado — las reservas van directo a tu calendario.",
+      "googleTodoDetail":        "Necesario para el flujo de reservas. Sin esto, el agente no puede agendar en tu calendario.",
+      "connectGoogle":           "Conectar",
+      "activateTitle":           "Activa tu página de partner",
+      "activateDoneDetail":      "Tus páginas de aterrizaje personalizadas están activas.",
+      "activateTodoDetail":      "Activa 'Página de partner activa' en tu perfil para cambiar a los prospectos del demo a tus páginas personalizadas.",
+      "activatePage":            "Activar"
+    },
     "checklist": {
       "title": "Lo que necesitas para cobrar",
       "desc": "Completa estos pasos para empezar a recibir comisiones. Puedes ganar referidos antes de completarlos — el pago simplemente no se procesará hasta que todo esté listo.",
@@ -2591,6 +2698,18 @@
       "channelSms":     "Mensaje de texto (SMS)",
       "warnNoOffsets":  "Los recordatorios están activos, pero no hay momentos seleccionados — elige al menos uno arriba.",
       "warnNoChannels": "Los recordatorios están activos, pero ni correo ni SMS están habilitados — elige al menos un canal.",
+      "templates": {
+        "heading":                  "Personalizar el mensaje (opcional)",
+        "help":                     "Déjalo en blanco para usar nuestros valores predeterminados. Variables disponibles:",
+        "emailSubjectLabel":        "Asunto del correo",
+        "emailSubjectPlaceholder":  "Recordatorio: {appointmentType} {whenLabel} — {dateStr}",
+        "emailIntroLabel":          "Párrafo de introducción del correo",
+        "emailIntroHelp":           "Se muestra arriba de la tabla de detalles de la cita. Texto sin formato — el diseño, el bloque de hora/lugar y el pie quedan consistentes entre clientes.",
+        "emailIntroPlaceholder":    "{greeting} este es un recordatorio rápido de tu próxima {apptLower} con {businessName}.",
+        "smsBodyLabel":             "Cuerpo del SMS",
+        "smsBodyHelp":              "{count} de 320 caracteres usados. Un SMS de un solo segmento son 160 caracteres; los mensajes más largos se facturan como múltiples segmentos.",
+        "smsBodyPlaceholder":       "{greeting}recordatorio: tu {apptLower} con {businessName} es {whenLabel}, {dateShort} a las {timeShort}."
+      },
       "dayOne":         "1 día antes",
       "dayN":           "{n} días antes",
       "hourOne":        "1 hora antes",

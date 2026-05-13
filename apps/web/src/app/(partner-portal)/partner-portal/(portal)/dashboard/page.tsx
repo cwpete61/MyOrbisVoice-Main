@@ -163,6 +163,109 @@ const I = {
 }
 
 // ─── Get-paid checklist ───────────────────────────────────────────────────────
+/**
+ * Setup Checklist (Phase E.14) — onboarding companion to GetPaidChecklist.
+ * Surfaces the four non-payment steps that turn a brand-new partner into a
+ * partner whose landing pages actually work. Auto-hides once all four are
+ * complete so seasoned partners don't see a perpetual "to-do" banner.
+ */
+function SetupChecklist({
+  hasDisplayName, hasBio, hasAvatar, googleConnected, pageActive,
+}: {
+  hasDisplayName:  boolean
+  hasBio:          boolean
+  hasAvatar:       boolean
+  googleConnected: boolean
+  pageActive:      boolean
+}) {
+  const t = useT()
+  const items = [
+    {
+      done: hasDisplayName && hasBio,
+      title: t('partnerDashboard.setup.profileTitle'),
+      detail: hasDisplayName && hasBio
+        ? t('partnerDashboard.setup.profileDoneDetail')
+        : t('partnerDashboard.setup.profileTodoDetail'),
+      action: !(hasDisplayName && hasBio)
+        ? <Link href="/partner-portal/profile" className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap" style={{ background: TEAL, color: '#fff', textDecoration: 'none' }}>{t('partnerDashboard.setup.openProfile')}</Link>
+        : null,
+    },
+    {
+      done: hasAvatar,
+      title: t('partnerDashboard.setup.avatarTitle'),
+      detail: hasAvatar
+        ? t('partnerDashboard.setup.avatarDoneDetail')
+        : t('partnerDashboard.setup.avatarTodoDetail'),
+      action: !hasAvatar
+        ? <Link href="/partner-portal/profile" className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap" style={{ background: TEAL, color: '#fff', textDecoration: 'none' }}>{t('partnerDashboard.setup.uploadPhoto')}</Link>
+        : null,
+    },
+    {
+      done: googleConnected,
+      title: t('partnerDashboard.setup.googleTitle'),
+      detail: googleConnected
+        ? t('partnerDashboard.setup.googleDoneDetail')
+        : t('partnerDashboard.setup.googleTodoDetail'),
+      action: !googleConnected
+        ? <Link href="/partner-portal/profile" className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap" style={{ background: TEAL, color: '#fff', textDecoration: 'none' }}>{t('partnerDashboard.setup.connectGoogle')}</Link>
+        : null,
+    },
+    {
+      done: pageActive,
+      title: t('partnerDashboard.setup.activateTitle'),
+      detail: pageActive
+        ? t('partnerDashboard.setup.activateDoneDetail')
+        : t('partnerDashboard.setup.activateTodoDetail'),
+      action: !pageActive
+        ? <Link href="/partner-portal/profile" className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap" style={{ background: TEAL, color: '#fff', textDecoration: 'none' }}>{t('partnerDashboard.setup.activatePage')}</Link>
+        : null,
+    },
+  ]
+  if (items.every(i => i.done)) return null
+
+  return (
+    <section className="mb-6">
+      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+        <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {t('partnerDashboard.setup.title')}
+          </h2>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+            {t('partnerDashboard.setup.desc')}
+          </p>
+        </div>
+        <ul>
+          {items.map((item, i) => (
+            <li key={item.title} className="flex items-start gap-3 px-5 py-3" style={{ borderTop: i > 0 ? '1px solid var(--border-subtle)' : undefined }}>
+              <span
+                className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
+                style={{
+                  background: item.done ? TEAL : 'transparent',
+                  border:     item.done ? 'none' : '1.5px solid var(--border-subtle)',
+                  color:      'white',
+                }}
+              >
+                {item.done && (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium" style={{ color: item.done ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: item.done ? 'line-through' : undefined }}>
+                  {item.title}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{item.detail}</p>
+              </div>
+              {item.action && <div className="flex-shrink-0">{item.action}</div>}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )
+}
+
 function GetPaidChecklist({
   accountActive, approvedBalanceCents, minPayoutCents,
   payoutMethodConnected, taxFormSubmitted, nextPayoutCommission,
@@ -316,7 +419,11 @@ export default function PartnerDashboardPage() {
   const [connectStarting, setConnectStarting] = useState(false)
   // Partner public-page state — slug + partnerPageActive drive the Share-your-
   // booking-page card. Loaded via /api/partner/me alongside the existing fetches.
-  const [partnerInfo, setPartnerInfo] = useState<{ slug: string | null; partnerPageActive: boolean } | null>(null)
+  const [partnerInfo, setPartnerInfo] = useState<{
+    slug: string | null; partnerPageActive: boolean;
+    displayName: string | null; bio: string | null; avatarUrl: string | null;
+  } | null>(null)
+  const [googleConnected, setGoogleConnected] = useState(false)
   const [copiedBookingUrl, setCopiedBookingUrl] = useState(false)
 
   const STATUS_PILL: Record<string, { bg: string; fg: string; label: string }> = {
@@ -334,14 +441,15 @@ export default function PartnerDashboardPage() {
       const acc = await apiFetch<Account>('/api/affiliate/account').catch(() => null)
       setAccount(acc)
       if (acc) {
-        const [s, p, sett, comms, me, conn, partnerMe] = await Promise.all([
+        const [s, p, sett, comms, me, conn, partnerMe, googleStatus] = await Promise.all([
           apiFetch<Stats>('/api/affiliate/stats').catch(() => null),
           apiFetch<PeriodStats>('/api/affiliate/stats/period?days=30').catch(() => null),
           apiFetch<Settings>('/api/public/affiliate/settings').catch(() => null),
           apiFetch<CommissionsResp>('/api/affiliate/commissions?page=1&limit=5').catch(() => ({ items: [], total: 0 })),
           apiFetch<{ user: { firstName: string | null } }>('/api/auth/me').catch(() => null),
           apiFetch<{ payoutsEnabled: boolean; detailsSubmitted: boolean }>('/api/affiliate/connect/status').catch(() => null),
-          apiFetch<{ partner: { slug: string | null; partnerPageActive: boolean } }>('/api/partner/me').catch(() => null),
+          apiFetch<{ partner: { slug: string | null; partnerPageActive: boolean; displayName: string | null; bio: string | null; avatarUrl: string | null } }>('/api/partner/me').catch(() => null),
+          apiFetch<{ status: 'CONNECTED' | 'NOT_CONNECTED' | 'ERROR' | 'PENDING' }>('/api/partner/integrations/google').catch(() => null),
         ])
         setAllTime(s)
         setPeriod(p)
@@ -349,10 +457,14 @@ export default function PartnerDashboardPage() {
         setRecent(comms?.items ?? [])
         setFirstName(me?.user?.firstName ?? '')
         setConnect(conn)
+        setGoogleConnected(googleStatus?.status === 'CONNECTED')
         if (partnerMe?.partner) {
           setPartnerInfo({
             slug:              partnerMe.partner.slug,
             partnerPageActive: partnerMe.partner.partnerPageActive,
+            displayName:       partnerMe.partner.displayName,
+            bio:               partnerMe.partner.bio,
+            avatarUrl:         partnerMe.partner.avatarUrl,
           })
         }
       }
@@ -465,6 +577,20 @@ export default function PartnerDashboardPage() {
         }}>
           <strong>{t('partnerDashboard.pendingTitle')}</strong> {t('partnerDashboard.pendingDesc')}
         </div>
+      )}
+
+      {/* Setup checklist (Phase E.14) — appears for brand-new partners and
+          hides itself once profile + avatar + Google + page are all set up.
+          Sits above the payout checklist so partners do the "make your pages
+          actually work" stuff before chasing money. */}
+      {partnerInfo && (
+        <SetupChecklist
+          hasDisplayName={!!(partnerInfo.displayName && partnerInfo.displayName.trim())}
+          hasBio={!!(partnerInfo.bio && partnerInfo.bio.trim())}
+          hasAvatar={!!partnerInfo.avatarUrl}
+          googleConnected={googleConnected}
+          pageActive={partnerInfo.partnerPageActive}
+        />
       )}
 
       {/* Get-paid checklist — visible until ALL items are complete, then auto-hides.
