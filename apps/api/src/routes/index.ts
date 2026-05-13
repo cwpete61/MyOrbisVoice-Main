@@ -33,6 +33,7 @@ import internalMailRouter from './internal-mail.js'
 import partnerRouter from './partner.js'
 import partnerCrmRouter from './partner-crm.js'
 import partnerMailboxRouter from './partner-mailbox.js'
+import emailPolicyRouter from './email-policy.js'
 import marketingAssetsRouter from './marketing-assets.js'
 import publicRouter from './public.js'
 import { publicBookingRouter } from './public-booking.js'
@@ -62,6 +63,12 @@ router.use('/api', billingRouter)       // before auth-gated routers — contain
 router.use('/api', widgetRouter)        // contains public /public/widget/session
 router.use('/api', pushRouter)          // contains public /push/vapid-public-key — must precede tenantRouter
 router.use('/api', integrationsRouter)  // contains public /integrations/google/callback — must precede tenantRouter
+// Phase F.4 — email policy + ESP webhooks. Mounted BEFORE affiliateRouter
+// because affiliateRouter's inner tenantRouter applies authenticate to all
+// /api/* paths, which would 401 our public webhook endpoints. Routes inside
+// this router have their own auth (authenticate + requirePlatformAdmin on
+// admin routes, authenticate + requirePartnerContext on partner routes).
+router.use('/api', emailPolicyRouter)
 router.use('/', affiliateRouter)        // contains public /api/public/track/click — must precede tenantRouter; also has user-scoped (non-tenant) routes for affiliates who don't have a tenant
 // Partner dashboard routes (/api/partner/*) — gated by requirePartnerContext.
 // Mounted BEFORE tenantRouter because partners are not tenant members.

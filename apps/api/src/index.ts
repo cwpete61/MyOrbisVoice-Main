@@ -64,8 +64,13 @@ app.use(
 // Serve uploaded files (logos, etc.) directly
 app.use('/uploads', express.static(process.env['UPLOADS_DIR'] ?? '/app/uploads'))
 
-// Body parsing for all other routes
-app.use(express.json({ limit: '4mb' }))
+// Body parsing for all other routes. The `verify` callback stashes the raw
+// body buffer on req.rawBody — required by Svix/Resend webhook signature
+// verification (Phase F.4). Cheap: same buffer the parser already used.
+app.use(express.json({
+  limit: '4mb',
+  verify: (req, _res, buf) => { (req as any).rawBody = buf },
+}))
 app.use(express.urlencoded({ extended: true }))
 
 const rateLimitResponse = { errors: [{ code: 'RATE_LIMITED', message: 'Too many requests, please slow down' }] }
