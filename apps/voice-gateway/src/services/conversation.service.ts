@@ -13,17 +13,39 @@ export type TranscriptEntry = {
  * externalCallId to scope them to. The widgetSession row is linked back to
  * the conversation immediately so the relation is queryable from either side.
  *
+ * Phase E.2: when the visitor is on a partner's landing page, the session's
+ * metadataJson.partner.slug is set. We resolve that slug → AffiliateAccount.id
+ * and persist it on Conversation.partnerId so the book_appointment handler
+ * later knows to route the booking to the partner's Google Calendar instead
+ * of the tenant's. Null partnerSlug → null partnerId → existing tenant flow.
+ *
  * The row starts in OPEN status with an empty transcript; persistConversation()
  * flips it to COMPLETED (or FAILED) and fills in summary/transcript at end.
  */
 export async function startWidgetConversation(opts: {
-  tenantId:  string
-  sessionId: string
+  tenantId:     string
+  sessionId:    string
+  partnerSlug?: string | null
 }): Promise<string> {
-  const { tenantId, sessionId } = opts
+  const { tenantId, sessionId, partnerSlug } = opts
+
+  // Resolve partner ID from slug (best-effort; null if not found or not given).
+  let partnerId: string | null = null
+  if (partnerSlug) {
+    const partner = await prisma.affiliateAccount.findFirst({
+      where:  { slug: partnerSlug },
+      select: { id: true },
+    }).catch(() => null)
+    partnerId = partner?.id ?? null
+    if (partnerSlug && !partnerId) {
+      console.warn(`[session] partner slug "${partnerSlug}" did not match any AffiliateAccount — partner-scoped booking disabled for this call`)
+    }
+  }
+
   const conversation = await prisma.conversation.create({
     data: {
       tenantId,
+      partnerId,
       channelType: 'WIDGET',
       direction:   'INBOUND',
       status:      'OPEN',

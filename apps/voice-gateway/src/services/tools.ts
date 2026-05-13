@@ -300,7 +300,9 @@ const handlers: Record<ToolName, ToolHandler> = {
     }>(
       '/api/internal/gateway/tools/search-availability',
       ctx.tenantId,
-      { fromIso, toIso, durationMinutes },
+      // Phase E.2 — pass conversationId so the API can resolve partnerId and
+      // run free/busy against the partner's calendar on partner-page widget calls.
+      { fromIso, toIso, durationMinutes, conversationId: ctx.conversationId },
     )
     // System error (DNS, Google API down, auth expired). The agent must NOT
     // tell the caller "the slot isn't available" — that misrepresents a

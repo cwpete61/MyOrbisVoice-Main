@@ -89,9 +89,19 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
   // or externalCallId" for every widget call. The row starts as OPEN and is
   // flipped to COMPLETED by persistConversation() at session end.
   let conversationId: string | undefined
+  // Phase E.2 — pass partner.slug into the conversation so book_appointment
+  // can route bookings to the partner's Google Calendar (set above when the
+  // widget loads on /p/<slug>/ — see resolver). Null on non-partner pages.
+  const partnerSlug = (partner && typeof partner === 'object' && typeof (partner as any).slug === 'string')
+    ? (partner as any).slug as string
+    : null
   try {
-    conversationId = await startWidgetConversation({ tenantId: session.tenantId, sessionId: session.id })
-    console.log('[session] conversation created upfront:', conversationId)
+    conversationId = await startWidgetConversation({
+      tenantId:    session.tenantId,
+      sessionId:   session.id,
+      partnerSlug,
+    })
+    console.log('[session] conversation created upfront:', conversationId, partnerSlug ? `(partner=${partnerSlug})` : '(no partner)')
   } catch (err) {
     console.error('[session] startWidgetConversation failed (non-fatal — tools will fall back to session end):', err)
   }

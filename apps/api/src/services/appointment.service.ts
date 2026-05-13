@@ -164,10 +164,15 @@ function isWithinBusinessHours(
   return startTime >= dayHours.open && endTime <= dayHours.close
 }
 
-export async function searchAvailability(tenantId: string, params: SlotSearchParams): Promise<{
-  slots: TimeSlot[]
-  alternateSlots: TimeSlot[]
-}> {
+export async function searchAvailability(
+  tenantId: string,
+  params: SlotSearchParams,
+  /** Phase E.2 — when set, free/busy is computed against the partner's
+   *  calendar instead of the tenant's. Business-hours constraints still
+   *  read from the tenant's BusinessProfile (the partner doesn't have
+   *  their own working-hours config yet — that lands in E.3). */
+  partnerId?: string,
+): Promise<{ slots: TimeSlot[]; alternateSlots: TimeSlot[] }> {
   // Pull business hours once per call so we can filter slots to opening
   // hours only. Defensive parse — anything that doesn't look like the
   // expected day-keyed object becomes null (= no constraint applied).
@@ -190,14 +195,28 @@ export async function searchAvailability(tenantId: string, params: SlotSearchPar
     businessHours = any ? parsed : null
   }
 
-  const client = await getAuthenticatedGoogleClient(tenantId)
+  // Resolve Google client + target calendar — partner's when partnerId given,
+  // tenant's otherwise. Both paths land in the same downstream slot algorithm.
+  let client
+  let calendarTarget: string = 'primary'
+  if (partnerId) {
+    const { getAuthenticatedGoogleClientForPartner } = await import('./google.service.js')
+    client = await getAuthenticatedGoogleClientForPartner(partnerId)
+    const partner = await prisma.affiliateAccount.findUnique({
+      where:  { id: partnerId },
+      select: { calendarId: true },
+    })
+    calendarTarget = partner?.calendarId ?? 'primary'
+  } else {
+    client = await getAuthenticatedGoogleClient(tenantId)
+  }
   const calendar = google.calendar({ version: 'v3', auth: client })
 
   const timeMin = new Date(params.preferredStartRange.from)
   const timeMax = new Date(params.preferredStartRange.to)
 
   const eventsResp = await calendar.events.list({
-    calendarId: 'primary',
+    calendarId: calendarTarget,
     timeMin: timeMin.toISOString(),
     timeMax: timeMax.toISOString(),
     singleEvents: true,
@@ -252,21 +271,44 @@ export async function createAppointment(tenantId: string, userId: string | null,
   location?: string
   notes?: string
   attendeeEmail?: string
+  /**
+   * Phase E.2 — when set, this booking is for a partner-page widget call.
+   * The Google Calendar event is created on the PARTNER's calendar (using
+   * the partner's own OAuth token from IntegrationConnection) instead of
+   * the tenant's. The DB row still belongs to `tenantId` (the platform
+   * demo tenant) for admin visibility, but partnerId is persisted so the
+   * partner-portal calendar view can filter/badge their own bookings.
+   */
+  partnerId?: string
 }) {
-  // Try the full Google-Calendar-integrated path. Tenants without a connected
-  // Google account (notably the MyOrbisResults Demo tenant Orby books against)
-  // get a PENDING DB-only appointment instead — emails still go out via the
-  // platform SMTP fallback. A human reschedules / confirms after review.
+  // Try the full Google-Calendar-integrated path. When partnerId is set we
+  // use the partner's calendar; otherwise the tenant's. Both fall back to
+  // PENDING DB-only on Google-unavailable errors — the agent's caller still
+  // gets a confirmation email via platform SMTP and a human reconciles.
   let providerEventId: string | undefined
   let status: 'PENDING' | 'CONFIRMED' = 'CONFIRMED'
 
   try {
-    const client = await getAuthenticatedGoogleClient(tenantId)
+    // Resolve which Google client + target calendar to use. Partner-scoped
+    // booking wins when partnerId is provided.
+    let client
+    let calendarTarget: string = 'primary'
+    if (data.partnerId) {
+      const { getAuthenticatedGoogleClientForPartner } = await import('./google.service.js')
+      client = await getAuthenticatedGoogleClientForPartner(data.partnerId)
+      const partner = await prisma.affiliateAccount.findUnique({
+        where:  { id: data.partnerId },
+        select: { calendarId: true },
+      })
+      calendarTarget = partner?.calendarId ?? 'primary'
+    } else {
+      client = await getAuthenticatedGoogleClient(tenantId)
+    }
     const calendar = google.calendar({ version: 'v3', auth: client })
 
-    // Check for conflicts
+    // Check for conflicts on the target calendar
     const eventsResp = await calendar.events.list({
-      calendarId: 'primary',
+      calendarId: calendarTarget,
       timeMin: data.startAt,
       timeMax: data.endAt,
       singleEvents: true,
@@ -276,9 +318,11 @@ export async function createAppointment(tenantId: string, userId: string | null,
       throw new AppError('CONFLICT', 'The requested time slot is no longer available', 409)
     }
 
-    // Create Google Calendar event
+    // Create Google Calendar event. extendedProperties.private.source tags
+    // events that came from the agent so the partner-portal Calendar view
+    // (Phase E.1) can render them with the "Booked by Orby" badge.
     const event = await calendar.events.insert({
-      calendarId: 'primary',
+      calendarId: calendarTarget,
       requestBody: {
         summary: data.appointmentType ?? 'Appointment',
         location: data.location,
@@ -287,6 +331,7 @@ export async function createAppointment(tenantId: string, userId: string | null,
         end: { dateTime: data.endAt, timeZone: data.timezone },
         attendees: data.attendeeEmail ? [{ email: data.attendeeEmail }] : [],
         reminders: { useDefault: true },
+        extendedProperties: { private: { source: 'myorbisvoice' } },
       },
       sendUpdates: 'all',
     })
@@ -306,6 +351,7 @@ export async function createAppointment(tenantId: string, userId: string | null,
       tenantId,
       contactId: data.contactId,
       conversationId: data.conversationId,
+      partnerId: data.partnerId,
       status,
       appointmentType: data.appointmentType,
       startAt: new Date(data.startAt),

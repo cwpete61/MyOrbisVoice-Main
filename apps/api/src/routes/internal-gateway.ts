@@ -272,23 +272,37 @@ const availabilitySchema = z.object({
   toIso:             z.string().min(1),
   durationMinutes:   z.number().int().min(5).max(480),
   timezone:          z.string().min(1).optional(),
+  // Phase E.2 — when set, the handler looks up the conversation's partnerId
+  // and runs free/busy against the partner's calendar instead of the tenant's.
+  conversationId:    z.string().uuid().optional(),
 })
 
 router.post('/internal/gateway/tools/search-availability', async (req, res, next) => {
   try {
     const tenantId = (req as any).internalTenantId as string
-    const { fromIso, toIso, durationMinutes, timezone } = availabilitySchema.parse(req.body)
+    const { fromIso, toIso, durationMinutes, timezone, conversationId } = availabilitySchema.parse(req.body)
     // Resolve to the tenant's timezone if the agent didn't pass one — the
     // agent commonly omits it, and defaulting to UTC means slot labels come
     // back as UTC strings the model misreads as wall-clock time. Forcing
     // the business's timezone here keeps the agent honest.
     const effectiveTz = await appointmentService.resolveTenantTimezone(tenantId, timezone)
 
+    // Phase E.2 — resolve partnerId from the conversation, same pattern as
+    // book_appointment. Null on tenant-side calls; set on partner-page calls.
+    let partnerId: string | undefined
+    if (conversationId) {
+      const conv = await prisma.conversation.findFirst({
+        where:  { id: conversationId, tenantId },
+        select: { partnerId: true },
+      })
+      partnerId = conv?.partnerId ?? undefined
+    }
+
     const result = await appointmentService.searchAvailability(tenantId, {
       preferredStartRange: { from: fromIso, to: toIso },
       durationMinutes,
       timezone: effectiveTz,
-    })
+    }, partnerId)
 
     // Enrich each slot with a human-readable label + a timezone-aware ISO
     // the model can pass back to book_appointment without having to do
@@ -331,9 +345,22 @@ router.post('/internal/gateway/tools/book-appointment', async (req, res, next) =
     // as a 4-hour-off display ("2:00 PM UTC" instead of "10:00 AM EDT").
     const tz = await appointmentService.resolveTenantTimezone(tenantId, data.timezone)
 
+    // Phase E.2 — read partnerId off the conversation so the booking is routed
+    // to the right calendar. partnerId is null for tenant-side widget calls and
+    // for inbound phone calls; only partner-page widget calls have it set.
+    let partnerId: string | undefined
+    if (data.conversationId) {
+      const conv = await prisma.conversation.findFirst({
+        where:  { id: data.conversationId, tenantId },
+        select: { partnerId: true },
+      })
+      partnerId = conv?.partnerId ?? undefined
+    }
+
     const appointment = await appointmentService.createAppointment(tenantId, null, {
       contactId:       contact?.id,
       conversationId:  data.conversationId,
+      partnerId,
       appointmentType: data.appointmentType,
       startAt:         startAt.toISOString(),
       endAt:           endAt.toISOString(),

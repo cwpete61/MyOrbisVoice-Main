@@ -1021,6 +1021,12 @@ model Conversation {
   /// Read by the latency-report CLI; written by the voice gateway on call finalize.
   metadataJson          Json?
 
+  // ── Partner context (Phase E.2) ───────────────────────────────────────────
+  // Set when this conversation originated on a partner's landing page widget.
+  // Drives where book_appointment writes: partnerId set → partner's Google
+  // Calendar; partnerId null → tenant's Google Calendar (the existing flow).
+  partnerId             String?
+
   // ── Demo Gallery (Phase D.1) ──────────────────────────────────────────────
   // Conversations curated by admin as public demos at /demos/<id>.
   // featuredSummary / featuredTranscript override the raw fields when set,
@@ -1040,6 +1046,7 @@ model Conversation {
   tenant                Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact               Contact?              @relation(fields: [contactId], references: [id], onDelete: SetNull)
   featuredBy            User?                 @relation("DemoFeaturedBy", fields: [featuredById], references: [id], onDelete: SetNull)
+  partner               AffiliateAccount?     @relation("PartnerConversations", fields: [partnerId], references: [id], onDelete: SetNull)
   appointments          Appointment[]
   messageLogs           MessageLog[]
   callLogs              CallLog[]
@@ -1049,6 +1056,7 @@ model Conversation {
   @@index([tenantId, channelType])
   @@index([externalCallId])
   @@index([isFeaturedDemo, featuredCategory, featuredSortOrder])
+  @@index([partnerId])
 }
 
 model StaffMember {
@@ -1080,6 +1088,12 @@ model Appointment {
   contactId       String?
   conversationId  String?
   staffMemberId   String?
+  // Phase E.2 — bookings originating from a partner's landing-page widget are
+  // written to the partner's own Google Calendar, NOT the tenant's. The
+  // tenantId stays set (the platform demo tenant owns the DB row for admin
+  // visibility); partnerId identifies which partner's calendar holds the
+  // matching Google event. Null on every non-partner-page appointment.
+  partnerId       String?
   status          AppointmentStatus
   appointmentType String?
   startAt         DateTime
@@ -1094,6 +1108,9 @@ model Appointment {
   contact         Contact?          @relation(fields: [contactId], references: [id], onDelete: SetNull)
   conversation    Conversation?     @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   staffMember     StaffMember?      @relation(fields: [staffMemberId], references: [id], onDelete: SetNull)
+  partner         AffiliateAccount? @relation("PartnerAppointments", fields: [partnerId], references: [id], onDelete: SetNull)
+
+  @@index([partnerId])
 }
 
 model MessageLog {
@@ -1240,6 +1257,12 @@ model AffiliateAccount {
 
   emails         Email[]
   emailTemplates EmailTemplate[]
+
+  // Phase E.2 back-relations — Conversations and Appointments that originated
+  // from this partner's landing-page widget. partnerId is set on those rows
+  // at session-start (Conversation) / booking-creation (Appointment).
+  partnerConversations Conversation[] @relation("PartnerConversations")
+  partnerAppointments  Appointment[]  @relation("PartnerAppointments")
 }
 
 /// Partner-scoped email storage powering the Mailbox UI in /partner.
