@@ -71,6 +71,11 @@ FILES=(
   # Shared partner-page hydration script — fetches live partner data from API
   # + overlays the bootstrap content. Same script used by all 6 partner pages.
   "p/_assets/partner-hydrate.js"
+  # Shared partner-page stylesheet — referenced by voice-2 and voice-3 (and
+  # their Spanish mirrors). Bug 2026-05-12: omission of this file caused the
+  # .partner-card / .partner-ribbon classes to render unstyled in prod and
+  # surfaced as a "transparent empty card with a drop shadow" on those pages.
+  "p/sample/partner-styles.css"
   # Partner landing pages — English
   "p/sample/voice-1/index.html"
   "p/sample/voice-2/index.html"
