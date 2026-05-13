@@ -1,0 +1,21 @@
+# Files copied into every `claude --worktree NAME` directory.
+# Gitignore syntax. Without this, untracked env files don't exist in the
+# new worktree and `pnpm dev` fails to find DB / API credentials.
+#
+# Project-local env (DATABASE_URL, JWT_SECRET, etc.)
+.env
+.env.local
+
+# Next.js per-app env files. `.env.production` matters for production builds;
+# `.env.local` for the dev server.
+apps/web/.env
+apps/web/.env.local
+apps/web/.env.production
+
+# API + voice-gateway local env (if you ever add them — currently the root
+# .env covers everything; keeping these here so a new worktree picks them up
+# automatically when they do exist).
+apps/api/.env
+apps/api/.env.local
+apps/voice-gateway/.env
+apps/voice-gateway/.env.local
