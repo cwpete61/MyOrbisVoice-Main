@@ -3,6 +3,40 @@
 # Usage: ./infrastructure/scripts/deploy.sh [api|web|gateway|all] "reason"
 set -euo pipefail
 
+# ── Concurrency guard ───────────────────────────────────────────────────────
+# Prevents two simultaneous deploys (e.g. from two Claude windows / worktrees)
+# from racing on docker cp into the same prod containers. Non-blocking: second
+# invoker exits immediately with a clear message instead of waiting.
+# Released automatically when the script ends (OS closes fd 200).
+LOCK_FILE=/tmp/myorbisvoice-deploy.lock
+PID_FILE=/tmp/myorbisvoice-deploy.pid
+exec 200>"$LOCK_FILE"
+if ! flock -n 200; then
+  echo "✗ Another deploy is already running (pid $(cat "$PID_FILE" 2>/dev/null || echo unknown))."
+  echo "  Wait for it to finish, or 'rm $LOCK_FILE' if you know it's stale."
+  exit 1
+fi
+echo $$ > "$PID_FILE"
+trap 'rm -f "$PID_FILE"' EXIT
+
+# ── Branch gate ─────────────────────────────────────────────────────────────
+# Refuses to deploy from anything except master. Prevents the "two windows
+# open, forgot which branch this worktree is on, accidentally shipped a
+# half-done feature" failure mode. To deploy a feature branch intentionally,
+# merge it to master first, then run from a master worktree.
+# Override with DEPLOY_ALLOW_NONMASTER=1 for emergencies (cherry-pick fixes,
+# bisects, hotfixes from a clean tag, etc.) — surfaces in the log so it's
+# obvious what happened later.
+CURRENT_BRANCH="$(git -C "$(cd "$(dirname "$0")/../.." && pwd)" rev-parse --abbrev-ref HEAD)"
+if [[ "$CURRENT_BRANCH" != "master" && "${DEPLOY_ALLOW_NONMASTER:-0}" != "1" ]]; then
+  echo "✗ Refusing to deploy from branch '$CURRENT_BRANCH'."
+  echo "  Merge to master first, or set DEPLOY_ALLOW_NONMASTER=1 to override (emergencies only)."
+  exit 1
+fi
+if [[ "$CURRENT_BRANCH" != "master" ]]; then
+  echo "⚠  DEPLOY_ALLOW_NONMASTER=1 set — deploying from '$CURRENT_BRANCH'. Recorded in audit log."
+fi
+
 SERVER="root@147.93.183.4"
 REMOTE="/opt/myorbisvoice"
 TARGET="${1:-all}"
