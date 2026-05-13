@@ -403,6 +403,7 @@ model User {
   passwordResetTokens   PasswordResetToken[]
   uploadedKbFiles       KnowledgeBaseFile[]    @relation("KbFileUploadedBy")
   featuredDemos         Conversation[]         @relation("DemoFeaturedBy")
+  contactNotes          ContactNote[]          @relation("ContactNoteAuthor")
 }
 
 model Tenant {
@@ -448,6 +449,8 @@ model Tenant {
   a2pApplication            TenantA2PApplication?
   pushSubscriptions         PushSubscription[]
   contacts                  Contact[]
+  contactNotes              ContactNote[]
+  pipelineStages            PipelineStage[]
   conversations             Conversation[]
   appointments              Appointment[]
   appointmentReminders      AppointmentReminder[]
@@ -481,6 +484,9 @@ model Tenant {
   /// upload/delete service. Capped by the `kb_storage_mb` entitlement
   /// (separate pool from voice-recording storageUsedBytes).
   kbStorageUsedBytes        BigInt                  @default(0)
+  // Phase F.4 — email reputation
+  emailSuppressions         EmailSuppression[]
+  emailCampaigns            EmailCampaign[]
 }
 
 model TenantMember {
@@ -1011,10 +1017,24 @@ model Contact {
   hobbies              String? // freeform / comma-separated interests
   preferredContactTime String? // 'morning' | 'afternoon' | 'evening' | freeform
   customerSince        DateTime?
-  personalNotes        String? // freeform internal-only notes
+  personalNotes        String? // freeform internal-only notes (legacy single-field; ContactNote thread is the active surface)
+  // Phase F.1 — CRM pipeline. Optional; null when the contact hasn't been
+  // placed on a pipeline yet (e.g. seed data from before the feature shipped).
+  // stageUpdatedAt is the timestamp of the LAST stage change — drives the
+  // "X days in stage" indicator on the kanban + flags stuck deals.
+  pipelineStageId      String?
+  stageUpdatedAt       DateTime?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
+  // Phase F.3 — partner-scoped CRM. When this contact was captured via a
+  // partner's landing-page widget, partnerId points at that AffiliateAccount.
+  // tenantId remains the hosting tenant (currently the platform demo tenant)
+  // but the partner CRM filters on partnerId so partners only see their own
+  // leads. Null partnerId → tenant-side contact, surfaced in the tenant CRM.
+  partnerId            String?
   tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner              AffiliateAccount?     @relation("PartnerContacts", fields: [partnerId], references: [id], onDelete: SetNull)
+  pipelineStage        PipelineStage?        @relation(fields: [pipelineStageId], references: [id], onDelete: SetNull)
   conversations        Conversation[]
   appointments         Appointment[]
   appointmentReminders AppointmentReminder[]
@@ -1023,9 +1043,76 @@ model Contact {
   outboundAttempts     OutboundCallAttempt[]
   campaignEnrollments  CampaignEnrollment[]
   optOutLogs           OptOutLog[]
+  notes                ContactNote[]
+  emailCampaignRecipients EmailCampaignRecipient[]
 
   @@index([tenantId, email])
   @@index([tenantId, phoneE164])
+  @@index([tenantId, pipelineStageId])
+  @@index([partnerId, pipelineStageId])
+}
+
+// ─── Phase F.1 — CRM pipeline ───────────────────────────────────────────────
+// Per-tenant configurable pipeline. Each tenant gets a default 7-stage
+// voice-agent funnel seeded on creation; they can rename, reorder, add, and
+// soft-delete stages from the admin UI. PipelineStage rows are the source of
+// truth for kanban column ordering.
+
+model PipelineStage {
+  id           String   @id @default(uuid())
+  tenantId     String
+  // Phase F.3 — partner-scoped pipeline. When non-null, this stage belongs to
+  // a partner's CRM (independent from any tenant's pipeline that may also use
+  // the same hosting tenantId). Tenant stages have partnerId NULL.
+  partnerId    String?
+  name         String   @db.VarChar(80)
+  sortOrder    Int      // ascending — kanban renders left-to-right by this
+  color        String?  @db.VarChar(40)  // CSS color string (hex or oklch)
+  // Terminal flags — when set, contacts in this stage are excluded from
+  // "active pipeline" filters and surfaced under Won / Lost reports.
+  isWon        Boolean  @default(false)
+  isLost       Boolean  @default(false)
+  // System-seeded stages are protected from delete (can rename + reorder).
+  // Tenants can delete their custom stages freely once empty.
+  isSystem     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner      AffiliateAccount? @relation("PartnerPipelineStages", fields: [partnerId], references: [id], onDelete: Cascade)
+  contacts     Contact[]
+
+  // The previous `@@unique([tenantId, sortOrder])` is gone because partners
+  // share a hosting tenantId and would collide. Application-level two-pass
+  // parking in upsertPipelineStages enforces uniqueness within scope.
+  @@index([tenantId, partnerId, sortOrder])
+  @@index([partnerId])
+}
+
+// ─── Phase F.2 — CRM notes thread ───────────────────────────────────────────
+// Replaces (alongside, for backwards-compat) Contact.personalNotes. One row
+// per note, append-only feed on the contact detail page. authorUserId nullable
+// so system-generated notes (auto-transition records, integration sync notes)
+// can be attributed to no human author.
+
+model ContactNote {
+  id           String   @id @default(uuid())
+  tenantId     String
+  // Phase F.3 — denormalized for fast partner-scoped queries. Mirrors the
+  // owning Contact.partnerId at write time.
+  partnerId    String?
+  contactId    String
+  authorUserId String?  // null = system-generated
+  body         String   @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner      AffiliateAccount? @relation("PartnerContactNotes", fields: [partnerId], references: [id], onDelete: Cascade)
+  contact      Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  author       User?             @relation("ContactNoteAuthor", fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  @@index([contactId, createdAt])
+  @@index([tenantId, createdAt])
+  @@index([partnerId, createdAt])
 }
 
 model Conversation {
@@ -1211,15 +1298,29 @@ model MessageLog {
   sentAt            DateTime?
   deliveredAt       DateTime?
   failedAt          DateTime?
+  // Phase F.4 — email reputation tracking. Populated from ESP webhooks
+  // (Postmark for transactional, Resend for bulk). Hard bounces and
+  // complaints auto-add the recipient to EmailSuppression so subsequent
+  // sends to the same address skip cleanly.
+  bouncedAt         DateTime?
+  bounceType        String?          // 'hard' | 'soft' — null when no bounce
+  bounceReason      String?          // ESP-provided description
+  complainedAt      DateTime?
   optOutDetected    Boolean          @default(false)
+  // Phase F.4 — partnerId mirrored from owning Contact at write time so
+  // partner-scoped queries (campaign stats, per-partner bounce rate) don't
+  // need to join through Contact every time.
+  partnerId         String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner           AffiliateAccount? @relation("PartnerMessageLogs", fields: [partnerId], references: [id], onDelete: SetNull)
   contact           Contact?         @relation(fields: [contactId], references: [id], onDelete: SetNull)
   conversation      Conversation?    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, channel, direction, createdAt])
   @@index([tenantId, contactId])
+  @@index([partnerId, channel, createdAt])
   @@index([providerMessageId])
 }
 
@@ -1374,6 +1475,37 @@ model AffiliateAccount {
   // at session-start (Conversation) / booking-creation (Appointment).
   partnerConversations Conversation[] @relation("PartnerConversations")
   partnerAppointments  Appointment[]  @relation("PartnerAppointments")
+
+  // Phase F.3 — partner-scoped CRM. Pipeline stages, contacts, and notes
+  // owned by this partner. Independent of any tenant's CRM data.
+  partnerContacts      Contact[]       @relation("PartnerContacts")
+  partnerPipelineStages PipelineStage[] @relation("PartnerPipelineStages")
+  partnerContactNotes  ContactNote[]   @relation("PartnerContactNotes")
+
+  // ── Phase F.4 — Bulk email config + reputation tracking ─────────────────
+  // ALL fields below are ADMIN-controlled. Partners see read-only summaries
+  // ("you can send up to N/day in the 9am-5pm window"), but cannot edit. The
+  // editing UI lives at /admin/email-policy and (per-partner) on the admin
+  // partner detail page. Default values come from SystemConfig platform
+  // policy so admin can move all partners' defaults at once.
+  //
+  // The schema fields below are per-partner OVERRIDES on top of those
+  // platform defaults. Null on most fields means "inherit platform default."
+  // Required boolean fields (emailBulkEnabled, emailBulkSuspended) are
+  // explicit per-partner state.
+  emailBulkEnabled         Boolean   @default(false)  // master gate — admin flips ON after review
+  emailBulkSuspendedAt     DateTime? // manual or auto suspension (bounce/complaint threshold)
+  emailBulkSuspendedReason String?
+  emailLastBulkWarningAt   DateTime? // tracks last "approaching threshold" warning so we dedupe
+  // Per-partner overrides (null = inherit platform default from SystemConfig)
+  emailDailyCap             Int?
+  emailSendWindowStartHour  Int?
+  emailSendWindowEndHour    Int?
+  emailDripIntervalSecs     Int?
+
+  partnerMessageLogs       MessageLog[]       @relation("PartnerMessageLogs")
+  partnerEmailSuppressions EmailSuppression[] @relation("PartnerEmailSuppressions")
+  partnerEmailCampaigns    EmailCampaign[]    @relation("PartnerEmailCampaigns")
 }
 
 /// Partner-scoped email storage powering the Mailbox UI in /partner.
@@ -1859,4 +1991,137 @@ model Notification {
 
   @@index([tenantId, readAt, createdAt])
   @@index([tenantId, type])
+}
+
+// ─── Phase F.4 — Email reputation foundation ───────────────────────────────
+// Suppression list = the source of truth for "do not email." Every send path
+// (transactional + bulk) consults this before handing off to the provider.
+// Reasons capture WHY an address was suppressed so we can surface it to
+// partners (manual unsubscribe is recoverable; hard bounce is not).
+//
+// Scope is intentionally three-way:
+//   1. Global (tenantId NULL, partnerId NULL) — hard bounces and complaints
+//      get suppressed platform-wide. A single proven-dead address shouldn't
+//      be retried by anyone, ever.
+//   2. Tenant-scoped (tenantId set, partnerId NULL) — tenant manually adds
+//      "do not contact" addresses or marketing-only opt-outs.
+//   3. Partner-scoped (partnerId set, tenantId mirrored from hosting tenant)
+//      — partner's own unsubscribes don't bleed into other partners' lists,
+//      because two partners' value props may legitimately differ.
+
+enum EmailSuppressionReason {
+  HARD_BOUNCE          // ESP webhook reported hard bounce — never retry
+  COMPLAINT            // recipient hit "this is spam" — never retry
+  UNSUBSCRIBE          // recipient clicked the unsubscribe footer link
+  MANUAL               // partner / tenant added the address by hand
+  SOFT_BOUNCE_REPEATED // 5+ soft bounces in 30d — treat as hard
+}
+
+model EmailSuppression {
+  id        String                @id @default(uuid())
+  // Scope: at most one of (tenantId, partnerId) should be set. Both null =
+  // global suppression. Application enforces the invariant; the column
+  // shape allows simple WHERE OR queries from the send path.
+  tenantId  String?
+  partnerId String?
+  email     String                @db.VarChar(320)  // RFC 5321 max
+  reason    EmailSuppressionReason
+  note      String?               // freeform — ESP error message, partner annotation, etc.
+  createdAt DateTime              @default(now())
+
+  tenant    Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner   AffiliateAccount? @relation("PartnerEmailSuppressions", fields: [partnerId], references: [id], onDelete: Cascade)
+
+  // Lookup is always "is this email suppressed for this scope?" → index
+  // covers the three-way OR cleanly when query orders email first.
+  @@index([email])
+  @@index([tenantId, email])
+  @@index([partnerId, email])
+  @@index([tenantId, createdAt])
+  @@index([partnerId, createdAt])
+}
+
+// Bulk email campaign — partner picks recipients, writes a template, schedules.
+// A worker drains the recipient list at the partner's drip interval, respecting
+// the daily cap and send window. Status transitions:
+//   DRAFT → SCHEDULED → RUNNING → (PAUSED | COMPLETED | FAILED)
+// PAUSED happens automatically when hard-bounce rate exceeds the auto-halt
+// threshold mid-run, or manually by the partner.
+
+enum EmailCampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+model EmailCampaign {
+  id              String              @id @default(uuid())
+  tenantId        String              // hosting tenant (always set; mirrors AffiliateAccount.partnerId tenant)
+  partnerId       String?             // null = tenant-side campaign (future); set = partner campaign
+  name            String              @db.VarChar(120)
+  subject         String              @db.VarChar(200)
+  bodyText        String              @db.Text       // plain-text template (no rendering yet — partner pastes content)
+  bodyHtml        String?             @db.Text       // optional pre-rendered HTML
+  fromName        String?             // overrides partner displayName if set
+  status          EmailCampaignStatus @default(DRAFT)
+  scheduledAt     DateTime?           // null = send-when-RUNNING (manual start)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  pausedReason    String?             // populated when status flipped to PAUSED
+  // Counters maintained by the worker as it drains the queue. Reading these
+  // is much cheaper than aggregating EmailCampaignRecipient on every poll.
+  totalRecipients Int                 @default(0)
+  sentCount       Int                 @default(0)
+  bouncedCount    Int                 @default(0)
+  complainedCount Int                 @default(0)
+  skippedCount    Int                 @default(0)   // suppression hits + opt-outs
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner    AffiliateAccount? @relation("PartnerEmailCampaigns", fields: [partnerId], references: [id], onDelete: Cascade)
+  recipients EmailCampaignRecipient[]
+
+  @@index([partnerId, status, createdAt])
+  @@index([tenantId, status])
+  @@index([status, scheduledAt])  // worker scan path
+}
+
+enum EmailCampaignRecipientStatus {
+  PENDING   // waiting in the queue
+  SENT      // handed to ESP; awaiting bounce window
+  DELIVERED // ESP confirmed delivery
+  BOUNCED   // hard bounce — also added to suppression
+  COMPLAINED
+  SKIPPED   // suppression hit before send
+  FAILED    // ESP rejected synchronously (auth error, malformed, etc.)
+}
+
+model EmailCampaignRecipient {
+  id           String                       @id @default(uuid())
+  campaignId   String
+  // Recipient source is polymorphic. Today: contactId points at a partner's
+  // CRM Contact. Future (scraping system): leadId points at a Lead row from
+  // the scraped industry pool. Exactly one should be non-null.
+  contactId    String?
+  // leadId      String?  // wired in Phase F.5 when Lead model lands
+  email        String                       @db.VarChar(320)  // snapshotted at queue time
+  name         String?                      @db.VarChar(200)  // snapshotted for template merge
+  status       EmailCampaignRecipientStatus @default(PENDING)
+  sentAt       DateTime?
+  messageLogId String?                      // ← MessageLog.id once handed to ESP
+  errorReason  String?
+  createdAt    DateTime                     @default(now())
+  updatedAt    DateTime                     @updatedAt
+
+  campaign EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, email])  // can't queue the same address twice in one campaign
+  @@index([campaignId, status])
+  @@index([status, sentAt])      // worker scan
 }
