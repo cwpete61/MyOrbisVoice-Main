@@ -69,6 +69,16 @@ export async function signupUser(data: {
   // Create Stripe customer eagerly so billing flows work immediately
   await getOrCreateStripeCustomer(tenant.id).catch(() => { /* non-fatal — customer created on first checkout */ })
 
+  // Phase F.1 — seed the default 7-stage CRM pipeline. Idempotent + non-fatal:
+  // a brand-new tenant whose pipeline seeding fails still completes signup
+  // (they'll get an empty kanban; backfill possible via admin).
+  try {
+    const { seedDefaultPipeline } = await import('./crm.service.js')
+    await seedDefaultPipeline({ kind: 'tenant', tenantId: tenant.id })
+  } catch (err) {
+    console.warn('[signup] CRM pipeline seed failed (non-fatal):', (err as Error).message)
+  }
+
   // Always seed FREE-tier entitlements at signup. Paid-plan entitlements are
   // granted by the Stripe webhook after payment confirms (handleCheckoutCompleted
   // for LTD, handleSubscriptionUpdated for recurring). selectedPlanCode is still
@@ -162,6 +172,15 @@ export async function signupUserFromGoogle(data: {
   })
 
   await getOrCreateStripeCustomer(tenant.id).catch(() => { /* non-fatal */ })
+
+  // Phase F.1 — seed the default CRM pipeline for the new tenant (same as
+  // the password-signup path above). Non-fatal.
+  try {
+    const { seedDefaultPipeline } = await import('./crm.service.js')
+    await seedDefaultPipeline({ kind: 'tenant', tenantId: tenant.id })
+  } catch (err) {
+    console.warn('[google-signup] CRM pipeline seed failed (non-fatal):', (err as Error).message)
+  }
 
   const freePlan = await prisma.plan.findFirst({ where: { code: 'free', isActive: true } })
   if (freePlan) {

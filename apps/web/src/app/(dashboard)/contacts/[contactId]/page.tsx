@@ -7,6 +7,10 @@ import { useApi, apiFetch } from '@/hooks/useApi'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
 
+interface PipelineStageRef {
+  id: string; name: string; color: string | null; sortOrder: number
+}
+
 interface Contact {
   id: string; fullName: string | null; firstName: string | null; lastName: string | null
   email: string | null; phoneE164: string | null; source: string
@@ -15,6 +19,9 @@ interface Contact {
   optedOutVoice: boolean; optedOutVoiceAt: string | null
   optedOutEmail: boolean; optedOutEmailAt: string | null
   createdAt: string
+  pipelineStageId: string | null
+  pipelineStage:   PipelineStageRef | null
+  stageUpdatedAt:  string | null
   // CRM relationship fields — collected during outbound campaigns. Date fields
   // are ISO strings or null when not set; JSON fields can be string or array
   // (we accept both shapes in the API, default to string in this UI).
@@ -45,10 +52,20 @@ interface SmsItem {
   type: 'SMS'
   at: string
   data: {
-    id: string; direction: string; sender: string; recipient: string
-    bodyText: string | null; deliveryStatus: string | null
+    id: string; channel: string; direction: string; sender: string; recipient: string
+    subject: string | null; bodyText: string | null; deliveryStatus: string | null
     optOutDetected: boolean; sentAt: string | null; deliveredAt: string | null
     failedAt: string | null
+  }
+}
+
+interface EmailItem {
+  type: 'EMAIL'
+  at: string
+  data: {
+    id: string; channel: string; direction: string; sender: string; recipient: string
+    subject: string | null; bodyText: string | null; deliveryStatus: string | null
+    sentAt: string | null; deliveredAt: string | null; failedAt: string | null
   }
 }
 
@@ -58,7 +75,25 @@ interface OptOutItem {
   data: { id: string; channel: string; source: string; optedOut: boolean; createdAt: string }
 }
 
-type TimelineItem = VoiceItem | SmsItem | OptOutItem
+interface NoteItem {
+  type: 'NOTE'
+  at: string
+  data: {
+    id: string; body: string; createdAt: string
+    author: { id: string; firstName: string | null; lastName: string | null; email: string } | null
+  }
+}
+
+interface AppointmentItem {
+  type: 'APPOINTMENT'
+  at: string
+  data: {
+    id: string; status: string; appointmentType: string | null
+    startAt: string; endAt: string | null; notes: string | null
+  }
+}
+
+type TimelineItem = VoiceItem | SmsItem | EmailItem | OptOutItem | NoteItem | AppointmentItem
 
 interface TimelineData {
   contact: Contact
@@ -121,6 +156,9 @@ export default function ContactTimelinePage() {
       </div>
 
       {msg && <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">{msg}</div>}
+
+      {/* Pipeline stage chip + quick-change selector */}
+      <StageChip contact={contact} onChanged={reload} t={t} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Contact info */}
@@ -196,6 +234,12 @@ export default function ContactTimelinePage() {
       {/* Personal details (CRM) */}
       <PersonalDetails contact={contact} contactId={contactId} onSaved={() => { reload(); setMsg(t('contactCrm.saved')) }} onError={(e) => setMsg(e)} t={t} />
 
+      {/* Compose row — quick-send email / SMS */}
+      <ComposeButtons contact={contact} contactId={contactId} onSent={(label) => { setMsg(label); reload() }} t={t} />
+
+      {/* Notes thread */}
+      <NotesThread contactId={contactId} t={t} />
+
       {/* Timeline */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <h2 className="text-sm font-medium text-gray-900 mb-4">Interaction timeline</h2>
@@ -266,6 +310,53 @@ export default function ContactTimelinePage() {
                       )}
                     </div>
                     <p className="text-sm text-gray-700">{item.data.bodyText ?? '(no body)'}</p>
+                  </div>
+                )}
+
+                {item.type === 'EMAIL' && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('contactTimeline.emailLabel')}</span>
+                      <StatusBadge label={item.data.direction} color={item.data.direction === 'INBOUND' ? 'blue' : 'gray'} />
+                      {item.data.deliveryStatus && (
+                        <StatusBadge label={item.data.deliveryStatus} color={item.data.deliveryStatus === 'sent' || item.data.deliveryStatus === 'delivered' ? 'green' : 'yellow'} />
+                      )}
+                    </div>
+                    {item.data.subject && (
+                      <p className="text-sm font-medium text-gray-900 mb-1">{item.data.subject}</p>
+                    )}
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.data.bodyText ?? ''}</p>
+                  </div>
+                )}
+
+                {item.type === 'NOTE' && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('contactTimeline.noteLabel')}</span>
+                      {item.data.author ? (
+                        <span className="text-xs text-gray-400">
+                          {[item.data.author.firstName, item.data.author.lastName].filter(Boolean).join(' ') || item.data.author.email}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">{t('contactTimeline.systemAuthor')}</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.data.body}</p>
+                  </div>
+                )}
+
+                {item.type === 'APPOINTMENT' && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{t('contactTimeline.appointmentLabel')}</span>
+                      <StatusBadge label={item.data.status} color={item.data.status === 'BOOKED' ? 'green' : item.data.status === 'CANCELED' ? 'red' : 'yellow'} />
+                      {item.data.appointmentType && <span className="text-xs text-gray-500">{item.data.appointmentType}</span>}
+                    </div>
+                    <p className="text-sm text-gray-700">
+                      {formatInTimezone(item.data.startAt, { tz, dateStyle: 'medium', timeStyle: 'short' })}
+                      {item.data.endAt && ` – ${formatInTimezone(item.data.endAt, { tz, timeStyle: 'short' })}`}
+                    </p>
+                    {item.data.notes && <p className="text-xs text-gray-500 mt-1">{item.data.notes}</p>}
                   </div>
                 )}
 
@@ -433,5 +524,226 @@ function PersonalDetails({
         </button>
       </div>
     </form>
+  )
+}
+
+// ── Pipeline stage chip + quick-change selector ────────────────────────────
+function StageChip({
+  contact, onChanged, t,
+}: {
+  contact: Contact
+  onChanged: () => void
+  t: (k: string) => string
+}) {
+  const { data: stages } = useApi<Array<{ id: string; name: string; color: string | null; sortOrder: number }>>('/api/crm/pipeline-stages')
+  const [moving, setMoving] = useState(false)
+
+  async function setStage(stageId: string) {
+    if (stageId === contact.pipelineStageId) return
+    setMoving(true)
+    try {
+      await apiFetch(`/api/crm/contacts/${contact.id}/stage`, {
+        method: 'PATCH',
+        body:   JSON.stringify({ stageId }),
+      })
+      onChanged()
+    } finally {
+      setMoving(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white">
+      <span className="text-xs font-medium text-gray-500">{t('contactCrm.stageLabel')}</span>
+      {contact.pipelineStage ? (
+        <span
+          className="text-sm font-medium px-2 py-0.5 rounded"
+          style={{ background: contact.pipelineStage.color ?? '#eee', color: '#333' }}
+        >
+          {contact.pipelineStage.name}
+        </span>
+      ) : (
+        <span className="text-xs text-gray-400">{t('contactCrm.stageUnset')}</span>
+      )}
+      <select
+        value={contact.pipelineStageId ?? ''}
+        onChange={(e) => setStage(e.target.value)}
+        disabled={moving}
+        className="text-sm border border-gray-300 rounded-md px-2 py-1 ml-auto"
+        aria-label={t('contactCrm.stageLabel')}
+      >
+        <option value="" disabled>{t('contactCrm.stageSelectPlaceholder')}</option>
+        {(stages ?? []).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+      </select>
+    </div>
+  )
+}
+
+// ── Compose buttons (email + SMS quick send) ───────────────────────────────
+function ComposeButtons({
+  contact, contactId, onSent, t,
+}: {
+  contact: Contact
+  contactId: string
+  onSent: (msg: string) => void
+  t: (k: string) => string
+}) {
+  const [mode, setMode] = useState<null | 'email' | 'sms'>(null)
+  const [subject, setSubject] = useState('')
+  const [body, setBody] = useState('')
+  const [sending, setSending] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function send() {
+    setSending(true); setErr('')
+    try {
+      if (mode === 'email') {
+        await apiFetch(`/api/crm/contacts/${contactId}/email`, {
+          method: 'POST',
+          body:   JSON.stringify({ subject, body }),
+        })
+        onSent(t('contactCrm.emailSentConfirm'))
+      } else if (mode === 'sms') {
+        await apiFetch('/api/messages/sms', {
+          method: 'POST',
+          body:   JSON.stringify({ contactId, body }),
+        })
+        onSent(t('contactCrm.smsSentConfirm'))
+      }
+      setMode(null); setSubject(''); setBody('')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t('contactCrm.sendFailed'))
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => { setMode('email'); setErr('') }}
+          disabled={!contact.email || contact.optedOutEmail}
+          className="text-xs btn-ghost disabled:opacity-40"
+        >
+          {t('contactCrm.composeEmail')}
+        </button>
+        <button
+          onClick={() => { setMode('sms'); setErr('') }}
+          disabled={!contact.phoneE164 || contact.optedOutSms}
+          className="text-xs btn-ghost disabled:opacity-40"
+        >
+          {t('contactCrm.composeSms')}
+        </button>
+        {mode && <button onClick={() => setMode(null)} className="text-xs text-gray-500 ml-auto">{t('contactCrm.cancel')}</button>}
+      </div>
+
+      {mode && (
+        <div className="mt-3 space-y-2">
+          {mode === 'email' && (
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder={t('contactCrm.emailSubjectPlaceholder')}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md"
+              maxLength={200}
+            />
+          )}
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder={mode === 'email' ? t('contactCrm.emailBodyPlaceholder') : t('contactCrm.smsBodyPlaceholder')}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md"
+            rows={mode === 'email' ? 6 : 3}
+            maxLength={mode === 'email' ? 50000 : 1600}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={send}
+              disabled={sending || !body.trim() || (mode === 'email' && !subject.trim())}
+              className="btn-primary text-xs"
+            >
+              {sending ? t('contactCrm.sending') : t('contactCrm.send')}
+            </button>
+            {err && <span className="text-xs text-red-500">{err}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Notes thread ───────────────────────────────────────────────────────────
+function NotesThread({
+  contactId, t,
+}: {
+  contactId: string
+  t: (k: string) => string
+}) {
+  interface Note {
+    id: string; body: string; createdAt: string
+    author: { id: string; firstName: string | null; lastName: string | null; email: string } | null
+  }
+  const { data, reload } = useApi<Note[]>(`/api/crm/contacts/${contactId}/notes`)
+  const [draft, setDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function addNote() {
+    if (!draft.trim()) return
+    setSaving(true)
+    try {
+      await apiFetch(`/api/crm/contacts/${contactId}/notes`, {
+        method: 'POST',
+        body:   JSON.stringify({ body: draft }),
+      })
+      setDraft('')
+      reload()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const notes = data ?? []
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
+      <h2 className="text-sm font-medium text-gray-900">{t('contactCrm.notesTitle')}</h2>
+
+      <div className="flex gap-2">
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={t('contactCrm.noteDraftPlaceholder')}
+          rows={2}
+          maxLength={4000}
+          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md"
+        />
+        <button
+          onClick={addNote}
+          disabled={saving || !draft.trim()}
+          className="btn-primary text-xs self-start"
+        >
+          {saving ? t('contactCrm.savingNote') : t('contactCrm.addNote')}
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {notes.length === 0 && (
+          <p className="text-xs text-gray-400">{t('contactCrm.notesEmpty')}</p>
+        )}
+        {notes.map(n => (
+          <div key={n.id} className="rounded-lg border border-gray-100 px-3 py-2" style={{ background: '#fafafa' }}>
+            <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+              <span>
+                {n.author
+                  ? ([n.author.firstName, n.author.lastName].filter(Boolean).join(' ') || n.author.email)
+                  : t('contactCrm.systemAuthor')}
+              </span>
+              <span>{new Date(n.createdAt).toLocaleString()}</span>
+            </div>
+            <p className="text-sm text-gray-800 whitespace-pre-wrap">{n.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }

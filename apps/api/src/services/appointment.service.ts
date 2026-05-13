@@ -501,6 +501,19 @@ export async function createAppointment(tenantId: string, userId: string | null,
   // (gated by AffiliateAccount.notifyAppointmentsEnabled). Different audience
   // from the tenant-owner notification above: the partner doesn't see the
   // OrbisVoice admin tenant inbox, so they need their own ping.
+  // Phase F.1 + F.3 — auto-transition the contact to "Booked Appointment".
+  // Scope follows the appointment: partner-routed bookings move the partner
+  // CRM stage; tenant-side bookings move the tenant CRM stage.
+  if (data.contactId) {
+    const contactIdResolved = data.contactId
+    const scope = data.partnerId
+      ? { kind: 'partner' as const, partnerId: data.partnerId, hostingTenantId: tenantId }
+      : { kind: 'tenant' as const, tenantId }
+    import('./crm.service.js')
+      .then(m => m.onAppointmentCreated(scope, contactIdResolved))
+      .catch(err => console.warn('[appointment] CRM auto-transition failed:', (err as Error).message))
+  }
+
   if (data.partnerId) {
     sendPartnerBookingNotification(data.partnerId, {
       appointmentId:    appointment.id,

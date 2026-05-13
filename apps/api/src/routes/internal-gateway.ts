@@ -155,10 +155,11 @@ router.post('/internal/gateway/tools/lookup-contact', async (req, res, next) => 
 // downstream campaigns (and the contacts page) use to know this contact was
 // verified by a live human voice, not scraped.
 const saveContactSchema = z.object({
-  fullName:  z.string().max(200).optional(),
-  phoneE164: z.string().max(40).optional(),
-  email:     z.string().email().max(200).optional(),
-  notes:     z.string().max(2000).optional(),
+  fullName:       z.string().max(200).optional(),
+  phoneE164:      z.string().max(40).optional(),
+  email:          z.string().email().max(200).optional(),
+  notes:          z.string().max(2000).optional(),
+  conversationId: z.string().uuid().optional(),
 }).refine(d => Boolean(d.phoneE164 || d.email), {
   message: 'Provide phoneE164 or email (or both — both is preferred)',
 })
@@ -179,13 +180,30 @@ router.post('/internal/gateway/tools/save-contact', async (req, res, next) => {
     const phoneE164 = data.phoneE164 ? normalizePhone(data.phoneE164) ?? data.phoneE164 : null
     const email     = data.email?.trim().toLowerCase() ?? null
 
-    // Match by phone first, then email
+    // F.3 — figure out whether this is a tenant-side or partner-side capture
+    // before we match-or-create. Partner is read from Conversation.partnerId
+    // when the gateway passed conversationId. Matching scope follows: partner
+    // contacts only match against the partner's pool; tenant contacts only
+    // match against tenant-side rows. Prevents cross-leak.
+    let partnerId: string | null = null
+    if (data.conversationId) {
+      const conv = await prisma.conversation.findUnique({
+        where:  { id: data.conversationId },
+        select: { partnerId: true },
+      })
+      partnerId = conv?.partnerId ?? null
+    }
+    const scopeWhere = partnerId
+      ? { partnerId }
+      : { tenantId, partnerId: null }
+
+    // Match by phone first, then email — within the same scope
     let existing = phoneE164
-      ? await prisma.contact.findFirst({ where: { tenantId, phoneE164 } })
+      ? await prisma.contact.findFirst({ where: { ...scopeWhere, phoneE164 } })
       : null
     if (!existing && email) {
       existing = await prisma.contact.findFirst({
-        where: { tenantId, email: { equals: email, mode: 'insensitive' } },
+        where: { ...scopeWhere, email: { equals: email, mode: 'insensitive' } },
       })
     }
 
@@ -206,20 +224,69 @@ router.post('/internal/gateway/tools/save-contact', async (req, res, next) => {
         update['metadataJson'] = { ...meta, callNotes: [...calls, { at: now.toISOString(), notes: data.notes }] }
       }
       contact = await prisma.contact.update({ where: { id: existing.id }, data: update })
-    } else {
+    } else if (partnerId) {
+      // Partner-side new contact — skip contactService (which goes tenant-CRM
+      // pipeline placement) and create directly, then place on partner CRM.
       contact = await prisma.contact.create({
         data: {
           tenantId,
-          fullName:         data.fullName ?? null,
-          phoneE164,
-          email,
-          source:           'voice_agent',
+          partnerId,
+          fullName:        data.fullName ?? null,
+          phoneE164:       phoneE164 ?? null,
+          email:           email ?? null,
+          source:          'voice_agent',
+          emailStatus:     email ? 'unchecked' : null,
+          phoneStatus:     phoneE164 ? 'unchecked' : null,
           agentConfirmedAt: now,
-          emailStatus:      email ? 'unchecked' : null,
-          metadataJson:     data.notes ? { callNotes: [{ at: now.toISOString(), notes: data.notes }] } : undefined,
+          ...(data.notes ? { metadataJson: { callNotes: [{ at: now.toISOString(), notes: data.notes }] } } : {}),
+        },
+      })
+      const { placeNewContactOnPipeline } = await import('../services/crm.service.js')
+      await placeNewContactOnPipeline({ kind: 'partner', partnerId, hostingTenantId: tenantId }, contact.id)
+        .catch(() => null)
+      created = true
+    } else {
+      // Tenant-side: go through the service so pipeline placement (F.1) +
+      // email verification kick off automatically.
+      contact = await contactService.createContact(tenantId, {
+        fullName:  data.fullName ?? undefined,
+        phoneE164: phoneE164      ?? undefined,
+        email:     email           ?? undefined,
+        source:    'voice_agent',
+      })
+      contact = await prisma.contact.update({
+        where: { id: contact.id },
+        data:  {
+          agentConfirmedAt: now,
+          ...(data.notes ? { metadataJson: { callNotes: [{ at: now.toISOString(), notes: data.notes }] } } : {}),
         },
       })
       created = true
+    }
+
+    // Phase F.2 + F.3 — agent-collected notes show up in the CRM notes thread.
+    // partnerId on the note matches the contact's partnerId so partner CRMs see
+    // it in their note feed.
+    if (data.notes && (created || existing)) {
+      await prisma.contactNote.create({
+        data: {
+          tenantId,
+          partnerId,
+          contactId:    contact.id,
+          authorUserId: null,
+          body:         data.notes.slice(0, 4000),
+        },
+      }).catch(() => { /* non-fatal — note thread is nice-to-have */ })
+    }
+
+    // F.2 — link the live Conversation row to the contact so the timeline can
+    // pull conversations by contactId AND fireCrmTransition on persistConversation
+    // sees the link and bumps the pipeline stage on call-end.
+    if (data.conversationId) {
+      await prisma.conversation.updateMany({
+        where: { id: data.conversationId, tenantId, contactId: null },
+        data:  { contactId: contact.id },
+      }).catch(() => null)
     }
 
     await writeAuditLog({

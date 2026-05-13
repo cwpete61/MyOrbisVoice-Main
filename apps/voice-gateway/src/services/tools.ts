@@ -386,7 +386,17 @@ const handlers: Record<ToolName, ToolHandler> = {
     }>(
       '/api/internal/gateway/tools/save-contact',
       ctx.tenantId,
-      { fullName: fullName || undefined, phoneE164: phoneE164 || undefined, email: email || undefined, notes },
+      {
+        fullName: fullName || undefined,
+        phoneE164: phoneE164 || undefined,
+        email: email || undefined,
+        notes,
+        // F.2 — when the gateway knows the live conversation id, pass it so
+        // the API can link Conversation.contactId now. Then persistConversation
+        // → fireCrmTransition can bump the pipeline stage on call-end without
+        // a separate lookup.
+        conversationId: ctx.conversationId,
+      },
     )
     if (!result.ok) return { ok: false, error: result.error }
     return {

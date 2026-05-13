@@ -2,8 +2,13 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
 import { verifyEmail } from './reoon.service.js'
 
-export async function listContacts(tenantId: string, opts: { search?: string; page?: number; limit?: number }) {
-  const { search, page = 1, limit = 50 } = opts
+export async function listContacts(tenantId: string, opts: {
+  search?: string; page?: number; limit?: number
+  /** Filter by pipeline stage id. `'unstaged'` returns contacts not placed on
+   *  the pipeline (legacy data + edge cases). Omit to return all stages. */
+  stageId?: string
+}) {
+  const { search, page = 1, limit = 50, stageId } = opts
   const where = {
     tenantId,
     ...(search ? {
@@ -13,18 +18,37 @@ export async function listContacts(tenantId: string, opts: { search?: string; pa
         { phoneE164: { contains: search } },
       ],
     } : {}),
+    ...(stageId === 'unstaged'
+      ? { pipelineStageId: null }
+      : stageId
+        ? { pipelineStageId: stageId }
+        : {}),
   }
   const [items, total] = await Promise.all([
-    prisma.contact.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
+    prisma.contact.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip:    (page - 1) * limit,
+      take:    limit,
+      include: { pipelineStage: { select: { id: true, name: true, color: true, sortOrder: true } } },
+    }),
     prisma.contact.count({ where }),
   ])
   return { items, total, page, limit }
 }
 
 export async function getContact(tenantId: string, id: string) {
-  return prisma.contact.findFirst({ where: { id, tenantId } })
+  return prisma.contact.findFirst({
+    where:   { id, tenantId },
+    include: { pipelineStage: { select: { id: true, name: true, color: true, sortOrder: true } } },
+  })
 }
 
+/**
+ * Phase F.1 — every newly-created contact is auto-placed on the pipeline at
+ * the first stage so the kanban view shows the new row immediately. Skipped
+ * silently when the tenant has no pipeline (e.g. seeding failed on signup).
+ */
 export async function createContact(tenantId: string, data: {
   firstName?: string; lastName?: string; fullName?: string
   email?: string; phoneE164?: string; source?: string
@@ -62,6 +86,13 @@ export async function createContact(tenantId: string, data: {
       }).catch(() => {})
     }).catch(() => {})
   }
+
+  // Phase F.1 — place the new contact on the CRM pipeline at the first stage.
+  // Fire-and-forget; never blocks the response. No-op when tenant has no
+  // pipeline yet (seed failed) or the contact is somehow already staged.
+  import('./crm.service.js')
+    .then(m => m.placeNewContactOnPipeline({ kind: 'tenant', tenantId }, contact.id))
+    .catch(err => console.warn('[contact] pipeline placement failed:', (err as Error).message))
 
   return contact
 }

@@ -18,6 +18,7 @@ interface Contact {
   optedOutVoice: boolean
   optedOutEmail: boolean
   emailStatus: string | null
+  pipelineStage: { id: string; name: string; color: string | null } | null
 }
 
 interface ContactList {
@@ -297,6 +298,7 @@ export default function ContactsPage() {
               <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
                 {[
                   { key: 'name',   label: t('tenantContacts.table.name') },
+                  { key: 'stage',  label: t('tenantContacts.table.stage') },
                   { key: 'email',  label: t('tenantContacts.table.email') },
                   { key: 'phone',  label: t('tenantContacts.table.phone') },
                   { key: 'status', label: t('tenantContacts.table.status') },
@@ -315,6 +317,18 @@ export default function ContactsPage() {
                     <Link href={`/contacts/${c.id}`} className="hover:underline">
                       {c.fullName ?? ([c.firstName, c.lastName].filter(Boolean).join(' ') || dash)}
                     </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    {c.pipelineStage ? (
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded font-medium"
+                        style={{ background: c.pipelineStage.color ?? 'var(--surface-overlay)', color: '#333' }}
+                      >
+                        {c.pipelineStage.name}
+                      </span>
+                    ) : (
+                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{dash}</span>
+                    )}
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
                     <span>{c.email ?? dash}</span>

@@ -125,6 +125,7 @@ export async function persistConversation(opts: {
     }
 
     const conv = await prisma.conversation.findFirst({ where: { externalCallId: sessionId, tenantId } })
+    if (conv?.id) await fireCrmTransition(tenantId, conv.id).catch(() => null)
     return conv?.id ?? sessionId
   }
 
@@ -150,6 +151,7 @@ export async function persistConversation(opts: {
       where: { id: sessionId },
       data:  { status: 'COMPLETED', endedAt: new Date() },
     }).catch(() => null)
+    await fireCrmTransition(tenantId, existingConvId).catch(() => null)
     return existingConvId
   }
 
@@ -172,9 +174,62 @@ export async function persistConversation(opts: {
     data:  { status: 'COMPLETED', endedAt: new Date(), conversationId: conversation.id },
   }).catch(() => null)
 
+  await fireCrmTransition(tenantId, conversation.id).catch(() => null)
   return conversation.id
 }
 
+/**
+ * Phase F.1 — CRM auto-transition on conversation persist. Moves the contact
+ * forward to "Spoke with Orby" if they're still at "New Lead" (or unstaged).
+ * Inlined here instead of importing the API service — the gateway shouldn't
+ * depend on apps/api code. Same SQL the API service runs.
+ */
+async function fireCrmTransition(tenantId: string, conversationId: string): Promise<void> {
+  try {
+    const conv = await prisma.conversation.findUnique({
+      where:  { id: conversationId },
+      select: { contactId: true, partnerId: true },
+    })
+    if (!conv?.contactId) return
+
+    // F.3 — partner-scoped lookup when the conversation originated on a
+    // partner page. Pipeline + contact filter on partnerId; tenant filter
+    // drops out (the partner CRM is one logical pipeline regardless of the
+    // hosting tenant). Tenant calls keep the prior tenantId+partnerId-null
+    // scope so the two CRMs stay isolated.
+    const stageWhere = conv.partnerId
+      ? { partnerId: conv.partnerId, name: 'Spoke with Orby' }
+      : { tenantId,                   partnerId: null, name: 'Spoke with Orby' }
+    const contactWhere = conv.partnerId
+      ? { id: conv.contactId, partnerId: conv.partnerId }
+      : { id: conv.contactId, tenantId, partnerId: null }
+
+    const [contact, target] = await Promise.all([
+      prisma.contact.findFirst({
+        where:  contactWhere,
+        select: { pipelineStage: { select: { sortOrder: true } } },
+      }),
+      prisma.pipelineStage.findFirst({
+        where:  stageWhere,
+        select: { id: true, sortOrder: true },
+      }),
+    ])
+    if (!contact || !target) return
+
+    const currentOrder = contact.pipelineStage?.sortOrder ?? -1
+    if (currentOrder >= target.sortOrder) return  // already past — respect manual progress
+
+    await prisma.contact.updateMany({
+      where: contactWhere,
+      data:  { pipelineStageId: target.id, stageUpdatedAt: new Date() },
+    })
+  } catch (err) {
+    console.warn('[crm] auto-transition failed (non-fatal):', (err as Error).message)
+  }
+}
+
+// Wire fireCrmTransition into the WIDGET path that updates an existing
+// conversation row (the common case post-fix).
 export async function markSessionFailed(sessionId: string) {
   await prisma.widgetSession.update({
     where: { id: sessionId },

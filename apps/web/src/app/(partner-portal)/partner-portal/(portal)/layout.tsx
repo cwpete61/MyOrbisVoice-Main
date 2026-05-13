@@ -18,6 +18,8 @@ const NAV = [
   { href: '/partner-portal/mailbox',     labelKey: 'partnerNav.mailbox',     icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM2 6l10 7l10-7' },
   { href: '/partner-portal/calendar',    labelKey: 'partnerNav.calendar',    icon: 'M3 9h18M3 5h18v14H3zM8 3v4M16 3v4' },
   { href: '/partner-portal/conversations', labelKey: 'partnerNav.conversations', icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
+  { href: '/partner-portal/crm',         labelKey: 'partnerNav.crm',         icon: 'M3 4h4v6H3zm7 0h4v6h-4zm7 0h4v6h-4zM3 13h4v6H3zm7 0h4v6h-4zm7 0h4v6h-4z' },
+  { href: '/partner-portal/contacts',    labelKey: 'partnerNav.contacts',    icon: 'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm10 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM21 21v-2a4 4 0 0 0-3-3.87' },
   { href: '/partner-portal/referrals',   labelKey: 'partnerNav.referrals',   icon: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' },
   { href: '/partner-portal/commissions', labelKey: 'partnerNav.commissions', icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' },
   { href: '/partner-portal/payouts',     labelKey: 'partnerNav.payouts',     icon: 'M1 5h14v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5zm0-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2' },
@@ -70,7 +72,7 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
         {/* Brand */}
         <div className="px-5 py-5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
           <p className="text-sm font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>MyOrbisVoice</p>
-          <p className="text-xs mt-0.5" style={{ color: 'oklch(65% 0.15 193)' }}>Partner Portal</p>
+          <p className="text-xs mt-0.5" style={{ color: 'oklch(65% 0.15 193)' }}>{t('partnerNav.brandSubtitle')}</p>
         </div>
 
         {/* Nav */}
@@ -172,9 +174,19 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
           <LanguageToggle />
           <ThemeToggle />
         </div>
-        <div className="max-w-4xl mx-auto w-full px-8 py-8 flex-1">
-          {children}
-        </div>
+        {/* CRM + Contacts surfaces render full-width to match the tenant
+            dashboard's kanban + contact-detail layouts. Every other partner
+            page keeps the narrower max-w-4xl reading column the rest of the
+            portal was designed for. */}
+        {(() => {
+          const isFullWidth = pathname.startsWith('/partner-portal/crm')
+            || pathname.startsWith('/partner-portal/contacts')
+          return isFullWidth ? (
+            <div className="w-full px-8 py-8 flex-1">{children}</div>
+          ) : (
+            <div className="max-w-4xl mx-auto w-full px-8 py-8 flex-1">{children}</div>
+          )
+        })()}
         {/* Contact emails + social — anchored at the bottom of the partner workspace */}
         <footer className="px-8 py-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           <div className="max-w-4xl mx-auto w-full flex flex-wrap items-center justify-between gap-4">

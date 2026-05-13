@@ -54,6 +54,7 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: 'nav.groups.engage',
     items: [
       { href: '/contacts',      labelKey: 'nav.items.contacts',       icon: <Icon d="M10 9a3 3 0 1 0-6 0M5 15a5 5 0 0 1 6 0M13 7a2 2 0 1 0-4 0M14 13a4 4 0 0 0-3-1" /> },
+      { href: '/crm',           labelKey: 'nav.items.crm',            icon: <Icon d="M2 3h3v4H2zm5 0h3v4H7zm5 0h3v4h-3zM2 9h3v4H2zm5 0h3v4H7zm5 0h3v4h-3z" /> },
       { href: '/conversations', labelKey: 'nav.items.conversations',  icon: <Icon d="M2 4h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5l-3 2V5a1 1 0 0 1 1-1zm3 3h6M5 9h4" /> },
       { href: '/appointments',  labelKey: 'nav.items.appointments',   icon: <Icon d="M4 3h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm3 4h2M7 10h2M4 6h8" /> },
       { href: '/campaigns',     labelKey: 'nav.items.campaigns',      icon: <Icon d="M3 5h10M3 8h7M3 11h4m6-4v6m0 0-2-2m2 2 2-2" /> },

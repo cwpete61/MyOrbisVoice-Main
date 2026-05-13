@@ -13,6 +13,7 @@ import appointmentsRouter from './appointments.js'
 import { widgetRouter } from './widget.js'
 import { phoneNumbersRouter } from './phone-numbers.js'
 import contactsRouter from './contacts.js'
+import crmRouter from './crm.js'
 import campaignsRouter from './campaigns.js'
 import outboundCampaignsRouter from './outbound-campaigns.js'
 import affiliateRouter from './affiliate.js'
@@ -30,6 +31,7 @@ import { outboundWebhooksRouter } from './outbound-webhooks.js'
 import internalGatewayRouter from './internal-gateway.js'
 import internalMailRouter from './internal-mail.js'
 import partnerRouter from './partner.js'
+import partnerCrmRouter from './partner-crm.js'
 import partnerMailboxRouter from './partner-mailbox.js'
 import marketingAssetsRouter from './marketing-assets.js'
 import publicRouter from './public.js'
@@ -64,6 +66,7 @@ router.use('/', affiliateRouter)        // contains public /api/public/track/cli
 // Partner dashboard routes (/api/partner/*) — gated by requirePartnerContext.
 // Mounted BEFORE tenantRouter because partners are not tenant members.
 router.use('/api', partnerRouter)
+router.use('/api', partnerCrmRouter)
 router.use('/api', partnerMailboxRouter)
 router.use('/api', tenantRouter)
 router.use('/api', businessDNARouter)
@@ -74,6 +77,7 @@ router.use('/api/admin', adminRouter)
 router.use('/api', appointmentsRouter)
 router.use('/api', phoneNumbersRouter)
 router.use('/api', contactsRouter)
+router.use('/api', crmRouter)
 router.use('/api', campaignsRouter)
 router.use('/api', outboundCampaignsRouter)
 router.use('/api', staffRouter)

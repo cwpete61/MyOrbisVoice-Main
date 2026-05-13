@@ -25,11 +25,12 @@ const createSchema = z.object({
 router.get('/contacts', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const { search, page, limit } = req.query as Record<string, string>
+    const { search, page, limit, stageId } = req.query as Record<string, string>
     const result = await contactService.listContacts(tenantId, {
-      search: search || undefined,
-      page:   page   ? parseInt(page, 10)  : undefined,
-      limit:  limit  ? parseInt(limit, 10) : undefined,
+      search:  search  || undefined,
+      page:    page    ? parseInt(page, 10)  : undefined,
+      limit:   limit   ? parseInt(limit, 10) : undefined,
+      stageId: stageId || undefined,
     })
     res.json({ data: result })
   } catch (err) { next(err) }
@@ -150,7 +151,7 @@ router.post('/contacts/import', async (req, res, next) => {
         continue
       }
       try {
-        await contactService.createContact(tenantId, validated.data)
+        await contactService.createContact(tenantId, { ...validated.data, source: validated.data.source ?? 'import' })
         created++
       } catch (e) {
         skipped++
@@ -225,7 +226,7 @@ router.get('/contacts/:id/timeline', async (req, res, next) => {
     const contact = await prisma.contact.findFirst({ where: { id: contactId, tenantId } })
     if (!contact) throw new AppError('NOT_FOUND', 'Contact not found', 404)
 
-    const [conversations, messages, optOuts] = await Promise.all([
+    const [conversations, messages, optOuts, notes, appointments] = await Promise.all([
       prisma.conversation.findMany({
         where: { tenantId, contactId },
         orderBy: { startedAt: 'desc' },
@@ -238,14 +239,16 @@ router.get('/contacts/:id/timeline', async (req, res, next) => {
           outcomeCode: true,
         },
       }),
+      // F.2 — include both SMS and EMAIL channels so the CRM timeline shows
+      // emails sent from /crm/contacts/:id/email alongside the SMS thread.
       prisma.messageLog.findMany({
-        where: { tenantId, contactId, channel: 'SMS' },
+        where: { tenantId, contactId, channel: { in: ['SMS', 'EMAIL'] } },
         orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
         select: {
-          id: true, direction: true, sender: true, recipient: true,
-          bodyText: true, deliveryStatus: true, optOutDetected: true,
+          id: true, channel: true, direction: true, sender: true, recipient: true,
+          subject: true, bodyText: true, deliveryStatus: true, optOutDetected: true,
           sentAt: true, deliveredAt: true, failedAt: true, createdAt: true,
         },
       }),
@@ -254,13 +257,36 @@ router.get('/contacts/:id/timeline', async (req, res, next) => {
         orderBy: { createdAt: 'desc' },
         select: { id: true, channel: true, source: true, optedOut: true, createdAt: true },
       }),
+      prisma.contactNote.findMany({
+        where:   { tenantId, contactId },
+        orderBy: { createdAt: 'desc' },
+        take:    limit,
+        include: { author: { select: { id: true, firstName: true, lastName: true, email: true } } },
+      }),
+      prisma.appointment.findMany({
+        where:   { tenantId, contactId },
+        orderBy: { startAt: 'desc' },
+        take:    limit,
+        select: {
+          id: true, status: true, startAt: true, endAt: true,
+          appointmentType: true, notes: true, createdAt: true,
+        },
+      }),
     ])
 
-    // Merge and sort chronologically (newest first)
+    // Merge and sort chronologically (newest first). Email and SMS share
+    // the same envelope but are tagged by channel so the UI renders them
+    // with the right icon + body shape.
     const items = [
       ...conversations.map(c => ({ type: 'VOICE' as const, at: c.startedAt, data: c })),
-      ...messages.map(m => ({ type: 'SMS' as const, at: m.sentAt ?? m.createdAt, data: m })),
+      ...messages.map(m => ({
+        type: (m.channel === 'EMAIL' ? 'EMAIL' : 'SMS') as 'EMAIL' | 'SMS',
+        at:   m.sentAt ?? m.createdAt,
+        data: m,
+      })),
       ...optOuts.map(o => ({ type: 'OPT_OUT' as const, at: o.createdAt, data: o })),
+      ...notes.map(n => ({ type: 'NOTE' as const, at: n.createdAt, data: n })),
+      ...appointments.map(a => ({ type: 'APPOINTMENT' as const, at: a.startAt, data: a })),
     ].sort((a, b) => b.at.getTime() - a.at.getTime())
 
     res.json({ data: { contact, items, total: items.length } })
