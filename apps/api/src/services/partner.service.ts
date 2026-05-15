@@ -79,8 +79,11 @@ export async function generatePartnerSlug(firstName: string, lastName: string): 
  * with that slug exists (rather than throwing — callers may want a 404 page).
  */
 export async function getPartnerBySlug(slug: string) {
-  return prisma.affiliateAccount.findUnique({
-    where: { slug },
+  // findFirst + deletedAt: null so soft-deleted partners return null.
+  // Public partner page (/p/<slug>/) callers turn that into a 404; the
+  // page disappears the moment the admin soft-deletes the partner.
+  return prisma.affiliateAccount.findFirst({
+    where: { slug, deletedAt: null },
     include: {
       user: {
         select: {
@@ -132,6 +135,12 @@ export interface PartnerProfileUpdate {
   partnerPageActive?: boolean
   aggressionTier?: string
   notifyAppointmentsEnabled?: boolean
+  // Phase F.5 — partner public mailing address. Optional everywhere.
+  partnerStreet?: string | null
+  partnerUnit?: string | null
+  partnerCity?: string | null
+  partnerState?: string | null
+  partnerPostalCode?: string | null
 }
 
 /**
@@ -159,6 +168,11 @@ export async function updatePartnerProfile(userId: string, data: PartnerProfileU
       partnerPageActive:     data.partnerPageActive,
       aggressionTier:        data.aggressionTier,
       notifyAppointmentsEnabled: data.notifyAppointmentsEnabled,
+      partnerStreet:         data.partnerStreet,
+      partnerUnit:           data.partnerUnit,
+      partnerCity:           data.partnerCity,
+      partnerState:          data.partnerState,
+      partnerPostalCode:     data.partnerPostalCode,
     },
   })
 
@@ -194,7 +208,8 @@ export async function updatePartnerProfile(userId: string, data: PartnerProfileU
 
 const DAY_NAMES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 type DayKey = (typeof DAY_NAMES)[number]
-type DayHours = { open: string; close: string }
+// Optional mid-day closed window. Both ends set or both omitted (no break).
+type DayHours = { open: string; close: string; breakStart?: string; breakEnd?: string }
 type BookingHoursMap = Partial<Record<DayKey, DayHours | null>>
 
 export interface PartnerBookingPreferences {
@@ -254,7 +269,7 @@ function sanitizeBookingHours(input: unknown): BookingHoursMap | null {
     if (!v || typeof v !== 'object') {
       throw new AppError('BAD_REQUEST', `bookingHoursJson.${day} must be { open, close } or null`, 400)
     }
-    const obj = v as { open?: unknown; close?: unknown }
+    const obj = v as { open?: unknown; close?: unknown; breakStart?: unknown; breakEnd?: unknown }
     if (typeof obj.open !== 'string' || typeof obj.close !== 'string' ||
         !validateHHmm(obj.open) || !validateHHmm(obj.close)) {
       throw new AppError(
@@ -266,7 +281,30 @@ function sanitizeBookingHours(input: unknown): BookingHoursMap | null {
     if (obj.open >= obj.close) {
       throw new AppError('BAD_REQUEST', `bookingHoursJson.${day}: open must be earlier than close`, 400)
     }
-    out[day] = { open: obj.open, close: obj.close }
+
+    // Optional break window — both ends required, must fit inside [open, close)
+    // and be a positive interval. Pass-through if neither is set (no break).
+    const hasBreakStart = obj.breakStart !== undefined && obj.breakStart !== null && obj.breakStart !== ''
+    const hasBreakEnd   = obj.breakEnd   !== undefined && obj.breakEnd   !== null && obj.breakEnd   !== ''
+    const next: DayHours = { open: obj.open, close: obj.close }
+    if (hasBreakStart !== hasBreakEnd) {
+      throw new AppError('BAD_REQUEST', `bookingHoursJson.${day}: breakStart and breakEnd must both be set or both omitted`, 400)
+    }
+    if (hasBreakStart && hasBreakEnd) {
+      if (typeof obj.breakStart !== 'string' || typeof obj.breakEnd !== 'string' ||
+          !validateHHmm(obj.breakStart) || !validateHHmm(obj.breakEnd)) {
+        throw new AppError('BAD_REQUEST', `bookingHoursJson.${day}: breakStart/breakEnd must be "HH:mm" 24-hour strings`, 400)
+      }
+      if (obj.breakStart >= obj.breakEnd) {
+        throw new AppError('BAD_REQUEST', `bookingHoursJson.${day}: breakStart must be earlier than breakEnd`, 400)
+      }
+      if (obj.breakStart < obj.open || obj.breakEnd > obj.close) {
+        throw new AppError('BAD_REQUEST', `bookingHoursJson.${day}: break window must fall within open/close`, 400)
+      }
+      next.breakStart = obj.breakStart
+      next.breakEnd   = obj.breakEnd
+    }
+    out[day] = next
   }
   return out
 }
@@ -488,6 +526,76 @@ export async function bootstrapPartner(input: BootstrapPartnerInput) {
 // ─── Outbound: sendPartnerEmail ──────────────────────────────────────────────
 
 const PARTNER_DOMAIN = 'myorbisresults.com'
+const MARKETING_BASE_URL = 'https://myorbisvoice.com'
+
+/**
+ * Build an email-client-safe signature block from a partner's profile fields.
+ * Table-based layout with inline styles — works in Gmail / Outlook / iOS Mail
+ * without CSS support. No flexbox, no external CSS, no JS.
+ *
+ * Pulls (all optional, gracefully omitted if missing):
+ *   - avatarUrl  → 64×64 circular image on the left
+ *   - displayName / firstName+lastName / slug — bold name line
+ *   - businessName → secondary line under name
+ *   - <slug>@myorbisresults.com → mailto link
+ *   - partnerPhone → tel link (E.164-normalized)
+ *   - landing page URL (myorbisvoice.com/p/<slug>/) → link
+ *
+ * Partners can still override with custom HTML via AffiliateAccount.emailSignature
+ * — when that field is non-empty the override wins. When empty (default), this
+ * auto-generated block is appended at send time.
+ */
+type SignaturePartner = {
+  slug:          string | null
+  displayName:   string | null
+  businessName:  string | null
+  avatarUrl:     string | null
+  partnerPhone:  string | null
+  user: { firstName: string | null; lastName: string | null; email: string }
+}
+
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+export function buildPartnerSignatureHtml(p: SignaturePartner): string {
+  if (!p.slug) return ''  // no slug = no platform email = no signature
+
+  const name = (p.displayName?.trim())
+    || [p.user.firstName, p.user.lastName].filter(Boolean).join(' ').trim()
+    || p.slug
+  const business = p.businessName?.trim() || ''
+  const email    = `${p.slug}@${PARTNER_DOMAIN}`
+  const phone    = p.partnerPhone?.trim() || ''
+  const landing  = `${MARKETING_BASE_URL}/p/${p.slug}/`
+  const avatar   = p.avatarUrl?.trim() || ''
+
+  const avatarCell = avatar
+    ? `<td valign="top" style="padding-right:14px;"><img src="${esc(avatar)}" width="64" height="64" alt="" style="border-radius:50%;display:block;border:0;outline:0;text-decoration:none;" /></td>`
+    : ''
+
+  const businessLine = business
+    ? `<div style="font-size:13px;color:#555;line-height:1.4;">${esc(business)}</div>`
+    : ''
+  const phoneLine = phone
+    ? `<div style="font-size:13px;line-height:1.5;"><a href="tel:${esc(phone.replace(/[^+\d]/g, ''))}" style="color:#0a7a8a;text-decoration:none;">${esc(phone)}</a></div>`
+    : ''
+
+  return [
+    '<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;color:#222;line-height:1.4;">',
+    '  <tr>',
+    avatarCell,
+    '    <td valign="top">',
+    `      <div style="font-size:15px;font-weight:bold;color:#111;line-height:1.4;">${esc(name)}</div>`,
+    businessLine,
+    `      <div style="font-size:13px;margin-top:6px;line-height:1.5;"><a href="mailto:${esc(email)}" style="color:#0a7a8a;text-decoration:none;">${esc(email)}</a></div>`,
+    phoneLine,
+    `      <div style="font-size:13px;margin-top:6px;line-height:1.5;"><a href="${esc(landing)}" style="color:#0a7a8a;text-decoration:none;">${esc(landing)}</a></div>`,
+    '    </td>',
+    '  </tr>',
+    '</table>',
+  ].filter(Boolean).join('\n')
+}
 
 export interface SendPartnerEmailOptions {
   to:        string | string[]   // recipient(s) — can be "Name <email>" or bare email
@@ -526,9 +634,17 @@ export async function sendPartnerEmail(partnerId: string, opts: SendPartnerEmail
 
   const recipients = Array.isArray(opts.to) ? opts.to : [opts.to]
 
-  // Compose final HTML body. Append signature if partner has one.
-  const html = partner.emailSignature
-    ? `${opts.html}\n<br><br>\n<div style="font-size:13px;color:#555;border-top:1px solid #eee;padding-top:12px;margin-top:24px;">${partner.emailSignature}</div>`
+  // Compose final HTML body. Signature precedence:
+  //   1. partner.emailSignature (custom HTML override) — if non-empty
+  //   2. auto-generated signature from profile fields — always present once
+  //      slug is set
+  // The wrapping <div> visually separates the signature with a thin border.
+  const customSig = partner.emailSignature?.trim()
+  const sigInner  = customSig && customSig.length > 0
+    ? customSig
+    : buildPartnerSignatureHtml(partner)
+  const html = sigInner
+    ? `${opts.html}\n<br><br>\n<div style="border-top:1px solid #eee;padding-top:12px;margin-top:24px;">${sigInner}</div>`
     : opts.html
 
   // Send via platform SMTP. nodemailer in email.service handles the wire.

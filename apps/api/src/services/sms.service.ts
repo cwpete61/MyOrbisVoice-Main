@@ -12,12 +12,20 @@
  * compliance (10DLC brand/campaign) scoped to the tenant.
  */
 import { prisma } from '../lib/prisma.js'
-import { getSubaccountClient } from './twilio-subaccount.service.js'
+import { getSubaccountClient, getPartnerSubaccountClient } from './twilio-subaccount.service.js'
 import { getTwilioClient } from './twilio.service.js'
 import { getConfigValue } from './system-config.service.js'
 import { writeAuditLog } from '../lib/audit.js'
 import { getEnv } from '@voiceautomation/config'
 import * as optOut from './opt-out.service.js'
+import {
+  deductCreditsForSend,
+  refundCreditsForFailedSend,
+  getPartnerFinancials,
+  maybeNotifyPartnerLowCredits,
+  type SmsChannel as PartnerSmsChannel,
+} from './partner-sms-credits.service.js'
+import { AppError } from '@voiceautomation/shared'
 import type { MessageChannel } from '@prisma/client'
 
 const STOP_KEYWORDS  = ['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT']
@@ -44,6 +52,27 @@ export interface SendMessageOptions {
   body:            string
   mediaUrls?:      string[]        // optional — presence implies MMS (or WhatsApp media)
   enrollmentId?:   string
+  /**
+   * Phase G.2 — when set, route this send through the partner's Twilio
+   * subaccount AND deduct credits from AffiliateAccount.smsCreditBalance.
+   * Throws INSUFFICIENT_CREDITS (HTTP 402) if balance < channel cost.
+   * If the provider send fails AFTER deduction, the deduction is refunded.
+   */
+  partnerId?:      string
+}
+
+/**
+ * Pick a partner-credit channel from the SMS service's channel + a rough
+ * segment count derived from body length (SMS body > 160 chars splits to
+ * 2 segments → "SMS_LONG" at 2 credits). MMS is flat 2.5. WhatsApp reserved.
+ */
+function partnerChannelFor(channel: MessageChannel, body: string): PartnerSmsChannel {
+  if (channel === 'WHATSAPP') return 'WHATSAPP'
+  if (channel === 'MMS')      return 'MMS'
+  // SMS: 1 segment = 1 credit, 2 segments = 2 credits. GSM-7 default 160 chars
+  // per segment; unicode collapses to 70 — we approximate with 160 since most
+  // partner SMS is plain ASCII.
+  return body.length > 160 ? 'SMS_LONG' : 'SMS'
 }
 
 export async function sendMessage(opts: SendMessageOptions): Promise<{ success: boolean; sid?: string; error?: string; channel: MessageChannel }> {
@@ -62,7 +91,9 @@ export async function sendMessage(opts: SendMessageOptions): Promise<{ success: 
 
   let client
   try {
-    client = await getSubaccountClient(opts.tenantId)
+    client = opts.partnerId
+      ? await getPartnerSubaccountClient(opts.partnerId)
+      : await getSubaccountClient(opts.tenantId)
   } catch (err) {
     const error = err instanceof Error ? err.message : 'Twilio not configured'
     return { success: false, error, channel }
@@ -85,6 +116,60 @@ export async function sendMessage(opts: SendMessageOptions): Promise<{ success: 
       deliveryStatus: 'queued',
     },
   })
+
+  // Partner-routed: deduct credits BEFORE hitting Twilio so we never send a
+  // message the partner didn't pay for. If Twilio then fails, we refund.
+  let partnerLedgerRowId: string | null = null
+  if (opts.partnerId) {
+    try {
+      // Phase G.2.1 — net-budget guard. Even if the partner has credits, if
+      // their lifetime real Twilio spend has consumed their lifetime pack
+      // value (margin gone), block the send. Protects the platform from a
+      // partner accidentally outrunning the pack's actual provider cost.
+      const financials = await getPartnerFinancials(opts.partnerId)
+      if (financials.status === 'OVER_BUDGET') {
+        // Async — don't block the failure return on email send
+        maybeNotifyPartnerLowCredits({ partnerId: opts.partnerId, reason: 'OVER_BUDGET' }).catch(() => null)
+        await prisma.messageLog.update({
+          where: { id: log.id },
+          data:  { deliveryStatus: 'failed', failedAt: new Date(), errorCode: 'PARTNER_OVER_BUDGET' },
+        })
+        return {
+          success: false,
+          error:   'Partner SMS pack value exhausted. Top up to keep sending.',
+          channel,
+        }
+      }
+
+      const partnerChannel = partnerChannelFor(channel, opts.body)
+      const deduction = await deductCreditsForSend({
+        partnerId:    opts.partnerId,
+        channel:      partnerChannel,
+        messageLogId: log.id,
+      })
+      partnerLedgerRowId = deduction.ledgerRowId
+
+      // After deduction succeeds, check whether THIS send dropped the partner
+      // into the LOW zone and fire a (deduped) warning email.
+      if (deduction.newBalance < 50 || financials.netCents < 200) {
+        maybeNotifyPartnerLowCredits({
+          partnerId: opts.partnerId,
+          reason:    deduction.newBalance < 50 ? 'LOW_BALANCE' : 'LOW_NET',
+        }).catch(() => null)
+      }
+    } catch (err) {
+      const isInsufficient = err instanceof AppError && err.code === 'INSUFFICIENT_CREDITS'
+      if (isInsufficient) {
+        maybeNotifyPartnerLowCredits({ partnerId: opts.partnerId, reason: 'LOW_BALANCE' }).catch(() => null)
+      }
+      const error = isInsufficient ? 'Partner has no SMS credits remaining' : (err instanceof Error ? err.message : 'Credit deduction failed')
+      await prisma.messageLog.update({
+        where: { id: log.id },
+        data:  { deliveryStatus: 'failed', failedAt: new Date(), errorCode: isInsufficient ? 'INSUFFICIENT_CREDITS' : 'CREDIT_ERROR' },
+      })
+      return { success: false, error, channel }
+    }
+  }
 
   try {
     const msg = await client.messages.create({
@@ -109,6 +194,14 @@ export async function sendMessage(opts: SendMessageOptions): Promise<{ success: 
       where: { id: log.id },
       data:  { deliveryStatus: 'failed', failedAt: new Date(), errorCode: error },
     })
+    // Refund the credit deduction since the send didn't actually go through.
+    if (opts.partnerId && partnerLedgerRowId) {
+      await refundCreditsForFailedSend({
+        partnerId:    opts.partnerId,
+        consumeRowId: partnerLedgerRowId,
+        note:         `provider_send_failed: ${error}`.slice(0, 200),
+      }).catch(() => null)
+    }
     return { success: false, error, channel }
   }
 }

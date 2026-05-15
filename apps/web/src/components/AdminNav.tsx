@@ -58,6 +58,7 @@ export function AdminNav() {
         // Phone Numbers / A2P have read paths Support uses; the write actions
         // inside those pages are individually role-gated
         { href: '/admin/phone-numbers', label: 'Phone Numbers',  icon: <PhoneIcon /> },
+        { href: '/admin/number-requests', label: 'Number Requests', icon: <PhoneIcon />, minTier: 'admin' },
         { href: '/admin/twilio-logs', label: 'Twilio Call Logs', icon: <CallLogsIcon /> },
         { href: '/admin/a2p',         label: 'A2P 10DLC',        icon: <A2PIcon /> },
         { href: '/admin/errors',      label: 'Errors',           icon: <ErrorsIcon /> },

@@ -22,7 +22,10 @@ interface TimeSlot {
   available: boolean
 }
 
-type DayHours = { open?: string; close?: string; closed?: boolean }
+// `breakStart` + `breakEnd` define an optional mid-day closed window (lunch /
+// staff break). Both must be set or both unset. When set, slots that overlap
+// [breakStart, breakEnd) are rejected the same way out-of-window slots are.
+type DayHours = { open?: string; close?: string; closed?: boolean; breakStart?: string; breakEnd?: string }
 type BusinessHoursMap = Record<string, DayHours>
 
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
@@ -154,6 +157,17 @@ export async function resolveTenantTimezone(tenantId: string, callerTz?: string)
  * search requests from offering 9 PM slots when nothing is on the
  * calendar that evening — the original bug from the 2026-05-07 test call.
  */
+// "HH:MM" → minutes since midnight. Returns NaN on malformed input so callers
+// can defensively reject. Used by isWithinBusinessHours so day-window checks
+// use proper integer math instead of lexicographic string compares (the latter
+// silently passed slots that crossed midnight on the same calendar day, e.g.
+// a 11:53pm Mon slot whose end at 00:23 Tue would compare as < "17:00").
+function hhmmToMinutes(s: string): number {
+  const m = /^(\d{2}):(\d{2})$/.exec(s)
+  if (!m) return NaN
+  return parseInt(m[1]!, 10) * 60 + parseInt(m[2]!, 10)
+}
+
 function isWithinBusinessHours(
   slotStartMs: number,
   slotEndMs:   number,
@@ -167,9 +181,30 @@ function isWithinBusinessHours(
   if (dayHours.closed) return false
   if (!dayHours.open || !dayHours.close) return true
 
-  const startTime = timeOfDayInTz(slotStartMs, timezone)
-  const endTime   = timeOfDayInTz(slotEndMs,   timezone)
-  return startTime >= dayHours.open && endTime <= dayHours.close
+  // Use minute math so we can correctly detect midnight-wrap slots and
+  // out-of-window starts. A slot whose end wraps past midnight gets an end
+  // time that's numerically smaller than its start — reject those outright
+  // because business hours don't wrap.
+  const startMin = hhmmToMinutes(timeOfDayInTz(slotStartMs, timezone))
+  const endMin   = hhmmToMinutes(timeOfDayInTz(slotEndMs,   timezone))
+  const openMin  = hhmmToMinutes(dayHours.open)
+  const closeMin = hhmmToMinutes(dayHours.close)
+  if ([startMin, endMin, openMin, closeMin].some(Number.isNaN)) return false
+  if (endMin <= startMin) return false                      // midnight wrap
+  if (startMin < openMin || endMin > closeMin) return false // out of window
+
+  // Reject slots that overlap the break window [breakStart, breakEnd).
+  // Half-open on the right so a slot that ENDS exactly at breakStart is fine,
+  // and a slot that STARTS exactly at breakEnd is fine — same convention as
+  // the busy-block check above.
+  if (dayHours.breakStart && dayHours.breakEnd) {
+    const breakStartMin = hhmmToMinutes(dayHours.breakStart)
+    const breakEndMin   = hhmmToMinutes(dayHours.breakEnd)
+    if (!Number.isNaN(breakStartMin) && !Number.isNaN(breakEndMin)) {
+      if (startMin < breakEndMin && endMin > breakStartMin) return false
+    }
+  }
+  return true
 }
 
 // Both partner (E.3) and tenant (E.5) store working hours with short day keys:
@@ -190,9 +225,17 @@ function shortHoursToBusinessHoursMap(raw: unknown): BusinessHoursMap | null {
     const v = src[short]
     if (v === null) { out[long] = { closed: true }; any = true; continue }
     if (v && typeof v === 'object') {
-      const obj = v as { open?: unknown; close?: unknown }
+      const obj = v as { open?: unknown; close?: unknown; breakStart?: unknown; breakEnd?: unknown }
       if (typeof obj.open === 'string' && typeof obj.close === 'string') {
-        out[long] = { open: obj.open, close: obj.close }
+        const next: DayHours = { open: obj.open, close: obj.close }
+        // Carry the break window through if both ends are present + well-formed.
+        // The sanitizer in partner/tenant.service.ts already validated ordering;
+        // here we just trust strings and skip if missing/malformed.
+        if (typeof obj.breakStart === 'string' && typeof obj.breakEnd === 'string') {
+          next.breakStart = obj.breakStart
+          next.breakEnd   = obj.breakEnd
+        }
+        out[long] = next
         any = true
       }
     }
@@ -325,6 +368,23 @@ export async function searchAvailability(
   const alternateSlots: TimeSlot[] = []
 
   let cursor = timeMin.getTime()
+
+  // Snap cursor UP to the next wall-clock increment boundary in the business
+  // timezone so pills always read as :00 / :30 etc. Without this, an effective
+  // start of 15:53 (now + 60-min notice while it's 14:53) bleeds an offset
+  // through every pill on the day. Snap is tz-aware so DST + offset shifts
+  // don't drift the grid.
+  {
+    const wallMinStr = timeOfDayInTz(cursor, effectiveTimezone).split(':')[1] ?? '0'
+    const wallMin    = parseInt(wallMinStr, 10)
+    const remainder  = wallMin % DEFAULT_SLOT_INCREMENT_MINUTES
+    if (remainder !== 0) {
+      cursor += (DEFAULT_SLOT_INCREMENT_MINUTES - remainder) * 60 * 1000
+    }
+    // Also zero out seconds/ms — incoming `now` carries them through which
+    // would re-introduce a :MM:SS offset on the pills.
+    cursor = cursor - (cursor % 60000)
+  }
   while (cursor + durationMs <= timeMax.getTime()) {
     const slotEnd = cursor + durationMs
     const isBusy  = busyBlocks.some(b => cursor < b.end && slotEnd > b.start)

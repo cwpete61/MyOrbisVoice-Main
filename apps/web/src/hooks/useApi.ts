@@ -3,7 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from '@/lib/auth'
 
-const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000'
+// Exported so callers that build their own fetch (multipart uploads, EventSource,
+// websockets) can prefix the same base URL apiFetch uses — keeps prod / local
+// switching consistent across every call site.
+export const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000'
 
 function buildHeaders(token: string | null, extra: Record<string, string> = {}): Record<string, string> {
   const h: Record<string, string> = { 'Content-Type': 'application/json', ...extra }

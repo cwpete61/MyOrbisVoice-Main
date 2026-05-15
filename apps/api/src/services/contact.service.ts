@@ -11,6 +11,7 @@ export async function listContacts(tenantId: string, opts: {
   const { search, page = 1, limit = 50, stageId } = opts
   const where = {
     tenantId,
+    deletedAt: null,
     ...(search ? {
       OR: [
         { fullName:  { contains: search, mode: 'insensitive' as const } },
@@ -39,7 +40,7 @@ export async function listContacts(tenantId: string, opts: {
 
 export async function getContact(tenantId: string, id: string) {
   return prisma.contact.findFirst({
-    where:   { id, tenantId },
+    where:   { id, tenantId, deletedAt: null },
     include: { pipelineStage: { select: { id: true, name: true, color: true, sortOrder: true } } },
   })
 }
@@ -153,5 +154,13 @@ export async function updateContact(tenantId: string, id: string, data: {
 }
 
 export async function deleteContact(tenantId: string, id: string) {
-  await prisma.contact.deleteMany({ where: { id, tenantId } })
+  // Soft-delete: sets deletedAt rather than removing the row. The contact
+  // disappears from list queries (which all filter `deletedAt: null`) but
+  // every conversation / appointment / message-log relation stays intact.
+  // Recovery is a one-row UPDATE that clears deletedAt. Hard purge is
+  // reserved for explicit GDPR / compliance flows (separate admin path).
+  await prisma.contact.updateMany({
+    where: { id, tenantId, deletedAt: null },
+    data:  { deletedAt: new Date() },
+  })
 }

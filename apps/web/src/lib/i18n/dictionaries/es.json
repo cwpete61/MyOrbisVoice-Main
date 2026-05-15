@@ -48,6 +48,18 @@
     },
     "soonPill": "Pronto"
   },
+  "partnerLeads": {
+    "title": "Prospectos",
+    "subtitle": "Generación de prospectos integrada para partners — encontrar empresas que encajan con MyOrbisVoice, calificadas y listas para conversar.",
+    "soonBadge": "Próximamente",
+    "heroTitle": "Generación de prospectos, integrada en tu portal de partner",
+    "heroBody": "Estamos construyendo un motor de generación de prospectos que muestra empresas de servicios calificadas directamente en tu panel — pre-evaluadas por encaje, con datos de contacto, vertical y el primer mensaje correcto para iniciar la conversación.",
+    "feature1": "Prospectos pre-calificados — pequeñas empresas de servicios en las verticales donde MyOrbisVoice mejor convierte",
+    "feature2": "Filtros por vertical — dental, legal, servicios para el hogar, belleza, fitness, salón, bienes raíces, más",
+    "feature3": "Datos de contacto + primeras frases — teléfono, email y un mensaje inicial personalizado que envías con un clic",
+    "feature4": "Inscripción de un clic en tu CRM y campañas de outreach — se acabaron los hand-offs por hoja de cálculo",
+    "notify": "Construido a partir de flujos reales de partners. Te avisamos en cuanto esté abierto."
+  },
   "partnerNav": {
     "dashboard": "Panel",
     "mailbox": "Buzón",
@@ -55,6 +67,7 @@
     "conversations": "Conversaciones",
     "crm": "CRM",
     "contacts": "Contactos",
+    "leads": "Prospectos",
     "campaigns": "Campañas",
     "brandSubtitle": "Portal de Partners",
     "referrals": "Enlaces de referido",
@@ -65,7 +78,119 @@
     "marketVault": "Bóveda de ventas",
     "help": "Ayuda",
     "soonPill": "Pronto",
-    "profile": "Perfil"
+    "profile": "Perfil",
+    "phoneNumbers": "Números de teléfono"
+  },
+  "partnerPhoneNumbers": {
+    "title":    "Números de teléfono",
+    "subtitle": "Números de Twilio asignados a tu cuenta de partner. Las llamadas entrantes y los SMS a estos números se enrutan a tu agente.",
+    "loading":  "Cargando…",
+    "adminNote": "Los números se compran al instante cuando los solicitas — Stripe carga tu tarjeta en archivo por el primer mes y el número enruta llamadas entrantes de inmediato. El administrador puede deshabilitar cualquier número por motivos de política.",
+    "buyNew":     "Comprar un nuevo número",
+    "hideSearch": "Ocultar búsqueda",
+    "requestThis": "Solicitar este número",
+    "requesting":  "Solicitando…",
+    "requestSent": "Solicitud enviada para {number}. El administrador la revisará pronto.",
+    "subaccount": {
+      "provisioned": "Subcuenta de Twilio aprovisionada (estado: {status}). Los nuevos números se enrutan aquí.",
+      "notYet":      "Aún no hay subcuenta de Twilio. Se crea automáticamente la primera vez que solicitas un número."
+    },
+    "empty": {
+      "title":        "Aún no hay números",
+      "body":         "Haz clic en \"Comprar un nuevo número\" arriba para buscar el inventario de Twilio.",
+      "contactAdmin": "admin@myorbisvoice.com"
+    },
+    "search": {
+      "heading":        "Buscar inventario de Twilio",
+      "tierLabel":      "Nivel de capacidad",
+      "areaCodeLabel":  "Código de área (opcional)",
+      "searchBtn":      "Buscar números",
+      "searching":      "Buscando…",
+      "approvalNote":   "Haz clic en un número para comprarlo. La compra en Twilio + el cargo en Stripe se ejecutan de inmediato — tu tarjeta en archivo se factura por el primer mes. Cancela cuando quieras para liberar el número."
+    },
+    "tier": {
+      "VOICE":     { "label": "Voz",         "desc": "Local EE.UU., voz entrante/saliente, sin SMS" },
+      "VOICE_SMS": { "label": "Voz + SMS",   "desc": "Local EE.UU., voz + SMS (requiere A2P)" },
+      "TOLLFREE":  { "label": "Sin costo",   "desc": "Voz + SMS, verificación independiente" }
+    },
+    "status": {
+      "PENDING":   "Pendiente de revisión",
+      "APPROVED":  "Aprobado",
+      "PURCHASED": "Activo",
+      "REJECTED":  "Rechazado",
+      "RELEASED":  "Liberado"
+    },
+    "col": {
+      "number":       "Número",
+      "label":        "Etiqueta",
+      "capabilities": "Capacidades",
+      "tier":         "Nivel",
+      "status":       "Estado",
+      "price":        "Precio",
+      "added":        "Agregado",
+      "requested":    "Solicitado",
+      "location":     "Ubicación",
+      "actions":      "Acciones"
+    },
+    "cap": {
+      "inbound":  "Voz entrante",
+      "outbound": "Voz saliente",
+      "sms":      "SMS"
+    },
+    "card": {
+      "onFile":   "Tarjeta en archivo: {brand} •••• {last4}",
+      "missing":  "Sin tarjeta en archivo. Agrega una tarjeta para habilitar la compra de números — la aprobación del administrador la requiere.",
+      "addCta":   "Agregar tarjeta",
+      "replace":  "Reemplazar tarjeta",
+      "opening":  "Abriendo Stripe…",
+      "saved":    "Tarjeta guardada. Ya puedes solicitar números."
+    },
+    "credits": {
+      "heading":         "Créditos SMS / MMS",
+      "subtitle":        "Compra créditos para enviar SMS y MMS desde tus números. Los créditos no expiran — se acumulan mes a mes.",
+      "balanceLabel":    "créditos",
+      "compactHeading":  "El SMS se vende por separado. Precios por paquete:",
+      "packCta":         "Compra {credits} por {price}",
+      "buyHelp":         "Cargo único a tu tarjeta en archivo.",
+      "needCard":        "Agrega una tarjeta arriba primero.",
+      "opening":         "Abriendo Stripe…",
+      "rolloverNote":    "Los créditos nunca expiran. 1 crédito = 1 segmento de SMS, 2 = SMS largo, 2.5 = MMS.",
+      "purchaseSuccess": "Créditos agregados. Saldo actualizado.",
+      "col": {
+        "pack5":  "Paquete $5",
+        "pack10": "Paquete $10"
+      },
+      "row": {
+        "sms":     "SMS estándar",
+        "smsLong": "SMS largo (2 segmentos)",
+        "mms":     "MMS"
+      },
+      "financials": {
+        "purchased":         "Comprado {amount}",
+        "spent":             "Gastado {amount}",
+        "net":               "Neto {amount}",
+        "overBudgetWarning": "El valor de tu paquete está agotado. El envío de SMS está pausado hasta que recargues — compra otro paquete abajo.",
+        "status": {
+          "HEALTHY":     "Saludable",
+          "LOW":         "Bajo",
+          "OVER_BUDGET": "Sobre presupuesto"
+        }
+      }
+    },
+    "monthly": {
+      "heading":        "Cargos mensuales por número",
+      "perMonth":       "mes",
+      "localLabel":     "Número local de EE.UU. (llamadas entrantes/salientes)",
+      "tollfreeLabel":  "Número gratuito (voz + SMS listo)",
+      "note":           "Stripe carga automáticamente tu tarjeta en archivo cada mes. Cancela cuando quieras — el número se libera al final del período actual. El envío de SMS es aparte (paquetes de créditos abajo)."
+    },
+    "whatsapp": {
+      "heading":     "Mensajes de WhatsApp",
+      "subtitle":    "Envía y recibe WhatsApp desde tus números de partner. Próximamente — precio aún por confirmar.",
+      "comingSoon":  "Próximamente"
+    },
+    "cancelBtn":  "Cancelar suscripción",
+    "canceling":  "Cancelando…"
   },
   "partnerCrm": {
     "title":            "Pipeline CRM",
@@ -170,7 +295,8 @@
     "searchPlaceholder": "Buscar artículos…",
     "noResults":         "Ningún artículo coincide con \"{query}\".",
     "tips":              "CONSEJOS",
-    "contactBlock":      "¿Sigues atorado? Escríbenos a"
+    "contactBlock":      "¿Sigues atorado? Escríbenos a",
+    "lastUpdated":       "Última actualización {date}"
   },
   "partnerConversations": {
     "title":               "Conversaciones",
@@ -261,6 +387,8 @@
       "fillAllRequired":    "Completa Para, Asunto y Mensaje antes de enviar.",
       "sendFailed":         "Falló el envío. Inténtalo de nuevo.",
       "signatureNote":      "Enviado desde tu dirección de partner. Tu firma guardada se adjunta automáticamente.",
+      "signatureLabel":     "Vista previa de la firma",
+      "signatureHelp":      "Esto se adjunta debajo de tu mensaje al enviarlo. Edítalo en Perfil → Configuración de correo.",
       "templateLabel":      "Usar una plantilla",
       "templateHelp":       "Elige un punto de partida. Tu nombre y negocio se completan automáticamente. Edita lo que quieras antes de enviar.",
       "templateNone":       "— Empezar desde cero —",
@@ -925,6 +1053,11 @@
     "subtitle": "Tus datos de partner y preferencias de pago.",
     "loading": "Cargando…",
     "noAccount": "No se encontró cuenta de partner. Solicítala desde el Panel.",
+    "statusBanner": {
+      "pending": "Tu perfil de partner está pendiente de aprobación. Puedes editar tu perfil mientras lo revisamos — el agendamiento, los pagos y las conversaciones se activan cuando tu cuenta esté completamente aprovisionada.",
+      "paused": "Tu cuenta de partner está pausada. Las ediciones de perfil siguen disponibles, pero el agendamiento, las campañas y los pagos quedan deshabilitados hasta que se restablezca el acceso.",
+      "disabled": "Tu cuenta de partner ha sido deshabilitada. Contacta a support@myorbisvoice.com si crees que esto es un error."
+    },
     "accountInfoHeading": "INFORMACIÓN DE LA CUENTA",
     "accountId": "ID de cuenta",
     "status": "Estado",
@@ -956,7 +1089,7 @@
     "savingMarketing":      "Guardando…",
     "avatar": {
       "label":                "Foto",
-      "help":                 "Aparece en tus páginas de partner y en la cabecera de tu Buzón. Máximo 2 MB, formatos PNG / JPEG / WebP / GIF.",
+      "help":                 "Aparece en tus páginas de partner y en la cabecera de tu Buzón. Máximo 2 MB, formatos PNG / JPEG / WebP.",
       "upload":               "Subir foto",
       "replace":              "Reemplazar foto",
       "uploading":            "Subiendo…",
@@ -973,6 +1106,29 @@
       "help":        "Tu negocio o marca. Aparece junto a tu nombre en las páginas de partner.",
       "placeholder": "Rivera Local Marketing"
     },
+    "address": {
+      "street": {
+        "label":       "Dirección",
+        "help":        "Dirección postal pública que aparece en tus páginas de partner y en el pie legal de los correos de marketing que envías. La ley CAN-SPAM exige una dirección postal real.",
+        "placeholder": "Calle Principal 123"
+      },
+      "unit": {
+        "label":       "Unidad",
+        "placeholder": "Suite 200"
+      },
+      "city": {
+        "label":       "Ciudad",
+        "placeholder": "Allentown"
+      },
+      "state": {
+        "label":       "Estado",
+        "placeholder": "PA"
+      },
+      "postalCode": {
+        "label":       "Código postal",
+        "placeholder": "18102"
+      }
+    },
     "partnerPhone": {
       "label": "Teléfono (público)",
       "help":  "El número al que los prospectos pueden llamarte o escribirte. Aparece en el ribbon de partner en tus páginas."
@@ -988,9 +1144,16 @@
       "help":  "Generado automáticamente desde tu slug. Cualquiera puede enviarte aquí; todo llega a tu Buzón. Envía desde esta dirección usando la pestaña Redactar."
     },
     "emailSignature": {
-      "label":       "Firma de correo",
-      "help":        "Se permite HTML. Se adjunta a cada correo que envías desde tu Buzón. Mantenla corta y profesional.",
-      "placeholder": "<p>— Alex<br>Rivera Local Marketing<br>📞 555-123-4567</p>"
+      "label":         "Firma de correo",
+      "help":          "Se permite HTML. Se adjunta a cada correo que envías desde tu Buzón. Mantenla corta y profesional.",
+      "helpAuto":      "Generada automáticamente desde tu perfil (logo, nombre, negocio, correo, teléfono, página de partner). Se actualiza sola cuando cambias esos campos. Se adjunta a cada correo que envías.",
+      "helpCustom":    "Estás usando tu HTML personalizado (configurado abajo). La firma automática queda desactivada hasta que quites el HTML personalizado.",
+      "previewTitle":  "Vista previa de la firma de correo",
+      "showCustom":    "Usar HTML personalizado (avanzado)",
+      "hideCustom":    "Ocultar HTML personalizado",
+      "customHelp":    "Reemplaza la firma automática con tu propio HTML. Déjalo vacío para usar la firma automática.",
+      "resetToAuto":   "Borrar y usar la firma automática",
+      "placeholder":   "<p>— Alex<br>Rivera Local Marketing<br>📞 555-123-4567</p>"
     },
     "forwardEmails": {
       "label": "Reenviar correos de la plataforma a mi correo de registro",
@@ -1032,6 +1195,23 @@
       "open":             "Abierto",
       "closed":           "Cerrado",
       "to":               "a",
+      "breakFrom":        "descanso",
+      "breakTo":          "a",
+      "addBreak":         "+ descanso",
+      "removeBreak":      "quitar descanso",
+      "openTimeAriaLabel":  "Hora de apertura",
+      "closeTimeAriaLabel": "Hora de cierre",
+      "breakStartAriaLabel": "Inicio del descanso",
+      "breakEndAriaLabel":   "Fin del descanso",
+      "breakAll": {
+        "label":           "Descanso de almuerzo, todos los días abiertos",
+        "to":              "a",
+        "applyAll":        "Aplicar a todos los días abiertos",
+        "clearAll":        "Borrar todos los descansos",
+        "help":            "Elige el horario una vez y haz clic en Aplicar. Los días cerrados se omiten. Edita cualquier día individualmente abajo si es distinto.",
+        "startAriaLabel":  "Hora de inicio del descanso (todos los días)",
+        "endAriaLabel":    "Hora de fin del descanso (todos los días)"
+      },
       "days": {
         "mon": "Lun",
         "tue": "Mar",
@@ -3882,11 +4062,28 @@
     "loadingSlots":      "Buscando horarios libres…",
     "pickDate":          "Elige un día",
     "pickTime":          "Elige una hora",
+    "selectTime":        "Selecciona una hora de cita",
     "noSlots":           "No hay horarios libres este día. Prueba otro día.",
+    "noSlotsShort":      "—",
     "bookWith":          "Agenda con {name}",
     "slotDurationLabel": "Cita de {min} minutos",
     "calendarNotReady":  "Este partner está terminando la configuración. Las reservas estarán disponibles pronto.",
     "yourDetails":       "Tus datos",
+    "businessHours":     "Horario de atención",
+    "durationLine":      "Citas de {min} min",
+    "inviteLine":        "Invitación al calendario enviada por correo después de reservar",
+    "weeklyHours":       "Horario semanal",
+    "dayClosed":         "Cerrado",
+    "breakLine":         "Descanso {start}–{end}",
+    "noticeMinutes":     "Aviso de {n} min requerido",
+    "noticeHours":       "Aviso de {n} h requerido",
+    "advanceLine":       "Reserva con hasta {n} días de antelación",
+    "prevWeek":          "Semana anterior",
+    "nextWeek":          "Semana siguiente",
+    "prevMonth":         "Mes anterior",
+    "nextMonth":         "Mes siguiente",
+    "today":             "Hoy",
+    "back":              "Atrás",
     "submitCta":         "Confirmar reserva",
     "submitting":        "Reservando…",
     "submitFailed":      "No se pudo completar la reserva. Inténtalo de nuevo o elige otra hora.",

@@ -47,6 +47,13 @@ services:
     networks:
       - internal
       - caddy_app_edge
+    # Persist uploaded files (avatars, partner-page assets, etc.) across
+    # container rebuilds. Without this, every API deploy wipes the writable
+    # layer — meaning every partner avatar disappears on the next deploy.
+    # The path matches the UPLOADS_DIR default in apps/api code; override
+    # via env if you ever need to relocate.
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -201,6 +208,7 @@ volumes:
   postgres_data:
   redis_data:
   n8n_data:
+  uploads_data:  # /app/uploads — avatars + partner page assets; see api service
 
 networks:
   internal:

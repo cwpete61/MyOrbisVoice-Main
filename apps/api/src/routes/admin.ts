@@ -124,12 +124,23 @@ router.post('/tenants/bulk-delete', requirePlatformSuperAdmin, async (req, res, 
       },
     })
 
-    const result = await prisma.tenant.deleteMany({ where: { id: { in: ids } } })
+    // Soft-delete: set deletedAt instead of removing the rows. listTenants
+    // already filters `deletedAt: null` so these tenants disappear from the
+    // admin UI immediately, while every row + relation stays in the DB and
+    // can be restored by clearing the timestamp (admin → restore endpoint
+    // to be added in a follow-up session). Compliance-grade hard purge
+    // remains available via the test-tenants cleanup endpoint (different
+    // scope) or by editing the deletedAt column directly with DBA access.
+    const now = new Date()
+    const result = await prisma.tenant.updateMany({
+      where: { id: { in: ids }, deletedAt: null },
+      data:  { deletedAt: now },
+    })
 
     await writeAuditLogFromRequest(req, {
       actorType:   'USER',
       actorUserId: req.user!.id,
-      action:      'admin.tenants_bulk_deleted',
+      action:      'admin.tenants_bulk_soft_deleted',
       targetType:  'Tenant',
       metadataJson: {
         deletedCount: result.count,
@@ -1374,6 +1385,137 @@ router.post('/phone-numbers/purchase', requirePlatformAdmin, async (req, res, ne
   } catch (err) { next(err) }
 })
 
+// ─── Partner number-purchase request queue (Phase G.1.B) ────────────────────
+//
+// Partners search Twilio inventory + click "Request" — that lands a PENDING
+// PhoneNumber row in this queue. Admin reviews, then approves (triggers
+// actual Twilio buy + assigns to partner's subaccount) or rejects.
+//
+// In G.1.B-2, Stripe Subscription creation will happen INSIDE approveRequest
+// — for now approval just provisions the number and bills are handled
+// manually until billing wiring lands.
+
+router.get('/phone-number-requests', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const status = (req.query['status'] as string | undefined) ?? 'PENDING'
+    const validStatuses = ['PENDING', 'APPROVED', 'PURCHASED', 'REJECTED', 'RELEASED']
+    if (!validStatuses.includes(status)) {
+      throw new AppError('VALIDATION_ERROR', `status must be one of: ${validStatuses.join(', ')}`, 422)
+    }
+    const items = await prisma.phoneNumber.findMany({
+      where:  { purchaseStatus: status as never, partnerId: { not: null } },
+      include: {
+        partner: { include: { user: { select: { email: true, firstName: true, lastName: true } } } },
+      },
+      orderBy: { requestedAt: 'desc' },
+      take: 200,
+    })
+    res.json({
+      data: {
+        items: items.map(n => ({
+          id:                    n.id,
+          phoneNumber:           n.e164Number,
+          label:                 n.displayLabel,
+          tier:                  n.partnerCapabilityTier,
+          monthlyPriceCents:     n.monthlyPriceCents,
+          purchaseStatus:        n.purchaseStatus,
+          a2pStatus:             n.a2pStatus,
+          requestedAt:           n.requestedAt,
+          approvedAt:            n.approvedAt,
+          rejectionReason:       n.rejectionReason,
+          partner: n.partner ? {
+            id:          n.partner.id,
+            slug:        n.partner.slug,
+            displayName: n.partner.displayName,
+            email:       n.partner.user.email,
+            name:        [n.partner.user.firstName, n.partner.user.lastName].filter(Boolean).join(' ').trim(),
+          } : null,
+        })),
+        total: items.length,
+      },
+    })
+  } catch (err) { next(err) }
+})
+
+// Phase G.2.2 — partner-side flow auto-provisions on request, so PENDING
+// rows only land here when the previous auto-provision attempt failed (card
+// decline, number race). Admins can retry the provisioning by hitting this
+// endpoint after the partner fixes their card.
+router.post('/phone-number-requests/:id/approve', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const id = req.params['id']!
+    const { provisionPartnerNumber } = await import('../services/partner-billing.service.js')
+    const result = await provisionPartnerNumber({
+      phoneNumberRowId: id,
+      actorUserId:      req.user!.id,
+      actorType:        'ADMIN',
+    })
+    res.json({ data: result })
+  } catch (err) { next(err) }
+})
+
+// Phase G.2.2 — admin can disable any provisioned partner number. Cancels
+// the Stripe Subscription (which triggers number release via webhook). Same
+// effect as the partner-side cancel, but executable by admin support staff.
+router.post('/phone-number-requests/:id/disable', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const id = req.params['id']!
+    const reason = (req.body?.reason as string | undefined)?.trim() || null
+    const row = await prisma.phoneNumber.findUnique({
+      where:  { id },
+      select: { id: true, partnerId: true, e164Number: true, purchaseStatus: true, stripeSubscriptionId: true },
+    })
+    if (!row) throw new AppError('NOT_FOUND', 'Number not found', 404)
+    if (row.purchaseStatus !== 'PURCHASED') {
+      throw new AppError('CONFLICT', `Number is ${row.purchaseStatus}; only PURCHASED numbers can be disabled`, 409)
+    }
+
+    const { cancelPartnerNumberSubscription } = await import('../services/partner-billing.service.js')
+    await cancelPartnerNumberSubscription(id)
+
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.partner_number.disabled',
+      targetType:   'PhoneNumber',
+      targetId:     id,
+      metadataJson: { phoneNumber: row.e164Number, partnerId: row.partnerId, reason },
+    })
+
+    res.json({ data: { id, status: 'CANCELING', message: 'Subscription canceled. Number will be released on period end.' } })
+  } catch (err) { next(err) }
+})
+
+router.post('/phone-number-requests/:id/reject', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const id = req.params['id']!
+    const { reason } = (req.body ?? {}) as { reason?: string }
+    const row = await prisma.phoneNumber.findUnique({ where: { id } })
+    if (!row) throw new AppError('NOT_FOUND', 'Request not found', 404)
+    if (row.purchaseStatus !== 'PENDING') {
+      throw new AppError('CONFLICT', `Request is already ${row.purchaseStatus}`, 409)
+    }
+    const updated = await prisma.phoneNumber.update({
+      where: { id },
+      data: {
+        purchaseStatus:  'REJECTED',
+        rejectionReason: (reason ?? '').trim() || 'No reason provided',
+        approvedAt:      new Date(),
+        approvedByUserId: req.user!.id,
+      },
+    })
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.partner_number.rejected',
+      targetType:   'PhoneNumber',
+      targetId:     id,
+      metadataJson: { phoneNumber: row.e164Number, partnerId: row.partnerId, reason: updated.rejectionReason },
+    })
+    res.json({ data: { id: updated.id, status: updated.purchaseStatus } })
+  } catch (err) { next(err) }
+})
+
 // GET /api/admin/phone-numbers/destinations — list of valid reassign targets:
 // the master account + every tenant subaccount with its display name. Used by
 // the reassign modal to populate the destination dropdown.
@@ -1479,24 +1621,31 @@ router.post('/phone-numbers/:sid/reassign', requirePlatformAdmin, async (req, re
       // Moving back to master → delete tenant row if it exists
       if (existing) await prisma.phoneNumber.delete({ where: { id: existing.id } })
     } else if (sourceAccountSid === masterAccountSid && targetTenantId) {
-      // Moving from master to subaccount → create new tenant row
-      await prisma.phoneNumber.upsert({
-        where:  { e164Number: beforeNumber.phoneNumber },
-        create: {
-          tenantId:            targetTenantId,
-          twilioNumberSid:     sid,
-          twilioSubaccountSid: targetAccountSid,
-          e164Number:          beforeNumber.phoneNumber,
-          monthlyPriceCents:   115,
-          isInboundEnabled:    true,
-          isOutboundEnabled:   true,
-          isSmsEnabled:        true,
-        },
-        update: {
-          tenantId:            targetTenantId,
-          twilioSubaccountSid: targetAccountSid,
-        },
+      // Moving from master to subaccount → create new tenant row.
+      // Done as findFirst + update/create since e164Number is no longer
+      // unique (PENDING + REJECTED partner requests are allowed duplicates).
+      const existingPurchased = await prisma.phoneNumber.findFirst({
+        where: { e164Number: beforeNumber.phoneNumber, purchaseStatus: 'PURCHASED' },
       })
+      if (existingPurchased) {
+        await prisma.phoneNumber.update({
+          where: { id: existingPurchased.id },
+          data:  { tenantId: targetTenantId, twilioSubaccountSid: targetAccountSid },
+        })
+      } else {
+        await prisma.phoneNumber.create({
+          data: {
+            tenantId:            targetTenantId,
+            twilioNumberSid:     sid,
+            twilioSubaccountSid: targetAccountSid,
+            e164Number:          beforeNumber.phoneNumber,
+            monthlyPriceCents:   115,
+            isInboundEnabled:    true,
+            isOutboundEnabled:   true,
+            isSmsEnabled:        true,
+          },
+        })
+      }
     } else if (targetTenantId) {
       // Moving between subaccounts → update tenantId + subaccountSid
       if (existing) {

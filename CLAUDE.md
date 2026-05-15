@@ -127,6 +127,25 @@ The bilingual rule above is mandatory **and** mechanically enforced by tooling s
 
 When in doubt: run `pnpm i18n:check`. The scanner is the source of truth — if it's clean, the i18n state is clean.
 
+## Screenshot rule — MANDATORY
+
+**Every help-center / docs / marketing screenshot captured from the running
+system must be in LIGHT MODE. No dark-mode screenshots — ever.**
+
+Reason: help screenshots embed into partner emails, printed onboarding
+material, the help center itself, partner pitch decks, and the marketing
+site. Dark-mode captures look broken against light surfaces.
+
+The `pnpm capture-screenshots` script enforces this automatically (forces
+`prefers-color-scheme: light` + sets `localStorage.va_theme = 'light'`
+before first paint). When taking screenshots manually, toggle the theme
+to light first via the in-app toggle.
+
+Applies to: `apps/web/public/help-screenshots/`,
+`apps/web/public/admin-help-screenshots/`, marketing-site product shots,
+README / docs images, video thumbnails, partner pitch material. Does NOT
+apply to screenshots inside an issue/PR explaining a dark-mode-only bug.
+
 ## gstack
 
 Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.

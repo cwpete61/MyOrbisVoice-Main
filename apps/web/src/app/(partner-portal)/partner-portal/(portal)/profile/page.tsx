@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { apiFetch } from '@/hooks/useApi'
+import { apiFetch, API_BASE } from '@/hooks/useApi'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { AggressionTierSelector, type AggressionTier } from '@/components/AggressionTierSelector'
 import { TimezoneSelect } from '@/components/TimezoneSelect'
@@ -37,6 +37,12 @@ type Me = {
     referralCode:          string
     totalEarnedCents:      number
     totalPaidCents:        number
+    // Public mailing address (Phase F.5)
+    partnerStreet:         string | null
+    partnerUnit:           string | null
+    partnerCity:           string | null
+    partnerState:          string | null
+    partnerPostalCode:     string | null
   }
 }
 
@@ -81,9 +87,22 @@ export default function AffiliateProfilePage() {
   const [partnerPhone, setPartnerPhone] = useState('')
   const [businessName, setBusinessName] = useState('')
   const [emailSignature, setEmailSignature] = useState('')
+  // Live-rendered signature preview HTML (fetched from /partner/signature-preview).
+  // Reflects either the saved custom override or the auto-generated default,
+  // matching exactly what gets appended to outbound mail.
+  const [signaturePreviewHtml, setSignaturePreviewHtml] = useState<string>('')
+  const [signaturePreviewSource, setSignaturePreviewSource] = useState<'auto' | 'custom'>('auto')
+  const [showCustomSignature, setShowCustomSignature] = useState(false)
   const [calendarId, setCalendarId] = useState('')
   const [forwardPlatformEmails, setForwardPlatformEmails] = useState(true)
   const [notifyAppointmentsEnabled, setNotifyAppointmentsEnabled] = useState(true)
+  // Public mailing address (Phase F.5). Used on partner pages + CAN-SPAM
+  // footer when the partner sends bulk marketing email.
+  const [partnerStreet,     setPartnerStreet]     = useState('')
+  const [partnerUnit,       setPartnerUnit]       = useState('')
+  const [partnerCity,       setPartnerCity]       = useState('')
+  const [partnerState,      setPartnerState]      = useState('')
+  const [partnerPostalCode, setPartnerPostalCode] = useState('')
   const [savingMarketing, setSavingMarketing] = useState(false)
   const [savedMarketing, setSavedMarketing] = useState(false)
 
@@ -99,7 +118,10 @@ export default function AffiliateProfilePage() {
   const [tzError, setTzError] = useState<string | null>(null)
 
   // ─── Booking preferences (Phase E.3) ───────────────────────────────────────
-  type DayHours = { open: string; close: string } | null
+  // breakStart / breakEnd are optional. When present, the agent will not
+  // offer slots that overlap [breakStart, breakEnd). Both must be set or
+  // both omitted (validated server-side).
+  type DayHours = { open: string; close: string; breakStart?: string; breakEnd?: string } | null
   type BookingHours = Partial<Record<'sun'|'mon'|'tue'|'wed'|'thu'|'fri'|'sat', DayHours>>
   type BookingPrefs = {
     bookingHoursJson:       BookingHours | null
@@ -228,6 +250,11 @@ export default function AffiliateProfilePage() {
         setCalendarId(m.partner.calendarId ?? '')
         setForwardPlatformEmails(m.partner.forwardPlatformEmails)
         setNotifyAppointmentsEnabled(m.partner.notifyAppointmentsEnabled)
+        setPartnerStreet(m.partner.partnerStreet         ?? '')
+        setPartnerUnit(m.partner.partnerUnit             ?? '')
+        setPartnerCity(m.partner.partnerCity             ?? '')
+        setPartnerState(m.partner.partnerState           ?? '')
+        setPartnerPostalCode(m.partner.partnerPostalCode ?? '')
       }
       if (m?.user) {
         setTimezone(m.user.preferredTimezone ?? null)
@@ -250,6 +277,18 @@ export default function AffiliateProfilePage() {
       setLoading(false)
     })
   }, [])
+
+  // Pull the live signature preview. Re-runs after every Marketing save
+  // (`savedMarketing` flips true) so the preview tracks the latest profile
+  // fields the partner saw rendered last time they saved.
+  async function loadSignaturePreview() {
+    try {
+      const data = await apiFetch<{ html: string; source: 'auto' | 'custom' }>('/api/partner/signature-preview')
+      setSignaturePreviewHtml(data.html ?? '')
+      setSignaturePreviewSource(data.source ?? 'auto')
+    } catch { /* preview is optional; main UI still works */ }
+  }
+  useEffect(() => { void loadSignaturePreview() }, [])
 
   async function saveTimezone(next: string | null) {
     setTimezone(next)
@@ -341,10 +380,57 @@ export default function AffiliateProfilePage() {
   function setDayOpen(day: typeof DAY_KEYS[number], open: boolean) {
     setBookingHours(prev => ({ ...prev, [day]: open ? (prev[day] ?? DEFAULT_DAY) : null }))
   }
-  function setDayHours(day: typeof DAY_KEYS[number], part: 'open'|'close', value: string) {
+  function setDayHours(day: typeof DAY_KEYS[number], part: 'open'|'close'|'breakStart'|'breakEnd', value: string) {
     setBookingHours(prev => {
       const current = prev[day] ?? DEFAULT_DAY
       return { ...prev, [day]: { ...current, [part]: value } }
+    })
+  }
+  // Toggle the optional break window on/off. Default break is 12:00–13:00 so
+  // the typical lunch hour appears immediately when the partner enables it.
+  function setDayBreakEnabled(day: typeof DAY_KEYS[number], enabled: boolean) {
+    setBookingHours(prev => {
+      // DayHours is `{...} | null`; the `?? DEFAULT_DAY` always returns the
+      // non-null branch but TS keeps the union, so narrow with an assertion.
+      const current = (prev[day] ?? DEFAULT_DAY) as NonNullable<DayHours>
+      if (enabled) {
+        return { ...prev, [day]: { ...current, breakStart: current.breakStart ?? '12:00', breakEnd: current.breakEnd ?? '13:00' } }
+      }
+      const next = { ...current }
+      delete next.breakStart
+      delete next.breakEnd
+      return { ...prev, [day]: next }
+    })
+  }
+
+  // "Lunch break, all days" shortcut. Applies the same break window to every
+  // currently-open day so the partner doesn't have to repeat it on each row.
+  // Days that are Closed are untouched.
+  const [breakAllStart, setBreakAllStart] = useState<string>('12:00')
+  const [breakAllEnd,   setBreakAllEnd]   = useState<string>('13:00')
+  function applyBreakToAllOpenDays() {
+    setBookingHours(prev => {
+      const next = { ...prev }
+      for (const d of DAY_KEYS) {
+        const cur = next[d]
+        if (!cur) continue // closed days untouched
+        next[d] = { ...cur, breakStart: breakAllStart, breakEnd: breakAllEnd }
+      }
+      return next
+    })
+  }
+  function clearBreakOnAllDays() {
+    setBookingHours(prev => {
+      const next = { ...prev }
+      for (const d of DAY_KEYS) {
+        const cur = next[d]
+        if (!cur) continue
+        const copy = { ...cur } as NonNullable<DayHours>
+        delete copy.breakStart
+        delete copy.breakEnd
+        next[d] = copy
+      }
+      return next
     })
   }
 
@@ -402,10 +488,18 @@ export default function AffiliateProfilePage() {
           calendarId:            calendarId.trim() || null,
           forwardPlatformEmails,
           notifyAppointmentsEnabled,
+          partnerStreet:         partnerStreet.trim()     || null,
+          partnerUnit:           partnerUnit.trim()       || null,
+          partnerCity:           partnerCity.trim()       || null,
+          partnerState:          partnerState.trim()      || null,
+          partnerPostalCode:     partnerPostalCode.trim() || null,
         }),
       })
       setSavedMarketing(true)
       setTimeout(() => setSavedMarketing(false), 2500)
+      // Refresh the rendered signature preview — the auto-builder reads the
+      // exact fields we just patched, so the rendered output may have shifted.
+      void loadSignaturePreview()
     } catch (e: unknown) {
       alert((e as Error).message ?? t('partnerProfile.saveFailed'))
     }
@@ -428,9 +522,12 @@ export default function AffiliateProfilePage() {
       const formData = new FormData()
       formData.append('avatar', file)
       // We can't use apiUploadFile (which sets Content-Type to file's MIME);
-      // multer needs multipart. Call fetch directly with our auth token.
+      // multer needs multipart with a browser-generated boundary, so we drive
+      // fetch directly. Must prefix API_BASE — relative paths hit the web tier
+      // in prod and return Next.js' HTML 404, which the JSON.parse below would
+      // then choke on with the classic "Unexpected token '<'" error.
       const token = typeof window !== 'undefined' ? localStorage.getItem('va_access_token') : null
-      const res = await fetch('/api/partner/profile/avatar', {
+      const res = await fetch(`${API_BASE}/api/partner/profile/avatar`, {
         method: 'POST',
         body: formData,
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -451,7 +548,11 @@ export default function AffiliateProfilePage() {
     return <div className="text-sm pt-8" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.loading')}</div>
   }
 
-  if (!me?.partner || !account) {
+  // Hard bail only when there is genuinely no partner record at all. A partner
+  // whose status is still PENDING / PAUSED / DISABLED, or whose slug hasn't
+  // been provisioned yet, can still see and edit their own profile — the API
+  // now soft-gates /partner/me + PATCH /partner/profile + avatar upload.
+  if (!me?.partner) {
     return (
       <div className="text-sm pt-8" style={{ color: 'var(--text-tertiary)' }}>
         {t('partnerProfile.noAccount')}
@@ -460,11 +561,36 @@ export default function AffiliateProfilePage() {
   }
 
   const partner = me.partner
+  // Status banner shown when the partner isn't ACTIVE — clarifies why some
+  // features (payouts, calendar booking, conversations) may be limited.
+  const statusBannerKey: 'partnerProfile.statusBanner.pending' | 'partnerProfile.statusBanner.paused' | 'partnerProfile.statusBanner.disabled' | null = (() => {
+    if (partner.status === 'PENDING') return 'partnerProfile.statusBanner.pending'
+    if (partner.status === 'PAUSED')  return 'partnerProfile.statusBanner.paused'
+    if (partner.status === 'DISABLED') return 'partnerProfile.statusBanner.disabled'
+    if (!partner.slug && partner.status === 'ACTIVE') return 'partnerProfile.statusBanner.pending'
+    return null
+  })()
+  // Color the banner by severity. Pending/no-slug is informational; paused is
+  // a warning; disabled is destructive.
+  const statusBannerStyle = (() => {
+    if (partner.status === 'DISABLED') return { bg: 'oklch(96% 0.04 25)',  border: 'oklch(80% 0.12 25)',  text: 'oklch(40% 0.18 25)' }
+    if (partner.status === 'PAUSED')   return { bg: 'oklch(97% 0.03 70)',  border: 'oklch(82% 0.11 70)',  text: 'oklch(40% 0.16 70)' }
+    return                                 { bg: 'oklch(96% 0.03 230)', border: 'oklch(82% 0.10 230)', text: 'oklch(35% 0.14 230)' }
+  })()
 
   return (
     <div className="max-w-2xl">
       <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('partnerProfile.title')}</h1>
       <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>{t('partnerProfile.subtitle')}</p>
+
+      {statusBannerKey && (
+        <div
+          className="rounded-xl p-4 mb-6 text-sm"
+          style={{ background: statusBannerStyle.bg, border: `1px solid ${statusBannerStyle.border}`, color: statusBannerStyle.text }}
+        >
+          {t(statusBannerKey)}
+        </div>
+      )}
 
       {/* ── Account info (read-only) ────────────────────────────────────────── */}
       <div className="rounded-xl p-5 mb-6" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
@@ -546,6 +672,43 @@ export default function AffiliateProfilePage() {
           placeholder={t('partnerProfile.businessName.placeholder')}
         />
 
+        {/* Mailing address — used on partner pages + CAN-SPAM email footer.
+            Street is full-width; Unit / City / State / Postal sit on a
+            responsive 4-column grid that collapses on narrow viewports. */}
+        <Field
+          label={t('partnerProfile.address.street.label')}
+          help={t('partnerProfile.address.street.help')}
+          value={partnerStreet}
+          onChange={setPartnerStreet}
+          placeholder={t('partnerProfile.address.street.placeholder')}
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Field
+            label={t('partnerProfile.address.unit.label')}
+            value={partnerUnit}
+            onChange={setPartnerUnit}
+            placeholder={t('partnerProfile.address.unit.placeholder')}
+          />
+          <Field
+            label={t('partnerProfile.address.city.label')}
+            value={partnerCity}
+            onChange={setPartnerCity}
+            placeholder={t('partnerProfile.address.city.placeholder')}
+          />
+          <Field
+            label={t('partnerProfile.address.state.label')}
+            value={partnerState}
+            onChange={setPartnerState}
+            placeholder={t('partnerProfile.address.state.placeholder')}
+          />
+          <Field
+            label={t('partnerProfile.address.postalCode.label')}
+            value={partnerPostalCode}
+            onChange={setPartnerPostalCode}
+            placeholder={t('partnerProfile.address.postalCode.placeholder')}
+          />
+        </div>
+
         {/* Partner phone */}
         <Field
           label={t('partnerProfile.partnerPhone.label')}
@@ -580,15 +743,71 @@ export default function AffiliateProfilePage() {
             </div>
           </div>
 
-          <FieldArea
-            label={t('partnerProfile.emailSignature.label')}
-            help={t('partnerProfile.emailSignature.help')}
-            value={emailSignature}
-            onChange={setEmailSignature}
-            rows={4}
-            placeholder={t('partnerProfile.emailSignature.placeholder')}
-            mono
-          />
+          {/* ── Signature: rendered preview + collapsed advanced override ── */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+              {t('partnerProfile.emailSignature.label')}
+            </label>
+            <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
+              {signaturePreviewSource === 'custom'
+                ? t('partnerProfile.emailSignature.helpCustom')
+                : t('partnerProfile.emailSignature.helpAuto')}
+            </p>
+
+            {/* Rendered preview. iframe srcdoc isolates the signature's HTML
+                from the app's CSS so it renders the same way the recipient's
+                inbox would render it. Background matches surface-app so the
+                preview blends with the form. */}
+            <iframe
+              title={t('partnerProfile.emailSignature.previewTitle')}
+              srcDoc={`<!doctype html><html><head><meta charset="utf-8"><style>body{margin:12px;background:transparent;font-family:Arial,Helvetica,sans-serif;color:#222;}</style></head><body>${signaturePreviewHtml || '<em style="color:#888">(no signature — set your slug to enable)</em>'}</body></html>`}
+              style={{
+                width: '100%',
+                minHeight: 140,
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 8,
+                background: 'white',
+              }}
+              sandbox=""
+            />
+
+            {/* Advanced override — collapsed by default. Most partners never open. */}
+            <button
+              type="button"
+              onClick={() => setShowCustomSignature(v => !v)}
+              className="text-[11px] mt-2 underline-offset-2 hover:underline"
+              style={{ color: 'oklch(55% 0.11 193)' }}
+            >
+              {showCustomSignature
+                ? t('partnerProfile.emailSignature.hideCustom')
+                : t('partnerProfile.emailSignature.showCustom')}
+            </button>
+            {showCustomSignature && (
+              <div className="mt-2">
+                <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
+                  {t('partnerProfile.emailSignature.customHelp')}
+                </p>
+                <textarea
+                  value={emailSignature}
+                  onChange={e => setEmailSignature(e.target.value)}
+                  placeholder={t('partnerProfile.emailSignature.placeholder')}
+                  rows={4}
+                  className="w-full rounded-lg px-3 py-2 text-xs font-mono"
+                  style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                />
+                {emailSignature.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => setEmailSignature('')}
+                    className="text-[11px] mt-1 underline-offset-2 hover:underline"
+                    style={{ color: 'oklch(60% 0.18 25)' }}
+                  >
+                    {t('partnerProfile.emailSignature.resetToAuto')}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           <label className="flex items-start gap-3 cursor-pointer">
             <input
@@ -735,12 +954,60 @@ export default function AffiliateProfilePage() {
         <div className="mb-5">
           <p className="text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{t('partnerProfile.booking.hoursLabel')}</p>
           <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.hoursHelp')}</p>
+
+          {/* Bulk-break shortcut — applies one break window to every open day. */}
+          <div className="flex flex-wrap items-center gap-2 mb-3 rounded-md px-3 py-2"
+               style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)' }}>
+            <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+              {t('partnerProfile.booking.breakAll.label')}
+            </span>
+            <input
+              type="time"
+              value={breakAllStart}
+              onChange={e => setBreakAllStart(e.target.value)}
+              aria-label={t('partnerProfile.booking.breakAll.startAriaLabel')}
+              className="rounded-md px-2 py-1 text-xs"
+              style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+            />
+            <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              {t('partnerProfile.booking.breakAll.to')}
+            </span>
+            <input
+              type="time"
+              value={breakAllEnd}
+              onChange={e => setBreakAllEnd(e.target.value)}
+              aria-label={t('partnerProfile.booking.breakAll.endAriaLabel')}
+              className="rounded-md px-2 py-1 text-xs"
+              style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+            />
+            <button
+              type="button"
+              onClick={applyBreakToAllOpenDays}
+              className="text-[11px] font-semibold rounded-md px-2.5 py-1 hover:opacity-90"
+              style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}
+            >
+              {t('partnerProfile.booking.breakAll.applyAll')}
+            </button>
+            <button
+              type="button"
+              onClick={clearBreakOnAllDays}
+              className="text-[11px] underline-offset-2 hover:underline"
+              style={{ color: 'oklch(60% 0.18 25)' }}
+            >
+              {t('partnerProfile.booking.breakAll.clearAll')}
+            </button>
+            <span className="text-[11px] basis-full" style={{ color: 'var(--text-tertiary)' }}>
+              {t('partnerProfile.booking.breakAll.help')}
+            </span>
+          </div>
+
           <div className="space-y-2">
             {DAY_KEYS.map(day => {
               const dh = bookingHours[day]
-              const isOpen = !!dh
+              const isOpen     = !!dh
+              const hasBreak   = !!(dh?.breakStart && dh?.breakEnd)
               return (
-                <div key={day} className="flex items-center gap-3">
+                <div key={day} className="flex flex-wrap items-center gap-3">
                   <div className="w-12 text-xs font-semibold uppercase" style={{ color: 'var(--text-tertiary)' }}>
                     {t(`partnerProfile.booking.days.${day}`)}
                   </div>
@@ -760,17 +1027,50 @@ export default function AffiliateProfilePage() {
                         type="time"
                         value={dh!.open}
                         onChange={e => setDayHours(day, 'open', e.target.value)}
+                        aria-label={t('partnerProfile.booking.openTimeAriaLabel')}
                         className="rounded-md px-2 py-1 text-xs"
                         style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
                       />
-                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.to')}</span>
+                      {hasBreak ? (
+                        <>
+                          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.breakFrom')}</span>
+                          <input
+                            type="time"
+                            value={dh!.breakStart}
+                            onChange={e => setDayHours(day, 'breakStart', e.target.value)}
+                            aria-label={t('partnerProfile.booking.breakStartAriaLabel')}
+                            className="rounded-md px-2 py-1 text-xs"
+                            style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                          />
+                          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.breakTo')}</span>
+                          <input
+                            type="time"
+                            value={dh!.breakEnd}
+                            onChange={e => setDayHours(day, 'breakEnd', e.target.value)}
+                            aria-label={t('partnerProfile.booking.breakEndAriaLabel')}
+                            className="rounded-md px-2 py-1 text-xs"
+                            style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                          />
+                        </>
+                      ) : (
+                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.to')}</span>
+                      )}
                       <input
                         type="time"
                         value={dh!.close}
                         onChange={e => setDayHours(day, 'close', e.target.value)}
+                        aria-label={t('partnerProfile.booking.closeTimeAriaLabel')}
                         className="rounded-md px-2 py-1 text-xs"
                         style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setDayBreakEnabled(day, !hasBreak)}
+                        className="text-[11px] underline-offset-2 hover:underline"
+                        style={{ color: hasBreak ? 'oklch(60% 0.18 25)' : 'oklch(55% 0.11 193)' }}
+                      >
+                        {hasBreak ? t('partnerProfile.booking.removeBreak') : t('partnerProfile.booking.addBreak')}
+                      </button>
                     </>
                   )}
                 </div>

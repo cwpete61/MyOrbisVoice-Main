@@ -75,6 +75,10 @@ export default function PartnerComposePage() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [partnerSummary, setPartnerSummary] = useState<PartnerSummary | null>(null)
   const [selectedTpl, setSelectedTpl] = useState<string>('')
+  // Live signature preview — same HTML that will be appended to this email
+  // at send time. Pulled once on mount; shown read-only above the Send button
+  // so the partner sees what their recipient will see.
+  const [signatureHtml, setSignatureHtml] = useState<string>('')
 
   const inReplyTo = params.get('inReplyTo') ?? undefined
   const threadId  = params.get('threadId')  ?? undefined
@@ -83,9 +87,11 @@ export default function PartnerComposePage() {
     Promise.all([
       apiFetch<{ templates: Template[] }>('/api/partner/mailbox/templates').catch(() => ({ templates: [] })),
       apiFetch<PartnerSummary>('/api/partner/me').catch(() => null),
-    ]).then(([tpl, me]) => {
+      apiFetch<{ html: string; source: 'auto' | 'custom' }>('/api/partner/signature-preview').catch(() => null),
+    ]).then(([tpl, me, sig]) => {
       setTemplates(tpl.templates ?? [])
       setPartnerSummary(me)
+      setSignatureHtml(sig?.html ?? '')
     })
   }, [])
 
@@ -192,6 +198,31 @@ export default function PartnerComposePage() {
             placeholder={t('partnerMailbox.compose.bodyPlaceholder')}
           />
         </div>
+
+        {/* Signature preview — exact HTML that will be appended below your
+            body when sent. Read-only (edit at Profile → Email setup). */}
+        {signatureHtml && (
+          <div className="mb-4">
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+              {t('partnerMailbox.compose.signatureLabel')}
+            </label>
+            <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
+              {t('partnerMailbox.compose.signatureHelp')}
+            </p>
+            <iframe
+              title={t('partnerMailbox.compose.signatureLabel')}
+              srcDoc={`<!doctype html><html><head><meta charset="utf-8"><style>body{margin:12px;background:transparent;font-family:Arial,Helvetica,sans-serif;color:#222;}</style></head><body>${signatureHtml}</body></html>`}
+              style={{
+                width: '100%',
+                minHeight: 140,
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 8,
+                background: 'white',
+              }}
+              sandbox=""
+            />
+          </div>
+        )}
 
         {error && <p className="text-xs mb-3" style={{ color: 'oklch(60% 0.2 30)' }}>{error}</p>}
 

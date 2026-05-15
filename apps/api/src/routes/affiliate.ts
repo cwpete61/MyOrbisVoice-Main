@@ -300,12 +300,23 @@ adminRouter.post('/affiliates/:id/regenerate-code', async (req, res, next) => {
   try { res.json({ data: await affiliateService.regeneratePartnerCode(req.params.id!) }) } catch (err) { next(err) }
 })
 
+// Default DELETE = soft-delete (safe — partner is hidden, data preserved).
+// For GDPR / right-to-be-forgotten full erasure, pass `{ purge: true }` in
+// the body — that path drops all rows + Stripe Connect account permanently.
 adminRouter.delete('/affiliates/:id', async (req, res, next) => {
   try {
-    const reason = (req.body as { reason?: string } | undefined)?.reason
-    const result = await affiliateService.deletePartner(req.params.id!, {
+    const body = (req.body as { reason?: string; purge?: boolean } | undefined) ?? {}
+    if (body.purge === true) {
+      const result = await affiliateService.deletePartner(req.params.id!, {
+        actorUserId: req.user!.id,
+        reason:      body.reason,
+      })
+      res.json({ data: result })
+      return
+    }
+    const result = await affiliateService.softDeletePartner(req.params.id!, {
       actorUserId: req.user!.id,
-      reason,
+      reason:      body.reason,
     })
     res.json({ data: result })
   } catch (err) { next(err) }

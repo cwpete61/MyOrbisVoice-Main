@@ -49,7 +49,7 @@ router.get('/crm/board', async (req, res, next) => {
     const [stages, contacts] = await Promise.all([
       crmService.listPipelineStages({ kind: 'tenant', tenantId }),
       prisma.contact.findMany({
-        where: { tenantId, partnerId: null, pipelineStageId: { not: null } },
+        where: { tenantId, partnerId: null, pipelineStageId: { not: null }, deletedAt: null },
         select: {
           id: true, fullName: true, firstName: true, lastName: true,
           email: true, phoneE164: true, source: true,

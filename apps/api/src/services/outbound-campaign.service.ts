@@ -89,9 +89,10 @@ export async function addContactsToCampaign(tenantId: string, campaignId: string
     throw new AppError('CONFLICT', 'Can only add contacts to a DRAFT or PAUSED campaign', 409)
   }
 
-  // Verify contacts belong to tenant
+  // Verify contacts belong to tenant + are still active (no soft-deleted
+  // contacts should be enrolled in outbound voice campaigns).
   const contacts = await prisma.contact.findMany({
-    where: { id: { in: contactIds }, tenantId },
+    where: { id: { in: contactIds }, tenantId, deletedAt: null },
     select: { id: true },
   })
   const validIds = contacts.map(c => c.id)

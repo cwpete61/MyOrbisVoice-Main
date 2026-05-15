@@ -29,6 +29,29 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
     const channel = (phone as any).tenant?.channelConfigs?.[0] ?? null
     const profile = (phone as any).tenant?.businessProfile ?? null
 
+    // Phase G.1 — partner-owned number routing. If PhoneNumber.partnerId is
+    // set, this call goes to a partner's number. Full partner agent voice
+    // runtime ships in Phase G.1.B; for this phase we log the event with
+    // partnerId attribution + answer with a placeholder so the caller hears
+    // *something* and we don't 500. Tenant numbers fall through to the
+    // existing agent path below.
+    if (phone.partnerId) {
+      logTwilioEvent({
+        tenantId: phone.tenantId,
+        callSid:  CallSid,
+        direction: 'INBOUND',
+        eventType: 'inbound_received_partner',
+        fromNumber: From,
+        toNumber:   To,
+        callStatus: 'ringing',
+        // Stash partnerId in event metadata for usage attribution
+        meta: { partnerId: phone.partnerId },
+      } as never).catch(e => console.error('[twilio] partner logTwilioEvent failed:', e))
+      twiml = '<Response><Say voice="alice">This number is being set up. Please try again soon.</Say><Hangup/></Response>'
+      res.type('text/xml').send(twiml)
+      return
+    }
+
     logCallStart({ tenantId: phone.tenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To }).catch(e => console.error('[twilio] logCallStart failed:', e))
     startCallRecording(CallSid, phone.tenantId, To).catch(e => console.error('[twilio] startCallRecording failed:', e))
     logTwilioEvent({ tenantId: phone.tenantId, callSid: CallSid, direction: 'INBOUND', eventType: 'inbound_received', fromNumber: From, toNumber: To, callStatus: 'ringing' }).catch(e => console.error('[twilio] logTwilioEvent failed:', e))
@@ -116,11 +139,30 @@ router.post('/webhooks/twilio/sms', asyncHandler(async (req, res) => {
   res.sendStatus(204)
 }))
 
-// POST /api/webhooks/twilio/sms-status — delivery status callbacks
+// POST /api/webhooks/twilio/sms-status — delivery status callbacks.
+//
+// Twilio's status webhook fires multiple times per message (queued → sent →
+// delivered). The final terminal status callback (delivered / failed /
+// undelivered) carries a `Price` field (always negative in Twilio's API —
+// e.g. "-0.0079") + a `PriceUnit` field. We capture that and persist it on
+// the matching PartnerSmsCreditLedger CONSUME row so we can compute net
+// pack profitability per partner.
 router.post('/webhooks/twilio/sms-status', asyncHandler(async (req, res) => {
-  const { MessageSid, MessageStatus, ErrorCode } = req.body as Record<string, string>
+  const body = req.body as Record<string, string>
+  const { MessageSid, MessageStatus, ErrorCode, Price, PriceUnit } = body
   if (MessageSid && MessageStatus) {
     updateDeliveryStatus(MessageSid, MessageStatus, ErrorCode).catch(e => console.error('[sms] updateDeliveryStatus failed:', e))
+
+    // Capture actual Twilio cost when the message reaches a terminal status
+    // that carries Price. Negative Price (e.g. "-0.0079") means it cost us;
+    // the magnitude is what we record. PriceUnit is the currency code (USD).
+    if (Price && (PriceUnit === 'USD' || !PriceUnit)) {
+      const usd = Math.abs(parseFloat(Price))
+      if (Number.isFinite(usd) && usd > 0) {
+        const { recordTwilioCostForMessage } = await import('../services/partner-sms-credits.service.js')
+        recordTwilioCostForMessage(MessageSid, usd).catch(e => console.error('[sms] recordTwilioCost failed:', e))
+      }
+    }
   }
   res.sendStatus(204)
 }))

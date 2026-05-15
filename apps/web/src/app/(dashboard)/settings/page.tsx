@@ -39,7 +39,10 @@ interface BusinessProfile {
 }
 
 // Booking preferences (Phase E.5) — short-key day shape matches partner side.
-type DayHours = { open: string; close: string } | null
+// breakStart / breakEnd are optional. When set, the agent will not offer
+// slots that overlap [breakStart, breakEnd). Both fields must be set or
+// both omitted (validated server-side in tenant.service.ts).
+type DayHours = { open: string; close: string; breakStart?: string; breakEnd?: string } | null
 type DayKey = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat'
 type BookingHours = Partial<Record<DayKey, DayHours>>
 interface BookingPrefs {
@@ -395,10 +398,27 @@ export default function SettingsPage() {
   function setBookingDayOpen(day: DayKey, open: boolean) {
     setBookingHours(prev => ({ ...prev, [day]: open ? (prev[day] ?? BOOKING_DEFAULT_DAY) : null }))
   }
-  function setBookingDayHours(day: DayKey, part: 'open' | 'close', value: string) {
+  function setBookingDayHours(day: DayKey, part: 'open' | 'close' | 'breakStart' | 'breakEnd', value: string) {
     setBookingHours(prev => {
       const current = prev[day] ?? BOOKING_DEFAULT_DAY
       return { ...prev, [day]: { ...current, [part]: value } }
+    })
+  }
+  // Toggle the optional break window. Defaults to 12:00–13:00 when first
+  // enabled — mirrors the partner-side editor so admins see the same
+  // affordance whichever surface they're configuring from.
+  function setBookingDayBreakEnabled(day: DayKey, enabled: boolean) {
+    setBookingHours(prev => {
+      // DayHours is `{...} | null`; the `?? BOOKING_DEFAULT_DAY` always returns
+      // the non-null branch but TS keeps the union, so narrow with an assertion.
+      const current = (prev[day] ?? BOOKING_DEFAULT_DAY) as NonNullable<DayHours>
+      if (enabled) {
+        return { ...prev, [day]: { ...current, breakStart: current.breakStart ?? '12:00', breakEnd: current.breakEnd ?? '13:00' } }
+      }
+      const next = { ...current }
+      delete next.breakStart
+      delete next.breakEnd
+      return { ...prev, [day]: next }
     })
   }
 
@@ -537,9 +557,10 @@ export default function SettingsPage() {
           <div className="space-y-2">
             {BOOKING_DAY_KEYS.map(day => {
               const dh = bookingHours[day]
-              const isOpen = !!dh
+              const isOpen   = !!dh
+              const hasBreak = !!(dh?.breakStart && dh?.breakEnd)
               return (
-                <div key={day} className="flex items-center gap-3">
+                <div key={day} className="flex flex-wrap items-center gap-3">
                   <div className="w-12 text-xs font-semibold uppercase" style={{ color: 'var(--text-tertiary)' }}>
                     {t(`partnerProfile.booking.days.${day}`)}
                   </div>
@@ -555,17 +576,50 @@ export default function SettingsPage() {
                         type="time"
                         value={dh!.open}
                         onChange={e => setBookingDayHours(day, 'open', e.target.value)}
+                        aria-label={t('partnerProfile.booking.openTimeAriaLabel')}
                         className="rounded-md px-2 py-1 text-xs"
                         style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
                       />
-                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.to')}</span>
+                      {hasBreak ? (
+                        <>
+                          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.breakFrom')}</span>
+                          <input
+                            type="time"
+                            value={dh!.breakStart}
+                            onChange={e => setBookingDayHours(day, 'breakStart', e.target.value)}
+                            aria-label={t('partnerProfile.booking.breakStartAriaLabel')}
+                            className="rounded-md px-2 py-1 text-xs"
+                            style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                          />
+                          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.breakTo')}</span>
+                          <input
+                            type="time"
+                            value={dh!.breakEnd}
+                            onChange={e => setBookingDayHours(day, 'breakEnd', e.target.value)}
+                            aria-label={t('partnerProfile.booking.breakEndAriaLabel')}
+                            className="rounded-md px-2 py-1 text-xs"
+                            style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                          />
+                        </>
+                      ) : (
+                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.booking.to')}</span>
+                      )}
                       <input
                         type="time"
                         value={dh!.close}
                         onChange={e => setBookingDayHours(day, 'close', e.target.value)}
+                        aria-label={t('partnerProfile.booking.closeTimeAriaLabel')}
                         className="rounded-md px-2 py-1 text-xs"
                         style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setBookingDayBreakEnabled(day, !hasBreak)}
+                        className="text-[11px] underline-offset-2 hover:underline"
+                        style={{ color: hasBreak ? 'oklch(60% 0.18 25)' : 'oklch(55% 0.11 193)' }}
+                      >
+                        {hasBreak ? t('partnerProfile.booking.removeBreak') : t('partnerProfile.booking.addBreak')}
+                      </button>
                     </>
                   )}
                 </div>

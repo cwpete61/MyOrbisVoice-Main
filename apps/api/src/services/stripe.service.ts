@@ -229,6 +229,9 @@ export async function handleStripeWebhook(rawBody: Buffer, signature: string): P
     case 'invoice.paid':
       await handleInvoicePaid(event.data.object as StripeInvoice)
       break
+    case 'invoice.payment_failed':
+      await handleInvoicePaymentFailed(event.data.object as StripeInvoice & { subscription?: string | { id: string } | null })
+      break
     case 'customer.subscription.updated':
       await handleSubscriptionUpdated(event.data.object as StripeSub)
       break
@@ -402,6 +405,36 @@ async function handleConnectAccountUpdated(account: StripeConnectAccount) {
 }
 
 async function handleCheckoutCompleted(session: StripeCheckoutSession) {
+  // Phase G.2 — Partner SMS credit pack purchase. Mode=payment with the
+  // partner_sms_pack scope. Grants credits + writes ledger row idempotently.
+  if (session.metadata?.scope === 'partner_sms_pack') {
+    const partnerId = session.metadata.partnerId
+    const packId    = session.metadata.packId as 'pack_5' | 'pack_10' | undefined
+    const credits   = Number(session.metadata.credits ?? 0)
+    if (!partnerId || !packId || !Number.isFinite(credits) || credits <= 0) {
+      console.warn('[stripe-webhook] partner_sms_pack session missing metadata', { sessionId: session.id })
+      return
+    }
+    const { grantCreditsFromPurchase } = await import('./partner-sms-credits.service.js')
+    const paymentIntentId = typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : (session.payment_intent as { id: string } | null)?.id ?? undefined
+    const result = await grantCreditsFromPurchase({
+      partnerId,
+      packId,
+      credits,
+      usdAmountCents:        session.amount_total ?? 0,
+      stripeSessionId:       session.id!,
+      stripePaymentIntentId: paymentIntentId,
+    })
+    writeAuditLog({
+      actorType:     'SYSTEM',
+      action:        'partner_sms_credits.purchase_completed',
+      metadataJson:  { partnerId, packId, credits, newBalance: result.newBalance, alreadyGranted: result.alreadyGranted, sessionId: session.id },
+    }).catch(() => null)
+    return
+  }
+
   const tenantId = session.metadata?.tenantId
   const planCode = session.metadata?.planCode
   if (!tenantId || !planCode) return
@@ -550,6 +583,17 @@ async function handleSubscriptionUpdated(stripeSub: StripeSub) {
 }
 
 async function handleSubscriptionDeleted(stripeSub: StripeSub) {
+  // Partner phone-number subscription branch (Phase G.1.B-2). When the
+  // partner cancels (or admin cancels, or Stripe cancels for max retries),
+  // we release the underlying Twilio number + mark the row as RELEASED.
+  const scope = stripeSub.metadata?.scope
+  if (scope === 'partner_phone_number_monthly') {
+    await releasePartnerNumberOnSubCancel(stripeSub).catch(e =>
+      console.error('[stripe-webhook] partner-number release failed:', (e as Error).message),
+    )
+    return
+  }
+
   const tenantId = stripeSub.metadata?.tenantId
   const planCode = stripeSub.metadata?.planCode
   if (!tenantId) return
@@ -637,4 +681,90 @@ async function upsertSubscription(tenantId: string, planCode: string, stripeSub:
     await prisma.tenant.update({ where: { id: tenantId }, data: { status: 'ACTIVE' } })
     await syncEntitlementsFromPlan(tenantId, plan.id)
   }
+}
+
+// ── Partner phone-number Stripe handlers (Phase G.1.B-2) ─────────────────────
+//
+// Webhook impact paths for partner-number subscriptions:
+//   invoice.payment_failed   → log + admin alert; Stripe handles dunning
+//   customer.subscription.deleted (final retry exhausted OR explicit cancel)
+//                            → release the underlying Twilio number + mark
+//                              PhoneNumber row as RELEASED so the partner's
+//                              UI shows it gone.
+
+async function handleInvoicePaymentFailed(invoice: StripeInvoice & { id?: string; subscription?: string | { id: string } | null }) {
+  // Pull subscription ID from the invoice. Stripe represents this differently
+  // across API versions — handle both string + expanded-object forms.
+  const subRef = invoice.subscription
+  const subId  = typeof subRef === 'string' ? subRef : (subRef?.id ?? null)
+  if (!subId) return
+
+  // Only act on partner-number subscriptions. The presence of a PhoneNumber
+  // row with this stripeSubscriptionId is the discriminator.
+  const number = await prisma.phoneNumber.findFirst({
+    where:  { stripeSubscriptionId: subId },
+    select: { id: true, e164Number: true, partnerId: true },
+  })
+  if (!number) return  // not a partner-number invoice — tenant handler doesn't run here
+
+  writeAuditLog({
+    actorType: 'SYSTEM',
+    action:    'partner_number.payment_failed',
+    targetType: 'PhoneNumber',
+    targetId:   number.id,
+    metadataJson: {
+      phoneNumber: number.e164Number,
+      partnerId:   number.partnerId,
+      stripeSubscriptionId: subId,
+      invoiceId:   invoice.id,
+      // Stripe auto-retries (default schedule); subscription.deleted will
+      // fire if all retries exhaust.
+    },
+  }).catch(() => null)
+}
+
+async function releasePartnerNumberOnSubCancel(stripeSub: StripeSub) {
+  const number = await prisma.phoneNumber.findFirst({
+    where:  { stripeSubscriptionId: stripeSub.id },
+    select: { id: true, twilioNumberSid: true, e164Number: true, partnerId: true, twilioSubaccountSid: true },
+  })
+  if (!number) return  // already handled / not partner-scoped
+
+  // Release the Twilio number — best-effort. If Twilio is down or the number
+  // is already gone, we still mark the row as RELEASED so the partner sees
+  // the right state.
+  if (number.twilioNumberSid) {
+    try {
+      const { getPlatformTwilioClient } = await import('./twilio.service.js')
+      const masterClient = await getPlatformTwilioClient()
+      await masterClient.incomingPhoneNumbers(number.twilioNumberSid).remove()
+    } catch (err) {
+      console.warn(`[stripe-webhook] Twilio release failed for ${number.twilioNumberSid}: ${(err as Error).message}`)
+    }
+  }
+
+  await prisma.phoneNumber.update({
+    where: { id: number.id },
+    data:  {
+      purchaseStatus:    'RELEASED',
+      isInboundEnabled:  false,
+      isOutboundEnabled: false,
+      isSmsEnabled:      false,
+      releaseScheduledAt: new Date(),
+    },
+  })
+
+  writeAuditLog({
+    actorType: 'SYSTEM',
+    action:    'partner_number.released',
+    targetType: 'PhoneNumber',
+    targetId:   number.id,
+    metadataJson: {
+      phoneNumber: number.e164Number,
+      partnerId:   number.partnerId,
+      stripeSubscriptionId: stripeSub.id,
+      twilioNumberSid: number.twilioNumberSid,
+      reason: 'subscription_canceled',
+    },
+  }).catch(() => null)
 }

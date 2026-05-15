@@ -24,7 +24,11 @@
     "smoke-test": "tsx scripts/smoke-test.ts",
     "latency-report": "tsx scripts/latency-report.ts",
     "watch-partner-onboarding": "tsx scripts/watch-partner-onboarding.ts",
-    "generate:partner-pages": "tsx scripts/generate-partner-pages.ts"
+    "generate:partner-pages": "tsx scripts/generate-partner-pages.ts",
+    "partner-help:audit":      "tsx scripts/partner-help-audit.ts",
+    "partner-help:audit:json": "tsx scripts/partner-help-audit.ts --json",
+    "partner-credit:watch":      "tsx scripts/partner-credit-watch.ts",
+    "partner-credit:watch:json": "tsx scripts/partner-credit-watch.ts --json"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

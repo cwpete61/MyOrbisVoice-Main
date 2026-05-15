@@ -108,7 +108,7 @@ router.get('/partner/crm/board', async (req: Request, res: Response, next: NextF
     const [stages, contacts] = await Promise.all([
       crmService.listPipelineStages({ kind: 'partner', partnerId: pid, hostingTenantId }),
       prisma.contact.findMany({
-        where: { partnerId: pid, pipelineStageId: { not: null } },
+        where: { partnerId: pid, pipelineStageId: { not: null }, deletedAt: null },
         select: {
           id: true, fullName: true, firstName: true, lastName: true,
           email: true, phoneE164: true, source: true,
@@ -131,7 +131,7 @@ router.get('/partner/crm/contacts', async (req: Request, res: Response, next: Ne
     const pageNum  = page  ? parseInt(page,  10) : 1
     const limitNum = limit ? parseInt(limit, 10) : 50
 
-    const where: any = { partnerId: pid }
+    const where: any = { partnerId: pid, deletedAt: null }
     if (search) {
       where.OR = [
         { fullName:  { contains: search, mode: 'insensitive' as const } },

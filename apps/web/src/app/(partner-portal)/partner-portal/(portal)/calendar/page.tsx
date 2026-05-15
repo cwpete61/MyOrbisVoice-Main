@@ -63,9 +63,11 @@ function addMonths(d: Date, n: number): Date {
 }
 
 // Day view time grid: 7am → 9pm (15-hour window covers nearly all booking activity).
+// HOUR_PX doubled from 44 → 88 so multi-event days have breathing room and
+// content always fits inside each slot.
 const DAY_VIEW_START_HOUR = 7
 const DAY_VIEW_END_HOUR   = 21
-const HOUR_PX             = 44
+const HOUR_PX             = 88
 const DAY_VIEW_HEIGHT     = (DAY_VIEW_END_HOUR - DAY_VIEW_START_HOUR) * HOUR_PX
 
 export default function PartnerCalendarPage() {
@@ -229,6 +231,11 @@ function DayView({ day, events, tz, dateLocale, t }: {
   const allDay  = events.filter(e => e.allDay)
   const timed   = events.filter(e => !e.allDay)
 
+  // Minimum height in pixels so even a 0-duration / very-short event still
+  // displays its title + time. Below this the card is unreadable (was the
+  // bug — a 9px green bar with no visible content on 2026-05-14).
+  const EVENT_MIN_HEIGHT_PX = 36
+
   function eventStyle(e: CalendarEvent): React.CSSProperties {
     if (!e.start || !e.end) return { display: 'none' }
     const start = new Date(e.start)
@@ -240,7 +247,7 @@ function DayView({ day, events, tz, dateLocale, t }: {
     const durMs  = end.getTime() - start.getTime()
     const durHr  = Math.max(0.25, durMs / (1000 * 60 * 60))
     const topPx  = Math.max(0, (hStart + mStart / 60 - DAY_VIEW_START_HOUR) * HOUR_PX)
-    const height = durHr * HOUR_PX - 2
+    const height = Math.max(EVENT_MIN_HEIGHT_PX, durHr * HOUR_PX - 2)
     return { position: 'absolute', top: topPx + 'px', height: height + 'px', left: '52px', right: '4px' }
   }
 
@@ -272,27 +279,41 @@ function DayView({ day, events, tz, dateLocale, t }: {
             </div>
           </div>
         ))}
-        {/* timed events */}
-        {timed.map(e => (
-          <a key={e.id ?? Math.random()} href={e.htmlLink ?? '#'} target="_blank" rel="noopener noreferrer"
-             style={eventStyle(e)}
-             className="rounded text-[11px] px-1.5 py-1 overflow-hidden"
-             title={e.title + (e.location ? ' — ' + e.location : '')}>
-            <div className="font-semibold truncate" style={{ color: 'var(--text-primary)',
-              background: e.source === 'myorbisvoice' ? 'oklch(55% 0.11 193 / 0.22)' : 'oklch(70% 0.05 260 / 0.22)',
-              borderLeft: '2px solid ' + (e.source === 'myorbisvoice' ? 'oklch(55% 0.11 193)' : 'oklch(60% 0.05 260)'),
-              padding: '4px 6px',
-              borderRadius: '4px',
-              height: '100%',
-            }}>
-              <div className="text-[10px] opacity-70">
-                {formatInTimezone(e.start, { tz, locale: dateLocale, hour: 'numeric', minute: '2-digit' })}
-                {e.end && ' – ' + formatInTimezone(e.end, { tz, locale: dateLocale, hour: 'numeric', minute: '2-digit' })}
+        {/* timed events — title and time on the same line, separated by an
+            em-dash. Location stays on its own line below when present. */}
+        {timed.map(e => {
+          const isOrby = e.source === 'myorbisvoice'
+          const startLabel = formatInTimezone(e.start, { tz, locale: dateLocale, hour: 'numeric', minute: '2-digit' })
+          const endLabel   = e.end ? formatInTimezone(e.end, { tz, locale: dateLocale, hour: 'numeric', minute: '2-digit' }) : ''
+          const timeRange  = endLabel ? `${startLabel} – ${endLabel}` : startLabel
+          return (
+            <a key={e.id ?? Math.random()} href={e.htmlLink ?? '#'} target="_blank" rel="noopener noreferrer"
+               style={{
+                 ...eventStyle(e),
+                 background: isOrby ? 'oklch(55% 0.11 193 / 0.22)' : 'oklch(70% 0.05 260 / 0.22)',
+                 borderLeft: '3px solid ' + (isOrby ? 'oklch(55% 0.11 193)' : 'oklch(60% 0.05 260)'),
+                 borderRadius: '4px',
+                 padding: '4px 8px',
+                 textDecoration: 'none',
+                 display: 'flex',
+                 flexDirection: 'column',
+                 gap: '1px',
+                 overflow: 'hidden',
+                 color: 'var(--text-primary)',
+               }}
+               title={e.title + ' — ' + timeRange + (e.location ? ' · ' + e.location : '')}>
+              <div className="text-[11px] leading-tight truncate">
+                <span className="font-semibold">{e.title}</span>
+                <span style={{ color: 'var(--text-secondary)' }}> — {timeRange}</span>
               </div>
-              <div className="truncate">{e.title}</div>
-            </div>
-          </a>
-        ))}
+              {e.location && (
+                <div className="text-[10px] leading-tight truncate" style={{ color: 'var(--text-tertiary)' }}>
+                  {e.location}
+                </div>
+              )}
+            </a>
+          )
+        })}
         {timed.length === 0 && allDay.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-xs" style={{ color: 'var(--text-tertiary)' }}>
             {t('partnerCalendar.emptyDay')}

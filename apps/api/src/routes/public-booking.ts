@@ -61,6 +61,8 @@ async function getBookablePartner(slug: string) {
       bookingSlotDurationMin: true,
       bookingMinNoticeMin:    true,
       bookingMaxAdvanceDays:  true,
+      bookingBufferBeforeMin: true,
+      bookingBufferAfterMin:  true,
       bookingTimezone:        true,
       user:                   { select: { firstName: true, lastName: true, preferredTimezone: true } },
     },
@@ -88,13 +90,32 @@ router.get('/public/partners/:slug/booking-info', asyncHandler(async (req, res) 
   const fallbackName = `${partner.user.firstName ?? ''} ${partner.user.lastName ?? ''}`.trim()
   const displayName  = partner.displayName ?? (fallbackName || partner.slug || 'Your host')
 
-  // Surface which days have hours configured (without leaking the partner's
-  // exact open/close times — the slot search will only return slots inside
-  // hours, so the client just needs to know which days to disable).
-  const hours = (partner.bookingHoursJson as Record<string, unknown> | null) ?? null
+  // Surface per-day hours + break windows so the customer-facing page can
+  // mirror the partner's booking-preferences settings (open/close + lunch).
+  // `openDays` stays as a derived boolean map for the grid renderer.
+  const rawHours = (partner.bookingHoursJson as Record<string, unknown> | null) ?? null
+  const hours: Record<string, { open: string; close: string; breakStart?: string; breakEnd?: string } | null> = {}
   const openDays: Record<string, boolean> = {}
   for (const day of SHORT_DAYS) {
-    openDays[day] = Boolean(hours && hours[day])
+    const v = rawHours?.[day]
+    if (v && typeof v === 'object') {
+      const o = v as { open?: unknown; close?: unknown; breakStart?: unknown; breakEnd?: unknown }
+      if (typeof o.open === 'string' && typeof o.close === 'string') {
+        const cell: { open: string; close: string; breakStart?: string; breakEnd?: string } = {
+          open:  o.open,
+          close: o.close,
+        }
+        if (typeof o.breakStart === 'string' && typeof o.breakEnd === 'string') {
+          cell.breakStart = o.breakStart
+          cell.breakEnd   = o.breakEnd
+        }
+        hours[day]    = cell
+        openDays[day] = true
+        continue
+      }
+    }
+    hours[day]    = null
+    openDays[day] = false
   }
   // No hours configured at all → assume every day is bookable (matches the
   // searchAvailability behavior where a null hours map = "no constraint").
@@ -114,8 +135,11 @@ router.get('/public/partners/:slug/booking-info', asyncHandler(async (req, res) 
       slotDurationMin: partner.bookingSlotDurationMin,
       minNoticeMin:    partner.bookingMinNoticeMin,
       maxAdvanceDays:  partner.bookingMaxAdvanceDays,
+      bufferBeforeMin: partner.bookingBufferBeforeMin,
+      bufferAfterMin:  partner.bookingBufferAfterMin,
       timezone:        partner.bookingTimezone ?? partner.user.preferredTimezone ?? null,
       openDays,
+      hours,
     },
   })
 }))

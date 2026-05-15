@@ -5,7 +5,7 @@ import path from 'path'
 import { promises as fs } from 'fs'
 import { randomBytes } from 'crypto'
 import { authenticate } from '../middleware/authenticate.js'
-import { requirePartnerContext } from '../middleware/rbac.js'
+import { requirePartnerContext, requirePartnerAccount } from '../middleware/rbac.js'
 import { prisma } from '../lib/prisma.js'
 import * as partnerService from '../services/partner.service.js'
 import * as googleService from '../services/google.service.js'
@@ -22,13 +22,41 @@ import { writeAuditLog } from '../lib/audit.js'
 
 const router: IRouter = Router()
 
-// All routes require partner auth
-router.use('/partner', authenticate, requirePartnerContext)
+// All routes require authentication. The actual partner-state gate is
+// applied per-route: soft gate (requirePartnerAccount — any AffiliateAccount,
+// even PENDING / no-slug) for the three self-service profile endpoints
+// below, then strict gate (requirePartnerContext — ACTIVE + slug) for every
+// other partner-scoped route after the avatar upload handler.
+router.use('/partner', authenticate)
+
+// ─── GET /api/partner/signature-preview ──────────────────────────────────────
+// Returns the rendered HTML for the partner's auto-signature so the profile
+// page + compose UI can show a live preview (iframe srcdoc, not editable).
+// Reads the saved emailSignature override when set; falls back to the auto-
+// generated block. Either way, returns the actual HTML that will be appended
+// at send time — single source of truth.
+router.get('/partner/signature-preview', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const partner = await prisma.affiliateAccount.findUnique({
+      where:  { id: partnerId },
+      include: { user: { select: { firstName: true, lastName: true, email: true } } },
+    })
+    if (!partner) throw new AppError('NOT_FOUND', 'Partner record vanished mid-request', 404)
+    const { buildPartnerSignatureHtml } = await import('../services/partner.service.js')
+    const customSig = partner.emailSignature?.trim()
+    const html = (customSig && customSig.length > 0)
+      ? customSig
+      : buildPartnerSignatureHtml(partner)
+    res.json({ data: { html, source: (customSig && customSig.length > 0) ? 'custom' : 'auto' } })
+  } catch (err) { next(err) }
+})
 
 // ─── GET /api/partner/me ────────────────────────────────────────────────────
 // Combined User + Partner profile. Used by the dashboard on initial load to
 // hydrate the header (avatar + name) + the Profile page form in one call.
-router.get('/partner/me', async (req: Request, res: Response, next: NextFunction) => {
+// Soft-gated so a pending partner can still view their own profile.
+router.get('/partner/me', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const partnerId = (req as any).partnerAccountId as string
     const partner = await prisma.affiliateAccount.findUnique({
@@ -59,6 +87,11 @@ router.get('/partner/me', async (req: Request, res: Response, next: NextFunction
           forwardPlatformEmails: partner.forwardPlatformEmails,
           aggressionTier:        partner.aggressionTier,
           partnerEmail:          partner.slug ? `${partner.slug}@myorbisresults.com` : null,
+          partnerStreet:         partner.partnerStreet,
+          partnerUnit:           partner.partnerUnit,
+          partnerCity:           partner.partnerCity,
+          partnerState:          partner.partnerState,
+          partnerPostalCode:     partner.partnerPostalCode,
           referralCode:          partner.referralCode,
           totalEarnedCents:      partner.totalEarnedCents,
           totalPaidCents:        partner.totalPaidCents,
@@ -80,9 +113,17 @@ const profileUpdateSchema = z.object({
   calendarId:            z.string().max(200).optional().nullable(),
   forwardPlatformEmails: z.boolean().optional(),
   aggressionTier:        z.enum(['conservative', 'balanced', 'direct', 'aggressive']).optional(),
+  // Phase F.5 — partner public mailing address. Lenient max-lengths leave
+  // room for international addresses; CAN-SPAM only requires the address be
+  // accurate, not US-formatted.
+  partnerStreet:         z.string().max(200).optional().nullable(),
+  partnerUnit:           z.string().max(60).optional().nullable(),
+  partnerCity:           z.string().max(100).optional().nullable(),
+  partnerState:          z.string().max(60).optional().nullable(),
+  partnerPostalCode:     z.string().max(20).optional().nullable(),
 })
 
-router.patch('/partner/profile', async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/partner/profile', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const partnerId = (req as any).partnerAccountId as string
     const parsed = profileUpdateSchema.safeParse(req.body)
@@ -131,6 +172,7 @@ const avatarUpload = multer({
 
 router.post(
   '/partner/profile/avatar',
+  requirePartnerAccount,
   avatarUpload.single('avatar'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -174,6 +216,283 @@ router.post(
     } catch (err) { next(err) }
   },
 )
+
+// ── Strict gate for everything below: requires AffiliateAccount with
+// status=ACTIVE and a slug. Pending partners get 403s here, which is
+// correct — they shouldn't be able to manage calendar / conversations /
+// integrations until the platform has finished provisioning them.
+router.use('/partner', requirePartnerContext)
+
+// ─── Partner Twilio: visibility (Phase G.1) ─────────────────────────────────
+// Read-only endpoints so a partner can see their subaccount status + their
+// owned numbers. Number purchases happen admin-side (see admin.ts) until
+// the partner self-service buy + Stripe metering ships in Phase G.1.B.
+
+router.get('/partner/twilio/subaccount', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const { getPartnerSubaccountStatus } = await import('../services/twilio-subaccount.service.js')
+    res.json({ data: await getPartnerSubaccountStatus(partnerId) })
+  } catch (err) { next(err) }
+})
+
+router.get('/partner/twilio/numbers', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const numbers = await prisma.phoneNumber.findMany({
+      where:  { partnerId },
+      select: {
+        id: true, e164Number: true, displayLabel: true, notes: true,
+        isInboundEnabled: true, isOutboundEnabled: true, isSmsEnabled: true,
+        forwardingTarget: true, monthlyPriceCents: true,
+        releaseScheduledAt: true, createdAt: true,
+        purchaseStatus: true, partnerCapabilityTier: true, a2pStatus: true,
+        requestedAt: true, approvedAt: true, rejectionReason: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+    res.json({ data: { items: numbers, total: numbers.length } })
+  } catch (err) { next(err) }
+})
+
+// ─── Partner number search (Phase G.1.B) ─────────────────────────────────────
+// GET /api/partner/twilio/numbers/search?areaCode=...&type=local|tollfree
+// Reads-only — hits Twilio's availablePhoneNumbers inventory. No purchase.
+// Country is hardcoded US (only US partners for now per legal-entity scope).
+router.get('/partner/twilio/numbers/search', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const areaCode = (req.query['areaCode'] as string | undefined)?.trim() || undefined
+    const pattern  = (req.query['pattern']  as string | undefined)?.trim() || undefined
+    const type     = ((req.query['type'] as string | undefined)?.toLowerCase() ?? 'local')
+    if (type !== 'local' && type !== 'tollfree') {
+      throw new AppError('VALIDATION_ERROR', 'type must be "local" or "tollfree"', 422)
+    }
+    const limit = Math.min(50, Math.max(1, parseInt((req.query['limit'] as string | undefined) ?? '20', 10) || 20))
+
+    const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
+    const masterClient = await getPlatformTwilioClient()
+    const searchOpts: Record<string, unknown> = { limit, voiceEnabled: true }
+    if (areaCode) searchOpts['areaCode'] = parseInt(areaCode, 10)
+    if (pattern)  searchOpts['contains'] = pattern
+
+    const inventory = type === 'tollfree'
+      ? await masterClient.availablePhoneNumbers('US').tollFree.list(searchOpts as never)
+      : await masterClient.availablePhoneNumbers('US').local.list(searchOpts as never)
+
+    res.json({
+      data: inventory.map(n => ({
+        phoneNumber:  n.phoneNumber,
+        friendlyName: n.friendlyName,
+        locality:     n.locality ?? null,
+        region:       n.region ?? null,
+        capabilities: {
+          voice: n.capabilities?.voice ?? false,
+          sms:   n.capabilities?.sms ?? false,
+          mms:   n.capabilities?.mms ?? false,
+        },
+      })),
+    })
+  } catch (err) { next(err) }
+})
+
+// ─── Partner number purchase request (Phase G.1.B) ───────────────────────────
+// POST /api/partner/twilio/numbers/request
+// Body: { phoneNumber: "+15551234567", tier: "VOICE" | "VOICE_SMS" | "TOLLFREE" }
+// Creates a PENDING PhoneNumber row. Admin processes via the queue.
+const requestNumberSchema = z.object({
+  phoneNumber: z.string().regex(/^\+\d{10,15}$/),
+  tier:        z.enum(['VOICE', 'VOICE_SMS', 'TOLLFREE']),
+  label:       z.string().max(80).optional().nullable(),
+})
+
+// ─── Partner Stripe billing (Phase G.1.B-2) ──────────────────────────────────
+// Card-on-file setup + payment-method status. Subscription creation happens
+// admin-side on approval (not exposed here).
+
+router.get('/partner/billing/payment-method', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const { getPartnerPaymentMethodStatus } = await import('../services/partner-billing.service.js')
+    res.json({ data: await getPartnerPaymentMethodStatus(partnerId) })
+  } catch (err) { next(err) }
+})
+
+router.post('/partner/billing/setup-session', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const body = (req.body ?? {}) as { returnUrl?: string; cancelUrl?: string }
+    // Default redirect targets — caller can override if launching the setup
+    // flow from a different surface.
+    const baseUrl = process.env['APP_BASE_URL'] ?? 'https://app.myorbisvoice.com'
+    const returnUrl = body.returnUrl?.trim() || `${baseUrl}/partner-portal/phone-numbers?setup=success`
+    const cancelUrl = body.cancelUrl?.trim() || `${baseUrl}/partner-portal/phone-numbers?setup=cancel`
+    const { createPartnerSetupSession } = await import('../services/partner-billing.service.js')
+    const { url } = await createPartnerSetupSession(partnerId, { returnUrl, cancelUrl })
+    res.json({ data: { url } })
+  } catch (err) { next(err) }
+})
+
+// Phase G.2 — SMS credit balance + ledger.
+router.get('/partner/sms-credits', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const { getPartnerCreditStatus, getPartnerFinancials, SMS_PACK_DEFS, SMS_CHANNEL_COST } =
+      await import('../services/partner-sms-credits.service.js')
+    const [status, financials] = await Promise.all([
+      getPartnerCreditStatus(partnerId),
+      getPartnerFinancials(partnerId),
+    ])
+    res.json({
+      data: {
+        ...status,
+        packs: Object.values(SMS_PACK_DEFS).map(p => ({
+          id:             p.id,
+          credits:        p.credits,
+          unitAmountCents: p.unitAmount,
+        })),
+        channelCost: SMS_CHANNEL_COST,
+        financials,
+      },
+    })
+  } catch (err) { next(err) }
+})
+
+router.post('/partner/sms-credits/purchase-session', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const body = (req.body ?? {}) as { packId?: string; returnUrl?: string; cancelUrl?: string }
+    if (body.packId !== 'pack_5' && body.packId !== 'pack_10') {
+      throw new AppError('VALIDATION_ERROR', 'packId must be pack_5 or pack_10', 422)
+    }
+    const baseUrl   = process.env['APP_BASE_URL'] ?? 'https://app.myorbisvoice.com'
+    const returnUrl = body.returnUrl?.trim() || `${baseUrl}/partner-portal/phone-numbers?credits=success`
+    const cancelUrl = body.cancelUrl?.trim() || `${baseUrl}/partner-portal/phone-numbers?credits=cancel`
+    const { createSmsPackCheckoutSession } = await import('../services/partner-sms-credits.service.js')
+    const { url } = await createSmsPackCheckoutSession(partnerId, body.packId, { returnUrl, cancelUrl })
+    res.json({ data: { url } })
+  } catch (err) { next(err) }
+})
+
+// Cancel a partner's number Subscription. Webhook releases the Twilio number
+// on customer.subscription.deleted. Partner-facing only — admin path can
+// piggyback on this if needed.
+router.post('/partner/twilio/numbers/:id/cancel', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const numberId = req.params['id']!
+    const number = await prisma.phoneNumber.findUnique({ where: { id: numberId } })
+    if (!number || number.partnerId !== partnerId) {
+      throw new AppError('NOT_FOUND', 'Number not found', 404)
+    }
+    if (number.purchaseStatus !== 'PURCHASED') {
+      throw new AppError('CONFLICT', `Number is ${number.purchaseStatus}; only PURCHASED numbers can be canceled`, 409)
+    }
+    if (!number.stripeSubscriptionId) {
+      // No subscription wired — fall back to direct release (legacy rows).
+      throw new AppError('FAILED_PRECONDITION', 'Number has no active subscription. Contact admin.', 412)
+    }
+    const { cancelPartnerNumberSubscription } = await import('../services/partner-billing.service.js')
+    await cancelPartnerNumberSubscription(numberId)
+    res.json({ data: { ok: true, message: 'Subscription canceled. Number will be released shortly.' } })
+  } catch (err) { next(err) }
+})
+
+router.post('/partner/twilio/numbers/request', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const parsed = requestNumberSchema.safeParse(req.body)
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string[]> = {}
+      for (const issue of parsed.error.issues) {
+        const key = issue.path.join('.') || 'root'
+        fieldErrors[key] = [...(fieldErrors[key] ?? []), issue.message]
+      }
+      throw new AppError('VALIDATION_ERROR', 'Invalid request', 422, fieldErrors)
+    }
+    const { phoneNumber, tier, label } = parsed.data
+
+    // Tier → price + A2P state. Codified here so the price shown to the
+    // partner at request time is exactly what gets billed.
+    const priceForTier: Record<typeof tier, number> = { VOICE: 200, VOICE_SMS: 1500, TOLLFREE: 500 }
+    const a2pForTier: Record<typeof tier, 'NOT_REQUIRED' | 'PENDING_QUEUE'> = {
+      VOICE:     'NOT_REQUIRED',
+      VOICE_SMS: 'PENDING_QUEUE',
+      TOLLFREE:  'NOT_REQUIRED',
+    }
+
+    // Reject duplicate active row for the same partner + number.
+    const conflict = await prisma.phoneNumber.findFirst({
+      where: { partnerId, e164Number: phoneNumber, purchaseStatus: { in: ['PENDING', 'APPROVED', 'PURCHASED'] } },
+    })
+    if (conflict) {
+      throw new AppError('CONFLICT', 'You already have an active request or active number for this phone number', 409)
+    }
+
+    // Platform tenant — partner numbers parent under it so tenantId-keyed
+    // queries don't break elsewhere.
+    const platformTenant = await prisma.tenant.findFirst({
+      where:  { slug: 'orbis-platform' },
+      select: { id: true },
+    })
+    if (!platformTenant) throw new AppError('INTERNAL_ERROR', 'Platform tenant not found', 500)
+
+    // Phase G.2.2 — auto-approve flow. Create the row in PENDING, then run
+    // provisionPartnerNumber() inline (buy on Twilio + move to subaccount +
+    // Stripe charge). On success the row flips to PURCHASED in the same
+    // request; on failure the helper rolls back + persists the failure
+    // reason on the row (purchaseStatus = REJECTED with rejectionReason).
+    // Admin keeps the "Disable" action for after-the-fact disabling.
+    const row = await prisma.phoneNumber.create({
+      data: {
+        tenantId:              platformTenant.id,
+        partnerId,
+        e164Number:            phoneNumber,
+        displayLabel:          label ?? null,
+        purchaseStatus:        'PENDING',
+        partnerCapabilityTier: tier,
+        monthlyPriceCents:     priceForTier[tier],
+        a2pStatus:             a2pForTier[tier],
+        requestedAt:           new Date(),
+        requestedByUserId:     req.user!.id,
+        isInboundEnabled:      false,
+        isOutboundEnabled:     false,
+        isSmsEnabled:          false,
+      },
+    })
+
+    writeAuditLog({
+      actorType:    'USER',
+      actorUserId:  req.user!.id,
+      action:       'partner.number_requested',
+      targetType:   'PhoneNumber',
+      targetId:     row.id,
+      metadataJson: { partnerId, phoneNumber, tier },
+    }).catch(e => console.error('[audit] number_requested write failed:', e))
+
+    const { provisionPartnerNumber } = await import('../services/partner-billing.service.js')
+    try {
+      const result = await provisionPartnerNumber({
+        phoneNumberRowId: row.id,
+        actorUserId:      req.user!.id,
+        actorType:        'USER',
+      })
+      res.json({
+        data: {
+          id:                  result.id,
+          status:              result.status,
+          monthlyPriceCents:   priceForTier[tier],
+          twilioNumberSid:     result.twilioNumberSid,
+          stripeSubscriptionId: result.stripeSubscriptionId,
+        },
+      })
+    } catch (provisionErr) {
+      // Provisioning helper has already persisted REJECTED + rejectionReason on
+      // the row by this point. Surface the error to the partner so they know
+      // what happened and can retry (with a new number or after fixing card).
+      throw provisionErr
+    }
+  } catch (err) { next(err) }
+})
 
 // ─── Per-partner Google Calendar OAuth (Phase E.0) ──────────────────────────
 //

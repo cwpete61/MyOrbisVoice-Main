@@ -143,8 +143,11 @@ router.post('/internal/mail/ingest', async (req: Request, res: Response, next: N
       return
     }
 
+    // Skip soft-deleted partners — inbound mail to a deleted partner's slug
+    // must NOT be delivered. The slug is preserved in the row for audit /
+    // restore, but the alias is treated as nonexistent for incoming mail.
     const partners = await prisma.affiliateAccount.findMany({
-      where: { slug: { in: uniqueSlugs } },
+      where: { slug: { in: uniqueSlugs }, deletedAt: null },
       include: { user: { select: { email: true, firstName: true, lastName: true } } },
     })
 

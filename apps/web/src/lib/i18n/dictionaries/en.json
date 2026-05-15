@@ -48,6 +48,18 @@
     },
     "soonPill": "Soon"
   },
+  "partnerLeads": {
+    "title": "Leads",
+    "subtitle": "Built-in lead generation for partners — finding prospects that fit MyOrbisVoice, qualified and ready to talk.",
+    "soonBadge": "Coming Soon",
+    "heroTitle": "Lead generation, built into your partner portal",
+    "heroBody": "We're building a lead-gen engine that surfaces qualified service-business prospects directly inside your dashboard — pre-scored for fit, with contact info, vertical, and the right opening line for outreach.",
+    "feature1": "Pre-qualified prospects — small service businesses matching the verticals MyOrbisVoice converts best in",
+    "feature2": "Vertical filters — dental, legal, home services, beauty, fitness, salon, real estate, more",
+    "feature3": "Contact info + opening lines — phone, email, and a tailored first message you can send in one click",
+    "feature4": "One-click enrollment into your CRM and outreach campaigns — no more spreadsheet hand-offs",
+    "notify": "Built from real partner workflows. We'll let you know as soon as it's open."
+  },
   "partnerNav": {
     "dashboard": "Dashboard",
     "mailbox": "Mailbox",
@@ -55,6 +67,7 @@
     "conversations": "Conversations",
     "crm": "CRM",
     "contacts": "Contacts",
+    "leads": "Leads",
     "campaigns": "Campaigns",
     "brandSubtitle": "Partner Portal",
     "referrals": "Referral Links",
@@ -65,7 +78,119 @@
     "marketVault": "Market Vault",
     "help": "Help",
     "soonPill": "Soon",
-    "profile": "Profile"
+    "profile": "Profile",
+    "phoneNumbers": "Phone Numbers"
+  },
+  "partnerPhoneNumbers": {
+    "title":    "Phone Numbers",
+    "subtitle": "Twilio numbers attached to your partner account. Inbound calls + SMS to these numbers route to your agent.",
+    "loading":  "Loading…",
+    "adminNote": "Numbers are purchased instantly when you request them — Stripe charges your card on file for the first month and your number routes inbound calls right away. Admin can disable any number for policy reasons.",
+    "buyNew":     "Buy a new number",
+    "hideSearch": "Hide search",
+    "requestThis": "Request this number",
+    "requesting":  "Requesting…",
+    "requestSent": "Request submitted for {number}. Admin will review shortly.",
+    "subaccount": {
+      "provisioned": "Twilio subaccount provisioned (status: {status}). New numbers route here.",
+      "notYet":      "No Twilio subaccount yet. One is created automatically the first time you request a number."
+    },
+    "empty": {
+      "title":        "No phone numbers yet",
+      "body":         "Click \"Buy a new number\" above to search Twilio's inventory.",
+      "contactAdmin": "admin@myorbisvoice.com"
+    },
+    "search": {
+      "heading":        "Search Twilio inventory",
+      "tierLabel":      "Capability tier",
+      "areaCodeLabel":  "Area code (optional)",
+      "searchBtn":      "Search numbers",
+      "searching":      "Searching…",
+      "approvalNote":   "Click a number to buy it. The Twilio purchase + Stripe charge run immediately — your card on file is billed for the first month. Cancel anytime to release the number."
+    },
+    "tier": {
+      "VOICE":     { "label": "Voice",       "desc": "US local, voice in/out, no SMS" },
+      "VOICE_SMS": { "label": "Voice + SMS", "desc": "US local, voice + SMS (A2P required)" },
+      "TOLLFREE":  { "label": "Toll-free",   "desc": "Voice + SMS, separate verification" }
+    },
+    "status": {
+      "PENDING":   "Pending review",
+      "APPROVED":  "Approved",
+      "PURCHASED": "Active",
+      "REJECTED":  "Rejected",
+      "RELEASED":  "Released"
+    },
+    "col": {
+      "number":       "Number",
+      "label":        "Label",
+      "capabilities": "Capabilities",
+      "tier":         "Tier",
+      "status":       "Status",
+      "price":        "Price",
+      "added":        "Added",
+      "requested":    "Requested",
+      "location":     "Location",
+      "actions":      "Actions"
+    },
+    "cap": {
+      "inbound":  "Voice in",
+      "outbound": "Voice out",
+      "sms":      "SMS"
+    },
+    "card": {
+      "onFile":   "Card on file: {brand} •••• {last4}",
+      "missing":  "No card on file. Add a card to enable number purchases — admin approval requires it.",
+      "addCta":   "Add card",
+      "replace":  "Replace card",
+      "opening":  "Opening Stripe…",
+      "saved":    "Card saved. You can now request numbers."
+    },
+    "credits": {
+      "heading":         "SMS / MMS Credits",
+      "subtitle":        "Buy credits to send SMS and MMS from your numbers. Credits never expire — they roll over month-to-month.",
+      "balanceLabel":    "credits",
+      "compactHeading":  "SMS is sold separately. Pricing per pack:",
+      "packCta":         "Buy {credits} for {price}",
+      "buyHelp":         "One-time charge to your card on file.",
+      "needCard":        "Add a card above first.",
+      "opening":         "Opening Stripe…",
+      "rolloverNote":    "Credits never expire. 1 credit = 1 SMS segment, 2 = long SMS, 2.5 = MMS.",
+      "purchaseSuccess": "Credits added. Balance updated.",
+      "col": {
+        "pack5":  "$5 pack",
+        "pack10": "$10 pack"
+      },
+      "row": {
+        "sms":     "Standard SMS",
+        "smsLong": "Long SMS (2 segments)",
+        "mms":     "MMS"
+      },
+      "financials": {
+        "purchased":         "Purchased {amount}",
+        "spent":             "Spent {amount}",
+        "net":               "Net {amount}",
+        "overBudgetWarning": "Your pack value is exhausted. Outbound SMS is paused until you top up — buy another pack below.",
+        "status": {
+          "HEALTHY":     "Healthy",
+          "LOW":         "Low",
+          "OVER_BUDGET": "Over budget"
+        }
+      }
+    },
+    "monthly": {
+      "heading":        "Monthly Number Charges",
+      "perMonth":       "month",
+      "localLabel":     "Local US number (voice in/out)",
+      "tollfreeLabel":  "Toll-free number (voice + SMS-ready)",
+      "note":           "Stripe auto-charges your card on file each month. Cancel anytime — the number is released when the current period ends. SMS sending is separate (credit packs below)."
+    },
+    "whatsapp": {
+      "heading":     "WhatsApp messages",
+      "subtitle":    "Send / receive WhatsApp from your partner numbers. Coming soon — pricing not finalized.",
+      "comingSoon":  "Coming soon"
+    },
+    "cancelBtn":  "Cancel subscription",
+    "canceling":  "Canceling…"
   },
   "partnerCrm": {
     "title":            "CRM pipeline",
@@ -170,7 +295,8 @@
     "searchPlaceholder": "Search articles…",
     "noResults":         "No articles match \"{query}\".",
     "tips":              "TIPS",
-    "contactBlock":      "Still stuck? Email"
+    "contactBlock":      "Still stuck? Email",
+    "lastUpdated":       "Last Updated {date}"
   },
   "partnerConversations": {
     "title":               "Conversations",
@@ -261,6 +387,8 @@
       "fillAllRequired":    "Fill in To, Subject, and Message before sending.",
       "sendFailed":         "Send failed. Try again.",
       "signatureNote":      "Sent from your partner address. Your saved signature is appended automatically.",
+      "signatureLabel":     "Signature preview",
+      "signatureHelp":      "This is appended below your message when you send. Edit at Profile → Email setup.",
       "templateLabel":      "Use a template",
       "templateHelp":       "Pick a starting point. Your name + business get filled in automatically. Edit anything before sending.",
       "templateNone":       "— Start from scratch —",
@@ -925,6 +1053,11 @@
     "subtitle": "Your partner account details and payout preferences.",
     "loading": "Loading…",
     "noAccount": "No partner account found. Apply from the Dashboard.",
+    "statusBanner": {
+      "pending": "Your partner profile is pending approval. You can edit your profile while we review it — calendar booking, payouts, and conversations unlock once your account is fully provisioned.",
+      "paused": "Your partner account is paused. Profile edits are still available, but calendar booking, campaigns, and payouts are disabled until access is restored.",
+      "disabled": "Your partner account has been disabled. Contact support@myorbisvoice.com if you believe this is in error."
+    },
     "accountInfoHeading": "ACCOUNT INFO",
     "accountId": "Account ID",
     "status": "Status",
@@ -956,7 +1089,7 @@
     "savingMarketing":      "Saving…",
     "avatar": {
       "label":                "Avatar",
-      "help":                 "Shown on your partner pages and inside your Mailbox header. 2 MB max, PNG / JPEG / WebP / GIF.",
+      "help":                 "Shown on your partner pages and inside your Mailbox header. 2 MB max, PNG / JPEG / WebP.",
       "upload":               "Upload photo",
       "replace":              "Replace photo",
       "uploading":            "Uploading…",
@@ -973,6 +1106,29 @@
       "help":        "Your business or brand. Shown alongside your name on partner pages.",
       "placeholder": "Rivera Local Marketing"
     },
+    "address": {
+      "street": {
+        "label":       "Address",
+        "help":        "Public mailing address shown on your partner pages and in the legal footer of marketing emails you send. CAN-SPAM requires a real postal address.",
+        "placeholder": "123 Main St"
+      },
+      "unit": {
+        "label":       "Unit",
+        "placeholder": "Suite 200"
+      },
+      "city": {
+        "label":       "Town",
+        "placeholder": "Allentown"
+      },
+      "state": {
+        "label":       "State",
+        "placeholder": "PA"
+      },
+      "postalCode": {
+        "label":       "ZIP code",
+        "placeholder": "18102"
+      }
+    },
     "partnerPhone": {
       "label": "Phone (public)",
       "help":  "The number prospects can call or text you on. Shown in the partner ribbon on your pages."
@@ -988,9 +1144,16 @@
       "help":  "Auto-generated from your slug. Anyone can email this address; everything routes to your Mailbox. Send from this address using the Compose tab."
     },
     "emailSignature": {
-      "label":       "Email signature",
-      "help":        "HTML allowed. Appended to every email you send from your Mailbox. Keep it short and professional.",
-      "placeholder": "<p>— Alex<br>Rivera Local Marketing<br>📞 555-123-4567</p>"
+      "label":         "Email signature",
+      "help":          "HTML allowed. Appended to every email you send from your Mailbox. Keep it short and professional.",
+      "helpAuto":      "Auto-generated from your profile (logo, name, business, email, phone, partner page). Updates automatically when you change those fields. Appended to every email you send.",
+      "helpCustom":    "Using your custom HTML override (set below). Auto-signature is disabled until you remove the override.",
+      "previewTitle":  "Email signature preview",
+      "showCustom":    "Use custom HTML instead (advanced)",
+      "hideCustom":    "Hide custom HTML",
+      "customHelp":    "Override the auto-generated signature with your own HTML. Leave blank to use the auto signature.",
+      "resetToAuto":   "Clear and use auto-generated signature",
+      "placeholder":   "<p>— Alex<br>Rivera Local Marketing<br>📞 555-123-4567</p>"
     },
     "forwardEmails": {
       "label": "Forward platform emails to my registration email",
@@ -1032,6 +1195,23 @@
       "open":             "Open",
       "closed":           "Closed",
       "to":               "to",
+      "breakFrom":        "break",
+      "breakTo":          "to",
+      "addBreak":         "+ break",
+      "removeBreak":      "remove break",
+      "openTimeAriaLabel":  "Open time",
+      "closeTimeAriaLabel": "Close time",
+      "breakStartAriaLabel": "Break start time",
+      "breakEndAriaLabel":   "Break end time",
+      "breakAll": {
+        "label":           "Lunch break, all open days",
+        "to":              "to",
+        "applyAll":        "Apply to all open days",
+        "clearAll":        "Clear all breaks",
+        "help":            "Pick a window once, then click Apply. Closed days are skipped. Edit any day individually below if it differs.",
+        "startAriaLabel":  "Bulk break start time",
+        "endAriaLabel":    "Bulk break end time"
+      },
       "days": {
         "mon": "Mon",
         "tue": "Tue",
@@ -3882,11 +4062,28 @@
     "loadingSlots":      "Looking up open times…",
     "pickDate":          "Pick a day",
     "pickTime":          "Pick a time",
+    "selectTime":        "Select an appointment time",
     "noSlots":           "No open times this day. Try another day.",
+    "noSlotsShort":      "—",
     "bookWith":          "Book with {name}",
     "slotDurationLabel": "{min}-minute appointment",
     "calendarNotReady":  "This partner is finishing setup. Bookings will be available shortly.",
     "yourDetails":       "Your details",
+    "businessHours":     "Business Hours",
+    "durationLine":      "{min} min appointments",
+    "inviteLine":        "Calendar invite emailed after booking",
+    "weeklyHours":       "Weekly hours",
+    "dayClosed":         "Closed",
+    "breakLine":         "Break {start}–{end}",
+    "noticeMinutes":     "{n}-min notice required",
+    "noticeHours":       "{n}-hour notice required",
+    "advanceLine":       "Book up to {n} days ahead",
+    "prevWeek":          "Previous week",
+    "nextWeek":          "Next week",
+    "prevMonth":         "Previous month",
+    "nextMonth":         "Next month",
+    "today":             "Today",
+    "back":              "Back",
     "submitCta":         "Confirm booking",
     "submitting":        "Booking…",
     "submitFailed":      "Could not complete booking. Please try again or pick another time.",

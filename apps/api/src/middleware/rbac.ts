@@ -96,3 +96,24 @@ export function requirePartnerContext(req: Request, _res: Response, next: NextFu
     next(err)
   })
 }
+
+/** Soft variant of requirePartnerContext: only requires that an
+ *  AffiliateAccount exists for the user. Allows non-ACTIVE / no-slug
+ *  partners through so they can still view + edit their own profile while
+ *  pending approval. Adds partnerAccountId, partnerSlug (may be null),
+ *  and partnerStatus to req so handlers can react to incomplete state. */
+export function requirePartnerAccount(req: Request, _res: Response, next: NextFunction): void {
+  if (!req.user) { next(Errors.unauthorized()); return }
+  prisma.affiliateAccount.findUnique({
+    where: { userId: req.user.id },
+    select: { id: true, slug: true, status: true },
+  }).then((partner) => {
+    if (!partner) { next(Errors.forbidden('No partner profile for this user')); return }
+    ;(req as any).partnerAccountId = partner.id
+    ;(req as any).partnerSlug = partner.slug
+    ;(req as any).partnerStatus = partner.status
+    next()
+  }).catch((err) => {
+    next(err)
+  })
+}

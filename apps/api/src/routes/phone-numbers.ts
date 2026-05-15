@@ -141,9 +141,11 @@ router.post('/twilio/numbers/purchase', asyncHandler(async (req, res) => {
     throw new AppError('FORBIDDEN', `Plan limit reached: ${currentCount} of ${max} used.`, 403)
   }
 
-  // Conflict check (someone else's tenant already has this number — should
-  // never happen but the unique constraint will catch it anyway)
-  const existing = await prisma.phoneNumber.findUnique({ where: { e164Number: phoneNumber } })
+  // Conflict check — only PURCHASED rows truly own the number. PENDING /
+  // REJECTED rows are open requests + don't block a fresh purchase.
+  const existing = await prisma.phoneNumber.findFirst({
+    where: { e164Number: phoneNumber, purchaseStatus: 'PURCHASED' },
+  })
   if (existing) throw new AppError('CONFLICT', 'Number already registered to another tenant', 409)
 
   // Provision (or fetch) the tenant's subaccount

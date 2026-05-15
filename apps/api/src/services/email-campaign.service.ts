@@ -143,6 +143,9 @@ export async function addRecipientsFromContacts(scope: CampaignScope, campaignId
       // Skip contacts who opted out of email at the contact level.
       optedOutEmail: false,
       email:         { not: null },
+      // Skip soft-deleted contacts. A deleted contact must never receive
+      // outbound email — the deletion is the user's signal to stop.
+      deletedAt:     null,
     },
     select: { id: true, email: true, fullName: true, firstName: true, lastName: true },
   })

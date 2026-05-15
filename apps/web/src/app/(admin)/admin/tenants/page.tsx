@@ -1,9 +1,17 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useApi, apiFetch } from '@/hooks/useApi'
 import { isPlatformSuperAdmin } from '@/lib/auth'
 import Link from 'next/link'
+
+// Page-size options match the user's request. Backend caps `limit` at 100
+// (see admin.ts route schema), so don't add a 200+ option without raising
+// that cap first.
+const PAGE_SIZE_OPTIONS = [25, 50, 100] as const
+type PageSize = typeof PAGE_SIZE_OPTIONS[number]
+const DEFAULT_PAGE_SIZE: PageSize = 25
+const PAGE_SIZE_LS_KEY = 'admin.tenants.pageSize'
 
 interface Tenant {
   id: string; slug: string; displayName: string; status: string
@@ -23,10 +31,50 @@ const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
 export default function AdminTenantsPage() {
   const [search, setSearch] = useState('')
   const [query, setQuery]   = useState('')
-  const { data, loading, error, reload } = useApi<ListResult>(
-    `/api/admin/tenants${query ? `?search=${encodeURIComponent(query)}` : ''}`,
-    [query]
-  )
+
+  // Pagination — pageSize persists across sessions so an admin who prefers
+  // 100/page doesn't have to reset it on every visit. `page` is 1-indexed.
+  // Both reset to 1 when the search query changes (otherwise switching
+  // searches could land you on page 5 of a 2-page result and show nothing).
+  const [pageSize, setPageSizeState] = useState<PageSize>(DEFAULT_PAGE_SIZE)
+  const [page,     setPage]          = useState(1)
+
+  // Hydrate pageSize from localStorage on mount. Done in an effect (not the
+  // initial useState) so server-render output stays deterministic.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const stored = parseInt(window.localStorage.getItem(PAGE_SIZE_LS_KEY) ?? '', 10)
+    if ((PAGE_SIZE_OPTIONS as readonly number[]).includes(stored)) {
+      setPageSizeState(stored as PageSize)
+    }
+  }, [])
+
+  function setPageSize(next: PageSize) {
+    setPageSizeState(next)
+    setPage(1)  // jumping page sizes invalidates the current page index
+    try { window.localStorage.setItem(PAGE_SIZE_LS_KEY, String(next)) } catch { /* ignore quota */ }
+  }
+
+  const offset = (page - 1) * pageSize
+  const apiUrl = useMemo(() => {
+    const params = new URLSearchParams()
+    if (query) params.set('search', query)
+    params.set('limit',  String(pageSize))
+    params.set('offset', String(offset))
+    return `/api/admin/tenants?${params.toString()}`
+  }, [query, pageSize, offset])
+
+  const { data, loading, error, reload } = useApi<ListResult>(apiUrl, [apiUrl])
+
+  // When the result lands, clamp `page` to the actual last page. Two cases:
+  //   1. Admin had pageSize=25, page=5 (rows 101-125), then switched to
+  //      pageSize=100 → only one page exists, so we drop to page 1.
+  //   2. Admin deleted enough rows that the current page no longer exists.
+  useEffect(() => {
+    if (!data) return
+    const totalPages = Math.max(1, Math.ceil(data.total / pageSize))
+    if (page > totalPages) setPage(totalPages)
+  }, [data, pageSize, page])
 
   // Selection state — Set of tenant IDs the admin has checked.
   // Cleared on any list reload (post-delete) so stale IDs don't linger.
@@ -45,7 +93,7 @@ export default function AdminTenantsPage() {
   // (existing /tenants/[id] page) but never destroy.
   const canDelete = useMemo(() => isPlatformSuperAdmin(), [])
 
-  function handleSearch(e: React.FormEvent) { e.preventDefault(); setQuery(search) }
+  function handleSearch(e: React.FormEvent) { e.preventDefault(); setQuery(search); setPage(1) }
 
   function toggleOne(id: string) {
     setSelected(prev => {
@@ -122,7 +170,7 @@ export default function AdminTenantsPage() {
         />
         <button type="submit" className="btn-ghost">Search</button>
         {query && (
-          <button type="button" onClick={() => { setSearch(''); setQuery('') }} className="btn-ghost">Clear</button>
+          <button type="button" onClick={() => { setSearch(''); setQuery(''); setPage(1) }} className="btn-ghost">Clear</button>
         )}
       </form>
 
@@ -205,6 +253,101 @@ export default function AdminTenantsPage() {
           </table>
         </div>
       )}
+
+      {/* Pagination footer — hidden when there is no data yet, but always
+          shown otherwise (even at total=0, so the page-size selector itself
+          is reachable after a no-results search). */}
+      {data && (() => {
+        const total      = data.total
+        const totalPages = Math.max(1, Math.ceil(total / pageSize))
+        const firstRow   = total === 0 ? 0 : offset + 1
+        const lastRow    = Math.min(offset + pageSize, total)
+        return (
+          <div
+            className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl"
+            style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
+          >
+            <p className="text-xs tabular-nums" style={{ color: 'var(--text-tertiary)' }}>
+              {total === 0
+                ? 'No results'
+                : `Showing ${firstRow}–${lastRow} of ${total}`}
+            </p>
+
+            <div className="flex items-center gap-4">
+              {/* Prev / next + current-page indicator. Only render once there
+                  is something to page through. */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    aria-label="Previous page"
+                    className="rounded-md px-2 py-1 text-sm"
+                    style={{
+                      border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-secondary)',
+                      opacity: page <= 1 ? 0.4 : 1,
+                      cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    ‹
+                  </button>
+                  <span className="text-xs tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    aria-label="Next page"
+                    className="rounded-md px-2 py-1 text-sm"
+                    style={{
+                      border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-secondary)',
+                      opacity: page >= totalPages ? 0.4 : 1,
+                      cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
+
+              {/* Per-page selector — three discrete buttons (25 / 50 / 100). */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Per page</span>
+                <div
+                  className="inline-flex rounded-md overflow-hidden"
+                  style={{ border: '1px solid var(--border-subtle)' }}
+                  role="group"
+                  aria-label="Rows per page"
+                >
+                  {PAGE_SIZE_OPTIONS.map((opt) => {
+                    const active = pageSize === opt
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setPageSize(opt)}
+                        aria-pressed={active}
+                        className="px-3 py-1 text-xs font-medium tabular-nums transition-colors"
+                        style={{
+                          background: active ? 'oklch(55% 0.11 193)' : 'transparent',
+                          color:      active ? '#0a0e18' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {opt}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Floating action bar — only when ≥1 selected */}
       {canDelete && selectedCount > 0 && (

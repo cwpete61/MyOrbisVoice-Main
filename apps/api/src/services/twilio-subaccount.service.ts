@@ -220,3 +220,67 @@ export async function getMasterCredentials() {
   if (!creds) throw new AppError('INTERNAL_ERROR', 'Platform Twilio not configured (Admin → System Settings)', 500)
   return creds
 }
+
+// ─── Partner subaccounts (Phase G.1) ─────────────────────────────────────────
+//
+// Mirror of ensureTenantSubaccount / getSubaccountClient but partner-scoped.
+// Same lifecycle: lazy-create on first resource purchase, status-gated, encrypted
+// auth token. Subaccount is parented under the platform master Twilio account,
+// just like the tenant variant.
+
+export async function ensurePartnerSubaccount(partnerId: string): Promise<{ subaccountSid: string; authToken: string }> {
+  const existing = await prisma.partnerTwilioSubaccount.findUnique({ where: { partnerId } })
+  if (existing && existing.status === 'ACTIVE') {
+    return {
+      subaccountSid: existing.twilioSubaccountSid,
+      authToken: decrypt(existing.encryptedSubaccountAuthToken),
+    }
+  }
+  if (existing && existing.status !== 'ACTIVE') {
+    throw new AppError('FORBIDDEN', `Partner subaccount is in ${existing.status} state — contact support`, 403)
+  }
+
+  const partner = await prisma.affiliateAccount.findUnique({
+    where:  { id: partnerId },
+    select: { displayName: true, slug: true, user: { select: { firstName: true, lastName: true } } },
+  })
+  if (!partner) throw new AppError('NOT_FOUND', 'Partner not found', 404)
+
+  const partnerLabel = partner.displayName
+    ?? [partner.user.firstName, partner.user.lastName].filter(Boolean).join(' ').trim()
+    ?? partner.slug
+    ?? 'unknown'
+
+  const masterClient = await getPlatformTwilioClient()
+  const friendlyName = `OrbisVoice partner: ${partnerLabel} (${partnerId.slice(0, 8)})`
+  const created = await masterClient.api.v2010.accounts.create({ friendlyName })
+
+  await prisma.partnerTwilioSubaccount.create({
+    data: {
+      partnerId,
+      twilioSubaccountSid: created.sid,
+      encryptedSubaccountAuthToken: encrypt(created.authToken),
+      status: 'ACTIVE',
+    },
+  })
+
+  return { subaccountSid: created.sid, authToken: created.authToken }
+}
+
+/** Twilio client scoped to a partner's subaccount. Provisions lazily. */
+export async function getPartnerSubaccountClient(partnerId: string) {
+  const { subaccountSid, authToken } = await ensurePartnerSubaccount(partnerId)
+  const Twilio = (await import('twilio')).default
+  return Twilio(subaccountSid, authToken)
+}
+
+/** Status read — used by partner portal UI to show "subaccount provisioned" state. */
+export async function getPartnerSubaccountStatus(partnerId: string): Promise<{
+  exists:        boolean
+  subaccountSid: string | null
+  status:        string | null
+}> {
+  const row = await prisma.partnerTwilioSubaccount.findUnique({ where: { partnerId } })
+  if (!row) return { exists: false, subaccountSid: null, status: null }
+  return { exists: true, subaccountSid: row.twilioSubaccountSid, status: row.status }
+}

@@ -62,6 +62,22 @@ export type HelpArticle = {
   steps: HelpStep[]
   tips?: string[]
   warnings?: string[]
+  /**
+   * ISO date (YYYY-MM-DD) the article was last reviewed/refreshed. Rendered
+   * as italic "Last Updated MM/DD/YYYY" at the bottom of the article so
+   * partners know whether what they're reading still matches the product.
+   * The partner-help audit script (`pnpm partner-help:audit`) compares this
+   * against the most recent git change touching the related portal page
+   * directory and flags drift.
+   */
+  lastUpdated?: string
+  /**
+   * Optional list of portal-page directory names this article documents
+   * (e.g. ['phone-numbers', 'profile']). Used by the audit script to map
+   * articles → source code. When omitted, the script falls back to the
+   * section.id ↔ directory name convention.
+   */
+  sourcePaths?: string[]
 }
 
 export type HelpSection = {

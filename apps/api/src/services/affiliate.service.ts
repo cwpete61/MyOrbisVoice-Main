@@ -48,13 +48,36 @@ async function uniqueCode(): Promise<string> {
 export async function applyForAffiliate(userId: string) {
   const existing = await prisma.affiliateAccount.findUnique({ where: { userId } })
   if (existing) return existing
+
+  // Slug must be set at creation so the platform email (<slug>@myorbisresults.com)
+  // works immediately + stays permanent. Source: User.firstName + lastName,
+  // slugified. Falls back to the email's local-part if name fields are empty
+  // (older accounts may have null names — never block partner signup over it).
+  const user = await prisma.user.findUnique({
+    where:  { id: userId },
+    select: { firstName: true, lastName: true, email: true },
+  })
+  if (!user) throw new AppError('NOT_FOUND', 'User not found', 404)
+
+  const { generatePartnerSlug } = await import('./partner.service.js')
+  const fn = (user.firstName ?? '').trim()
+  const ln = (user.lastName ?? '').trim()
+  let slug: string
+  if (fn || ln) {
+    slug = await generatePartnerSlug(fn || 'partner', ln || '')
+  } else {
+    // No name on file — derive from email local-part as a last resort.
+    const localPart = user.email.split('@')[0] ?? 'partner'
+    slug = await generatePartnerSlug(localPart, '')
+  }
+
   const code = await uniqueCode()
   // Auto-approve on application (decided 2026-05-04 — reverses earlier "vetted
   // application" decision). Partners get an active referral link immediately
   // and can start sending traffic. They still need to complete payout-account
   // setup (Stripe Connect) before they can actually receive money.
   return prisma.affiliateAccount.create({
-    data: { userId, referralCode: code, status: 'ACTIVE' },
+    data: { userId, referralCode: code, status: 'ACTIVE', slug },
   })
 }
 
@@ -205,12 +228,32 @@ export async function createConnectOnboardingLink(
   const stripe = getStripe()
   const account = await prisma.affiliateAccount.findUnique({
     where: { userId },
-    include: { user: { select: { email: true } } },
+    select: {
+      id: true,
+      slug: true,
+      status: true,
+      stripeConnectAccountId: true,
+      businessName: true,
+      partnerPhone: true,
+      partnerStreet: true,
+      partnerUnit: true,
+      partnerCity: true,
+      partnerState: true,
+      partnerPostalCode: true,
+      user: { select: { email: true, firstName: true, lastName: true } },
+    },
   })
   if (!account) throw new AppError('NOT_FOUND', 'No partner account found for this user', 404)
   if (account.status !== 'ACTIVE') {
     throw new Error('Partner account must be ACTIVE before connecting payouts')
   }
+
+  // Build the Stripe-shaped prefill payload from the partner's profile so they
+  // don't have to type their name / business / address again on Stripe's form.
+  // Address fields fill `support_address` (business-facing) AND `individual.address`
+  // (KYC). businessName fills `business_profile.name` — Stripe accepts it for
+  // both Individual and Company account types (acts as DBA when Individual).
+  const prefill = buildStripeConnectPrefill(account)
 
   // Reuse existing Stripe account if present, otherwise create one.
   let connectAccountId = account.stripeConnectAccountId
@@ -227,12 +270,28 @@ export async function createConnectOnboardingLink(
         affiliateAccountId: account.id,
         platform:           'MyOrbisVoice',
       },
+      ...prefill,
     })
     connectAccountId = created.id
     await prisma.affiliateAccount.update({
       where: { id: account.id },
       data:  { stripeConnectAccountId: connectAccountId },
     })
+  } else {
+    // Account already exists. If the partner hasn't finished onboarding yet,
+    // refresh the prefill in case their profile changed (e.g. they fixed
+    // their business name or address since starting). Stripe rejects updates
+    // to fields the partner has already submitted, so we only attempt this
+    // when `details_submitted` is still false.
+    try {
+      const existing = await stripe.accounts.retrieve(connectAccountId)
+      if (!existing.details_submitted) {
+        await stripe.accounts.update(connectAccountId, prefill)
+      }
+    } catch (err) {
+      // Non-fatal — onboarding link still works without the refresh.
+      console.warn(`[stripe-connect] prefill refresh failed for ${connectAccountId}:`, (err as Error).message)
+    }
   }
 
   const link = await stripe.accountLinks.create({
@@ -243,6 +302,71 @@ export async function createConnectOnboardingLink(
   })
 
   return { url: link.url, accountId: connectAccountId }
+}
+
+// ── Stripe Connect prefill helper ────────────────────────────────────────────
+// Translates our partner-profile shape into the Stripe Accounts API shape.
+// Returned as Stripe's Stripe.AccountCreateParams to share between create
+// (spread into the create call) and update (passed directly).
+type ConnectPrefillSource = {
+  slug:              string | null
+  businessName:      string | null
+  partnerPhone:      string | null
+  partnerStreet:     string | null
+  partnerUnit:       string | null
+  partnerCity:       string | null
+  partnerState:      string | null
+  partnerPostalCode: string | null
+  user: { email: string; firstName: string | null; lastName: string | null }
+}
+
+function buildStripeConnectPrefill(account: ConnectPrefillSource): Record<string, unknown> {
+  // Address only useful if at least the street line is present. Stripe will
+  // accept a partial address but it's clearer to omit the whole block than
+  // submit a half-filled one.
+  const hasAddress = !!account.partnerStreet
+  const address = hasAddress
+    ? {
+        line1:       account.partnerStreet!,
+        line2:       account.partnerUnit ?? undefined,
+        city:        account.partnerCity ?? undefined,
+        state:       account.partnerState ?? undefined,
+        postal_code: account.partnerPostalCode ?? undefined,
+        country:     'US',
+      }
+    : undefined
+
+  // Stripe requires E.164 phone format. We don't enforce it on input, so
+  // normalize defensively: strip non-digits, and only pass through if it
+  // ends up as 10 digits (assume US) or 11 starting with 1.
+  const phoneE164 = normalizePhoneE164(account.partnerPhone)
+
+  const supportEmail = account.slug ? `${account.slug}@myorbisresults.com` : account.user.email
+
+  const business_profile: Record<string, unknown> = {}
+  if (account.businessName) business_profile.name = account.businessName
+  if (account.slug)         business_profile.url  = `https://myorbisvoice.com/p/${account.slug}`
+  business_profile.support_email = supportEmail
+  if (phoneE164) business_profile.support_phone = phoneE164
+  if (address)   business_profile.support_address = address
+
+  const individual: Record<string, unknown> = {
+    email: account.user.email,
+  }
+  if (account.user.firstName) individual.first_name = account.user.firstName
+  if (account.user.lastName)  individual.last_name  = account.user.lastName
+  if (phoneE164)              individual.phone      = phoneE164
+  if (address)                individual.address    = address
+
+  return { business_profile, individual }
+}
+
+function normalizePhoneE164(raw: string | null): string | undefined {
+  if (!raw) return undefined
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length === 10) return `+1${digits}`
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
+  return undefined  // unknown format — don't risk Stripe rejection
 }
 
 export async function approveAffiliate(id: string) {
@@ -300,21 +424,25 @@ async function resolveCodeOrSlug(input: string): Promise<{
   if (!input) return { account: null, customLinkId: null }
 
   // Primary referral code is uppercase hex; custom slugs are lowercase. Try
-  // direct referralCode first since it's the common case.
-  const direct = await prisma.affiliateAccount.findUnique({
-    where: { referralCode: input },
+  // direct referralCode first since it's the common case. findFirst (with
+  // deletedAt filter) instead of findUnique so soft-deleted partners stop
+  // resolving — referral clicks for a deleted partner must dead-end.
+  const direct = await prisma.affiliateAccount.findFirst({
+    where:  { referralCode: input, deletedAt: null },
     select: { id: true, status: true, referralCode: true },
   })
   if (direct) return { account: direct, customLinkId: null }
 
-  // Fall through to custom slug lookup.
+  // Fall through to custom slug lookup. Same protection: the included
+  // affiliateAccount must not be soft-deleted, else we treat the link as
+  // unresolved.
   const link = await prisma.affiliateCustomLink.findUnique({
     where: { slug: input },
     include: {
-      affiliateAccount: { select: { id: true, status: true, referralCode: true } },
+      affiliateAccount: { select: { id: true, status: true, referralCode: true, deletedAt: true } },
     },
   })
-  if (link && !link.archivedAt && link.affiliateAccount.status === 'ACTIVE') {
+  if (link && !link.archivedAt && link.affiliateAccount.status === 'ACTIVE' && !link.affiliateAccount.deletedAt) {
     return { account: link.affiliateAccount, customLinkId: link.id }
   }
   return { account: null, customLinkId: null }
@@ -932,7 +1060,7 @@ export async function getPlatformStats(periodDays = 30) {
     }),
 
     prisma.affiliateAccount.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', deletedAt: null },
       orderBy: { totalEarnedCents: 'desc' },
       take: 5,
       include: { user: { select: { firstName: true, lastName: true, email: true } } },
@@ -1026,6 +1154,55 @@ export async function regeneratePartnerCode(id: string) {
   })
 }
 
+/**
+ * Soft-delete: marks the partner as removed but keeps every row + relation.
+ *
+ * This is the default path for admin "remove partner" actions. Data-loss
+ * prevention rule: nobody removes a partner permanently through ordinary
+ * admin UX. The record disappears from lists / login / lookups (queries
+ * filter `deletedAt: null`) but a restore is one UPDATE away.
+ *
+ * Use deletePartner() instead only for explicit GDPR / right-to-be-forgotten
+ * requests where the legal requirement is full erasure.
+ */
+export async function softDeletePartner(
+  id: string,
+  opts: { actorUserId?: string; reason?: string } = {},
+): Promise<{ softDeleted: true; affiliateAccountId: string } | { softDeleted: false; reason: 'not_found' | 'already_deleted' }> {
+  const account = await prisma.affiliateAccount.findUnique({
+    where:  { id },
+    select: { id: true, deletedAt: true, referralCode: true },
+  })
+  if (!account) return { softDeleted: false, reason: 'not_found' }
+  if (account.deletedAt) return { softDeleted: false, reason: 'already_deleted' }
+
+  await prisma.affiliateAccount.update({
+    where: { id },
+    data:  { deletedAt: new Date() },
+  })
+
+  const { writeAuditLog } = await import('../lib/audit.js')
+  await writeAuditLog({
+    actorType:    'ADMIN',
+    actorUserId:  opts.actorUserId,
+    action:       'partner.soft_deleted',
+    targetType:   'AffiliateAccount',
+    targetId:     id,
+    metadataJson: {
+      affiliateAccountId: id,
+      referralCode:       account.referralCode,
+      reason:             opts.reason,
+    },
+  })
+
+  return { softDeleted: true, affiliateAccountId: id }
+}
+
+/**
+ * Hard-delete (full erasure) — wipes the partner's User row and cascades to
+ * every related table. Used only for GDPR / right-to-be-forgotten compliance.
+ * For ordinary admin "remove partner" actions, use softDeletePartner().
+ */
 export async function deletePartner(
   id: string,
   opts: { actorUserId?: string; reason?: string } = {},
@@ -1245,8 +1422,12 @@ export async function processPayoutRequest(id: string, payoutRef: string, notes?
 
 // ── Admin lists ───────────────────────────────────────────────────────────────
 
-export async function listAffiliates(opts: { status?: string; search?: string; page: number; limit: number }) {
-  const where: Record<string, unknown> = {}
+export async function listAffiliates(opts: { status?: string; search?: string; page: number; limit: number; includeDeleted?: boolean }) {
+  // Exclude soft-deleted partners by default. `includeDeleted: true` is for
+  // an eventual admin "Recently removed" page where the SuperAdmin can
+  // restore them. Stays opt-in so a careless caller can't surface deleted
+  // records to the normal admin list.
+  const where: Record<string, unknown> = opts.includeDeleted ? {} : { deletedAt: null }
   if (opts.status) where['status'] = opts.status
   if (opts.search) {
     where['user'] = {

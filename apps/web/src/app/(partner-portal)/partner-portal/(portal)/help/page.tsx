@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { PARTNER_HELP_CONTENT } from '@/lib/partnerHelpContent'
 import type { HelpArticle } from '@/lib/helpContent'
 import { useT } from '@/lib/i18n/I18nProvider'
+import { HelpScreenshot } from '@/components/HelpScreenshot'
 
 const TEAL = 'oklch(55% 0.11 193)'
 
@@ -38,6 +39,9 @@ function ArticleView({ article }: { article: HelpArticle }) {
             <div className="flex-1">
               <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{step.title}</p>
               <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: 'var(--text-secondary)' }}>{step.body}</p>
+              {step.screenshots?.map((s, j) => (
+                <HelpScreenshot key={j} filename={s.filename} caption={s.caption} />
+              ))}
             </div>
           </div>
         ))}
@@ -66,8 +70,21 @@ function ArticleView({ article }: { article: HelpArticle }) {
         {t('partnerHelp.contactBlock')}{' '}
         <a href="mailto:support@myorbisvoice.com" style={{ color: TEAL, textDecoration: 'none' }}>support@myorbisvoice.com</a>
       </div>
+
+      {article.lastUpdated && (
+        <p className="text-[11px] italic mt-4" style={{ color: 'var(--text-tertiary)' }}>
+          {t('partnerHelp.lastUpdated', { date: formatLastUpdated(article.lastUpdated) })}
+        </p>
+      )}
     </div>
   )
+}
+
+/** "2026-05-14" → "05/14/2026" — partner-help footer date format. */
+function formatLastUpdated(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (!m) return iso
+  return `${m[2]}/${m[3]}/${m[1]}`
 }
 
 export default function PartnerHelpPage() {

@@ -86,7 +86,8 @@ export async function upsertBusinessProfile(tenantId: string, data: z.infer<type
 
 const DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 type DayKey = (typeof DAY_KEYS)[number]
-type DayHours = { open: string; close: string }
+// Optional mid-day closed window. Both ends set or both omitted (no break).
+type DayHours = { open: string; close: string; breakStart?: string; breakEnd?: string }
 type BookingHoursMap = Partial<Record<DayKey, DayHours | null>>
 
 export interface TenantBookingPreferences {
@@ -164,7 +165,7 @@ function sanitizeBookingHours(input: unknown): BookingHoursMap | null {
     if (!v || typeof v !== 'object') {
       throw new AppError('BAD_REQUEST', `businessHoursJson.${day} must be { open, close } or null`, 400)
     }
-    const obj = v as { open?: unknown; close?: unknown }
+    const obj = v as { open?: unknown; close?: unknown; breakStart?: unknown; breakEnd?: unknown }
     if (typeof obj.open !== 'string' || typeof obj.close !== 'string' ||
         !validateHHmm(obj.open) || !validateHHmm(obj.close)) {
       throw new AppError('BAD_REQUEST',
@@ -173,7 +174,31 @@ function sanitizeBookingHours(input: unknown): BookingHoursMap | null {
     if (obj.open >= obj.close) {
       throw new AppError('BAD_REQUEST', `businessHoursJson.${day}: open must be earlier than close`, 400)
     }
-    out[day] = { open: obj.open, close: obj.close }
+
+    // Optional break window — both ends required, must fit inside [open, close)
+    // and be a positive interval. Mirrors the partner-side sanitizer so both
+    // surfaces accept the same payload shape.
+    const hasBreakStart = obj.breakStart !== undefined && obj.breakStart !== null && obj.breakStart !== ''
+    const hasBreakEnd   = obj.breakEnd   !== undefined && obj.breakEnd   !== null && obj.breakEnd   !== ''
+    const next: DayHours = { open: obj.open, close: obj.close }
+    if (hasBreakStart !== hasBreakEnd) {
+      throw new AppError('BAD_REQUEST', `businessHoursJson.${day}: breakStart and breakEnd must both be set or both omitted`, 400)
+    }
+    if (hasBreakStart && hasBreakEnd) {
+      if (typeof obj.breakStart !== 'string' || typeof obj.breakEnd !== 'string' ||
+          !validateHHmm(obj.breakStart) || !validateHHmm(obj.breakEnd)) {
+        throw new AppError('BAD_REQUEST', `businessHoursJson.${day}: breakStart/breakEnd must be "HH:mm" 24-hour strings`, 400)
+      }
+      if (obj.breakStart >= obj.breakEnd) {
+        throw new AppError('BAD_REQUEST', `businessHoursJson.${day}: breakStart must be earlier than breakEnd`, 400)
+      }
+      if (obj.breakStart < obj.open || obj.breakEnd > obj.close) {
+        throw new AppError('BAD_REQUEST', `businessHoursJson.${day}: break window must fall within open/close`, 400)
+      }
+      next.breakStart = obj.breakStart
+      next.breakEnd   = obj.breakEnd
+    }
+    out[day] = next
   }
   return out
 }

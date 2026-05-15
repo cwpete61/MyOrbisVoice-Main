@@ -63,8 +63,11 @@ export async function createWidgetSession(tenantId: string, opts: {
   const metaPayload: Record<string, unknown> = {}
   if (opts.draftConfig) metaPayload['draft'] = opts.draftConfig
   if (opts.partnerSlug) {
-    const partner = await prisma.affiliateAccount.findUnique({
-      where: { slug: opts.partnerSlug },
+    // findFirst (not findUnique) so we can add deletedAt: null — Prisma's
+    // findUnique only accepts the unique-constraint shape. Deleted partners
+    // can't host a live widget session.
+    const partner = await prisma.affiliateAccount.findFirst({
+      where: { slug: opts.partnerSlug, deletedAt: null },
       include: { user: { select: { firstName: true, lastName: true, email: true } } },
     })
     if (partner?.partnerPageActive) {

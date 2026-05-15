@@ -709,7 +709,12 @@ model PromptVersion {
 
 model AgentProfile {
   id              String         @id @default(uuid())
-  tenantId        String
+  // Exactly one of tenantId / partnerId is set. Tenant-scoped agents serve
+  // calls hitting a tenant's numbers; partner-scoped agents serve calls
+  // hitting a partner's numbers (Phase G.1+). Routing dispatches off
+  // PhoneNumber.partnerId vs .tenantId at the webhook layer.
+  tenantId        String?
+  partnerId       String?
   agentRoleType   AgentRoleType
   displayName     String
   isEnabled       Boolean        @default(false)
@@ -719,10 +724,16 @@ model AgentProfile {
   settingsJson    Json?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
-  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  promptVersion   PromptVersion? @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
+  // Soft-delete anchor. NULL = active. Set to a timestamp when the agent is
+  // "deleted" — record stays in DB so it can be restored by clearing the
+  // field. Default list queries filter `WHERE deletedAt IS NULL`.
+  deletedAt       DateTime?
+  tenant          Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner         AffiliateAccount? @relation("PartnerAgentProfiles", fields: [partnerId], references: [id], onDelete: Cascade)
+  promptVersion   PromptVersion?    @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, agentRoleType])
+  @@unique([partnerId, agentRoleType])
 }
 
 model ChannelConfig {
@@ -800,6 +811,70 @@ model StripeCustomerRef {
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
+// Phase G.1.B-2 — Partner-side Stripe Customer mapping. Mirrors the tenant
+// variant. Each partner who buys any paid resource (phone number today,
+// other paid features later) gets one Stripe Customer + that's where their
+// saved cards + Subscriptions live.
+model PartnerStripeCustomerRef {
+  id               String           @id @default(uuid())
+  partnerId        String           @unique
+  stripeCustomerId String           @unique
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  partner          AffiliateAccount @relation("PartnerStripeCustomer", fields: [partnerId], references: [id], onDelete: Cascade)
+}
+
+/// Phase G.2 — Append-only ledger of every SMS-credit movement on a partner.
+/// PURCHASE rows are written from the Stripe checkout.session.completed
+/// webhook; CONSUME rows by the messaging service before each outbound send;
+/// REFUND when a send fails post-deduct; ADJUST is the admin override path.
+/// AffiliateAccount.smsCreditBalance is the running total — every row writes
+/// the balanceAfter snapshot for forensic reconstruction.
+model PartnerSmsCreditLedger {
+  id                    String                       @id @default(uuid())
+  partnerId             String
+  eventType             PartnerSmsCreditEvent
+  creditsDelta          Decimal                      @db.Decimal(10, 2) // positive on grant, negative on consume
+  balanceAfter          Decimal                      @db.Decimal(10, 2)
+  /// Channel of the message that triggered this row (CONSUME/REFUND only).
+  /// Null for PURCHASE / ADJUST.
+  channel               PartnerSmsCreditChannel?
+  /// Stripe price metadata pack id ("pack_5" / "pack_10") for PURCHASE rows.
+  packId                String?
+  usdAmountCents        Int?                          // PURCHASE: pack price; CONSUME: null
+  /// Phase G.2.1 — actual Twilio cost (USD cents) captured from the sms-status
+  /// webhook's Price field. Used to compute net pack profitability per partner
+  /// so we can flag partners whose real Twilio spend approaches their pack
+  /// purchase total (margin protection). Populated only on CONSUME rows; null
+  /// when the message hasn't reached a terminal Twilio status yet.
+  twilioCostCents       Decimal?                      @db.Decimal(10, 4)
+  stripePaymentIntentId String?                       @unique
+  stripeSessionId       String?                       @unique
+  messageLogId          String?                       // CONSUME: FK to MessageLog.id (no DB-level constraint to keep it loose)
+  note                  String?
+  createdAt             DateTime                      @default(now())
+
+  partner               AffiliateAccount             @relation("PartnerSmsCreditLedger", fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, createdAt])
+  @@index([eventType])
+  @@index([messageLogId])
+}
+
+enum PartnerSmsCreditEvent {
+  PURCHASE   // Stripe one-time payment cleared
+  CONSUME    // outbound message deducted credits
+  REFUND     // CONSUME reversed (send failed post-deduct)
+  ADJUST     // admin manual adjustment (audit-logged elsewhere)
+}
+
+enum PartnerSmsCreditChannel {
+  SMS         // 1 segment SMS
+  SMS_LONG    // 2-segment SMS = 2 credits
+  MMS         // 2.5 credits
+  WHATSAPP    // reserved — pricing TBD
+}
+
 /// Idempotency ledger for Stripe webhooks. Stripe delivers events with
 /// at-least-once semantics — the same event.id can arrive 2+ times if their
 /// retry logic fires. Without dedup, our handlers would write duplicate audit
@@ -840,10 +915,17 @@ model Subscription {
 
 model PhoneNumber {
   id                  String    @id @default(uuid())
+  // tenantId is always set — partner-owned numbers point at the platform
+  // tenant ("orbis-platform") so existing tenant-keyed queries don't break.
+  // partnerId is the partner-ownership tag: when set, webhook dispatch routes
+  // the call to the partner's agent context (not the platform tenant's).
   tenantId            String
+  partnerId           String?
   twilioNumberSid     String?
   twilioSubaccountSid String? // null = on master account; populated once subaccount exists
-  e164Number          String    @unique
+  // No longer @unique — multiple PENDING/REJECTED requests for the same
+  // E.164 are valid; only PURCHASED rows must be unique. Enforced in code.
+  e164Number          String
   displayLabel        String?
   monthlyPriceCents   Int? // captured at purchase time so we can show it without re-querying Twilio
   notes               String? // tenant-facing free-text note for the number (e.g. "main reception")
@@ -856,7 +938,60 @@ model PhoneNumber {
   releaseScheduledAt  DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
-  tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // ── Partner purchase lifecycle (Phase G.1.B) ────────────────────────────
+  // Tenant-owned numbers go straight to PURCHASED on creation; partner-owned
+  // numbers go PENDING → APPROVED → PURCHASED through the admin queue.
+  // RELEASED happens when the number is sent back to Twilio.
+  purchaseStatus       PhoneNumberPurchaseStatus @default(PURCHASED)
+  // Capability tier sets the monthly price + which features unlock.
+  // Null for tenant numbers (tenant has its own pricing model).
+  partnerCapabilityTier PartnerNumberTier?
+  // A2P 10DLC status for SMS-enabled numbers. NOT_REQUIRED means voice-only
+  // (no SMS) or toll-free (different verification flow).
+  a2pStatus             A2pStatus               @default(NOT_REQUIRED)
+  requestedAt          DateTime?
+  requestedByUserId    String?
+  approvedAt           DateTime?
+  approvedByUserId     String?
+  rejectionReason      String?
+  // Phase G.1.B-2 — Stripe Subscription that auto-renews this number's
+  // monthly charge. Set when admin approves the number. Null for non-partner
+  // numbers and historic rows. Cancellation = number gets released to Twilio.
+  stripeSubscriptionId String?
+
+  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner             AffiliateAccount? @relation("PartnerPhoneNumbers", fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([purchaseStatus])
+}
+
+// Lifecycle for a PhoneNumber row. Existing tenant numbers default to
+// PURCHASED on backfill; new partner requests start at PENDING.
+enum PhoneNumberPurchaseStatus {
+  PENDING    // partner requested, awaiting admin approval
+  APPROVED   // admin approved, Twilio purchase pending (transient)
+  PURCHASED  // bought from Twilio, twilioNumberSid populated
+  REJECTED   // admin rejected — request killed
+  RELEASED   // returned to Twilio
+}
+
+// Capability tier — drives monthly price + features available on the number.
+enum PartnerNumberTier {
+  VOICE       // $2/mo  US local, voice in+out, no SMS
+  VOICE_SMS   // $15/mo US local, voice + SMS, includes A2P brand + campaign
+  TOLLFREE    // $5/mo  toll-free, voice + SMS (no A2P required, separate verification)
+}
+
+// A2P 10DLC registration state for the partner number's brand + campaign.
+enum A2pStatus {
+  NOT_REQUIRED    // voice-only OR toll-free — no A2P registration applies
+  PENDING_QUEUE   // partner asked for SMS — sitting in admin queue
+  SUBMITTED       // admin submitted to Twilio Trust Hub, awaiting review
+  APPROVED        // Twilio approved — SMS enabled
+  REJECTED        // Twilio rejected — partner needs to fix something
 }
 
 // One row per tenant — created lazily on the tenant's FIRST number purchase.
@@ -881,6 +1016,23 @@ enum TwilioSubaccountStatus {
   PENDING_CLOSURE // grace period running
   CLOSED // closed on Twilio's side
   SUSPENDED // platform-side suspension (abuse, etc.)
+}
+
+// Phase G.1 — Partner Twilio subaccount. One row per partner, lazy-created
+// on the partner's first phone-number purchase. Mirrors the Tenant variant
+// so partner and tenant flows can share helpers via discriminated dispatch.
+// Numbers, brands, billing scoped to this subaccount = full per-partner
+// isolation (legal-entity compliance for A2P + abuse handling).
+model PartnerTwilioSubaccount {
+  id                           String                 @id @default(uuid())
+  partnerId                    String                 @unique
+  twilioSubaccountSid          String                 @unique
+  encryptedSubaccountAuthToken String
+  status                       TwilioSubaccountStatus @default(ACTIVE)
+  cancellationGraceUntil       DateTime?
+  createdAt                    DateTime               @default(now())
+  updatedAt                    DateTime               @updatedAt
+  partner                      AffiliateAccount       @relation("PartnerTwilioSubaccount", fields: [partnerId], references: [id], onDelete: Cascade)
 }
 
 // A2P 10DLC application — captured per tenant for SMS compliance.
@@ -1026,6 +1178,10 @@ model Contact {
   stageUpdatedAt       DateTime?
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
+  // Soft-delete anchor (data-loss prevention). When set, the contact is
+  // hidden from list/search queries but remains in the DB so it can be
+  // restored. Hard-delete is reserved for admin-side compliance purges.
+  deletedAt            DateTime?
   // Phase F.3 — partner-scoped CRM. When this contact was captured via a
   // partner's landing-page widget, partnerId points at that AffiliateAccount.
   // tenantId remains the hosting tenant (currently the platform demo tenant)
@@ -1391,6 +1547,12 @@ model AffiliateAccount {
   totalEarnedCents       Int             @default(0)
   totalPaidCents         Int             @default(0)
   approvedAt             DateTime?
+  // Soft-delete anchor (data-loss prevention). When set, the partner is
+  // excluded from list / login / lookup queries but their record + history
+  // remain. Used by admin "remove partner" actions instead of hard delete.
+  // To purge for compliance reasons (GDPR / explicit request), a separate
+  // admin-only hard-delete path is required.
+  deletedAt              DateTime?
   notes                  String?
   // Partner's marketing voice intensity. Same scale as BusinessProfile.aggressionTier.
   // Drives AI-Assist generated pitch material + future per-partner Bunny-hosted assets.
@@ -1410,6 +1572,17 @@ model AffiliateAccount {
   bio                   String? // shown on partner pages as short author copy
   partnerPhone          String? // public-facing partner phone (distinct from User-level phone)
   businessName          String?
+  // ── Partner public mailing address (Phase F.5) ───────────────────────────
+  // Optional. Shown on partner pages and used as the CAN-SPAM postal address
+  // in marketing email footers when the partner sends bulk campaigns. Free-
+  // text fields — we don't enforce US-only or strict ZIP format, because
+  // partners outside the US still need to identify their business location.
+  // Empty string = unset (so `null` and `""` are interchangeable upstream).
+  partnerStreet         String? // "716 Washington St"
+  partnerUnit           String? // "Suite 2" / "Apt 4B" / "Floor 3"
+  partnerCity           String? // "Allentown"
+  partnerState          String? // "PA"  (or province / region outside US)
+  partnerPostalCode     String? // "18102" (or "K1A 0B1" / "EC1A 1BB" / etc.)
   emailSignature        String? // appended to every outbound email composed by this partner
   calendarId            String? // Google Calendar ID for booking routing
   forwardPlatformEmails Boolean @default(true) // copy inbound to user.email Gmail
@@ -1481,6 +1654,27 @@ model AffiliateAccount {
   partnerContacts      Contact[]       @relation("PartnerContacts")
   partnerPipelineStages PipelineStage[] @relation("PartnerPipelineStages")
   partnerContactNotes  ContactNote[]   @relation("PartnerContactNotes")
+
+  // Phase G.1 — partner-scoped Twilio. Each partner gets their own Twilio
+  // subaccount + can own phone numbers + agent configs. Mirrors the tenant
+  // surface so inbound voice/SMS can route to the partner's agent.
+  twilioSubaccount      PartnerTwilioSubaccount?  @relation("PartnerTwilioSubaccount")
+  partnerPhoneNumbers   PhoneNumber[]             @relation("PartnerPhoneNumbers")
+  partnerAgentProfiles  AgentProfile[]            @relation("PartnerAgentProfiles")
+  stripeCustomer        PartnerStripeCustomerRef? @relation("PartnerStripeCustomer")
+
+  // ── Phase G.2 — Partner SMS / MMS credit balance ─────────────────────────
+  // Decimal (10,2) so MMS-at-2.5-credits doesn't accumulate FP error across
+  // many sends. Credits roll over forever — never reset, never expire. Top-up
+  // packs grant credits via Stripe one-time Checkout; each outbound message
+  // deducts according to channel weight (SMS=1, long SMS=2/seg, MMS=2.5).
+  smsCreditBalance      Decimal @default(0) @db.Decimal(10, 2)
+  smsCreditLedger       PartnerSmsCreditLedger[] @relation("PartnerSmsCreditLedger")
+
+  // Phase G.2.1 — last time we emailed the partner about low credits OR
+  // negative pack margin. Dedup window is 24h so we don't spam on every
+  // send when balance is below threshold.
+  smsCreditLowNotifiedAt DateTime?
 
   // ── Phase F.4 — Bulk email config + reputation tracking ─────────────────
   // ALL fields below are ADMIN-controlled. Partners see read-only summaries

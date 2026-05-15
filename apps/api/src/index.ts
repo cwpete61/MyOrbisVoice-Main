@@ -61,8 +61,17 @@ app.use(
   express.raw({ type: ['message/rfc822', 'application/octet-stream', 'text/plain'], limit: '25mb' }),
 )
 
-// Serve uploaded files (logos, etc.) directly
-app.use('/uploads', express.static(process.env['UPLOADS_DIR'] ?? '/app/uploads'))
+// Serve uploaded files (avatars, logos, etc.) directly. These are embedded as
+// <img> on the web app at app.myorbisvoice.com — a different subdomain — so
+// the helmet() default `Cross-Origin-Resource-Policy: same-origin` blocks
+// them with the browser-side ERR_BLOCKED_BY_RESPONSE.NotSameOrigin error.
+// Override CORP to `cross-origin` for this route only; the rest of the API
+// keeps the stricter default.
+app.use(
+  '/uploads',
+  helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }),
+  express.static(process.env['UPLOADS_DIR'] ?? '/app/uploads'),
+)
 
 // Body parsing for all other routes. The `verify` callback stashes the raw
 // body buffer on req.rawBody — required by Svix/Resend webhook signature
