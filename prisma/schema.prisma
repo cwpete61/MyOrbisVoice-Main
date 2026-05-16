@@ -1204,6 +1204,23 @@ enum A2POperatorNoteCategory {
   OTHER
 }
 
+/// Public SMS opt-in — one row per submission of the "Get text updates"
+/// form on the marketing site (myorbisvoice.com/sms-updates.html). This is
+/// the A2P 10DLC consent record: it stores the exact disclosure text the
+/// person agreed to, so the opt-in is verifiable if a carrier disputes it.
+model SmsOptIn {
+  id          String   @id @default(uuid())
+  phone       String
+  name        String?
+  consentText String // the exact consent-disclosure wording shown + agreed to
+  sourceUrl   String? // page the form was submitted from
+  locale      String   @default("en")
+  createdAt   DateTime @default(now())
+
+  @@index([phone])
+  @@index([createdAt])
+}
+
 // Web Push subscription — one row per browser/device. Created when the user
 // grants permission. Used to fire desktop notifications on call events.
 model PushSubscription {

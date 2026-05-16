@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Text Message Updates — MyOrbisVoice</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png" />
+  <meta name="description" content="Join MyOrbisVoice text updates — appointment confirmations, reminders, and account notifications. Opt in with explicit consent; opt out anytime." />
+  <link rel="alternate" hreflang="en" href="https://myorbisvoice.com/sms-updates.html" />
+  <link rel="alternate" hreflang="es" href="https://myorbisvoice.com/es/sms-updates.html" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css?v=c60ef2c686" />
+  <style>
+    .sms-hero { padding: 80px 0 40px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
+    .sms-hero .section-label { margin-bottom: 16px; }
+    .sms-hero h1 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; line-height: 1.15; margin-bottom: 16px; }
+    .sms-hero p { font-size: 1.05rem; color: var(--text-muted); max-width: 640px; }
+    .sms-body { max-width: 560px; margin: 0 auto; padding-bottom: 100px; }
+    .sms-form { background: var(--surface-2); border: 1px solid var(--border); border-radius: 16px; padding: 32px; }
+    .sms-form label.field-label { display: block; font-size: .9rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .sms-form input[type=text], .sms-form input[type=tel] {
+      width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); font-size: .95rem; font-family: inherit; margin-bottom: 20px;
+    }
+    .sms-consent { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 20px; }
+    .sms-consent input[type=checkbox] { margin-top: 3px; flex-shrink: 0; width: 17px; height: 17px; }
+    .sms-consent span { font-size: .85rem; color: var(--text-muted); line-height: 1.6; }
+    .sms-consent a { color: var(--green); }
+    .sms-form button { width: 100%; padding: 13px; border-radius: 10px; border: 0; background: var(--green);
+      color: #021a0e; font-size: .95rem; font-weight: 700; cursor: pointer; }
+    .sms-form button:disabled { opacity: .5; cursor: not-allowed; }
+    .sms-note { font-size: .8rem; color: var(--text-subtle); margin-top: 16px; line-height: 1.6; }
+    .sms-result { display: none; padding: 16px; border-radius: 10px; font-size: .9rem; margin-top: 16px; }
+    .sms-result.ok { display: block; background: rgba(52,168,83,.12); color: #1f7a3a; border: 1px solid rgba(52,168,83,.4); }
+    .sms-result.err { display: block; background: rgba(220,60,40,.10); color: #b1331f; border: 1px solid rgba(220,60,40,.35); }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav" aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo" aria-label="MyOrbisVoice home">
+      <span class="nav-logo-icon" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="3.5" fill="white"/>
+          <circle cx="9" cy="9" r="7.5" stroke="white" stroke-opacity="0.5" stroke-width="2"/>
+        </svg>
+      </span>
+      MyOrbisVoice
+    </a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="solutions.html">Solutions</a>
+      <a href="how-it-works.html">How It Works</a>
+      <a href="pricing.html">Pricing</a>
+    </div>
+    <div class="nav-cta">
+      <a href="es/sms-updates.html" class="lang-toggle" aria-label="Cambiar a español" hreflang="es"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>ES</a>
+      <a href="https://app.myorbisvoice.com/login" class="btn btn-ghost btn-sm">Log in</a>
+      <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-sm">Start free</a>
+    </div>
+    <button class="nav-burger" id="nav-burger" aria-label="Open menu" aria-expanded="false">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="3" y1="6" x2="19" y2="6"/><line x1="3" y1="11" x2="19" y2="11"/><line x1="3" y1="16" x2="19" y2="16"/>
+      </svg>
+    </button>
+  </div>
+</nav>
+<div class="nav-mobile" id="nav-mobile">
+  <a href="es/sms-updates.html" class="lang-toggle" aria-label="Cambiar a español" hreflang="es" style="margin-bottom:8px;">🌐 Español</a>
+  <a href="index.html">Home</a>
+  <a href="solutions.html">Solutions</a>
+  <a href="how-it-works.html">How It Works</a>
+  <a href="pricing.html">Pricing</a>
+  <a href="https://app.myorbisvoice.com/login" class="btn btn-secondary">Log in</a>
+  <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary">Start free</a>
+</div>
+
+<div class="container">
+  <div class="sms-hero">
+    <span class="section-label">Text Updates</span>
+    <h1>Get text updates from MyOrbisVoice</h1>
+    <p>Join our SMS list to receive appointment confirmations, reminders, and account notifications by text. Opt in below — your consent is explicit, and you can opt out anytime by replying STOP.</p>
+  </div>
+
+  <div class="sms-body">
+    <form class="sms-form" id="sms-form" novalidate>
+      <label class="field-label" for="sms-name">Name <span style="font-weight:400;color:var(--text-subtle);">(optional)</span></label>
+      <input type="text" id="sms-name" name="name" autocomplete="name" placeholder="Jane Smith" />
+
+      <label class="field-label" for="sms-phone">Mobile phone number</label>
+      <input type="tel" id="sms-phone" name="phone" autocomplete="tel" placeholder="+1 555 123 4567" required />
+
+      <label class="sms-consent">
+        <input type="checkbox" id="sms-consent" name="consent" />
+        <span id="sms-consent-text">I agree to receive recurring automated text messages from MyOrbisVoice — appointment confirmations, reminders, and account updates — at the phone number provided. Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to opt out, HELP for help. See our <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> and <a href="terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a>.</span>
+      </label>
+
+      <button type="submit" id="sms-submit">Sign up for text updates</button>
+
+      <div class="sms-result" id="sms-result"></div>
+
+      <p class="sms-note">By submitting this form you confirm the phone number is yours and you authorize MyOrbisVoice to send you the text messages described above. You can withdraw consent at any time by replying STOP to any message. Reply HELP for help. Carriers are not liable for delayed or undelivered messages.</p>
+    </form>
+  </div>
+</div>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="nav-logo" style="display:inline-flex;">
+          <div class="nav-logo-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="3.5" fill="#021a0e"/><circle cx="9" cy="9" r="7.5" stroke="#021a0e" stroke-opacity=".5" stroke-width="2"/></svg></div>
+          MyOrbisVoice
+        </a>
+        <p>AI voice agents for businesses that never want to miss a call, a lead, or a booking.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Product</h5>
+        <a href="solutions.html">Solutions</a>
+        <a href="how-it-works.html">How It Works</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="partner.html">Partners</a>
+      </div>
+      <div class="footer-col">
+        <h5>Account</h5>
+        <a href="https://app.myorbisvoice.com/login">Log In</a>
+        <a href="https://app.myorbisvoice.com/signup">Sign Up</a>
+        <a href="https://app.myorbisvoice.com">Dashboard</a>
+      </div>
+      <div class="footer-col">
+        <h5>Legal</h5>
+        <a href="privacy.html">Privacy Policy</a>
+        <a href="terms.html">Terms of Service</a>
+        <a href="cookies.html">Cookie Policy</a>
+        <a href="sms-updates.html">SMS Updates</a>
+      </div>
+      <div class="footer-col">
+        <h5>Contact</h5>
+        <a href="mailto:admin@myorbisvoice.com">admin@myorbisvoice.com</a>
+        <a href="mailto:support@myorbisvoice.com">support@myorbisvoice.com</a>
+        <a href="tel:+14043830220">(404) 383-0220</a>
+        <span style="display:block;font-size:.9rem;color:var(--text-muted);padding:4px 0;">716 Washington St, Suite 2<br>Allentown, PA 18102</span>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 MyOrbisVoice. All rights reserved.</p>
+      <p>Built with AI. Powered by humans.</p>
+    </div>
+  </div>
+</footer>
+<script>
+  const burger = document.getElementById('nav-burger');
+  const mobile = document.getElementById('nav-mobile');
+  burger.addEventListener('click', () => mobile.classList.toggle('open'));
+
+  const API = 'https://api.myorbisvoice.com';
+  const form = document.getElementById('sms-form');
+  const result = document.getElementById('sms-result');
+  const submit = document.getElementById('sms-submit');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    result.className = 'sms-result';
+    const phone = document.getElementById('sms-phone').value.trim();
+    const name = document.getElementById('sms-name').value.trim();
+    const consent = document.getElementById('sms-consent').checked;
+    const consentText = document.getElementById('sms-consent-text').textContent.trim();
+
+    if (!phone) { result.className = 'sms-result err'; result.textContent = 'Please enter your mobile phone number.'; return; }
+    if (!consent) { result.className = 'sms-result err'; result.textContent = 'Please check the consent box to receive text messages.'; return; }
+
+    submit.disabled = true;
+    submit.textContent = 'Signing up…';
+    try {
+      const res = await fetch(API + '/api/public/sms-optin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, name: name || undefined, consent: true, consentText, locale: 'en' }),
+      });
+      if (!res.ok) throw new Error('request failed');
+      result.className = 'sms-result ok';
+      result.textContent = 'You are signed up. Watch for a confirmation text — reply STOP anytime to opt out.';
+      form.querySelectorAll('input').forEach((i) => { i.disabled = true; });
+      submit.textContent = 'Signed up ✓';
+    } catch (err) {
+      result.className = 'sms-result err';
+      result.textContent = 'Something went wrong. Please try again, or email support@myorbisvoice.com.';
+      submit.disabled = false;
+      submit.textContent = 'Sign up for text updates';
+    }
+  });
+</script>
+</body>
+</html>

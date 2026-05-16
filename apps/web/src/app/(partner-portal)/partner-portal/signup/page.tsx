@@ -14,7 +14,8 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 export default function AffiliateSignupPage() {
   const t = useT()
   const router = useRouter()
-  const [form, setForm] = useState({ firstName: '', lastName: '', username: '', email: '', password: '' })
+  const [form, setForm] = useState({ firstName: '', lastName: '', username: '', email: '', password: '', phone: '' })
+  const [smsConsent, setSmsConsent] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -33,6 +34,8 @@ export default function AffiliateSignupPage() {
         form.password,
         form.firstName || undefined,
         form.lastName || undefined,
+        form.phone || undefined,
+        smsConsent,
       )
       setTokens(result.accessToken, result.refreshToken)
       router.push('/partner-portal/dashboard')
@@ -120,6 +123,26 @@ export default function AffiliateSignupPage() {
               />
               <PasswordRulesChecklist value={form.password} />
             </div>
+            <div>
+              <label className="label">{t('partnerSignup.phone')}</label>
+              <input
+                type="tel"
+                autoComplete="tel"
+                value={form.phone}
+                onChange={e => set('phone', e.target.value)}
+                className="input"
+                placeholder={t('partnerSignup.phonePlaceholder')}
+              />
+            </div>
+            <label className="flex items-start gap-2 text-xs cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+              <input
+                type="checkbox"
+                checked={smsConsent}
+                onChange={e => setSmsConsent(e.target.checked)}
+                className="mt-0.5 flex-shrink-0"
+              />
+              <span>{t('partnerSignup.smsConsent')}</span>
+            </label>
 
             <div className="pt-1">
               <button type="submit" disabled={loading} className="btn-primary w-full">

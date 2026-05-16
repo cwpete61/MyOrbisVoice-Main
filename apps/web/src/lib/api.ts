@@ -80,10 +80,16 @@ export async function apiCreateCheckoutSession(
   })
 }
 
-export async function apiAffiliateSignup(username: string, email: string, password: string, firstName?: string, lastName?: string) {
+export async function apiAffiliateSignup(username: string, email: string, password: string, firstName?: string, lastName?: string, phone?: string, smsConsent?: boolean) {
   return apiCall<{ user: unknown } & AuthTokens>('/api/auth/affiliate-signup', {
     method: 'POST',
-    body: { username, email, password, ...(firstName ? { firstName } : {}), ...(lastName ? { lastName } : {}) },
+    body: {
+      username, email, password,
+      ...(firstName  ? { firstName }  : {}),
+      ...(lastName   ? { lastName }   : {}),
+      ...(phone      ? { phone }      : {}),
+      ...(smsConsent ? { smsConsent } : {}),
+    },
   })
 }
 

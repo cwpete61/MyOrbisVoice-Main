@@ -207,6 +207,8 @@ export async function affiliateSignupUser(data: {
   password: string
   firstName?: string
   lastName?: string
+  phone?: string
+  smsConsent?: boolean
 }) {
   // Case-insensitive uniqueness check — prevents "Redkins" + "redkins" from
   // co-existing. findFirst (not findUnique) because the column-level @unique
@@ -220,7 +222,7 @@ export async function affiliateSignupUser(data: {
 
   const passwordHash = await bcrypt.hash(data.password, SALT_ROUNDS)
   const user = await prisma.user.create({
-    data: { email: data.email, username: data.username, passwordHash, firstName: data.firstName ?? null, lastName: data.lastName ?? null },
+    data: { email: data.email, username: data.username, passwordHash, firstName: data.firstName ?? null, lastName: data.lastName ?? null, phone: data.phone || null, smsConsentAt: data.smsConsent ? new Date() : null },
   })
 
   // Create the affiliate account in PENDING state

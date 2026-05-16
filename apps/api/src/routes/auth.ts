@@ -26,6 +26,8 @@ const affiliateSignupSchema = z.object({
   password: passwordSchema,
   firstName: z.string().optional(),
   lastName: z.string().optional(),
+  phone: z.string().max(40).optional(),
+  smsConsent: z.boolean().optional(),
 })
 
 router.post('/affiliate-signup', async (req, res, next) => {
