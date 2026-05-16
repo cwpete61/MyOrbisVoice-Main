@@ -7,6 +7,7 @@
 
   const STORAGE_KEY = 'myorbis-preview-industry';
   const LANG_STORAGE_KEY = 'myorbis-preview-lang';
+  const THEME_STORAGE_KEY = 'myorbis-preview-theme';
 
   // ─── i18n dictionary ──────────────────────────────────────────
   const I18N = {
@@ -168,6 +169,27 @@
     if (currentData) renderApp(document.documentElement.dataset.industry || 'dental', currentData);
   }
 
+  // ─── Theme (light / dark) ─────────────────────────────────────
+  function detectTheme() {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'light' || stored === 'dark') return stored;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  let currentTheme = document.documentElement.getAttribute('data-theme') || detectTheme();
+
+  function applyTheme() {
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    const icon = document.getElementById('theme-icon');
+    if (icon) icon.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+  }
+
+  function toggleTheme() {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
+    applyTheme();
+  }
+
   const INDUSTRIES = {
     'dental':         { icon: '🦷', name: 'Dental',          biz: 'Bright Smile Dental' },
     'legal':          { icon: '⚖️',  name: 'Legal',           biz: 'Garner Family Law' },
@@ -211,6 +233,8 @@
 
   // ─── Wire language toggle in topbar ─────────────────────────
   document.getElementById('lang-switch')?.addEventListener('click', toggleLanguage);
+  document.getElementById('theme-switch')?.addEventListener('click', toggleTheme);
+  applyTheme();
 
   // Apply i18n to all data-i18n elements on first load
   applyI18n();

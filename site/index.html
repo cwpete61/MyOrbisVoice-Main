@@ -111,6 +111,7 @@
         </p>
         <div class="hero-cta">
           <a href="https://app.myorbisvoice.com/signup" class="btn btn-primary btn-lg">Start free — no card required</a>
+          <a href="pricing.html" id="buy-now-cta" class="btn btn-secondary btn-lg">Buy Now</a>
           <a href="how-it-works.html" class="btn btn-secondary btn-lg">Hear a 90-second demo call →</a>
         </div>
         <ul class="hero-stats" aria-label="At a glance">
@@ -2064,5 +2065,18 @@
 </footer>
 
 <script src="assets/js/main.js"></script>
+
+<!-- Orby voice widget — lets visitors on a partner's referral link talk to Orby -->
+<script src="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js"></script>
+<script>
+  OrbisVoice.init({ publicKey: "f8512971245c559ded6baf206b3adb9c4fca987f2ba6c571" });
+  // Carry a partner referral code (?ref=CODE) through to the Buy Now → pricing link.
+  (function () {
+    var ref = new URLSearchParams(location.search).get('ref');
+    if (!ref) return;
+    var b = document.getElementById('buy-now-cta');
+    if (b) b.href = 'pricing.html?ref=' + encodeURIComponent(ref);
+  })();
+</script>
 </body>
 </html>

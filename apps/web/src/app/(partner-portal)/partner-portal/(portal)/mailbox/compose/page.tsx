@@ -219,7 +219,7 @@ export default function PartnerComposePage() {
                 borderRadius: 8,
                 background: 'white',
               }}
-              sandbox=""
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
             />
           </div>
         )}

@@ -469,6 +469,26 @@ export async function provisionPartnerNumber(args: {
     },
   })
 
+  // One-time backfill — when a partner's number is provisioned, default their
+  // public phone to it if they haven't set one. Never overwrites an existing
+  // value; the partner can change or remove it on their profile afterward.
+  if (row.partnerId) {
+    try {
+      const partner = await prisma.affiliateAccount.findUnique({
+        where:  { id: row.partnerId },
+        select: { partnerPhone: true },
+      })
+      if (partner && !partner.partnerPhone?.trim()) {
+        await prisma.affiliateAccount.update({
+          where: { id: row.partnerId },
+          data:  { partnerPhone: row.e164Number },
+        })
+      }
+    } catch (e) {
+      console.error(`[provisionPartnerNumber] partnerPhone backfill failed: ${(e as Error).message}`)
+    }
+  }
+
   writeAuditLog({
     actorType:    args.actorType,
     actorUserId:  args.actorUserId,

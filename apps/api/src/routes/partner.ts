@@ -40,14 +40,17 @@ router.get('/partner/signature-preview', requirePartnerAccount, async (req: Requ
     const partnerId = (req as any).partnerAccountId as string
     const partner = await prisma.affiliateAccount.findUnique({
       where:  { id: partnerId },
-      include: { user: { select: { firstName: true, lastName: true, email: true } } },
+      include: {
+        user: { select: { firstName: true, lastName: true, email: true } },
+        customLinks: { where: { archivedAt: null }, orderBy: { createdAt: 'asc' }, take: 1, select: { slug: true } },
+      },
     })
     if (!partner) throw new AppError('NOT_FOUND', 'Partner record vanished mid-request', 404)
     const { buildPartnerSignatureHtml } = await import('../services/partner.service.js')
     const customSig = partner.emailSignature?.trim()
     const html = (customSig && customSig.length > 0)
       ? customSig
-      : buildPartnerSignatureHtml(partner)
+      : buildPartnerSignatureHtml(partner, partner.customLinks[0]?.slug ?? null)
     res.json({ data: { html, source: (customSig && customSig.length > 0) ? 'custom' : 'auto' } })
   } catch (err) { next(err) }
 })
@@ -114,6 +117,7 @@ const profileUpdateSchema = z.object({
   calendarId:            z.string().max(200).optional().nullable(),
   forwardPlatformEmails: z.boolean().optional(),
   notifyAppointmentsEnabled: z.boolean().optional(),
+  partnerPageActive:     z.boolean().optional(),
   aggressionTier:        z.enum(['conservative', 'balanced', 'direct', 'aggressive']).optional(),
   // Phase F.5 — partner public mailing address. Lenient max-lengths leave
   // room for international addresses; CAN-SPAM only requires the address be

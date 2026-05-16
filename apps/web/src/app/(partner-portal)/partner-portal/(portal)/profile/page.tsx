@@ -48,35 +48,15 @@ type Me = {
   }
 }
 
-// AffiliateAccount shape from legacy GET /api/affiliate/account — used only for
-// payout-method + commission-rate display since those are not surfaced by
-// /api/partner/me. Will fold these into /api/partner/me in a future session.
-type Account = {
-  id:               string
-  status:           string
-  referralCode:     string
-  payoutMethodJson: { type?: string; [k: string]: unknown } | null
-  createdAt:        string
-}
-
 type Settings = {
   commissionRatePct: number
 }
 
-const PAYOUT_METHODS = ['PayPal', 'Bank Transfer', 'Wise', 'Other']
-
 export default function AffiliateProfilePage() {
   const t = useT()
   const [me, setMe] = useState<Me | null>(null)
-  const [account, setAccount] = useState<Account | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
-
-  // ─── Payout form state (legacy) ────────────────────────────────────────────
-  const [method, setMethod] = useState('')
-  const [details, setDetails] = useState('')
-  const [savingPayout, setSavingPayout] = useState(false)
-  const [savedPayout, setSavedPayout] = useState(false)
 
   // ─── Aggression tier (legacy auto-save) ────────────────────────────────────
   const [tier, setTier] = useState<AggressionTier>('balanced')
@@ -98,6 +78,7 @@ export default function AffiliateProfilePage() {
   const [calendarId, setCalendarId] = useState('')
   const [forwardPlatformEmails, setForwardPlatformEmails] = useState(true)
   const [notifyAppointmentsEnabled, setNotifyAppointmentsEnabled] = useState(true)
+  const [partnerPageActive, setPartnerPageActive] = useState(false)
   // Public mailing address (Phase F.5). Used on partner pages + CAN-SPAM
   // footer when the partner sends bulk marketing email.
   const [partnerStreet,     setPartnerStreet]     = useState('')
@@ -226,21 +207,13 @@ export default function AffiliateProfilePage() {
   useEffect(() => {
     Promise.all([
       apiFetch<Me>('/api/partner/me').catch(() => null),
-      apiFetch<Account>('/api/affiliate/account').catch(() => null),
       apiFetch<Settings>('/api/public/affiliate/settings').catch(() => null),
       apiFetch<BookingPrefs>('/api/partner/booking-preferences').catch(() => null),
       apiFetch<ReminderPrefs>('/api/partner/reminder-preferences').catch(() => null),
-    ]).then(([m, acc, sett, prefs, reminderPrefs]) => {
+    ]).then(([m, sett, prefs, reminderPrefs]) => {
       setMe(m)
-      setAccount(acc)
       setSettings(sett)
 
-      if (acc?.payoutMethodJson) {
-        const pmj = acc.payoutMethodJson
-        setMethod(typeof pmj.type === 'string' ? pmj.type : '')
-        const rest = Object.fromEntries(Object.entries(pmj).filter(([k]) => k !== 'type'))
-        setDetails(Object.keys(rest).length > 0 ? JSON.stringify(rest, null, 2) : '')
-      }
       if (m?.partner.aggressionTier) setTier(m.partner.aggressionTier)
 
       if (m?.partner) {
@@ -252,6 +225,7 @@ export default function AffiliateProfilePage() {
         setCalendarId(m.partner.calendarId ?? '')
         setForwardPlatformEmails(m.partner.forwardPlatformEmails)
         setNotifyAppointmentsEnabled(m.partner.notifyAppointmentsEnabled)
+        setPartnerPageActive(m.partner.partnerPageActive)
         setPartnerStreet(m.partner.partnerStreet         ?? '')
         setPartnerUnit(m.partner.partnerUnit             ?? '')
         setPartnerCity(m.partner.partnerCity             ?? '')
@@ -314,26 +288,6 @@ export default function AffiliateProfilePage() {
     } finally {
       setTzSaving(false)
     }
-  }
-
-  async function savePayout() {
-    setSavingPayout(true)
-    try {
-      let parsedDetails: Record<string, unknown> = {}
-      if (details.trim()) {
-        try { parsedDetails = JSON.parse(details) } catch { parsedDetails = { info: details.trim() } }
-      }
-      const payload = method ? { type: method, ...parsedDetails } : null
-      await apiFetch('/api/affiliate/payout-method', {
-        method: 'PATCH',
-        body: JSON.stringify(payload),
-      })
-      setSavedPayout(true)
-      setTimeout(() => setSavedPayout(false), 2500)
-    } catch (e: unknown) {
-      alert((e as Error).message ?? t('partnerProfile.saveFailed'))
-    }
-    setSavingPayout(false)
   }
 
   async function saveTier(next: AggressionTier | null) {
@@ -490,6 +444,7 @@ export default function AffiliateProfilePage() {
           calendarId:            calendarId.trim() || null,
           forwardPlatformEmails,
           notifyAppointmentsEnabled,
+          partnerPageActive,
           partnerStreet:         partnerStreet.trim()     || null,
           partnerUnit:           partnerUnit.trim()       || null,
           partnerCity:           partnerCity.trim()       || null,
@@ -718,7 +673,7 @@ export default function AffiliateProfilePage() {
           help={t('partnerProfile.partnerPhone.help')}
           value={partnerPhone}
           onChange={setPartnerPhone}
-          placeholder="+1 (555) 123-4567"
+          placeholder="+1 (___) ___-____"
         />
 
         {/* Bio */}
@@ -730,6 +685,23 @@ export default function AffiliateProfilePage() {
           rows={3}
           placeholder={t('partnerProfile.bio.placeholder')}
         />
+
+        {/* ── Public page activation ───────────────────────────────────────── */}
+        <div className="mt-6 pt-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.publicPage.heading')}</p>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={partnerPageActive}
+              onChange={e => setPartnerPageActive(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="block text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{t('partnerProfile.publicPage.label')}</span>
+              <span className="block text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.publicPage.help')}</span>
+            </span>
+          </label>
+        </div>
 
         {/* ── Email setup (inside marketing block) ─────────────────────────── */}
         <div className="mt-6 pt-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
@@ -771,7 +743,7 @@ export default function AffiliateProfilePage() {
                 borderRadius: 8,
                 background: 'white',
               }}
-              sandbox=""
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
             />
 
             {/* Advanced override — collapsed by default. Most partners never open. */}
@@ -1272,42 +1244,6 @@ export default function AffiliateProfilePage() {
               : t('timezone.usingAuto').replace('{tz}', getBrowserTimezone())}
         </p>
         {tzError && <p className="text-xs mt-2" style={{ color: 'oklch(60% 0.2 30)' }}>{tzError}</p>}
-      </div>
-
-      {/* ── Payout (legacy) ─────────────────────────────────────────────────── */}
-      <div className="rounded-xl p-5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-        <p className="text-xs font-semibold mb-4" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.payoutHeading')}</p>
-
-        <label className="block mb-1 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{t('partnerProfile.payoutMethod')}</label>
-        <select
-          value={method}
-          onChange={e => setMethod(e.target.value)}
-          className="w-full rounded-lg px-3 py-2 text-sm mb-4"
-          style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
-        >
-          <option value="">{t('partnerProfile.selectMethod')}</option>
-          {PAYOUT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-
-        <label className="block mb-1 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{t('partnerProfile.paymentDetails')}</label>
-        <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>{t('partnerProfile.paymentDetailsHelp')}</p>
-        <textarea
-          rows={3}
-          value={details}
-          onChange={e => setDetails(e.target.value)}
-          placeholder={t('partnerProfile.paymentDetailsPlaceholder')}
-          className="w-full rounded-lg px-3 py-2 text-sm mb-4 resize-none"
-          style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
-        />
-
-        <button
-          onClick={savePayout}
-          disabled={savingPayout}
-          className="px-5 py-2.5 rounded-lg text-sm font-semibold"
-          style={{ background: savedPayout ? 'oklch(55% 0.18 145)' : 'var(--brand-500)', color: '#fff' }}
-        >
-          {savingPayout ? t('partnerProfile.saving') : savedPayout ? t('partnerProfile.saved') : t('partnerProfile.savePreferences')}
-        </button>
       </div>
 
       {/* ── Aggression tier (legacy, auto-save) ─────────────────────────────── */}

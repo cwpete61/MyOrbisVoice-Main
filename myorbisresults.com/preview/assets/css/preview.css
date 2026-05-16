@@ -41,6 +41,27 @@
   --alert:   oklch(60% 0.20 30);
 }
 
+/* Dark theme — overrides the surface/text/border vars; brand teals + status
+   colors carry over. Toggled via [data-theme="dark"] on <html>. */
+[data-theme="dark"] {
+  --bg:        #121a1a;
+  --bg-soft:   #172120;
+  --bg-tinted: #15201f;
+  --bg-card:   #1a2524;
+  --bg-app:    #0d1413;
+
+  --text:        rgba(255,255,255,0.92);
+  --text-muted:  rgba(255,255,255,0.60);
+  --text-subtle: rgba(255,255,255,0.40);
+
+  --border:        rgba(255,255,255,0.10);
+  --border-strong: rgba(255,255,255,0.22);
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.40);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.45);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.55);
+}
+
 html, body { height: 100%; }
 
 body {

@@ -15,6 +15,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script>
+    // Apply saved/system theme before first paint — prevents a flash.
+    (function () {
+      try {
+        var t = localStorage.getItem('myorbis-preview-theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="assets/css/preview.css" />
 </head>
 <body>
@@ -89,6 +101,9 @@
       MyOrbisVoice <span class="demo-badge">Demo</span>
     </div>
     <div style="display: flex; gap: 6px; align-items: center;">
+      <button class="industry-pill" id="theme-switch" aria-label="Theme">
+        <span id="theme-icon">🌙</span>
+      </button>
       <button class="industry-pill" id="lang-switch" aria-label="Language">
         <span id="lang-current">EN</span>
       </button>

@@ -1214,6 +1214,11 @@
       "help":        "One or two sentences describing what you do. Shown on your partner pages as social proof.",
       "placeholder": "Local marketing partner. Helps service businesses in the Lehigh Valley get more calls + bookings."
     },
+    "publicPage": {
+      "heading": "PUBLIC PAGE",
+      "label":   "Activate my public page",
+      "help":    "When on, prospects who visit your referral link see your personalized landing pages and booking link — not the demo. Off keeps your page inactive."
+    },
     "emailHeading":      "EMAIL SETUP",
     "partnerEmail": {
       "label": "Your platform email",
@@ -1260,7 +1265,7 @@
     },
     "calendarId": {
       "label":       "Calendar override (advanced)",
-      "help":        "Optional. By default Orby books on the primary calendar of your connected Google account. Set this only if you want bookings to land on a non-primary calendar (paste its Calendar ID from Google Calendar → Settings → Integrate calendar).",
+      "help":        "Optional. By default Orby books on the primary calendar of your connected Google account. Set this only if you want bookings to land on a non-primary calendar (paste its Calendar ID from Google Calendar → Settings → Add calendar).",
       "placeholder": "you@yourbusiness.com"
     },
     "booking": {
@@ -1354,6 +1359,7 @@
     "usernameOrEmail": "Username or email",
     "usernameOrEmailPlaceholder": "yourname or you@example.com",
     "password": "Password",
+    "forgot": "Forgot password?",
     "passwordPlaceholder": "Your password",
     "signingIn": "Signing in…",
     "cta": "Sign in to Partner Portal",

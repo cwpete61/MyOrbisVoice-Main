@@ -2,7 +2,7 @@
 // Strategy: cache-first for app shell + JSON data, network-first for everything else.
 // Versioned cache name — bump SW_VERSION to invalidate on deploy.
 
-const SW_VERSION = 'v1';
+const SW_VERSION = 'v2';
 const CACHE = `myorbis-preview-${SW_VERSION}`;
 
 const SHELL = [

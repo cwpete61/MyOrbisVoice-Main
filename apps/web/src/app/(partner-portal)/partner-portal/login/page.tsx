@@ -82,7 +82,12 @@ export default function AffiliateLoginPage() {
               />
             </div>
             <div>
-              <label className="label">{t('partnerLogin.password')}</label>
+              <label className="label flex items-center justify-between">
+                <span>{t('partnerLogin.password')}</span>
+                <Link href="/forgot-password" className="font-normal" style={{ color: 'oklch(55% 0.11 193)' }}>
+                  {t('partnerLogin.forgot')}
+                </Link>
+              </label>
               <PasswordInput
                 required
                 autoComplete="current-password"

@@ -46,7 +46,6 @@ export async function getPartnerOnboardingStatus(partnerId: string): Promise<{
       integrationConnectionId: true,
       bookingHoursJson:       true,
       stripeConnectAccountId: true,
-      payoutMethodJson:       true,
       onboardingMarkedDone:   true,
       showOnboardingWizard:   true,
     },
@@ -67,13 +66,10 @@ export async function getPartnerOnboardingStatus(partnerId: string): Promise<{
 
   const pageDone = isMarked('page') || partner.partnerPageActive === true
 
-  // Payouts: Stripe Connect account linked AND Stripe says payouts are enabled
-  // (the cached flag written into payoutMethodJson by the affiliate service).
-  const payoutsEnabled = (() => {
-    const j = partner.payoutMethodJson as Record<string, unknown> | null
-    return j?.['payoutsEnabled'] === true
-  })()
-  const payoutsDone = isMarked('payouts') || (!!partner.stripeConnectAccountId && payoutsEnabled)
+  // Payouts: completes once a Stripe Connect account is linked. Whether Stripe
+  // has fully enabled payouts yet is tracked separately (payoutMethodJson, shown
+  // on the payouts page) and does not gate this onboarding step.
+  const payoutsDone = isMarked('payouts') || !!partner.stripeConnectAccountId
 
   const calendarDone = isMarked('calendar') || !!partner.integrationConnectionId
 
@@ -101,11 +97,12 @@ export async function getPartnerOnboardingStatus(partnerId: string): Promise<{
     { key: 'number',   href: '/partner-portal/phone-numbers', completed: numberDone, optional: true },
   ]
 
-  // Progress counts every step (none are tier-locked for partners). Required
-  // = non-optional; the wizard is "all complete" once all required steps pass.
-  const completedCount  = steps.filter(s => s.completed).length
-  const totalCount      = steps.length
+  // Progress counts REQUIRED steps only — optional steps (e.g. the phone
+  // number) never count toward "X of Y" and never block completion. The
+  // wizard is "all complete" once every required step passes.
   const requiredSteps   = steps.filter(s => !s.optional)
+  const completedCount  = requiredSteps.filter(s => s.completed).length
+  const totalCount      = requiredSteps.length
   const allRequiredDone = requiredSteps.every(s => s.completed)
 
   // The dashboard banner shows while the wizard is incomplete OR the partner

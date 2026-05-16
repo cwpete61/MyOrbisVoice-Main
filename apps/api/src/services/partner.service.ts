@@ -527,6 +527,7 @@ export async function bootstrapPartner(input: BootstrapPartnerInput) {
 
 const PARTNER_DOMAIN = 'myorbisresults.com'
 const MARKETING_BASE_URL = 'https://myorbisvoice.com'
+const APP_BASE_URL = 'https://app.myorbisvoice.com'
 
 /**
  * Build an email-client-safe signature block from a partner's profile fields.
@@ -559,42 +560,50 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-export function buildPartnerSignatureHtml(p: SignaturePartner): string {
+export function buildPartnerSignatureHtml(p: SignaturePartner, customLinkSlug?: string | null): string {
   if (!p.slug) return ''  // no slug = no platform identity = no signature
 
-  // Five-element partner signature: name, agency, phone, referral link,
-  // avatar (at the bottom). Single source of truth — appended at send time.
+  // Partner signature: avatar (top), name, agency, email, phone, referral link.
+  // Single source of truth — appended at send time.
   const name = (p.displayName?.trim())
     || [p.user.firstName, p.user.lastName].filter(Boolean).join(' ').trim()
     || p.slug
   const business = p.businessName?.trim() || ''
+  const email    = `${p.slug}@${PARTNER_DOMAIN}`
   const phone    = p.partnerPhone?.trim() || ''
   const avatar   = p.avatarUrl?.trim() || ''
-  const refCode  = p.referralCode?.trim() || ''
-  const refLink  = refCode ? `${MARKETING_BASE_URL}/?ref=${encodeURIComponent(refCode)}` : ''
+  const refCode    = p.referralCode?.trim() || ''
+  const customSlug = customLinkSlug?.trim() || ''
+  // Prefer the partner's custom link (/r/<slug>) once they've set one up;
+  // otherwise fall back to the raw primary referral link (/?ref=<code>).
+  const refLink    = customSlug
+    ? `${APP_BASE_URL}/r/${encodeURIComponent(customSlug)}`
+    : (refCode ? `${MARKETING_BASE_URL}/?ref=${encodeURIComponent(refCode)}` : '')
 
+  const avatarLine = avatar
+    ? `<div style="margin-bottom:8px;"><img src="${esc(avatar)}" width="64" height="64" alt="" style="border-radius:50%;display:block;border:0;outline:0;text-decoration:none;" /></div>`
+    : ''
   const businessLine = business
     ? `<div style="font-size:13px;color:#555;line-height:1.4;">${esc(business)}</div>`
     : ''
+  const emailLine = `<div style="font-size:13px;margin-top:6px;line-height:1.5;"><a href="mailto:${esc(email)}" style="color:#0a7a8a;text-decoration:none;">${esc(email)}</a></div>`
   const phoneLine = phone
     ? `<div style="font-size:13px;margin-top:6px;line-height:1.5;"><a href="tel:${esc(phone.replace(/[^+\d]/g, ''))}" style="color:#0a7a8a;text-decoration:none;">${esc(phone)}</a></div>`
     : ''
   const refLine = refLink
-    ? `<div style="font-size:13px;margin-top:6px;line-height:1.5;"><a href="${esc(refLink)}" style="color:#0a7a8a;text-decoration:none;">${esc(refLink)}</a></div>`
-    : ''
-  const avatarLine = avatar
-    ? `<div style="margin-top:10px;"><img src="${esc(avatar)}" width="64" height="64" alt="" style="border-radius:50%;display:block;border:0;outline:0;text-decoration:none;" /></div>`
+    ? `<div style="font-size:13px;margin-top:6px;line-height:1.5;"><a href="${esc(refLink)}" target="_blank" rel="noopener noreferrer" style="color:#0a7a8a;text-decoration:none;">${esc(refLink)}</a></div>`
     : ''
 
   return [
     '<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;color:#222;line-height:1.4;">',
     '  <tr>',
     '    <td valign="top">',
+    avatarLine,
     `      <div style="font-size:15px;font-weight:bold;color:#111;line-height:1.4;">${esc(name)}</div>`,
     businessLine,
+    emailLine,
     phoneLine,
     refLine,
-    avatarLine,
     '    </td>',
     '  </tr>',
     '</table>',
@@ -625,7 +634,10 @@ export interface SendPartnerEmailOptions {
 export async function sendPartnerEmail(partnerId: string, opts: SendPartnerEmailOptions): Promise<{ emailId: string }> {
   const partner = await prisma.affiliateAccount.findUnique({
     where: { id: partnerId },
-    include: { user: { select: { firstName: true, lastName: true, email: true } } },
+    include: {
+      user: { select: { firstName: true, lastName: true, email: true } },
+      customLinks: { where: { archivedAt: null }, orderBy: { createdAt: 'asc' }, take: 1, select: { slug: true } },
+    },
   })
   if (!partner)       throw new AppError('NOT_FOUND', 'Partner not found', 404)
   if (!partner.slug)  throw new AppError('VALIDATION_ERROR', 'Partner has no slug yet — cannot send', 422)
@@ -646,7 +658,7 @@ export async function sendPartnerEmail(partnerId: string, opts: SendPartnerEmail
   const customSig = partner.emailSignature?.trim()
   const sigInner  = customSig && customSig.length > 0
     ? customSig
-    : buildPartnerSignatureHtml(partner)
+    : buildPartnerSignatureHtml(partner, partner.customLinks[0]?.slug ?? null)
   const html = sigInner
     ? `${opts.html}\n<br><br>\n<div style="border-top:1px solid #eee;padding-top:12px;margin-top:24px;">${sigInner}</div>`
     : opts.html

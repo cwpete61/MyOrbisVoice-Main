@@ -1214,6 +1214,11 @@
       "help":        "Una o dos frases describiendo lo que haces. Aparece en tus páginas de partner como prueba social.",
       "placeholder": "Partner de marketing local. Ayudo a negocios de servicios en el Valle Lehigh a recibir más llamadas + reservas."
     },
+    "publicPage": {
+      "heading": "PÁGINA PÚBLICA",
+      "label":   "Activar mi página pública",
+      "help":    "Cuando está activada, los prospectos que visitan tu enlace de referido ven tus páginas personalizadas y tu enlace de reserva — no la demo. Desactivada mantiene tu página inactiva."
+    },
     "emailHeading":      "CONFIGURACIÓN DE CORREO",
     "partnerEmail": {
       "label": "Tu correo de la plataforma",
@@ -1260,7 +1265,7 @@
     },
     "calendarId": {
       "label":       "Calendario alternativo (avanzado)",
-      "help":        "Opcional. Por defecto Orby agenda en el calendario primario de tu cuenta de Google conectada. Configura esto solo si quieres que las reservas lleguen a un calendario no primario (pega su ID de Calendario desde Google Calendar → Configuración → Integrar calendario).",
+      "help":        "Opcional. Por defecto Orby agenda en el calendario primario de tu cuenta de Google conectada. Configura esto solo si quieres que las reservas lleguen a un calendario no primario (pega su ID de Calendario desde Google Calendar → Configuración → Agregar calendario).",
       "placeholder": "tu@tunegocio.com"
     },
     "booking": {
@@ -1354,6 +1359,7 @@
     "usernameOrEmail": "Usuario o correo",
     "usernameOrEmailPlaceholder": "tunombre o tu@ejemplo.com",
     "password": "Contraseña",
+    "forgot": "¿Olvidaste tu contraseña?",
     "passwordPlaceholder": "Tu contraseña",
     "signingIn": "Iniciando sesión…",
     "cta": "Iniciar sesión en el Portal de Partners",
