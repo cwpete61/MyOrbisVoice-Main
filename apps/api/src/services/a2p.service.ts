@@ -507,6 +507,14 @@ async function createUsAppToPersonCampaign(client: TwilioClient, app: A2PApp): P
   ]
   const provided = sampleMessages(app).filter((s) => s.trim().length >= 20)
   const messageSamples = (provided.length >= 2 ? provided : [...provided, ...fallbackSamples]).slice(0, 5)
+  // The embedded-link / embedded-phone flags must match actual sample
+  // content — a mismatch is a documented campaign rejection cause.
+  const hasEmbeddedLinks = messageSamples.some((s) => /https?:\/\//i.test(s))
+  const hasEmbeddedPhone = messageSamples.some((s) => /\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(s))
+  // Privacy + Terms URLs — optional today, MANDATORY campaign fields from
+  // 2026-06-30. Passed when configured.
+  const privacyUrl = await getConfigValue('a2p_privacy_policy_url')
+  const termsUrl   = await getConfigValue('a2p_terms_url')
   const campaign = await client.messaging.v1
     .services(app.twilioMessagingServiceSid)
     .usAppToPerson.create({
@@ -514,15 +522,17 @@ async function createUsAppToPersonCampaign(client: TwilioClient, app: A2PApp): P
       description:          `${app.legalName} sends ${app.useCase} SMS to customers who have opted in through the business website.`,
       messageSamples,
       usAppToPersonUsecase: brandType === 'SOLE_PROPRIETOR' ? 'SOLE_PROPRIETOR' : mapUseCase(app.useCase),
-      hasEmbeddedLinks:     true,
-      hasEmbeddedPhone:     true,
-      messageFlow:          'End users opt in by entering their phone number on the business website contact / booking form, which carries explicit SMS-consent language and a link to the privacy policy.',
+      hasEmbeddedLinks,
+      hasEmbeddedPhone,
+      messageFlow:          'End users opt in by checking an unchecked SMS-consent checkbox on the booking and contact forms at the business website. The checkbox states they agree to recurring automated messages, that message and data rates may apply, that consent is not a condition of purchase, and links to the privacy policy and terms.',
       optInKeywords:        ['START'],
-      optInMessage:         `You are now opted in to messages from ${app.legalName}. Reply STOP to opt out, HELP for help. Msg&data rates may apply.`,
+      optInMessage:         `You are now opted in to messages from ${app.legalName}. Msg frequency varies. Msg & data rates may apply. Reply HELP for help, STOP to opt out.`,
       optOutKeywords:       ['STOP'],
       optOutMessage:        'You have been unsubscribed and will receive no further messages. Reply START to opt back in.',
       helpKeywords:         ['HELP'],
-      helpMessage:          `${app.legalName}: Reply STOP to unsubscribe. Msg&data rates may apply.`,
+      helpMessage:          `${app.legalName}: Reply STOP to unsubscribe. Msg & data rates may apply.`,
+      ...(privacyUrl ? { privacyPolicyUrl: privacyUrl } : {}),
+      ...(termsUrl ? { termsAndConditionsUrl: termsUrl } : {}),
     })
   return campaign.sid
 }
@@ -681,6 +691,7 @@ async function createSoleProprietorTrustProduct(client: TwilioClient, app: A2PAp
     attributes: {
       brand_name:          app.legalName,
       mobile_phone_number: otpMobile,
+      vertical:            mapBusinessIndustry(app.vertical),
     },
   })
   await client.trusthub.v1.trustProducts(tp.sid).trustProductsEntityAssignments.create({ objectSid: customerProfileSid })
