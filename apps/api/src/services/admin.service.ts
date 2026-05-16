@@ -62,6 +62,7 @@ export async function getTenantDetail(tenantId: string) {
     storageQuotaBytes:         tenant.storageQuotaBytes         != null ? String(tenant.storageQuotaBytes)         : null,
     storageUsedBytes:          String(tenant.storageUsedBytes),
     storagePreviousQuotaBytes: tenant.storagePreviousQuotaBytes != null ? String(tenant.storagePreviousQuotaBytes) : null,
+    kbStorageUsedBytes:        String(tenant.kbStorageUsedBytes),
   }
 }
 

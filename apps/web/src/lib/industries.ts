@@ -93,6 +93,7 @@ export const INDUSTRIES: readonly Industry[] = [
   { code: 'SALON',                   labelEn: 'Salons',                                 labelEs: 'Salones de belleza' },
   { code: 'SCHOOL',                  labelEn: 'Schools',                                labelEs: 'Escuelas' },
   { code: 'SENIOR_LIVING',           labelEn: 'Senior living facilities',               labelEs: 'Residencias para adultos mayores' },
+  { code: 'SOFTWARE_TECH',           labelEn: 'Software and technology',                labelEs: 'Software y tecnología', searchTerms: 'saas software technology tech app developer cloud platform startup tecnología' },
   { code: 'SPA',                     labelEn: 'Spas',                                   labelEs: 'Spas' },
   { code: 'TAX_PREPARATION',         labelEn: 'Tax preparers',                          labelEs: 'Preparadores de impuestos' },
   { code: 'TIRE_SHOP',               labelEn: 'Tire shops',                             labelEs: 'Llanteras' },

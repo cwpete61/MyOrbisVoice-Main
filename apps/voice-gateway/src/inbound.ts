@@ -207,7 +207,7 @@ export async function handleInboundCall(ws: WebSocket) {
     ])
 
     const channelCfgJson  = (channelCfgRow?.configJson as Record<string, unknown> | null) ?? {}
-    const voiceName       = (channelCfgJson['voiceName']       as string  | undefined) || 'Fenrir'
+    const voiceName       = (channelCfgJson['voiceName']       as string  | undefined) || 'Aoede'
     const agentSpeaksFirst = channelCfgJson['agentSpeaksFirst'] !== false  // default true
 
     const dnaSnap = dna ? {

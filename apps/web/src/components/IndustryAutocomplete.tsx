@@ -41,11 +41,14 @@ function labelFor(ind: Industry, locale: 'en' | 'es'): string {
 
 function matchesQuery(ind: Industry, locale: 'en' | 'es', q: string): boolean {
   if (!q) return true
-  // Strict prefix match against the displayed label only — type "c" and
-  // see only industries whose label starts with C, just like jumping to
-  // a letter in an alphabetized list.
-  const label = (locale === 'es' ? ind.labelEs : ind.labelEn).toLowerCase()
-  return label.startsWith(q.toLowerCase())
+  // Substring match against the displayed label plus the optional
+  // searchTerms keyword field — a keyword anywhere in the name or its
+  // synonyms surfaces the industry ("software"/"tech" → "Software and
+  // technology"; "saas" → same via searchTerms).
+  const needle = q.toLowerCase().trim()
+  const label  = (locale === 'es' ? ind.labelEs : ind.labelEn).toLowerCase()
+  const terms  = (ind.searchTerms ?? '').toLowerCase()
+  return label.includes(needle) || terms.includes(needle)
 }
 
 export function IndustryAutocomplete({ value, onChange, locale, placeholder, disabled, byLabel }: Props) {

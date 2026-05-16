@@ -152,7 +152,9 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
       voiceName = (cfgJson?.['voiceName'] as string | undefined) ?? undefined
     } catch { /* fallback to Gemini default */ }
   }
-  voiceName = voiceName ?? 'Fenrir'
+  // Platform default voice is Aoede — applies to every channel/tenant that
+  // hasn't explicitly picked a voice. Tenant channel config overrides it above.
+  voiceName = voiceName ?? 'Aoede'
 
   // 4. Open Gemini Live session
   const identityJson = dna?.['identityJson'] as Record<string, unknown> | null | undefined

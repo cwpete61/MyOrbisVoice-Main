@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { apiFetch } from '@/hooks/useApi'
+import { apiFetch, apiFetchRaw } from '@/hooks/useApi'
 
 const DISMISS_KEY = 'orbisvoice_push_banner_dismissed'
 
@@ -53,7 +53,7 @@ export function EnableNotificationsBanner() {
       } catch { /* fall through to show */ }
       // VAPID configured on the server?
       try {
-        const r = await fetch('/api/push/vapid-public-key')
+        const r = await apiFetchRaw('/api/push/vapid-public-key')
         if (!r.ok) { setState('hidden'); return }
       } catch { setState('hidden'); return }
 
@@ -74,7 +74,7 @@ export function EnableNotificationsBanner() {
         }
         return
       }
-      const r = await fetch('/api/push/vapid-public-key')
+      const r = await apiFetchRaw('/api/push/vapid-public-key')
       const j = await r.json() as { data?: { publicKey: string } }
       if (!j.data?.publicKey) { setState('hidden'); return }
 

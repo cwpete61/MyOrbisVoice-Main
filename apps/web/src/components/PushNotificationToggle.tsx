@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { apiFetch } from '@/hooks/useApi'
+import { apiFetch, apiFetchRaw } from '@/hooks/useApi'
 
 type Status = 'unsupported' | 'unconfigured' | 'denied' | 'unsubscribed' | 'subscribed' | 'loading'
 
@@ -42,7 +42,7 @@ export function PushNotificationToggle() {
           return
         }
         // Not subscribed yet — make sure server has VAPID configured
-        const vapidRes = await fetch('/api/push/vapid-public-key')
+        const vapidRes = await apiFetchRaw('/api/push/vapid-public-key')
         if (vapidRes.status === 503) { setStatus('unconfigured'); return }
         setStatus('unsubscribed')
       } catch {
@@ -69,7 +69,7 @@ export function PushNotificationToggle() {
       }
 
       // Fetch VAPID key
-      const r = await fetch('/api/push/vapid-public-key')
+      const r = await apiFetchRaw('/api/push/vapid-public-key')
       const j = await r.json() as { data?: { publicKey: string } }
       if (!j.data?.publicKey) {
         setStatus('unconfigured')

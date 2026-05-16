@@ -153,7 +153,7 @@ export async function handleOutboundCall(ws: WebSocket) {
     ])
 
     const channelCfgJson = (outboundChannel?.configJson as Record<string, unknown> | null) ?? {}
-    const voiceName      = (channelCfgJson['voiceName'] as string | undefined) || 'Fenrir'
+    const voiceName      = (channelCfgJson['voiceName'] as string | undefined) || 'Aoede'
 
     const dnaSnap = dna ? {
       identityJson:    dna.identityJson,

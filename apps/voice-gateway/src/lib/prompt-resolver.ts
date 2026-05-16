@@ -92,8 +92,43 @@ export function resolveSystemPrompt(
     // would say "goodbye" and then sit silently while the visitor sees the panel
     // hanging open.
     'When the conversation has naturally ended — visitor booked a demo and you wrapped up, OR visitor declined and you wished them well, OR they are not a fit — say your farewell (one sentence), and THEN immediately call the end_call tool with the appropriate reason. ' +
-    'Do not call end_call before saying goodbye. Do not call it while questions are still open. Do not announce the tool call out loud — just say the goodbye, then invoke end_call.'
+    'Do not call end_call before saying goodbye. Do not call it while questions are still open. Do not announce the tool call out loud — just say the goodbye, then invoke end_call. ' +
+    // Prohibited language — platform-wide; applies to every agent on every
+    // channel and tenant, partner landing-page widgets included. A tenant's
+    // Business DNA can add more on top but cannot remove these.
+    'Prohibited language — never use, in any language: profanity, slurs, or discriminatory language; ' +
+    'absolute promises or guarantees about results ("guaranteed", "100%", "risk-free", "you will definitely..."); ' +
+    'false urgency or pressure tactics ("last chance", "act now or lose it") unless literally true; ' +
+    'disparaging competitors or naming them negatively; ' +
+    'claiming to be a human rather than an AI assistant; ' +
+    'and invented prices, features, dates, or commitments that were not given to you. ' +
+    'Do not expose internal jargon to callers (for example "n8n", "webhook", "tenant", "entitlement") — use plain language instead.'
   )
+
+  // Layer 1.1 — agent identity. Every agent has a name; "Orby" is the platform
+  // default applied across every channel and tenant. A tenant's Business DNA
+  // (identityJson.agentName / businessName) overrides it when set.
+  const dnaIdentity = (dna?.identityJson ?? {}) as Record<string, unknown>
+  const resolvedAgentName =
+    typeof dnaIdentity['agentName'] === 'string' && dnaIdentity['agentName'].trim()
+      ? (dnaIdentity['agentName'] as string).trim()
+      : 'Orby'
+  const resolvedBusinessName =
+    typeof dnaIdentity['businessName'] === 'string'
+      ? (dnaIdentity['businessName'] as string).trim()
+      : ''
+  if (resolvedBusinessName) {
+    layers.push(
+      `You are ${resolvedAgentName}, an AI assistant for ${resolvedBusinessName}. ` +
+      `Introduce yourself by name when greeting a caller ` +
+      `(for example: "Hi, this is ${resolvedAgentName} from ${resolvedBusinessName} — how can I help?").`,
+    )
+  } else {
+    layers.push(
+      `Your name is ${resolvedAgentName}. Introduce yourself by name when greeting a caller ` +
+      `(for example: "Hi, this is ${resolvedAgentName} — how can I help?").`,
+    )
+  }
 
   // Layer 1.5 — Caller history (Phase E.7). Only present when the gateway
   // could pre-identify the caller (phone match for inbound, contactId on the
@@ -139,21 +174,9 @@ export function resolveSystemPrompt(
     const dnaLines: string[] = ['--- Business Knowledge ---']
     const stringify = (v: unknown) => v ? JSON.stringify(v) : null
 
-    // Emit a prominent named identity directive at the top of the DNA block
-    // so the model uses the agent's persona name and business name reliably
-    // when greeting callers (instead of having to parse them out of the
-    // identityJson dump below).
-    const identity = (dna.identityJson ?? {}) as Record<string, unknown>
-    const agentName = typeof identity['agentName'] === 'string' ? (identity['agentName'] as string).trim() : ''
-    const businessName = typeof identity['businessName'] === 'string' ? (identity['businessName'] as string).trim() : ''
-    if (agentName && businessName) {
-      dnaLines.push(`You are ${agentName}, an AI assistant for ${businessName}. Introduce yourself by name when greeting a caller (for example: "Hi, this is ${agentName} from ${businessName} — how can I help?").`)
-    } else if (agentName) {
-      dnaLines.push(`Your name is ${agentName}. Introduce yourself by name when greeting a caller.`)
-    } else if (businessName) {
-      dnaLines.push(`You represent ${businessName}. Greet callers on behalf of ${businessName}.`)
-    }
-
+    // The agent name + business name directive is emitted earlier (Layer 1.1)
+    // with an "Orby" platform default; the raw identity JSON below still gives
+    // the model the full structured detail.
     if (dna.identityJson)    dnaLines.push(`Identity: ${stringify(dna.identityJson)}`)
     if (dna.servicesJson)    dnaLines.push(`Services: ${stringify(dna.servicesJson)}`)
     if (dna.pricingJson)     dnaLines.push(`Pricing: ${stringify(dna.pricingJson)}`)

@@ -388,7 +388,7 @@ export default function ChannelsPage() {
             </label>
             <div className="grid grid-cols-1 gap-2">
               {VOICE_OPTIONS.map((v) => {
-                const active = (cfg.voiceName ?? 'Fenrir') === v.value
+                const active = (cfg.voiceName ?? 'Aoede') === v.value
                 return (
                   <button
                     key={v.value}
