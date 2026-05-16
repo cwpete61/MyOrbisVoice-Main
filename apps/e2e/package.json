@@ -10,7 +10,7 @@
     "test:api": "tsx src/runner.ts --suite api"
   },
   "dependencies": {
-    "puppeteer": "^24.0.0"
+    "puppeteer": "^24.43.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
