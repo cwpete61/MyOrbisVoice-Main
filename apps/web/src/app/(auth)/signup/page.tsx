@@ -48,6 +48,8 @@ function SignupForm() {
   const [businessName, setBusinessName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState('')
+  const [smsConsent, setSmsConsent] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [refCode, setRefCode] = useState<string | undefined>()
@@ -62,7 +64,7 @@ function SignupForm() {
     if (!isPasswordValid(password)) { setError(t('auth.signup.passwordTooWeak')); return }
     setLoading(true)
     try {
-      const result = await apiSignup(username, email, password, businessName, refCode, planCode, locale)
+      const result = await apiSignup(username, email, password, businessName, refCode, planCode, locale, phone || undefined, smsConsent)
       setTokens(result.accessToken, result.refreshToken)
 
       // If a paid plan was selected, send the user to Stripe checkout immediately.
@@ -211,6 +213,26 @@ function SignupForm() {
             />
             <PasswordRulesChecklist value={password} />
           </div>
+          <div>
+            <label className="label">{t('auth.signup.phoneLabel')}</label>
+            <input
+              type="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="input"
+              placeholder={t('auth.signup.phonePlaceholder')}
+            />
+          </div>
+          <label className="flex items-start gap-2 text-xs cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+            <input
+              type="checkbox"
+              checked={smsConsent}
+              onChange={(e) => setSmsConsent(e.target.checked)}
+              className="mt-0.5 flex-shrink-0"
+            />
+            <span>{t('auth.signup.smsConsent')}</span>
+          </label>
           <button type="submit" disabled={loading} className="btn-primary w-full mt-1">
             {loading
               ? (isPaidPlan ? t('auth.signup.redirectingToCheckout') : t('auth.signup.submitting'))

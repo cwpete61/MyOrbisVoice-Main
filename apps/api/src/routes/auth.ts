@@ -16,6 +16,8 @@ const signupSchema = z.object({
   selectedPlanCode: z.string().optional(),
   affiliateCode: z.string().optional(),
   preferredLocale: z.enum(['en', 'es']).optional(),
+  phone: z.string().max(40).optional(),
+  smsConsent: z.boolean().optional(),
 })
 
 const affiliateSignupSchema = z.object({

@@ -742,6 +742,9 @@
       "emailPlaceholder": "tu@tunegocio.com",
       "passwordLabel": "Contraseña",
       "passwordPlaceholder": "8+ caracteres, mayúscula, número, símbolo",
+      "phoneLabel": "Teléfono (opcional)",
+      "phonePlaceholder": "+1 555 123 4567",
+      "smsConsent": "Acepto recibir mensajes de texto automáticos recurrentes (notificaciones de cuenta y servicio) de MyOrbisVoice al número proporcionado. El consentimiento no es condición de compra. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responde STOP para darte de baja, HELP para ayuda.",
       "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
       "passwordTooWeak": "La contraseña debe incluir al menos 8 caracteres, una letra mayúscula, un número y un símbolo.",
       "submit": "Crear cuenta",
@@ -4228,7 +4231,8 @@
       "phone":             "Teléfono",
       "phonePlaceholder":  "+1 555 123 4567",
       "notes":             "Algo que quieras que sepamos",
-      "notesPlaceholder":  "Contexto opcional — qué te gustaría conversar."
+      "notesPlaceholder":  "Contexto opcional — qué te gustaría conversar.",
+      "smsConsent":        "Acepto recibir mensajes de texto automáticos de confirmación y recordatorio de citas al número de teléfono proporcionado. El consentimiento no es condición de compra. Pueden aplicarse tarifas de mensajes y datos. Responde STOP para darte de baja, HELP para ayuda."
     },
     "confirmed": {
       "title":     "Estás en el calendario.",

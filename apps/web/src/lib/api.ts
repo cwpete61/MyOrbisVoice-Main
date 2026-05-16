@@ -49,7 +49,7 @@ export async function apiLogin(login: string, password: string) {
   })
 }
 
-export async function apiSignup(username: string, email: string, password: string, businessName: string, affiliateCode?: string, selectedPlanCode?: string, preferredLocale?: 'en' | 'es') {
+export async function apiSignup(username: string, email: string, password: string, businessName: string, affiliateCode?: string, selectedPlanCode?: string, preferredLocale?: 'en' | 'es', phone?: string, smsConsent?: boolean) {
   return apiCall<{ user: unknown; tenant: unknown } & AuthTokens>('/api/auth/signup', {
     method: 'POST',
     body: {
@@ -57,6 +57,8 @@ export async function apiSignup(username: string, email: string, password: strin
       ...(affiliateCode    ? { affiliateCode }    : {}),
       ...(selectedPlanCode ? { selectedPlanCode } : {}),
       ...(preferredLocale  ? { preferredLocale }  : {}),
+      ...(phone            ? { phone }            : {}),
+      ...(smsConsent       ? { smsConsent }       : {}),
     },
   })
 }

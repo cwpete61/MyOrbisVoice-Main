@@ -391,6 +391,12 @@ model User {
   preferredTimezone     String?
   status                UserStatus             @default(ACTIVE)
   lastLoginAt           DateTime?
+  /// Optional contact mobile, captured at signup. Used for A2P-compliant
+  /// SMS account/service notifications.
+  phone                 String?
+  /// Set when the user ticks the SMS-consent checkbox (at signup or later).
+  /// Null = no SMS consent on record. Drives A2P opt-in proof.
+  smsConsentAt          DateTime?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   tenantMemberships     TenantMember[]
@@ -1465,6 +1471,9 @@ model Appointment {
   providerEventId String?
   location        String?
   notes           String?
+  /// Set when the customer ticked the SMS-consent checkbox on the public
+  /// booking page — A2P opt-in proof for appointment-reminder texts.
+  smsConsentAt    DateTime?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)

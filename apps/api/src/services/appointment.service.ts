@@ -432,6 +432,9 @@ export async function createAppointment(tenantId: string, userId: string | null,
    * partner-portal calendar view can filter/badge their own bookings.
    */
   partnerId?: string
+  /** Set when the customer ticked the SMS-consent checkbox on the public
+   *  booking page — A2P opt-in proof for appointment-reminder texts. */
+  smsConsentAt?: Date
 }) {
   // Try the full Google-Calendar-integrated path. When partnerId is set we
   // use the partner's calendar; otherwise the tenant's. Both fall back to
@@ -512,6 +515,7 @@ export async function createAppointment(tenantId: string, userId: string | null,
       providerEventId,
       location: data.location,
       notes: data.notes,
+      smsConsentAt: data.smsConsentAt,
     },
   })
 

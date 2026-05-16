@@ -742,6 +742,9 @@
       "emailPlaceholder": "you@yourbusiness.com",
       "passwordLabel": "Password",
       "passwordPlaceholder": "8+ chars, capital, number, symbol",
+      "phoneLabel": "Phone (optional)",
+      "phonePlaceholder": "+1 555 123 4567",
+      "smsConsent": "I agree to receive recurring automated text messages (account and service notifications) from MyOrbisVoice at the number provided. Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to opt out, HELP for help.",
       "passwordTooShort": "Password must be at least 8 characters.",
       "passwordTooWeak": "Password must include at least 8 characters, one capital letter, one number, and one symbol.",
       "submit": "Create account",
@@ -4228,7 +4231,8 @@
       "phone":             "Phone",
       "phonePlaceholder":  "+1 555 123 4567",
       "notes":             "Anything you'd like us to know",
-      "notesPlaceholder":  "Optional context — what you're hoping to discuss."
+      "notesPlaceholder":  "Optional context — what you're hoping to discuss.",
+      "smsConsent":        "I agree to receive automated appointment confirmation and reminder text messages at the phone number provided. Consent is not a condition of purchase. Message and data rates may apply. Reply STOP to opt out, HELP for help."
     },
     "confirmed": {
       "title":     "You're on the calendar.",

@@ -133,6 +133,7 @@ export default function PublicBookingPage() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [notes, setNotes] = useState('')
+  const [smsConsent, setSmsConsent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [confirmation, setConfirmation] = useState<BookingResp | null>(null)
@@ -213,6 +214,7 @@ export default function PublicBookingPage() {
           timezone: tz,
           notes:    notes || undefined,
           appointmentType: 'Consultation',
+          smsConsent,
         }),
       })
       setConfirmation(data)
@@ -451,6 +453,16 @@ export default function PublicBookingPage() {
           <FormField label={t('publicBooking.fields.email')} value={email} onChange={setEmail} type="email" placeholder={t('publicBooking.fields.emailPlaceholder')} />
           <FormField label={t('publicBooking.fields.phone')} value={phone} onChange={setPhone} type="tel" placeholder={t('publicBooking.fields.phonePlaceholder')} optional />
           <FormField label={t('publicBooking.fields.notes')} value={notes} onChange={setNotes} placeholder={t('publicBooking.fields.notesPlaceholder')} multiline optional />
+
+          <label className="flex items-start gap-2 text-xs mb-3 cursor-pointer" style={{ color: 'var(--text-muted)' }}>
+            <input
+              type="checkbox"
+              checked={smsConsent}
+              onChange={(e) => setSmsConsent(e.target.checked)}
+              className="mt-0.5 flex-shrink-0"
+            />
+            <span>{t('publicBooking.fields.smsConsent')}</span>
+          </label>
 
           {submitError && (
             <p className="text-xs mb-3 px-2 py-1 rounded" style={{ background: 'oklch(60% 0.2 30 / 0.15)', color: 'oklch(55% 0.20 30)' }}>

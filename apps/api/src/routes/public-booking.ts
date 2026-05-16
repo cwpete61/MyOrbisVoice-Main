@@ -226,6 +226,7 @@ const bookingBodySchema = z.object({
   timezone:  z.string().min(1, 'timezone required'),
   notes:     z.string().max(2000).optional(),
   appointmentType: z.string().max(120).optional(),
+  smsConsent: z.boolean().optional(),
 })
 
 router.post('/public/partners/:slug/bookings', asyncHandler(async (req, res) => {
@@ -287,6 +288,7 @@ router.post('/public/partners/:slug/bookings', asyncHandler(async (req, res) => 
       notes:           body.notes,
       attendeeEmail:   body.email,
       partnerId:       partner.id,
+      smsConsentAt:    body.smsConsent ? new Date() : undefined,
     })
   } catch (err) {
     const e = err as AppError | Error

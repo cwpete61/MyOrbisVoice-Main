@@ -18,6 +18,8 @@ export async function signupUser(data: {
   selectedPlanCode?: string
   affiliateCode?: string
   preferredLocale?: string
+  phone?: string
+  smsConsent?: boolean
 }) {
   // Case-insensitive uniqueness check — prevents "Redkins" + "redkins" from
   // co-existing. findFirst (not findUnique) because the column-level @unique
@@ -43,7 +45,11 @@ export async function signupUser(data: {
     // continues seeing Spanish post-signup instead of having User.preferredLocale='en' override
     // their chosen language on every /me hydration.
     const locale = (data.preferredLocale === 'en' || data.preferredLocale === 'es') ? data.preferredLocale : 'en'
-    const user = await tx.user.create({ data: { email: data.email, username: data.username, passwordHash, preferredLocale: locale } })
+    const user = await tx.user.create({ data: {
+      email: data.email, username: data.username, passwordHash, preferredLocale: locale,
+      phone: data.phone || null,
+      smsConsentAt: data.smsConsent ? new Date() : null,
+    } })
     const tenant = await tx.tenant.create({
       data: {
         slug,
