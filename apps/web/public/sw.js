@@ -40,3 +40,7 @@ self.addEventListener('notificationclick', (event) => {
 
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
+
+// Minimal fetch handler — present so the dashboard meets PWA installability
+// criteria. Pure pass-through (no caching); real offline support comes later.
+self.addEventListener('fetch', () => {})

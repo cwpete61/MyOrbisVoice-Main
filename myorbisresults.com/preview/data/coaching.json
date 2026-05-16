@@ -21,17 +21,46 @@
       "summary": "Currently on call — discovery call qualifier",
       "status": "qualifying",
       "transcript": [
-        { "role": "agent",  "text": "Mason Cohen Consulting, how can I help?" },
-        { "role": "caller", "text": "I'm an agency owner. I keep hearing about Mason on a podcast and want to see if we'd be a fit." },
-        { "role": "agent",  "text": "Glad you reached out. Mason runs a thorough qualification before any engagement. May I ask your name and the agency?" },
-        { "role": "caller", "text": "Vanessa Albright. Albright Creative — we do branding for B2B SaaS." },
-        { "role": "agent",  "text": "Roughly what revenue range, Vanessa?" },
-        { "role": "caller", "text": "About one point two million this year. We're stuck — I'm the bottleneck on every project." },
-        { "role": "agent",  "text": "That's exactly the lane Mason works in. He has a free 45-minute discovery call to see if you'd be a fit for either his 1:1 or his small cohort. Thursday 11:00 AM or Friday 3:00 PM?" }
+        {
+          "role": "agent",
+          "text": "Mason Cohen Consulting, how can I help?"
+        },
+        {
+          "role": "caller",
+          "text": "I'm an agency owner. I keep hearing about Mason on a podcast and want to see if we'd be a fit."
+        },
+        {
+          "role": "agent",
+          "text": "Glad you reached out. Mason runs a thorough qualification before any engagement. May I ask your name and the agency?"
+        },
+        {
+          "role": "caller",
+          "text": "Vanessa Albright. Albright Creative — we do branding for B2B SaaS."
+        },
+        {
+          "role": "agent",
+          "text": "Roughly what revenue range, Vanessa?"
+        },
+        {
+          "role": "caller",
+          "text": "About one point two million this year. We're stuck — I'm the bottleneck on every project."
+        },
+        {
+          "role": "agent",
+          "text": "That's exactly the lane Mason works in. He has a free 45-minute discovery call to see if you'd be a fit for either his 1:1 or his small cohort. Thursday 11:00 AM or Friday 3:00 PM?"
+        }
       ],
-      "summary_long": "Vanessa Albright, founder of Albright Creative (B2B SaaS branding agency, ~$1.2M revenue). Self-identified founder bottleneck — Mason's specialty. Qualified above program minimum. Offering free discovery call Thu 11AM or Fri 3PM. Call in progress."
+      "summary_long": "Vanessa Albright, founder of Albright Creative (B2B SaaS branding agency, ~$1.2M revenue). Self-identified founder bottleneck — Mason's specialty. Qualified above program minimum. Offering free discovery call Thu 11AM or Fri 3PM. Call in progress.",
+      "caller_gender": "female",
+      "audio": "audio/coaching-0.mp3"
     },
-    { "name": "Anonymous caller",  "time": "1:42 PM",          "summary": "Asked about program length + investment", "status": "faq" },
+    {
+      "name": "Anonymous caller",
+      "time": "1:42 PM",
+      "summary": "Asked about program length + investment",
+      "status": "faq",
+      "caller_gender": "female"
+    },
     {
       "name": "Derek Sutton",
       "time": "12:58 PM",
@@ -39,20 +68,61 @@
       "summary": "Booked Thursday 11:00 AM — discovery call",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Mason Cohen Consulting." },
-        { "role": "caller", "text": "Hey, my buddy Mike at Stratega referred me. Said I should book a call with Mason." },
-        { "role": "agent",  "text": "Good — Mike's a graduate. May I have your name and your company?" },
-        { "role": "caller", "text": "Derek Sutton, Sutton Manufacturing. We make precision machine parts." },
-        { "role": "agent",  "text": "Got it, Derek. Roughly what stage are you at — revenue range, team size?" },
-        { "role": "caller", "text": "Five point five million, eighteen people." },
-        { "role": "agent",  "text": "Strong fit. Thursday 11:00 AM open for a 45-minute discovery — works for you?" },
-        { "role": "caller", "text": "Yes." },
-        { "role": "agent",  "text": "Booked. Mason will email you a short pre-call form Tuesday — three questions, takes five minutes. See you Thursday." }
+        {
+          "role": "agent",
+          "text": "Mason Cohen Consulting."
+        },
+        {
+          "role": "caller",
+          "text": "Hey, my buddy Mike at Stratega referred me. Said I should book a call with Mason."
+        },
+        {
+          "role": "agent",
+          "text": "Good — Mike's a graduate. May I have your name and your company?"
+        },
+        {
+          "role": "caller",
+          "text": "Derek Sutton, Sutton Manufacturing. We make precision machine parts."
+        },
+        {
+          "role": "agent",
+          "text": "Got it, Derek. Roughly what stage are you at — revenue range, team size?"
+        },
+        {
+          "role": "caller",
+          "text": "Five point five million, eighteen people."
+        },
+        {
+          "role": "agent",
+          "text": "Strong fit. Thursday 11:00 AM open for a 45-minute discovery — works for you?"
+        },
+        {
+          "role": "caller",
+          "text": "Yes."
+        },
+        {
+          "role": "agent",
+          "text": "Booked. Mason will email you a short pre-call form Tuesday — three questions, takes five minutes. See you Thursday."
+        }
       ],
-      "summary_long": "Derek Sutton, founder of Sutton Manufacturing (precision parts, $5.5M revenue, 18 staff). Warm referral from existing client (Mike at Stratega). Booked Thursday 11:00 AM discovery call (45m). Pre-call form auto-scheduled for Tuesday."
+      "summary_long": "Derek Sutton, founder of Sutton Manufacturing (precision parts, $5.5M revenue, 18 staff). Warm referral from existing client (Mike at Stratega). Booked Thursday 11:00 AM discovery call (45m). Pre-call form auto-scheduled for Tuesday.",
+      "caller_gender": "male",
+      "audio": "audio/coaching-2.mp3"
     },
-    { "name": "Anonymous caller",  "time": "11:34 AM",         "summary": "Asked if you do 1:1 vs group (info sent via email)", "status": "faq" },
-    { "name": "Priya Sharma",      "time": "10:48 AM",         "summary": "Booked Friday 3:00 PM — discovery call", "status": "booked" },
+    {
+      "name": "Anonymous caller",
+      "time": "11:34 AM",
+      "summary": "Asked if you do 1:1 vs group (info sent via email)",
+      "status": "faq",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Priya Sharma",
+      "time": "10:48 AM",
+      "summary": "Booked Friday 3:00 PM — discovery call",
+      "status": "booked",
+      "caller_gender": "female"
+    },
     {
       "name": "Anonymous caller",
       "time": "Yesterday 7:18 PM",
@@ -60,28 +130,105 @@
       "summary": "After-hours — booked Tuesday 1:00 PM discovery",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Mason Cohen Consulting, after-hours line." },
-        { "role": "caller", "text": "Is this Mason directly?" },
-        { "role": "agent",  "text": "No, I'm his scheduling assistant. Mason's offline tonight. Can I help get something on his calendar?" },
-        { "role": "caller", "text": "Sure. I want to talk about coaching. Don't want to share my name yet though — I'm still feeling this out." },
-        { "role": "agent",  "text": "Understandable. May I ask roughly what stage your business is at? Mason works with founders past one million in revenue." },
-        { "role": "caller", "text": "We're at about two million." },
-        { "role": "agent",  "text": "Good fit. I can put you on the calendar with a placeholder name — you can give details when you talk to Mason. Tuesday 1:00 PM works?" },
-        { "role": "caller", "text": "Yeah." },
-        { "role": "agent",  "text": "Booked under \"Prospect - Tuesday 1\" with this phone number. We'll text a reminder Monday." }
+        {
+          "role": "agent",
+          "text": "Mason Cohen Consulting, after-hours line."
+        },
+        {
+          "role": "caller",
+          "text": "Is this Mason directly?"
+        },
+        {
+          "role": "agent",
+          "text": "No, I'm his scheduling assistant. Mason's offline tonight. Can I help get something on his calendar?"
+        },
+        {
+          "role": "caller",
+          "text": "Sure. I want to talk about coaching. Don't want to share my name yet though — I'm still feeling this out."
+        },
+        {
+          "role": "agent",
+          "text": "Understandable. May I ask roughly what stage your business is at? Mason works with founders past one million in revenue."
+        },
+        {
+          "role": "caller",
+          "text": "We're at about two million."
+        },
+        {
+          "role": "agent",
+          "text": "Good fit. I can put you on the calendar with a placeholder name — you can give details when you talk to Mason. Tuesday 1:00 PM works?"
+        },
+        {
+          "role": "caller",
+          "text": "Yeah."
+        },
+        {
+          "role": "agent",
+          "text": "Booked under \"Prospect - Tuesday 1\" with this phone number. We'll text a reminder Monday."
+        }
       ],
-      "summary_long": "Anonymous prospect (~$2M revenue founder, name withheld). Above program revenue floor. Discretion accommodated — booked as 'Prospect - Tuesday 1' with phone number only. Tuesday 1:00 PM discovery call. SMS reminder Monday."
+      "summary_long": "Anonymous prospect (~$2M revenue founder, name withheld). Above program revenue floor. Discretion accommodated — booked as 'Prospect - Tuesday 1' with phone number only. Tuesday 1:00 PM discovery call. SMS reminder Monday.",
+      "caller_gender": "male",
+      "audio": "audio/coaching-5.mp3"
     },
-    { "name": "Trevor Hammond",    "time": "Yesterday 5:42 PM","summary": "Booked Monday 10:00 AM — second meeting (proposal)", "status": "booked" },
-    { "name": "Anonymous caller",  "time": "Yesterday 3:18 PM","summary": "Asked for case studies (sent automatically)", "status": "faq" },
-    { "name": "Catherine Lowell",  "time": "Yesterday 1:42 PM","summary": "Booked Wednesday 2:00 PM — discovery call", "status": "booked" }
+    {
+      "name": "Trevor Hammond",
+      "time": "Yesterday 5:42 PM",
+      "summary": "Booked Monday 10:00 AM — second meeting (proposal)",
+      "status": "booked",
+      "caller_gender": "male"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "Yesterday 3:18 PM",
+      "summary": "Asked for case studies (sent automatically)",
+      "status": "faq",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Catherine Lowell",
+      "time": "Yesterday 1:42 PM",
+      "summary": "Booked Wednesday 2:00 PM — discovery call",
+      "status": "booked",
+      "caller_gender": "female"
+    }
   ],
   "calendar": [
-    { "customer": "Derek Sutton",      "time": "Thu 11:00 AM", "service": "Discovery call",                "duration": "45m" },
-    { "customer": "Priya Sharma",      "time": "Fri 3:00 PM",  "service": "Discovery call",                "duration": "45m" },
-    { "customer": "Trevor Hammond",    "time": "Mon 10:00 AM", "service": "Proposal meeting (round 2)",    "duration": "60m" },
-    { "customer": "Anonymous (Tue)",   "time": "Tue 1:00 PM",  "service": "Discovery call",                "duration": "45m" },
-    { "customer": "Catherine Lowell",  "time": "Wed 2:00 PM",  "service": "Discovery call",                "duration": "45m" },
-    { "customer": "Vanessa Albright",  "time": "Thu 4:00 PM",  "service": "Discovery call",                "duration": "45m" }
+    {
+      "customer": "Derek Sutton",
+      "time": "Thu 11:00 AM",
+      "service": "Discovery call",
+      "duration": "45m"
+    },
+    {
+      "customer": "Priya Sharma",
+      "time": "Fri 3:00 PM",
+      "service": "Discovery call",
+      "duration": "45m"
+    },
+    {
+      "customer": "Trevor Hammond",
+      "time": "Mon 10:00 AM",
+      "service": "Proposal meeting (round 2)",
+      "duration": "60m"
+    },
+    {
+      "customer": "Anonymous (Tue)",
+      "time": "Tue 1:00 PM",
+      "service": "Discovery call",
+      "duration": "45m"
+    },
+    {
+      "customer": "Catherine Lowell",
+      "time": "Wed 2:00 PM",
+      "service": "Discovery call",
+      "duration": "45m"
+    },
+    {
+      "customer": "Vanessa Albright",
+      "time": "Thu 4:00 PM",
+      "service": "Discovery call",
+      "duration": "45m"
+    }
   ]
 }

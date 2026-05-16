@@ -21,19 +21,54 @@
       "summary": "Currently on call — buyer consult, pre-approved",
       "status": "qualifying",
       "transcript": [
-        { "role": "agent",  "text": "Cohen and Reyes Realty, how can I help?" },
-        { "role": "caller", "text": "Hi, I'm pre-approved up to four-eighty and looking in the West End." },
-        { "role": "agent",  "text": "Great — pre-approval means you're ready to move. May I have your name?" },
-        { "role": "caller", "text": "Anthony Russo." },
-        { "role": "agent",  "text": "Anthony, what's most important — number of bedrooms, school district, anything specific?" },
-        { "role": "caller", "text": "Three bedrooms minimum, good schools, fenced yard for the dog." },
-        { "role": "agent",  "text": "Got it. I can have one of our agents pull a list this afternoon and book a Saturday showing tour. Which agent is best — we have Maria, who specializes in West End, or Tom?" },
-        { "role": "caller", "text": "Whichever knows West End best." },
-        { "role": "agent",  "text": "Maria, then. Saturday 2:00 PM tour, three to four homes, about two hours. Sound good?" }
+        {
+          "role": "agent",
+          "text": "Cohen and Reyes Realty, how can I help?"
+        },
+        {
+          "role": "caller",
+          "text": "Hi, I'm pre-approved up to four-eighty and looking in the West End."
+        },
+        {
+          "role": "agent",
+          "text": "Great — pre-approval means you're ready to move. May I have your name?"
+        },
+        {
+          "role": "caller",
+          "text": "Anthony Russo."
+        },
+        {
+          "role": "agent",
+          "text": "Anthony, what's most important — number of bedrooms, school district, anything specific?"
+        },
+        {
+          "role": "caller",
+          "text": "Three bedrooms minimum, good schools, fenced yard for the dog."
+        },
+        {
+          "role": "agent",
+          "text": "Got it. I can have one of our agents pull a list this afternoon and book a Saturday showing tour. Which agent is best — we have Maria, who specializes in West End, or Tom?"
+        },
+        {
+          "role": "caller",
+          "text": "Whichever knows West End best."
+        },
+        {
+          "role": "agent",
+          "text": "Maria, then. Saturday 2:00 PM tour, three to four homes, about two hours. Sound good?"
+        }
       ],
-      "summary_long": "Anthony Russo — pre-approved buyer to $480K, looking West End, 3+ beds, fenced yard, good schools. Routed to agent Maria (West End specialist). Discussing Saturday 2:00 PM showing tour (3-4 homes, ~2 hrs). Call in progress."
+      "summary_long": "Anthony Russo — pre-approved buyer to $480K, looking West End, 3+ beds, fenced yard, good schools. Routed to agent Maria (West End specialist). Discussing Saturday 2:00 PM showing tour (3-4 homes, ~2 hrs). Call in progress.",
+      "caller_gender": "male",
+      "audio": "audio/real-estate-0.mp3"
     },
-    { "name": "Anonymous caller",   "time": "1:24 PM",          "summary": "Asked about a listing on Hamilton St (info sent)", "status": "faq" },
+    {
+      "name": "Anonymous caller",
+      "time": "1:24 PM",
+      "summary": "Asked about a listing on Hamilton St (info sent)",
+      "status": "faq",
+      "caller_gender": "female"
+    },
     {
       "name": "Olivia Bennett",
       "time": "12:48 PM",
@@ -41,19 +76,54 @@
       "summary": "Booked Saturday 11:00 AM — showing tour (3 homes)",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Cohen and Reyes Realty." },
-        { "role": "caller", "text": "Hi, I saved three homes on Zillow and want to see them in person." },
-        { "role": "agent",  "text": "Of course. Are you working with an agent already?" },
-        { "role": "caller", "text": "No." },
-        { "role": "agent",  "text": "Okay, I can have one of ours meet you. Are you pre-approved or paying cash?" },
-        { "role": "caller", "text": "Pre-approved, three-fifty." },
-        { "role": "agent",  "text": "Perfect. Send me the three Zillow links by text and I'll have Tom pull the listings and schedule the tour. Saturday 11:00 AM work?" },
-        { "role": "caller", "text": "Yes." },
-        { "role": "agent",  "text": "Booked. Saturday 11:00 AM tour with Tom. He'll text you Friday to confirm the home order and meeting spot." }
+        {
+          "role": "agent",
+          "text": "Cohen and Reyes Realty."
+        },
+        {
+          "role": "caller",
+          "text": "Hi, I saved three homes on Zillow and want to see them in person."
+        },
+        {
+          "role": "agent",
+          "text": "Of course. Are you working with an agent already?"
+        },
+        {
+          "role": "caller",
+          "text": "No."
+        },
+        {
+          "role": "agent",
+          "text": "Okay, I can have one of ours meet you. Are you pre-approved or paying cash?"
+        },
+        {
+          "role": "caller",
+          "text": "Pre-approved, three-fifty."
+        },
+        {
+          "role": "agent",
+          "text": "Perfect. Send me the three Zillow links by text and I'll have Tom pull the listings and schedule the tour. Saturday 11:00 AM work?"
+        },
+        {
+          "role": "caller",
+          "text": "Yes."
+        },
+        {
+          "role": "agent",
+          "text": "Booked. Saturday 11:00 AM tour with Tom. He'll text you Friday to confirm the home order and meeting spot."
+        }
       ],
-      "summary_long": "Olivia Bennett — unrepresented buyer, pre-approved $350K, identified 3 Zillow listings. Routed to agent Tom. Saturday 11:00 AM showing tour booked. Asked her to text the 3 Zillow links for Tom to pull listings + sequence the tour."
+      "summary_long": "Olivia Bennett — unrepresented buyer, pre-approved $350K, identified 3 Zillow listings. Routed to agent Tom. Saturday 11:00 AM showing tour booked. Asked her to text the 3 Zillow links for Tom to pull listings + sequence the tour.",
+      "caller_gender": "female",
+      "audio": "audio/real-estate-2.mp3"
     },
-    { "name": "Anonymous caller",   "time": "12:18 PM",         "summary": "Asked about commission structure", "status": "faq" },
+    {
+      "name": "Anonymous caller",
+      "time": "12:18 PM",
+      "summary": "Asked about commission structure",
+      "status": "faq",
+      "caller_gender": "female"
+    },
     {
       "name": "Steven Park",
       "time": "11:42 AM",
@@ -61,30 +131,119 @@
       "summary": "Booked Thursday 5:00 PM — seller consult",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Cohen and Reyes Realty." },
-        { "role": "caller", "text": "I'm thinking about selling my house. Want to find out what it's worth." },
-        { "role": "agent",  "text": "Sure. We do a free in-home valuation — CMA. May I have your name and the address?" },
-        { "role": "caller", "text": "Steven Park, twenty-six Linden Drive." },
-        { "role": "agent",  "text": "Got it. Three-bed, two-bath, fifteen sixty square feet, right?" },
-        { "role": "caller", "text": "That's it." },
-        { "role": "agent",  "text": "I'll send Maria — she sold two homes on Linden last year. Thursday 5:00 PM for the in-home? About an hour." },
-        { "role": "caller", "text": "Works." },
-        { "role": "agent",  "text": "Booked. Maria will text you Wednesday with a quick pre-visit questionnaire — five questions — so she comes prepared with comps." }
+        {
+          "role": "agent",
+          "text": "Cohen and Reyes Realty."
+        },
+        {
+          "role": "caller",
+          "text": "I'm thinking about selling my house. Want to find out what it's worth."
+        },
+        {
+          "role": "agent",
+          "text": "Sure. We do a free in-home valuation — CMA. May I have your name and the address?"
+        },
+        {
+          "role": "caller",
+          "text": "Steven Park, twenty-six Linden Drive."
+        },
+        {
+          "role": "agent",
+          "text": "Got it. Three-bed, two-bath, fifteen sixty square feet, right?"
+        },
+        {
+          "role": "caller",
+          "text": "That's it."
+        },
+        {
+          "role": "agent",
+          "text": "I'll send Maria — she sold two homes on Linden last year. Thursday 5:00 PM for the in-home? About an hour."
+        },
+        {
+          "role": "caller",
+          "text": "Works."
+        },
+        {
+          "role": "agent",
+          "text": "Booked. Maria will text you Wednesday with a quick pre-visit questionnaire — five questions — so she comes prepared with comps."
+        }
       ],
-      "summary_long": "Steven Park, 26 Linden Drive (3/2, 1560 sq ft), considering selling. Routed to Maria (recently closed two homes on same street). Booked Thursday 5:00 PM in-home CMA (60m). Pre-visit questionnaire auto-scheduled for Wednesday."
+      "summary_long": "Steven Park, 26 Linden Drive (3/2, 1560 sq ft), considering selling. Routed to Maria (recently closed two homes on same street). Booked Thursday 5:00 PM in-home CMA (60m). Pre-visit questionnaire auto-scheduled for Wednesday.",
+      "caller_gender": "male",
+      "audio": "audio/real-estate-4.mp3"
     },
-    { "name": "Anonymous caller",   "time": "10:58 AM",         "summary": "Asked if you cover Bethlehem (yes — booking link sent)", "status": "faq" },
-    { "name": "Jasmine Aldridge",   "time": "10:14 AM",         "summary": "Booked Friday 1:00 PM — first-time buyer consult", "status": "booked" },
-    { "name": "Anonymous caller",   "time": "Yesterday 8:42 PM","summary": "After-hours — booked Sunday 2:00 PM listing prep", "status": "booked" },
-    { "name": "Marco Delgado",      "time": "Yesterday 6:18 PM","summary": "Booked Monday 10:00 AM — investor walkthrough", "status": "booked" },
-    { "name": "Anonymous caller",   "time": "Yesterday 4:32 PM","summary": "Asked about FSBO conversion (referred to listing service)", "status": "missed" }
+    {
+      "name": "Anonymous caller",
+      "time": "10:58 AM",
+      "summary": "Asked if you cover Bethlehem (yes — booking link sent)",
+      "status": "faq",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Jasmine Aldridge",
+      "time": "10:14 AM",
+      "summary": "Booked Friday 1:00 PM — first-time buyer consult",
+      "status": "booked",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "Yesterday 8:42 PM",
+      "summary": "After-hours — booked Sunday 2:00 PM listing prep",
+      "status": "booked",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Marco Delgado",
+      "time": "Yesterday 6:18 PM",
+      "summary": "Booked Monday 10:00 AM — investor walkthrough",
+      "status": "booked",
+      "caller_gender": "male"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "Yesterday 4:32 PM",
+      "summary": "Asked about FSBO conversion (referred to listing service)",
+      "status": "missed",
+      "caller_gender": "female"
+    }
   ],
   "calendar": [
-    { "customer": "Olivia Bennett",    "time": "Sat 11:00 AM", "service": "Buyer showing tour (3 homes)",  "duration": "180m" },
-    { "customer": "Steven Park",       "time": "Thu 5:00 PM",  "service": "Seller consult + CMA",          "duration": "60m" },
-    { "customer": "Jasmine Aldridge",  "time": "Fri 1:00 PM",  "service": "First-time buyer consult",      "duration": "60m" },
-    { "customer": "Anonymous (Sun)",   "time": "Sun 2:00 PM",  "service": "Listing prep meeting",          "duration": "90m" },
-    { "customer": "Marco Delgado",     "time": "Mon 10:00 AM", "service": "Investor property walkthrough", "duration": "90m" },
-    { "customer": "Anthony Russo",     "time": "Sat 2:00 PM",  "service": "Buyer showing tour (4 homes)",  "duration": "240m" }
+    {
+      "customer": "Olivia Bennett",
+      "time": "Sat 11:00 AM",
+      "service": "Buyer showing tour (3 homes)",
+      "duration": "180m"
+    },
+    {
+      "customer": "Steven Park",
+      "time": "Thu 5:00 PM",
+      "service": "Seller consult + CMA",
+      "duration": "60m"
+    },
+    {
+      "customer": "Jasmine Aldridge",
+      "time": "Fri 1:00 PM",
+      "service": "First-time buyer consult",
+      "duration": "60m"
+    },
+    {
+      "customer": "Anonymous (Sun)",
+      "time": "Sun 2:00 PM",
+      "service": "Listing prep meeting",
+      "duration": "90m"
+    },
+    {
+      "customer": "Marco Delgado",
+      "time": "Mon 10:00 AM",
+      "service": "Investor property walkthrough",
+      "duration": "90m"
+    },
+    {
+      "customer": "Anthony Russo",
+      "time": "Sat 2:00 PM",
+      "service": "Buyer showing tour (4 homes)",
+      "duration": "240m"
+    }
   ]
 }

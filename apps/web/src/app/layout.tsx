@@ -7,12 +7,16 @@ import { I18nProvider, type Locale } from '@/lib/i18n/I18nProvider'
 export const metadata: Metadata = {
   title: 'MyOrbisVoice',
   description: 'AI voice automation for your business',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'MyOrbisVoice', statusBarStyle: 'default' },
+  icons: { icon: '/icon-192.png', apple: '/icon-192.png' },
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
+  themeColor: '#1a9898',
 }
 
 // Detect preferred locale from Accept-Language. Walks the q-weighted list and
@@ -49,6 +53,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     })();
   `
 
+  // Register the service worker on load — required for the dashboard to be an
+  // installable PWA (paired with /manifest.webmanifest). sw.js also handles
+  // Web Push; one registration covers both.
+  const swRegister = `
+    (function() {
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').catch(function() {});
+        });
+      }
+    })();
+  `
+
   return (
     // className left off — themeBootstrap script populates it before paint.
     // lang attribute mirrors the server-side Accept-Language detection; client
@@ -56,6 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={initialLocale} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+        <script dangerouslySetInnerHTML={{ __html: swRegister }} />
       </head>
       <body style={{ background: 'var(--surface-app)', color: 'var(--text-primary)' }} className="antialiased">
         <ThemeProvider>

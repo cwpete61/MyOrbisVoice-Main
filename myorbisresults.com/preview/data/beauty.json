@@ -21,15 +21,38 @@
       "summary": "Currently on call — balayage consult",
       "status": "qualifying",
       "transcript": [
-        { "role": "agent",  "text": "Queen Umoja Studio, how can I help?" },
-        { "role": "caller", "text": "Hi, I'm thinking about a balayage. I've never done color before. Is that okay?" },
-        { "role": "agent",  "text": "It's a great place to start. First-time color clients get a free 15-minute consult with the stylist before we touch your hair. May I ask your name?" },
-        { "role": "caller", "text": "Aaliyah Johnson." },
-        { "role": "agent",  "text": "Nice to meet you, Aaliyah. About how long is your hair, and is it natural or relaxed?" },
-        { "role": "caller", "text": "Natural, about shoulder length. Type four if that matters." },
-        { "role": "agent",  "text": "It does — Lisa specializes in natural hair color. She has Saturday at 11:00 AM open. The consult is free, full balayage runs about three hours. Does Saturday work?" }
+        {
+          "role": "agent",
+          "text": "Queen Umoja Studio, how can I help?"
+        },
+        {
+          "role": "caller",
+          "text": "Hi, I'm thinking about a balayage. I've never done color before. Is that okay?"
+        },
+        {
+          "role": "agent",
+          "text": "It's a great place to start. First-time color clients get a free 15-minute consult with the stylist before we touch your hair. May I ask your name?"
+        },
+        {
+          "role": "caller",
+          "text": "Aaliyah Johnson."
+        },
+        {
+          "role": "agent",
+          "text": "Nice to meet you, Aaliyah. About how long is your hair, and is it natural or relaxed?"
+        },
+        {
+          "role": "caller",
+          "text": "Natural, about shoulder length. Type four if that matters."
+        },
+        {
+          "role": "agent",
+          "text": "It does — Lisa specializes in natural hair color. She has Saturday at 11:00 AM open. The consult is free, full balayage runs about three hours. Does Saturday work?"
+        }
       ],
-      "summary_long": "Aaliyah Johnson, first-time color client interested in balayage. Natural type 4 hair, shoulder length. Routed to stylist Lisa (natural-hair specialist). Free consult offered before commit. Discussing Saturday 11:00 AM slot. Call in progress."
+      "summary_long": "Aaliyah Johnson, first-time color client interested in balayage. Natural type 4 hair, shoulder length. Routed to stylist Lisa (natural-hair specialist). Free consult offered before commit. Discussing Saturday 11:00 AM slot. Call in progress.",
+      "caller_gender": "female",
+      "audio": "audio/beauty-0.mp3"
     },
     {
       "name": "Tiffany Reyes",
@@ -38,20 +61,67 @@
       "summary": "Booked Saturday 11:00 AM — full color + cut",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Queen Umoja Studio, hi." },
-        { "role": "caller", "text": "I need a touch-up and a trim. I usually see Brianna." },
-        { "role": "agent",  "text": "Of course. Last name and what color are we doing?" },
-        { "role": "caller", "text": "Reyes. R-E-Y-E-S. Same color as last time — warm caramel." },
-        { "role": "agent",  "text": "Got it, Tiffany. Brianna's next opening is Saturday 11:00 AM for full color plus a cut, three hours total. That works?" },
-        { "role": "caller", "text": "Perfect." },
-        { "role": "agent",  "text": "Booked. Saturday 11:00 AM, Brianna, full color and cut, three hours. Cancellation window is 48 hours. See you Saturday." }
+        {
+          "role": "agent",
+          "text": "Queen Umoja Studio, hi."
+        },
+        {
+          "role": "caller",
+          "text": "I need a touch-up and a trim. I usually see Brianna."
+        },
+        {
+          "role": "agent",
+          "text": "Of course. Last name and what color are we doing?"
+        },
+        {
+          "role": "caller",
+          "text": "Reyes. R-E-Y-E-S. Same color as last time — warm caramel."
+        },
+        {
+          "role": "agent",
+          "text": "Got it, Tiffany. Brianna's next opening is Saturday 11:00 AM for full color plus a cut, three hours total. That works?"
+        },
+        {
+          "role": "caller",
+          "text": "Perfect."
+        },
+        {
+          "role": "agent",
+          "text": "Booked. Saturday 11:00 AM, Brianna, full color and cut, three hours. Cancellation window is 48 hours. See you Saturday."
+        }
       ],
-      "summary_long": "Tiffany Reyes — returning client of stylist Brianna. Booked Saturday 11:00 AM full color (warm caramel, repeat) + cut, 180m. Pulled color history from past appointment. Cancellation policy stated. SMS confirmation sent."
+      "summary_long": "Tiffany Reyes — returning client of stylist Brianna. Booked Saturday 11:00 AM full color (warm caramel, repeat) + cut, 180m. Pulled color history from past appointment. Cancellation policy stated. SMS confirmation sent.",
+      "caller_gender": "female",
+      "audio": "audio/beauty-1.mp3"
     },
-    { "name": "Anonymous caller",  "time": "12:14 PM",         "summary": "Asked about silk press pricing", "status": "faq" },
-    { "name": "Brianna Coleman",   "time": "11:33 AM",         "summary": "Booked Friday 2:00 PM — protective style", "status": "booked" },
-    { "name": "Anonymous caller",  "time": "10:47 AM",         "summary": "Walk-in question (told to book online)", "status": "faq" },
-    { "name": "Monica Davis",      "time": "10:12 AM",         "summary": "Booked Sunday 1:00 PM — bridal trial", "status": "booked" },
+    {
+      "name": "Anonymous caller",
+      "time": "12:14 PM",
+      "summary": "Asked about silk press pricing",
+      "status": "faq",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Brianna Coleman",
+      "time": "11:33 AM",
+      "summary": "Booked Friday 2:00 PM — protective style",
+      "status": "booked",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "10:47 AM",
+      "summary": "Walk-in question (told to book online)",
+      "status": "faq",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Monica Davis",
+      "time": "10:12 AM",
+      "summary": "Booked Sunday 1:00 PM — bridal trial",
+      "status": "booked",
+      "caller_gender": "female"
+    },
     {
       "name": "Anonymous caller",
       "time": "Yesterday 8:42 PM",
@@ -59,26 +129,97 @@
       "summary": "After-hours — booked Thursday 10:00 AM trim",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Queen Umoja Studio, evening hours assistant." },
-        { "role": "caller", "text": "Hi, are you guys still open? I want to book a trim." },
-        { "role": "agent",  "text": "The studio is closed, but I can book you anytime. May I have your name?" },
-        { "role": "caller", "text": "Actually, I'd rather not say. Just want to know if I can come in Thursday." },
-        { "role": "agent",  "text": "No problem. I can book under just a phone number. We have Thursday 10:00 AM open with Amara — quick trim, 45 minutes, $55." },
-        { "role": "caller", "text": "Yeah I'll take it. Number is 610-555-0142." },
-        { "role": "agent",  "text": "Booked under that number for Thursday 10:00 AM. We'll text you a reminder Wednesday night." }
+        {
+          "role": "agent",
+          "text": "Queen Umoja Studio, evening hours assistant."
+        },
+        {
+          "role": "caller",
+          "text": "Hi, are you guys still open? I want to book a trim."
+        },
+        {
+          "role": "agent",
+          "text": "The studio is closed, but I can book you anytime. May I have your name?"
+        },
+        {
+          "role": "caller",
+          "text": "Actually, I'd rather not say. Just want to know if I can come in Thursday."
+        },
+        {
+          "role": "agent",
+          "text": "No problem. I can book under just a phone number. We have Thursday 10:00 AM open with Amara — quick trim, 45 minutes, $55."
+        },
+        {
+          "role": "caller",
+          "text": "Yeah I'll take it. Number is 610-555-0142."
+        },
+        {
+          "role": "agent",
+          "text": "Booked under that number for Thursday 10:00 AM. We'll text you a reminder Wednesday night."
+        }
       ],
-      "summary_long": "Anonymous caller (no name given), booked Thursday 10:00 AM trim with stylist Amara, 45m, $55. Privacy respected — booking accepted with phone number only. SMS reminder Wednesday."
+      "summary_long": "Anonymous caller (no name given), booked Thursday 10:00 AM trim with stylist Amara, 45m, $55. Privacy respected — booking accepted with phone number only. SMS reminder Wednesday.",
+      "caller_gender": "female",
+      "audio": "audio/beauty-6.mp3"
     },
-    { "name": "Keisha Brooks",     "time": "Yesterday 6:18 PM","summary": "Booked Monday 6:00 PM — color refresh", "status": "booked" },
-    { "name": "Anonymous caller",  "time": "Yesterday 4:32 PM","summary": "Asked if you accept walk-ins (no — referred to booking)", "status": "missed" },
-    { "name": "Whitney Park",      "time": "Yesterday 2:18 PM","summary": "Booked Saturday 3:00 PM — extensions install", "status": "booked" }
+    {
+      "name": "Keisha Brooks",
+      "time": "Yesterday 6:18 PM",
+      "summary": "Booked Monday 6:00 PM — color refresh",
+      "status": "booked",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "Yesterday 4:32 PM",
+      "summary": "Asked if you accept walk-ins (no — referred to booking)",
+      "status": "missed",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Whitney Park",
+      "time": "Yesterday 2:18 PM",
+      "summary": "Booked Saturday 3:00 PM — extensions install",
+      "status": "booked",
+      "caller_gender": "female"
+    }
   ],
   "calendar": [
-    { "customer": "Tiffany Reyes",   "time": "Sat 11:00 AM", "service": "Full color + cut",              "duration": "180m" },
-    { "customer": "Brianna Coleman", "time": "Fri 2:00 PM",  "service": "Protective style (braids)",     "duration": "240m" },
-    { "customer": "Monica Davis",    "time": "Sun 1:00 PM",  "service": "Bridal trial",                  "duration": "120m" },
-    { "customer": "Anonymous (Thu)", "time": "Thu 10:00 AM", "service": "Trim + style",                  "duration": "60m" },
-    { "customer": "Keisha Brooks",   "time": "Mon 6:00 PM",  "service": "Color refresh",                 "duration": "120m" },
-    { "customer": "Whitney Park",    "time": "Sat 3:00 PM",  "service": "Extensions install",            "duration": "180m" }
+    {
+      "customer": "Tiffany Reyes",
+      "time": "Sat 11:00 AM",
+      "service": "Full color + cut",
+      "duration": "180m"
+    },
+    {
+      "customer": "Brianna Coleman",
+      "time": "Fri 2:00 PM",
+      "service": "Protective style (braids)",
+      "duration": "240m"
+    },
+    {
+      "customer": "Monica Davis",
+      "time": "Sun 1:00 PM",
+      "service": "Bridal trial",
+      "duration": "120m"
+    },
+    {
+      "customer": "Anonymous (Thu)",
+      "time": "Thu 10:00 AM",
+      "service": "Trim + style",
+      "duration": "60m"
+    },
+    {
+      "customer": "Keisha Brooks",
+      "time": "Mon 6:00 PM",
+      "service": "Color refresh",
+      "duration": "120m"
+    },
+    {
+      "customer": "Whitney Park",
+      "time": "Sat 3:00 PM",
+      "service": "Extensions install",
+      "duration": "180m"
+    }
   ]
 }

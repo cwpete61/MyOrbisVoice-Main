@@ -21,16 +21,42 @@
       "summary": "Currently on call — custody modification consult",
       "status": "qualifying",
       "transcript": [
-        { "role": "agent",  "text": "Garner Family Law, intake line. How can I help?" },
-        { "role": "caller", "text": "I need to talk to a lawyer about custody. My ex is moving to North Carolina and wants to take my son." },
-        { "role": "agent",  "text": "I'm sorry you're dealing with that. Let me get you set up with an attorney consult. Are you the parent currently with primary custody?" },
-        { "role": "caller", "text": "We share fifty fifty. Court order is from twenty twenty-three." },
-        { "role": "agent",  "text": "Got it. Is there a hearing date set or anything time-sensitive?" },
-        { "role": "caller", "text": "She filed the relocation motion last week. Hearing's October seventeenth, so about three weeks." }
+        {
+          "role": "agent",
+          "text": "Garner Family Law, intake line. How can I help?"
+        },
+        {
+          "role": "caller",
+          "text": "I need to talk to a lawyer about custody. My ex is moving to North Carolina and wants to take my son."
+        },
+        {
+          "role": "agent",
+          "text": "I'm sorry you're dealing with that. Let me get you set up with an attorney consult. Are you the parent currently with primary custody?"
+        },
+        {
+          "role": "caller",
+          "text": "We share fifty fifty. Court order is from twenty twenty-three."
+        },
+        {
+          "role": "agent",
+          "text": "Got it. Is there a hearing date set or anything time-sensitive?"
+        },
+        {
+          "role": "caller",
+          "text": "She filed the relocation motion last week. Hearing's October seventeenth, so about three weeks."
+        }
       ],
-      "summary_long": "Daniel Brooks calling about a custody modification — co-parent has filed for relocation to North Carolina, hearing scheduled October 17th (three weeks out). Existing 50/50 custody order from 2023. Time-sensitive matter — will route to senior attorney for same-week consult. Call in progress."
+      "summary_long": "Daniel Brooks calling about a custody modification — co-parent has filed for relocation to North Carolina, hearing scheduled October 17th (three weeks out). Existing 50/50 custody order from 2023. Time-sensitive matter — will route to senior attorney for same-week consult. Call in progress.",
+      "caller_gender": "male",
+      "audio": "audio/legal-0.mp3"
     },
-    { "name": "Anonymous caller",   "time": "10:38 AM",         "summary": "Asked about consult fees + payment plans", "status": "faq" },
+    {
+      "name": "Anonymous caller",
+      "time": "10:38 AM",
+      "summary": "Asked about consult fees + payment plans",
+      "status": "faq",
+      "caller_gender": "female"
+    },
     {
       "name": "Rebecca Hayes",
       "time": "10:14 AM",
@@ -38,19 +64,54 @@
       "summary": "Booked Thursday 3:00 PM divorce intake",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Garner Family Law, how can I help?" },
-        { "role": "caller", "text": "Hi, I'm thinking about filing for divorce. I don't know where to start." },
-        { "role": "agent",  "text": "Many people start exactly here. We do a one-hour confidential consult — $250, applied toward your retainer if you move forward. May I get your name?" },
-        { "role": "caller", "text": "Rebecca Hayes. We've been separated for about four months." },
-        { "role": "agent",  "text": "Are children involved, Rebecca?" },
-        { "role": "caller", "text": "Two. Eight and eleven." },
-        { "role": "agent",  "text": "Thank you. I have Thursday 3:00 PM or Monday 10:00 AM open. Which works?" },
-        { "role": "caller", "text": "Thursday three o'clock please." },
-        { "role": "agent",  "text": "Booked. Thursday 3:00 PM, one-hour confidential intake with Ms. Garner. I'll text you our pre-consult checklist — bring whatever financial documents you have. Everything stays privileged from this moment forward." }
+        {
+          "role": "agent",
+          "text": "Garner Family Law, how can I help?"
+        },
+        {
+          "role": "caller",
+          "text": "Hi, I'm thinking about filing for divorce. I don't know where to start."
+        },
+        {
+          "role": "agent",
+          "text": "Many people start exactly here. We do a one-hour confidential consult — $250, applied toward your retainer if you move forward. May I get your name?"
+        },
+        {
+          "role": "caller",
+          "text": "Rebecca Hayes. We've been separated for about four months."
+        },
+        {
+          "role": "agent",
+          "text": "Are children involved, Rebecca?"
+        },
+        {
+          "role": "caller",
+          "text": "Two. Eight and eleven."
+        },
+        {
+          "role": "agent",
+          "text": "Thank you. I have Thursday 3:00 PM or Monday 10:00 AM open. Which works?"
+        },
+        {
+          "role": "caller",
+          "text": "Thursday three o'clock please."
+        },
+        {
+          "role": "agent",
+          "text": "Booked. Thursday 3:00 PM, one-hour confidential intake with Ms. Garner. I'll text you our pre-consult checklist — bring whatever financial documents you have. Everything stays privileged from this moment forward."
+        }
       ],
-      "summary_long": "Rebecca Hayes called to start divorce proceedings. Separated 4 months, two children (ages 8 and 11). Booked Thursday 3:00 PM with Ms. Garner (60m, $250 consult fee applied to retainer). Pre-consult checklist SMS'd. No urgent safety concerns disclosed."
+      "summary_long": "Rebecca Hayes called to start divorce proceedings. Separated 4 months, two children (ages 8 and 11). Booked Thursday 3:00 PM with Ms. Garner (60m, $250 consult fee applied to retainer). Pre-consult checklist SMS'd. No urgent safety concerns disclosed.",
+      "caller_gender": "female",
+      "audio": "audio/legal-2.mp3"
     },
-    { "name": "Marcus Webb",        "time": "9:47 AM",          "summary": "Booked Friday 1:00 PM will + estate", "status": "booked" },
+    {
+      "name": "Marcus Webb",
+      "time": "9:47 AM",
+      "summary": "Booked Friday 1:00 PM will + estate",
+      "status": "booked",
+      "caller_gender": "male"
+    },
     {
       "name": "Anonymous caller",
       "time": "Yesterday 8:14 PM",
@@ -58,28 +119,111 @@
       "summary": "After-hours — emergency PFA question (transferred to attorney pager)",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Garner Family Law, after-hours line. How can I help?" },
-        { "role": "caller", "text": "I think I need a PFA. My husband just left and I'm scared he's coming back." },
-        { "role": "agent",  "text": "I hear you. Are you safe right now? Is anyone with you?" },
-        { "role": "caller", "text": "Yes. My sister's here." },
-        { "role": "agent",  "text": "Good. I'm going to do two things right now. First, if you're in immediate danger, please call 911. Second, I'm paging our on-call attorney — she'll call you back within fifteen minutes to walk you through emergency PFA options. What's the best number to reach you?" },
-        { "role": "caller", "text": "This number." },
-        { "role": "agent",  "text": "Got it. Ms. Reilly will call you back from a 610 number in the next fifteen minutes. Stay where you're safe." }
+        {
+          "role": "agent",
+          "text": "Garner Family Law, after-hours line. How can I help?"
+        },
+        {
+          "role": "caller",
+          "text": "I think I need a PFA. My husband just left and I'm scared he's coming back."
+        },
+        {
+          "role": "agent",
+          "text": "I hear you. Are you safe right now? Is anyone with you?"
+        },
+        {
+          "role": "caller",
+          "text": "Yes. My sister's here."
+        },
+        {
+          "role": "agent",
+          "text": "Good. I'm going to do two things right now. First, if you're in immediate danger, please call 911. Second, I'm paging our on-call attorney — she'll call you back within fifteen minutes to walk you through emergency PFA options. What's the best number to reach you?"
+        },
+        {
+          "role": "caller",
+          "text": "This number."
+        },
+        {
+          "role": "agent",
+          "text": "Got it. Ms. Reilly will call you back from a 610 number in the next fifteen minutes. Stay where you're safe."
+        }
       ],
-      "summary_long": "Anonymous after-hours call — caller fearing for safety, asking about emergency PFA (Protection From Abuse order). Verified caller is currently safe with sister present. Paged on-call attorney Ms. Reilly with 15-minute callback promise. Sensitive matter — no scheduling action taken at this stage; live attorney handoff."
+      "summary_long": "Anonymous after-hours call — caller fearing for safety, asking about emergency PFA (Protection From Abuse order). Verified caller is currently safe with sister present. Paged on-call attorney Ms. Reilly with 15-minute callback promise. Sensitive matter — no scheduling action taken at this stage; live attorney handoff.",
+      "caller_gender": "female",
+      "audio": "audio/legal-4.mp3"
     },
-    { "name": "Jennifer Castillo",  "time": "Yesterday 6:42 PM","summary": "Booked Monday 10:00 AM prenup review", "status": "booked" },
-    { "name": "Patrick O'Neill",    "time": "Yesterday 4:18 PM","summary": "Booked Wednesday 2:00 PM custody intake", "status": "booked" },
-    { "name": "Anonymous caller",   "time": "Yesterday 3:05 PM","summary": "Hours / location FAQ", "status": "faq" },
-    { "name": "Anonymous caller",   "time": "Yesterday 2:21 PM","summary": "Asked about criminal defense (referred out — not a fit)", "status": "missed" },
-    { "name": "Linda Fernandez",    "time": "Yesterday 11:30 AM","summary": "Booked Tuesday 9:00 AM divorce mediation", "status": "booked" }
+    {
+      "name": "Jennifer Castillo",
+      "time": "Yesterday 6:42 PM",
+      "summary": "Booked Monday 10:00 AM prenup review",
+      "status": "booked",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Patrick O'Neill",
+      "time": "Yesterday 4:18 PM",
+      "summary": "Booked Wednesday 2:00 PM custody intake",
+      "status": "booked",
+      "caller_gender": "male"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "Yesterday 3:05 PM",
+      "summary": "Hours / location FAQ",
+      "status": "faq",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "Yesterday 2:21 PM",
+      "summary": "Asked about criminal defense (referred out — not a fit)",
+      "status": "missed",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Linda Fernandez",
+      "time": "Yesterday 11:30 AM",
+      "summary": "Booked Tuesday 9:00 AM divorce mediation",
+      "status": "booked",
+      "caller_gender": "female"
+    }
   ],
   "calendar": [
-    { "customer": "Rebecca Hayes",     "time": "Thu 3:00 PM",  "service": "Divorce intake consult",        "duration": "60m" },
-    { "customer": "Marcus Webb",       "time": "Fri 1:00 PM",  "service": "Will + estate planning",         "duration": "45m" },
-    { "customer": "Jennifer Castillo", "time": "Mon 10:00 AM", "service": "Prenuptial agreement review",    "duration": "60m" },
-    { "customer": "Linda Fernandez",   "time": "Tue 9:00 AM",  "service": "Divorce mediation prep",         "duration": "90m" },
-    { "customer": "Patrick O'Neill",   "time": "Wed 2:00 PM",  "service": "Custody modification intake",    "duration": "60m" },
-    { "customer": "Daniel Brooks",     "time": "Thu 4:30 PM",  "service": "Custody modification consult",   "duration": "60m" }
+    {
+      "customer": "Rebecca Hayes",
+      "time": "Thu 3:00 PM",
+      "service": "Divorce intake consult",
+      "duration": "60m"
+    },
+    {
+      "customer": "Marcus Webb",
+      "time": "Fri 1:00 PM",
+      "service": "Will + estate planning",
+      "duration": "45m"
+    },
+    {
+      "customer": "Jennifer Castillo",
+      "time": "Mon 10:00 AM",
+      "service": "Prenuptial agreement review",
+      "duration": "60m"
+    },
+    {
+      "customer": "Linda Fernandez",
+      "time": "Tue 9:00 AM",
+      "service": "Divorce mediation prep",
+      "duration": "90m"
+    },
+    {
+      "customer": "Patrick O'Neill",
+      "time": "Wed 2:00 PM",
+      "service": "Custody modification intake",
+      "duration": "60m"
+    },
+    {
+      "customer": "Daniel Brooks",
+      "time": "Thu 4:30 PM",
+      "service": "Custody modification consult",
+      "duration": "60m"
+    }
   ]
 }

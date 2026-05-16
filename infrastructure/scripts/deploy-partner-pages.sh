@@ -111,7 +111,7 @@ FILES=(
 # script picks up every active partner without anyone editing this list.
 # Excludes `sample/` (already hardcoded above as Alex's canonical preview).
 shopt -s nullglob
-for f in "$SRC_DIR"/p/*/voice-*/index.html "$SRC_DIR"/es/p/*/voice-*/index.html; do
+for f in "$SRC_DIR"/p/*/voice-*/index.html "$SRC_DIR"/es/p/*/voice-*/index.html "$SRC_DIR"/preview/audio/*.mp3; do
   rel="${f#"$SRC_DIR/"}"
   [[ "$rel" == p/sample/* || "$rel" == es/p/sample/* ]] && continue
   FILES+=("$rel")

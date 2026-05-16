@@ -21,22 +21,49 @@
       "summary": "Booked Thursday 2:00 PM cleaning",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Bright Smile Dental, this is your scheduling assistant. How can I help you today?" },
-        { "role": "caller", "text": "Hi, I need to book a cleaning. It's been about seven months since my last one." },
-        { "role": "agent",  "text": "Sure, I can do that. Can I get your full name and date of birth so I can pull up your chart?" },
-        { "role": "caller", "text": "Maria Rodriguez, March 14th, 1986." },
-        { "role": "agent",  "text": "Got it, Maria. I see you're on Delta Dental and you're due. I have Thursday at 2:00 PM or Friday at 9:30 AM with Dr. Chen. Which works better?" },
-        { "role": "caller", "text": "Thursday two o'clock is perfect." },
-        { "role": "agent",  "text": "Done. You're booked for Thursday at 2:00 PM with Dr. Chen, 45 minutes. I'll text you a reminder the day before. Anything else?" },
-        { "role": "caller", "text": "No, that's it. Thank you." }
+        {
+          "role": "agent",
+          "text": "Bright Smile Dental, this is your scheduling assistant. How can I help you today?"
+        },
+        {
+          "role": "caller",
+          "text": "Hi, I need to book a cleaning. It's been about seven months since my last one."
+        },
+        {
+          "role": "agent",
+          "text": "Sure, I can do that. Can I get your full name and date of birth so I can pull up your chart?"
+        },
+        {
+          "role": "caller",
+          "text": "Maria Rodriguez, March 14th, 1986."
+        },
+        {
+          "role": "agent",
+          "text": "Got it, Maria. I see you're on Delta Dental and you're due. I have Thursday at 2:00 PM or Friday at 9:30 AM with Dr. Chen. Which works better?"
+        },
+        {
+          "role": "caller",
+          "text": "Thursday two o'clock is perfect."
+        },
+        {
+          "role": "agent",
+          "text": "Done. You're booked for Thursday at 2:00 PM with Dr. Chen, 45 minutes. I'll text you a reminder the day before. Anything else?"
+        },
+        {
+          "role": "caller",
+          "text": "No, that's it. Thank you."
+        }
       ],
-      "summary_long": "Maria Rodriguez called at 10:47 AM to book her six-month cleaning. Verified Delta Dental insurance on file, confirmed she's due. Booked Thursday 2:00 PM with Dr. Chen (45m). SMS reminder scheduled 24h prior. No outstanding balance. Call ended cordially."
+      "summary_long": "Maria Rodriguez called at 10:47 AM to book her six-month cleaning. Verified Delta Dental insurance on file, confirmed she's due. Booked Thursday 2:00 PM with Dr. Chen (45m). SMS reminder scheduled 24h prior. No outstanding balance. Call ended cordially.",
+      "caller_gender": "female",
+      "audio": "audio/dental-0.mp3"
     },
     {
       "name": "Anonymous caller",
       "time": "10:12 AM",
       "summary": "Asked about office hours + insurance accepted",
-      "status": "faq"
+      "status": "faq",
+      "caller_gender": "female"
     },
     {
       "name": "John Park",
@@ -45,14 +72,34 @@
       "summary": "Currently on call — daughter's six-month cleaning",
       "status": "qualifying",
       "transcript": [
-        { "role": "agent",  "text": "Bright Smile Dental, this is your scheduling assistant. How can I help?" },
-        { "role": "caller", "text": "Hi, I need to schedule a cleaning for my daughter. She's nine." },
-        { "role": "agent",  "text": "Of course. Is she an existing patient or is this her first time with us?" },
-        { "role": "caller", "text": "She's been seen before. Last name Park, P-A-R-K, first name Sophia." },
-        { "role": "agent",  "text": "Got it. I see Sophia is due for her six-month cleaning. I have Saturday at 10:00 AM or Monday after school at 4:30 PM. Which works?" },
-        { "role": "caller", "text": "What about a different Saturday? This weekend is busy." }
+        {
+          "role": "agent",
+          "text": "Bright Smile Dental, this is your scheduling assistant. How can I help?"
+        },
+        {
+          "role": "caller",
+          "text": "Hi, I need to schedule a cleaning for my daughter. She's nine."
+        },
+        {
+          "role": "agent",
+          "text": "Of course. Is she an existing patient or is this her first time with us?"
+        },
+        {
+          "role": "caller",
+          "text": "She's been seen before. Last name Park, P-A-R-K, first name Sophia."
+        },
+        {
+          "role": "agent",
+          "text": "Got it. I see Sophia is due for her six-month cleaning. I have Saturday at 10:00 AM or Monday after school at 4:30 PM. Which works?"
+        },
+        {
+          "role": "caller",
+          "text": "What about a different Saturday? This weekend is busy."
+        }
       ],
-      "summary_long": "John Park calling about a six-month cleaning for his daughter Sophia (age 9). Existing patient, insurance verified. Discussing Saturday vs Monday after-school options. Call still in progress as of 9:34 AM."
+      "summary_long": "John Park calling about a six-month cleaning for his daughter Sophia (age 9). Existing patient, insurance verified. Discussing Saturday vs Monday after-school options. Call still in progress as of 9:34 AM.",
+      "caller_gender": "male",
+      "audio": "audio/dental-2.mp3"
     },
     {
       "name": "Sarah Liu",
@@ -61,29 +108,118 @@
       "summary": "After-hours booked Friday 11:00 AM",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Bright Smile Dental, evening hours assistant. How can I help?" },
-        { "role": "caller", "text": "Hi, are you guys open? It says you close at six." },
-        { "role": "agent",  "text": "The office is closed for the night, but I can book you for tomorrow or whenever works. What did you need?" },
-        { "role": "caller", "text": "Oh great. I'm a new patient. I need a checkup and cleaning. My name is Sarah Liu." },
-        { "role": "agent",  "text": "Welcome, Sarah. New patient intake runs about an hour. I can do Friday at 11:00 AM or Tuesday at 3:00 PM. Which works?" },
-        { "role": "caller", "text": "Friday at eleven is great." },
-        { "role": "agent",  "text": "Booked. Friday 11:00 AM, new patient intake, one hour. I'll text you a digital intake form and directions. Have a good night, Sarah." }
+        {
+          "role": "agent",
+          "text": "Bright Smile Dental, evening hours assistant. How can I help?"
+        },
+        {
+          "role": "caller",
+          "text": "Hi, are you guys open? It says you close at six."
+        },
+        {
+          "role": "agent",
+          "text": "The office is closed for the night, but I can book you for tomorrow or whenever works. What did you need?"
+        },
+        {
+          "role": "caller",
+          "text": "Oh great. I'm a new patient. I need a checkup and cleaning. My name is Sarah Liu."
+        },
+        {
+          "role": "agent",
+          "text": "Welcome, Sarah. New patient intake runs about an hour. I can do Friday at 11:00 AM or Tuesday at 3:00 PM. Which works?"
+        },
+        {
+          "role": "caller",
+          "text": "Friday at eleven is great."
+        },
+        {
+          "role": "agent",
+          "text": "Booked. Friday 11:00 AM, new patient intake, one hour. I'll text you a digital intake form and directions. Have a good night, Sarah."
+        }
       ],
-      "summary_long": "Sarah Liu called after hours at 7:42 PM as a new patient. Captured contact info, sent intake form via SMS. Booked Friday 11:00 AM new patient visit (60m). Standard new-patient workflow — agent did NOT need to wake the office."
+      "summary_long": "Sarah Liu called after hours at 7:42 PM as a new patient. Captured contact info, sent intake form via SMS. Booked Friday 11:00 AM new patient visit (60m). Standard new-patient workflow — agent did NOT need to wake the office.",
+      "caller_gender": "female",
+      "audio": "audio/dental-3.mp3"
     },
-    { "name": "David Cohen",       "time": "Yesterday 6:18 PM","summary": "Booked Saturday 10:00 AM crown follow-up", "status": "booked" },
-    { "name": "Anonymous caller",  "time": "Yesterday 5:04 PM","summary": "Hours / new patient FAQ", "status": "faq" },
-    { "name": "Lisa Patel",        "time": "Yesterday 3:12 PM","summary": "Booked Monday 9:00 AM, husband's cleaning", "status": "booked" },
-    { "name": "James Wright",      "time": "Yesterday 1:48 PM","summary": "Reactivation campaign — booked 12-mo cleaning", "status": "booked" },
-    { "name": "Anonymous caller",  "time": "Yesterday 12:33 PM","summary": "Asked about emergency same-day", "status": "missed" },
-    { "name": "Karen Bright",      "time": "Yesterday 11:18 AM","summary": "Booked Saturday family of 4", "status": "booked" }
+    {
+      "name": "David Cohen",
+      "time": "Yesterday 6:18 PM",
+      "summary": "Booked Saturday 10:00 AM crown follow-up",
+      "status": "booked",
+      "caller_gender": "male"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "Yesterday 5:04 PM",
+      "summary": "Hours / new patient FAQ",
+      "status": "faq",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Lisa Patel",
+      "time": "Yesterday 3:12 PM",
+      "summary": "Booked Monday 9:00 AM, husband's cleaning",
+      "status": "booked",
+      "caller_gender": "female"
+    },
+    {
+      "name": "James Wright",
+      "time": "Yesterday 1:48 PM",
+      "summary": "Reactivation campaign — booked 12-mo cleaning",
+      "status": "booked",
+      "caller_gender": "male"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "Yesterday 12:33 PM",
+      "summary": "Asked about emergency same-day",
+      "status": "missed",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Karen Bright",
+      "time": "Yesterday 11:18 AM",
+      "summary": "Booked Saturday family of 4",
+      "status": "booked",
+      "caller_gender": "female"
+    }
   ],
   "calendar": [
-    { "customer": "Maria Rodriguez", "time": "Thu 2:00 PM",  "service": "Six-month cleaning",      "duration": "45m" },
-    { "customer": "Sarah Liu",       "time": "Fri 11:00 AM", "service": "New patient intake",       "duration": "60m" },
-    { "customer": "David Cohen",     "time": "Sat 10:00 AM", "service": "Crown follow-up",           "duration": "30m" },
-    { "customer": "Lisa Patel",      "time": "Mon 9:00 AM",  "service": "Cleaning (husband)",        "duration": "45m" },
-    { "customer": "Karen Bright + family", "time": "Sat 2:00 PM", "service": "Family of 4 cleaning", "duration": "120m" },
-    { "customer": "James Wright",    "time": "Tue 3:30 PM",  "service": "12-month cleaning (reactivated)", "duration": "45m" }
+    {
+      "customer": "Maria Rodriguez",
+      "time": "Thu 2:00 PM",
+      "service": "Six-month cleaning",
+      "duration": "45m"
+    },
+    {
+      "customer": "Sarah Liu",
+      "time": "Fri 11:00 AM",
+      "service": "New patient intake",
+      "duration": "60m"
+    },
+    {
+      "customer": "David Cohen",
+      "time": "Sat 10:00 AM",
+      "service": "Crown follow-up",
+      "duration": "30m"
+    },
+    {
+      "customer": "Lisa Patel",
+      "time": "Mon 9:00 AM",
+      "service": "Cleaning (husband)",
+      "duration": "45m"
+    },
+    {
+      "customer": "Karen Bright + family",
+      "time": "Sat 2:00 PM",
+      "service": "Family of 4 cleaning",
+      "duration": "120m"
+    },
+    {
+      "customer": "James Wright",
+      "time": "Tue 3:30 PM",
+      "service": "12-month cleaning (reactivated)",
+      "duration": "45m"
+    }
   ]
 }

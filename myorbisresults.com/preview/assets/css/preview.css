@@ -402,5 +402,34 @@ button { font-family: inherit; cursor: pointer; }
   line-height: 1.5;
 }
 
+/* PWA install CTA (onboard screen) */
+.install-cta {
+  margin-top: 20px;
+  text-align: center;
+}
+.install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 26px;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--teal-3);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: background var(--transition);
+}
+.install-btn:hover { background: var(--teal-4); }
+.install-ios {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  max-width: 34ch;
+  margin: 0 auto;
+}
+
 /* Misc */
 .hidden { display: none !important; }
+[hidden] { display: none !important; }

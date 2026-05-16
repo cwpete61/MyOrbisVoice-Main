@@ -946,3 +946,4 @@ See [docs/launch-blockers.md](docs/launch-blockers.md) — open pre-launch items
 
 - [docs/stripe-config.md](docs/stripe-config.md) — Stripe account reconstruction guide (account ID, webhook destinations, plan price mapping).
 - [docs/twilio-toll-free-verification.md](docs/twilio-toll-free-verification.md) — drafted toll-free verification submission package.
+- [docs/twilio-a2p-automation.md](docs/twilio-a2p-automation.md) — **A2P 10DLC auto-submission reference. READ THIS FIRST whenever working on the A2P compliance application / submission flow.** Covers what an ISV can automate via Twilio Trust Hub / TrustProduct / BrandRegistration / UsAppToPerson APIs, the full submission pipeline + state machine, the SIDs to persist, the review-before-submit safeguard, and what stays manual (customer-provided data + Twilio/TCR/carrier approval). Manual fallback: [docs/runbook-a2p-manual-submission.md](docs/runbook-a2p-manual-submission.md).

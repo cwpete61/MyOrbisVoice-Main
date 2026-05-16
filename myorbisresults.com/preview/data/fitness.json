@@ -21,15 +21,38 @@
       "summary": "Currently on call — trial session inquiry",
       "status": "qualifying",
       "transcript": [
-        { "role": "agent",  "text": "Iron Peak Athletic, how can I help?" },
-        { "role": "caller", "text": "Hey, I saw your ad. I want to try a personal training session." },
-        { "role": "agent",  "text": "Awesome — we offer a free 45-minute trial session. May I get your name?" },
-        { "role": "caller", "text": "Jordan Mitchell." },
-        { "role": "agent",  "text": "Nice to meet you, Jordan. What are you working toward right now?" },
-        { "role": "caller", "text": "I lost about twenty pounds last year doing cardio. Now I want to put on real muscle." },
-        { "role": "agent",  "text": "Strong starting point. I'd pair you with Coach Marcus — he runs our hypertrophy track. Saturday 8:00 AM trial works, or Tuesday 6:30 PM if evenings are better. Which?" }
+        {
+          "role": "agent",
+          "text": "Iron Peak Athletic, how can I help?"
+        },
+        {
+          "role": "caller",
+          "text": "Hey, I saw your ad. I want to try a personal training session."
+        },
+        {
+          "role": "agent",
+          "text": "Awesome — we offer a free 45-minute trial session. May I get your name?"
+        },
+        {
+          "role": "caller",
+          "text": "Jordan Mitchell."
+        },
+        {
+          "role": "agent",
+          "text": "Nice to meet you, Jordan. What are you working toward right now?"
+        },
+        {
+          "role": "caller",
+          "text": "I lost about twenty pounds last year doing cardio. Now I want to put on real muscle."
+        },
+        {
+          "role": "agent",
+          "text": "Strong starting point. I'd pair you with Coach Marcus — he runs our hypertrophy track. Saturday 8:00 AM trial works, or Tuesday 6:30 PM if evenings are better. Which?"
+        }
       ],
-      "summary_long": "Jordan Mitchell calling about free trial PT session. Lost ~20 lbs in past year via cardio, now wants to add muscle (hypertrophy goal). Routed to Coach Marcus (hypertrophy specialist). Offered Saturday 8:00 AM or Tuesday 6:30 PM. Call in progress."
+      "summary_long": "Jordan Mitchell calling about free trial PT session. Lost ~20 lbs in past year via cardio, now wants to add muscle (hypertrophy goal). Routed to Coach Marcus (hypertrophy specialist). Offered Saturday 8:00 AM or Tuesday 6:30 PM. Call in progress.",
+      "caller_gender": "male",
+      "audio": "audio/fitness-0.mp3"
     },
     {
       "name": "Ashley Vega",
@@ -38,22 +61,75 @@
       "summary": "Booked Saturday 8:00 AM — free trial PT session",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Iron Peak Athletic." },
-        { "role": "caller", "text": "Hi, my friend trains there and said you do free trial sessions?" },
-        { "role": "agent",  "text": "We do. Free 45-minute session, no card needed. May I get your name?" },
-        { "role": "caller", "text": "Ashley Vega." },
-        { "role": "agent",  "text": "Great, Ashley. Any injuries or movements I should flag for the coach?" },
-        { "role": "caller", "text": "My right knee is a little iffy. Old soccer thing." },
-        { "role": "agent",  "text": "Noted. I'll put you with Coach Dana — she's our movement-screen specialist. Saturday 8:00 AM open?" },
-        { "role": "caller", "text": "Yes." },
-        { "role": "agent",  "text": "Booked. Saturday 8:00 AM, Coach Dana, free trial. Wear sneakers and bring water. Door code in the confirmation text." }
+        {
+          "role": "agent",
+          "text": "Iron Peak Athletic."
+        },
+        {
+          "role": "caller",
+          "text": "Hi, my friend trains there and said you do free trial sessions?"
+        },
+        {
+          "role": "agent",
+          "text": "We do. Free 45-minute session, no card needed. May I get your name?"
+        },
+        {
+          "role": "caller",
+          "text": "Ashley Vega."
+        },
+        {
+          "role": "agent",
+          "text": "Great, Ashley. Any injuries or movements I should flag for the coach?"
+        },
+        {
+          "role": "caller",
+          "text": "My right knee is a little iffy. Old soccer thing."
+        },
+        {
+          "role": "agent",
+          "text": "Noted. I'll put you with Coach Dana — she's our movement-screen specialist. Saturday 8:00 AM open?"
+        },
+        {
+          "role": "caller",
+          "text": "Yes."
+        },
+        {
+          "role": "agent",
+          "text": "Booked. Saturday 8:00 AM, Coach Dana, free trial. Wear sneakers and bring water. Door code in the confirmation text."
+        }
       ],
-      "summary_long": "Ashley Vega — friend referral, booked Saturday 8:00 AM free trial. Disclosed right knee history (soccer). Routed to Coach Dana (movement screen specialist). Pre-arrival reminders SMS'd including door code."
+      "summary_long": "Ashley Vega — friend referral, booked Saturday 8:00 AM free trial. Disclosed right knee history (soccer). Routed to Coach Dana (movement screen specialist). Pre-arrival reminders SMS'd including door code.",
+      "caller_gender": "female",
+      "audio": "audio/fitness-1.mp3"
     },
-    { "name": "Anonymous caller",  "time": "1:18 PM",          "summary": "Asked about membership pricing", "status": "faq" },
-    { "name": "Tyler Hendricks",   "time": "12:34 PM",         "summary": "Booked Thursday 6:00 AM — group strength assessment", "status": "booked" },
-    { "name": "Anonymous caller",  "time": "11:52 AM",         "summary": "Class schedule question", "status": "faq" },
-    { "name": "Megan Roy",         "time": "10:48 AM",         "summary": "Booked Friday 5:30 PM — PT consult", "status": "booked" },
+    {
+      "name": "Anonymous caller",
+      "time": "1:18 PM",
+      "summary": "Asked about membership pricing",
+      "status": "faq",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Tyler Hendricks",
+      "time": "12:34 PM",
+      "summary": "Booked Thursday 6:00 AM — group strength assessment",
+      "status": "booked",
+      "caller_gender": "male"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "11:52 AM",
+      "summary": "Class schedule question",
+      "status": "faq",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Megan Roy",
+      "time": "10:48 AM",
+      "summary": "Booked Friday 5:30 PM — PT consult",
+      "status": "booked",
+      "caller_gender": "female"
+    },
     {
       "name": "Anonymous caller",
       "time": "Yesterday 9:14 PM",
@@ -61,26 +137,97 @@
       "summary": "After-hours — booked Sunday 9:00 AM trial",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Iron Peak Athletic, after-hours line." },
-        { "role": "caller", "text": "Are you guys open Sundays?" },
-        { "role": "agent",  "text": "We are — 7:00 AM to 1:00 PM. Looking to book something?" },
-        { "role": "caller", "text": "Yeah, the free trial." },
-        { "role": "agent",  "text": "Sure. Sunday 9:00 AM works — Coach Marcus is on. Mind sharing your name?" },
-        { "role": "caller", "text": "I'd rather just leave my number for now. Six one zero, five five five, oh-three-one-four." },
-        { "role": "agent",  "text": "Done. Sunday 9:00 AM trial under that number. We'll text you a reminder Saturday." }
+        {
+          "role": "agent",
+          "text": "Iron Peak Athletic, after-hours line."
+        },
+        {
+          "role": "caller",
+          "text": "Are you guys open Sundays?"
+        },
+        {
+          "role": "agent",
+          "text": "We are — 7:00 AM to 1:00 PM. Looking to book something?"
+        },
+        {
+          "role": "caller",
+          "text": "Yeah, the free trial."
+        },
+        {
+          "role": "agent",
+          "text": "Sure. Sunday 9:00 AM works — Coach Marcus is on. Mind sharing your name?"
+        },
+        {
+          "role": "caller",
+          "text": "I'd rather just leave my number for now. Six one zero, five five five, oh-three-one-four."
+        },
+        {
+          "role": "agent",
+          "text": "Done. Sunday 9:00 AM trial under that number. We'll text you a reminder Saturday."
+        }
       ],
-      "summary_long": "Anonymous after-hours caller (phone number only, no name). Booked Sunday 9:00 AM free trial with Coach Marcus. Privacy respected — number-only booking accepted. SMS reminder Saturday."
+      "summary_long": "Anonymous after-hours caller (phone number only, no name). Booked Sunday 9:00 AM free trial with Coach Marcus. Privacy respected — number-only booking accepted. SMS reminder Saturday.",
+      "caller_gender": "male",
+      "audio": "audio/fitness-6.mp3"
     },
-    { "name": "Carlos Bishop",     "time": "Yesterday 7:32 PM","summary": "Booked Monday 6:30 AM — nutrition coaching add-on", "status": "booked" },
-    { "name": "Anonymous caller",  "time": "Yesterday 5:18 PM","summary": "Asked if you have a sauna (no — they passed)", "status": "missed" },
-    { "name": "Rachel Stark",      "time": "Yesterday 3:42 PM","summary": "Booked Wednesday 7:00 PM — PT first session", "status": "booked" }
+    {
+      "name": "Carlos Bishop",
+      "time": "Yesterday 7:32 PM",
+      "summary": "Booked Monday 6:30 AM — nutrition coaching add-on",
+      "status": "booked",
+      "caller_gender": "male"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "Yesterday 5:18 PM",
+      "summary": "Asked if you have a sauna (no — they passed)",
+      "status": "missed",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Rachel Stark",
+      "time": "Yesterday 3:42 PM",
+      "summary": "Booked Wednesday 7:00 PM — PT first session",
+      "status": "booked",
+      "caller_gender": "female"
+    }
   ],
   "calendar": [
-    { "customer": "Ashley Vega",      "time": "Sat 8:00 AM",   "service": "Free trial PT session",          "duration": "45m" },
-    { "customer": "Tyler Hendricks",  "time": "Thu 6:00 AM",   "service": "Group strength assessment",      "duration": "60m" },
-    { "customer": "Megan Roy",        "time": "Fri 5:30 PM",   "service": "Personal training consult",      "duration": "30m" },
-    { "customer": "Anonymous (Sun)",  "time": "Sun 9:00 AM",   "service": "Trial session",                  "duration": "45m" },
-    { "customer": "Carlos Bishop",    "time": "Mon 6:30 AM",   "service": "Nutrition coaching kickoff",     "duration": "60m" },
-    { "customer": "Rachel Stark",     "time": "Wed 7:00 PM",   "service": "Personal training (first)",      "duration": "60m" }
+    {
+      "customer": "Ashley Vega",
+      "time": "Sat 8:00 AM",
+      "service": "Free trial PT session",
+      "duration": "45m"
+    },
+    {
+      "customer": "Tyler Hendricks",
+      "time": "Thu 6:00 AM",
+      "service": "Group strength assessment",
+      "duration": "60m"
+    },
+    {
+      "customer": "Megan Roy",
+      "time": "Fri 5:30 PM",
+      "service": "Personal training consult",
+      "duration": "30m"
+    },
+    {
+      "customer": "Anonymous (Sun)",
+      "time": "Sun 9:00 AM",
+      "service": "Trial session",
+      "duration": "45m"
+    },
+    {
+      "customer": "Carlos Bishop",
+      "time": "Mon 6:30 AM",
+      "service": "Nutrition coaching kickoff",
+      "duration": "60m"
+    },
+    {
+      "customer": "Rachel Stark",
+      "time": "Wed 7:00 PM",
+      "service": "Personal training (first)",
+      "duration": "60m"
+    }
   ]
 }

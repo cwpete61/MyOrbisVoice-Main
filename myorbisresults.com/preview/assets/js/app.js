@@ -69,6 +69,8 @@
       'picker.lead': 'Pick a different industry to see how MyOrbisVoice looks for that business type.',
       'agent.role': 'Agent',
       'caller.role': 'Caller',
+      'install.button': '📲 Install app',
+      'install.ios': 'To install: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.',
     },
     es: {
       'onboard.title': 'Elige tu industria para ver tu versión.',
@@ -128,6 +130,8 @@
       'picker.lead': 'Elige otra industria para ver cómo se ve MyOrbisVoice para ese tipo de negocio.',
       'agent.role': 'Agente',
       'caller.role': 'Llamante',
+      'install.button': '📲 Instalar app',
+      'install.ios': 'Para instalar: toca <strong>Compartir</strong>, luego <strong>Agregar a inicio</strong>.',
     },
   };
 
@@ -190,6 +194,51 @@
     applyTheme();
   }
 
+  // ─── PWA install ──────────────────────────────────────────────
+  let deferredInstallPrompt = null;
+
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+  }
+  function isIosDevice() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+  }
+
+  function initInstall() {
+    const cta = document.getElementById('install-cta');
+    const btn = document.getElementById('install-btn');
+    const ios = document.getElementById('install-ios');
+    if (!cta) return;
+    if (isStandalone()) return;  // already installed — show nothing
+
+    if (isIosDevice()) {
+      // iOS Safari fires no beforeinstallprompt — show manual instructions.
+      cta.hidden = false;
+      if (btn) btn.hidden = true;
+      if (ios) ios.hidden = false;
+      return;
+    }
+
+    // Android / desktop Chromium — capture the install prompt.
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      cta.hidden = false;
+      if (btn) btn.hidden = false;
+    });
+
+    btn?.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      try { await deferredInstallPrompt.userChoice; } catch (e) { /* dismissed */ }
+      deferredInstallPrompt = null;
+      cta.hidden = true;
+    });
+
+    window.addEventListener('appinstalled', () => { cta.hidden = true; });
+  }
+
   const INDUSTRIES = {
     'dental':         { icon: '🦷', name: 'Dental',          biz: 'Bright Smile Dental' },
     'legal':          { icon: '⚖️',  name: 'Legal',           biz: 'Garner Family Law' },
@@ -235,6 +284,7 @@
   document.getElementById('lang-switch')?.addEventListener('click', toggleLanguage);
   document.getElementById('theme-switch')?.addEventListener('click', toggleTheme);
   applyTheme();
+  initInstall();
 
   // Apply i18n to all data-i18n elements on first load
   applyI18n();
@@ -263,10 +313,12 @@
 
   // Audio play/pause toggle
   document.getElementById('audio-play')?.addEventListener('click', () => {
-    if (window.speechSynthesis && window.speechSynthesis.speaking) {
-      stopAudio();
-    } else if (currentCall) {
-      playTranscript(currentCall);
+    if (!currentCall) return;
+    if (demoAudio && !demoAudio.paused) {
+      demoAudio.pause();
+      setPlayButton(false);
+    } else {
+      playCallAudio(currentCall);
     }
   });
 
@@ -406,8 +458,8 @@
           ${escapeHtml(turn.text)}
         </div>
       `).join('');
-      $play.disabled = false;
-      $status.textContent = t('detail.tap-play');
+      $play.disabled = !call.audio;
+      $status.textContent = call.audio ? t('detail.tap-play') : t('detail.no-audio');
     } else {
       $list.innerHTML = `<div class="transcript-empty">${t('detail.transcript-empty')}</div>`;
       $play.disabled = true;
@@ -424,65 +476,44 @@
     goToScreen('call-detail');
   }
 
-  // Audio playback via Web Speech API.
-  // Falls back gracefully if SpeechSynthesis is unavailable.
-  let speechVoices = [];
-  function loadVoices() {
-    if (!window.speechSynthesis) return;
-    speechVoices = window.speechSynthesis.getVoices();
-  }
-  if (window.speechSynthesis) {
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-  }
+  // Audio playback — plays the pre-rendered MP3 of each demo call (Gemini
+  // multi-speaker TTS: agent voice + a gender-matched caller voice). The MP3
+  // path lives on call.audio. Real two-voice recordings, not robotic TTS.
+  let demoAudio = null;
 
-  function pickVoice(role) {
-    if (!speechVoices.length) return null;
-    const enVoices = speechVoices.filter(v => v.lang && v.lang.startsWith('en'));
-    const pool = enVoices.length ? enVoices : speechVoices;
-    if (role === 'agent') {
-      return pool.find(v => /samantha|google us english|female|allison|karen|nicky/i.test(v.name)) || pool[0];
-    }
-    return pool.find(v => /alex|google uk english male|daniel|fred|tom/i.test(v.name)) || pool[pool.length - 1];
-  }
-
-  function playTranscript(call) {
-    if (!window.speechSynthesis || !Array.isArray(call.transcript) || !call.transcript.length) {
+  function playCallAudio(call) {
+    if (!call || !call.audio) {
       document.getElementById('audio-status').textContent = t('detail.no-support');
       return;
     }
-    window.speechSynthesis.cancel();
-    setPlayButton(true);
-
-    let i = 0;
-    const bubbles = document.querySelectorAll('.transcript-bubble');
-
-    function speakNext() {
-      if (i >= call.transcript.length) {
+    if (!demoAudio) {
+      demoAudio = new Audio();
+      demoAudio.addEventListener('ended', () => {
         setPlayButton(false);
         document.getElementById('audio-status').textContent = t('detail.playback-complete');
-        bubbles.forEach(b => b.classList.remove('speaking'));
-        return;
-      }
-      const turn = call.transcript[i];
-      bubbles.forEach((b, idx) => b.classList.toggle('speaking', idx === i));
-      const u = new SpeechSynthesisUtterance(turn.text);
-      const v = pickVoice(turn.role);
-      if (v) u.voice = v;
-      u.rate = 1.05;
-      u.pitch = turn.role === 'agent' ? 1.05 : 0.95;
-      u.onend = () => { i += 1; speakNext(); };
-      u.onerror = () => { i += 1; speakNext(); };
-      window.speechSynthesis.speak(u);
+      });
+      demoAudio.addEventListener('error', () => {
+        setPlayButton(false);
+        document.getElementById('audio-status').textContent = t('detail.no-support');
+      });
     }
-
-    document.getElementById('audio-status').textContent = t('detail.playing');
-    speakNext();
+    // (Re)load the source when a different call is selected.
+    if (demoAudio.getAttribute('data-call') !== call.audio) {
+      demoAudio.src = call.audio;
+      demoAudio.setAttribute('data-call', call.audio);
+    }
+    if (demoAudio.ended) demoAudio.currentTime = 0;
+    demoAudio.play().then(() => {
+      setPlayButton(true);
+      document.getElementById('audio-status').textContent = t('detail.playing');
+    }).catch(() => {
+      setPlayButton(false);
+    });
   }
 
   function stopAudio() {
+    if (demoAudio) demoAudio.pause();
     if (window.speechSynthesis) window.speechSynthesis.cancel();
-    document.querySelectorAll('.transcript-bubble').forEach(b => b.classList.remove('speaking'));
     setPlayButton(false);
   }
 

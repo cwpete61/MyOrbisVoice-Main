@@ -21,17 +21,46 @@
       "summary": "Currently on call — new patient intake",
       "status": "qualifying",
       "transcript": [
-        { "role": "agent",  "text": "Allentown Family Care, how can I help?" },
-        { "role": "caller", "text": "My doctor retired and her practice closed. I need a new primary care doctor." },
-        { "role": "agent",  "text": "We're accepting new patients. I'll help you get established. May I have your name and date of birth?" },
-        { "role": "caller", "text": "Patricia Goldman, April 22nd, 1962." },
-        { "role": "agent",  "text": "Thank you, Patricia. Are you currently on any prescriptions you'll need refilled?" },
-        { "role": "caller", "text": "Three. Blood pressure, statin, and a thyroid med." },
-        { "role": "agent",  "text": "Got it. For new patients we book a 45-minute establish-care visit so we can review meds and history before any refills. I have Dr. Patel on Thursday 11:00 AM or Dr. Kim on Tuesday 2:00 PM. Either preference?" }
+        {
+          "role": "agent",
+          "text": "Allentown Family Care, how can I help?"
+        },
+        {
+          "role": "caller",
+          "text": "My doctor retired and her practice closed. I need a new primary care doctor."
+        },
+        {
+          "role": "agent",
+          "text": "We're accepting new patients. I'll help you get established. May I have your name and date of birth?"
+        },
+        {
+          "role": "caller",
+          "text": "Patricia Goldman, April 22nd, 1962."
+        },
+        {
+          "role": "agent",
+          "text": "Thank you, Patricia. Are you currently on any prescriptions you'll need refilled?"
+        },
+        {
+          "role": "caller",
+          "text": "Three. Blood pressure, statin, and a thyroid med."
+        },
+        {
+          "role": "agent",
+          "text": "Got it. For new patients we book a 45-minute establish-care visit so we can review meds and history before any refills. I have Dr. Patel on Thursday 11:00 AM or Dr. Kim on Tuesday 2:00 PM. Either preference?"
+        }
       ],
-      "summary_long": "Patricia Goldman, DOB 4/22/1962, new patient — prior PCP closed practice. On three chronic meds (BP, statin, thyroid). Routed to 45-min establish-care slot. Offering Dr. Patel Thu 11AM or Dr. Kim Tue 2PM. Call in progress."
+      "summary_long": "Patricia Goldman, DOB 4/22/1962, new patient — prior PCP closed practice. On three chronic meds (BP, statin, thyroid). Routed to 45-min establish-care slot. Offering Dr. Patel Thu 11AM or Dr. Kim Tue 2PM. Call in progress.",
+      "caller_gender": "female",
+      "audio": "audio/medical-0.mp3"
     },
-    { "name": "Anonymous caller",  "time": "1:32 PM",          "summary": "Asked which insurance plans you accept", "status": "faq" },
+    {
+      "name": "Anonymous caller",
+      "time": "1:32 PM",
+      "summary": "Asked which insurance plans you accept",
+      "status": "faq",
+      "caller_gender": "female"
+    },
     {
       "name": "Hector Ramirez",
       "time": "1:08 PM",
@@ -39,17 +68,46 @@
       "summary": "Booked Thursday 10:00 AM — annual physical",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Allentown Family Care." },
-        { "role": "caller", "text": "Hi, I need to schedule my annual physical." },
-        { "role": "agent",  "text": "Sure. Name and date of birth, please?" },
-        { "role": "caller", "text": "Hector Ramirez, eleven sixteen, nineteen seventy-eight." },
-        { "role": "agent",  "text": "Got you, Hector. I see you're due — it's been thirteen months since your last one. You're with Dr. Kim. I have Thursday 10:00 AM or Friday 8:30 AM open. Which?" },
-        { "role": "caller", "text": "Thursday is better." },
-        { "role": "agent",  "text": "Booked. Thursday 10:00 AM with Dr. Kim, 45 minutes. Please fast for 12 hours before — we'll do blood work at the visit. Confirmation text on the way." }
+        {
+          "role": "agent",
+          "text": "Allentown Family Care."
+        },
+        {
+          "role": "caller",
+          "text": "Hi, I need to schedule my annual physical."
+        },
+        {
+          "role": "agent",
+          "text": "Sure. Name and date of birth, please?"
+        },
+        {
+          "role": "caller",
+          "text": "Hector Ramirez, eleven sixteen, nineteen seventy-eight."
+        },
+        {
+          "role": "agent",
+          "text": "Got you, Hector. I see you're due — it's been thirteen months since your last one. You're with Dr. Kim. I have Thursday 10:00 AM or Friday 8:30 AM open. Which?"
+        },
+        {
+          "role": "caller",
+          "text": "Thursday is better."
+        },
+        {
+          "role": "agent",
+          "text": "Booked. Thursday 10:00 AM with Dr. Kim, 45 minutes. Please fast for 12 hours before — we'll do blood work at the visit. Confirmation text on the way."
+        }
       ],
-      "summary_long": "Hector Ramirez, DOB 11/16/1978, returning patient of Dr. Kim. Annual physical — 13 months since last (overdue by 1 month). Booked Thursday 10:00 AM, 45m, with fasting bloodwork. Pre-visit fast instructions SMS'd."
+      "summary_long": "Hector Ramirez, DOB 11/16/1978, returning patient of Dr. Kim. Annual physical — 13 months since last (overdue by 1 month). Booked Thursday 10:00 AM, 45m, with fasting bloodwork. Pre-visit fast instructions SMS'd.",
+      "caller_gender": "male",
+      "audio": "audio/medical-2.mp3"
     },
-    { "name": "Anonymous caller",  "time": "12:42 PM",         "summary": "Prescription refill — routed to nurse line", "status": "faq" },
+    {
+      "name": "Anonymous caller",
+      "time": "12:42 PM",
+      "summary": "Prescription refill — routed to nurse line",
+      "status": "faq",
+      "caller_gender": "female"
+    },
     {
       "name": "Joan Kelly",
       "time": "12:14 PM",
@@ -57,30 +115,119 @@
       "summary": "Booked today 4:30 PM — sick visit (sore throat)",
       "status": "booked",
       "transcript": [
-        { "role": "agent",  "text": "Allentown Family Care." },
-        { "role": "caller", "text": "My throat has been killing me for three days and I think I have a fever now." },
-        { "role": "agent",  "text": "Sorry to hear that. Have you had a fever measured, or just feel feverish?" },
-        { "role": "caller", "text": "Hundred and one point two." },
-        { "role": "agent",  "text": "Okay — I'd recommend a same-day sick visit. Joan Kelly, right? I see you in our system." },
-        { "role": "caller", "text": "Yes." },
-        { "role": "agent",  "text": "We have a 4:30 PM today with the on-call provider, 20 minutes. Bring your insurance card. Anything else I should flag?" },
-        { "role": "caller", "text": "I'm allergic to penicillin." },
-        { "role": "agent",  "text": "Flagged on your chart. See you at 4:30 PM." }
+        {
+          "role": "agent",
+          "text": "Allentown Family Care."
+        },
+        {
+          "role": "caller",
+          "text": "My throat has been killing me for three days and I think I have a fever now."
+        },
+        {
+          "role": "agent",
+          "text": "Sorry to hear that. Have you had a fever measured, or just feel feverish?"
+        },
+        {
+          "role": "caller",
+          "text": "Hundred and one point two."
+        },
+        {
+          "role": "agent",
+          "text": "Okay — I'd recommend a same-day sick visit. Joan Kelly, right? I see you in our system."
+        },
+        {
+          "role": "caller",
+          "text": "Yes."
+        },
+        {
+          "role": "agent",
+          "text": "We have a 4:30 PM today with the on-call provider, 20 minutes. Bring your insurance card. Anything else I should flag?"
+        },
+        {
+          "role": "caller",
+          "text": "I'm allergic to penicillin."
+        },
+        {
+          "role": "agent",
+          "text": "Flagged on your chart. See you at 4:30 PM."
+        }
       ],
-      "summary_long": "Joan Kelly — returning patient, sore throat 3 days, temp 101.2°F. Booked same-day sick visit 4:30 PM with on-call provider (20m). Penicillin allergy reconfirmed and flagged. Insurance reminder sent."
+      "summary_long": "Joan Kelly — returning patient, sore throat 3 days, temp 101.2°F. Booked same-day sick visit 4:30 PM with on-call provider (20m). Penicillin allergy reconfirmed and flagged. Insurance reminder sent.",
+      "caller_gender": "female",
+      "audio": "audio/medical-4.mp3"
     },
-    { "name": "Michael Tran",      "time": "11:48 AM",         "summary": "Booked Friday 2:00 PM — diabetes follow-up", "status": "booked" },
-    { "name": "Anonymous caller",  "time": "11:22 AM",         "summary": "Asked about telehealth availability", "status": "faq" },
-    { "name": "Elena Vasquez",     "time": "10:51 AM",         "summary": "Booked Monday 9:00 AM — well-child visit (2 kids)", "status": "booked" },
-    { "name": "Anonymous caller",  "time": "Yesterday 8:14 PM","summary": "After-hours — booked Wednesday 11:00 AM physical", "status": "booked" },
-    { "name": "George Pham",       "time": "Yesterday 5:42 PM","summary": "Booked Tuesday 3:00 PM — blood pressure recheck", "status": "booked" }
+    {
+      "name": "Michael Tran",
+      "time": "11:48 AM",
+      "summary": "Booked Friday 2:00 PM — diabetes follow-up",
+      "status": "booked",
+      "caller_gender": "male"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "11:22 AM",
+      "summary": "Asked about telehealth availability",
+      "status": "faq",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Elena Vasquez",
+      "time": "10:51 AM",
+      "summary": "Booked Monday 9:00 AM — well-child visit (2 kids)",
+      "status": "booked",
+      "caller_gender": "female"
+    },
+    {
+      "name": "Anonymous caller",
+      "time": "Yesterday 8:14 PM",
+      "summary": "After-hours — booked Wednesday 11:00 AM physical",
+      "status": "booked",
+      "caller_gender": "female"
+    },
+    {
+      "name": "George Pham",
+      "time": "Yesterday 5:42 PM",
+      "summary": "Booked Tuesday 3:00 PM — blood pressure recheck",
+      "status": "booked",
+      "caller_gender": "male"
+    }
   ],
   "calendar": [
-    { "customer": "Joan Kelly",       "time": "Today 4:30 PM", "service": "Sick visit (sore throat)",       "duration": "20m" },
-    { "customer": "Hector Ramirez",   "time": "Thu 10:00 AM",  "service": "Annual physical",                "duration": "45m" },
-    { "customer": "Michael Tran",     "time": "Fri 2:00 PM",   "service": "Diabetes follow-up",             "duration": "30m" },
-    { "customer": "Elena Vasquez",    "time": "Mon 9:00 AM",   "service": "Well-child visit (2 kids)",      "duration": "60m" },
-    { "customer": "George Pham",      "time": "Tue 3:00 PM",   "service": "Blood pressure recheck",         "duration": "20m" },
-    { "customer": "Anonymous (Wed)",  "time": "Wed 11:00 AM",  "service": "Annual physical",                "duration": "45m" }
+    {
+      "customer": "Joan Kelly",
+      "time": "Today 4:30 PM",
+      "service": "Sick visit (sore throat)",
+      "duration": "20m"
+    },
+    {
+      "customer": "Hector Ramirez",
+      "time": "Thu 10:00 AM",
+      "service": "Annual physical",
+      "duration": "45m"
+    },
+    {
+      "customer": "Michael Tran",
+      "time": "Fri 2:00 PM",
+      "service": "Diabetes follow-up",
+      "duration": "30m"
+    },
+    {
+      "customer": "Elena Vasquez",
+      "time": "Mon 9:00 AM",
+      "service": "Well-child visit (2 kids)",
+      "duration": "60m"
+    },
+    {
+      "customer": "George Pham",
+      "time": "Tue 3:00 PM",
+      "service": "Blood pressure recheck",
+      "duration": "20m"
+    },
+    {
+      "customer": "Anonymous (Wed)",
+      "time": "Wed 11:00 AM",
+      "service": "Annual physical",
+      "duration": "45m"
+    }
   ]
 }
