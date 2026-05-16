@@ -1094,11 +1094,13 @@ model PartnerTwilioSubaccount {
 // until then this stores the data so we can submit in bulk once unblocked.
 model TenantA2PApplication {
   id                       String               @id @default(uuid())
-  /// Null for platform-scope (MyOrbisVoice's own A2P registration on the
-  /// master Twilio account). Set for tenant-scope (each tenant's
-  /// subaccount registration). At most one row per tenant + at most one
-  /// platform-scope row.
+  /// Scope key. Exactly one of tenantId / partnerId is set, or both null
+  /// for the platform-scope row (MyOrbisVoice's own A2P registration on the
+  /// master Twilio account). tenantId-scope = a tenant's registration;
+  /// partnerId-scope = a partner's registration for their managed numbers.
+  /// At most one row per tenant, per partner, and one platform-scope row.
   tenantId                 String?              @unique
+  partnerId                String?              @unique
   legalName                String // exact business legal name (matches EIN registration)
   ein                      String? // US EIN — optional for sole-prop
   businessType             String // SOLE_PROP / LLC / CORP / NON_PROFIT etc.
@@ -1116,24 +1118,57 @@ model TenantA2PApplication {
   contactPhone             String
   useCase                  String // marketing / mixed / customer_care / 2fa / utility
   sampleMessagesJson       Json // array of 5 sample SMS bodies
-  twilioCustomerProfileSid String? // populated after submit to Trust Hub
-  twilioBrandSid           String? // populated after Brand creation
-  twilioCampaignSid        String? // populated after Campaign creation
+  // Trust Hub pipeline SIDs — populated step-by-step as the submission
+  // engine advances. All null until submit; each persists once its step
+  // succeeds so the engine is resumable.
+  twilioCustomerProfileSid String? // Secondary Customer Profile bundle
+  twilioTrustProductSid    String? // A2P TrustProduct (Trust Bundle)
+  twilioBrandSid           String? // BrandRegistration
+  twilioMessagingServiceSid String? // Messaging Service the campaign attaches to
+  twilioCampaignSid        String? // UsAppToPerson Campaign
+  // 'mock' (default — Twilio mock APIs / local simulation, no TCR billing,
+  // no live SMS) or 'live' (real Trust Hub submission). A live submission
+  // is only allowed once an operator flips this explicitly.
+  submissionMode           String               @default("mock")
   status                   A2PApplicationStatus @default(DRAFT)
   rejectionReason          String?
+  // 4-layer validation gate output — the full report (per-layer pass/fail,
+  // findings, AI compliance notes). Refreshed each time the gate runs.
+  validationReportJson     Json?
+  validatedAt              DateTime?
+  // Explicit customer authorization (gate layer 4). The submission engine
+  // refuses to run until this is set — the app must not submit on the
+  // customer's behalf without recorded consent.
+  authorizedAt             DateTime?
+  authorizedByUserId       String?
   submittedAt              DateTime?
   approvedAt               DateTime?
+  lastTwilioSyncAt         DateTime? // last time status was polled/synced from Twilio
   createdAt                DateTime             @default(now())
   updatedAt                DateTime             @updatedAt
   tenant                   Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner                  AffiliateAccount?    @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   operatorNotes            A2POperatorNote[]
 }
 
+// A2P application lifecycle — modeled as a state machine, not a single
+// blind request (see docs/twilio-a2p-automation.md). The submission engine
+// advances the row through these as Twilio Trust Hub / Brand / Campaign
+// review progresses.
 enum A2PApplicationStatus {
-  DRAFT // tenant filling form
-  SUBMITTED // posted to Twilio Trust Hub, vetting in progress
-  APPROVED // Brand + Campaign approved, numbers can send SMS at full throughput
-  REJECTED // Twilio rejected the brand/campaign
+  DRAFT // filling the form
+  VALIDATING // 4-layer pre-submission gate running
+  VALIDATION_FAILED // gate rejected — see validationReportJson
+  READY_TO_SUBMIT // gate passed + customer authorized, awaiting submit
+  SUBMITTED // posted to Twilio Trust Hub
+  PROFILE_PENDING // Customer Profile / TrustProduct in review
+  BRAND_PENDING // BrandRegistration submitted, awaiting approval
+  BRAND_FAILED // Brand rejected by TCR
+  BRAND_APPROVED // Brand approved — campaign submission next
+  CAMPAIGN_PENDING // UsAppToPerson Campaign submitted, in review
+  APPROVED // Brand + Campaign approved — numbers can send SMS at full throughput
+  REJECTED // terminal rejection
+  SUSPENDED // Brand/Campaign suspended after approval
 }
 
 /// Append-only friction log for A2P submissions. Operators add a note every
@@ -1762,6 +1797,7 @@ model AffiliateAccount {
   partnerMessageLogs       MessageLog[]       @relation("PartnerMessageLogs")
   partnerEmailSuppressions EmailSuppression[] @relation("PartnerEmailSuppressions")
   partnerEmailCampaigns    EmailCampaign[]    @relation("PartnerEmailCampaigns")
+  a2pApplication           TenantA2PApplication?
 }
 
 /// Partner-scoped email storage powering the Mailbox UI in /partner.

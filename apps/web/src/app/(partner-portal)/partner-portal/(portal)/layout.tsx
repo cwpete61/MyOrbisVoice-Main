@@ -19,6 +19,7 @@ const NAV = [
   { href: '/partner-portal/mailbox',     labelKey: 'partnerNav.mailbox',     icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM2 6l10 7l10-7' },
   { href: '/partner-portal/calendar',    labelKey: 'partnerNav.calendar',    icon: 'M3 9h18M3 5h18v14H3zM8 3v4M16 3v4' },
   { href: '/partner-portal/phone-numbers', labelKey: 'partnerNav.phoneNumbers', icon: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z' },
+  { href: '/partner-portal/a2p',           labelKey: 'partnerNav.a2p',          icon: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4zM9 12l2 2 4-4' },
   { href: '/partner-portal/conversations', labelKey: 'partnerNav.conversations', icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
   { href: '/partner-portal/crm',         labelKey: 'partnerNav.crm',         icon: 'M3 4h4v6H3zm7 0h4v6h-4zm7 0h4v6h-4zM3 13h4v6H3zm7 0h4v6h-4zm7 0h4v6h-4z' },
   { href: '/partner-portal/contacts',    labelKey: 'partnerNav.contacts',    icon: 'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm10 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM21 21v-2a4 4 0 0 0-3-3.87' },

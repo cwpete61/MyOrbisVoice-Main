@@ -80,7 +80,8 @@
     "help": "Ayuda",
     "soonPill": "Pronto",
     "profile": "Perfil",
-    "phoneNumbers": "Números de teléfono"
+    "phoneNumbers": "Números de teléfono",
+    "a2p": "Cumplimiento SMS"
   },
   "partnerPhoneNumbers": {
     "title":    "Números de teléfono",
@@ -3251,7 +3252,16 @@
       "draft": "Borrador — complétalo y envíalo",
       "submitted": "Enviado — Twilio lo está revisando (1 a 3 días hábiles)",
       "approved": "Aprobado — tus números pueden enviar SMS a máxima capacidad",
-      "rejected": "Rechazado — corrige los problemas y envíalo de nuevo"
+      "rejected": "Rechazado — corrige los problemas y envíalo de nuevo",
+      "validating": "Validando — ejecutando las verificaciones previas al envío",
+      "validationFailed": "Requiere atención — corrige los problemas de abajo y vuelve a ejecutar la verificación",
+      "readyToSubmit": "Listo para enviar — autorizado y en espera de presentación",
+      "profilePending": "Perfil de empresa en revisión",
+      "brandPending": "Registro de marca en revisión",
+      "brandFailed": "El registro de marca fue rechazado — revisa el motivo y envíalo de nuevo",
+      "brandApproved": "Marca aprobada — sigue el registro de campaña",
+      "campaignPending": "Campaña en revisión",
+      "suspended": "Suspendido — contacta a soporte"
     },
     "statusMeta": {
       "submittedAt": "Enviado: {date}",
@@ -3261,7 +3271,48 @@
       "savedDraft": "Guardado como borrador.",
       "saveFailed": "No se pudo guardar.",
       "submitted": "Enviado para revisión.",
-      "submitFailed": "No se pudo enviar."
+      "submitFailed": "No se pudo enviar.",
+      "validatedPass": "La validación pasó.",
+      "validatedFail": "La validación encontró problemas — revisa el informe.",
+      "validateFailed": "No se pudo ejecutar la validación.",
+      "authorized": "Envío autorizado.",
+      "authorizeFailed": "No se pudo autorizar.",
+      "synced": "Estado actualizado.",
+      "syncFailed": "No se pudo actualizar el estado."
+    },
+    "partnerTitle": "Cumplimiento de SMS (A2P 10DLC)",
+    "partnerSubtitle": "Las operadoras de EE. UU. exigen que todo negocio que envíe SMS registre su marca y caso de uso. Completa esto una sola vez para tu cuenta de socio — lo enviamos a Twilio por ti.",
+    "gate": {
+      "title": "Validación previa al envío",
+      "subtitle": "Ejecutamos verificaciones automáticas antes de presentar cualquier cosa: campos obligatorios, una revisión de cumplimiento con IA y un escaneo en vivo de tu sitio web. Corrige las fallas para reducir la posibilidad de un rechazo de la operadora.",
+      "run": "Ejecutar verificación",
+      "rerun": "Volver a ejecutar la verificación",
+      "running": "Verificando…",
+      "passedBanner": "Todas las verificaciones pasaron — puedes autorizar y enviar.",
+      "failedBanner": "Algunas verificaciones requieren atención antes de enviar.",
+      "lastChecked": "verificado {date}",
+      "layer": "Capa {n}"
+    },
+    "authorize": {
+      "title": "Autorizar el envío",
+      "subtitle": "El registro A2P se presenta por ti. Las operadoras exigen tu autorización explícita antes de que lo enviemos.",
+      "checkbox": "Confirmo que la información anterior es correcta y autorizo a MyOrbisVoice a enviar este registro A2P en mi nombre.",
+      "button": "Autorizar el envío",
+      "authorizing": "Autorizando…"
+    },
+    "submitPanel": {
+      "title": "Enviar el registro",
+      "authorizedNote": "La validación pasó y el envío está autorizado. La presentación ejecuta el registro de marca y de campaña con Twilio.",
+      "mockNote": "Modo simulación — esto ejecuta todo el proceso localmente. No se presenta ningún registro real ni se cobran tarifas de operadora.",
+      "button": "Enviar el registro",
+      "submitting": "Enviando…"
+    },
+    "pipeline": {
+      "title": "Estado del registro",
+      "subtitle": "Tu registro avanza por el proceso de revisión de Twilio. Actualiza para obtener el estado más reciente.",
+      "lastSynced": "Última actualización {date}",
+      "refresh": "Actualizar estado",
+      "refreshing": "Actualizando…"
     },
     "confirm": {
       "submit": "¿Enviar a Twilio para revisión? No podrás editar mientras esté en revisión."

@@ -80,7 +80,8 @@
     "help": "Help",
     "soonPill": "Soon",
     "profile": "Profile",
-    "phoneNumbers": "Phone Numbers"
+    "phoneNumbers": "Phone Numbers",
+    "a2p": "SMS Compliance"
   },
   "partnerPhoneNumbers": {
     "title":    "Phone Numbers",
@@ -3251,7 +3252,16 @@
       "draft": "Draft — fill in and submit",
       "submitted": "Submitted — Twilio is reviewing (1-3 business days)",
       "approved": "Approved — your numbers can send SMS at full throughput",
-      "rejected": "Rejected — fix the issues below and resubmit"
+      "rejected": "Rejected — fix the issues below and resubmit",
+      "validating": "Validating — running pre-submission checks",
+      "validationFailed": "Needs attention — fix the issues below, then re-run the check",
+      "readyToSubmit": "Ready to submit — authorized and waiting to file",
+      "profilePending": "Customer profile under review",
+      "brandPending": "Brand registration under review",
+      "brandFailed": "Brand registration was rejected — review the reason and resubmit",
+      "brandApproved": "Brand approved — campaign registration is next",
+      "campaignPending": "Campaign under review",
+      "suspended": "Suspended — contact support"
     },
     "statusMeta": {
       "submittedAt": "Submitted: {date}",
@@ -3261,7 +3271,48 @@
       "savedDraft": "Saved as draft.",
       "saveFailed": "Save failed.",
       "submitted": "Submitted for review.",
-      "submitFailed": "Submit failed."
+      "submitFailed": "Submit failed.",
+      "validatedPass": "Validation passed.",
+      "validatedFail": "Validation found issues — review the report.",
+      "validateFailed": "Validation could not run.",
+      "authorized": "Submission authorized.",
+      "authorizeFailed": "Could not authorize.",
+      "synced": "Status refreshed.",
+      "syncFailed": "Could not refresh status."
+    },
+    "partnerTitle": "SMS Compliance (A2P 10DLC)",
+    "partnerSubtitle": "US carriers require every business sending SMS to register their brand and use case. Complete this once for your partner account — we submit to Twilio on your behalf.",
+    "gate": {
+      "title": "Pre-submission validation",
+      "subtitle": "We run automated checks before anything is filed: required fields, an AI compliance review, and a live scan of your website. Fix any failures to lower the chance of a carrier rejection.",
+      "run": "Run validation check",
+      "rerun": "Re-run validation check",
+      "running": "Checking…",
+      "passedBanner": "All checks passed — you can authorize and submit.",
+      "failedBanner": "Some checks need attention before you submit.",
+      "lastChecked": "checked {date}",
+      "layer": "Layer {n}"
+    },
+    "authorize": {
+      "title": "Authorize submission",
+      "subtitle": "A2P registration is filed on your behalf. Carriers require your explicit authorization before we submit.",
+      "checkbox": "I confirm the information above is accurate and authorize MyOrbisVoice to submit this A2P registration on my behalf.",
+      "button": "Authorize submission",
+      "authorizing": "Authorizing…"
+    },
+    "submitPanel": {
+      "title": "Submit registration",
+      "authorizedNote": "Validation passed and submission is authorized. Filing runs the brand and campaign registration with Twilio.",
+      "mockNote": "Simulation mode — this runs the full pipeline locally. No real registration is filed and no carrier fees are charged.",
+      "button": "Submit registration",
+      "submitting": "Submitting…"
+    },
+    "pipeline": {
+      "title": "Registration status",
+      "subtitle": "Your registration is moving through Twilio's review pipeline. Refresh to pull the latest status.",
+      "lastSynced": "Last refreshed {date}",
+      "refresh": "Refresh status",
+      "refreshing": "Refreshing…"
     },
     "confirm": {
       "submit": "Submit to Twilio for review? You won't be able to edit while it's in review."

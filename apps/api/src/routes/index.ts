@@ -23,6 +23,8 @@ import notificationsRouter from './notifications.js'
 import dashboardRouter from './dashboard.js'
 import onboardingRouter from './onboarding.js'
 import a2pRouter from './a2p.js'
+import partnerA2pRouter from './partner-a2p.js'
+import webhooksTwilioA2pRouter from './webhooks-twilio-a2p.js'
 import pushRouter from './push.js'
 import aiAssistRouter from './ai-assist.js'
 import knowledgeBaseRouter from './knowledge-base.js'
@@ -51,6 +53,7 @@ router.use('/api', authGoogleRouter)
 // Twilio webhooks — public (no auth). Signature-validated. Must precede auth-gated /api routers.
 router.use('/api', validateTwilioWebhook, twilioInboundRouter)
 router.use('/api', validateTwilioWebhook, outboundWebhooksRouter)
+router.use('/api', validateTwilioWebhook, webhooksTwilioA2pRouter)
 // Internal gateway tool endpoints — protected by shared-secret middleware,
 // not the standard auth/RBAC stack. Mounted before auth-gated routers.
 router.use('/api', internalGatewayRouter)
@@ -74,6 +77,7 @@ router.use('/', affiliateRouter)        // contains public /api/public/track/cli
 // Partner dashboard routes (/api/partner/*) — gated by requirePartnerContext.
 // Mounted BEFORE tenantRouter because partners are not tenant members.
 router.use('/api', partnerRouter)
+router.use('/api', partnerA2pRouter)
 router.use('/api', partnerCrmRouter)
 router.use('/api', partnerCampaignsRouter)
 router.use('/api', partnerMailboxRouter)
