@@ -551,6 +551,7 @@ type SignaturePartner = {
   businessName:  string | null
   avatarUrl:     string | null
   partnerPhone:  string | null
+  referralCode:  string | null
   user: { firstName: string | null; lastName: string | null; email: string }
 }
 
@@ -559,38 +560,41 @@ function esc(s: string): string {
 }
 
 export function buildPartnerSignatureHtml(p: SignaturePartner): string {
-  if (!p.slug) return ''  // no slug = no platform email = no signature
+  if (!p.slug) return ''  // no slug = no platform identity = no signature
 
+  // Five-element partner signature: name, agency, phone, referral link,
+  // avatar (at the bottom). Single source of truth — appended at send time.
   const name = (p.displayName?.trim())
     || [p.user.firstName, p.user.lastName].filter(Boolean).join(' ').trim()
     || p.slug
   const business = p.businessName?.trim() || ''
-  const email    = `${p.slug}@${PARTNER_DOMAIN}`
   const phone    = p.partnerPhone?.trim() || ''
-  const landing  = `${MARKETING_BASE_URL}/p/${p.slug}/`
   const avatar   = p.avatarUrl?.trim() || ''
-
-  const avatarCell = avatar
-    ? `<td valign="top" style="padding-right:14px;"><img src="${esc(avatar)}" width="64" height="64" alt="" style="border-radius:50%;display:block;border:0;outline:0;text-decoration:none;" /></td>`
-    : ''
+  const refCode  = p.referralCode?.trim() || ''
+  const refLink  = refCode ? `${MARKETING_BASE_URL}/?ref=${encodeURIComponent(refCode)}` : ''
 
   const businessLine = business
     ? `<div style="font-size:13px;color:#555;line-height:1.4;">${esc(business)}</div>`
     : ''
   const phoneLine = phone
-    ? `<div style="font-size:13px;line-height:1.5;"><a href="tel:${esc(phone.replace(/[^+\d]/g, ''))}" style="color:#0a7a8a;text-decoration:none;">${esc(phone)}</a></div>`
+    ? `<div style="font-size:13px;margin-top:6px;line-height:1.5;"><a href="tel:${esc(phone.replace(/[^+\d]/g, ''))}" style="color:#0a7a8a;text-decoration:none;">${esc(phone)}</a></div>`
+    : ''
+  const refLine = refLink
+    ? `<div style="font-size:13px;margin-top:6px;line-height:1.5;"><a href="${esc(refLink)}" style="color:#0a7a8a;text-decoration:none;">${esc(refLink)}</a></div>`
+    : ''
+  const avatarLine = avatar
+    ? `<div style="margin-top:10px;"><img src="${esc(avatar)}" width="64" height="64" alt="" style="border-radius:50%;display:block;border:0;outline:0;text-decoration:none;" /></div>`
     : ''
 
   return [
     '<table cellpadding="0" cellspacing="0" border="0" style="font-family:Arial,Helvetica,sans-serif;color:#222;line-height:1.4;">',
     '  <tr>',
-    avatarCell,
     '    <td valign="top">',
     `      <div style="font-size:15px;font-weight:bold;color:#111;line-height:1.4;">${esc(name)}</div>`,
     businessLine,
-    `      <div style="font-size:13px;margin-top:6px;line-height:1.5;"><a href="mailto:${esc(email)}" style="color:#0a7a8a;text-decoration:none;">${esc(email)}</a></div>`,
     phoneLine,
-    `      <div style="font-size:13px;margin-top:6px;line-height:1.5;"><a href="${esc(landing)}" style="color:#0a7a8a;text-decoration:none;">${esc(landing)}</a></div>`,
+    refLine,
+    avatarLine,
     '    </td>',
     '  </tr>',
     '</table>',
