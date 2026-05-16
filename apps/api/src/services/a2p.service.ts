@@ -31,6 +31,11 @@ type TwilioClient = Awaited<ReturnType<typeof getPlatformTwilioClient>>
  *  via system-config `a2p_a2p_policy_sid`). */
 const DEFAULT_A2P_POLICY_SID = 'RNb0d4771c2c98518d916a3d4cd70a8f8b'
 
+/** Trust Hub policy SIDs for the Sole Proprietor A2P flow (businesses with
+ *  no EIN). Starter Customer Profile + Sole Proprietor A2P Trust Bundle. */
+const STARTER_PROFILE_POLICY_SID = 'RN806dd6cd175f314e1f96a9727ee271f4'
+const SOLE_PROP_A2P_POLICY_SID   = 'RN670d5d2e282a6130ae063b234b6019c8'
+
 /* ───────────────────────────── types ──────────────────────────────────── */
 
 export type GateFinding = {
@@ -494,14 +499,21 @@ async function createUsAppToPersonCampaign(client: TwilioClient, app: A2PApp): P
   if (!app.twilioMessagingServiceSid || !app.twilioBrandSid) {
     throw new AppError('CONFLICT', 'Messaging Service and Brand are required before campaign creation', 409)
   }
-  const samples = sampleMessages(app)
+  const brandType = (await getConfigValue('a2p_brand_type')) || 'STANDARD'
+  // Twilio requires 2-5 samples, each ≥20 chars — pad if the form gave fewer.
+  const fallbackSamples = [
+    `Hi, this is ${app.legalName} confirming your upcoming appointment. Reply STOP to opt out.`,
+    `Reminder from ${app.legalName}: your appointment is tomorrow. Reply STOP to opt out.`,
+  ]
+  const provided = sampleMessages(app).filter((s) => s.trim().length >= 20)
+  const messageSamples = (provided.length >= 2 ? provided : [...provided, ...fallbackSamples]).slice(0, 5)
   const campaign = await client.messaging.v1
     .services(app.twilioMessagingServiceSid)
     .usAppToPerson.create({
       brandRegistrationSid: app.twilioBrandSid,
-      description:          `${app.legalName} A2P messaging — ${app.useCase}`,
-      messageSamples:       samples.length ? samples : ['Sample message.'],
-      usAppToPersonUsecase: mapUseCase(app.useCase),
+      description:          `${app.legalName} sends ${app.useCase} SMS to customers who have opted in through the business website.`,
+      messageSamples,
+      usAppToPersonUsecase: brandType === 'SOLE_PROPRIETOR' ? 'SOLE_PROPRIETOR' : mapUseCase(app.useCase),
       hasEmbeddedLinks:     true,
       hasEmbeddedPhone:     true,
       messageFlow:          'End users opt in by entering their phone number on the business website contact / booking form, which carries explicit SMS-consent language and a link to the privacy policy.',
@@ -516,17 +528,11 @@ async function createUsAppToPersonCampaign(client: TwilioClient, app: A2PApp): P
 }
 
 /**
- * Real Twilio Trust Hub submission — platform-scope Standard brand.
- *
- * Guarded: requires system-config `a2p_live_enabled = true`. Reuses the
- * account's Primary Customer Profile (must already be submitted/approved —
- * run assemblePrimaryCustomerProfile if it is still draft). Pipeline:
- *   1. Primary Customer Profile (resolved from config)  → twilioCustomerProfileSid
- *   2. A2P TrustProduct                                 → twilioTrustProductSid
- *   3. BrandRegistration (mock-able via a2p_brand_mock) → twilioBrandSid
- *   4. Messaging Service                                → twilioMessagingServiceSid
- * Ends at BRAND_PENDING. syncA2PStatus creates the campaign once the Brand
- * is approved. Each SID persists before the next step (resumable).
+ * Real Twilio Trust Hub submission — platform-scope. Guarded behind
+ * `a2p_live_enabled`. Dispatches by `a2p_brand_type`:
+ *   - SOLE_PROPRIETOR → runSoleProprietorSubmission (no EIN — OTP-verified)
+ *   - STANDARD (default) → runStandardSubmission (EIN-registered business)
+ * Both end at BRAND_PENDING; syncA2PStatus creates the campaign on approval.
  */
 async function runLiveSubmission(app: A2PApp) {
   const liveEnabled = (await getConfigValue('a2p_live_enabled')) === 'true'
@@ -550,7 +556,20 @@ async function runLiveSubmission(app: A2PApp) {
   }
 
   const client = await getPlatformTwilioClient()
+  const brandType = (await getConfigValue('a2p_brand_type')) || 'STANDARD'
+  return brandType === 'SOLE_PROPRIETOR'
+    ? runSoleProprietorSubmission(client, app)
+    : runStandardSubmission(client, app)
+}
 
+/**
+ * Standard / Low-Volume Standard brand path (EIN-registered business).
+ * Reuses the account's Primary Customer Profile (config
+ * `twilio_primary_customer_profile_sid`, must be submitted/approved — run
+ * assemblePrimaryCustomerProfile first). Pipeline: Primary Customer Profile
+ * → A2P TrustProduct → BrandRegistration → Messaging Service. Ends BRAND_PENDING.
+ */
+async function runStandardSubmission(client: TwilioClient, app: A2PApp) {
   // Step 1 — Primary Customer Profile (the account's own legal identity).
   const profileSid = await getConfigValue('twilio_primary_customer_profile_sid')
   if (!profileSid) {
@@ -575,15 +594,12 @@ async function runLiveSubmission(app: A2PApp) {
     data: { status: 'SUBMITTED', submittedAt: new Date(), rejectionReason: null, twilioCustomerProfileSid: profileSid },
   })
 
-  // Step 2 — A2P TrustProduct (reuse a persisted one if the run is resuming).
   const trustProductSid = app.twilioTrustProductSid ?? await createA2PTrustProduct(client, app, profileSid)
   await prisma.tenantA2PApplication.update({
     where: { id: app.id },
     data: { status: 'PROFILE_PENDING', twilioTrustProductSid: trustProductSid },
   })
 
-  // Step 3 — BrandRegistration. `a2p_brand_mock` routes to Twilio's mock
-  // Brand API (no TCR billing) for integration testing.
   const useTwilioMock = (await getConfigValue('a2p_brand_mock')) === 'true'
   const brandType = (await getConfigValue('a2p_brand_type')) || 'STANDARD'
   const brand = await client.messaging.v1.brandRegistrations.create({
@@ -597,13 +613,140 @@ async function runLiveSubmission(app: A2PApp) {
     data: { status: 'BRAND_PENDING', twilioBrandSid: brand.sid },
   })
 
-  // Step 4 — Messaging Service (the campaign attaches here once the Brand
-  // is approved — see syncA2PStatus).
   const svc = await client.messaging.v1.services.create({ friendlyName: `${app.legalName} — A2P` })
   return prisma.tenantA2PApplication.update({
     where: { id: app.id },
     data: { twilioMessagingServiceSid: svc.sid },
   })
+}
+
+/**
+ * Creates + submits the Starter Customer Profile for the Sole Proprietor
+ * flow (no EIN). Holds the contact person's identity + the business
+ * address. The OTP mobile is NOT here — it lives on the A2P trust bundle.
+ */
+async function createStarterCustomerProfile(client: TwilioClient, app: A2PApp): Promise<string> {
+  const profile = await client.trusthub.v1.customerProfiles.create({
+    friendlyName: `${app.legalName} — Starter Profile`,
+    email:        app.contactEmail,
+    policySid:    STARTER_PROFILE_POLICY_SID,
+  })
+  const endUser = await client.trusthub.v1.endUsers.create({
+    type:         'starter_customer_profile_information',
+    friendlyName: `${app.legalName} — starter info`,
+    attributes: {
+      email:        app.contactEmail,
+      first_name:   app.contactFirstName,
+      last_name:    app.contactLastName,
+      phone_number: app.contactPhone,
+    },
+  })
+  const address = await client.addresses.create({
+    customerName: app.legalName,
+    street:       app.addressLine1,
+    city:         app.city,
+    region:       app.region,
+    postalCode:   app.postalCode,
+    isoCountry:   app.country,
+  })
+  const doc = await client.trusthub.v1.supportingDocuments.create({
+    friendlyName: `${app.legalName} — address`,
+    type:         'customer_profile_address',
+    attributes:   { address_sids: address.sid },
+  })
+  for (const objectSid of [endUser.sid, doc.sid]) {
+    await client.trusthub.v1.customerProfiles(profile.sid).customerProfilesEntityAssignments.create({ objectSid })
+  }
+  await client.trusthub.v1.customerProfiles(profile.sid).update({ status: 'pending-review' })
+  return profile.sid
+}
+
+/**
+ * Creates + submits the Sole Proprietor A2P Trust Bundle. The
+ * sole_proprietor_information end-user carries `mobile_phone_number` — the
+ * mobile that receives the OTP verification text. That number must be a
+ * real US/Canada mobile (not a CPaaS number) and can be used across at
+ * most 3 Sole Proprietor brand registrations (TCR-enforced).
+ */
+async function createSoleProprietorTrustProduct(client: TwilioClient, app: A2PApp, customerProfileSid: string): Promise<string> {
+  const otpMobile = (await getConfigValue('a2p_sole_prop_otp_mobile')) || app.contactPhone
+  const tp = await client.trusthub.v1.trustProducts.create({
+    friendlyName: `${app.legalName} — Sole Proprietor A2P`,
+    email:        app.contactEmail,
+    policySid:    SOLE_PROP_A2P_POLICY_SID,
+  })
+  const endUser = await client.trusthub.v1.endUsers.create({
+    type:         'sole_proprietor_information',
+    friendlyName: `${app.legalName} — sole proprietor`,
+    attributes: {
+      brand_name:          app.legalName,
+      mobile_phone_number: otpMobile,
+    },
+  })
+  await client.trusthub.v1.trustProducts(tp.sid).trustProductsEntityAssignments.create({ objectSid: customerProfileSid })
+  await client.trusthub.v1.trustProducts(tp.sid).trustProductsEntityAssignments.create({ objectSid: endUser.sid })
+  await client.trusthub.v1.trustProducts(tp.sid).update({ status: 'pending-review' })
+  return tp.sid
+}
+
+/**
+ * Sole Proprietor brand path (no EIN). Pipeline: Starter Customer Profile
+ * → Sole Proprietor A2P Trust Bundle → SOLE_PROPRIETOR BrandRegistration
+ * → Messaging Service. Submitting the brand sends an OTP to the sole
+ * proprietor's mobile — they must reply within 24h or the OTP is resent
+ * (see resendA2POtp). Ends BRAND_PENDING; syncA2PStatus polls + creates
+ * the single allowed campaign on approval.
+ */
+async function runSoleProprietorSubmission(client: TwilioClient, app: A2PApp) {
+  // Step 1 — Starter Customer Profile (created fresh — sole prop does not
+  // use the account's Primary Customer Profile).
+  const profileSid = app.twilioCustomerProfileSid ?? await createStarterCustomerProfile(client, app)
+  await prisma.tenantA2PApplication.update({
+    where: { id: app.id },
+    data: { status: 'SUBMITTED', submittedAt: new Date(), rejectionReason: null, twilioCustomerProfileSid: profileSid },
+  })
+
+  // Step 2 — Sole Proprietor A2P Trust Bundle (carries the OTP mobile).
+  const trustProductSid = app.twilioTrustProductSid ?? await createSoleProprietorTrustProduct(client, app, profileSid)
+  await prisma.tenantA2PApplication.update({
+    where: { id: app.id },
+    data: { status: 'PROFILE_PENDING', twilioTrustProductSid: trustProductSid },
+  })
+
+  // Step 3 — SOLE_PROPRIETOR BrandRegistration. Submitting it sends the OTP.
+  const useTwilioMock = (await getConfigValue('a2p_brand_mock')) === 'true'
+  const brand = await client.messaging.v1.brandRegistrations.create({
+    customerProfileBundleSid: profileSid,
+    a2PProfileBundleSid:      trustProductSid,
+    brandType:                'SOLE_PROPRIETOR',
+    mock:                     useTwilioMock,
+  })
+  await prisma.tenantA2PApplication.update({
+    where: { id: app.id },
+    data: { status: 'BRAND_PENDING', twilioBrandSid: brand.sid },
+  })
+
+  // Step 4 — Messaging Service.
+  const svc = await client.messaging.v1.services.create({ friendlyName: `${app.legalName} — A2P` })
+  return prisma.tenantA2PApplication.update({
+    where: { id: app.id },
+    data: { twilioMessagingServiceSid: svc.sid },
+  })
+}
+
+/**
+ * Re-sends the Sole Proprietor brand OTP. The OTP is sent automatically
+ * when the brand is submitted; if the sole proprietor misses the 24h
+ * window, call this to resend (valid up to 30 days after registration).
+ */
+export async function resendA2POtp(applicationId: string): Promise<{ ok: true }> {
+  const app = await loadApplication(applicationId)
+  if (!app.twilioBrandSid) {
+    throw new AppError('CONFLICT', 'No brand registration yet — submit the application first', 409)
+  }
+  const client = await getPlatformTwilioClient()
+  await client.messaging.v1.brandRegistrations(app.twilioBrandSid).brandRegistrationOtps.create()
+  return { ok: true }
 }
 
 /**

@@ -7,8 +7,10 @@ import * as compCodeService from '../services/comp-code.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { getEnv } from '@voiceautomation/config'
 import { prisma } from '../lib/prisma.js'
+import { Prisma } from '@prisma/client'
 import * as systemConfig from '../services/system-config.service.js'
 import * as storageTierSvc from '../services/storage-tier.service.js'
+import * as a2pService from '../services/a2p.service.js'
 import { writeAuditLogFromRequest } from '../lib/audit.js'
 
 const router: IRouter = Router()
@@ -1024,7 +1026,7 @@ router.get('/a2p/:tenantId', async (req, res, next) => {
     const { tenantId } = req.params as { tenantId: string }
     const app = tenantId === 'platform'
       ? await prisma.tenantA2PApplication.findFirst({
-          where: { tenantId: null },
+          where: { tenantId: null, partnerId: null },
           include: { tenant: { select: { id: true, displayName: true } } },
         })
       : await prisma.tenantA2PApplication.findUnique({
@@ -1043,15 +1045,24 @@ router.put('/a2p/platform', requirePlatformAdmin, async (req, res, next) => {
     const data = a2pAdminSchema.parse(req.body)
     const userId = req.user!.id
 
-    const existing = await prisma.tenantA2PApplication.findFirst({ where: { tenantId: null } })
-    if (existing && existing.status !== 'DRAFT' && existing.status !== 'REJECTED') {
+    const existing = await prisma.tenantA2PApplication.findFirst({ where: { tenantId: null, partnerId: null } })
+    if (existing && !(a2pService.A2P_EDITABLE_STATUSES as readonly string[]).includes(existing.status)) {
       throw new AppError('CONFLICT', `Platform application is in ${existing.status} status — cannot edit`, 409)
     }
 
     const upserted = existing
       ? await prisma.tenantA2PApplication.update({
           where: { id: existing.id },
-          data: { ...buildA2PData(data), status: 'DRAFT', rejectionReason: null },
+          // Editing clears any prior validation gate run + authorization.
+          data: {
+            ...buildA2PData(data),
+            status: 'DRAFT',
+            rejectionReason: null,
+            validationReportJson: Prisma.DbNull,
+            validatedAt: null,
+            authorizedAt: null,
+            authorizedByUserId: null,
+          },
         })
       : await prisma.tenantA2PApplication.create({
           data: { tenantId: null, ...buildA2PData(data), status: 'DRAFT' },
@@ -1070,30 +1081,75 @@ router.put('/a2p/platform', requirePlatformAdmin, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-// POST /api/admin/a2p/platform/submit — flip platform application DRAFT → SUBMITTED.
-// Until Trust Hub automation lands, this is a status-only flip; admin then
-// posts the captured data to Twilio Trust Hub Console manually.
+// Resolve the single platform-scope A2P application row (both scope keys null).
+async function platformA2PApp() {
+  const app = await prisma.tenantA2PApplication.findFirst({ where: { tenantId: null, partnerId: null } })
+  if (!app) throw new AppError('NOT_FOUND', 'Fill out the platform A2P application first', 404)
+  return app
+}
+
+// POST /api/admin/a2p/platform/validate — run the 4-layer pre-submission gate.
+router.post('/a2p/platform/validate', requirePlatformAdmin, async (_req, res, next) => {
+  try {
+    const app = await platformA2PApp()
+    res.json({ data: await a2pService.runValidationGate(app.id) })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/a2p/platform/authorize — record authorization to submit.
+router.post('/a2p/platform/authorize', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const app = await platformA2PApp()
+    const updated = await a2pService.authorizeA2PApplication(app.id, req.user!.id)
+    await writeAuditLogFromRequest(req, {
+      actorType: 'ADMIN', actorUserId: req.user!.id,
+      action: 'admin.a2p.platform.authorized',
+      targetType: 'TenantA2PApplication', targetId: updated.id,
+    })
+    res.json({ data: updated })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/a2p/platform/submit — run the Trust Hub submission pipeline
+// (mock or live per submissionMode). Replaces the old status-only flip.
 router.post('/a2p/platform/submit', requirePlatformAdmin, async (req, res, next) => {
   try {
-    const userId = req.user!.id
-    const app = await prisma.tenantA2PApplication.findFirst({ where: { tenantId: null } })
-    if (!app) throw new AppError('NOT_FOUND', 'Fill out the platform application first', 404)
-    if (app.status !== 'DRAFT' && app.status !== 'REJECTED') {
-      throw new AppError('CONFLICT', `Platform application is in ${app.status} status — cannot submit`, 409)
-    }
-    const updated = await prisma.tenantA2PApplication.update({
-      where: { id: app.id },
-      data:  { status: 'SUBMITTED', submittedAt: new Date(), rejectionReason: null },
-    })
+    const app = await platformA2PApp()
+    const updated = await a2pService.submitA2PApplication(app.id)
     await writeAuditLogFromRequest(req, {
       actorType:    'ADMIN',
-      actorUserId:  userId,
+      actorUserId:  req.user!.id,
       action:       'admin.a2p.platform.submitted',
       targetType:   'TenantA2PApplication',
       targetId:     updated.id,
-      metadataJson: { useCase: updated.useCase, vertical: updated.vertical },
+      metadataJson: { mode: updated.submissionMode, useCase: updated.useCase, vertical: updated.vertical },
     })
     res.json({ data: updated })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/a2p/platform/sync — refresh status from Twilio.
+router.post('/a2p/platform/sync', requirePlatformAdmin, async (_req, res, next) => {
+  try {
+    const app = await platformA2PApp()
+    res.json({ data: await a2pService.syncA2PStatus(app.id) })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/a2p/platform/resend-otp — resend the Sole Proprietor brand OTP.
+router.post('/a2p/platform/resend-otp', requirePlatformAdmin, async (_req, res, next) => {
+  try {
+    const app = await platformA2PApp()
+    res.json({ data: await a2pService.resendA2POtp(app.id) })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/a2p/platform/assemble-profile — assemble + submit the
+// account's Primary Customer Profile (Standard-brand path only).
+router.post('/a2p/platform/assemble-profile', requirePlatformAdmin, async (_req, res, next) => {
+  try {
+    const app = await platformA2PApp()
+    res.json({ data: await a2pService.assemblePrimaryCustomerProfile(app.id) })
   } catch (err) { next(err) }
 })
 
