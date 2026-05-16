@@ -42,7 +42,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/mailparser": "^3.4.6",
     "@types/multer": "^2.1.0",
-    "@types/node": "^20.14.0",
+    "@types/node": "^25.7.0",
     "@types/nodemailer": "^8.0.0",
     "@types/pdfkit": "^0.17.6",
     "@types/web-push": "^3.6.4",
