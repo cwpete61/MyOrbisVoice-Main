@@ -23,6 +23,13 @@ import { prisma } from '../lib/prisma.js'
 import { AppError } from '@voiceautomation/shared'
 import { getOpenAiApiKey, getConfigValue } from './system-config.service.js'
 import { checkWebsite } from './website-check.service.js'
+import { getPlatformTwilioClient } from './twilio.service.js'
+
+type TwilioClient = Awaited<ReturnType<typeof getPlatformTwilioClient>>
+
+/** Twilio-published Standard A2P 10DLC messaging policy SID (overridable
+ *  via system-config `a2p_a2p_policy_sid`). */
+const DEFAULT_A2P_POLICY_SID = 'RNb0d4771c2c98518d916a3d4cd70a8f8b'
 
 /* ───────────────────────────── types ──────────────────────────────────── */
 
@@ -421,38 +428,247 @@ async function runMockSubmission(applicationId: string) {
   })
 }
 
+/* ── Twilio enum mappers — internal codes → Twilio Trust Hub vocabularies ── */
+
+function mapBusinessType(t: string): string {
+  switch (t) {
+    case 'SOLE_PROP':   return 'Sole Proprietorship'
+    case 'LLC':         return 'Limited Liability Corporation'
+    case 'CORP':        return 'Corporation'
+    case 'NON_PROFIT':  return 'Non-profit Corporation'
+    case 'PARTNERSHIP': return 'Partnership'
+    default:            return 'Limited Liability Corporation'
+  }
+}
+
+function mapCompanyType(t: string): string {
+  return t === 'NON_PROFIT' ? 'non-profit' : 'private'
+}
+
+function mapBusinessIndustry(v: string): string {
+  const m: Record<string, string> = {
+    healthcare: 'HEALTHCARE', retail: 'RETAIL', professional_services: 'PROFESSIONAL_SERVICES',
+    real_estate: 'REAL_ESTATE', financial: 'FINANCIAL', education: 'EDUCATION',
+    hospitality: 'HOSPITALITY', auto: 'AUTOMOTIVE', technology: 'TECHNOLOGY',
+  }
+  return m[v] ?? 'PROFESSIONAL_SERVICES'
+}
+
+function mapUseCase(u: string): string {
+  const m: Record<string, string> = {
+    marketing: 'MARKETING', mixed: 'MIXED', customer_care: 'CUSTOMER_CARE',
+    '2fa': '2FA', utility: 'ACCOUNT_NOTIFICATION',
+  }
+  return m[u] ?? 'MIXED'
+}
+
 /**
- * Real Twilio Trust Hub submission. Intentionally guarded: the platform
- * must hold ISV approval and an operator must opt in. Until then this
- * throws rather than risk a real TCR-billed registration.
- *
- * When enabled, the implementation sequence (per docs/twilio-a2p-automation.md):
- *   1. Trust Hub Secondary Customer Profile  → twilioCustomerProfileSid
- *   2. A2P TrustProduct / Trust Bundle       → twilioTrustProductSid
- *   3. POST .../a2p/BrandRegistrations        → twilioBrandSid
- *   4. Messaging Service                      → twilioMessagingServiceSid
- *   5. UsAppToPerson campaign in the service  → twilioCampaignSid
- * Each step persists its SID before the next runs (resumable). Status
- * callbacks land on the webhook route and drive the state machine.
+ * Creates + submits the A2P TrustProduct (A2P Messaging trust bundle) that
+ * the BrandRegistration references. Assigns the already-built Customer
+ * Profile bundle + a us_a2p_messaging_profile_information end-user.
  */
-async function runLiveSubmission(app: A2PApp): Promise<never> {
+async function createA2PTrustProduct(client: TwilioClient, app: A2PApp, customerProfileSid: string): Promise<string> {
+  const policySid = (await getConfigValue('a2p_a2p_policy_sid')) || DEFAULT_A2P_POLICY_SID
+  const tp = await client.trusthub.v1.trustProducts.create({
+    friendlyName: `${app.legalName} — A2P Messaging`,
+    email:        app.contactEmail,
+    policySid,
+  })
+  const endUser = await client.trusthub.v1.endUsers.create({
+    type:         'us_a2p_messaging_profile_information',
+    friendlyName: `${app.legalName} — A2P profile`,
+    attributes:   { company_type: mapCompanyType(app.businessType) },
+  })
+  await client.trusthub.v1.trustProducts(tp.sid).trustProductsEntityAssignments.create({ objectSid: customerProfileSid })
+  await client.trusthub.v1.trustProducts(tp.sid).trustProductsEntityAssignments.create({ objectSid: endUser.sid })
+  await client.trusthub.v1.trustProducts(tp.sid).update({ status: 'pending-review' })
+  return tp.sid
+}
+
+/**
+ * Creates the UsAppToPerson campaign inside the Messaging Service. Called
+ * once the Brand is approved (by syncA2PStatus). Incurs A2P campaign fees
+ * in live (non-mock) mode.
+ */
+async function createUsAppToPersonCampaign(client: TwilioClient, app: A2PApp): Promise<string> {
+  if (!app.twilioMessagingServiceSid || !app.twilioBrandSid) {
+    throw new AppError('CONFLICT', 'Messaging Service and Brand are required before campaign creation', 409)
+  }
+  const samples = sampleMessages(app)
+  const campaign = await client.messaging.v1
+    .services(app.twilioMessagingServiceSid)
+    .usAppToPerson.create({
+      brandRegistrationSid: app.twilioBrandSid,
+      description:          `${app.legalName} A2P messaging — ${app.useCase}`,
+      messageSamples:       samples.length ? samples : ['Sample message.'],
+      usAppToPersonUsecase: mapUseCase(app.useCase),
+      hasEmbeddedLinks:     true,
+      hasEmbeddedPhone:     true,
+      messageFlow:          'End users opt in by entering their phone number on the business website contact / booking form, which carries explicit SMS-consent language and a link to the privacy policy.',
+      optInKeywords:        ['START'],
+      optInMessage:         `You are now opted in to messages from ${app.legalName}. Reply STOP to opt out, HELP for help. Msg&data rates may apply.`,
+      optOutKeywords:       ['STOP'],
+      optOutMessage:        'You have been unsubscribed and will receive no further messages. Reply START to opt back in.',
+      helpKeywords:         ['HELP'],
+      helpMessage:          `${app.legalName}: Reply STOP to unsubscribe. Msg&data rates may apply.`,
+    })
+  return campaign.sid
+}
+
+/**
+ * Real Twilio Trust Hub submission — platform-scope Standard brand.
+ *
+ * Guarded: requires system-config `a2p_live_enabled = true`. Reuses the
+ * account's Primary Customer Profile (must already be submitted/approved —
+ * run assemblePrimaryCustomerProfile if it is still draft). Pipeline:
+ *   1. Primary Customer Profile (resolved from config)  → twilioCustomerProfileSid
+ *   2. A2P TrustProduct                                 → twilioTrustProductSid
+ *   3. BrandRegistration (mock-able via a2p_brand_mock) → twilioBrandSid
+ *   4. Messaging Service                                → twilioMessagingServiceSid
+ * Ends at BRAND_PENDING. syncA2PStatus creates the campaign once the Brand
+ * is approved. Each SID persists before the next step (resumable).
+ */
+async function runLiveSubmission(app: A2PApp) {
   const liveEnabled = (await getConfigValue('a2p_live_enabled')) === 'true'
   if (!liveEnabled) {
     throw new AppError(
       'NOT_CONFIGURED',
-      'Live A2P submission is not enabled. The platform needs Twilio ISV approval and ' +
-        'system-config `a2p_live_enabled` must be set before a real registration can be filed. ' +
-        'Use mock mode to simulate the full pipeline in the meantime.',
+      'Live A2P submission is not enabled. Set system-config `a2p_live_enabled = true` ' +
+        'once the account is ready to file a real registration. Use mock mode meanwhile.',
       409,
     )
   }
-  // ISV approval is in place — the real Trust Hub calls are wired here once
-  // tested against Twilio test credentials. Guard stays until then.
-  throw new AppError(
-    'NOT_IMPLEMENTED',
-    'Live Trust Hub submission is pending implementation against verified ISV credentials.',
-    501,
-  )
+
+  // ISV (per-tenant / per-partner) path uses Secondary Customer Profiles —
+  // not yet wired. Platform-scope only for now.
+  if (app.tenantId || app.partnerId) {
+    throw new AppError(
+      'NOT_IMPLEMENTED',
+      'Live submission for tenant/partner scope (the ISV path) is not yet implemented. Platform-scope only.',
+      501,
+    )
+  }
+
+  const client = await getPlatformTwilioClient()
+
+  // Step 1 — Primary Customer Profile (the account's own legal identity).
+  const profileSid = await getConfigValue('twilio_primary_customer_profile_sid')
+  if (!profileSid) {
+    throw new AppError(
+      'NOT_CONFIGURED',
+      'Set system-config `twilio_primary_customer_profile_sid` to the account Primary Customer Profile SID. ' +
+        'Run assemblePrimaryCustomerProfile first if it is still in draft.',
+      409,
+    )
+  }
+  const profile = await client.trusthub.v1.customerProfiles(profileSid).fetch()
+  if (profile.status !== 'twilio-approved' && profile.status !== 'pending-review') {
+    throw new AppError(
+      'CONFLICT',
+      `Primary Customer Profile is "${profile.status}" — it must be submitted (pending-review) or ` +
+        'approved before brand registration. Run assemblePrimaryCustomerProfile.',
+      409,
+    )
+  }
+  await prisma.tenantA2PApplication.update({
+    where: { id: app.id },
+    data: { status: 'SUBMITTED', submittedAt: new Date(), rejectionReason: null, twilioCustomerProfileSid: profileSid },
+  })
+
+  // Step 2 — A2P TrustProduct (reuse a persisted one if the run is resuming).
+  const trustProductSid = app.twilioTrustProductSid ?? await createA2PTrustProduct(client, app, profileSid)
+  await prisma.tenantA2PApplication.update({
+    where: { id: app.id },
+    data: { status: 'PROFILE_PENDING', twilioTrustProductSid: trustProductSid },
+  })
+
+  // Step 3 — BrandRegistration. `a2p_brand_mock` routes to Twilio's mock
+  // Brand API (no TCR billing) for integration testing.
+  const useTwilioMock = (await getConfigValue('a2p_brand_mock')) === 'true'
+  const brandType = (await getConfigValue('a2p_brand_type')) || 'STANDARD'
+  const brand = await client.messaging.v1.brandRegistrations.create({
+    customerProfileBundleSid: profileSid,
+    a2PProfileBundleSid:      trustProductSid,
+    brandType,
+    mock:                     useTwilioMock,
+  })
+  await prisma.tenantA2PApplication.update({
+    where: { id: app.id },
+    data: { status: 'BRAND_PENDING', twilioBrandSid: brand.sid },
+  })
+
+  // Step 4 — Messaging Service (the campaign attaches here once the Brand
+  // is approved — see syncA2PStatus).
+  const svc = await client.messaging.v1.services.create({ friendlyName: `${app.legalName} — A2P` })
+  return prisma.tenantA2PApplication.update({
+    where: { id: app.id },
+    data: { twilioMessagingServiceSid: svc.sid },
+  })
+}
+
+/**
+ * Assembles + submits the account's Primary Customer Profile from a
+ * platform-scope application's data: a business-information end-user, an
+ * authorized-representative end-user, an address + supporting document,
+ * the entity assignments, then `pending-review` to submit for Twilio
+ * review. One-time account setup — the Primary Customer Profile is shared
+ * by every platform-scope A2P submission.
+ */
+export async function assemblePrimaryCustomerProfile(
+  applicationId: string,
+): Promise<{ customerProfileSid: string; status: string }> {
+  const app = await loadApplication(applicationId)
+  const client = await getPlatformTwilioClient()
+  const profileSid = await getConfigValue('twilio_primary_customer_profile_sid')
+  if (!profileSid) {
+    throw new AppError('NOT_CONFIGURED', 'Set system-config `twilio_primary_customer_profile_sid` first.', 409)
+  }
+
+  const bizInfo = await client.trusthub.v1.endUsers.create({
+    type:         'customer_profile_business_information',
+    friendlyName: `${app.legalName} — business info`,
+    attributes: {
+      business_name:                    app.legalName,
+      business_type:                    mapBusinessType(app.businessType),
+      business_registration_identifier: 'EIN',
+      business_registration_number:     app.ein ?? '',
+      business_identity:                'direct_customer',
+      business_industry:                mapBusinessIndustry(app.vertical),
+      business_regions_of_operation:    'USA_AND_CANADA',
+      website_url:                      app.websiteUrl ?? '',
+      social_media_profile_urls:        '',
+    },
+  })
+  const authRep = await client.trusthub.v1.endUsers.create({
+    type:         'authorized_representative_1',
+    friendlyName: `${app.contactFirstName} ${app.contactLastName}`,
+    attributes: {
+      first_name:     app.contactFirstName,
+      last_name:      app.contactLastName,
+      email:          app.contactEmail,
+      phone_number:   app.contactPhone,
+      business_title: 'Authorized Representative',
+      job_position:   'Director',
+    },
+  })
+  const address = await client.addresses.create({
+    customerName: app.legalName,
+    street:       app.addressLine1,
+    city:         app.city,
+    region:       app.region,
+    postalCode:   app.postalCode,
+    isoCountry:   app.country,
+  })
+  const doc = await client.trusthub.v1.supportingDocuments.create({
+    friendlyName: `${app.legalName} — address`,
+    type:         'customer_profile_address',
+    attributes:   { address_sids: address.sid },
+  })
+  for (const objectSid of [bizInfo.sid, authRep.sid, doc.sid]) {
+    await client.trusthub.v1.customerProfiles(profileSid).customerProfilesEntityAssignments.create({ objectSid })
+  }
+  const updated = await client.trusthub.v1.customerProfiles(profileSid).update({ status: 'pending-review' })
+  return { customerProfileSid: profileSid, status: updated.status }
 }
 
 /* ───────────────────── status sync / webhook ingest ───────────────────── */
@@ -483,10 +699,42 @@ export async function syncA2PStatus(applicationId: string) {
     })
   }
 
-  // Live mode: poll Twilio Brand/Campaign — wired alongside runLiveSubmission.
+  // Live mode: poll Twilio. Brand approval triggers campaign creation.
+  const client = await getPlatformTwilioClient()
+  let nextStatus: A2PApp['status'] = app.status
+  let rejectionReason: string | null = null
+
+  if (app.twilioBrandSid && ['SUBMITTED', 'PROFILE_PENDING', 'BRAND_PENDING'].includes(app.status)) {
+    const brand = await client.messaging.v1.brandRegistrations(app.twilioBrandSid).fetch()
+    const bs = (brand.status ?? '').toUpperCase()
+    if (bs === 'APPROVED') nextStatus = 'BRAND_APPROVED'
+    else if (bs === 'FAILED') {
+      nextStatus = 'BRAND_FAILED'
+      rejectionReason = 'Brand registration failed — check the Twilio Console for the rejection detail'
+    } else nextStatus = 'BRAND_PENDING'
+  }
+
+  // Brand approved + Messaging Service ready + no campaign yet → create it.
+  if (nextStatus === 'BRAND_APPROVED' && app.twilioMessagingServiceSid && !app.twilioCampaignSid) {
+    const campaignSid = await createUsAppToPersonCampaign(client, app)
+    await prisma.tenantA2PApplication.update({ where: { id: applicationId }, data: { twilioCampaignSid: campaignSid } })
+    nextStatus = 'CAMPAIGN_PENDING'
+  } else if (app.status === 'CAMPAIGN_PENDING' && app.twilioCampaignSid && app.twilioMessagingServiceSid) {
+    const campaigns = await client.messaging.v1.services(app.twilioMessagingServiceSid).usAppToPerson.list({ limit: 20 })
+    const c = campaigns.find((x) => x.sid === app.twilioCampaignSid)
+    const cs = (c?.campaignStatus ?? '').toUpperCase()
+    if (cs === 'VERIFIED' || cs === 'APPROVED') nextStatus = 'APPROVED'
+    else if (cs === 'FAILED') { nextStatus = 'REJECTED'; rejectionReason = 'Campaign rejected by TCR' }
+  }
+
   return prisma.tenantA2PApplication.update({
     where: { id: applicationId },
-    data: { lastTwilioSyncAt: new Date() },
+    data: {
+      status: nextStatus,
+      ...(rejectionReason ? { rejectionReason } : {}),
+      ...(nextStatus === 'APPROVED' ? { approvedAt: new Date() } : {}),
+      lastTwilioSyncAt: new Date(),
+    },
   })
 }
 
