@@ -50,13 +50,25 @@ function decrypt(stored: string): string {
  * Returns null if the SID isn't a known subaccount or status isn't ACTIVE.
  */
 export async function getSubaccountAuthTokenBySid(subaccountSid: string): Promise<string | null> {
-  const sub = await prisma.tenantTwilioSubaccount.findUnique({ where: { twilioSubaccountSid: subaccountSid } })
-  if (!sub || sub.status !== 'ACTIVE') return null
-  try {
-    return decrypt(sub.encryptedSubaccountAuthToken)
-  } catch {
-    return null
+  // Tenant subaccount first.
+  const tenantSub = await prisma.tenantTwilioSubaccount.findUnique({
+    where: { twilioSubaccountSid: subaccountSid },
+  })
+  if (tenantSub && tenantSub.status === 'ACTIVE') {
+    try { return decrypt(tenantSub.encryptedSubaccountAuthToken) } catch { return null }
   }
+
+  // Partner subaccount fallback (Phase G.1). A call to a partner-owned number
+  // is signed with the PARTNER subaccount's token — without this lookup the
+  // signature check fails and Twilio plays "application error" on the call.
+  const partnerSub = await prisma.partnerTwilioSubaccount.findUnique({
+    where: { twilioSubaccountSid: subaccountSid },
+  })
+  if (partnerSub && partnerSub.status === 'ACTIVE') {
+    try { return decrypt(partnerSub.encryptedSubaccountAuthToken) } catch { return null }
+  }
+
+  return null
 }
 
 /**

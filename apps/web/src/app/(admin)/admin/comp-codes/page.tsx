@@ -582,7 +582,7 @@ export default function AdminCompCodesPage() {
               : t('adminCompCodes.table.emptyFiltered')}
           </div>
         ) : (
-          <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+          <div className="rounded-xl overflow-x-auto" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: 'var(--surface-app)', borderBottom: '1px solid var(--border-subtle)' }}>

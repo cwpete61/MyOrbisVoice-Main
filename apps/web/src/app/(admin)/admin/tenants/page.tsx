@@ -182,7 +182,7 @@ export default function AdminTenantsPage() {
           ))}
         </div>
       ) : (
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+        <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -403,7 +403,7 @@ export default function AdminTenantsPage() {
               <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--text-tertiary)' }}>
                 You are about to delete
               </div>
-              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+              <div className="rounded-lg overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
                 <table className="w-full text-xs">
                   <thead>
                     <tr style={{ background: 'var(--surface-app)' }}>

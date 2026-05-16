@@ -687,7 +687,7 @@ function Enrollments() {
       {loading && <div className="text-sm text-gray-500 py-8 text-center">{t('tenantCampaigns.enrollments.loading')}</div>}
       {error   && <div className="text-sm text-red-600 py-8 text-center">{error}</div>}
       {!loading && !error && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>

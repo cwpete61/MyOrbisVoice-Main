@@ -57,10 +57,12 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
-/* ─── DARK MODE (default) ────────────────────────────────────────────────── */
-/* Dark is the default visual identity — matches the Haze dashboard feel. */
+/* ─── DARK MODE (retired — Phase G.5) ────────────────────────────────────── */
+/* Light mode is enforced site-wide. This .dark block is dead — the `dark`
+   class is never applied (see app/layout.tsx bootstrap + ThemeProvider).
+   Kept only so a stray .dark class doesn't fall through to unstyled vars.
+   `:root` now carries the LIGHT vars (see below) so the default is light. */
 
-:root,
 .dark {
   --surface-app:     var(--n950);   /* outermost background */
   --surface-sidebar: var(--n900);   /* sidebar panel */
@@ -88,8 +90,11 @@
   --alert-error-border: oklch(40% 0.17 25 / 0.35);
 }
 
-/* ─── LIGHT MODE ─────────────────────────────────────────────────────────── */
+/* ─── LIGHT MODE (enforced default — Phase G.5) ──────────────────────────── */
+/* `:root` carries the light vars so the app is light even before the `light`
+   class lands; `.light` is kept for the class the bootstrap applies. */
 
+:root,
 .light {
   --surface-app:     var(--n50);
   --surface-sidebar: var(--n0);

@@ -1,11 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { clearTokens } from '@/lib/auth'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import { ContactBlock } from '@/components/ContactBlock'
 import { SocialLinks } from '@/components/SocialLinks'
 import { IdleTimeout } from '@/components/IdleTimeout'
@@ -15,6 +15,7 @@ import { useApi } from '@/hooks/useApi'
 
 const NAV = [
   { href: '/partner-portal/dashboard',   labelKey: 'partnerNav.dashboard',   icon: 'M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z' },
+  { href: '/partner-portal/getting-started', labelKey: 'partnerNav.gettingStarted', icon: 'M9 11l3 3L20 5M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
   { href: '/partner-portal/mailbox',     labelKey: 'partnerNav.mailbox',     icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM2 6l10 7l10-7' },
   { href: '/partner-portal/calendar',    labelKey: 'partnerNav.calendar',    icon: 'M3 9h18M3 5h18v14H3zM8 3v4M16 3v4' },
   { href: '/partner-portal/phone-numbers', labelKey: 'partnerNav.phoneNumbers', icon: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z' },
@@ -32,9 +33,6 @@ const NAV = [
   { href: '/partner-portal/help',          labelKey: 'partnerNav.help',         icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01' },
 ]
 
-// Profile + Sign out live at the bottom of the sidebar — separate from
-// the main work nav above. Visually anchors "account stuff" to the
-// bottom of the rail.
 const PROFILE_NAV = { href: '/partner-portal/profile', labelKey: 'partnerNav.profile', icon: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' }
 
 function Icon({ d }: { d: string }) {
@@ -49,8 +47,8 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
   const pathname = usePathname()
   const router = useRouter()
   const t = useT()
-  // Pull username + name + email so we can show the partner who they're
-  // signed in as. JWT doesn't carry username so we go to /api/auth/me.
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   const { data: me } = useApi<{ user: { username: string; email: string; firstName: string | null; lastName: string | null } }>('/api/auth/me')
   const username = me?.user?.username
   const fullName = [me?.user?.firstName, me?.user?.lastName].filter(Boolean).join(' ').trim() || null
@@ -58,28 +56,22 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
 
   function logout() {
     clearTokens()
-    // Stay within the partner-portal flow on logout — tenant login is a
-    // different surface. Partners shouldn't be dropped onto a screen that
-    // says "log in to your tenant account."
     router.push('/partner-portal/login')
   }
 
-  return (
-    // h-screen + overflow-hidden anchors the sidebar to the viewport so it
-    // never scrolls with the content. Main is the only scroll surface.
-    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
-      <IdleTimeout redirectTo="/partner-portal/login" />
-      {/* Sidebar — fixed-height column, no internal scroll. The 7 nav items +
-          profile + sign-out fit comfortably in any reasonable viewport. */}
-      <aside className="w-56 flex-shrink-0 flex flex-col" style={{ background: 'var(--surface-raised)', borderRight: '1px solid var(--border-subtle)' }}>
-        {/* Brand */}
-        <div className="px-5 py-5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+  // Sidebar inner content — shared by the desktop rail + the mobile drawer.
+  // `onNav` closes the mobile drawer after a tap.
+  function SidebarContents({ onNav }: { onNav?: () => void }) {
+    return (
+      <>
+        {/* Brand — pinned */}
+        <div className="px-5 py-5 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
           <p className="text-sm font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>MyOrbisVoice</p>
-          <p className="text-xs mt-0.5" style={{ color: 'oklch(65% 0.15 193)' }}>{t('partnerNav.brandSubtitle')}</p>
+          <p className="text-xs mt-0.5" style={{ color: 'oklch(45% 0.13 193)' }}>{t('partnerNav.brandSubtitle')}</p>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
+        {/* Nav — flex-1 + min-h-0 so it scrolls internally on short viewports. */}
+        <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-0.5" onClick={onNav}>
           {NAV.map(item => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/')
             return (
@@ -96,7 +88,7 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
                 {('comingSoon' in item && item.comingSoon) && (
                   <span
                     className="text-[9px] px-1 py-0.5 rounded font-semibold uppercase tracking-wider flex-shrink-0"
-                    style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(65% 0.15 193)', letterSpacing: '0.08em' }}
+                    style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(45% 0.13 193)', letterSpacing: '0.08em' }}
                   >
                     {t('partnerNav.soonPill')}
                   </span>
@@ -106,19 +98,18 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
           })}
         </nav>
 
-        {/* Footer — signed-in-as badge, then Profile, then Sign out.
-            Username row is the primary identifier; full name (if set)
-            shows below as a hint. Both clickable → Profile page. */}
-        <div className="px-3 py-3 space-y-0.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+        {/* Footer — pinned. Profile + Sign out always visible. */}
+        <div className="px-3 py-3 space-y-0.5 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           {username && (
             <Link
               href={PROFILE_NAV.href}
+              onClick={onNav}
               className="flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors mb-1"
               style={{ color: 'var(--text-secondary)' }}
             >
               <div
                 className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold"
-                style={{ background: 'oklch(55% 0.11 193 / 0.18)', color: 'oklch(72% 0.12 193)' }}
+                style={{ background: 'oklch(55% 0.11 193 / 0.18)', color: 'oklch(45% 0.13 193)' }}
               >
                 {initials}
               </div>
@@ -133,6 +124,7 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
             return (
               <Link
                 href={PROFILE_NAV.href}
+                onClick={onNav}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                 style={active
                   ? { background: 'var(--nav-active-bg)', color: 'var(--nav-active-text)', fontWeight: 600 }
@@ -157,15 +149,67 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
             {t('actions.signOut')}
           </button>
         </div>
+      </>
+    )
+  }
+
+  const isFullWidth = pathname.startsWith('/partner-portal/crm')
+    || pathname.startsWith('/partner-portal/contacts')
+    || pathname.startsWith('/partner-portal/campaigns')
+
+  return (
+    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
+      <IdleTimeout redirectTo="/partner-portal/login" />
+
+      {/* ── Desktop sidebar ──────────────────────────────────────────────── */}
+      <aside className="hidden md:flex w-56 flex-shrink-0 flex-col" style={{ background: 'var(--surface-raised)', borderRight: '1px solid var(--border-subtle)' }}>
+        <SidebarContents />
       </aside>
 
-      {/* Main — only scroll surface (sidebar above is anchored to viewport). */}
+      {/* ── Mobile drawer ────────────────────────────────────────────────── */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setSidebarOpen(false)} />
+          <aside
+            className="relative flex flex-col w-72 max-w-[85vw] h-full z-50"
+            style={{ background: 'var(--surface-raised)', borderRight: '1px solid var(--border-subtle)' }}
+          >
+            <SidebarContents onNav={() => setSidebarOpen(false)} />
+          </aside>
+        </div>
+      )}
+
+      {/* ── Main ─────────────────────────────────────────────────────────── */}
       <main className="flex-1 overflow-auto flex flex-col">
-        {/* Top bar — partner ID badge, notifications bell, language + theme.
-            Mirrors the tenant dashboard's top-right cluster so partners get
-            the same affordances. */}
+        {/* Mobile top bar — hamburger + brand + bell. */}
+        <header
+          className="flex md:hidden items-center justify-between px-4 py-3 flex-shrink-0"
+          style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-app)' }}
+        >
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-1.5 rounded-lg"
+            style={{ color: 'var(--text-secondary)' }}
+            aria-label="Open menu"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M3 6h18M3 12h18M3 18h18" />
+            </svg>
+          </button>
+          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>MyOrbisVoice</span>
+          <div className="flex items-center gap-1">
+            <NotificationBell
+              endpoint="/api/affiliate/notifications"
+              readOne={(id) => `/api/affiliate/notifications/${id}/read`}
+              readAll="/api/affiliate/notifications/read-all"
+            />
+            <LanguageToggle />
+          </div>
+        </header>
+
+        {/* Desktop top bar. */}
         <div
-          className="flex items-center justify-end gap-2 px-8 py-3 flex-shrink-0"
+          className="hidden md:flex items-center justify-end gap-2 px-8 py-3 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-app)' }}
         >
           <PartnerIdBadge />
@@ -175,24 +219,17 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
             readAll="/api/affiliate/notifications/read-all"
           />
           <LanguageToggle />
-          <ThemeToggle />
         </div>
-        {/* CRM + Contacts surfaces render full-width to match the tenant
-            dashboard's kanban + contact-detail layouts. Every other partner
-            page keeps the narrower max-w-4xl reading column the rest of the
-            portal was designed for. */}
-        {(() => {
-          const isFullWidth = pathname.startsWith('/partner-portal/crm')
-            || pathname.startsWith('/partner-portal/contacts')
-            || pathname.startsWith('/partner-portal/campaigns')
-          return isFullWidth ? (
-            <div className="w-full px-8 py-8 flex-1">{children}</div>
-          ) : (
-            <div className="max-w-4xl mx-auto w-full px-8 py-8 flex-1">{children}</div>
-          )
-        })()}
-        {/* Contact emails + social — anchored at the bottom of the partner workspace */}
-        <footer className="px-8 py-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+
+        {/* Page content — tighter padding on mobile. */}
+        {isFullWidth ? (
+          <div className="w-full px-4 py-6 md:px-8 md:py-8 flex-1">{children}</div>
+        ) : (
+          <div className="max-w-4xl mx-auto w-full px-4 py-6 md:px-8 md:py-8 flex-1">{children}</div>
+        )}
+
+        {/* Contact emails + social — anchored at the bottom. */}
+        <footer className="px-4 md:px-8 py-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           <div className="max-w-4xl mx-auto w-full flex flex-wrap items-center justify-between gap-4">
             <ContactBlock compact />
             <SocialLinks />

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 import { useT } from '@/lib/i18n/I18nProvider'
+import { PartnerBackToOnboarding } from '@/components/PartnerBackToOnboarding'
 
 // Phase G.1.B-1 — partner self-service search + admin-approved purchase.
 // Stripe billing wired in next session; for now admin invoices manually.
@@ -20,6 +21,20 @@ const TIER_INFO: Record<Tier, { priceCents: number; numberType: 'local' | 'tollf
 }
 
 type SmsPack = { id: 'pack_5' | 'pack_10'; credits: number; unitAmountCents: number }
+type VoiceUsage = {
+  cycleAmountCents: number
+  cycleMinutes:     number
+  cycleCallCount:   number
+  rateCents:        { LOCAL: number; TOLLFREE: number }
+  recentCalls: Array<{
+    callSid:         string
+    direction:       string
+    numberType:      string
+    billableMinutes: number
+    amountCents:     number
+    createdAt:       string
+  }>
+}
 type Financials = {
   purchasedCents:   number
   spentCents:       number
@@ -95,18 +110,22 @@ export default function PartnerPhoneNumbersPage() {
   // Phase G.2 — SMS credit state
   const [credits, setCredits] = useState<CreditsStatus | null>(null)
   const [buyingPack, setBuyingPack] = useState<string | null>(null)
+  // Phase G.3 — voice usage
+  const [voiceUsage, setVoiceUsage] = useState<VoiceUsage | null>(null)
 
   async function reload() {
-    const [s, n, p, c] = await Promise.all([
+    const [s, n, p, c, v] = await Promise.all([
       apiFetch<Subaccount>('/api/partner/twilio/subaccount').catch(() => null),
       apiFetch<{ items: PhoneNumberRow[]; total: number }>('/api/partner/twilio/numbers').catch(() => ({ items: [], total: 0 })),
       apiFetch<PaymentMethod>('/api/partner/billing/payment-method').catch(() => null),
       apiFetch<CreditsStatus>('/api/partner/sms-credits').catch(() => null),
+      apiFetch<VoiceUsage>('/api/partner/voice-usage').catch(() => null),
     ])
     setSub(s ?? { exists: false, subaccountSid: null, status: null })
     setNumbers(n?.items ?? [])
     setPm(p ?? { hasCard: false, brand: null, last4: null })
     setCredits(c)
+    setVoiceUsage(v)
   }
 
   async function buyPack(packId: 'pack_5' | 'pack_10') {
@@ -225,6 +244,7 @@ export default function PartnerPhoneNumbersPage() {
 
   return (
     <div className="max-w-4xl">
+      <PartnerBackToOnboarding />
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('partnerPhoneNumbers.title')}</h1>
@@ -270,6 +290,9 @@ export default function PartnerPhoneNumbersPage() {
       {/* Monthly pricing summary — partners see the recurring number cost
           upfront alongside the one-time SMS credit packs. */}
       <MonthlyPricingCard t={t} />
+
+      {/* Phase G.3 — voice-minute usage this 30-day cycle (post-paid). */}
+      <VoiceUsageCard usage={voiceUsage} t={t} />
 
       {/* Phase G.2 — SMS credit balance + pack purchase */}
       <SmsCreditsCard
@@ -324,6 +347,15 @@ export default function PartnerPhoneNumbersPage() {
             variant="compact"
           />
 
+          {/* Phase G.3 — voice-minute billing disclosure. MUST be visible at
+              purchase time so the partner knows minutes are billed on top of
+              the flat monthly rental. */}
+          <div className="rounded-lg px-3 py-2.5 mb-3 text-[11px]"
+               style={{ background: 'oklch(95% 0.04 75)', border: '1px solid oklch(60% 0.14 75 / 0.35)', color: 'oklch(38% 0.14 75)' }}>
+            <span className="font-semibold">{t('partnerPhoneNumbers.voiceDisclosure.title')}</span>{' '}
+            {t('partnerPhoneNumbers.voiceDisclosure.body')}
+          </div>
+
           {/* Area code + search button */}
           <div className="flex flex-wrap items-end gap-2 mb-3">
             <div className="flex-1 min-w-[140px]">
@@ -355,7 +387,7 @@ export default function PartnerPhoneNumbersPage() {
 
           {/* Results */}
           {hits.length > 0 && (
-            <div className="mt-2 max-h-80 overflow-y-auto rounded-lg" style={{ border: '1px solid var(--border-subtle)' }}>
+            <div className="mt-2 max-h-80 overflow-auto rounded-lg" style={{ border: '1px solid var(--border-subtle)' }}>
               <table className="w-full text-sm">
                 <thead style={{ background: 'var(--surface-overlay)', position: 'sticky', top: 0 }}>
                   <tr>
@@ -412,7 +444,7 @@ export default function PartnerPhoneNumbersPage() {
           <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{t('partnerPhoneNumbers.empty.body')}</p>
         </div>
       ) : (
-        <div data-testid="active-numbers-table" className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+        <div data-testid="active-numbers-table" className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -632,7 +664,7 @@ function PricingTable({
           {t('partnerPhoneNumbers.credits.compactHeading')}
         </p>
       )}
-      <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+      <div className="rounded-lg overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
         <table className="w-full text-xs tabular-nums">
           <thead>
             <tr style={{ background: 'var(--surface-overlay)' }}>
@@ -652,6 +684,47 @@ function PricingTable({
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+// Phase G.3 — voice-minute usage this 30-day cycle. Post-paid: the accrued
+// amount is added to the partner's next monthly number-subscription invoice.
+function VoiceUsageCard({
+  usage, t,
+}: {
+  usage: VoiceUsage | null
+  t:     (k: string, v?: Record<string, string|number>) => string
+}) {
+  const amount  = usage?.cycleAmountCents ?? 0
+  const minutes = usage?.cycleMinutes ?? 0
+  const calls   = usage?.cycleCallCount ?? 0
+  const localRate = usage?.rateCents?.LOCAL ?? 2
+  const tfRate    = usage?.rateCents?.TOLLFREE ?? 3
+
+  return (
+    <div className="rounded-xl p-4 mb-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
+            {t('partnerPhoneNumbers.voiceUsage.heading')}
+          </h3>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+            {t('partnerPhoneNumbers.voiceUsage.subtitle', { local: (localRate / 100).toFixed(2), tollfree: (tfRate / 100).toFixed(2) })}
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-2xl font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>
+            ${(amount / 100).toFixed(2)}
+          </div>
+          <div className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+            {t('partnerPhoneNumbers.voiceUsage.cycleSummary', { minutes, calls })}
+          </div>
+        </div>
+      </div>
+      <p className="text-[11px] mt-2" style={{ color: 'var(--text-tertiary)' }}>
+        {t('partnerPhoneNumbers.voiceUsage.billedNote')}
+      </p>
     </div>
   )
 }

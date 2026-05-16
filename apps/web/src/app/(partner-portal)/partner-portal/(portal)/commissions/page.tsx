@@ -87,7 +87,7 @@ export default function CommissionsPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-xl overflow-hidden mb-4" style={{ border: '1px solid var(--border-subtle)' }}>
+          <div className="rounded-xl overflow-x-auto mb-4" style={{ border: '1px solid var(--border-subtle)' }}>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>

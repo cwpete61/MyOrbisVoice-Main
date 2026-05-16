@@ -346,7 +346,7 @@ export default function AffiliatePage() {
                 </div>
               )}
               {commissions && commissions.items.length > 0 && (
-                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+                <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
                   <table className="w-full text-sm">
                     <thead>
                       <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -448,7 +448,7 @@ export default function AffiliatePage() {
               )}
 
               {payoutReqs && payoutReqs.length > 0 && (
-                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+                <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
                   <div className="px-4 py-3" style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
                     <p className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>Payout history</p>
                   </div>

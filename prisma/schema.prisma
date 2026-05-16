@@ -269,6 +269,7 @@ enum IndustryVertical {
   SALON
   SCHOOL
   SENIOR_LIVING
+  SOFTWARE_TECH
   SPA
   TAX_PREPARATION
   TIRE_SHOP
@@ -427,6 +428,11 @@ model Tenant {
   /// configured what they care about can mark a step done even if
   /// non-required fields are blank. Null = nothing manually marked yet.
   onboardingMarkedDone      Json?
+  /// Phase G.4 — manual override to re-show the onboarding wizard after it
+  /// has auto-hidden on completion. The dashboard banner shows when the
+  /// wizard is incomplete OR this flag is true. Partner/tenant flips it from
+  /// the profile/settings page.
+  showOnboardingWizard      Boolean  @default(false)
   /// Tracks which onboarding emails have been sent + when. Shape:
   /// { setupNudge: ISO, featureSpotlight: ISO, weekTwoCheckIn: ISO }.
   /// Populated by the onboarding-emails job. Idempotent — once a key is set,
@@ -873,6 +879,54 @@ enum PartnerSmsCreditChannel {
   SMS_LONG    // 2-segment SMS = 2 credits
   MMS         // 2.5 credits
   WHATSAPP    // reserved — pricing TBD
+}
+
+/// Phase G.3 — per-call voice usage meter for partner numbers.
+///
+/// Voice minutes are billed POST-PAID, separate from the $2/mo flat number
+/// rental. Each completed call on a partner number writes one row here and
+/// (idempotently) a Stripe invoice item against the partner's customer; the
+/// pending invoice item auto-attaches to the partner's next monthly number
+/// subscription invoice — i.e. "billed at the end of the 30-day cycle".
+///
+/// Rate card (cents per billed minute, minutes rounded up):
+///   LOCAL    inbound/outbound = 2¢
+///   TOLLFREE inbound/outbound = 3¢
+model PartnerVoiceUsageLedger {
+  id                  String   @id @default(uuid())
+  partnerId           String
+  phoneNumberId       String
+  /// Twilio CallSid — unique so a repeated status webhook can't double-bill.
+  callSid             String   @unique
+  direction           PartnerVoiceDirection
+  numberType          PartnerVoiceNumberType
+  durationSeconds     Int
+  billableMinutes     Int      // ceil(durationSeconds / 60), min 1 for a connected call
+  ratePerMinuteCents  Int
+  amountCents         Int      // billableMinutes * ratePerMinuteCents
+  /// Actual Twilio cost (USD cents) from the status callback Price field, when
+  /// present. Lets us reconcile real cost vs. billed amount for margin checks.
+  twilioCostCents     Decimal? @db.Decimal(10, 4)
+  /// Stripe invoice item created for this call. Unique — the dedupe anchor for
+  /// the billing side (callSid dedupes the ledger row; this dedupes Stripe).
+  stripeInvoiceItemId String?  @unique
+  billedAt            DateTime? // set when the invoice item is created
+  createdAt           DateTime @default(now())
+
+  partner             AffiliateAccount @relation("PartnerVoiceUsage", fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, createdAt])
+  @@index([phoneNumberId])
+}
+
+enum PartnerVoiceDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum PartnerVoiceNumberType {
+  LOCAL
+  TOLLFREE
 }
 
 /// Idempotency ledger for Stripe webhooks. Stripe delivers events with
@@ -1558,6 +1612,13 @@ model AffiliateAccount {
   // Drives AI-Assist generated pitch material + future per-partner Bunny-hosted assets.
   // See docs/marketing-style-guide.md for the spectrum definition.
   aggressionTier         String          @default("balanced")
+  // Phase G.4 — partner onboarding wizard. Explicit per-step completion flags
+  // ({ profile: true, ... }) that override the data-based auto-detection in
+  // /api/partner/onboarding/status. Mirrors Tenant.onboardingMarkedDone.
+  onboardingMarkedDone   Json?
+  // Manual override to re-show the onboarding wizard after it auto-hid on
+  // completion. Banner shows when wizard incomplete OR this is true.
+  showOnboardingWizard   Boolean  @default(false)
 
   // ── Marketing-page identity (Phase B Partner profile) ────────────────────
   // The slug is the partner's permanent public identifier. It drives both:
@@ -1670,6 +1731,7 @@ model AffiliateAccount {
   // deducts according to channel weight (SMS=1, long SMS=2/seg, MMS=2.5).
   smsCreditBalance      Decimal @default(0) @db.Decimal(10, 2)
   smsCreditLedger       PartnerSmsCreditLedger[] @relation("PartnerSmsCreditLedger")
+  voiceUsageLedger      PartnerVoiceUsageLedger[] @relation("PartnerVoiceUsage")
 
   // Phase G.2.1 — last time we emailed the partner about low credits OR
   // negative pack margin. Dedup window is 24h so we don't spam on every

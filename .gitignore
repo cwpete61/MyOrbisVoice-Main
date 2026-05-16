@@ -25,7 +25,7 @@ prisma/migrations/dev.db
 # Credentials (never commit)
 .netrc
 *.netrc
-docs/*.coreftp
+*.coreftp
 
 # OS
 .DS_Store

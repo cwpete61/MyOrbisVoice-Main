@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
+import { PartnerOnboardingBanner } from '@/components/PartnerOnboardingBanner'
 
 // ─── API contracts ────────────────────────────────────────────────────────────
 type Account = {
@@ -162,246 +163,6 @@ const I = {
   trophy:     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>,
 }
 
-// ─── Get-paid checklist ───────────────────────────────────────────────────────
-/**
- * Setup Checklist (Phase E.14) — onboarding companion to GetPaidChecklist.
- * Surfaces the four non-payment steps that turn a brand-new partner into a
- * partner whose landing pages actually work. Auto-hides once all four are
- * complete so seasoned partners don't see a perpetual "to-do" banner.
- */
-function SetupChecklist({
-  hasDisplayName, hasBio, hasAvatar, googleConnected, pageActive,
-}: {
-  hasDisplayName:  boolean
-  hasBio:          boolean
-  hasAvatar:       boolean
-  googleConnected: boolean
-  pageActive:      boolean
-}) {
-  const t = useT()
-  const items = [
-    {
-      done: hasDisplayName && hasBio,
-      title: t('partnerDashboard.setup.profileTitle'),
-      detail: hasDisplayName && hasBio
-        ? t('partnerDashboard.setup.profileDoneDetail')
-        : t('partnerDashboard.setup.profileTodoDetail'),
-      action: !(hasDisplayName && hasBio)
-        ? <Link href="/partner-portal/profile" className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap" style={{ background: TEAL, color: '#fff', textDecoration: 'none' }}>{t('partnerDashboard.setup.openProfile')}</Link>
-        : null,
-    },
-    {
-      done: hasAvatar,
-      title: t('partnerDashboard.setup.avatarTitle'),
-      detail: hasAvatar
-        ? t('partnerDashboard.setup.avatarDoneDetail')
-        : t('partnerDashboard.setup.avatarTodoDetail'),
-      action: !hasAvatar
-        ? <Link href="/partner-portal/profile" className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap" style={{ background: TEAL, color: '#fff', textDecoration: 'none' }}>{t('partnerDashboard.setup.uploadPhoto')}</Link>
-        : null,
-    },
-    {
-      done: googleConnected,
-      title: t('partnerDashboard.setup.googleTitle'),
-      detail: googleConnected
-        ? t('partnerDashboard.setup.googleDoneDetail')
-        : t('partnerDashboard.setup.googleTodoDetail'),
-      action: !googleConnected
-        ? <Link href="/partner-portal/profile" className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap" style={{ background: TEAL, color: '#fff', textDecoration: 'none' }}>{t('partnerDashboard.setup.connectGoogle')}</Link>
-        : null,
-    },
-    {
-      done: pageActive,
-      title: t('partnerDashboard.setup.activateTitle'),
-      detail: pageActive
-        ? t('partnerDashboard.setup.activateDoneDetail')
-        : t('partnerDashboard.setup.activateTodoDetail'),
-      action: !pageActive
-        ? <Link href="/partner-portal/profile" className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap" style={{ background: TEAL, color: '#fff', textDecoration: 'none' }}>{t('partnerDashboard.setup.activatePage')}</Link>
-        : null,
-    },
-  ]
-  if (items.every(i => i.done)) return null
-
-  return (
-    <section className="mb-6">
-      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-        <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            {t('partnerDashboard.setup.title')}
-          </h2>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-            {t('partnerDashboard.setup.desc')}
-          </p>
-        </div>
-        <ul>
-          {items.map((item, i) => (
-            <li key={item.title} className="flex items-start gap-3 px-5 py-3" style={{ borderTop: i > 0 ? '1px solid var(--border-subtle)' : undefined }}>
-              <span
-                className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
-                style={{
-                  background: item.done ? TEAL : 'transparent',
-                  border:     item.done ? 'none' : '1.5px solid var(--border-subtle)',
-                  color:      'white',
-                }}
-              >
-                {item.done && (
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                )}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium" style={{ color: item.done ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: item.done ? 'line-through' : undefined }}>
-                  {item.title}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{item.detail}</p>
-              </div>
-              {item.action && <div className="flex-shrink-0">{item.action}</div>}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  )
-}
-
-function GetPaidChecklist({
-  accountActive, approvedBalanceCents, minPayoutCents,
-  payoutMethodConnected, taxFormSubmitted, nextPayoutCommission,
-  onStartConnect, connectStarting,
-}: {
-  accountActive: boolean
-  approvedBalanceCents: number
-  minPayoutCents: number
-  payoutMethodConnected: boolean
-  taxFormSubmitted: boolean
-  nextPayoutCommission: { scheduledPayoutDate: string | null } | null
-  onStartConnect: () => void
-  connectStarting: boolean
-}) {
-  const t = useT()
-  const { locale } = useLocale()
-  const tz = useUserTimezone()
-  const reachedMin = approvedBalanceCents >= minPayoutCents
-  const nextPayoutDateStr = nextPayoutCommission?.scheduledPayoutDate
-    ? fmtLongDate(nextPayoutCommission.scheduledPayoutDate, locale, tz)
-    : null
-
-  const minAmount = (minPayoutCents / 100).toFixed(0)
-  const currentAmount = (approvedBalanceCents / 100).toFixed(2)
-
-  const items = [
-    {
-      done: accountActive,
-      title: t('partnerDashboard.checklist.activeTitle'),
-      detail: accountActive
-        ? t('partnerDashboard.checklist.activeDoneDetail')
-        : t('partnerDashboard.checklist.activePendingDetail'),
-      action: null as React.ReactNode | null,
-    },
-    {
-      done: payoutMethodConnected,
-      title: t('partnerDashboard.checklist.payoutTitle'),
-      detail: payoutMethodConnected
-        ? t('partnerDashboard.checklist.payoutDoneDetail')
-        : t('partnerDashboard.checklist.payoutTodoDetail'),
-      action: !payoutMethodConnected && accountActive ? (
-        <button
-          onClick={onStartConnect}
-          disabled={connectStarting}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
-          style={{ background: TEAL, color: '#fff', opacity: connectStarting ? 0.6 : 1 }}
-        >
-          {connectStarting
-            ? t('partnerDashboard.checklist.connecting')
-            : t('partnerDashboard.checklist.connectNow')}
-        </button>
-      ) : null,
-    },
-    {
-      done: taxFormSubmitted,
-      title: t('partnerDashboard.checklist.taxTitle'),
-      // Stripe Connect Express collects W-9 / W-8BEN as part of the onboarding
-      // form. Once payouts are enabled, tax info is on file too. So this item
-      // mirrors the connect status — separate line in the UI for clarity, but
-      // it flips together.
-      detail: taxFormSubmitted
-        ? t('partnerDashboard.checklist.taxDoneDetail')
-        : t('partnerDashboard.checklist.taxTodoDetail'),
-      action: null,
-    },
-    {
-      done: reachedMin,
-      title: t('partnerDashboard.checklist.minTitle', { amount: minAmount }),
-      detail: nextPayoutDateStr
-        ? t('partnerDashboard.checklist.minTodoNextPayoutDetail', { current: currentAmount, target: minAmount, date: nextPayoutDateStr })
-        : reachedMin
-          ? t('partnerDashboard.checklist.minDoneDetail')
-          : t('partnerDashboard.checklist.minTodoDetail', { current: currentAmount, target: minAmount }),
-      action: null,
-    },
-  ]
-
-  // Once ALL items are complete, the checklist hides itself (clean dashboard for active earners)
-  if (items.every(i => i.done)) return null
-
-  return (
-    <section className="mb-10">
-      <div
-        className="rounded-2xl overflow-hidden"
-        style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}
-      >
-        <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            {t('partnerDashboard.checklist.title')}
-          </h2>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-            {t('partnerDashboard.checklist.desc')}
-          </p>
-        </div>
-        <ul>
-          {items.map((item, i) => (
-            <li
-              key={item.title}
-              className="flex items-start gap-3 px-5 py-3"
-              style={{ borderTop: i > 0 ? '1px solid var(--border-subtle)' : undefined }}
-            >
-              {/* Checkmark / pending circle */}
-              <span
-                className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5"
-                style={{
-                  background: item.done ? TEAL : 'transparent',
-                  border: item.done ? 'none' : '1.5px solid var(--border-subtle)',
-                  color: 'white',
-                }}
-              >
-                {item.done && (
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                )}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-sm font-medium"
-                  style={{ color: item.done ? 'var(--text-tertiary)' : 'var(--text-primary)', textDecoration: item.done ? 'line-through' : undefined }}
-                >
-                  {item.title}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                  {item.detail}
-                </p>
-              </div>
-              {item.action && <div className="flex-shrink-0">{item.action}</div>}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  )
-}
-
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function PartnerDashboardPage() {
   const t = useT()
@@ -415,15 +176,12 @@ export default function PartnerDashboardPage() {
   const [firstName, setFirstName]   = useState<string>('')
   const [loading, setLoading]       = useState(true)
   const [applying, setApplying]     = useState(false)
-  const [connect, setConnect]       = useState<{ payoutsEnabled: boolean; detailsSubmitted: boolean } | null>(null)
-  const [connectStarting, setConnectStarting] = useState(false)
   // Partner public-page state — slug + partnerPageActive drive the Share-your-
   // booking-page card. Loaded via /api/partner/me alongside the existing fetches.
   const [partnerInfo, setPartnerInfo] = useState<{
     slug: string | null; partnerPageActive: boolean;
     displayName: string | null; bio: string | null; avatarUrl: string | null;
   } | null>(null)
-  const [googleConnected, setGoogleConnected] = useState(false)
   const [copiedBookingUrl, setCopiedBookingUrl] = useState(false)
 
   const STATUS_PILL: Record<string, { bg: string; fg: string; label: string }> = {
@@ -441,23 +199,19 @@ export default function PartnerDashboardPage() {
       const acc = await apiFetch<Account>('/api/affiliate/account').catch(() => null)
       setAccount(acc)
       if (acc) {
-        const [s, p, sett, comms, me, conn, partnerMe, googleStatus] = await Promise.all([
+        const [s, p, sett, comms, me, partnerMe] = await Promise.all([
           apiFetch<Stats>('/api/affiliate/stats').catch(() => null),
           apiFetch<PeriodStats>('/api/affiliate/stats/period?days=30').catch(() => null),
           apiFetch<Settings>('/api/public/affiliate/settings').catch(() => null),
           apiFetch<CommissionsResp>('/api/affiliate/commissions?page=1&limit=5').catch(() => ({ items: [], total: 0 })),
           apiFetch<{ user: { firstName: string | null } }>('/api/auth/me').catch(() => null),
-          apiFetch<{ payoutsEnabled: boolean; detailsSubmitted: boolean }>('/api/affiliate/connect/status').catch(() => null),
           apiFetch<{ partner: { slug: string | null; partnerPageActive: boolean; displayName: string | null; bio: string | null; avatarUrl: string | null } }>('/api/partner/me').catch(() => null),
-          apiFetch<{ status: 'CONNECTED' | 'NOT_CONNECTED' | 'ERROR' | 'PENDING' }>('/api/partner/integrations/google').catch(() => null),
         ])
         setAllTime(s)
         setPeriod(p)
         setSettings(sett)
         setRecent(comms?.items ?? [])
         setFirstName(me?.user?.firstName ?? '')
-        setConnect(conn)
-        setGoogleConnected(googleStatus?.status === 'CONNECTED')
         if (partnerMe?.partner) {
           setPartnerInfo({
             slug:              partnerMe.partner.slug,
@@ -470,27 +224,6 @@ export default function PartnerDashboardPage() {
       }
     } finally {
       setLoading(false)
-    }
-  }
-
-  /** Kick off Stripe Connect Express onboarding — gets a one-shot URL and
-   *  redirects the browser. Stripe sends them back to /partner-portal/payouts
-   *  on completion (or refresh URL if they bail mid-onboarding). */
-  async function startConnectOnboarding() {
-    setConnectStarting(true)
-    try {
-      const origin = window.location.origin
-      const result = await apiFetch<{ url: string }>('/api/affiliate/connect/onboard', {
-        method: 'POST',
-        body: JSON.stringify({
-          returnUrl:  `${origin}/partner-portal/payouts?stripe=return`,
-          refreshUrl: `${origin}/partner-portal/dashboard?stripe=refresh`,
-        }),
-      })
-      window.location.href = result.url
-    } catch (e) {
-      alert((e as Error).message ?? 'Could not start payout setup')
-      setConnectStarting(false)
     }
   }
 
@@ -579,35 +312,17 @@ export default function PartnerDashboardPage() {
         </div>
       )}
 
-      {/* Setup checklist (Phase E.14) — appears for brand-new partners and
-          hides itself once profile + avatar + Google + page are all set up.
-          Sits above the payout checklist so partners do the "make your pages
-          actually work" stuff before chasing money. */}
-      {partnerInfo && (
-        <SetupChecklist
-          hasDisplayName={!!(partnerInfo.displayName && partnerInfo.displayName.trim())}
-          hasBio={!!(partnerInfo.bio && partnerInfo.bio.trim())}
-          hasAvatar={!!partnerInfo.avatarUrl}
-          googleConnected={googleConnected}
-          pageActive={partnerInfo.partnerPageActive}
-        />
-      )}
+      {/* Phase G.4 — onboarding wizard banner. Auto-hides once setup done. */}
+      <div className="mb-8">
+        <PartnerOnboardingBanner />
+      </div>
 
-      {/* Get-paid checklist — visible until ALL items are complete, then auto-hides.
-          Each item shows the partner exactly what's needed to receive a payout. */}
-      <GetPaidChecklist
-        accountActive={account.status === 'ACTIVE'}
-        approvedBalanceCents={allTime?.approvedCents ?? 0}
-        minPayoutCents={5000}
-        // Stripe Connect Express onboarding handles payouts AND tax forms in
-        // one flow. Both checklist items flip true once Stripe says
-        // payoutsEnabled.
-        payoutMethodConnected={!!connect?.payoutsEnabled}
-        taxFormSubmitted={!!connect?.detailsSubmitted}
-        nextPayoutCommission={recent.find(c => c.status !== 'PAID' && c.status !== 'REVERSED' && c.scheduledPayoutDate) ?? null}
-        onStartConnect={startConnectOnboarding}
-        connectStarting={connectStarting}
-      />
+      {/* Phase G.4 — the SetupChecklist + GetPaidChecklist that used to sit
+          here have been retired. The unified onboarding wizard
+          (PartnerOnboardingBanner above + /partner-portal/getting-started)
+          replaces both: it covers profile, page activation, payouts,
+          calendar, booking, and referral-link setup in one auto-detecting
+          flow that hides itself on completion. */}
 
       {/* Your public booking page — shown when the partner has a slug AND
           partnerPageActive=true. When inactive, surfaces a CTA to Profile. */}
@@ -769,7 +484,7 @@ export default function PartnerDashboardPage() {
             {t('partnerDashboard.noCommissions')}
           </div>
         ) : (
-          <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+          <div className="rounded-xl overflow-x-auto" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>

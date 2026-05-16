@@ -182,7 +182,7 @@ export default function ContactsPage() {
           </p>
 
           {csvRows.length > 0 && (
-            <div className="rounded-lg overflow-hidden max-h-48 overflow-y-auto" style={{ border: '1px solid var(--border-subtle)' }}>
+            <div className="rounded-lg max-h-48 overflow-auto" style={{ border: '1px solid var(--border-subtle)' }}>
               <table className="w-full text-xs">
                 <thead>
                   <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -292,7 +292,7 @@ export default function ContactsPage() {
       )}
 
       {contacts.length > 0 && (
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+        <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>

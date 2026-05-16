@@ -37,23 +37,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const h = await headers()
   const initialLocale = detectLocaleFromAcceptLanguage(h.get('accept-language'))
 
-  // Inline pre-hydration theme bootstrap. Runs before React mounts so the
-  // theme class is correct on the first paint — no dark→light flash for users
-  // whose OS is in light mode or who have a stored 'light' preference.
-  // Precedence here mirrors ThemeProvider exactly:
-  //   localStorage va_theme → prefers-color-scheme → 'dark' fallback.
+  // Light mode is enforced site-wide (Phase G.5) — dark mode retired. This
+  // inline script just guarantees the `light` class is on <html> before the
+  // first paint. No localStorage read, no OS-preference check, no dark path.
   const themeBootstrap = `
     (function() {
       try {
-        var stored = localStorage.getItem('va_theme');
-        var t = (stored === 'light' || stored === 'dark')
-          ? stored
-          : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-        document.documentElement.classList.remove('dark', 'light');
-        document.documentElement.classList.add(t);
-      } catch (e) {
-        document.documentElement.classList.add('dark');
-      }
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      } catch (e) {}
     })();
   `
 

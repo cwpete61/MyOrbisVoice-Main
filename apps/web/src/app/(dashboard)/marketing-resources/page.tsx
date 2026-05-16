@@ -137,7 +137,7 @@ export default function MarketingResourcesPage() {
         title={t('marketingResources.headlines.title')}
         description={t('marketingResources.headlines.description')}
       >
-        <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+        <div className="rounded-lg overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--surface-raised)' }}>

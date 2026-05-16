@@ -178,6 +178,55 @@ export async function getPartnerPaymentMethodStatus(
 }
 
 /**
+ * Resolve the card to charge for a partner, and make it chargeable.
+ *
+ * The "Add card" flow uses Stripe Checkout in setup mode, which ATTACHES a
+ * payment method to the Customer but does NOT promote it to the Customer's
+ * `invoice_settings.default_payment_method`. A Subscription created without
+ * an explicit payment method bills the default — so an attached-but-not-default
+ * card fails with "this customer has no attached payment source or default
+ * payment method" even though the partner clearly added a card.
+ *
+ * This helper closes that gap: it finds the usable card (existing default, or
+ * the most-recently-attached card), promotes it to the Customer default if it
+ * isn't already (so renewals work too), and returns the id so the caller can
+ * also pin it directly on `subscriptions.create`.
+ *
+ * Returns null when the Customer genuinely has no card attached.
+ */
+export async function resolvePartnerDefaultPaymentMethod(
+  partnerId: string,
+): Promise<{ paymentMethodId: string; stripeCustomerId: string } | null> {
+  const stripe = getStripe()
+  const { stripeCustomerId } = await ensurePartnerStripeCustomer(partnerId)
+
+  const customer = await stripe.customers.retrieve(stripeCustomerId)
+  if (customer.deleted) return null
+
+  // Already have a default? Use it.
+  const defaultPmRaw = customer.invoice_settings?.default_payment_method as
+    | string | { id: string } | null | undefined
+  let pmId: string | null = defaultPmRaw
+    ? (typeof defaultPmRaw === 'string' ? defaultPmRaw : defaultPmRaw.id)
+    : null
+
+  // No default — fall back to the most-recently-attached card and promote it.
+  if (!pmId) {
+    const list = await stripe.paymentMethods.list({ customer: stripeCustomerId, type: 'card', limit: 1 })
+    pmId = list.data[0]?.id ?? null
+    if (pmId) {
+      // Promote to default so this AND future renewal invoices have a PM.
+      await stripe.customers.update(stripeCustomerId, {
+        invoice_settings: { default_payment_method: pmId },
+      })
+    }
+  }
+
+  if (!pmId) return null
+  return { paymentMethodId: pmId, stripeCustomerId }
+}
+
+/**
  * Create a monthly Subscription for a partner-owned phone number. Fired by
  * the admin approval flow once the Twilio purchase + subaccount move are
  * complete. If this throws, the caller MUST rollback the Twilio purchase to
@@ -187,6 +236,10 @@ export async function getPartnerPaymentMethodStatus(
  * payment immediately. Failed card → throws here, caller rolls back. This is
  * the safest mode for our use case (no "subscription exists but isn't paying"
  * states to clean up later).
+ *
+ * The payment method is resolved + pinned explicitly (see
+ * resolvePartnerDefaultPaymentMethod) so an attached-but-not-default card
+ * still charges — the bug that rejected Richard Edkins's 2026-05-15 attempts.
  */
 export async function createPartnerNumberSubscription(
   partnerId: string,
@@ -194,21 +247,22 @@ export async function createPartnerNumberSubscription(
   tier: PartnerNumberTier,
 ): Promise<{ subscriptionId: string }> {
   const stripe = getStripe()
-  const { stripeCustomerId } = await ensurePartnerStripeCustomer(partnerId)
   const { priceId } = await ensurePartnerNumberPriceForTier(tier)
 
-  // Verify customer has a usable default payment method — else Stripe will
-  // throw a confusing "no default payment method" error.
-  const cardStatus = await getPartnerPaymentMethodStatus(partnerId)
-  if (!cardStatus.hasCard) {
+  // Resolve the card, promote it to customer default, get its id to pin.
+  const pm = await resolvePartnerDefaultPaymentMethod(partnerId)
+  if (!pm) {
     throw new AppError('FAILED_PRECONDITION', 'Partner has no card on file. Ask partner to add a card before approving.', 412)
   }
 
   const subscription = await stripe.subscriptions.create(
     {
-      customer: stripeCustomerId,
-      items:    [{ price: priceId }],
-      payment_behavior: 'error_if_incomplete',
+      customer:               pm.stripeCustomerId,
+      items:                  [{ price: priceId }],
+      // Pin the resolved card explicitly — never rely solely on the customer
+      // default being set (setup-mode Checkout doesn't reliably set it).
+      default_payment_method: pm.paymentMethodId,
+      payment_behavior:       'error_if_incomplete',
       metadata: {
         partnerId,
         phoneNumberId,
@@ -223,15 +277,52 @@ export async function createPartnerNumberSubscription(
 }
 
 /**
- * End-to-end provisioning for a partner number request. Encapsulates the
- * 3-step atomic flow:
- *   1. Buy the number on the master Twilio account
- *   2. Move it to the partner's subaccount
- *   3. Create a Stripe Subscription (first charge runs immediately)
+ * Roll back a partner number subscription: refund its first paid invoice +
+ * cancel the subscription. Used when a Twilio step fails AFTER the Stripe
+ * charge already cleared, so the partner is made whole. Best-effort — logs
+ * but never throws, so the caller's rollback can finish.
+ */
+async function refundAndCancelSubscription(subscriptionId: string): Promise<void> {
+  const stripe = getStripe()
+  try {
+    const sub = await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ['latest_invoice.payment_intent'],
+    })
+    const inv = sub.latest_invoice
+    if (inv && typeof inv === 'object') {
+      const pi = (inv as { payment_intent?: string | { id: string } | null }).payment_intent
+      const piId = typeof pi === 'string' ? pi : pi?.id
+      if (piId) await stripe.refunds.create({ payment_intent: piId })
+    }
+  } catch (err) {
+    console.error(`[refundAndCancelSubscription] refund failed for ${subscriptionId}: ${(err as Error).message}`)
+  }
+  try {
+    await stripe.subscriptions.cancel(subscriptionId)
+  } catch (err) {
+    if ((err as { code?: string }).code !== 'resource_missing') {
+      console.error(`[refundAndCancelSubscription] cancel failed for ${subscriptionId}: ${(err as Error).message}`)
+    }
+  }
+}
+
+/**
+ * End-to-end provisioning for a partner number request.
  *
- * If any step fails, earlier steps are rolled back so we never leave the
- * partner with a Twilio number they aren't paying for (or a subscription
- * pointing at a number that doesn't exist). Returns the updated row.
+ * ── PAYMENT-FIRST ordering (Phase G.2.4) ──────────────────────────────────
+ * The card is charged BEFORE any money is spent at Twilio:
+ *   1. Create the Stripe Subscription — first month charged immediately.
+ *      Card fails here → $0 Twilio cost, nothing to roll back.
+ *   2. Buy the number on the master Twilio account.
+ *   3. Move it to the partner's subaccount.
+ * If step 2 or 3 fails, the Stripe charge from step 1 is refunded + the
+ * subscription canceled, so a Twilio-side failure never leaves the partner
+ * charged for nothing.
+ *
+ * Why this order: card failures are common; Twilio failures are rare. Buying
+ * the Twilio number first meant every failed card still cost a real,
+ * non-refundable Twilio number fee on the platform's account. Charging first
+ * makes a failed card cost exactly $0.
  *
  * Called from:
  *   - Partner self-service request route (auto-approve flow, current default)
@@ -267,10 +358,34 @@ export async function provisionPartnerNumber(args: {
     )
   }
 
+  // ── Step 1 — CHARGE FIRST ───────────────────────────────────────────────
+  // Create the Stripe Subscription (first month charged immediately). If the
+  // card fails this throws here — and we have NOT touched Twilio, so the
+  // failure costs the platform exactly $0. No rollback needed.
+  let subscriptionId: string
+  try {
+    const result = await createPartnerNumberSubscription(row.partnerId, row.id, row.partnerCapabilityTier)
+    subscriptionId = result.subscriptionId
+  } catch (e) {
+    const msg = (e as Error).message
+    await prisma.phoneNumber.update({
+      where: { id: row.id },
+      data:  {
+        purchaseStatus:   'REJECTED',
+        rejectionReason:  `Card charge failed: ${msg.length > 180 ? msg.slice(0, 180) : msg}`,
+        approvedAt:       new Date(),
+        approvedByUserId: args.actorUserId,
+      },
+    })
+    throw new AppError('PAYMENT_REQUIRED', `Card charge failed: ${msg}`, 402)
+  }
+
+  // ── Step 2 — buy the number on master Twilio ────────────────────────────
+  // Card is now paid. Provision the subaccount + buy the number. If this
+  // fails, refund + cancel the subscription from step 1.
   const sub = await ensurePartnerSubaccount(row.partnerId)
   const masterClient = await getPlatformTwilioClient()
 
-  // Step 1 — buy on master.
   let purchased
   try {
     purchased = await masterClient.incomingPhoneNumbers.create({
@@ -278,6 +393,8 @@ export async function provisionPartnerNumber(args: {
       friendlyName: row.displayLabel ?? `Partner ${row.partnerId.slice(0, 8)} — ${row.e164Number}`,
     })
   } catch (e) {
+    // Twilio buy failed — undo the charge.
+    await refundAndCancelSubscription(subscriptionId)
     const msg = (e as Error).message
     await prisma.phoneNumber.update({
       where: { id: row.id },
@@ -291,39 +408,50 @@ export async function provisionPartnerNumber(args: {
     const isAvail = msg.includes('21422') || msg.includes('not available')
     throw new AppError(
       isAvail ? 'NOT_FOUND' : 'INTERNAL_ERROR',
-      isAvail ? 'Number no longer available on Twilio. Re-search and pick another.' : `Twilio purchase failed: ${msg}`,
+      isAvail
+        ? 'Number no longer available on Twilio. Your card was not charged — re-search and pick another.'
+        : `Twilio purchase failed: ${msg}`,
       isAvail ? 404 : 500,
     )
   }
 
-  // Step 2 — move to partner subaccount.
+  // ── Step 3 — move to partner subaccount ─────────────────────────────────
   try {
     await masterClient.incomingPhoneNumbers(purchased.sid).update({ accountSid: sub.subaccountSid })
   } catch (e) {
+    // Release the just-bought number + undo the charge.
     try { await masterClient.incomingPhoneNumbers(purchased.sid).remove() } catch {}
-    throw new AppError('INTERNAL_ERROR', `Failed to move number to partner subaccount: ${(e as Error).message}`, 500)
-  }
-
-  // Step 3 — Stripe Subscription. payment_behavior='error_if_incomplete' so we
-  // know the first charge cleared before we mark PURCHASED. On failure we
-  // release the Twilio number to keep state atomic.
-  let subscriptionId: string
-  try {
-    const result = await createPartnerNumberSubscription(row.partnerId, row.id, row.partnerCapabilityTier)
-    subscriptionId = result.subscriptionId
-  } catch (e) {
-    try { await masterClient.incomingPhoneNumbers(purchased.sid).remove() } catch {}
-    const msg = (e as Error).message
+    await refundAndCancelSubscription(subscriptionId)
     await prisma.phoneNumber.update({
       where: { id: row.id },
       data:  {
         purchaseStatus:   'REJECTED',
-        rejectionReason:  `Card charge failed: ${msg.length > 180 ? msg.slice(0, 180) : msg}`,
+        rejectionReason:  `Subaccount move failed: ${(e as Error).message}`.slice(0, 200),
         approvedAt:       new Date(),
         approvedByUserId: args.actorUserId,
       },
     })
-    throw new AppError('PAYMENT_REQUIRED', `Card charge failed: ${msg}`, 402)
+    throw new AppError('INTERNAL_ERROR', `Failed to move number to partner subaccount: ${(e as Error).message}`, 500)
+  }
+
+  // ── Step 3b — wire webhooks on the number ───────────────────────────────
+  // Inbound calls route to our voice handler + status callbacks feed the
+  // Phase G.3 voice-usage meter. Non-fatal — a webhook miss doesn't justify
+  // a rollback; it can be re-applied later.
+  try {
+    const { getPartnerSubaccountClient } = await import('./twilio-subaccount.service.js')
+    const subClient = await getPartnerSubaccountClient(row.partnerId)
+    const apiBase   = process.env['API_BASE_URL'] ?? 'https://api.myorbisvoice.com'
+    await subClient.incomingPhoneNumbers(purchased.sid).update({
+      voiceUrl:             `${apiBase}/api/webhooks/twilio/voice`,
+      voiceMethod:          'POST',
+      statusCallback:       `${apiBase}/api/webhooks/twilio/status`,
+      statusCallbackMethod: 'POST',
+      smsUrl:               `${apiBase}/api/webhooks/twilio/sms`,
+      smsMethod:            'POST',
+    })
+  } catch (e) {
+    console.error(`[provisionPartnerNumber] webhook config failed for ${purchased.sid}: ${(e as Error).message}`)
   }
 
   const updated = await prisma.phoneNumber.update({

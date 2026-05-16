@@ -62,6 +62,7 @@
   },
   "partnerNav": {
     "dashboard": "Dashboard",
+    "gettingStarted": "Getting Started",
     "mailbox": "Mailbox",
     "calendar": "Calendar",
     "conversations": "Conversations",
@@ -184,6 +185,16 @@
       "tollfreeLabel":  "Toll-free number (voice + SMS-ready)",
       "note":           "Stripe auto-charges your card on file each month. Cancel anytime — the number is released when the current period ends. SMS sending is separate (credit packs below)."
     },
+    "voiceDisclosure": {
+      "title":  "Voice minutes are billed separately.",
+      "body":   "On top of the flat monthly rental: $0.02/min on local numbers (inbound + outbound), $0.03/min on toll-free. Minutes used are totaled and charged at the end of each 30-day billing cycle."
+    },
+    "voiceUsage": {
+      "heading":      "Voice Usage — This Cycle",
+      "subtitle":     "Local ${local}/min · toll-free ${tollfree}/min. Billed post-paid.",
+      "cycleSummary": "{minutes} min · {calls} calls",
+      "billedNote":   "This amount is added to your next monthly number invoice — charged at the end of the 30-day cycle."
+    },
     "whatsapp": {
       "heading":     "WhatsApp messages",
       "subtitle":    "Send / receive WhatsApp from your partner numbers. Coming soon — pricing not finalized.",
@@ -289,6 +300,71 @@
     "addNote":            "Add note",
     "savingNote":         "Saving…",
     "notesEmpty":         "No notes yet — add the first one."
+  },
+  "partnerOnboarding": {
+    "title":           "Getting Started",
+    "subtitle":        "{done} of {total} steps done — finish setup to start earning.",
+    "allSetTitle":     "You're all set up",
+    "allSetSubtitle":  "Every setup step is complete. Time to share your links and convert.",
+    "progress":        "Setup progress",
+    "refresh":         "Refresh",
+    "optional":        "Optional",
+    "completePill":    "Complete",
+    "configure":       "Set this up",
+    "edit":            "Review",
+    "complete": {
+      "title": "Setup complete — nice work.",
+      "body":  "Your portal is fully configured. Keep an eye on Conversations and your CRM as referrals come in."
+    },
+    "banner": {
+      "title": "Finish setting up your partner account",
+      "body":  "{remaining} of {total} steps left — {done} already done. Pick up where you left off.",
+      "cta":   "Continue setup →"
+    },
+    "steps": {
+      "profile": {
+        "title":       "Complete your profile",
+        "description": "Add your photo, business name, and bio. This is what prospects see on every landing page and email."
+      },
+      "page": {
+        "title":       "Activate your partner page",
+        "description": "Flip on your personalized landing pages so prospects see your version, not the demo."
+      },
+      "payouts": {
+        "title":       "Connect payouts",
+        "description": "Link Stripe Connect so your commissions can be deposited. Handles your tax form in the same flow."
+      },
+      "calendar": {
+        "title":       "Connect Google Calendar",
+        "description": "Let bookings land on your real calendar — required before prospects can book a call with you."
+      },
+      "booking": {
+        "title":       "Set your booking preferences",
+        "description": "Working hours, lunch break, and slot length. Controls what times prospects can book."
+      },
+      "share": {
+        "title":       "Create your first referral link",
+        "description": "Build a tracked link you can drop into emails, posts, and DMs to start bringing in prospects."
+      },
+      "number": {
+        "title":       "Get a phone number",
+        "description": "Optional — buy a dedicated number so inbound calls route to your agent."
+      }
+    }
+  },
+  "partnerBackToOnboarding": {
+    "message":    "Setting up your account? Finish this step, then head back to continue.",
+    "action":     "Back to Getting Started",
+    "actionMark": "Mark done & continue",
+    "marking":    "Saving…"
+  },
+  "partnerWizardToggle": {
+    "title":       "Show setup wizard",
+    "description": "The Getting Started wizard hides itself once setup is complete. Turn this on to bring it back."
+  },
+  "tenantWizardToggle": {
+    "title":       "Show setup wizard",
+    "description": "The Get Started wizard hides itself once setup is complete. Turn this on to bring it back."
   },
   "partnerHelp": {
     "title":             "Partner Help",

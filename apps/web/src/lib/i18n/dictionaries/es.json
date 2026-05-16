@@ -62,6 +62,7 @@
   },
   "partnerNav": {
     "dashboard": "Panel",
+    "gettingStarted": "Primeros pasos",
     "mailbox": "Buzón",
     "calendar": "Calendario",
     "conversations": "Conversaciones",
@@ -184,6 +185,16 @@
       "tollfreeLabel":  "Número gratuito (voz + SMS listo)",
       "note":           "Stripe carga automáticamente tu tarjeta en archivo cada mes. Cancela cuando quieras — el número se libera al final del período actual. El envío de SMS es aparte (paquetes de créditos abajo)."
     },
+    "voiceDisclosure": {
+      "title":  "Los minutos de voz se facturan por separado.",
+      "body":   "Además de la renta mensual fija: $0.02/min en números locales (entrantes + salientes), $0.03/min en números gratuitos. Los minutos usados se suman y se cobran al final de cada ciclo de facturación de 30 días."
+    },
+    "voiceUsage": {
+      "heading":      "Uso de voz — este ciclo",
+      "subtitle":     "Local ${local}/min · gratuito ${tollfree}/min. Facturación pospago.",
+      "cycleSummary": "{minutes} min · {calls} llamadas",
+      "billedNote":   "Este monto se agrega a tu próxima factura mensual del número — se cobra al final del ciclo de 30 días."
+    },
     "whatsapp": {
       "heading":     "Mensajes de WhatsApp",
       "subtitle":    "Envía y recibe WhatsApp desde tus números de partner. Próximamente — precio aún por confirmar.",
@@ -289,6 +300,71 @@
     "addNote":            "Agregar nota",
     "savingNote":         "Guardando…",
     "notesEmpty":         "Aún no hay notas — agrega la primera."
+  },
+  "partnerOnboarding": {
+    "title":           "Primeros pasos",
+    "subtitle":        "{done} de {total} pasos completados — termina la configuración para empezar a ganar.",
+    "allSetTitle":     "Todo listo",
+    "allSetSubtitle":  "Cada paso de configuración está completo. Es hora de compartir tus enlaces y convertir.",
+    "progress":        "Progreso de configuración",
+    "refresh":         "Actualizar",
+    "optional":        "Opcional",
+    "completePill":    "Completado",
+    "configure":       "Configurar esto",
+    "edit":            "Revisar",
+    "complete": {
+      "title": "Configuración completa — buen trabajo.",
+      "body":  "Tu portal está totalmente configurado. Vigila Conversaciones y tu CRM a medida que lleguen referidos."
+    },
+    "banner": {
+      "title": "Termina de configurar tu cuenta de partner",
+      "body":  "Quedan {remaining} de {total} pasos — {done} ya completados. Continúa donde lo dejaste.",
+      "cta":   "Continuar configuración →"
+    },
+    "steps": {
+      "profile": {
+        "title":       "Completa tu perfil",
+        "description": "Agrega tu foto, nombre del negocio y biografía. Esto es lo que ven los prospectos en cada página de aterrizaje y correo."
+      },
+      "page": {
+        "title":       "Activa tu página de partner",
+        "description": "Activa tus páginas de aterrizaje personalizadas para que los prospectos vean tu versión, no la demo."
+      },
+      "payouts": {
+        "title":       "Conecta los pagos",
+        "description": "Vincula Stripe Connect para que tus comisiones se depositen. Gestiona tu formulario fiscal en el mismo flujo."
+      },
+      "calendar": {
+        "title":       "Conecta Google Calendar",
+        "description": "Permite que las reservas lleguen a tu calendario real — necesario antes de que los prospectos puedan agendar una llamada contigo."
+      },
+      "booking": {
+        "title":       "Configura tus preferencias de reserva",
+        "description": "Horario de trabajo, descanso de almuerzo y duración de cita. Controla qué horarios pueden reservar los prospectos."
+      },
+      "share": {
+        "title":       "Crea tu primer enlace de referido",
+        "description": "Crea un enlace rastreable que puedes poner en correos, publicaciones y mensajes para empezar a atraer prospectos."
+      },
+      "number": {
+        "title":       "Obtén un número de teléfono",
+        "description": "Opcional — compra un número dedicado para que las llamadas entrantes lleguen a tu agente."
+      }
+    }
+  },
+  "partnerBackToOnboarding": {
+    "message":    "¿Configurando tu cuenta? Termina este paso y vuelve para continuar.",
+    "action":     "Volver a Primeros pasos",
+    "actionMark": "Marcar listo y continuar",
+    "marking":    "Guardando…"
+  },
+  "partnerWizardToggle": {
+    "title":       "Mostrar asistente de configuración",
+    "description": "El asistente de Primeros pasos se oculta cuando la configuración está completa. Actívalo para volver a mostrarlo."
+  },
+  "tenantWizardToggle": {
+    "title":       "Mostrar asistente de configuración",
+    "description": "El asistente de configuración se oculta cuando la configuración está completa. Actívalo para volver a mostrarlo."
   },
   "partnerHelp": {
     "title":             "Ayuda para Partners",

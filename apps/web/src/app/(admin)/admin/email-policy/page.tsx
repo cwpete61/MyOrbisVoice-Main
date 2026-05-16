@@ -139,7 +139,7 @@ export default function EmailPolicyPage() {
         )}
 
         {suppression && suppression.items.length > 0 && (
-          <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+          <div className="rounded-lg overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
             <table className="w-full text-xs">
               <thead>
                 <tr style={{ background: 'var(--surface-overlay)' }}>

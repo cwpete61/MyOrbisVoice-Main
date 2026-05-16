@@ -85,6 +85,7 @@ router.get('/partner/me', requirePartnerAccount, async (req: Request, res: Respo
           emailSignature:        partner.emailSignature,
           calendarId:            partner.calendarId,
           forwardPlatformEmails: partner.forwardPlatformEmails,
+          notifyAppointmentsEnabled: partner.notifyAppointmentsEnabled,
           aggressionTier:        partner.aggressionTier,
           partnerEmail:          partner.slug ? `${partner.slug}@myorbisresults.com` : null,
           partnerStreet:         partner.partnerStreet,
@@ -112,6 +113,7 @@ const profileUpdateSchema = z.object({
   emailSignature:        z.string().max(4000).optional().nullable(),
   calendarId:            z.string().max(200).optional().nullable(),
   forwardPlatformEmails: z.boolean().optional(),
+  notifyAppointmentsEnabled: z.boolean().optional(),
   aggressionTier:        z.enum(['conservative', 'balanced', 'direct', 'aggressive']).optional(),
   // Phase F.5 — partner public mailing address. Lenient max-lengths leave
   // room for international addresses; CAN-SPAM only requires the address be
@@ -370,6 +372,51 @@ router.post('/partner/sms-credits/purchase-session', requirePartnerAccount, asyn
     const { createSmsPackCheckoutSession } = await import('../services/partner-sms-credits.service.js')
     const { url } = await createSmsPackCheckoutSession(partnerId, body.packId, { returnUrl, cancelUrl })
     res.json({ data: { url } })
+  } catch (err) { next(err) }
+})
+
+// Phase G.3 — voice-minute usage summary (post-paid, billed at 30-day cycle).
+router.get('/partner/voice-usage', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const { getPartnerVoiceUsageSummary, VOICE_RATE_CENTS_PER_MIN } =
+      await import('../services/partner-voice-usage.service.js')
+    const summary = await getPartnerVoiceUsageSummary(partnerId)
+    res.json({ data: { ...summary, rateCents: VOICE_RATE_CENTS_PER_MIN } })
+  } catch (err) { next(err) }
+})
+
+// Phase G.4 — partner onboarding wizard.
+router.get('/partner/onboarding/status', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const { getPartnerOnboardingStatus } = await import('../services/partner-onboarding.service.js')
+    res.json({ data: await getPartnerOnboardingStatus(partnerId) })
+  } catch (err) { next(err) }
+})
+
+router.post('/partner/onboarding/mark-step-done', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const stepKey = (req.body ?? {}).stepKey as string | undefined
+    const valid = ['profile', 'page', 'payouts', 'calendar', 'booking', 'share', 'number']
+    if (!stepKey || !valid.includes(stepKey)) {
+      throw new AppError('VALIDATION_ERROR', `stepKey must be one of: ${valid.join(', ')}`, 422)
+    }
+    const { markPartnerOnboardingStep } = await import('../services/partner-onboarding.service.js')
+    const markedDone = await markPartnerOnboardingStep(partnerId, stepKey as never)
+    res.json({ data: { ok: true, markedDone } })
+  } catch (err) { next(err) }
+})
+
+// Toggle the "re-show wizard after completion" override.
+router.post('/partner/onboarding/show-wizard', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const show = (req.body ?? {}).show === true
+    const { setPartnerShowWizard } = await import('../services/partner-onboarding.service.js')
+    await setPartnerShowWizard(partnerId, show)
+    res.json({ data: { ok: true, showOnboardingWizard: show } })
   } catch (err) { next(err) }
 })
 

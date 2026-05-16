@@ -574,7 +574,7 @@ function CampaignDetail({
             </div>
           )}
           {attemptList.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="bg-gray-50">
                   <tr>
@@ -674,7 +674,7 @@ function CampaignDetail({
 
           {/* Completed call list */}
           {attemptList.filter(a => a.status === 'COMPLETED').length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
               <div className="px-5 py-3 border-b border-gray-100">
                 <p className="text-sm font-semibold text-gray-900">{t('tenantOutbound.results.answeredCalls')}</p>
               </div>

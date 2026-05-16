@@ -106,7 +106,7 @@ export default function PartnerCampaignsListPage() {
       )}
 
       {data && data.items.length > 0 && (
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+        <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--surface-overlay)' }}>

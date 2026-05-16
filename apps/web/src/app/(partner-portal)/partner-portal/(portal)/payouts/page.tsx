@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
+import { PartnerBackToOnboarding } from '@/components/PartnerBackToOnboarding'
 
 // AffiliateAccount shape — see services/affiliate.service.ts:getAffiliateAccount
 type Account = {
@@ -153,6 +154,7 @@ export default function PayoutsPage() {
 
   return (
     <div>
+      <PartnerBackToOnboarding />
       <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('partnerPayouts.title')}</h1>
       <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>{t('partnerPayouts.subtitle')}</p>
 
@@ -220,7 +222,7 @@ export default function PayoutsPage() {
       {requests.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('partnerPayouts.noRequests')}</p>
       ) : (
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+        <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>

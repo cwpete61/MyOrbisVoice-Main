@@ -6,6 +6,8 @@ import { useT } from '@/lib/i18n/I18nProvider'
 import { AggressionTierSelector, type AggressionTier } from '@/components/AggressionTierSelector'
 import { TimezoneSelect } from '@/components/TimezoneSelect'
 import { getBrowserTimezone } from '@/lib/timezone'
+import { PartnerBackToOnboarding } from '@/components/PartnerBackToOnboarding'
+import { PartnerWizardToggle } from '@/components/PartnerWizardToggle'
 
 // Combined User + Partner shape returned by GET /api/partner/me
 type Me = {
@@ -580,6 +582,7 @@ export default function AffiliateProfilePage() {
 
   return (
     <div className="max-w-2xl">
+      <PartnerBackToOnboarding />
       <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('partnerProfile.title')}</h1>
       <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>{t('partnerProfile.subtitle')}</p>
 
@@ -1315,6 +1318,11 @@ export default function AffiliateProfilePage() {
         </div>
         <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>{t('partnerProfile.aggressionTier.description')}</p>
         <AggressionTierSelector value={tier} onChange={saveTier} saving={tierSaving} />
+      </div>
+
+      {/* ── Phase G.4 — re-show the onboarding wizard ───────────────────────── */}
+      <div className="mt-6">
+        <PartnerWizardToggle />
       </div>
     </div>
   )

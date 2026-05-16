@@ -1,52 +1,33 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect } from 'react'
 
-type Theme = 'light' | 'dark'
+/**
+ * Phase G.5 — light mode is enforced site-wide. Dark mode has been retired.
+ *
+ * This provider is kept (rather than deleted) so existing `useTheme()` callers
+ * don't break, but it is now a fixed light-only shim: theme is always 'light'
+ * and toggle is a no-op. The `light` class is applied on <html> by the inline
+ * bootstrap in app/layout.tsx; this effect just re-asserts it + clears any
+ * stale `dark` class / stored preference from before the cutover.
+ */
+type Theme = 'light'
 
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
-  theme: 'dark',
+  theme: 'light',
   toggle: () => {},
 })
 
-function applyTheme(t: Theme) {
-  const html = document.documentElement
-  // Apply both class names — CSS uses .dark and .light selectors
-  html.classList.remove('dark', 'light')
-  html.classList.add(t)
-  localStorage.setItem('va_theme', t)
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark')
-
   useEffect(() => {
-    const stored = localStorage.getItem('va_theme') as Theme | null
-    // Precedence: explicit user choice (localStorage) → OS preference
-    // (prefers-color-scheme) → 'dark' fallback. Honoring the OS preference on
-    // first visit means a Mac user in light mode sees a light UI by default
-    // instead of being slammed with a dark surface they didn't ask for.
-    let initial: Theme
-    if (stored === 'light' || stored === 'dark') {
-      initial = stored
-    } else if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: light)').matches) {
-      initial = 'light'
-    } else {
-      initial = 'dark'
-    }
-    setTheme(initial)
-    applyTheme(initial)
+    const html = document.documentElement
+    html.classList.remove('dark')
+    html.classList.add('light')
+    // Clear any pre-cutover stored preference so it can't resurrect dark mode.
+    try { localStorage.removeItem('va_theme') } catch { /* ignore */ }
   }, [])
 
-  const toggle = useCallback(() => {
-    setTheme((prev) => {
-      const next: Theme = prev === 'light' ? 'dark' : 'light'
-      applyTheme(next)
-      return next
-    })
-  }, [])
-
-  return <ThemeContext.Provider value={{ theme, toggle }}>{children}</ThemeContext.Provider>
+  return <ThemeContext.Provider value={{ theme: 'light', toggle: () => {} }}>{children}</ThemeContext.Provider>
 }
 
 export function useTheme() {

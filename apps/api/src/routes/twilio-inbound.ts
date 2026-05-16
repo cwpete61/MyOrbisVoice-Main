@@ -84,12 +84,11 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
 
 // POST /api/webhooks/twilio/status — call status callbacks
 router.post('/webhooks/twilio/status', asyncHandler(async (req, res) => {
-  const { CallSid, CallStatus, CallDuration, To, From } = req.body as Record<string, string>
+  const { CallSid, CallStatus, CallDuration, To, From, Direction } = req.body as Record<string, string>
   if (CallSid) {
     await logCallEnd(CallSid, CallStatus ?? 'completed', CallDuration ? parseInt(CallDuration, 10) : undefined)
     // Resolve tenant from call log for event logging
     try {
-      const { prisma } = await import('../lib/prisma.js')
       const log = await prisma.callLog.findFirst({ where: { providerCallId: CallSid }, select: { tenantId: true } })
       if (log) {
         await logTwilioEvent({
@@ -99,6 +98,36 @@ router.post('/webhooks/twilio/status', asyncHandler(async (req, res) => {
         })
       }
     } catch { /* non-fatal */ }
+
+    // Phase G.3 — partner voice-usage meter. On a completed call involving a
+    // partner-owned number, rate the minutes + bill them post-paid. Inbound:
+    // the partner number is `To`. Outbound: the partner number is `From`.
+    if (CallStatus === 'completed' && CallDuration) {
+      try {
+        const isOutbound = (Direction ?? '').startsWith('outbound')
+        const partnerNumberE164 = isOutbound ? From : To
+        if (partnerNumberE164) {
+          const pn = await prisma.phoneNumber.findFirst({
+            where:  { e164Number: partnerNumberE164, partnerId: { not: null } },
+            select: { id: true, partnerId: true, e164Number: true, partnerCapabilityTier: true },
+          })
+          if (pn?.partnerId) {
+            const { recordVoiceUsage } = await import('../services/partner-voice-usage.service.js')
+            await recordVoiceUsage({
+              callSid:         CallSid,
+              partnerId:       pn.partnerId,
+              phoneNumberId:   pn.id,
+              e164Number:      pn.e164Number,
+              partnerTier:     pn.partnerCapabilityTier,
+              direction:       isOutbound ? 'OUTBOUND' : 'INBOUND',
+              durationSeconds: parseInt(CallDuration, 10),
+            })
+          }
+        }
+      } catch (e) {
+        console.error('[voice-usage] meter failed:', (e as Error).message)
+      }
+    }
   }
   res.sendStatus(204)
 }))

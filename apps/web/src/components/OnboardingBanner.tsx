@@ -7,14 +7,15 @@ interface Status {
   completedCount: number
   totalCount:     number
   allComplete:    boolean
+  showWizard:     boolean
 }
 
-// Renders a "finish setup — N of 5 done" banner on the dashboard if the
-// tenant hasn't completed onboarding. Returns null otherwise so the layout
-// is unaffected.
+// Renders a "finish setup — N of 5 done" banner on the dashboard while
+// onboarding is incomplete OR the tenant has manually re-enabled the wizard
+// from Settings. Returns null otherwise so the layout is unaffected.
 export function OnboardingBanner() {
   const { data, loading } = useApi<Status>('/api/onboarding/status')
-  if (loading || !data || data.allComplete) return null
+  if (loading || !data || !data.showWizard) return null
 
   const remaining = data.totalCount - data.completedCount
 

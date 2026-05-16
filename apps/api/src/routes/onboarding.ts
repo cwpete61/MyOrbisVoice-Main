@@ -52,7 +52,7 @@ router.get('/onboarding/status', asyncHandler(async (req, res) => {
     // completion overrides). Always exists for an authenticated tenant.
     prisma.tenant.findUnique({
       where:  { id: tenantId },
-      select: { onboardingMarkedDone: true },
+      select: { onboardingMarkedDone: true, showOnboardingWizard: true },
     }),
     prisma.businessProfile.findFirst({
       where:  { tenantId },
@@ -131,14 +131,32 @@ router.get('/onboarding/status', asyncHandler(async (req, res) => {
   const requiredSteps  = reachable.filter(s => !s.optional)
   const allRequiredDone = requiredSteps.every(s => s.completed)
 
+  // Phase G.4 — wizard visibility. Banner shows while incomplete OR the tenant
+  // has manually re-enabled the wizard from Settings after completing it.
+  const wizardEnabled = tenantRow?.showOnboardingWizard === true
+  const showWizard    = !allRequiredDone || wizardEnabled
+
   res.json({
     data: {
       steps,
       completedCount,
       totalCount,
       allComplete: allRequiredDone,
+      showWizard,
+      wizardEnabled,
     },
   })
+}))
+
+// Phase G.4 — toggle the "re-show wizard after completion" override.
+router.post('/onboarding/show-wizard', asyncHandler(async (req, res) => {
+  const tenantId = req.user!.currentTenantId!
+  const show = req.body?.show === true
+  await prisma.tenant.update({
+    where: { id: tenantId },
+    data:  { showOnboardingWizard: show },
+  })
+  res.json({ data: { ok: true, showOnboardingWizard: show } })
 }))
 
 // Explicit user-marked completion. Triggered by the "Save & Back to Get

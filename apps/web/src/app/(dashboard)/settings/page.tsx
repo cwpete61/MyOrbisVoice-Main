@@ -6,6 +6,7 @@ import { PushNotificationToggle } from '@/components/PushNotificationToggle'
 import { Tooltip } from '@/components/Tooltip'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { BackToOnboarding } from '@/components/BackToOnboarding'
+import { TenantWizardToggle } from '@/components/TenantWizardToggle'
 import { IndustryAutocomplete } from '@/components/IndustryAutocomplete'
 import { AggressionTierSelector } from '@/components/AggressionTierSelector'
 import { TimezoneSelect } from '@/components/TimezoneSelect'
@@ -835,6 +836,11 @@ export default function SettingsPage() {
         <div className="rounded-xl p-6" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
           <PushNotificationToggle />
         </div>
+      </section>
+
+      {/* Phase G.4 — re-show the onboarding wizard after it auto-hid. */}
+      <section>
+        <TenantWizardToggle />
       </section>
 
       <MembersSection onToast={showToast} t={t} dateLocale={dateLocale} />

@@ -148,7 +148,7 @@ export default function AdminNumberRequestsPage() {
           <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>No requests in this state.</p>
         </div>
       ) : (
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+        <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>

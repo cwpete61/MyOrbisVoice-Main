@@ -286,7 +286,7 @@ export default function AdminPhoneNumbersPage() {
             No platform-owned numbers yet. Click "Get a new number" above to search Twilio inventory and purchase one.
           </div>
         ) : (
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+          <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
             <table className="w-full text-sm">
               <thead style={{ background: 'var(--surface-raised)' }}>
                 <tr>
@@ -346,7 +346,7 @@ export default function AdminPhoneNumbersPage() {
             No numbers have been transferred to tenant subaccounts yet.
           </div>
         ) : (
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+          <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
             <table className="w-full text-sm">
               <thead style={{ background: 'var(--surface-raised)' }}>
                 <tr>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
+import { PartnerBackToOnboarding } from '@/components/PartnerBackToOnboarding'
 
 type ReferralLink = {
   url: string
@@ -166,6 +167,7 @@ export default function ReferralsPage() {
 
   return (
     <div>
+      <PartnerBackToOnboarding />
       <h1 className="text-xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('partnerReferrals.title')}</h1>
       <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>{t('partnerReferrals.subtitle')}</p>
 
@@ -299,7 +301,7 @@ export default function ReferralsPage() {
           {customLinks.length === 0 ? (
             <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('partnerReferrals.noCustomLinks')}</p>
           ) : (
-            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+            <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -375,7 +377,7 @@ export default function ReferralsPage() {
         {referrals.length === 0 ? (
           <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('partnerReferrals.noReferrals')}</p>
         ) : (
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+          <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -420,7 +422,7 @@ export default function ReferralsPage() {
       {clicks.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('partnerReferrals.noClicks')}</p>
       ) : (
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+        <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
