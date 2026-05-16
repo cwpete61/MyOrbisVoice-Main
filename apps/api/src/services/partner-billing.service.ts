@@ -16,6 +16,7 @@
 import { prisma } from '../lib/prisma.js'
 import { getStripe } from '../lib/stripe.js'
 import { getConfigValue, setConfigValue } from './system-config.service.js'
+import { ensureMasterOrbyAgent } from './agent.service.js'
 import { AppError } from '@voiceautomation/shared'
 
 export type PartnerNumberTier = 'VOICE' | 'VOICE_SMS' | 'TOLLFREE'
@@ -454,6 +455,13 @@ export async function provisionPartnerNumber(args: {
     console.error(`[provisionPartnerNumber] webhook config failed for ${purchased.sid}: ${(e as Error).message}`)
   }
 
+  // Attach the number to the platform-controlled master "Orby" agent so it
+  // answers immediately instead of ringing dead. Best-effort — if the master
+  // agent can't be resolved, the inbound webhook falls back to it anyway.
+  const orbyAgentId = await ensureMasterOrbyAgent()
+    .then((a) => a.id)
+    .catch((e) => { console.error(`[provisionPartnerNumber] master Orby agent unavailable: ${(e as Error).message}`); return null })
+
   const updated = await prisma.phoneNumber.update({
     where: { id: row.id },
     data:  {
@@ -461,6 +469,7 @@ export async function provisionPartnerNumber(args: {
       twilioNumberSid:      purchased.sid,
       twilioSubaccountSid:  sub.subaccountSid,
       stripeSubscriptionId: subscriptionId,
+      agentProfileId:       orbyAgentId,
       approvedAt:           new Date(),
       approvedByUserId:     args.actorUserId,
       isInboundEnabled:     true,

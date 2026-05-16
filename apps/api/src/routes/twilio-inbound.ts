@@ -29,12 +29,11 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
     const channel = (phone as any).tenant?.channelConfigs?.[0] ?? null
     const profile = (phone as any).tenant?.businessProfile ?? null
 
-    // Phase G.1 — partner-owned number routing. If PhoneNumber.partnerId is
-    // set, this call goes to a partner's number. Full partner agent voice
-    // runtime ships in Phase G.1.B; for this phase we log the event with
-    // partnerId attribution + answer with a placeholder so the caller hears
-    // *something* and we don't 500. Tenant numbers fall through to the
-    // existing agent path below.
+    // Partner-owned number routing. Partner numbers are answered by the
+    // platform-controlled master "Orby" agent: the PhoneNumber row already
+    // points tenantId at the platform tenant, so we log partner attribution
+    // for usage tracking, then fall through to the standard agent path
+    // below — which builds TwiML for that platform-tenant channel (Orby).
     if (phone.partnerId) {
       logTwilioEvent({
         tenantId: phone.tenantId,
@@ -47,9 +46,6 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
         // Stash partnerId in event metadata for usage attribution
         meta: { partnerId: phone.partnerId },
       } as never).catch(e => console.error('[twilio] partner logTwilioEvent failed:', e))
-      twiml = '<Response><Say voice="alice">This number is being set up. Please try again soon.</Say><Hangup/></Response>'
-      res.type('text/xml').send(twiml)
-      return
     }
 
     logCallStart({ tenantId: phone.tenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To }).catch(e => console.error('[twilio] logCallStart failed:', e))

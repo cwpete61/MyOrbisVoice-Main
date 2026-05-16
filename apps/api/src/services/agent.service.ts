@@ -26,6 +26,40 @@ const DEFAULT_AGENT_SETTINGS = {
   SECRETARY: { displayName: 'Secretary', modelProvider: 'openai', modelName: 'gpt-4o-mini' },
 }
 
+const PLATFORM_TENANT_SLUG = 'orbis-platform'
+
+/**
+ * Ensures the platform-controlled master "Orby" agent exists — the default
+ * agent that answers inbound calls to partner-acquired phone numbers. It
+ * lives on the platform tenant (orbis-platform), so its configuration is
+ * owned by the Orbis Master account, never by a partner. Idempotent.
+ */
+export async function ensureMasterOrbyAgent() {
+  const platform = await prisma.tenant.findUnique({
+    where:  { slug: PLATFORM_TENANT_SLUG },
+    select: { id: true },
+  })
+  if (!platform) {
+    throw new AppError(
+      'NOT_CONFIGURED',
+      `Platform tenant "${PLATFORM_TENANT_SLUG}" not found — cannot provision the master Orby agent`,
+      503,
+    )
+  }
+  return prisma.agentProfile.upsert({
+    where:  { tenantId_agentRoleType: { tenantId: platform.id, agentRoleType: 'ORCHESTRATOR' } },
+    create: {
+      tenantId:      platform.id,
+      agentRoleType: 'ORCHESTRATOR',
+      displayName:   'Orby',
+      isEnabled:     true,
+      modelProvider: 'openai',
+      modelName:     'gpt-4o-mini',
+    },
+    update: { isEnabled: true },
+  })
+}
+
 export async function listAgents(tenantId: string) {
   const existing = await prisma.agentProfile.findMany({
     where: { tenantId },

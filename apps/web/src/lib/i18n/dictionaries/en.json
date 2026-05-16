@@ -87,6 +87,7 @@
     "title":    "Phone Numbers",
     "subtitle": "Twilio numbers attached to your partner account. Inbound calls + SMS to these numbers route to your agent.",
     "loading":  "Loading…",
+    "answeredByOrby": "Answered by Orby — OrbisVoice default agent",
     "adminNote": "Numbers are purchased instantly when you request them — Stripe charges your card on file for the first month and your number routes inbound calls right away. Admin can disable any number for policy reasons.",
     "buyNew":     "Buy a new number",
     "hideSearch": "Hide search",

@@ -87,6 +87,7 @@
     "title":    "Números de teléfono",
     "subtitle": "Números de Twilio asignados a tu cuenta de partner. Las llamadas entrantes y los SMS a estos números se enrutan a tu agente.",
     "loading":  "Cargando…",
+    "answeredByOrby": "Atendido por Orby — agente predeterminado de OrbisVoice",
     "adminNote": "Los números se compran al instante cuando los solicitas — Stripe carga tu tarjeta en archivo por el primer mes y el número enruta llamadas entrantes de inmediato. El administrador puede deshabilitar cualquier número por motivos de política.",
     "buyNew":     "Comprar un nuevo número",
     "hideSearch": "Ocultar búsqueda",

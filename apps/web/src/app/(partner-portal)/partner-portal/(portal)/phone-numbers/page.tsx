@@ -461,6 +461,9 @@ export default function PartnerPhoneNumbersPage() {
                     <td className="px-4 py-3 font-mono text-sm" style={{ color: 'var(--text-primary)' }}>
                       {n.e164Number}
                       {n.displayLabel && <div className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{n.displayLabel}</div>}
+                      {n.purchaseStatus === 'PURCHASED' && (
+                        <div className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{t('partnerPhoneNumbers.answeredByOrby')}</div>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{n.partnerCapabilityTier ? t(`partnerPhoneNumbers.tier.${n.partnerCapabilityTier}.label`) : '—'}</td>
                     <td className="px-4 py-3">

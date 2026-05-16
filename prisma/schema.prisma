@@ -743,6 +743,7 @@ model AgentProfile {
   tenant          Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   partner         AffiliateAccount? @relation("PartnerAgentProfiles", fields: [partnerId], references: [id], onDelete: Cascade)
   promptVersion   PromptVersion?    @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
+  phoneNumbers    PhoneNumber[]
 
   @@unique([tenantId, agentRoleType])
   @@unique([partnerId, agentRoleType])
@@ -981,6 +982,11 @@ model PhoneNumber {
   // the call to the partner's agent context (not the platform tenant's).
   tenantId            String
   partnerId           String?
+  // Agent that answers inbound calls to this number. For partner-acquired
+  // numbers this is set to the platform-controlled master "Orby" agent on
+  // purchase; the partner can later re-point it (overridable default).
+  // Null = fall back to the default scope resolution at the webhook layer.
+  agentProfileId      String?
   twilioNumberSid     String?
   twilioSubaccountSid String? // null = on master account; populated once subaccount exists
   // No longer @unique — multiple PENDING/REJECTED requests for the same
@@ -1022,6 +1028,7 @@ model PhoneNumber {
 
   tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   partner             AffiliateAccount? @relation("PartnerPhoneNumbers", fields: [partnerId], references: [id], onDelete: Cascade)
+  agentProfile        AgentProfile?     @relation(fields: [agentProfileId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([partnerId])
