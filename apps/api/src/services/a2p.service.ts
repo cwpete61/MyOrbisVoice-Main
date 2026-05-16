@@ -633,9 +633,33 @@ async function runStandardSubmission(client: TwilioClient, app: A2PApp) {
 /**
  * Creates + submits the Starter Customer Profile for the Sole Proprietor
  * flow (no EIN). Holds the contact person's identity + the business
- * address. The OTP mobile is NOT here — it lives on the A2P trust bundle.
+ * address, and MUST reference the account's Primary Customer Profile
+ * (Trust Hub requirement `primary_customer_profile` — error 22216 if
+ * absent). The OTP mobile is NOT here — it lives on the A2P trust bundle.
  */
 async function createStarterCustomerProfile(client: TwilioClient, app: A2PApp): Promise<string> {
+  // The account's Primary Customer Profile must exist + be submitted before
+  // a Starter Profile can reference it. It is a one-time account-identity
+  // setup (completed in the Twilio Console).
+  const primarySid = await getConfigValue('twilio_primary_customer_profile_sid')
+  if (!primarySid) {
+    throw new AppError(
+      'NOT_CONFIGURED',
+      'Set system-config `twilio_primary_customer_profile_sid`. The account Primary Customer ' +
+        'Profile must be completed + submitted before Sole Proprietor registration.',
+      409,
+    )
+  }
+  const primary = await client.trusthub.v1.customerProfiles(primarySid).fetch()
+  if (!['twilio-approved', 'pending-review', 'in-review'].includes(primary.status)) {
+    throw new AppError(
+      'CONFLICT',
+      `The account Primary Customer Profile is "${primary.status}" — it must be submitted ` +
+        '(pending-review / in-review) or approved before Sole Proprietor registration. ' +
+        'Complete it in the Twilio Console.',
+      409,
+    )
+  }
   const profile = await client.trusthub.v1.customerProfiles.create({
     friendlyName: `${app.legalName} — Starter Profile`,
     email:        app.contactEmail,
@@ -664,7 +688,9 @@ async function createStarterCustomerProfile(client: TwilioClient, app: A2PApp): 
     type:         'customer_profile_address',
     attributes:   { address_sids: address.sid },
   })
-  for (const objectSid of [endUser.sid, doc.sid]) {
+  // Assign the identity end-user, the address doc, AND the account's
+  // Primary Customer Profile bundle (required by the Starter policy).
+  for (const objectSid of [endUser.sid, doc.sid, primarySid]) {
     await client.trusthub.v1.customerProfiles(profile.sid).customerProfilesEntityAssignments.create({ objectSid })
   }
   await client.trusthub.v1.customerProfiles(profile.sid).update({ status: 'pending-review' })
