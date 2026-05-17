@@ -7,7 +7,7 @@ it goes, so the app can show leads streaming in.
 from . import config, jobs
 from .enrich import website_email
 from .scoring import dedupe, score_lead
-from .sources import places
+from .sources import serper
 
 
 def run_search_job(job_id: str) -> None:
@@ -18,10 +18,10 @@ def run_search_job(job_id: str) -> None:
     jobs.update_job(job_id, status=jobs.JobStatus.RUNNING, progress=5)
 
     try:
-        businesses = places.search_businesses(
-            job.industry, job.location, job.count, config.GOOGLE_PLACES_API_KEY
+        businesses = serper.search_businesses(
+            job.industry, job.location, job.count, config.SERPER_API_KEY
         )
-    except Exception as exc:  # Places failure ends the job cleanly
+    except Exception as exc:  # search-source failure ends the job cleanly
         jobs.update_job(job_id, status=jobs.JobStatus.FAILED, error=str(exc)[:500])
         return
 

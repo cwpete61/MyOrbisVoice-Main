@@ -130,12 +130,21 @@ def _extract_socials(html: str) -> dict[str, str]:
 
 
 def _best_email(emails: list[str], base_url: str) -> str | None:
-    """Prefer an address on the site's own domain; else the first found."""
+    """Return an address on the site's OWN domain, or nothing.
+
+    A scraped lead feeds cold email. A wrong-company address — a vendor,
+    analytics, or site-builder email embedded in the page — would mean
+    emailing the wrong business and risking a spam complaint against our
+    sending domain. So we accept only a same-domain match; if the site
+    exposes no email on its own domain, the lead simply has no email.
+    """
     if not emails:
         return None
-    site_host = (urlparse(base_url).netloc or "").lower().removeprefix("www.")
-    domain = site_host.split(":")[0]
+    site_host = (urlparse(base_url).netloc or "").lower().removeprefix("www.").split(":")[0]
+    if not site_host:
+        return None
     for email in emails:
-        if domain and email.lower().endswith("@" + domain):
+        domain = email.rsplit("@", 1)[-1].lower()
+        if domain == site_host or domain.endswith("." + site_host) or site_host.endswith("." + domain):
             return email
-    return emails[0]
+    return None

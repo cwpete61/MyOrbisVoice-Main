@@ -32,7 +32,7 @@ router.get('/partner/leads/credits', async (req: Request, res: Response, next: N
 const searchSchema = z.object({
   industry: z.string().trim().min(1).max(120),
   location: z.string().trim().min(1).max(120),
-  // 60 = Google Places Text Search hard cap.
+  // 60 = the lead engine's cap on the Serper Maps source.
   count: z.number().int().min(1).max(60),
 })
 

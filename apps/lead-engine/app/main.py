@@ -36,7 +36,7 @@ def _auth(token: str | None) -> None:
 class SearchRequest(BaseModel):
     industry: str = Field(min_length=1, max_length=120)
     location: str = Field(min_length=1, max_length=120)
-    # 60 = Google Places Text Search hard cap (20/page x 3 pages).
+    # 60 = our cap on the Serper Maps source (20 results/page x 3 pages).
     count: int = Field(ge=1, le=60)
 
 
