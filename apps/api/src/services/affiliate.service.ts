@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { AppError } from '@voiceautomation/shared'
 import { getStripe } from '../lib/stripe.js'
 import { ensurePartnerOrbyAgent } from './agent.service.js'
+import { getDefaultCredits } from './lead-engine.service.js'
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 
@@ -371,9 +372,11 @@ function normalizePhoneE164(raw: string | null): string | undefined {
 }
 
 export async function approveAffiliate(id: string) {
+  // Grant the admin-configured lead-search credit allotment on approval.
+  const leadSearchCredits = await getDefaultCredits()
   const account = await prisma.affiliateAccount.update({
     where: { id },
-    data: { status: 'ACTIVE', approvedAt: new Date() },
+    data: { status: 'ACTIVE', approvedAt: new Date(), leadSearchCredits },
   })
   // Provision the partner's own Orby agent at approval — so their web widget
   // captures + records calls immediately, before they buy any phone number.

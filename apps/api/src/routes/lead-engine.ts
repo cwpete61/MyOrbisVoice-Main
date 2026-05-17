@@ -75,4 +75,13 @@ router.post('/partner/leads/:id/promote', async (req: Request, res: Response, ne
   } catch (err) { next(err) }
 })
 
+// Bulk "send selected businesses to contacts".
+router.post('/partner/leads/promote-batch', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { leadIds } = z.object({ leadIds: z.array(z.string()).min(1).max(60) }).parse(req.body)
+    const result = await leadEngine.promoteLeads(partnerId(req), leadIds)
+    res.json({ data: result })
+  } catch (err) { next(err) }
+})
+
 export default router

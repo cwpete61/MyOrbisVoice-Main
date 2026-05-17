@@ -1,7 +1,9 @@
 import { Router, type IRouter } from 'express'
+import { z } from 'zod'
 import { authenticate } from '../middleware/authenticate.js'
 import { requirePlatformAdmin } from '../middleware/rbac.js'
 import * as affiliateService from '../services/affiliate.service.js'
+import * as leadEngineService from '../services/lead-engine.service.js'
 
 const router: IRouter = Router()
 
@@ -327,6 +329,31 @@ adminRouter.post('/affiliates/:id/pause',      async (req, res, next) => { try {
 adminRouter.post('/affiliates/:id/reactivate', async (req, res, next) => { try { res.json({ data: await affiliateService.reactivateAffiliate(req.params.id!) }) } catch (err) { next(err) } })
 adminRouter.post('/affiliates/:id/disable',    async (req, res, next) => { try { const { notes } = req.body as { notes?: string }; res.json({ data: await affiliateService.disableAffiliate(req.params.id!, notes) }) } catch (err) { next(err) } })
 adminRouter.patch('/affiliates/:id/notes',     async (req, res, next) => { try { const { notes } = req.body as { notes: string }; res.json({ data: await affiliateService.updateAffiliateNotes(req.params.id!, notes) }) } catch (err) { next(err) } })
+
+// ── Lead engine credits ──────────────────────────────────────────────────────
+// Global default (granted to a partner on approval) + per-partner override.
+const creditsSchema = z.object({ credits: z.number().int().min(0).max(1_000_000) })
+
+adminRouter.get('/lead-engine/settings', async (_req, res, next) => {
+  try {
+    res.json({ data: { defaultCredits: await leadEngineService.getDefaultCredits() } })
+  } catch (err) { next(err) }
+})
+adminRouter.patch('/lead-engine/settings', async (req, res, next) => {
+  try {
+    const { defaultCredits } = z.object({
+      defaultCredits: z.number().int().min(0).max(1_000_000),
+    }).parse(req.body)
+    await leadEngineService.setDefaultCredits(defaultCredits, req.user!.id)
+    res.json({ data: { defaultCredits } })
+  } catch (err) { next(err) }
+})
+adminRouter.patch('/affiliates/:id/lead-credits', async (req, res, next) => {
+  try {
+    const { credits } = creditsSchema.parse(req.body)
+    res.json({ data: await leadEngineService.setPartnerCredits(req.params.id!, credits) })
+  } catch (err) { next(err) }
+})
 
 adminRouter.get('/affiliate/commissions', async (req, res, next) => {
   try {

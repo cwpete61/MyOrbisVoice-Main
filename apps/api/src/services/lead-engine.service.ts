@@ -15,6 +15,7 @@ import { AppError } from '@voiceautomation/shared'
 import { prisma } from '../lib/prisma.js'
 import * as crmService from './crm.service.js'
 import { normalizePhoneE164 } from './contact.service.js'
+import { getConfigValue, setConfigValue } from './system-config.service.js'
 
 const LEADENGINE_URL = process.env['LEADENGINE_URL'] ?? 'http://lead-engine:7000'
 const LEADENGINE_TOKEN = process.env['LEADENGINE_INTERNAL_TOKEN'] ?? ''
@@ -315,4 +316,58 @@ export async function promoteLead(partnerId: string, leadId: string) {
   })
 
   return contact
+}
+
+/**
+ * Promote several leads at once — "send selected businesses to contacts".
+ * Best-effort: each lead is promoted independently so one failure (e.g. an
+ * already-promoted lead) doesn't abort the rest. Returns what landed and
+ * what didn't.
+ */
+export async function promoteLeads(
+  partnerId: string,
+  leadIds: string[],
+): Promise<{ promoted: string[]; failed: { leadId: string; reason: string }[] }> {
+  const promoted: string[] = []
+  const failed: { leadId: string; reason: string }[] = []
+  for (const leadId of leadIds) {
+    try {
+      const contact = await promoteLead(partnerId, leadId)
+      promoted.push(contact.id)
+    } catch (err) {
+      failed.push({ leadId, reason: (err as Error).message || 'promote failed' })
+    }
+  }
+  return { promoted, failed }
+}
+
+// ── Credits administration ──────────────────────────────────────────────────
+
+const DEFAULT_CREDITS_KEY = 'lead_engine.default_credits'
+const FALLBACK_DEFAULT_CREDITS = 250
+
+/** The credit allotment a partner is granted on approval. Admin-configurable;
+ *  falls back to 250 when unset or malformed. */
+export async function getDefaultCredits(): Promise<number> {
+  const raw = await getConfigValue(DEFAULT_CREDITS_KEY)
+  const parsed = raw ? parseInt(raw, 10) : NaN
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : FALLBACK_DEFAULT_CREDITS
+}
+
+export async function setDefaultCredits(value: number, updatedBy: string): Promise<void> {
+  await setConfigValue(DEFAULT_CREDITS_KEY, String(value), false, updatedBy)
+}
+
+/** Admin override of one partner's remaining lead-search credits. */
+export async function setPartnerCredits(partnerId: string, credits: number) {
+  const partner = await prisma.affiliateAccount.findUnique({
+    where: { id: partnerId },
+    select: { id: true },
+  })
+  if (!partner) throw new AppError('NOT_FOUND', 'Partner not found', 404)
+  return prisma.affiliateAccount.update({
+    where: { id: partnerId },
+    data: { leadSearchCredits: credits },
+    select: { id: true, leadSearchCredits: true },
+  })
 }
