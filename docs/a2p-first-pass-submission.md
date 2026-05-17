@@ -11,35 +11,48 @@ the end). Companion to [twilio-a2p-automation.md](twilio-a2p-automation.md)
 
 ---
 
-## A. Path decision — LOCKED: Sole Proprietor brand
+## A. Path decision — Low-Volume Standard brand (EIN path)
 
-MyOrbisVoice is a **US sole proprietor with no EIN**. The Campaign Registry
-rule is strict:
+**Decided 2026-05-16: MyOrbisVoice obtains an EIN, then registers as a
+Low-Volume Standard brand.**
 
-- **No Tax ID (no EIN) → Sole Proprietor brand.** This is MyOrbisVoice.
-- **Any Tax ID / EIN → Standard or Low-Volume Standard brand.** Includes
-  *every US LLC* (all LLCs have an EIN), corporations, non-profits.
+Why the EIN path won over the no-EIN Sole Proprietor path:
 
-Registering the wrong type is an **instant rejection**. Sole Proprietor is
-correct here — locked.
+- The no-EIN **Sole Proprietor** path requires an **Individual** Primary
+  Customer Profile — which mandates a **photo-ID upload + selfie identity
+  verification** — plus the brand **OTP** (texted to a mobile, human reply).
+  Those are human identity-proofing steps Twilio mandates; they cannot be
+  automated. It also caps at 1 campaign / ~3,000 msgs/day.
+- The **EIN** path uses a **Business** Primary Customer Profile (verified by
+  business documentation + registration-authority validation — **no selfie,
+  no personal ID step**) and a **Low-Volume Standard** brand (**no OTP**).
+  The whole pipeline is genuinely automatable (`runStandardSubmission`).
+  5 campaigns + real throughput.
 
-**Accept the Sole Proprietor ceiling** (it is the lowest tier):
+The EIN is free, issued instantly online at irs.gov (~10 min); a sole
+proprietor qualifies. Legal structure stays "Sole Proprietorship" — adding
+an EIN does not change the entity, it just unlocks the Standard brand tier
+(TCR requires a Sole Proprietorship *with* an EIN to register Low-Volume
+Standard, not Sole Proprietor).
 
-| Limit | Value |
-|---|---|
-| Campaigns per brand | **1** |
-| Phone numbers per campaign | **1** |
-| Send rate | **1 message/sec** (MMS 0.5/sec per number) |
-| Daily volume | ~3,000 SMS segments/day total |
-| T-Mobile sub-cap | **1,000 segments/day** (hard) |
-| AT&T | ~15 messages/minute |
+**Pipeline (all automated once the EIN is in hand):**
+Business Primary Customer Profile → A2P TrustProduct → Low-Volume Standard
+BrandRegistration → Messaging Service → UsAppToPerson campaign.
 
-If MyOrbisVoice ever needs higher volume, the only path up is to obtain an
-EIN (free, instant at irs.gov) and re-register as Low-Volume Standard.
+**Status:** awaiting the EIN from Crawford Peterson. Everything else in this
+dossier is ready.
 
 ---
 
 ## B. Submission data form
+
+> **Path changed (2026-05-16) — see §A.** The structure below (Starter
+> Customer Profile, Sole Proprietor A2P Trust Bundle) was the no-EIN path.
+> On the EIN path it becomes: **Business Primary Customer Profile** →
+> **A2P TrustProduct** → **Low-Volume Standard brand**. The *data values*
+> below (legal name, address, contact, samples) carry over unchanged; only
+> the bundle structure differs. The one new input needed is the **EIN**.
+> The full data set is re-confirmed with the owner at submission time.
 
 Fill every line. `[NEED]` = required input not yet supplied. `[CONFIRM]` =
 drafted value, verify it. Values must be **byte-identical** wherever they
