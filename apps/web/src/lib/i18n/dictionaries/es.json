@@ -106,10 +106,26 @@
     "clearSelection": "Limpiar",
     "complianceNote": "Los prospectos encontrados aquí son solo para correo en frío. El sistema nunca llama ni envía SMS automáticamente a un prospecto extraído — eso requiere su consentimiento explícito primero."
   },
+  "bulkEmail": {
+    "title": "Bulk Email",
+    "subtitle": "Correo en frío a los negocios que encuentras en Búsqueda de Leads.",
+    "whatTitle": "Separado de tu Buzón",
+    "whatBody": "Bulk Email envía correo en frío a los leads que conseguiste — negocios que aún no te han contactado. Tu Buzón es lo opuesto: solo para responder a quienes ya te escribieron. Dos sistemas, separados a propósito.",
+    "setupTitle": "Cómo funciona la configuración",
+    "setupBody": "El correo en frío necesita su propio dominio de envío dedicado — nunca tu Buzón, nunca un Gmail personal. Un dominio dedicado mantiene tu reputación de envío tuya, aislada de la de cualquier otro partner.",
+    "step1": "Un asistente registra un dominio .com para ti a través de Cloudflare.",
+    "step2": "Configura automáticamente la autenticación de correo (SPF, DKIM, DMARC) — nunca tocas el DNS.",
+    "step3": "El dominio se calienta, luego pasas a producción, con un límite de 50 correos al día.",
+    "rulesTitle": "Hecho según las reglas",
+    "rulesBody": "Cada envío lleva un enlace para cancelar la suscripción, las bajas se respetan automáticamente y se aplica una lista de supresión. Correo en frío, en regla.",
+    "setupCta": "Configurar dominio de envío",
+    "ctaNote": "La configuración del dominio se está finalizando — abrirá pronto."
+  },
   "partnerNav": {
     "dashboard": "Panel",
     "gettingStarted": "Primeros pasos",
     "mailbox": "Buzón",
+    "bulkEmail": "Bulk Email",
     "calendar": "Calendario",
     "conversations": "Conversaciones",
     "crm": "CRM",

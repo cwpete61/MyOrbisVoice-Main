@@ -106,10 +106,26 @@
     "clearSelection": "Clear",
     "complianceNote": "Leads found here are for cold email outreach only. The system never auto-calls or texts a scraped lead — that needs their explicit opt-in first."
   },
+  "bulkEmail": {
+    "title": "Bulk Email",
+    "subtitle": "Cold-email outreach to the businesses you find in Leads Search.",
+    "whatTitle": "Separate from your Mailbox",
+    "whatBody": "Bulk Email sends cold outreach to leads you've sourced — businesses that haven't contacted you. Your Mailbox is the opposite: only for replying to people who already reached out. Two systems, kept apart on purpose.",
+    "setupTitle": "How setup works",
+    "setupBody": "Cold email needs its own dedicated sending domain — never your Mailbox, never a personal Gmail. A dedicated domain keeps your sending reputation yours, isolated from every other partner.",
+    "step1": "A wizard registers a .com domain for you through Cloudflare.",
+    "step2": "It auto-configures email authentication (SPF, DKIM, DMARC) — you never touch DNS.",
+    "step3": "The domain warms up, then you go live, capped at 50 emails a day.",
+    "rulesTitle": "Done by the rules",
+    "rulesBody": "Every send carries an unsubscribe link, opt-outs are honored automatically, and a suppression list is enforced. Cold email, compliant.",
+    "setupCta": "Set up sending domain",
+    "ctaNote": "Domain setup is being finalized — this opens shortly."
+  },
   "partnerNav": {
     "dashboard": "Dashboard",
     "gettingStarted": "Getting Started",
     "mailbox": "Mailbox",
+    "bulkEmail": "Bulk Email",
     "calendar": "Calendar",
     "conversations": "Conversations",
     "crm": "CRM",
