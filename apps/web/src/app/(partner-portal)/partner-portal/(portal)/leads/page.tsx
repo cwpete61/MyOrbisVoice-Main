@@ -25,13 +25,17 @@ interface Lead {
   id:           string
   businessName: string
   ownerName:    string | null
+  ownerTitle:   string | null
   email:        string | null
   phone:        string | null
   website:      string | null
   address:      string | null
+  latitude:     number | null
+  longitude:    number | null
   rating:       number | null
   reviewCount:  number | null
   category:     string | null
+  socialsJson:  Record<string, string> | null
   score:        number
   reviewStatus: ReviewStatus
 }
@@ -463,7 +467,7 @@ function SearchResults(props: {
                 </button>
               </div>
             )}
-            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+            <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid var(--border-subtle)' }}>
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ background: 'var(--surface-raised)' }}>
@@ -477,7 +481,9 @@ function SearchResults(props: {
                       />
                     </th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colBusiness')}</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colOwner')}</th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colContact')}</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colSocial')}</th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colRating')}</th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colScore')}</th>
                     <th className="text-right px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colActions')}</th>
@@ -503,9 +509,22 @@ function SearchResults(props: {
                         )}
                       </td>
                       <td className="px-3 py-2.5 align-top">
+                        {lead.ownerName ? (
+                          <>
+                            <p style={{ color: 'var(--text-secondary)' }}>{lead.ownerName}</p>
+                            {lead.ownerTitle && (
+                              <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{lead.ownerTitle}</p>
+                            )}
+                          </>
+                        ) : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+                      </td>
+                      <td className="px-3 py-2.5 align-top">
                         {lead.email && <p style={{ color: 'var(--text-secondary)' }}>{lead.email}</p>}
                         {lead.phone && <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{lead.phone}</p>}
                         {!lead.email && !lead.phone && <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+                      </td>
+                      <td className="px-3 py-2.5 align-top">
+                        <SocialIcons socials={lead.socialsJson} />
                       </td>
                       <td className="px-3 py-2.5 align-top" style={{ color: 'var(--text-secondary)' }}>
                         {lead.rating != null ? `${lead.rating.toFixed(1)}★` : '—'}
@@ -559,6 +578,40 @@ function SearchResults(props: {
         </>
       )}
     </div>
+  )
+}
+
+const SOCIAL_META: Record<string, { label: string; color: string }> = {
+  facebook:  { label: 'FB', color: 'oklch(48% 0.18 265)' },
+  instagram: { label: 'IG', color: 'oklch(55% 0.20 350)' },
+  twitter:   { label: 'X',  color: 'var(--text-primary)' },
+  youtube:   { label: 'YT', color: 'oklch(55% 0.22 25)' },
+  linkedin:  { label: 'LI', color: 'oklch(45% 0.13 245)' },
+  tiktok:    { label: 'TT', color: 'var(--text-primary)' },
+}
+
+function SocialIcons({ socials }: { socials: Record<string, string> | null }) {
+  const entries = socials ? Object.entries(socials).filter(([k]) => SOCIAL_META[k]) : []
+  if (entries.length === 0) return <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+  return (
+    <span className="inline-flex gap-1 flex-wrap">
+      {entries.map(([platform, url]) => {
+        const meta = SOCIAL_META[platform]!
+        return (
+          <a
+            key={platform}
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={platform}
+            className="text-[10px] font-bold px-1 py-0.5 rounded"
+            style={{ background: 'var(--surface-raised)', color: meta.color, border: '1px solid var(--border-subtle)' }}
+          >
+            {meta.label}
+          </a>
+        )
+      })}
+    </span>
   )
 }
 
