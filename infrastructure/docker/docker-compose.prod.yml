@@ -169,6 +169,27 @@ services:
       redis:
         condition: service_healthy
 
+  lead-engine:
+    build:
+      context: ../../
+      dockerfile: apps/lead-engine/Dockerfile
+    image: myorbisvoice-leadengine:latest
+    container_name: myorbisvoice-leadengine
+    restart: unless-stopped
+    env_file: .env.prod
+    # `internal` lets the api container reach it; `leadengine_egress` is a
+    # plain bridge giving the scrapers outbound internet (the `internal`
+    # network is internal:true and blocks egress on its own). Egress stays
+    # off the Caddy edge networks — this service is never public.
+    networks:
+      - internal
+      - leadengine_egress
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:7000/health').status==200 else sys.exit(1)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
   db-backup:
     image: postgres:16-alpine
     container_name: myorbisvoice-db-backup
@@ -215,6 +236,9 @@ networks:
     name: myorbisvoice_internal
     driver: bridge
     internal: true
+  leadengine_egress:
+    name: myorbisvoice_leadengine_egress
+    driver: bridge
   caddy_app_edge:
     name: bps_zf_caddy_app_edge
     external: true
