@@ -98,6 +98,7 @@
     "loadError": "No se pudo cargar esta búsqueda.",
     "retry": "Reintentar",
     "bulkSend": "Enviar al CRM",
+    "planRoute": "Planificar ruta",
     "bulkSending": "Enviando…",
     "selectedSuffix": "seleccionados",
     "clearSelection": "Limpiar",

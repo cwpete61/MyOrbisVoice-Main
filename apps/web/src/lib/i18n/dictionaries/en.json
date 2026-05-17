@@ -98,6 +98,7 @@
     "loadError": "Couldn't load this search.",
     "retry": "Retry",
     "bulkSend": "Send to CRM",
+    "planRoute": "Plan route",
     "bulkSending": "Sending…",
     "selectedSuffix": "selected",
     "clearSelection": "Clear",

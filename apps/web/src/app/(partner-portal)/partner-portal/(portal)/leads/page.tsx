@@ -47,6 +47,44 @@ interface SearchDetail {
 
 const COUNT_OPTIONS = [10, 25, 50]
 
+type GeoPoint = { lat: number; lng: number }
+
+// Order stops shortest-first with a nearest-neighbor heuristic — plenty for a
+// dozen nearby businesses; full TSP isn't worth it at this scale.
+function orderByNearestNeighbor(points: GeoPoint[]): GeoPoint[] {
+  const remaining = [...points]
+  const route: GeoPoint[] = [remaining.shift()!]
+  while (remaining.length > 0) {
+    const last = route[route.length - 1]!
+    let bestIdx = 0
+    let bestDist = Infinity
+    remaining.forEach((p, i) => {
+      const d = (p.lat - last.lat) ** 2 + (p.lng - last.lng) ** 2
+      if (d < bestDist) { bestDist = d; bestIdx = i }
+    })
+    route.push(remaining.splice(bestIdx, 1)[0]!)
+  }
+  return route
+}
+
+// A Google Maps directions URL for an optimized run of stops. Capped at 10 —
+// the consumer Maps directions URL handles roughly that many.
+function googleMapsRouteUrl(stops: GeoPoint[]): string {
+  const ordered = orderByNearestNeighbor(stops).slice(0, 10)
+  const origin = ordered[0]!
+  const destination = ordered[ordered.length - 1]!
+  const waypoints = ordered.slice(1, -1)
+  const params = new URLSearchParams({
+    api: '1',
+    origin: `${origin.lat},${origin.lng}`,
+    destination: `${destination.lat},${destination.lng}`,
+  })
+  if (waypoints.length > 0) {
+    params.set('waypoints', waypoints.map(w => `${w.lat},${w.lng}`).join('|'))
+  }
+  return `https://www.google.com/maps/dir/?${params.toString()}`
+}
+
 export default function PartnerLeadsPage() {
   const t = useT()
   const { locale } = useLocale()
@@ -488,6 +526,9 @@ function SearchResults(props: {
               .filter(l => l.reviewStatus === 'NEW' || l.reviewStatus === 'SAVED')
               .map(l => l.id)
             const allSelected = selectableIds.length > 0 && selectableIds.every(id => selected.has(id))
+            const routableSelected = detail.leads.filter(
+              l => selected.has(l.id) && l.latitude != null && l.longitude != null,
+            )
             return (
             <>
             <div className="flex items-center gap-1 mb-2">
@@ -523,6 +564,19 @@ function SearchResults(props: {
                   style={{ background: TEAL, color: 'white' }}
                 >
                   {bulkBusy ? t('partnerLeads.bulkSending') : t('partnerLeads.bulkSend')}
+                </button>
+                <button
+                  onClick={() => {
+                    if (routableSelected.length < 2) return
+                    const stops = routableSelected.map(l => ({ lat: l.latitude!, lng: l.longitude! }))
+                    window.open(googleMapsRouteUrl(stops), '_blank', 'noopener,noreferrer')
+                  }}
+                  disabled={routableSelected.length < 2}
+                  className="text-xs px-3 py-1 rounded font-medium disabled:opacity-40"
+                  style={{ background: 'var(--surface-raised)', color: TEAL, border: '1px solid var(--border-subtle)' }}
+                  title={t('partnerLeads.planRoute')}
+                >
+                  {t('partnerLeads.planRoute')}
                 </button>
                 <button onClick={() => onToggleAll([])} className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                   {t('partnerLeads.clearSelection')}
