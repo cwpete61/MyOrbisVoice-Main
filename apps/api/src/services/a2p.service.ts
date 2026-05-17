@@ -787,68 +787,26 @@ export async function resendA2POtp(applicationId: string): Promise<{ ok: true }>
 }
 
 /**
- * Assembles + submits the account's Primary Customer Profile from a
- * platform-scope application's data: a business-information end-user, an
- * authorized-representative end-user, an address + supporting document,
- * the entity assignments, then `pending-review` to submit for Twilio
- * review. One-time account setup — the Primary Customer Profile is shared
- * by every platform-scope A2P submission.
+ * The account's Primary Customer Profile CANNOT be assembled via API —
+ * Twilio restricts creation/modification of Primary Customer Profiles to
+ * the Console ("This operation is restricted via API for Primary Customer
+ * Profiles"). It is a one-time account-identity setup, gated to a human.
+ *
+ * Operators complete it once at console.twilio.com → Trust Hub → Customer
+ * Profiles (Business profile, with the EIN), submit it for review, then set
+ * system-config `twilio_primary_customer_profile_sid`. Everything
+ * downstream (A2P TrustProduct, Brand, Messaging Service, Campaign) IS
+ * API-automated — see runStandardSubmission.
  */
-export async function assemblePrimaryCustomerProfile(
-  applicationId: string,
-): Promise<{ customerProfileSid: string; status: string }> {
-  const app = await loadApplication(applicationId)
-  const client = await getPlatformTwilioClient()
-  const profileSid = await getConfigValue('twilio_primary_customer_profile_sid')
-  if (!profileSid) {
-    throw new AppError('NOT_CONFIGURED', 'Set system-config `twilio_primary_customer_profile_sid` first.', 409)
-  }
-
-  const bizInfo = await client.trusthub.v1.endUsers.create({
-    type:         'customer_profile_business_information',
-    friendlyName: `${app.legalName} — business info`,
-    attributes: {
-      business_name:                    app.legalName,
-      business_type:                    mapBusinessType(app.businessType),
-      business_registration_identifier: 'EIN',
-      business_registration_number:     app.ein ?? '',
-      business_identity:                'direct_customer',
-      business_industry:                mapBusinessIndustry(app.vertical),
-      business_regions_of_operation:    'USA_AND_CANADA',
-      website_url:                      app.websiteUrl ?? '',
-      social_media_profile_urls:        '',
-    },
-  })
-  const authRep = await client.trusthub.v1.endUsers.create({
-    type:         'authorized_representative_1',
-    friendlyName: `${app.contactFirstName} ${app.contactLastName}`,
-    attributes: {
-      first_name:     app.contactFirstName,
-      last_name:      app.contactLastName,
-      email:          app.contactEmail,
-      phone_number:   app.contactPhone,
-      business_title: 'Authorized Representative',
-      job_position:   'Director',
-    },
-  })
-  const address = await client.addresses.create({
-    customerName: app.legalName,
-    street:       app.addressLine1,
-    city:         app.city,
-    region:       app.region,
-    postalCode:   app.postalCode,
-    isoCountry:   app.country,
-  })
-  const doc = await client.trusthub.v1.supportingDocuments.create({
-    friendlyName: `${app.legalName} — address`,
-    type:         'customer_profile_address',
-    attributes:   { address_sids: address.sid },
-  })
-  for (const objectSid of [bizInfo.sid, authRep.sid, doc.sid]) {
-    await client.trusthub.v1.customerProfiles(profileSid).customerProfilesEntityAssignments.create({ objectSid })
-  }
-  const updated = await client.trusthub.v1.customerProfiles(profileSid).update({ status: 'pending-review' })
-  return { customerProfileSid: profileSid, status: updated.status }
+export async function assemblePrimaryCustomerProfile(_applicationId: string): Promise<never> {
+  throw new AppError(
+    'NOT_SUPPORTED',
+    'The account Primary Customer Profile cannot be created via API — Twilio restricts it to ' +
+      'the Console. Complete it once at console.twilio.com → Trust Hub → Customer Profiles ' +
+      '(Business profile, with the EIN), submit it for review, then set system-config ' +
+      '`twilio_primary_customer_profile_sid`. The rest of the A2P pipeline is automated.',
+    501,
+  )
 }
 
 /* ───────────────────── status sync / webhook ingest ───────────────────── */

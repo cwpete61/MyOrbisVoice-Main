@@ -35,13 +35,20 @@ an EIN does not change the entity, it just unlocks the Standard brand tier
 (TCR requires a Sole Proprietorship *with* an EIN to register Low-Volume
 Standard, not Sole Proprietor).
 
-**Pipeline (all automated once the EIN is in hand):**
-Business Primary Customer Profile → A2P TrustProduct → Low-Volume Standard
-BrandRegistration → Messaging Service → UsAppToPerson campaign.
+**Pipeline:**
+1. **Business Primary Customer Profile** — **Console only.** Twilio restricts
+   Primary Customer Profile creation/modification to the Console via the API
+   ("This operation is restricted via API for Primary Customer Profiles").
+   One-time account-identity setup; cannot be automated. Done once at
+   console.twilio.com → Trust Hub → Customer Profiles.
+2. A2P TrustProduct → Low-Volume Standard BrandRegistration → Messaging
+   Service → UsAppToPerson campaign — **all automated** (`runStandardSubmission`).
 
-**Status:** EIN received 2026-05-16 — **11-6568971**. Everything in this
-dossier is ready; the full data set is walked through with the owner before
-the submission runs (standing rule — no submission without confirmation).
+**Status:** EIN received 2026-05-16 — **11-6568971**. Twilio-mock test
+2026-05-16: the 4-layer validation gate passed all layers on the EIN data.
+**Blocked on the one Console step** — completing the Primary Customer
+Profile (above). Once it is submitted + its SID set in
+`twilio_primary_customer_profile_sid`, the rest runs automated.
 
 ---
 
