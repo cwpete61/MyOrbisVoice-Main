@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # deploy.sh — atomic build → sync → inject → verify
-# Usage: ./infrastructure/scripts/deploy.sh [api|web|gateway|all] "reason"
+# Usage: ./infrastructure/scripts/deploy.sh [api|web|gateway|leadengine|all] "reason"
 set -euo pipefail
 
 # ── Concurrency guard ───────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ PRISMA_CLIENT="$REPO_ROOT/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0
 STAMP="$(date '+%Y%m%d_%H%M%S')"
 
 if [[ -z "$REASON" ]]; then
-  echo "Usage: $0 [api|web|gateway|all] \"reason for this deploy\""
+  echo "Usage: $0 [api|web|gateway|leadengine|all] \"reason for this deploy\""
   exit 1
 fi
 
@@ -298,6 +298,28 @@ step_web() {
   fi
 }
 
+# Lead engine — a Python service, so no TS build / dist-inject. Sync the
+# source + compose file, then rebuild the image and recreate the container
+# via `docker compose up --build`. The container reads SERPER_API_KEY +
+# LEADENGINE_INTERNAL_TOKEN from .env.prod (set there once, out of band).
+step_leadengine() {
+  log "Lead engine — sync source → rebuild image → recreate container..."
+  rsync -az --exclude='.venv' --exclude='__pycache__' --exclude='*.pyc' \
+    "$REPO_ROOT/apps/lead-engine/" "$SERVER:$REMOTE/apps/lead-engine/"
+  rsync -az "$REPO_ROOT/infrastructure/docker/docker-compose.prod.yml" \
+    "$SERVER:$REMOTE/infrastructure/docker/docker-compose.prod.yml"
+  ssh "$SERVER" "cd $REMOTE/infrastructure/docker && docker compose -f docker-compose.prod.yml up -d --build lead-engine 2>&1 | tail -8" \
+    || fail "lead-engine compose up failed"
+  sleep 6
+  local HEALTH
+  HEALTH=$(ssh "$SERVER" "docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' myorbisvoice-leadengine 2>/dev/null")
+  if [[ "$HEALTH" == "healthy" || "$HEALTH" == "starting" ]]; then
+    ok "Lead engine deployed (health: $HEALTH)"
+  else
+    fail "Lead engine container unhealthy after deploy: $HEALTH"
+  fi
+}
+
 # ── 4. Run selected targets ────────────────────────────────────────────────
 echo ""
 echo "╔══════════════════════════════════════╗"
@@ -306,16 +328,18 @@ echo "║  Reason: $REASON"
 echo "╚══════════════════════════════════════╝"
 
 case "$TARGET" in
-  api)     step_api ;;
-  gateway) step_gateway ;;
-  web)     step_web ;;
+  api)        step_api ;;
+  gateway)    step_gateway ;;
+  web)        step_web ;;
+  leadengine) step_leadengine ;;
   all)
     step_api
     step_gateway
     step_web
+    step_leadengine
     ;;
   *)
-    echo "Unknown target: $TARGET. Use api|web|gateway|all"
+    echo "Unknown target: $TARGET. Use api|web|gateway|leadengine|all"
     exit 1
     ;;
 esac
