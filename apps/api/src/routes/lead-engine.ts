@@ -34,6 +34,9 @@ const searchSchema = z.object({
   location: z.string().trim().min(1).max(120),
   // 60 = the lead engine's cap on the Serper Maps source.
   count: z.number().int().min(1).max(60),
+  // Wide search expands the niche into variations (roofer / roofing
+  // contractor / roof repair / ...) and searches all of them. Default on.
+  wide: z.boolean().default(true),
 })
 
 router.post('/partner/leads/searches', async (req: Request, res: Response, next: NextFunction) => {

@@ -97,6 +97,7 @@ export default function PartnerLeadsPage() {
   const [industry, setIndustry] = useState('')
   const [location, setLocation] = useState('')
   const [count, setCount]       = useState(25)
+  const [wide, setWide]         = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError]   = useState<string | null>(null)
 
@@ -166,7 +167,7 @@ export default function PartnerLeadsPage() {
     try {
       const search = await apiFetch<LeadSearch>('/api/partner/leads/searches', {
         method: 'POST',
-        body:   JSON.stringify({ industry: industry.trim(), location: location.trim(), count }),
+        body:   JSON.stringify({ industry: industry.trim(), location: location.trim(), count, wide }),
       })
       setIndustry('')
       setLocation('')
@@ -338,6 +339,10 @@ export default function PartnerLeadsPage() {
             {submitting ? t('partnerLeads.searching') : t('partnerLeads.searchButton')}
           </button>
         </div>
+        <label className="flex items-center gap-2 mt-3 text-xs cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+          <input type="checkbox" checked={wide} onChange={e => setWide(e.target.checked)} />
+          {t('partnerLeads.wideSearch')}
+        </label>
         {formError && <p className="text-xs mt-2" style={{ color: 'oklch(55% 0.18 25)' }}>{formError}</p>}
         <p className="text-xs mt-3" style={{ color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
           {t('partnerLeads.complianceNote')}

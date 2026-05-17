@@ -18,14 +18,21 @@ def run_search_job(job_id: str) -> None:
     jobs.update_job(job_id, status=jobs.JobStatus.RUNNING, progress=5)
 
     try:
-        businesses = serper.search_businesses(
-            job.industry, job.location, job.count, config.SERPER_API_KEY
-        )
+        # One Serper search per niche variation, then merged. A wide search
+        # passes several variations ("roofer", "roofing contractor", ...);
+        # a narrow one passes a single query.
+        raw: list[dict] = []
+        for query in job.queries:
+            raw.extend(
+                serper.search_businesses(query, job.location, job.count, config.SERPER_API_KEY)
+            )
     except Exception as exc:  # search-source failure ends the job cleanly
         jobs.update_job(job_id, status=jobs.JobStatus.FAILED, error=str(exc)[:500])
         return
 
-    businesses = dedupe(businesses)
+    # Dedupe across every variation, then cap before the (slow) per-site
+    # enrichment loop so wide searches don't crawl hundreds of sites.
+    businesses = dedupe(raw)[:job.count]
     total = len(businesses)
     if total == 0:
         jobs.update_job(job_id, status=jobs.JobStatus.COMPLETED, progress=100, leads=[])

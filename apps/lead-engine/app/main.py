@@ -34,7 +34,9 @@ def _auth(token: str | None) -> None:
 
 
 class SearchRequest(BaseModel):
-    industry: str = Field(min_length=1, max_length=120)
+    # One or more niche variations ("roofer", "roofing contractor", ...). A
+    # narrow search sends one; a wide search sends the AI-expanded set.
+    queries: list[str] = Field(min_length=1, max_length=8)
     location: str = Field(min_length=1, max_length=120)
     # 60 = our cap on the Serper Maps source (20 results/page x 3 pages).
     count: int = Field(ge=1, le=60)
@@ -52,7 +54,7 @@ def create_job(
     x_internal_token: str | None = Header(default=None),
 ) -> dict:
     _auth(x_internal_token)
-    job = jobs.create_job(req.industry, req.location, req.count)
+    job = jobs.create_job(req.queries, req.location, req.count)
     background.add_task(run_search_job, job.id)
     return {"jobId": job.id, "status": job.status}
 

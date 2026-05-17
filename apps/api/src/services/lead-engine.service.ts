@@ -95,12 +95,70 @@ export async function getCredits(partnerId: string): Promise<number> {
 }
 
 /**
+ * Expand a niche into the terms people actually search for it
+ * ("roofer" -> roofer, roofing contractor, roof repair, ...). Best-effort —
+ * any failure falls back to just the original term, so a search never fails
+ * over niche expansion.
+ */
+async function expandNiche(industry: string): Promise<string[]> {
+  const original = industry.trim()
+  const apiKey = await getOpenAiApiKey()
+  if (!apiKey) return [original]
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15_000)
+  try {
+    const res = await fetch(OPENAI_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content:
+            'Given a local-business niche, return the Google Maps search terms people ' +
+            'actually use to find that kind of business. Include the original term. ' +
+            '4-6 terms total, lowercase, no location words. Respond as JSON: ' +
+            '{"terms": ["term", ...]}.' },
+          { role: 'user', content: original },
+        ],
+        max_tokens:      150,
+        temperature:     0.3,
+        response_format: { type: 'json_object' },
+      }),
+      signal: controller.signal,
+    })
+    clearTimeout(timer)
+    if (!res.ok) return [original]
+    const json = await res.json().catch(() => null) as
+      { choices?: Array<{ message?: { content?: string } }> } | null
+    const content = json?.choices?.[0]?.message?.content
+    if (!content) return [original]
+    const parsed = JSON.parse(content) as { terms?: unknown }
+    const terms = Array.isArray(parsed.terms)
+      ? parsed.terms.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+      : []
+    // Always include the original; dedupe case-insensitively; cap at 6.
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const term of [original, ...terms.map(s => s.trim())]) {
+      const key = term.toLowerCase()
+      if (!seen.has(key)) { seen.add(key); out.push(term) }
+    }
+    return out.slice(0, 6)
+  } catch {
+    clearTimeout(timer)
+    return [original]
+  }
+}
+
+/**
  * Submit a new lead search. Charges `count` credits up front (the unused
- * remainder is refunded when the search completes with fewer results).
+ * remainder is refunded when the search completes with fewer results). A wide
+ * search expands the niche into variations and searches all of them.
  */
 export async function createSearch(
   partnerId: string,
-  input: { industry: string; location: string; count: number },
+  input: { industry: string; location: string; count: number; wide: boolean },
 ) {
   const partner = await prisma.affiliateAccount.findUnique({
     where: { id: partnerId },
@@ -115,10 +173,13 @@ export async function createSearch(
     )
   }
 
+  // A wide search searches the whole niche family; a narrow one is one query.
+  const queries = input.wide ? await expandNiche(input.industry) : [input.industry]
+
   // Submit to the engine first — only charge + persist once it accepts the job.
   const job = await leadengineFetch<{ jobId: string }>('/jobs', {
     method: 'POST',
-    body: JSON.stringify(input),
+    body: JSON.stringify({ queries, location: input.location, count: input.count }),
   })
 
   const [, search] = await prisma.$transaction([

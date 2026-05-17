@@ -25,7 +25,7 @@ class JobStatus(str, Enum):
 @dataclass
 class Job:
     id: str
-    industry: str
+    queries: list[str]  # one or more niche variations to search
     location: str
     count: int
     status: JobStatus = JobStatus.PENDING
@@ -39,8 +39,8 @@ _jobs: dict[str, Job] = {}
 _lock = threading.Lock()
 
 
-def create_job(industry: str, location: str, count: int) -> Job:
-    job = Job(id=str(uuid.uuid4()), industry=industry, location=location, count=count)
+def create_job(queries: list[str], location: str, count: int) -> Job:
+    job = Job(id=str(uuid.uuid4()), queries=list(queries), location=location, count=count)
     with _lock:
         _jobs[job.id] = job
     return job
