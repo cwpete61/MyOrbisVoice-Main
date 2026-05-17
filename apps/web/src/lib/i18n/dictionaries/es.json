@@ -468,6 +468,7 @@
   },
   "partnerMailbox": {
     "title":             "Buzón",
+    "transactionalNote": "Solo correos transaccionales — después de que un prospecto se haya comunicado contigo. El correo en frío va por Bulk Email.",
     "tabInbox":          "Recibidos",
     "tabSent":           "Enviados",
     "tabCompose":        "Redactar",

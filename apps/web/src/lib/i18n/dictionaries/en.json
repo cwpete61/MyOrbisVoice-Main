@@ -468,6 +468,7 @@
   },
   "partnerMailbox": {
     "title":             "Mailbox",
+    "transactionalNote": "Transactional emails only — after a potential lead has communicated with you. Cold outreach goes through Bulk Email.",
     "tabInbox":          "Inbox",
     "tabSent":           "Sent",
     "tabCompose":        "Compose",

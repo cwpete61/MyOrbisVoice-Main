@@ -24,7 +24,12 @@ export function MailboxHeader({ active }: { active: 'inbox' | 'sent' | 'compose'
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{t('partnerMailbox.title')}</h1>
+        <div>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{t('partnerMailbox.title')}</h1>
+          <p className="text-xs mt-0.5 font-medium" style={{ color: 'oklch(55% 0.18 25)' }}>
+            {t('partnerMailbox.transactionalNote')}
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <form onSubmit={submitSearch} className="flex items-center">
             <input
