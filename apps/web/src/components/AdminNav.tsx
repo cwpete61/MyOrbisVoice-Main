@@ -60,6 +60,7 @@ export function AdminNav() {
         { href: '/admin/phone-numbers', label: 'Phone Numbers',  icon: <PhoneIcon /> },
         { href: '/admin/number-requests', label: 'Number Requests', icon: <PhoneIcon />, minTier: 'admin' },
         { href: '/admin/twilio-logs', label: 'Twilio Call Logs', icon: <CallLogsIcon /> },
+        { href: '/admin/call-log',    label: 'Central Call Log', icon: <CallLogsIcon /> },
         { href: '/admin/a2p',         label: 'A2P 10DLC',        icon: <A2PIcon /> },
         { href: '/admin/errors',      label: 'Errors',           icon: <ErrorsIcon /> },
       ],

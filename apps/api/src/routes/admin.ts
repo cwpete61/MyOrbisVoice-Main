@@ -938,6 +938,63 @@ router.get('/errors', async (_req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// GET /api/admin/call-log — master central call log. Every conversation
+// across every tenant + partner, newest first, with the AI monitor's
+// attention level for colour/triage. Filters: attention level, scope.
+router.get('/call-log', requirePlatformSupport, async (req, res, next) => {
+  try {
+    const { limit = '50', offset = '0', attention, scope } = req.query as Record<string, string>
+    const where: Prisma.ConversationWhereInput = {}
+    if (attention === 'ALERT' || attention === 'WATCH' || attention === 'NONE') {
+      where.attentionLevel = attention
+    }
+    if (scope === 'partner') where.partnerId = { not: null }
+    if (scope === 'tenant')  where.partnerId = null
+
+    const [rows, total] = await Promise.all([
+      prisma.conversation.findMany({
+        where,
+        orderBy: { startedAt: 'desc' },
+        take:    Math.min(parseInt(limit, 10) || 50, 200),
+        skip:    parseInt(offset, 10) || 0,
+        include: {
+          tenant:   { select: { displayName: true } },
+          partner:  { select: { businessName: true, displayName: true } },
+          contact:  { select: { fullName: true, firstName: true, lastName: true, phoneE164: true } },
+          callLogs: { select: { durationSeconds: true, sourceNumber: true }, take: 1 },
+          _count:   { select: { appointments: true } },
+        },
+      }),
+      prisma.conversation.count({ where }),
+    ])
+
+    const items = rows.map((c) => ({
+      id:              c.id,
+      startedAt:       c.startedAt,
+      endedAt:         c.endedAt,
+      channelType:     c.channelType,
+      direction:       c.direction,
+      status:          c.status,
+      attentionLevel:  c.attentionLevel,
+      attentionReason: c.attentionReason,
+      summary:         c.summaryText,
+      scope:           c.partnerId ? 'partner' : 'tenant',
+      owner:           c.partnerId
+        ? (c.partner?.businessName ?? c.partner?.displayName ?? 'Partner')
+        : (c.tenant?.displayName ?? 'Tenant'),
+      caller: c.contact?.fullName
+        ?? ([c.contact?.firstName, c.contact?.lastName].filter(Boolean).join(' ') || null)
+        ?? c.callLogs[0]?.sourceNumber
+        ?? c.contact?.phoneE164
+        ?? 'Unknown',
+      durationSeconds: c.callLogs[0]?.durationSeconds ?? null,
+      booked:          c._count.appointments > 0,
+    }))
+
+    res.json({ data: { items, total, limit: parseInt(limit, 10) || 50, offset: parseInt(offset, 10) || 0 } })
+  } catch (err) { next(err) }
+})
+
 // ── Disposable test-tenant cleanup ─────────────────────────────────────────
 // The smoke-test (scripts/smoke-test.ts) creates a fresh tenant on every run
 // using a @orbisvoice.test email. Without cleanup these accumulate. This
