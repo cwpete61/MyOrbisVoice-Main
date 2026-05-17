@@ -22,10 +22,14 @@ const LEADENGINE_TOKEN = process.env['LEADENGINE_INTERNAL_TOKEN'] ?? ''
 
 interface EngineLead {
   businessName?: string
+  ownerName?: string | null
+  ownerTitle?: string | null
   email?: string | null
   phone?: string | null
   website?: string | null
   address?: string | null
+  latitude?: number | null
+  longitude?: number | null
   rating?: number | null
   reviewCount?: number | null
   category?: string | null
@@ -195,10 +199,14 @@ export async function syncSearch(searchId: string) {
           searchId,
           partnerId: search.partnerId,
           businessName: l.businessName || 'Unknown business',
+          ownerName: l.ownerName ?? null,
+          ownerTitle: l.ownerTitle ?? null,
           email: l.email ?? null,
           phone: l.phone ?? null,
           website: l.website ?? null,
           address: l.address ?? null,
+          latitude: l.latitude ?? null,
+          longitude: l.longitude ?? null,
           rating: l.rating ?? null,
           reviewCount: l.reviewCount ?? null,
           category: l.category ?? null,

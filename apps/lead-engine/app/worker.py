@@ -35,9 +35,11 @@ def run_search_job(job_id: str) -> None:
     for index, business in enumerate(businesses):
         contact = website_email.find_contact(business.get("website") or "", config.PROXY_URL)
         lead = {
-            **business,
+            **business,  # businessName, address, phone, website, lat/lng, rating, ...
             "email": contact["email"],
             "socials": contact["socials"],
+            "ownerName": contact["ownerName"],
+            "ownerTitle": contact["ownerTitle"],
         }
         lead["score"] = score_lead(lead)
         leads.append(lead)

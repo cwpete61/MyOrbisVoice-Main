@@ -16,8 +16,24 @@ from bs4 import BeautifulSoup
 
 _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 
-# Pages most likely to carry a contact address, in crawl order.
-_CONTACT_PATHS = ["", "contact", "contact-us", "about", "about-us"]
+# Pages most likely to carry a contact address or an owner name, in crawl
+# order. team / about pages are where the owner is usually named.
+_CONTACT_PATHS = ["", "contact", "contact-us", "about", "about-us", "team", "our-team"]
+
+# Best-effort owner detection. Inherently noisy — many small-business sites
+# never name the owner in crawlable text — so a miss just leaves ownerName null.
+_OWNER_TITLES = r"Owner|Co-?Owner|Founder|Co-?Founder|President|CEO|Principal|Proprietor|Managing Partner"
+_NAME = r"(?:Dr\.?\s+|Mr\.?\s+|Ms\.?\s+|Mrs\.?\s+)?[A-Z][a-z]+(?:\s+[A-Z][a-z.'-]+){1,2}"
+# "Jane Doe, Owner"  /  "Jane Doe - Founder"
+_OWNER_NAME_FIRST = re.compile(rf"\b({_NAME})\s*[,\-–—]\s*(?:the\s+)?({_OWNER_TITLES})\b")
+# "Owner: Jane Doe"  /  "Owner - Jane Doe"
+_OWNER_TITLE_FIRST = re.compile(rf"\b({_OWNER_TITLES})\s*[:\-–—]\s*({_NAME})\b")
+# Capitalized words that look like names to the regex but aren't.
+_NOT_NAME = {
+    "Contact", "About", "Our", "The", "Home", "Welcome", "Privacy", "Terms",
+    "Meet", "Team", "Us", "Get", "Learn", "More", "Read", "Click", "Call",
+    "Email", "View", "Site", "Page", "Service", "Services", "Hours", "Office",
+}
 
 # Substrings that mark a regex match as NOT a real contact email.
 _JUNK = (
@@ -40,8 +56,8 @@ _HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; OrbisLeadBot/1.0)"}
 
 
 def find_contact(website_url: str, proxy_url: str = "") -> dict:
-    """Return {"email": str|None, "socials": {platform: url}} for a website."""
-    out: dict = {"email": None, "socials": {}}
+    """Return {email, socials, ownerName, ownerTitle} scraped from a website."""
+    out: dict = {"email": None, "socials": {}, "ownerName": None, "ownerTitle": None}
     base = _normalize_url(website_url)
     if not base:
         return out
@@ -49,21 +65,43 @@ def find_contact(website_url: str, proxy_url: str = "") -> dict:
     proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
     emails: list[str] = []
     socials: dict[str, str] = {}
+    owner: dict | None = None
 
     for path in _CONTACT_PATHS:
-        url = urljoin(base, path)
-        html = _fetch(url, proxies)
+        html = _fetch(urljoin(base, path), proxies)
         if html is None:
             continue
         emails.extend(_extract_emails(html))
         for platform, link in _extract_socials(html).items():
             socials.setdefault(platform, link)
-        if emails:
-            break  # found a contact email — no need to crawl further pages
+        if owner is None:
+            owner = _extract_owner(html)
+        # Stop once both are found — no need to crawl the remaining pages.
+        if emails and owner:
+            break
 
     out["email"] = _best_email(emails, base)
     out["socials"] = socials
+    if owner:
+        out["ownerName"] = owner["name"]
+        out["ownerTitle"] = owner["title"]
     return out
+
+
+def _extract_owner(html: str) -> dict | None:
+    """Best-effort owner name + title from a page. Returns None on no match."""
+    text = BeautifulSoup(html, "html.parser").get_text(" ")
+    for regex, name_group, title_group in (
+        (_OWNER_NAME_FIRST, 1, 2),
+        (_OWNER_TITLE_FIRST, 2, 1),
+    ):
+        for m in regex.finditer(text):
+            name = m.group(name_group).strip()
+            if any(w in _NOT_NAME for w in name.split()):
+                continue  # a heading like "Contact Us" matched the name shape
+            title = m.group(title_group).strip()
+            return {"name": name, "title": title.title() if title.islower() else title}
+    return None
 
 
 def _fetch(url: str, proxies: dict | None) -> str | None:

@@ -60,6 +60,8 @@ def normalize_place(place: dict) -> dict:
         "address": place.get("address", ""),
         "phone": place.get("phoneNumber"),
         "website": _clean_url(place.get("website")),
+        "latitude": place.get("latitude"),
+        "longitude": place.get("longitude"),
         "rating": place.get("rating"),
         "reviewCount": place.get("ratingCount"),
         "category": place.get("type"),

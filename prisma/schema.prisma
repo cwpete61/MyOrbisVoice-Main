@@ -1887,10 +1887,13 @@ model Lead {
   partnerId         String
   businessName      String
   ownerName         String?
+  ownerTitle        String? // "Owner", "President", etc. — best-effort from the site
   email             String?
   phone             String?
   website           String?
   address           String?
+  latitude          Float? // from the Maps source — drives the Route Planner
+  longitude         Float?
   rating            Float?
   reviewCount       Int?
   category          String?
