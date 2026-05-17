@@ -40,6 +40,19 @@ export async function dispatchPendingCalls(tenantId: string, campaignId: string)
   const client = await getTwilioClientForPhone(phoneRecord)
 
   for (const attempt of pending) {
+    // Compliance gate — never auto-dial a contact who has opted out of voice.
+    // This is the single chokepoint for every outbound call the platform
+    // places, so the check here covers all voice campaigns. Set true when a
+    // customer says STOP on a prior call, and on every scraped lead promoted
+    // into the CRM (born voice-opted-out — cold email only).
+    if (attempt.contact.optedOutVoice) {
+      await prisma.outboundCallAttempt.update({
+        where: { id: attempt.id },
+        data: { status: 'FAILED', outcomeCode: 'opted_out_voice', startedAt: new Date(), endedAt: new Date() },
+      })
+      continue
+    }
+
     const toNumber = attempt.contact.phoneE164
     if (!toNumber) {
       await prisma.outboundCallAttempt.update({
