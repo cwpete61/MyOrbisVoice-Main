@@ -1841,10 +1841,84 @@ model AffiliateAccount {
   emailSendWindowEndHour    Int?
   emailDripIntervalSecs     Int?
 
+  // Lead engine — remaining lead-search credits. ~1 credit per result
+  // returned. Default is a trial allotment; admin can top up. Decremented
+  // when a search is submitted.
+  leadSearchCredits         Int @default(250)
+
   partnerMessageLogs       MessageLog[]       @relation("PartnerMessageLogs")
   partnerEmailSuppressions EmailSuppression[] @relation("PartnerEmailSuppressions")
   partnerEmailCampaigns    EmailCampaign[]    @relation("PartnerEmailCampaigns")
   a2pApplication           TenantA2PApplication?
+  leadSearches             LeadSearch[]
+  leads                    Lead[]
+}
+
+/// Lead engine — a partner's business-discovery search. Drives the Search
+/// History view. The scraping + enrichment runs in the leadengine service;
+/// externalJobId links this row to that job.
+model LeadSearch {
+  id            String           @id @default(uuid())
+  partnerId     String
+  industry      String
+  location      String
+  resultCount   Int // requested result count
+  status        LeadSearchStatus @default(PENDING)
+  externalJobId String? // leadengine job id
+  leadCount     Int              @default(0)
+  emailCount    Int              @default(0)
+  errorReason   String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  partner       AffiliateAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  leads         Lead[]
+
+  @@index([partnerId, createdAt])
+}
+
+/// Lead engine — one enriched business from a search. Staging only: raw and
+/// partner-reviewed. An accepted lead is promoted into a Contact in the CRM
+/// "New Lead" stage (promotedContactId links the two). A scraped lead has
+/// consented to nothing — the promote path marks the Contact's source SCRAPED
+/// and born-opted-out of voice + SMS; cold email is the only allowed channel.
+model Lead {
+  id                String           @id @default(uuid())
+  searchId          String
+  partnerId         String
+  businessName      String
+  ownerName         String?
+  email             String?
+  phone             String?
+  website           String?
+  address           String?
+  rating            Float?
+  reviewCount       Int?
+  category          String?
+  socialsJson       Json?
+  score             Int              @default(0)
+  reviewStatus      LeadReviewStatus @default(NEW)
+  promotedContactId String? // set when the lead is promoted to a Contact
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  search            LeadSearch       @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  partner           AffiliateAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, reviewStatus])
+  @@index([searchId])
+}
+
+enum LeadSearchStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum LeadReviewStatus {
+  NEW
+  SAVED
+  REJECTED
+  PROMOTED
 }
 
 /// Partner-scoped email storage powering the Mailbox UI in /partner.
