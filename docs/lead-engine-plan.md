@@ -1,6 +1,19 @@
 # Plan — Lead Engine (per-partner scraping + enrichment)
 
-**Status:** plan / awaiting build approval. Drafted 2026-05-17.
+**Status:** ✅ Phase 1 SHIPPED 2026-05-17 — deployed to production and
+verified end to end. Commits `85fe5b8`, `8dd0f84`, `1df5951`, `9d486a6`,
+`65f0650`, `51f8be4`. Phases 2 (social enrichment) + 3 (cold-email engine)
+remain.
+
+**Maps source — final:** Serper.dev Maps API (not the official Places API
+the plan first assumed, and not the omkarcloud repo, which turned out to be
+a closed desktop app). Serper proxies Google Maps data, is cheaper per call
+(billed in credits), and needs no proxy. The website-email enrichment is
+self-hosted as planned.
+
+---
+
+Drafted 2026-05-17.
 
 A per-partner lead-sourcing system in the partner-portal **lead section**.
 Inspired by "9x12 Lead Scout": a partner runs an industry + location

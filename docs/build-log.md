@@ -345,6 +345,41 @@ earlier "one shared master Orby" model — every partner now gets their own Orby
       partner numbers re-pointed at their partner's Orby; master agent renamed
       "Orchestrator" → "Orby"
 
+### Lead engine — Phase 1 — 2026-05-17
+
+Per-partner lead sourcing in the partner portal (`docs/lead-engine-plan.md`).
+A partner searches an industry + location, the engine finds local businesses
+and enriches them with contact data, the partner reviews and promotes the
+good ones into their CRM. Built autonomously in 6 chunks, each
+build → review-agent → fix → verify → commit.
+
+- [x] **`myorbisvoice-leadengine`** — new Python/FastAPI container, isolated
+      (internal network + dedicated egress bridge, never public, non-root).
+      In-memory job store; background worker.
+- [x] **Maps source: Serper.dev** — `google.serper.dev/maps`, 20 results/page,
+      paged to a 60 cap. Chosen after the omkarcloud repo turned out to be a
+      closed desktop app; cheaper than the official Places API.
+- [x] **Website enrichment** — crawls each business's own site for a contact
+      email + socials. Same-domain-only email guard (a real test caught a
+      vendor email embedded in a dentist's site — a wrong cold-email target).
+- [x] **Schema** — `LeadSearch` + `Lead` (staging) + `AffiliateAccount.leadSearchCredits`.
+- [x] **App API** — partner-scoped search / list / status / review / promote.
+      Per-partner credits charged on search, refunded on shortfall/failure.
+- [x] **Compliance wall** — promoted scraped leads become Contacts that are
+      `source=SCRAPED_LEAD` + born opted-out of voice + SMS. Closed a
+      pre-existing hole: `optedOutVoice` was enforced nowhere — added the
+      guard at `dispatchPendingCalls`, the single outbound-call chokepoint.
+      Cold email is the only channel a scraped lead is reachable on.
+- [x] **Partner portal Leads UI** — New Search, history, results table with
+      review/promote, live polling, bilingual en/es.
+- [x] Deployed: leadengine container + api (schema push) + web. Verified end
+      to end in prod — real search → 10 enriched leads → promote → CRM Contact
+      with the compliance fields confirmed in the live DB.
+
+**Known follow-up:** `deploy.sh` has no `leadengine` target yet — the first
+deploy was done manually (`docker compose up -d --build lead-engine`). Add a
+target before the next leadengine code change.
+
 ### Phase 1 notes
 - Existing ports 5432 and 6379 are occupied by other projects (umoja-postgres, umoja-redis). Phase 1 reuses these services. The voiceautomation DB was created on umoja-postgres with its own user/role.
 - Docker compose is set up for full-stack mode but dev workflow runs API/web natively via pnpm dev.

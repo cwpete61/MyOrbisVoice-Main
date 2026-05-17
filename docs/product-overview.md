@@ -194,6 +194,7 @@ Tenants can edit their master prompt + channel overlays + role overlays. Each is
 
 Partners (affiliates) get:
 
+- **Lead engine** — a built-in prospecting tool in the partner portal. A partner searches an industry + location ("Dentist, Allentown PA"); the engine pulls local businesses from Google Maps (via Serper.dev) and enriches each with a website-sourced contact email + social links, scored by completeness. The partner reviews the results and promotes the good ones straight into their CRM "New Lead" stage. Scraped leads are walled to **cold email only** — promoted as contacts born opted-out of voice + SMS, never auto-called or texted without explicit consent.
 - **Their own Orby agent** — on approval, each partner gets a per-partner Orby (a clone of the platform agent). Every channel that partner owns — their web widget and any phone numbers they buy — is answered by *their* Orby: it speaks their name and business, books to their calendar, and logs conversations to their portal. One Orby per partner regardless of how many numbers they own; partners are fully isolated from each other.
 - **Stripe Connect Express onboarding** — partners create their payout account through Stripe in test or live mode, payouts route to their bank/debit card automatically (verified end-to-end live in production).
 - Custom referral links + custom slugs (split-track campaigns: e.g. `/r/sarahs-podcast`, `/r/fall-promo`).
@@ -308,6 +309,7 @@ Every change here corresponds to a commit. When you ship something user-visible,
 
 ### 2026-05-17
 
+- **Lead engine (Phase 1)** — partner-portal prospecting tool. Industry + location search → Google Maps businesses (via Serper.dev) enriched with website contact email + socials, completeness-scored → partner reviews and promotes leads into the CRM. Scraped leads are cold-email-only: promoted contacts are born opted-out of voice + SMS, enforced at the single outbound-call chokepoint. New isolated `myorbisvoice-leadengine` container. (Commits `85fe5b8`…`51f8be4`)
 - **Partner-branded appointment communications** — confirmation emails, reminder emails, and reminder SMS for partner-routed bookings now speak as the partner: their business name ("booking with X"), their Orby agent credited in the footer, "Powered by MyOrbisVoice", and partner contact details. Partner emails send from a partner-branded From address; partner reminder SMS sends from the partner's own Twilio number (their caller ID), billed to partner SMS credits. (Commit this session)
 
 ### 2026-05-16
