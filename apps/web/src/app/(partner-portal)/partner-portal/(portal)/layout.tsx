@@ -17,7 +17,7 @@ const NAV = [
   { href: '/partner-portal/dashboard',   labelKey: 'partnerNav.dashboard',   icon: 'M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z' },
   { href: '/partner-portal/getting-started', labelKey: 'partnerNav.gettingStarted', icon: 'M9 11l3 3L20 5M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
   { href: '/partner-portal/mailbox',     labelKey: 'partnerNav.mailbox',     icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM2 6l10 7l10-7' },
-  { href: '/partner-portal/bulk-email',  labelKey: 'partnerNav.bulkEmail',   icon: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z' },
+  { href: '/partner-portal/bulk-email',  labelKey: 'partnerNav.bulkEmail',   icon: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z', accent: 'red' },
   { href: '/partner-portal/calendar',    labelKey: 'partnerNav.calendar',    icon: 'M3 9h18M3 5h18v14H3zM8 3v4M16 3v4' },
   { href: '/partner-portal/phone-numbers', labelKey: 'partnerNav.phoneNumbers', icon: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z' },
   { href: '/partner-portal/a2p',           labelKey: 'partnerNav.a2p',          icon: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4zM9 12l2 2 4-4' },
@@ -76,16 +76,22 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
         <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-0.5" onClick={onNav}>
           {NAV.map(item => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/')
+            // Red-accent items (Bulk Email) render solid red with white text +
+            // icon at all times — a deliberate "this is a different system" cue.
+            const isRed = 'accent' in item && item.accent === 'red'
+            const style = isRed
+              ? { background: active ? 'oklch(48% 0.20 25)' : 'oklch(55% 0.21 25)', color: 'white', fontWeight: 600 }
+              : active
+                ? { background: 'var(--nav-active-bg)', color: 'var(--nav-active-text)', fontWeight: 600 }
+                : { color: 'var(--text-secondary)' }
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                style={active
-                  ? { background: 'var(--nav-active-bg)', color: 'var(--nav-active-text)', fontWeight: 600 }
-                  : { color: 'var(--text-secondary)' }}
+                style={style}
               >
-                <span style={{ opacity: active ? 1 : 0.7 }}><Icon d={item.icon} /></span>
+                <span style={{ opacity: isRed || active ? 1 : 0.7 }}><Icon d={item.icon} /></span>
                 <span className="flex-1">{t(item.labelKey)}</span>
                 {('comingSoon' in item && item.comingSoon) && (
                   <span
