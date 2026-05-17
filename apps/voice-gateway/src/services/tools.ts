@@ -311,7 +311,7 @@ const handlers: Record<ToolName, ToolHandler> = {
       ctx.tenantId,
       // Phase E.2 — pass conversationId so the API can resolve partnerId and
       // run free/busy against the partner's calendar on partner-page widget calls.
-      { fromIso, toIso, durationMinutes, conversationId: ctx.conversationId },
+      { fromIso, toIso, durationMinutes, conversationId: ctx.conversationId, externalCallId: ctx.externalCallId },
     )
     // System error (DNS, Google API down, auth expired). The agent must NOT
     // tell the caller "the slot isn't available" — that misrepresents a
@@ -359,6 +359,7 @@ const handlers: Record<ToolName, ToolHandler> = {
         appointmentType,
         timezone,
         conversationId: ctx.conversationId,
+        externalCallId: ctx.externalCallId,
       },
     )
     if (!result.ok) return { ok: false, error: result.error }
@@ -398,8 +399,9 @@ const handlers: Record<ToolName, ToolHandler> = {
         // F.2 — when the gateway knows the live conversation id, pass it so
         // the API can link Conversation.contactId now. Then persistConversation
         // → fireCrmTransition can bump the pipeline stage on call-end without
-        // a separate lookup.
+        // a separate lookup. Inbound phone calls pass externalCallId instead.
         conversationId: ctx.conversationId,
+        externalCallId: ctx.externalCallId,
       },
     )
     if (!result.ok) return { ok: false, error: result.error }

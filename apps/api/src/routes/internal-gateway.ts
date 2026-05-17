@@ -102,6 +102,34 @@ async function findContact(tenantId: string, query: string) {
   })
 }
 
+/**
+ * Resolves the call's Conversation id + partnerId from whichever identifier
+ * the gateway supplied. Widget sessions pass `conversationId`; inbound /
+ * outbound phone calls pass `externalCallId` (the Twilio CallSid). Without
+ * resolving via externalCallId, partner-scoped tool ops (booking, contact
+ * capture, availability) silently fell back to tenant scope on every phone
+ * call to a partner's number.
+ */
+async function resolveGatewayCallContext(
+  tenantId: string,
+  ids: { conversationId?: string | null; externalCallId?: string | null },
+): Promise<{ conversationId: string | undefined; partnerId: string | undefined }> {
+  let conv: { id: string; partnerId: string | null } | null = null
+  if (ids.conversationId) {
+    conv = await prisma.conversation.findFirst({
+      where:  { id: ids.conversationId, tenantId },
+      select: { id: true, partnerId: true },
+    })
+  }
+  if (!conv && ids.externalCallId) {
+    conv = await prisma.conversation.findFirst({
+      where:  { externalCallId: ids.externalCallId, tenantId },
+      select: { id: true, partnerId: true },
+    })
+  }
+  return { conversationId: conv?.id, partnerId: conv?.partnerId ?? undefined }
+}
+
 // ---------- tool: lookup_contact ----------
 
 const lookupSchema = z.object({
@@ -160,6 +188,7 @@ const saveContactSchema = z.object({
   email:          z.string().email().max(200).optional(),
   notes:          z.string().max(2000).optional(),
   conversationId: z.string().uuid().optional(),
+  externalCallId: z.string().min(1).max(120).optional(),
 }).refine(d => Boolean(d.phoneE164 || d.email), {
   message: 'Provide phoneE164 or email (or both — both is preferred)',
 })
@@ -185,14 +214,7 @@ router.post('/internal/gateway/tools/save-contact', async (req, res, next) => {
     // when the gateway passed conversationId. Matching scope follows: partner
     // contacts only match against the partner's pool; tenant contacts only
     // match against tenant-side rows. Prevents cross-leak.
-    let partnerId: string | null = null
-    if (data.conversationId) {
-      const conv = await prisma.conversation.findUnique({
-        where:  { id: data.conversationId },
-        select: { partnerId: true },
-      })
-      partnerId = conv?.partnerId ?? null
-    }
+    const { partnerId } = await resolveGatewayCallContext(tenantId, data)
     const scopeWhere = partnerId
       ? { partnerId }
       : { tenantId, partnerId: null }
@@ -333,6 +355,7 @@ const bookSchema = z.object({
   appointmentType: z.string().max(120).optional(),
   timezone:        z.string().max(80).optional(),
   conversationId:  z.string().uuid().optional(),
+  externalCallId:  z.string().min(1).max(120).optional(),
 })
 
 // ---------- tool: search_availability ----------
@@ -351,12 +374,13 @@ const availabilitySchema = z.object({
   // Phase E.2 — when set, the handler looks up the conversation's partnerId
   // and runs free/busy against the partner's calendar instead of the tenant's.
   conversationId:    z.string().uuid().optional(),
+  externalCallId:    z.string().min(1).max(120).optional(),
 })
 
 router.post('/internal/gateway/tools/search-availability', async (req, res, next) => {
   try {
     const tenantId = (req as any).internalTenantId as string
-    const { fromIso, toIso, durationMinutes, timezone, conversationId } = availabilitySchema.parse(req.body)
+    const { fromIso, toIso, durationMinutes, timezone, conversationId, externalCallId } = availabilitySchema.parse(req.body)
     // Resolve to the tenant's timezone if the agent didn't pass one — the
     // agent commonly omits it, and defaulting to UTC means slot labels come
     // back as UTC strings the model misreads as wall-clock time. Forcing
@@ -365,14 +389,7 @@ router.post('/internal/gateway/tools/search-availability', async (req, res, next
 
     // Phase E.2 — resolve partnerId from the conversation, same pattern as
     // book_appointment. Null on tenant-side calls; set on partner-page calls.
-    let partnerId: string | undefined
-    if (conversationId) {
-      const conv = await prisma.conversation.findFirst({
-        where:  { id: conversationId, tenantId },
-        select: { partnerId: true },
-      })
-      partnerId = conv?.partnerId ?? undefined
-    }
+    const { partnerId } = await resolveGatewayCallContext(tenantId, { conversationId, externalCallId })
 
     const result = await appointmentService.searchAvailability(tenantId, {
       preferredStartRange: { from: fromIso, to: toIso },
@@ -424,18 +441,11 @@ router.post('/internal/gateway/tools/book-appointment', async (req, res, next) =
     // Phase E.2 — read partnerId off the conversation so the booking is routed
     // to the right calendar. partnerId is null for tenant-side widget calls and
     // for inbound phone calls; only partner-page widget calls have it set.
-    let partnerId: string | undefined
-    if (data.conversationId) {
-      const conv = await prisma.conversation.findFirst({
-        where:  { id: data.conversationId, tenantId },
-        select: { partnerId: true },
-      })
-      partnerId = conv?.partnerId ?? undefined
-    }
+    const { conversationId, partnerId } = await resolveGatewayCallContext(tenantId, data)
 
     const appointment = await appointmentService.createAppointment(tenantId, null, {
       contactId:       contact?.id,
-      conversationId:  data.conversationId,
+      conversationId,
       partnerId,
       appointmentType: data.appointmentType,
       startAt:         startAt.toISOString(),
