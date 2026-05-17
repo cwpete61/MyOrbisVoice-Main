@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { apiFetch } from '@/hooks/useApi'
+import { apiFetch, apiFetchRaw } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 const TEAL = 'oklch(55% 0.11 193)'
@@ -399,6 +399,20 @@ function SearchResults(props: {
           onBack, onRetry, onReject, onPromote, onSaveToggle, onToggleLead, onToggleAll, onBulkPromote } = props
   const [savedOnly, setSavedOnly] = useState(false)
 
+  async function exportCsv(searchId: string) {
+    const res = await apiFetchRaw(`/api/partner/leads/searches/${searchId}/export`)
+    if (!res.ok) return
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `leads-${searchId}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div>
       <button
@@ -481,6 +495,13 @@ function SearchResults(props: {
                   {t(key === 'saved' ? 'partnerLeads.filterSaved' : 'partnerLeads.filterAll')}
                 </button>
               ))}
+              <button
+                onClick={() => exportCsv(detail.search.id)}
+                className="ml-auto text-xs px-2.5 py-1 rounded"
+                style={{ background: 'var(--surface-raised)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+              >
+                {t('partnerLeads.exportCsv')}
+              </button>
             </div>
             {selected.size > 0 && (
               <div className="flex items-center gap-3 mb-2 px-3 py-2 rounded-lg" style={{ background: 'oklch(55% 0.11 193 / 0.1)' }}>

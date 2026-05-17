@@ -58,6 +58,15 @@ router.get('/partner/leads/searches/:id', async (req: Request, res: Response, ne
   } catch (err) { next(err) }
 })
 
+router.get('/partner/leads/searches/:id/export', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const csv = await leadEngine.exportSearchCsv(partnerId(req), req.params.id!)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="leads-${req.params.id}.csv"`)
+    res.send(csv)
+  } catch (err) { next(err) }
+})
+
 // ── Lead review + promote ───────────────────────────────────────────────────
 
 router.patch('/partner/leads/:id/review', async (req: Request, res: Response, next: NextFunction) => {

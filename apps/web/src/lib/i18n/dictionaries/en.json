@@ -83,6 +83,7 @@
     "save": "Save",
     "filterAll": "All",
     "filterSaved": "Saved",
+    "exportCsv": "Export CSV",
     "promote": "Add to CRM",
     "promoted": "In CRM",
     "promoting": "Adding…",

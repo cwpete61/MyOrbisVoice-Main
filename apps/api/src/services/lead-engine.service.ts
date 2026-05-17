@@ -254,6 +254,37 @@ export async function getSearchWithLeads(partnerId: string, searchId: string) {
   return { search, leads }
 }
 
+/** Quote a CSV cell when it contains a comma, quote, or newline. */
+function csvCell(value: unknown): string {
+  const s = value == null ? '' : String(value)
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+/** A search's leads as a CSV string (best-scored first). */
+export async function exportSearchCsv(partnerId: string, searchId: string): Promise<string> {
+  const search = await prisma.leadSearch.findFirst({
+    where:  { id: searchId, partnerId },
+    select: { id: true },
+  })
+  if (!search) throw new AppError('NOT_FOUND', 'Search not found', 404)
+
+  const leads = await prisma.lead.findMany({
+    where:   { searchId },
+    orderBy: { score: 'desc' },
+  })
+
+  const header = [
+    'Business', 'Owner', 'Title', 'Email', 'Phone', 'Website',
+    'Address', 'Rating', 'Reviews', 'Category', 'Score', 'Status',
+  ]
+  const rows = leads.map((l) => [
+    l.businessName, l.ownerName ?? '', l.ownerTitle ?? '', l.email ?? '', l.phone ?? '',
+    l.website ?? '', l.address ?? '', l.rating ?? '', l.reviewCount ?? '',
+    l.category ?? '', l.score, l.reviewStatus,
+  ])
+  return [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n')
+}
+
 /** Set a lead's review status (NEW lets the partner un-save / un-reject).
  *  PROMOTED leads can't be re-reviewed. */
 export async function reviewLead(
