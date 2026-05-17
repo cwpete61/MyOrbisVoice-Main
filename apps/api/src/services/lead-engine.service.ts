@@ -254,11 +254,12 @@ export async function getSearchWithLeads(partnerId: string, searchId: string) {
   return { search, leads }
 }
 
-/** Mark a lead SAVED or REJECTED. PROMOTED leads can't be re-reviewed. */
+/** Set a lead's review status (NEW lets the partner un-save / un-reject).
+ *  PROMOTED leads can't be re-reviewed. */
 export async function reviewLead(
   partnerId: string,
   leadId: string,
-  status: 'SAVED' | 'REJECTED',
+  status: 'NEW' | 'SAVED' | 'REJECTED',
 ) {
   const lead = await prisma.lead.findFirst({
     where: { id: leadId, partnerId },

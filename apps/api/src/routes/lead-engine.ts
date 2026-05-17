@@ -62,7 +62,7 @@ router.get('/partner/leads/searches/:id', async (req: Request, res: Response, ne
 
 router.patch('/partner/leads/:id/review', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { status } = z.object({ status: z.enum(['SAVED', 'REJECTED']) }).parse(req.body)
+    const { status } = z.object({ status: z.enum(['NEW', 'SAVED', 'REJECTED']) }).parse(req.body)
     const lead = await leadEngine.reviewLead(partnerId(req), req.params.id!, status)
     res.json({ data: lead })
   } catch (err) { next(err) }

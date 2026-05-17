@@ -167,6 +167,19 @@ export default function PartnerLeadsPage() {
     finally { setBusyLeadId(null) }
   }
 
+  async function saveToggle(leadId: string, current: ReviewStatus) {
+    const next: ReviewStatus = current === 'SAVED' ? 'NEW' : 'SAVED'
+    setBusyLeadId(leadId)
+    try {
+      await apiFetch(`/api/partner/leads/${leadId}/review`, {
+        method: 'PATCH',
+        body:   JSON.stringify({ status: next }),
+      })
+      patchLead(leadId, next)
+    } catch { /* leave the row as-is on failure */ }
+    finally { setBusyLeadId(null) }
+  }
+
   function toggleLead(id: string) {
     setSelected(prev => {
       const next = new Set(prev)
@@ -303,6 +316,7 @@ export default function PartnerLeadsPage() {
             onRetry={() => setReloadKey(k => k + 1)}
             onReject={rejectLead}
             onPromote={promoteLead}
+            onSaveToggle={saveToggle}
             onToggleLead={toggleLead}
             onToggleAll={toggleAll}
             onBulkPromote={bulkPromote}
@@ -376,12 +390,14 @@ function SearchResults(props: {
   onRetry: () => void
   onReject: (id: string) => void
   onPromote: (id: string) => void
+  onSaveToggle: (id: string, current: ReviewStatus) => void
   onToggleLead: (id: string) => void
   onToggleAll: (ids: string[]) => void
   onBulkPromote: () => void
 }) {
   const { t, statusLabel, detail, error, busyLeadId, selected, bulkBusy,
-          onBack, onRetry, onReject, onPromote, onToggleLead, onToggleAll, onBulkPromote } = props
+          onBack, onRetry, onReject, onPromote, onSaveToggle, onToggleLead, onToggleAll, onBulkPromote } = props
+  const [savedOnly, setSavedOnly] = useState(false)
 
   return (
     <div>
@@ -443,12 +459,29 @@ function SearchResults(props: {
           )}
 
           {detail.leads.length > 0 && (() => {
-            const selectableIds = detail.leads
+            const shown = savedOnly
+              ? detail.leads.filter(l => l.reviewStatus === 'SAVED')
+              : detail.leads
+            const selectableIds = shown
               .filter(l => l.reviewStatus === 'NEW' || l.reviewStatus === 'SAVED')
               .map(l => l.id)
             const allSelected = selectableIds.length > 0 && selectableIds.every(id => selected.has(id))
             return (
             <>
+            <div className="flex items-center gap-1 mb-2">
+              {([['all', false], ['saved', true]] as const).map(([key, on]) => (
+                <button
+                  key={key}
+                  onClick={() => setSavedOnly(on)}
+                  className="text-xs px-2.5 py-1 rounded"
+                  style={savedOnly === on
+                    ? { background: TEAL, color: 'white' }
+                    : { background: 'var(--surface-raised)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+                >
+                  {t(key === 'saved' ? 'partnerLeads.filterSaved' : 'partnerLeads.filterAll')}
+                </button>
+              ))}
+            </div>
             {selected.size > 0 && (
               <div className="flex items-center gap-3 mb-2 px-3 py-2 rounded-lg" style={{ background: 'oklch(55% 0.11 193 / 0.1)' }}>
                 <span className="text-xs font-medium" style={{ color: TEAL }}>
@@ -490,7 +523,7 @@ function SearchResults(props: {
                   </tr>
                 </thead>
                 <tbody>
-                  {detail.leads.map(lead => (
+                  {shown.map(lead => (
                     <tr key={lead.id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
                       <td className="px-3 py-2.5 align-top">
                         {(lead.reviewStatus === 'NEW' || lead.reviewStatus === 'SAVED') && (
@@ -548,6 +581,17 @@ function SearchResults(props: {
                           </span>
                         ) : (
                           <span className="inline-flex gap-1.5">
+                            <button
+                              onClick={() => onSaveToggle(lead.id, lead.reviewStatus)}
+                              disabled={busyLeadId === lead.id}
+                              className="text-xs px-1.5 py-1 rounded disabled:opacity-40"
+                              style={lead.reviewStatus === 'SAVED'
+                                ? { background: 'oklch(55% 0.11 193 / 0.15)', color: TEAL }
+                                : { border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+                              title={t('partnerLeads.save')}
+                            >
+                              {lead.reviewStatus === 'SAVED' ? '★' : '☆'}
+                            </button>
                             <button
                               onClick={() => onReject(lead.id)}
                               disabled={busyLeadId === lead.id}
