@@ -61,6 +61,8 @@ export default function PartnerLeadsPage() {
   const [detailError, setDetailError]       = useState<string | null>(null)
   const [busyLeadId, setBusyLeadId]         = useState<string | null>(null)
   const [reloadKey, setReloadKey]           = useState(0)
+  const [selected, setSelected]             = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy]             = useState(false)
 
   const fetchCredits = useCallback(async () => {
     try {
@@ -106,6 +108,7 @@ export default function PartnerLeadsPage() {
 
     setActiveSearch(null)
     setDetailError(null)
+    setSelected(new Set())
     void load()
     return () => { cancelled = true; if (timer) clearTimeout(timer) }
   }, [activeSearchId, reloadKey, fetchCredits, fetchSearches])
@@ -158,6 +161,43 @@ export default function PartnerLeadsPage() {
       patchLead(leadId, 'PROMOTED')
     } catch { /* leave the row as-is on failure */ }
     finally { setBusyLeadId(null) }
+  }
+
+  function toggleLead(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // Select-all toggle: if every id is already selected, clear; else select
+  // them all. Passing [] always clears (used by the "Clear" button).
+  function toggleAll(ids: string[]) {
+    setSelected(prev => (ids.length > 0 && ids.every(id => prev.has(id)) ? new Set() : new Set(ids)))
+  }
+
+  async function bulkPromote() {
+    const ids = [...selected]
+    if (ids.length === 0 || bulkBusy) return
+    setBulkBusy(true)
+    try {
+      const res = await apiFetch<{ promoted: string[]; failed: { leadId: string }[] }>(
+        '/api/partner/leads/promote-batch',
+        { method: 'POST', body: JSON.stringify({ leadIds: ids }) },
+      )
+      const failedSet = new Set(res.failed.map(f => f.leadId))
+      setActiveSearch(prev => prev && {
+        ...prev,
+        leads: prev.leads.map(l =>
+          ids.includes(l.id) && !failedSet.has(l.id)
+            ? { ...l, reviewStatus: 'PROMOTED' as ReviewStatus }
+            : l),
+      })
+      setSelected(new Set())
+    } catch { /* leave rows as-is on failure */ }
+    finally { setBulkBusy(false) }
   }
 
   const statusLabel: Record<SearchStatus, string> = {
@@ -253,10 +293,15 @@ export default function PartnerLeadsPage() {
             detail={activeSearch}
             error={detailError}
             busyLeadId={busyLeadId}
+            selected={selected}
+            bulkBusy={bulkBusy}
             onBack={() => { setActiveSearchId(null); setActiveSearch(null) }}
             onRetry={() => setReloadKey(k => k + 1)}
             onReject={rejectLead}
             onPromote={promoteLead}
+            onToggleLead={toggleLead}
+            onToggleAll={toggleAll}
+            onBulkPromote={bulkPromote}
           />
         : <SearchHistory
             t={t}
@@ -321,12 +366,18 @@ function SearchResults(props: {
   detail: SearchDetail | null
   error: string | null
   busyLeadId: string | null
+  selected: Set<string>
+  bulkBusy: boolean
   onBack: () => void
   onRetry: () => void
   onReject: (id: string) => void
   onPromote: (id: string) => void
+  onToggleLead: (id: string) => void
+  onToggleAll: (ids: string[]) => void
+  onBulkPromote: () => void
 }) {
-  const { t, statusLabel, detail, error, busyLeadId, onBack, onRetry, onReject, onPromote } = props
+  const { t, statusLabel, detail, error, busyLeadId, selected, bulkBusy,
+          onBack, onRetry, onReject, onPromote, onToggleLead, onToggleAll, onBulkPromote } = props
 
   return (
     <div>
@@ -387,11 +438,44 @@ function SearchResults(props: {
             </p>
           )}
 
-          {detail.leads.length > 0 && (
+          {detail.leads.length > 0 && (() => {
+            const selectableIds = detail.leads
+              .filter(l => l.reviewStatus === 'NEW' || l.reviewStatus === 'SAVED')
+              .map(l => l.id)
+            const allSelected = selectableIds.length > 0 && selectableIds.every(id => selected.has(id))
+            return (
+            <>
+            {selected.size > 0 && (
+              <div className="flex items-center gap-3 mb-2 px-3 py-2 rounded-lg" style={{ background: 'oklch(55% 0.11 193 / 0.1)' }}>
+                <span className="text-xs font-medium" style={{ color: TEAL }}>
+                  {selected.size} {t('partnerLeads.selectedSuffix')}
+                </span>
+                <button
+                  onClick={onBulkPromote}
+                  disabled={bulkBusy}
+                  className="text-xs px-3 py-1 rounded font-medium disabled:opacity-40"
+                  style={{ background: TEAL, color: 'white' }}
+                >
+                  {bulkBusy ? t('partnerLeads.bulkSending') : t('partnerLeads.bulkSend')}
+                </button>
+                <button onClick={() => onToggleAll([])} className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  {t('partnerLeads.clearSelection')}
+                </button>
+              </div>
+            )}
             <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ background: 'var(--surface-raised)' }}>
+                    <th className="px-3 py-2 w-8">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        disabled={selectableIds.length === 0}
+                        onChange={() => onToggleAll(selectableIds)}
+                        aria-label="select all"
+                      />
+                    </th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colBusiness')}</th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colContact')}</th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colRating')}</th>
@@ -402,6 +486,16 @@ function SearchResults(props: {
                 <tbody>
                   {detail.leads.map(lead => (
                     <tr key={lead.id} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                      <td className="px-3 py-2.5 align-top">
+                        {(lead.reviewStatus === 'NEW' || lead.reviewStatus === 'SAVED') && (
+                          <input
+                            type="checkbox"
+                            checked={selected.has(lead.id)}
+                            onChange={() => onToggleLead(lead.id)}
+                            aria-label={'select ' + lead.businessName}
+                          />
+                        )}
+                      </td>
                       <td className="px-3 py-2.5 align-top">
                         <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{lead.businessName}</p>
                         {lead.address && (
@@ -459,7 +553,9 @@ function SearchResults(props: {
                 </tbody>
               </table>
             </div>
-          )}
+            </>
+            )
+          })()}
         </>
       )}
     </div>

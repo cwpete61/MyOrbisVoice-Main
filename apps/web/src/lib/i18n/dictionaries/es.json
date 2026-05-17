@@ -83,6 +83,10 @@
     "promoting": "Agregando…",
     "loadError": "No se pudo cargar esta búsqueda.",
     "retry": "Reintentar",
+    "bulkSend": "Enviar al CRM",
+    "bulkSending": "Enviando…",
+    "selectedSuffix": "seleccionados",
+    "clearSelection": "Limpiar",
     "complianceNote": "Los prospectos encontrados aquí son solo para correo en frío. El sistema nunca llama ni envía SMS automáticamente a un prospecto extraído — eso requiere su consentimiento explícito primero."
   },
   "partnerNav": {

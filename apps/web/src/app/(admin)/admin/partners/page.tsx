@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { apiFetchRaw, useApi } from '@/hooks/useApi'
 
 interface AffiliateUser { id: string; email: string; firstName: string | null; lastName: string | null }
@@ -8,6 +8,7 @@ interface AffiliateAccount {
   id: string; status: 'PENDING' | 'ACTIVE' | 'PAUSED' | 'DISABLED'
   referralCode: string; createdAt: string; approvedAt: string | null
   totalEarnedCents: number; totalPaidCents: number; notes: string | null
+  leadSearchCredits: number
   // Phase F.4 — bulk-email policy fields (admin-controlled, partner read-only)
   emailBulkEnabled: boolean
   emailBulkSuspendedAt: string | null
@@ -234,6 +235,8 @@ export default function AdminAffiliatesPage() {
               tick. Suspension state is independent (not touched). */}
           <BulkEmailToggle reload={reloadAff} showToast={showToast} />
 
+          <LeadCreditsCard showToast={showToast} />
+
           <div className="flex items-center gap-3">
             <input className="input-field text-sm flex-1 max-w-xs" placeholder="Search by name or email…"
               value={search} onChange={e => setSearch(e.target.value)} />
@@ -262,7 +265,7 @@ export default function AdminAffiliatesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
-                    {['Partner', 'Code', 'Status', 'Clicks', 'Conv.', 'Earned', 'Paid', 'Joined', 'Actions'].map(h => (
+                    {['Partner', 'Code', 'Status', 'Clicks', 'Conv.', 'Earned', 'Paid', 'Joined', 'Lead credits', 'Actions'].map(h => (
                       <th key={h} className="px-3 py-3 text-left text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{h}</th>
                     ))}
                   </tr>
@@ -272,8 +275,8 @@ export default function AdminAffiliatesPage() {
                     const s = STATUS_STYLE[a.status]!
                     const isPolicyOpen = emailPolicyOpen === a.id
                     return (
-                      <>
-                      <tr key={a.id} style={{ borderBottom: !isPolicyOpen && i < affiliateData.items.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
+                      <Fragment key={a.id}>
+                      <tr style={{ borderBottom: !isPolicyOpen && i < affiliateData.items.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
                         <td className="px-3 py-3">
                           <p className="font-medium text-xs" style={{ color: 'var(--text-primary)' }}>{userName(a.user)}</p>
                           <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{a.user.email}</p>
@@ -285,6 +288,13 @@ export default function AdminAffiliatesPage() {
                         <td className="px-3 py-3 text-xs font-medium" style={{ color: 'var(--text-primary)' }}>{cents(a.totalEarnedCents)}</td>
                         <td className="px-3 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{cents(a.totalPaidCents)}</td>
                         <td className="px-3 py-3 text-xs" style={{ color: 'var(--text-tertiary)' }}>{new Date(a.createdAt).toLocaleDateString()}</td>
+                        <td className="px-3 py-3">
+                          <PartnerCreditsCell
+                            partner={a}
+                            onSaved={() => { reloadAff(); showToast('success', `Lead credits updated for ${userName(a.user)}.`) }}
+                            onError={(m) => showToast('error', m)}
+                          />
+                        </td>
                         <td className="px-3 py-3">
                           <div className="flex gap-1.5 flex-wrap">
                             {a.status === 'PENDING'  && <button onClick={() => doAffAction(a.id, 'approve')}    disabled={!!working} className="text-xs px-2 py-1 rounded" style={{ background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }}>Approve</button>}
@@ -350,8 +360,8 @@ export default function AdminAffiliatesPage() {
                         </td>
                       </tr>
                       {isPolicyOpen && emailDefaults && (
-                        <tr key={a.id + '-policy'} style={{ background: 'var(--surface-overlay)', borderBottom: i < affiliateData.items.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
-                          <td colSpan={9} className="px-4 py-4">
+                        <tr style={{ background: 'var(--surface-overlay)', borderBottom: i < affiliateData.items.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
+                          <td colSpan={10} className="px-4 py-4">
                             <PartnerEmailPolicyEditor
                               partner={a}
                               defaults={emailDefaults}
@@ -361,7 +371,7 @@ export default function AdminAffiliatesPage() {
                           </td>
                         </tr>
                       )}
-                      </>
+                      </Fragment>
                     )
                   })}
                 </tbody>
@@ -845,6 +855,95 @@ function TopPerformers({ partners }: { partners: PlatformStats['topPartners'] })
 
 function fmtMoney(cents: number): string {
   return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// ── Lead engine — global default credits ───────────────────────────────────
+// The allotment a partner is granted on approval. Per-partner balances are
+// adjusted inline in the partners table (PartnerCreditsCell).
+function LeadCreditsCard({ showToast }: { showToast: (type: 'success' | 'error', text: string) => void }) {
+  const { data, reload } = useApi<{ defaultCredits: number }>('/api/admin/lead-engine/settings')
+  const [val, setVal] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { if (data) setVal(String(data.defaultCredits)) }, [data])
+
+  async function save() {
+    const n = parseInt(val, 10)
+    if (!Number.isFinite(n) || n < 0) { showToast('error', 'Enter a valid credit amount.'); return }
+    setSaving(true)
+    try {
+      const res = await apiFetchRaw('/api/admin/lead-engine/settings', {
+        method: 'PATCH',
+        body:   JSON.stringify({ defaultCredits: n }),
+      })
+      if (!res.ok) throw new Error()
+      showToast('success', 'Default lead credits saved.')
+      reload()
+    } catch { showToast('error', 'Failed to save default lead credits.') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="rounded-xl p-4 flex flex-wrap items-end gap-3" style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface-overlay)' }}>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Default lead-search credits</span>
+        <input type="number" min={0} className="input-field text-sm w-32" value={val} onChange={e => setVal(e.target.value)} />
+      </div>
+      <button onClick={save} disabled={saving} className="text-xs px-3 py-1.5 rounded" style={{ background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }}>
+        {saving ? 'Saving…' : 'Save'}
+      </button>
+      <p className="text-xs flex-1 min-w-[220px]" style={{ color: 'var(--text-tertiary)' }}>
+        Granted to each partner when their account is approved. Existing partners keep their current balance — adjust those individually in the table below.
+      </p>
+    </div>
+  )
+}
+
+// ── Lead engine — per-partner credit override ───────────────────────────────
+function PartnerCreditsCell({ partner, onSaved, onError }: {
+  partner: AffiliateAccount
+  onSaved: () => void
+  onError: (msg: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal]         = useState(String(partner.leadSearchCredits))
+  const [saving, setSaving]   = useState(false)
+
+  async function save() {
+    const n = parseInt(val, 10)
+    if (!Number.isFinite(n) || n < 0) { onError('Enter a valid credit amount.'); return }
+    setSaving(true)
+    try {
+      const res = await apiFetchRaw(`/api/admin/affiliates/${partner.id}/lead-credits`, {
+        method: 'PATCH',
+        body:   JSON.stringify({ credits: n }),
+      })
+      if (!res.ok) throw new Error()
+      setEditing(false)
+      onSaved()
+    } catch { onError('Failed to update lead credits.') }
+    finally { setSaving(false) }
+  }
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => { setVal(String(partner.leadSearchCredits)); setEditing(true) }}
+        className="text-xs px-2 py-1 rounded"
+        style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+        title="Adjust this partner's lead-search credits"
+      >
+        {partner.leadSearchCredits.toLocaleString()} ✎
+      </button>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input type="number" min={0} autoFocus className="input-field text-xs w-20" value={val} onChange={e => setVal(e.target.value)} />
+      <button onClick={save} disabled={saving} className="text-xs px-1.5 py-1 rounded" style={{ background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }}>✓</button>
+      <button onClick={() => setEditing(false)} disabled={saving} className="text-xs px-1.5 py-1 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)' }}>✕</button>
+    </span>
+  )
 }
 
 // ── F.4 bulk action: flip emailBulkEnabled for every ACTIVE partner ────────

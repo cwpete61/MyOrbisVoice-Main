@@ -83,6 +83,10 @@
     "promoting": "Adding…",
     "loadError": "Couldn't load this search.",
     "retry": "Retry",
+    "bulkSend": "Send to CRM",
+    "bulkSending": "Sending…",
+    "selectedSuffix": "selected",
+    "clearSelection": "Clear",
     "complianceNote": "Leads found here are for cold email outreach only. The system never auto-calls or texts a scraped lead — that needs their explicit opt-in first."
   },
   "partnerNav": {
