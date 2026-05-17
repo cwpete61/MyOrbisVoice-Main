@@ -155,6 +155,7 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
   }
 
   const isFullWidth = pathname.startsWith('/partner-portal/crm')
+    || pathname.startsWith('/partner-portal/leads')
     || pathname.startsWith('/partner-portal/contacts')
     || pathname.startsWith('/partner-portal/campaigns')
 
