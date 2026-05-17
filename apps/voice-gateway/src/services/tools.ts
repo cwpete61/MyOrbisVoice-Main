@@ -69,6 +69,10 @@ export const TOOL_DECLARATIONS = [
     description:
       'Book an appointment on the business calendar after the caller has confirmed a specific date, time, and duration. ' +
       'Only call this once you have explicit verbal agreement on the slot AND have collected the caller\'s name and either phone number or email. ' +
+      'CRITICAL: this tool is the ONLY thing that actually creates the appointment and sends the confirmation. ' +
+      'You MUST call it and wait for a success result before you tell the caller the appointment is booked or that a confirmation will be sent. ' +
+      'Saying "I have booked your appointment" or "you will get a confirmation email" WITHOUT calling this tool and receiving success is a failure — the caller will NOT be booked and will NOT be contacted. ' +
+      'If the tool returns an error, tell the caller you could not complete the booking and try again or offer to follow up; never claim success you did not get. ' +
       'Returns the appointment id on success.',
     parameters: {
       type: 'OBJECT',

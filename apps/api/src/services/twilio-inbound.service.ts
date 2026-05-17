@@ -152,10 +152,17 @@ export async function logCallStart(opts: {
   callSid:     string
   fromNumber:  string
   toNumber:    string
+  /** Set when the dialed number is partner-owned. Attributes the Conversation
+   *  to the partner so it surfaces on the partner portal, and scopes the
+   *  caller→contact match to the partner's contacts. */
+  partnerId?:  string | null
 }) {
-  // Match caller to a contact if possible
+  // Match caller to a contact. Partner-owned numbers scope to the partner's
+  // contacts; tenant numbers scope to the tenant's.
   const contact = await prisma.contact.findFirst({
-    where: { tenantId: opts.tenantId, phoneE164: opts.fromNumber },
+    where: opts.partnerId
+      ? { partnerId: opts.partnerId, phoneE164: opts.fromNumber }
+      : { tenantId: opts.tenantId, phoneE164: opts.fromNumber },
     select: { id: true },
   })
 
@@ -165,6 +172,7 @@ export async function logCallStart(opts: {
   const conversation = await prisma.conversation.create({
     data: {
       tenantId:       opts.tenantId,
+      partnerId:      opts.partnerId ?? null,
       contactId:      contact?.id ?? null,
       channelType:    'INBOUND',
       direction:      'INBOUND',

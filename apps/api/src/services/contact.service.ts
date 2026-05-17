@@ -50,11 +50,26 @@ export async function getContact(tenantId: string, id: string) {
  * the first stage so the kanban view shows the new row immediately. Skipped
  * silently when the tenant has no pipeline (e.g. seeding failed on signup).
  */
+/**
+ * Normalizes a raw phone string to E.164 (+<country><number>). 10 digits is
+ * treated as US/Canada (+1). Keeps the same number from fragmenting into
+ * duplicate contacts when entered with/without the `+` or with formatting.
+ */
+export function normalizePhoneE164(raw: string | null | undefined): string | undefined {
+  if (!raw) return undefined
+  const digits = raw.replace(/[^\d]/g, '')
+  if (!digits) return undefined
+  if (digits.length === 10) return `+1${digits}`
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
+  return `+${digits}`
+}
+
 export async function createContact(tenantId: string, data: {
   firstName?: string; lastName?: string; fullName?: string
   email?: string; phoneE164?: string; source?: string
   addressLine1?: string; city?: string; region?: string; postalCode?: string; country?: string
 }) {
+  const phoneE164 = normalizePhoneE164(data.phoneE164)
   // Verify email in background — non-blocking save, then update status
   const contact = await prisma.contact.create({
     data: {
@@ -63,7 +78,7 @@ export async function createContact(tenantId: string, data: {
       lastName:     data.lastName,
       fullName:     data.fullName ?? ([data.firstName, data.lastName].filter(Boolean).join(' ') || null),
       email:        data.email,
-      phoneE164:    data.phoneE164,
+      phoneE164,
       addressLine1: data.addressLine1,
       city:         data.city,
       region:       data.region,
@@ -71,7 +86,7 @@ export async function createContact(tenantId: string, data: {
       country:      data.country,
       source:       data.source ?? 'manual',
       emailStatus:  data.email ? 'unchecked' : null,
-      phoneStatus:  data.phoneE164 ? 'unchecked' : null,
+      phoneStatus:  phoneE164 ? 'unchecked' : null,
     },
   })
 
@@ -127,6 +142,8 @@ export async function updateContact(tenantId: string, id: string, data: {
       update[k] = v === null || v === '' ? null : (typeof v === 'string' ? new Date(v) : v)
     } else if (k === 'kidsInfoJson' || k === 'petsInfoJson' || k === 'importantDatesJson') {
       update[k] = v === null ? Prisma.JsonNull : (v as Prisma.InputJsonValue)
+    } else if (k === 'phoneE164') {
+      update[k] = v === null || v === '' ? null : (normalizePhoneE164(v as string) ?? null)
     } else if (typeof v === 'string') {
       update[k] = v.trim() === '' ? null : v
     } else {
