@@ -67,6 +67,7 @@ export default function PartnerLeadsPage() {
   const [reloadKey, setReloadKey]           = useState(0)
   const [selected, setSelected]             = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy]             = useState(false)
+  const [introLead, setIntroLead]           = useState<Lead | null>(null)
 
   const fetchCredits = useCallback(async () => {
     try {
@@ -317,6 +318,7 @@ export default function PartnerLeadsPage() {
             onReject={rejectLead}
             onPromote={promoteLead}
             onSaveToggle={saveToggle}
+            onEmailIntro={setIntroLead}
             onToggleLead={toggleLead}
             onToggleAll={toggleAll}
             onBulkPromote={bulkPromote}
@@ -329,6 +331,10 @@ export default function PartnerLeadsPage() {
             onOpen={setActiveSearchId}
           />
       }
+
+      {introLead && (
+        <IntroModal lead={introLead} t={t} onClose={() => setIntroLead(null)} />
+      )}
     </div>
   )
 }
@@ -391,12 +397,14 @@ function SearchResults(props: {
   onReject: (id: string) => void
   onPromote: (id: string) => void
   onSaveToggle: (id: string, current: ReviewStatus) => void
+  onEmailIntro: (lead: Lead) => void
   onToggleLead: (id: string) => void
   onToggleAll: (ids: string[]) => void
   onBulkPromote: () => void
 }) {
   const { t, statusLabel, detail, error, busyLeadId, selected, bulkBusy,
-          onBack, onRetry, onReject, onPromote, onSaveToggle, onToggleLead, onToggleAll, onBulkPromote } = props
+          onBack, onRetry, onReject, onPromote, onSaveToggle, onEmailIntro,
+          onToggleLead, onToggleAll, onBulkPromote } = props
   const [savedOnly, setSavedOnly] = useState(false)
 
   async function exportCsv(searchId: string) {
@@ -614,6 +622,14 @@ function SearchResults(props: {
                               {lead.reviewStatus === 'SAVED' ? '★' : '☆'}
                             </button>
                             <button
+                              onClick={() => onEmailIntro(lead)}
+                              className="text-xs px-1.5 py-1 rounded"
+                              style={{ border: '1px solid var(--border-subtle)', color: TEAL }}
+                              title={t('partnerLeads.emailIntro')}
+                            >
+                              ✦
+                            </button>
+                            <button
                               onClick={() => onReject(lead.id)}
                               disabled={busyLeadId === lead.id}
                               className="text-xs px-2 py-1 rounded disabled:opacity-40"
@@ -677,6 +693,93 @@ function SocialIcons({ socials }: { socials: Record<string, string> | null }) {
         )
       })}
     </span>
+  )
+}
+
+function IntroModal({ lead, t, onClose }: {
+  lead: Lead
+  t: (k: string) => string
+  onClose: () => void
+}) {
+  const [text, setText]       = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(false)
+  const [copied, setCopied]   = useState(false)
+
+  const generate = useCallback(async () => {
+    setLoading(true); setError(false); setCopied(false)
+    try {
+      const res = await apiFetch<{ intro: string }>(
+        `/api/partner/leads/${lead.id}/email-intro`,
+        { method: 'POST' },
+      )
+      setText(res.intro)
+    } catch { setError(true) }
+    finally { setLoading(false) }
+  }, [lead.id])
+
+  useEffect(() => { void generate() }, [generate])
+
+  function copy() {
+    navigator.clipboard.writeText(text)
+      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) })
+      .catch(() => { /* clipboard blocked — user can select manually */ })
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.45)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-xl p-5"
+        style={{ background: 'var(--surface-base)', border: '1px solid var(--border-subtle)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+          {t('partnerLeads.introTitle')}
+        </p>
+        <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>{lead.businessName}</p>
+
+        <div
+          className="rounded-lg p-3 text-sm"
+          style={{ background: 'var(--surface-raised)', color: 'var(--text-secondary)', lineHeight: 1.6, minHeight: 120 }}
+        >
+          {loading
+            ? t('partnerLeads.introGenerating')
+            : error
+              ? <span style={{ color: 'oklch(55% 0.18 25)' }}>{t('partnerLeads.introError')}</span>
+              : text}
+        </div>
+
+        <div className="flex items-center gap-2 mt-4">
+          <button
+            onClick={() => void generate()}
+            disabled={loading}
+            className="text-xs px-3 py-1.5 rounded disabled:opacity-40"
+            style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+          >
+            {t('partnerLeads.regenerate')}
+          </button>
+          <button
+            onClick={copy}
+            disabled={loading || error || !text}
+            className="text-xs px-3 py-1.5 rounded font-medium disabled:opacity-40"
+            style={{ background: TEAL, color: 'white' }}
+          >
+            {copied ? t('partnerLeads.copied') : t('partnerLeads.copy')}
+          </button>
+          <button
+            onClick={onClose}
+            className="ml-auto text-xs px-3 py-1.5 rounded"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
+            {t('partnerLeads.close')}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 

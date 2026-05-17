@@ -15,7 +15,9 @@ import { AppError } from '@voiceautomation/shared'
 import { prisma } from '../lib/prisma.js'
 import * as crmService from './crm.service.js'
 import { normalizePhoneE164 } from './contact.service.js'
-import { getConfigValue, setConfigValue } from './system-config.service.js'
+import { getConfigValue, setConfigValue, getOpenAiApiKey } from './system-config.service.js'
+
+const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 
 const LEADENGINE_URL = process.env['LEADENGINE_URL'] ?? 'http://lead-engine:7000'
 const LEADENGINE_TOKEN = process.env['LEADENGINE_INTERNAL_TOKEN'] ?? ''
@@ -396,6 +398,72 @@ export async function getDefaultCredits(): Promise<number> {
 
 export async function setDefaultCredits(value: number, updatedBy: string): Promise<void> {
   await setConfigValue(DEFAULT_CREDITS_KEY, String(value), false, updatedBy)
+}
+
+/**
+ * Generate a personalized cold-email opening paragraph for a lead. On-demand
+ * and stateless — nothing is persisted; the partner copies the text. The
+ * prompt forbids invented facts, hype, false urgency, and guarantees, in line
+ * with the platform's prohibited-language rules.
+ */
+export async function generateEmailIntro(
+  partnerId: string,
+  leadId: string,
+): Promise<{ intro: string }> {
+  const lead = await prisma.lead.findFirst({ where: { id: leadId, partnerId } })
+  if (!lead) throw new AppError('NOT_FOUND', 'Lead not found', 404)
+
+  const apiKey = await getOpenAiApiKey()
+  if (!apiKey) throw new AppError('NOT_CONFIGURED', 'OpenAI API key is not configured', 503)
+
+  const facts = [
+    `Business: ${lead.businessName}`,
+    lead.category ? `Type: ${lead.category}` : null,
+    lead.address ? `Location: ${lead.address}` : null,
+    lead.ownerName ? `Owner/contact: ${lead.ownerName}${lead.ownerTitle ? `, ${lead.ownerTitle}` : ''}` : null,
+    lead.rating != null ? `Google rating: ${lead.rating} (${lead.reviewCount ?? 0} reviews)` : null,
+    lead.website ? `Website: ${lead.website}` : null,
+  ].filter(Boolean).join('\n')
+
+  const system =
+    'You write the opening paragraph of a cold outreach email for a sales partner. ' +
+    'One short paragraph, 2-3 sentences. Warm, specific, professional. Reference a ' +
+    'concrete detail about the business so it reads as researched, not mass-sent. ' +
+    'Address the owner by first name when one is given. Never invent facts, prices, ' +
+    'or claims. No hype, no false urgency, no guarantees. Output only the paragraph — ' +
+    'no subject line, no greeting line, no sign-off.'
+  const user = `Write the opening paragraph for an outreach email to this business:\n\n${facts}`
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 20_000)
+  let res: Response
+  try {
+    res = await fetch(OPENAI_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model:       'gpt-4o-mini',
+        messages:    [{ role: 'system', content: system }, { role: 'user', content: user }],
+        max_tokens:  220,
+        temperature: 0.8,
+      }),
+      signal: controller.signal,
+    })
+  } catch (err) {
+    clearTimeout(timer)
+    const isAbort = err instanceof Error && err.name === 'AbortError'
+    throw new AppError('EXTERNAL_ERROR', isAbort ? 'AI timed out — try again.' : 'Could not reach the AI service.', 502)
+  }
+  clearTimeout(timer)
+
+  if (!res.ok) {
+    throw new AppError('EXTERNAL_ERROR', `AI service returned ${res.status}.`, 502)
+  }
+  const json = await res.json().catch(() => null) as
+    { choices?: Array<{ message?: { content?: string } }> } | null
+  const intro = json?.choices?.[0]?.message?.content?.trim()
+  if (!intro) throw new AppError('EXTERNAL_ERROR', 'AI returned an empty response.', 502)
+  return { intro }
 }
 
 /** Admin override of one partner's remaining lead-search credits. */

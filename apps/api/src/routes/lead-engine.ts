@@ -84,6 +84,14 @@ router.post('/partner/leads/:id/promote', async (req: Request, res: Response, ne
   } catch (err) { next(err) }
 })
 
+// AI-generated cold-email opening paragraph for a lead — on-demand, stateless.
+router.post('/partner/leads/:id/email-intro', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await leadEngine.generateEmailIntro(partnerId(req), req.params.id!)
+    res.json({ data: result })
+  } catch (err) { next(err) }
+})
+
 // Bulk "send selected businesses to contacts".
 router.post('/partner/leads/promote-batch', async (req: Request, res: Response, next: NextFunction) => {
   try {
