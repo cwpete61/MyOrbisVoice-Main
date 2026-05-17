@@ -34,6 +34,7 @@ interface Lead {
   longitude:    number | null
   rating:       number | null
   reviewCount:  number | null
+  mapRank:      number | null
   category:     string | null
   socialsJson:  Record<string, string> | null
   score:        number
@@ -601,6 +602,7 @@ function SearchResults(props: {
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colOwner')}</th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colContact')}</th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colSocial')}</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colMapRank')}</th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colRating')}</th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colScore')}</th>
                     <th className="text-right px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colActions')}</th>
@@ -642,6 +644,9 @@ function SearchResults(props: {
                       </td>
                       <td className="px-3 py-2.5 align-top">
                         <SocialIcons socials={lead.socialsJson} />
+                      </td>
+                      <td className="px-3 py-2.5 align-top" style={{ color: 'var(--text-secondary)' }}>
+                        {lead.mapRank != null ? `#${lead.mapRank}` : '—'}
                       </td>
                       <td className="px-3 py-2.5 align-top" style={{ color: 'var(--text-secondary)' }}>
                         {lead.rating != null ? `${lead.rating.toFixed(1)}★` : '—'}

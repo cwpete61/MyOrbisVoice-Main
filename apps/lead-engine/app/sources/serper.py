@@ -50,6 +50,12 @@ def search_businesses(industry: str, location: str, count: int, api_key: str) ->
             results.append(normalize_place(place))
         if len(places) < _PAGE_SIZE:
             break  # short page — this was the last one
+
+    # Map rank = the business's 1-based position in Google's Maps results for
+    # this query. Assigned by accumulation order (Serper returns results ranked)
+    # so it's correct across pages regardless of Serper's per-page numbering.
+    for index, result in enumerate(results):
+        result["mapRank"] = index + 1
     return results[:want]
 
 

@@ -1896,6 +1896,7 @@ model Lead {
   longitude         Float?
   rating            Float?
   reviewCount       Int?
+  mapRank           Int? // position in the Google Maps results for the search query
   category          String?
   socialsJson       Json?
   score             Int              @default(0)

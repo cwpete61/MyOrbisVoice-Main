@@ -34,6 +34,7 @@ interface EngineLead {
   longitude?: number | null
   rating?: number | null
   reviewCount?: number | null
+  mapRank?: number | null
   category?: string | null
   socials?: Record<string, string>
   score?: number
@@ -211,6 +212,7 @@ export async function syncSearch(searchId: string) {
           longitude: l.longitude ?? null,
           rating: l.rating ?? null,
           reviewCount: l.reviewCount ?? null,
+          mapRank: l.mapRank ?? null,
           category: l.category ?? null,
           socialsJson: l.socials ?? {},
           score: l.score ?? 0,
@@ -281,12 +283,12 @@ export async function exportSearchCsv(partnerId: string, searchId: string): Prom
 
   const header = [
     'Business', 'Owner', 'Title', 'Email', 'Phone', 'Website',
-    'Address', 'Rating', 'Reviews', 'Category', 'Score', 'Status',
+    'Address', 'Rating', 'Reviews', 'Map Rank', 'Category', 'Score', 'Status',
   ]
   const rows = leads.map((l) => [
     l.businessName, l.ownerName ?? '', l.ownerTitle ?? '', l.email ?? '', l.phone ?? '',
     l.website ?? '', l.address ?? '', l.rating ?? '', l.reviewCount ?? '',
-    l.category ?? '', l.score, l.reviewStatus,
+    l.mapRank ?? '', l.category ?? '', l.score, l.reviewStatus,
   ])
   return [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n')
 }
