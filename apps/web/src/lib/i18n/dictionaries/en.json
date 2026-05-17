@@ -49,7 +49,7 @@
     "soonPill": "Soon"
   },
   "partnerLeads": {
-    "title": "Leads",
+    "title": "Leads Search",
     "subtitle": "Find local businesses, enrich them with contact details, and add the best ones to your CRM.",
     "credits": "search credits left",
     "newSearch": "New search",
@@ -97,7 +97,7 @@
     "conversations": "Conversations",
     "crm": "CRM",
     "contacts": "Contacts",
-    "leads": "Leads",
+    "leads": "Leads Search",
     "campaigns": "Campaigns",
     "brandSubtitle": "Partner Portal",
     "referrals": "Referral Links",

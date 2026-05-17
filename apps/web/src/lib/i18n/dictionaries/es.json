@@ -49,7 +49,7 @@
     "soonPill": "Pronto"
   },
   "partnerLeads": {
-    "title": "Prospectos",
+    "title": "Búsqueda de Leads",
     "subtitle": "Encuentra negocios locales, enriquécelos con datos de contacto y agrega los mejores a tu CRM.",
     "credits": "créditos de búsqueda disponibles",
     "newSearch": "Nueva búsqueda",
@@ -97,7 +97,7 @@
     "conversations": "Conversaciones",
     "crm": "CRM",
     "contacts": "Contactos",
-    "leads": "Prospectos",
+    "leads": "Búsqueda de Leads",
     "campaigns": "Campañas",
     "brandSubtitle": "Portal de Partners",
     "referrals": "Enlaces de referido",
