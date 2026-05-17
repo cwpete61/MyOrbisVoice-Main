@@ -10,6 +10,7 @@ from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from . import config, jobs
+from .worker import run_search_job
 
 app = FastAPI(title="MyOrbisVoice Lead Engine", version="0.1.0")
 
@@ -35,7 +36,8 @@ def _auth(token: str | None) -> None:
 class SearchRequest(BaseModel):
     industry: str = Field(min_length=1, max_length=120)
     location: str = Field(min_length=1, max_length=120)
-    count: int = Field(ge=1, le=200)
+    # 60 = Google Places Text Search hard cap (20/page x 3 pages).
+    count: int = Field(ge=1, le=60)
 
 
 @app.get("/health")
@@ -51,8 +53,7 @@ def create_job(
 ) -> dict:
     _auth(x_internal_token)
     job = jobs.create_job(req.industry, req.location, req.count)
-    # Chunk 2 wires the real worker:
-    #   background.add_task(run_search_job, job.id)
+    background.add_task(run_search_job, job.id)
     return {"jobId": job.id, "status": job.status}
 
 
