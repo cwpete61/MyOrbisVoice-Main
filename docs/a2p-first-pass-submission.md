@@ -39,8 +39,9 @@ Standard, not Sole Proprietor).
 Business Primary Customer Profile → A2P TrustProduct → Low-Volume Standard
 BrandRegistration → Messaging Service → UsAppToPerson campaign.
 
-**Status:** awaiting the EIN from Crawford Peterson. Everything else in this
-dossier is ready.
+**Status:** EIN received 2026-05-16 — **11-6568971**. Everything in this
+dossier is ready; the full data set is walked through with the owner before
+the submission runs (standing rule — no submission without confirmation).
 
 ---
 
