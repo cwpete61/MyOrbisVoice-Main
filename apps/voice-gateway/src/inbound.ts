@@ -4,7 +4,7 @@ import { resolveSystemPrompt } from './lib/prompt-resolver.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { findContactIdByPhone, getContactHistory, formatContactHistoryForPrompt } from './lib/contact-history.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
-import { generateSummary, cleanTranscript } from './services/summary.service.js'
+import { analyzeConversation, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
 import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
@@ -470,12 +470,14 @@ export async function handleInboundCall(ws: WebSocket) {
 
       if (status === 'COMPLETED' && transcript.length > 0) {
         const cleaned = await cleanTranscript(transcript)
-        const summary = await generateSummary(cleaned)
+        const analysis = await analyzeConversation(cleaned)
         await persistConversation({
           tenantId,
           sessionId: callSid,
           transcript: cleaned,
-          summary,
+          summary: analysis.summary,
+          attentionLevel: analysis.attentionLevel,
+          attentionReason: analysis.attentionReason,
           channelType: 'INBOUND',
           turnLatenciesMs,
         })

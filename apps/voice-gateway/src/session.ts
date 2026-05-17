@@ -3,7 +3,7 @@ import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
-import { generateSummary } from './services/summary.service.js'
+import { analyzeConversation } from './services/summary.service.js'
 import { persistConversation, markSessionFailed, startWidgetConversation, type TranscriptEntry } from './services/conversation.service.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
@@ -306,12 +306,14 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
       if (agentBuffer.trim()) flushBuffer('assistant')
 
       if (status === 'COMPLETED' && transcript.length > 0) {
-        const summary = await generateSummary(transcript)
+        const analysis = await analyzeConversation(transcript)
         conversationId = await persistConversation({
           tenantId: session.tenantId,
           sessionId: session.id,
           transcript,
-          summary,
+          summary: analysis.summary,
+          attentionLevel: analysis.attentionLevel,
+          attentionReason: analysis.attentionReason,
         })
         send(ws, { type: 'ended', conversationId })
       } else {

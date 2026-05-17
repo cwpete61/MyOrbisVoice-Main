@@ -70,8 +70,12 @@ export async function persistConversation(opts: {
    *  Conversation.metadataJson so we can plot the distribution and
    *  decide whether VAD tuning is worth further work. */
   turnLatenciesMs?: number[]
+  /** Post-call AI attention assessment — see analyzeConversation(). Drives
+   *  the admin central call log's colour + alerting. */
+  attentionLevel?: 'NONE' | 'WATCH' | 'ALERT'
+  attentionReason?: string | null
 }): Promise<string> {
-  const { tenantId, sessionId, transcript, summary, channelType = 'WIDGET', turnLatenciesMs } = opts
+  const { tenantId, sessionId, transcript, summary, channelType = 'WIDGET', turnLatenciesMs, attentionLevel, attentionReason } = opts
 
   const transcriptJson = transcript.map(e => ({
     role:      e.role,
@@ -93,6 +97,11 @@ export async function persistConversation(opts: {
     }
   }
 
+  // Attention assessment — only patch when the AI pass produced a result.
+  const attentionData = attentionLevel
+    ? { attentionLevel, attentionReason: attentionReason ?? null }
+    : {}
+
   if (channelType === 'INBOUND' || channelType === 'OUTBOUND') {
     // Conversation was already created by logCallStart — update it
     const updated = await prisma.conversation.updateMany({
@@ -103,6 +112,7 @@ export async function persistConversation(opts: {
         summaryText:   summary,
         transcriptJson: transcriptJson as any,
         ...(Object.keys(metadataPatch).length > 0 ? { metadataJson: metadataPatch as any } : {}),
+        ...attentionData,
       },
     })
 
@@ -119,6 +129,7 @@ export async function persistConversation(opts: {
           summaryText:    summary,
           transcriptJson: transcriptJson as any,
           externalCallId: sessionId,
+          ...attentionData,
         },
       })
       return conv.id
@@ -145,6 +156,7 @@ export async function persistConversation(opts: {
         summaryText:    summary,
         transcriptJson: transcriptJson as any,
         ...(Object.keys(metadataPatch).length > 0 ? { metadataJson: metadataPatch as any } : {}),
+        ...attentionData,
       },
     })
     await prisma.widgetSession.update({
@@ -166,6 +178,7 @@ export async function persistConversation(opts: {
       endedAt:        new Date(),
       summaryText:    summary,
       transcriptJson: transcriptJson as any,
+      ...attentionData,
     },
   })
 

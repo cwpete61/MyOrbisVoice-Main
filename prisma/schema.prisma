@@ -96,6 +96,13 @@ enum ConversationStatus {
   ABANDONED
 }
 
+// Post-call AI assessment of whether a conversation needs admin attention.
+enum ConversationAttentionLevel {
+  NONE  // normal, successful call
+  WATCH // mild concern — unclear outcome, follow-up promised, mild dissatisfaction
+  ALERT // a customer issue an admin should review — frustration, unresolved, failed booking, escalation ask
+}
+
 enum AppointmentStatus {
   PENDING
   CONFIRMED
@@ -1413,6 +1420,13 @@ model Conversation {
   /// Free-form metadata about the call: per-turn latency, diagnostic flags, etc.
   /// Read by the latency-report CLI; written by the voice gateway on call finalize.
   metadataJson          Json?
+
+  // ── AI conversation monitor ───────────────────────────────────────────────
+  // Set on call finalize by the gateway's post-call AI pass. Drives the
+  // colour + alerting on the admin central call log: ALERT = a customer
+  // issue an admin should look at, WATCH = mild concern, NONE = normal call.
+  attentionLevel        ConversationAttentionLevel @default(NONE)
+  attentionReason       String? // one-line reason when WATCH/ALERT; null otherwise
 
   // ── Partner context (Phase E.2) ───────────────────────────────────────────
   // Set when this conversation originated on a partner's landing page widget.
