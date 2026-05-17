@@ -51,26 +51,33 @@ export function resolveSystemPrompt(
 
   // Layer 0 — Partner context (when set). Goes BEFORE the platform baseline so
   // the rest of the prompt reads it as established truth ("you are demoing for X").
-  // Only present for widget sessions activated on a partner page like
-  // /p/alex.rivera/voice-1/ — the session creation code in widget-session.service
-  // snapshots the partner identity into metadataJson.partner at that moment.
+  // Set on two paths: widget sessions on a partner page (/p/<slug>/), and
+  // inbound calls to a partner-owned phone number (gateway loads it from the
+  // AffiliateAccount). The copy is channel-aware — a phone caller is not a
+  // landing-page "visitor".
   if (partner) {
     const businessLine = partner.businessName
       ? ` (business: ${partner.businessName})`
       : ''
     const phoneLine = partner.partnerPhone
-      ? `\nPartner phone (for visitors who ask how to reach the partner directly): ${partner.partnerPhone}`
+      ? `\nPartner phone (for callers who ask how to reach the partner directly): ${partner.partnerPhone}`
       : ''
     const emailLine = partner.partnerEmail
       ? `\nPartner contact email: ${partner.partnerEmail}`
       : ''
+    const isPhoneChannel = channelType === 'INBOUND' || channelType === 'OUTBOUND'
+    const surfaceLine = isPhoneChannel
+      ? `You are the AI assistant answering calls for partner ${partner.displayName}${businessLine}. ` +
+        `This call is handled on ${partner.firstName}'s behalf — refer to the partner by FIRST NAME: "${partner.firstName}".`
+      : `You are running on the marketing landing page of partner ${partner.displayName}${businessLine}. ` +
+        `When you describe the demo booking flow to the visitor, refer to the partner by FIRST NAME: "${partner.firstName}".`
+    const audienceWord = isPhoneChannel ? 'caller' : 'visitor'
     layers.push(
       `--- Partner Context ---\n` +
-      `You are running on the marketing landing page of partner ${partner.displayName}${businessLine}. ` +
-      `When you describe the demo booking flow to the visitor, refer to the partner by FIRST NAME: "${partner.firstName}". ` +
-      `Sample phrasing: "I'll get 15 minutes on ${partner.firstName}'s calendar" or "${partner.firstName} will reach out within an hour to confirm."` +
+      `${surfaceLine} ` +
+      `Sample phrasing: "I'll get 15 minutes on ${partner.firstName}'s calendar" or "${partner.firstName} will follow up to confirm."` +
       `${phoneLine}${emailLine}\n` +
-      `Do NOT invent partner details beyond what's in this block. If the visitor asks about ${partner.firstName} that's not stated here, say you'll have ${partner.firstName} follow up directly.`
+      `Do NOT invent partner details beyond what's in this block. If the ${audienceWord} asks about ${partner.firstName} something not stated here, say you'll have ${partner.firstName} follow up directly.`
     )
   }
 

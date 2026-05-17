@@ -310,6 +310,41 @@ Long session. Eight feature commits, four backlog items closed, full repo cleanu
 
 **End-of-session state:** prod healthy, working tree clean, no remaining TODO items the team can close without external signal. Ready for first paying customers.
 
+### Per-partner Orby + central call log + AI conversation monitor — 2026-05-16
+
+Three-part build (`docs/orby-partner-monitoring-plan.md`). Supersedes the
+earlier "one shared master Orby" model — every partner now gets their own Orby.
+
+**Part 3 — AI conversation monitor** (commit `96dfa43`):
+- [x] `Conversation.attentionLevel` enum (`NONE` / `WATCH` / `ALERT`) + `attentionReason`
+- [x] `analyzeConversation()` in the gateway summary service — one `gpt-4o-mini` pass
+      at finalize scores the transcript for caller frustration, unresolved issues,
+      failed bookings, escalation asks
+- [x] Wired through `persistConversation` on inbound + widget finalize
+
+**Part 2 — Master central call log** (commit `f599105`):
+- [x] `GET /api/admin/call-log` — cross-scope Conversation query, paginated,
+      filters by attention level + scope. RBAC: Platform Support and above
+- [x] `/admin/call-log` page — every call across every partner and tenant,
+      rows color-coded by attention level, attention filter + scope filter
+- [x] AdminNav entry under Management
+
+**Part 1 — Per-partner Orby**:
+- [x] `buildInboundTwiml` threads a `partnerId` Twilio stream parameter when the
+      dialed number is partner-owned
+- [x] Gateway `loadPartnerContext` loads the partner identity (`AffiliateAccount`
+      + `User`) and passes it to `resolveSystemPrompt` — the agent answers AS the
+      partner. The partner prompt branch is now channel-aware (a phone caller is
+      not a landing-page "visitor")
+- [x] `ensurePartnerOrbyAgent(partnerId)` — find-or-create a partner-scoped Orby
+      `AgentProfile`, cloned from the platform master Orby. Idempotent
+- [x] Hooked at partner approval (`approveAffiliate`) so the web widget captures +
+      records calls from day one, and at `provisionPartnerNumber` so every number
+      a partner buys routes to that same single Orby
+- [x] Backfill: 11 active partners → one per-partner Orby each (1:1); 5 existing
+      partner numbers re-pointed at their partner's Orby; master agent renamed
+      "Orchestrator" → "Orby"
+
 ### Phase 1 notes
 - Existing ports 5432 and 6379 are occupied by other projects (umoja-postgres, umoja-redis). Phase 1 reuses these services. The voiceautomation DB was created on umoja-postgres with its own user/role.
 - Docker compose is set up for full-stack mode but dev workflow runs API/web natively via pnpm dev.

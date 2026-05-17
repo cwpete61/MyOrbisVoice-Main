@@ -1,6 +1,8 @@
 # Plan — Per-Partner Orby + Central Call Log + AI Conversation Monitor
 
-**Status:** plan / awaiting build approval. Drafted 2026-05-17.
+**Status:** ✅ SHIPPED 2026-05-16. All three parts built + deployed.
+Drafted 2026-05-17. Commits: Part 3 `96dfa43`, Part 2 `f599105`, Part 1
+this commit. See `docs/build-log.md` for the build entry.
 
 Supersedes the earlier "one shared master Orby" decision (see memory
 `orby-default-agent-for-partner-numbers`). The model is now: **every

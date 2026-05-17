@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma.js'
 import crypto from 'crypto'
 import { AppError } from '@voiceautomation/shared'
 import { getStripe } from '../lib/stripe.js'
+import { ensurePartnerOrbyAgent } from './agent.service.js'
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 
@@ -370,10 +371,17 @@ function normalizePhoneE164(raw: string | null): string | undefined {
 }
 
 export async function approveAffiliate(id: string) {
-  return prisma.affiliateAccount.update({
+  const account = await prisma.affiliateAccount.update({
     where: { id },
     data: { status: 'ACTIVE', approvedAt: new Date() },
   })
+  // Provision the partner's own Orby agent at approval — so their web widget
+  // captures + records calls immediately, before they buy any phone number.
+  // Idempotent; best-effort — a failure here must not block approval.
+  ensurePartnerOrbyAgent(id).catch((e) =>
+    console.error(`[approveAffiliate] partner Orby provisioning failed for ${id}: ${(e as Error).message}`),
+  )
+  return account
 }
 
 export async function pauseAffiliate(id: string) {

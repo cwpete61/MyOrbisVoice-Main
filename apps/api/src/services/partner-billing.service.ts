@@ -16,7 +16,7 @@
 import { prisma } from '../lib/prisma.js'
 import { getStripe } from '../lib/stripe.js'
 import { getConfigValue, setConfigValue } from './system-config.service.js'
-import { ensureMasterOrbyAgent } from './agent.service.js'
+import { ensurePartnerOrbyAgent } from './agent.service.js'
 import { AppError } from '@voiceautomation/shared'
 
 export type PartnerNumberTier = 'VOICE' | 'VOICE_SMS' | 'TOLLFREE'
@@ -455,12 +455,14 @@ export async function provisionPartnerNumber(args: {
     console.error(`[provisionPartnerNumber] webhook config failed for ${purchased.sid}: ${(e as Error).message}`)
   }
 
-  // Attach the number to the platform-controlled master "Orby" agent so it
-  // answers immediately instead of ringing dead. Best-effort — if the master
-  // agent can't be resolved, the inbound webhook falls back to it anyway.
-  const orbyAgentId = await ensureMasterOrbyAgent()
+  // Attach the number to the partner's own "Orby" agent — a per-partner clone
+  // of the platform master Orby. The number then routes to the partner's
+  // agent, and the inbound webhook threads the partnerId so the agent answers
+  // as the partner. Best-effort — if it can't be resolved, the inbound
+  // webhook still runs the platform Orby fallback.
+  const orbyAgentId = await ensurePartnerOrbyAgent(row.partnerId)
     .then((a) => a.id)
-    .catch((e) => { console.error(`[provisionPartnerNumber] master Orby agent unavailable: ${(e as Error).message}`); return null })
+    .catch((e) => { console.error(`[provisionPartnerNumber] partner Orby agent unavailable: ${(e as Error).message}`); return null })
 
   const updated = await prisma.phoneNumber.update({
     where: { id: row.id },

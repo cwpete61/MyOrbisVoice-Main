@@ -1,6 +1,6 @@
 import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
-import { resolveSystemPrompt } from './lib/prompt-resolver.js'
+import { resolveSystemPrompt, type PartnerContext } from './lib/prompt-resolver.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { findContactIdByPhone, getContactHistory, formatContactHistoryForPrompt } from './lib/contact-history.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
@@ -42,6 +42,48 @@ async function isOverHardCap(tenantId: string): Promise<boolean> {
   } catch (err) {
     console.error('[inbound] hard-cap check failed, allowing call:', err)
     return false  // fail-open so a DB blip doesn't block calls
+  }
+}
+
+// Partner-owned inbound number → load the partner identity so the agent
+// speaks AS that partner's Orby (first name, business name, contact details).
+// partnerId is threaded from the API inbound webhook as a Twilio stream
+// parameter. Returns null on any miss so the call falls back to the generic
+// platform agent rather than failing.
+async function loadPartnerContext(partnerId: string): Promise<PartnerContext | null> {
+  try {
+    const acct = await prisma.affiliateAccount.findUnique({
+      where:  { id: partnerId },
+      select: {
+        slug:         true,
+        displayName:  true,
+        businessName: true,
+        partnerPhone: true,
+        avatarUrl:    true,
+        bio:          true,
+        user: { select: { firstName: true, lastName: true, email: true } },
+      },
+    })
+    if (!acct || !acct.slug) return null
+    const firstName = acct.user?.firstName ?? ''
+    const lastName  = acct.user?.lastName ?? ''
+    const displayName = acct.displayName?.trim()
+      || [firstName, lastName].filter(Boolean).join(' ').trim()
+      || acct.slug
+    return {
+      slug:         acct.slug,
+      firstName,
+      lastName,
+      displayName,
+      businessName: acct.businessName,
+      partnerEmail: acct.user?.email,
+      partnerPhone: acct.partnerPhone,
+      avatarUrl:    acct.avatarUrl,
+      bio:          acct.bio,
+    }
+  } catch (err) {
+    console.error('[inbound] loadPartnerContext failed (non-fatal):', (err as Error).message)
+    return null
   }
 }
 
@@ -174,8 +216,9 @@ export async function handleInboundCall(ws: WebSocket) {
     channelConfigId = params['channelConfigId'] ?? ''
     callSid         = params['callSid']         ?? callSid
     const fromNumber = params['fromNumber'] ?? ''
+    const partnerId  = params['partnerId']  ?? ''
 
-    console.log(`[inbound] init session tenantId=${tenantId} callSid=${callSid} from=${fromNumber || '(blocked)'}`)
+    console.log(`[inbound] init session tenantId=${tenantId} callSid=${callSid} from=${fromNumber || '(blocked)'}${partnerId ? ` partner=${partnerId}` : ''}`)
 
     if (!tenantId) {
       console.error('[inbound] missing tenantId in stream params')
@@ -247,13 +290,24 @@ export async function handleInboundCall(ws: WebSocket) {
       }
     }
 
+    // Partner-owned number — load the partner identity so Orby answers AS the
+    // partner's agent (their name, their business). Null for platform/tenant
+    // numbers, which keeps the generic platform agent path unchanged.
+    let partnerContext: PartnerContext | null = null
+    if (partnerId) {
+      partnerContext = await loadPartnerContext(partnerId)
+      if (partnerContext) {
+        console.log(`[inbound] partner context loaded — Orby answering as ${partnerContext.displayName}`)
+      }
+    }
+
     const systemPrompt = resolveSystemPrompt(
       prompts as any[],
       dnaSnap,
       'INBOUND',
       buildToolGuidanceBlock(),
       kbText,
-      null,                  // partner — inbound has no partner context
+      partnerContext,        // partner — set for partner-owned inbound numbers
       callerHistoryBlock,    // E.7 — Caller Context layer
     )
 

@@ -47,6 +47,9 @@ export function buildInboundTwiml(opts: {
   hoursJson:       any
   callSid:         string
   fromNumber?:     string  // caller-ID E.164 — read back to caller instead of asking them to recite
+  /** Set when the dialed number is partner-owned. Threaded to the gateway so
+   *  the agent speaks AS the partner's Orby (partner first name, business). */
+  partnerId?:      string | null
 }): string {
   const VoiceResponse = twilio.twiml.VoiceResponse
   const response      = new VoiceResponse()
@@ -86,6 +89,9 @@ export function buildInboundTwiml(opts: {
   stream.parameter({ name: 'callSid',         value: opts.callSid })
   if (opts.fromNumber) {
     stream.parameter({ name: 'fromNumber',    value: opts.fromNumber })
+  }
+  if (opts.partnerId) {
+    stream.parameter({ name: 'partnerId',     value: opts.partnerId })
   }
 
   return response.toString()

@@ -194,6 +194,7 @@ Tenants can edit their master prompt + channel overlays + role overlays. Each is
 
 Partners (affiliates) get:
 
+- **Their own Orby agent** — on approval, each partner gets a per-partner Orby (a clone of the platform agent). Every channel that partner owns — their web widget and any phone numbers they buy — is answered by *their* Orby: it speaks their name and business, books to their calendar, and logs conversations to their portal. One Orby per partner regardless of how many numbers they own; partners are fully isolated from each other.
 - **Stripe Connect Express onboarding** — partners create their payout account through Stripe in test or live mode, payouts route to their bank/debit card automatically (verified end-to-end live in production).
 - Custom referral links + custom slugs (split-track campaigns: e.g. `/r/sarahs-podcast`, `/r/fall-promo`).
 - Commission ledger with full lifecycle: PENDING (in 30-day holdback) → APPROVED (cleared holdback, scheduled for payout) → PAID, with HOLD and REVERSED states for refunds/disputes.
@@ -234,6 +235,7 @@ Platform staff can:
 - Edit plan entitlements per-tenant (a paid customer with a special arrangement can have a custom quota without changing their plan).
 - Issue comp codes (one-time discount codes that bypass Stripe's standard checkout for special promos / partnerships / refund situations).
 - Track A2P submissions, Twilio call logs across the platform.
+- **Central call log** (`/admin/call-log`) — every conversation across every partner and tenant in one view. An AI pass scores each finished conversation for attention (frustrated caller, unresolved issue, failed booking, escalation ask); rows are color-coded green / yellow / red so nothing falls through the cracks. Filterable by attention level and scope.
 - Rotate secrets, manage integrations, all without revealing plaintext keys to lesser admins.
 - Configure platform-wide social media URLs (YouTube, LinkedIn, TikTok, Instagram, Pinterest, X) — these flow to the marketing site footer + the partner portal "Follow us" section automatically via a public API endpoint.
 
@@ -303,6 +305,12 @@ These appear in the product as "Coming Soon" cards / nav items, with description
 ## Changelog
 
 Every change here corresponds to a commit. When you ship something user-visible, append a one-line entry with the date.
+
+### 2026-05-16
+
+- **Per-partner Orby** — every partner gets their own Orby agent, created at approval (so their web widget works before they buy a number) and reused for every phone number they acquire. Calls to a partner's number/widget are answered as that partner — their name, business, calendar — with full isolation between partners. Replaces the earlier "one shared master Orby" model. (Commit this session)
+- **Central call log** — `/admin/call-log`: every conversation across every partner and tenant in one admin view, paginated, filterable by attention level + scope. (Commit `f599105`)
+- **AI conversation monitor** — a `gpt-4o-mini` pass scores each finished conversation for attention (`NONE` / `WATCH` / `ALERT`) — caller frustration, unresolved issues, failed bookings, escalation asks — and the central log color-codes rows green / yellow / red. (Commit `96dfa43`)
 
 ### 2026-05-13
 

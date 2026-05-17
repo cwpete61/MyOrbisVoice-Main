@@ -60,6 +60,39 @@ export async function ensureMasterOrbyAgent() {
   })
 }
 
+/**
+ * Ensures a partner-scoped "Orby" agent exists — a clone of the platform
+ * master Orby (same role, model, settings) bound to this partner via
+ * `AgentProfile.partnerId`. Calls to the partner's numbers route to this
+ * record instead of the shared master agent, so each partner has their own
+ * Orby. The partner's identity (name, business) is layered into the live
+ * call from the AffiliateAccount at the voice runtime — this just gives the
+ * partner a routable, per-partner AgentProfile. Idempotent: find-or-create
+ * keyed on (partnerId, ORCHESTRATOR).
+ */
+export async function ensurePartnerOrbyAgent(partnerId: string) {
+  // Clone source — the platform master Orby. ensureMasterOrbyAgent is itself
+  // idempotent, so this self-heals a missing master agent too.
+  const master = await ensureMasterOrbyAgent()
+
+  return prisma.agentProfile.upsert({
+    where:  { partnerId_agentRoleType: { partnerId, agentRoleType: 'ORCHESTRATOR' } },
+    create: {
+      partnerId,
+      agentRoleType:   'ORCHESTRATOR',
+      displayName:     'Orby',
+      isEnabled:       true,
+      modelProvider:   master.modelProvider,
+      modelName:       master.modelName,
+      promptVersionId: master.promptVersionId,
+      settingsJson:    master.settingsJson === null
+        ? Prisma.JsonNull
+        : (master.settingsJson as Prisma.InputJsonValue),
+    },
+    update: { isEnabled: true },
+  })
+}
+
 export async function listAgents(tenantId: string) {
   const existing = await prisma.agentProfile.findMany({
     where: { tenantId },
