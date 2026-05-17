@@ -256,9 +256,13 @@ export async function getSearchWithLeads(partnerId: string, searchId: string) {
   return { search, leads }
 }
 
-/** Quote a CSV cell when it contains a comma, quote, or newline. */
+/** Render a CSV cell: RFC-4180 quoting, plus formula-injection defense.
+ *  Lead data is scraped — a business could seed a name with `=`, `+`, `-`,
+ *  `@`, tab, or CR that Excel/Sheets would execute on open — so a cell that
+ *  starts with one of those is prefixed with an apostrophe. */
 function csvCell(value: unknown): string {
-  const s = value == null ? '' : String(value)
+  let s = value == null ? '' : String(value)
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 

@@ -52,6 +52,7 @@ type GeoPoint = { lat: number; lng: number }
 // Order stops shortest-first with a nearest-neighbor heuristic — plenty for a
 // dozen nearby businesses; full TSP isn't worth it at this scale.
 function orderByNearestNeighbor(points: GeoPoint[]): GeoPoint[] {
+  if (points.length === 0) return []
   const remaining = [...points]
   const route: GeoPoint[] = [remaining.shift()!]
   while (remaining.length > 0) {
@@ -535,7 +536,7 @@ function SearchResults(props: {
               {([['all', false], ['saved', true]] as const).map(([key, on]) => (
                 <button
                   key={key}
-                  onClick={() => setSavedOnly(on)}
+                  onClick={() => { setSavedOnly(on); onToggleAll([]) }}
                   className="text-xs px-2.5 py-1 rounded"
                   style={savedOnly === on
                     ? { background: TEAL, color: 'white' }
