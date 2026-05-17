@@ -5,6 +5,7 @@ import { AppError } from '@voiceautomation/shared'
 import { getAuthenticatedGoogleClient, sendGmailEmail } from './google.service.js'
 import { sendEmail } from './email.service.js'
 import { scheduleAppointmentReminders, cancelAppointmentReminders } from './reminder.service.js'
+import { resolveBookingIdentity, BOOKING_BRAND } from './booking-identity.service.js'
 import type { Prisma } from '@prisma/client'
 
 const DEFAULT_SLOT_INCREMENT_MINUTES = 30
@@ -542,6 +543,7 @@ export async function createAppointment(tenantId: string, userId: string | null,
       timezone:         data.timezone,
       location:         data.location,
       notes:            data.notes,
+      partnerId:        data.partnerId ?? null,
     }).catch(err => console.warn('[appointment] confirmation email failed:', (err as Error).message))
   }
 
@@ -687,16 +689,31 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
   timezone:        string
   location?:       string
   notes?:          string
+  /** Set for partner-routed bookings — switches the email to the partner's
+   *  identity (their name, their Orby agent, MyOrbisVoice brand). */
+  partnerId?:      string | null
 }) {
-  const [tenant, profile] = await Promise.all([
-    prisma.tenant.findUnique({ where: { id: tenantId }, select: { displayName: true } }),
-    prisma.businessProfile.findUnique({ where: { tenantId }, select: { brandName: true, fallbackNotificationEmail: true } }),
-  ])
-  const businessName = profile?.brandName || tenant?.displayName || 'our team'
+  const identity     = await resolveBookingIdentity(tenantId, opts.partnerId ?? null)
+  const businessName = identity.bookingWithName
   const apptLabel    = opts.appointmentType || 'Appointment'
   const start        = new Date(opts.startAt)
   const dateStr      = start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: opts.timezone })
   const timeStr      = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone, timeZoneName: 'short' })
+  const subject      = `${apptLabel} confirmed — ${dateStr}`
+
+  // Footer names the host. Partner bookings additionally credit the partner's
+  // Orby agent and the MyOrbisVoice platform so the recipient knows exactly
+  // who they booked with and that every follow-up comes from the same place.
+  const contactLine = identity.contactEmail || identity.contactPhone
+    ? `Need to change something? Contact ${businessName}` +
+      (identity.contactEmail ? ` at <a href="mailto:${identity.contactEmail}" style="color:#1a9898">${identity.contactEmail}</a>` : '') +
+      (identity.contactPhone ? `${identity.contactEmail ? ' or ' : ' at '}${identity.contactPhone}` : '') + '.'
+    : 'Reply to this email if you need to change anything.'
+  const footer = identity.isPartner
+    ? `<p style="color:#666;font-size:13px;margin:24px 0 4px">Booked by ${identity.agentName}, ${businessName}'s AI assistant.</p>
+       <p style="color:#888;font-size:13px;margin:0 0 4px">${contactLine}</p>
+       <p style="color:#aaa;font-size:12px;margin:8px 0 0">Powered by ${BOOKING_BRAND}</p>`
+    : `<p style="color:#888;font-size:13px;margin:24px 0 0">${contactLine}</p>`
 
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#222">
@@ -708,26 +725,20 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
         ${opts.notes    ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Notes</td><td style="color:#222">${opts.notes}</td></tr>`       : ''}
       </table>
       <p style="color:#666;font-size:14px;margin:0 0 8px">You'll also see this on your calendar — Google has added it automatically.</p>
-      ${profile?.fallbackNotificationEmail ? `<p style="color:#888;font-size:13px;margin:24px 0 0">Need to change something? Reply to this email or contact us at ${profile.fallbackNotificationEmail}.</p>` : ''}
+      ${footer}
     </div>
   `.trim()
 
-  try {
-    await sendGmailEmail(tenantId, {
-      to:      opts.to,
-      subject: `${apptLabel} confirmed — ${dateStr}`,
-      body:    html,
-      isHtml:  true,
-    })
-  } catch (gmailErr) {
-    // Fall back to platform SMTP (self-hosted Postfix). Used by the demo
-    // tenant and any tenant without a Gmail integration. The booking
-    // confirmation still reaches the visitor; we lose only the per-tenant
-    // From-address branding (the platform SMTP From is set via SystemConfig).
+  // Partner-routed bookings send straight via platform SMTP with a partner-
+  // branded From display name — the tenant Gmail belongs to the platform demo
+  // tenant that merely hosts the row, so sending from it would be misleading.
+  if (identity.isPartner) {
     await sendEmail({
-      to:      opts.to,
-      subject: `${apptLabel} confirmed — ${dateStr}`,
+      to:        opts.to,
+      subject,
       html,
+      from:      `"${businessName} via ${BOOKING_BRAND}" <notify@myorbisvoice.com>`,
+      partnerId: opts.partnerId ?? null,
     })
     await prisma.messageLog.create({
       data: {
@@ -736,7 +747,30 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
         direction:      'OUTBOUND',
         sender:         'platform-smtp',
         recipient:      opts.to,
-        subject:        `${apptLabel} confirmed — ${dateStr}`,
+        subject,
+        bodyText:       html.replace(/<[^>]+>/g, ''),
+        deliveryStatus: 'sent',
+        sentAt:         new Date(),
+      },
+    }).catch(() => { /* non-fatal */ })
+    return
+  }
+
+  try {
+    await sendGmailEmail(tenantId, { to: opts.to, subject, body: html, isHtml: true })
+  } catch (gmailErr) {
+    // Fall back to platform SMTP (self-hosted Postfix). Used by any tenant
+    // without a Gmail integration. The confirmation still reaches the visitor;
+    // we lose only the per-tenant From-address branding.
+    await sendEmail({ to: opts.to, subject, html })
+    await prisma.messageLog.create({
+      data: {
+        tenantId,
+        channel:        'EMAIL',
+        direction:      'OUTBOUND',
+        sender:         'platform-smtp',
+        recipient:      opts.to,
+        subject,
         bodyText:       html.replace(/<[^>]+>/g, ''),
         deliveryStatus: 'sent',
         sentAt:         new Date(),

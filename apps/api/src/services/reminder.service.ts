@@ -18,6 +18,7 @@ import { prisma } from '../lib/prisma.js'
 import { sendEmail } from './email.service.js'
 import { sendGmailEmail } from './google.service.js'
 import { sendSms } from './sms.service.js'
+import { resolveBookingIdentity, BOOKING_BRAND } from './booking-identity.service.js'
 import type { ReminderChannel } from '@prisma/client'
 
 const REMINDER_BATCH_SIZE = 50
@@ -174,9 +175,8 @@ export async function dispatchDueReminders(): Promise<{ dispatched: number; fail
       attemptCount: { lt: 3 },  // give up after 3 attempts, stay PENDING for manual inspection
     },
     include: {
-      appointment: { select: { startAt: true, timezone: true, appointmentType: true, location: true, notes: true, status: true } },
+      appointment: { select: { startAt: true, timezone: true, appointmentType: true, location: true, notes: true, status: true, partnerId: true } },
       contact:     { select: { fullName: true, firstName: true, email: true, phoneE164: true } },
-      tenant:      { select: { displayName: true } },
     },
     take: REMINDER_BATCH_SIZE,
     orderBy: { scheduledAt: 'asc' },
@@ -201,6 +201,7 @@ export async function dispatchDueReminders(): Promise<{ dispatched: number; fail
       if (reminder.channel === 'EMAIL') {
         await sendReminderEmail({
           tenantId:        reminder.tenantId,
+          partnerId:       reminder.appointment.partnerId,
           to:              reminder.contact.email ?? '',
           firstName:       reminder.contact.firstName ?? reminder.contact.fullName ?? null,
           appointmentType: reminder.appointment.appointmentType,
@@ -213,13 +214,13 @@ export async function dispatchDueReminders(): Promise<{ dispatched: number; fail
       } else {
         await sendReminderSms({
           tenantId:        reminder.tenantId,
+          partnerId:       reminder.appointment.partnerId,
           contactId:       reminder.contactId,
           to:              reminder.contact.phoneE164 ?? '',
           firstName:       reminder.contact.firstName ?? null,
           appointmentType: reminder.appointment.appointmentType,
           startAt:         reminder.appointment.startAt,
           timezone:        reminder.appointment.timezone,
-          businessName:    reminder.tenant.displayName,
           offsetMin:       reminder.offsetMin,
         })
       }
@@ -279,6 +280,7 @@ export const DEFAULT_REMINDER_EMAIL_INTRO   = '{greeting} this is a quick remind
 
 async function sendReminderEmail(opts: {
   tenantId:        string
+  partnerId:       string | null
   to:              string
   firstName:       string | null
   appointmentType: string | null
@@ -290,17 +292,19 @@ async function sendReminderEmail(opts: {
 }) {
   if (!opts.to) throw new Error('No email on contact')
 
-  const [tenant, profile] = await Promise.all([
-    prisma.tenant.findUnique({ where: { id: opts.tenantId }, select: { displayName: true } }),
-    prisma.businessProfile.findUnique({
-      where: { tenantId: opts.tenantId },
-      select: {
-        brandName: true, fallbackNotificationEmail: true,
-        reminderEmailSubject: true, reminderEmailIntro: true,
-      },
-    }),
+  // Partner-routed reminders speak as the partner (their name, their Orby
+  // agent, MyOrbisVoice brand); tenant reminders keep the tenant brand and
+  // honor any tenant-authored subject/intro template.
+  const [identity, profile] = await Promise.all([
+    resolveBookingIdentity(opts.tenantId, opts.partnerId),
+    opts.partnerId
+      ? Promise.resolve(null)
+      : prisma.businessProfile.findUnique({
+          where:  { tenantId: opts.tenantId },
+          select: { reminderEmailSubject: true, reminderEmailIntro: true },
+        }),
   ])
-  const businessName = profile?.brandName || tenant?.displayName || 'our team'
+  const businessName = identity.bookingWithName
   const apptLabel    = opts.appointmentType || 'Appointment'
   const dateStr      = opts.startAt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: opts.timezone })
   const timeStr      = opts.startAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone, timeZoneName: 'short' })
@@ -308,9 +312,9 @@ async function sendReminderEmail(opts: {
   const greeting     = opts.firstName ? `Hi ${opts.firstName},` : 'Hi,'
 
   // Tenant-authored templates override the built-in defaults when set. The
-  // appointment-details table and the platform footer stay constant — the
-  // template only governs the subject line and the intro paragraph, so a
-  // poorly-edited template can't break the visual layout.
+  // appointment-details table and the footer stay constant — the template
+  // only governs the subject line and the intro paragraph, so a poorly-edited
+  // template can't break the visual layout.
   const vars: Record<string, string> = {
     firstName:        opts.firstName ?? '',
     greeting,
@@ -327,6 +331,17 @@ async function sendReminderEmail(opts: {
   const subject = renderReminderTemplate(profile?.reminderEmailSubject ?? DEFAULT_REMINDER_EMAIL_SUBJECT, vars)
   const intro   = renderReminderTemplate(profile?.reminderEmailIntro   ?? DEFAULT_REMINDER_EMAIL_INTRO,   vars)
 
+  const contactLine = identity.contactEmail || identity.contactPhone
+    ? `Need to reschedule? Contact ${businessName}` +
+      (identity.contactEmail ? ` at <a href="mailto:${identity.contactEmail}" style="color:#1a9898">${identity.contactEmail}</a>` : '') +
+      (identity.contactPhone ? `${identity.contactEmail ? ' or ' : ' at '}${identity.contactPhone}` : '') + '.'
+    : 'Reply to this email if you need to reschedule.'
+  const footer = identity.isPartner
+    ? `<p style="color:#666;font-size:13px;margin:24px 0 4px">Sent by ${identity.agentName}, ${businessName}'s AI assistant.</p>
+       <p style="color:#888;font-size:13px;margin:0 0 4px">${contactLine}</p>
+       <p style="color:#aaa;font-size:12px;margin:8px 0 0">Powered by ${BOOKING_BRAND}</p>`
+    : `<p style="color:#888;font-size:13px;margin:24px 0 0">${contactLine}</p>`
+
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#222">
       <h2 style="color:#1a9898;margin:0 0 8px">Reminder: ${apptLabel} ${whenLabel}</h2>
@@ -337,9 +352,35 @@ async function sendReminderEmail(opts: {
         ${opts.notes    ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Notes</td><td style="color:#222">${opts.notes}</td></tr>`       : ''}
       </table>
       <p style="color:#666;font-size:14px;margin:0 0 8px">See you then.</p>
-      ${profile?.fallbackNotificationEmail ? `<p style="color:#888;font-size:13px;margin:24px 0 0">Need to reschedule? Reply to this email or contact us at ${profile.fallbackNotificationEmail}.</p>` : ''}
+      ${footer}
     </div>
   `.trim()
+
+  // Partner reminders send via platform SMTP with a partner-branded From —
+  // same reasoning as the confirmation email.
+  if (identity.isPartner) {
+    await sendEmail({
+      to:        opts.to,
+      subject,
+      html,
+      from:      `"${businessName} via ${BOOKING_BRAND}" <notify@myorbisvoice.com>`,
+      partnerId: opts.partnerId,
+    })
+    await prisma.messageLog.create({
+      data: {
+        tenantId:       opts.tenantId,
+        channel:        'EMAIL',
+        direction:      'OUTBOUND',
+        sender:         'platform-smtp',
+        recipient:      opts.to,
+        subject,
+        bodyText:       html.replace(/<[^>]+>/g, ''),
+        deliveryStatus: 'sent',
+        sentAt:         new Date(),
+      },
+    }).catch(() => { /* non-fatal */ })
+    return
+  }
 
   try {
     await sendGmailEmail(opts.tenantId, { to: opts.to, subject, body: html, isHtml: true })
@@ -364,32 +405,36 @@ async function sendReminderEmail(opts: {
 
 async function sendReminderSms(opts: {
   tenantId:        string
+  partnerId:       string | null
   contactId:       string
   to:              string
   firstName:       string | null
   appointmentType: string | null
   startAt:         Date
   timezone:        string
-  businessName:    string | null
   offsetMin:       number
 }) {
   if (!opts.to) throw new Error('No phone on contact')
 
+  const identity   = await resolveBookingIdentity(opts.tenantId, opts.partnerId)
   const apptLabel  = opts.appointmentType || 'appointment'
   const dateStr    = opts.startAt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: opts.timezone })
   const timeStr    = opts.startAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone })
   const whenLabel  = formatOffsetHumanReadable(opts.offsetMin)
-  const business   = opts.businessName ?? 'us'
+  const business   = identity.bookingWithName
   const greeting   = opts.firstName ? `Hi ${opts.firstName}, ` : ''
 
-  // Tenant-authored SMS template overrides the default. Variables follow the
-  // same set as the email template so users can copy/paste between fields.
-  // Keep result short — single segment (≤160 chars) when possible. Sender ID
-  // + STOP language are appended automatically by Twilio's 10DLC config.
-  const profile = await prisma.businessProfile.findUnique({
-    where:  { tenantId: opts.tenantId },
-    select: { reminderSmsBody: true },
-  })
+  // Tenant-authored SMS template overrides the default; partner reminders use
+  // the default (no per-partner SMS template field). The `businessName` var
+  // resolves to the partner for partner-routed bookings, so the text names
+  // the partner. Keep result short — one segment (≤160 chars) when possible.
+  // Sender ID + STOP language are appended automatically by Twilio 10DLC.
+  const profile = opts.partnerId
+    ? null
+    : await prisma.businessProfile.findUnique({
+        where:  { tenantId: opts.tenantId },
+        select: { reminderSmsBody: true },
+      })
   const vars: Record<string, string> = {
     firstName:       opts.firstName ?? '',
     greeting,
@@ -404,21 +449,32 @@ async function sendReminderSms(opts: {
   }
   const body = renderReminderTemplate(profile?.reminderSmsBody ?? DEFAULT_REMINDER_SMS, vars)
 
-  // Resolve a sending number — required by sendSms. Tenants without any Twilio
-  // number can't send SMS reminders; we surface that as a clear error so the
-  // reminder row marks FAILED instead of silently dropping.
-  const phone = await prisma.phoneNumber.findFirst({
-    where:  { tenantId: opts.tenantId },
-    select: { e164Number: true },
-  })
-  if (!phone) throw new Error('No Twilio number configured for this tenant')
+  // Partner-routed reminders send from the PARTNER's own Twilio number (so the
+  // caller ID is the partner) through their subaccount, billed to partner SMS
+  // credits. Falls back to a tenant number when the partner has none yet.
+  // Tenant reminders send from a tenant number as before. No number anywhere
+  // → clear error so the row marks FAILED instead of silently dropping.
+  let fromNumber:  string | undefined
+  let sendPartner: string | undefined
+  if (opts.partnerId && identity.partnerNumberE164) {
+    fromNumber  = identity.partnerNumberE164
+    sendPartner = opts.partnerId
+  } else {
+    const phone = await prisma.phoneNumber.findFirst({
+      where:  { tenantId: opts.tenantId },
+      select: { e164Number: true },
+    })
+    if (!phone) throw new Error('No Twilio number configured for this booking')
+    fromNumber = phone.e164Number
+  }
 
   const result = await sendSms({
     tenantId:  opts.tenantId,
     contactId: opts.contactId,
-    from:      phone.e164Number,
+    from:      fromNumber,
     to:        opts.to,
     body,
+    ...(sendPartner ? { partnerId: sendPartner } : {}),
   })
   if (!result.success) throw new Error(result.error ?? 'SMS send failed')
 }

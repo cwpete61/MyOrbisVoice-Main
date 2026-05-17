@@ -306,6 +306,10 @@ These appear in the product as "Coming Soon" cards / nav items, with description
 
 Every change here corresponds to a commit. When you ship something user-visible, append a one-line entry with the date.
 
+### 2026-05-17
+
+- **Partner-branded appointment communications** — confirmation emails, reminder emails, and reminder SMS for partner-routed bookings now speak as the partner: their business name ("booking with X"), their Orby agent credited in the footer, "Powered by MyOrbisVoice", and partner contact details. Partner emails send from a partner-branded From address; partner reminder SMS sends from the partner's own Twilio number (their caller ID), billed to partner SMS credits. (Commit this session)
+
 ### 2026-05-16
 
 - **Per-partner Orby** — every partner gets their own Orby agent, created at approval (so their web widget works before they buy a number) and reused for every phone number they acquire. Calls to a partner's number/widget are answered as that partner — their name, business, calendar — with full isolation between partners. Replaces the earlier "one shared master Orby" model. (Commit this session)
