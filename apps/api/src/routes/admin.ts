@@ -587,6 +587,62 @@ router.patch('/system-settings/bunny', requirePlatformSuperAdmin, async (req, re
   } catch (err) { next(err) }
 })
 
+const cloudflareSettingsSchema = z.object({
+  apiToken:  z.string().min(1).optional(),
+  accountId: z.string().min(1).optional(),
+})
+
+router.patch('/system-settings/cloudflare', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const parsed = cloudflareSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const { apiToken, accountId } = parsed.data
+    const userId = req.user!.id
+
+    if (apiToken)  await systemConfig.setConfigValue('cloudflare_api_token',  apiToken,  true,  userId)
+    if (accountId) await systemConfig.setConfigValue('cloudflare_account_id', accountId, false, userId)
+
+    await writeAuditLogFromRequest(req, {
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.cloudflare.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
+const awsSesSettingsSchema = z.object({
+  accessKeyId:     z.string().min(1).transform(s => s.trim()).optional(),
+  secretAccessKey: z.string().min(1).transform(s => s.trim()).optional(),
+  region:          z.string().min(1).transform(s => s.trim()).optional(),
+})
+
+router.patch('/system-settings/aws-ses', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const parsed = awsSesSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const { accessKeyId, secretAccessKey, region } = parsed.data
+    const userId = req.user!.id
+
+    if (accessKeyId)     await systemConfig.setConfigValue('aws_ses_access_key_id',     accessKeyId,     false, userId)
+    if (secretAccessKey) await systemConfig.setConfigValue('aws_ses_secret_access_key', secretAccessKey, true,  userId)
+    if (region)          await systemConfig.setConfigValue('aws_ses_region',            region,          false, userId)
+
+    await writeAuditLogFromRequest(req, {
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.aws_ses.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
 const storageSettingsSchema = z.object({
   defaultQuotaGb:      z.number().int().min(1).optional(),
   warningThresholdPct: z.number().int().min(50).max(99).optional(),

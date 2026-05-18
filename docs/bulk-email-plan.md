@@ -1,6 +1,42 @@
 # Plan — Bulk Email (cold-email engine)
 
-**Status:** plan / awaiting Phase 0 decisions. Drafted 2026-05-17.
+**Status:** Phase 1 code-complete + deployed (2026-05-18). Next: Phase 2.
+
+## Phase 1 — DONE (code), deployed 2026-05-18
+
+- `PartnerSendingDomain` model + `SendingDomainStatus` enum — schema pushed.
+- Provider services: `cloudflare.service` (DNS zone + SPF/DKIM/DMARC),
+  `aws-ses.service` (domain identity + Easy DKIM), `route53-domains.service`
+  (availability, price, register, NS update).
+- `sending-domain.service` — provisioning state machine; `sending-domain-runner`
+  background job (2-min tick); idempotent + retry-safe.
+- `partner-billing.chargePartnerForSendingDomain` — one-time card charge.
+- `routes/sending-domain.ts` — partner routes (check / create+pay / pay / card-setup / cancel).
+- Wizard UI on the Bulk Email page — bilingual; name → check → pay → live progress.
+
+**Blockers — status 2026-05-18:**
+- ✅ AWS account upgraded Free→paid — Route 53 registration works.
+- ✅ Registrant contact set — `domain_registrant_email` (support@myorbisvoice.com)
+  + `domain_registrant_phone` (+1.4043830220).
+- ⏳ SES production access — pending (~24h AWS approval). Only blocks Phase 2
+  *sending*; domain provisioning (Phase 1) works in the SES sandbox.
+
+The Phase 1 domain wizard is now functionally ready end-to-end. First real
+registration costs ~$15 (partner's card).
+
+## Phase 0 — DECIDED (2026-05-17)
+
+- **ESP:** Amazon SES. Cold-email-capable, per-domain DKIM identities,
+  SNS bounce/complaint webhooks, ~$0.10/1k. New accounts start sandboxed
+  — production-access request pending (~24h AWS approval).
+- **Registrar:** AWS Route 53 Domains (`RegisterDomain` API). Same AWS
+  account as SES — no third provider. Cloudflare hosts DNS only.
+- **Cloudflare:** master account + API token stored + verified.
+- **Domain billing:** the partner's card (Stripe, at the wizard's pay
+  step). Mirrors the phone-number billing model.
+- **Automation level:** still open — decide at Phase 3/4.
+
+Drafted 2026-05-17.
 
 The Bulk Email system = cold-email outreach to the businesses a partner
 finds in Leads Search, carried through to a booking. This is "idea #2"

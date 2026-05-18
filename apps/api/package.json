@@ -9,6 +9,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-route-53-domains": "^3.1048.0",
+    "@aws-sdk/client-sesv2": "^3.1048.0",
     "@prisma/client": "^5.15.0",
     "@voiceautomation/config": "workspace:*",
     "@voiceautomation/shared": "workspace:*",

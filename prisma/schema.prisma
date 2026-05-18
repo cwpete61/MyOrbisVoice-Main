@@ -1852,6 +1852,7 @@ model AffiliateAccount {
   a2pApplication           TenantA2PApplication?
   leadSearches             LeadSearch[]
   leads                    Lead[]
+  sendingDomains           PartnerSendingDomain[]
 }
 
 /// Lead engine — a partner's business-discovery search. Drives the Search
@@ -1923,6 +1924,58 @@ enum LeadReviewStatus {
   SAVED
   REJECTED
   PROMOTED
+}
+
+/// Bulk Email — a partner's dedicated cold-email sending domain. One .com per
+/// partner who opts in, giving each true sending-reputation isolation: one
+/// partner's spam complaints can never touch another's. Provisioned through
+/// the platform's master Cloudflare account (registrar + DNS) and verified as
+/// an Amazon SES domain identity. The partner pays for the domain before
+/// provisioning runs. A new row is created per attempt; the service enforces
+/// at most one non-FAILED domain per partner.
+model PartnerSendingDomain {
+  id        String              @id @default(uuid())
+  partnerId String
+  domain    String              @unique // the registered .com
+  status    SendingDomainStatus @default(PENDING_PAYMENT)
+
+  // Billing — partner pays for the domain before provisioning runs
+  stripePaymentIntentId String?
+  paidAt                DateTime?
+  priceCents            Int? // what the partner was charged
+
+  // Cloudflare — registrar + DNS zone
+  cloudflareZoneId  String?
+  registrarOrderRef String? // registrar registration reference
+  dnsConfiguredAt   DateTime? // SPF/DKIM/DMARC written into the zone
+
+  // Amazon SES — domain identity + DKIM verification
+  sesDkimTokensJson Json? // the 3 DKIM CNAME tokens SES issues for the domain
+  sesVerifiedAt     DateTime? // SES reports the domain identity verified
+
+  // Warmup — gentle ramp from a low daily cap up to the full 50/day
+  warmupStartedAt   DateTime?
+  warmupDayCap      Int       @default(5) // current day's cap while ramping
+  warmupCompletedAt DateTime?
+
+  verified  Boolean  @default(false)
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  partner AffiliateAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, status])
+}
+
+enum SendingDomainStatus {
+  PENDING_PAYMENT // wizard step 1 — partner picked a name, not yet paid
+  REGISTERING // paid; Cloudflare registering the .com
+  DNS_PENDING // registered; writing SPF/DKIM/DMARC
+  VERIFYING // DNS written; waiting on SES identity verification
+  WARMING // verified; warmup runner ramping the cap
+  ACTIVE // warmup complete; full daily cap available
+  FAILED // provisioning error — see lastError
 }
 
 /// Partner-scoped email storage powering the Mailbox UI in /partner.

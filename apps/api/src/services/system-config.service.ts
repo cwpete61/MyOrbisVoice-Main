@@ -112,6 +112,8 @@ export async function getSystemSettings(): Promise<{
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
   gemini: { apiKey: boolean; model: string }
+  cloudflare: { apiToken: boolean; accountId: string | null }
+  awsSes: { accessKeyId: string | null; secretAccessKey: boolean; region: string }
   social: {
     youtube:   string | null
     linkedin:  string | null
@@ -137,6 +139,8 @@ export async function getSystemSettings(): Promise<{
           'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from',
           'overage_markup_percent',
           'gemini_api_key', 'gemini_model',
+          'cloudflare_api_token', 'cloudflare_account_id',
+          'aws_ses_access_key_id', 'aws_ses_secret_access_key', 'aws_ses_region',
           'social_youtube_url', 'social_linkedin_url', 'social_tiktok_url',
           'social_instagram_url', 'social_pinterest_url', 'social_x_url',
         ],
@@ -202,6 +206,15 @@ export async function getSystemSettings(): Promise<{
     gemini: {
       apiKey: !!(get('gemini_api_key') || process.env['GEMINI_API_KEY']),
       model:  get('gemini_model')?.value ?? process.env['GEMINI_LIVE_MODEL'] ?? 'gemini-2.5-flash-native-audio-latest',
+    },
+    cloudflare: {
+      apiToken:  !!(get('cloudflare_api_token') || process.env['CLOUDFLARE_API_TOKEN']),
+      accountId: get('cloudflare_account_id')?.value ?? (process.env['CLOUDFLARE_ACCOUNT_ID'] || null),
+    },
+    awsSes: {
+      accessKeyId:     get('aws_ses_access_key_id')?.value ?? (process.env['AWS_SES_ACCESS_KEY_ID'] || null),
+      secretAccessKey: !!(get('aws_ses_secret_access_key') || process.env['AWS_SES_SECRET_ACCESS_KEY']),
+      region:          get('aws_ses_region')?.value ?? process.env['AWS_SES_REGION'] ?? 'us-east-1',
     },
     social: {
       youtube:   get('social_youtube_url')?.value   ?? null,

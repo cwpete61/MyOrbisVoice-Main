@@ -18,6 +18,8 @@ interface SystemSettings {
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
   gemini: { apiKey: boolean; model: string }
+  cloudflare: { apiToken: boolean; accountId: string | null }
+  awsSes: { accessKeyId: string | null; secretAccessKey: boolean; region: string }
   social: {
     youtube:   string | null
     linkedin:  string | null
@@ -341,6 +343,39 @@ export default function SystemSettingsPage() {
     setOaSaving(false)
   }
 
+  // Cloudflare form state — the platform's master account, used to register
+  // and DNS-configure each partner's cold-email sending domain.
+  const [cf, setCf] = useState({ apiToken: '', accountId: '' })
+  const [cfSaving, setCfSaving] = useState(false)
+  async function saveCloudflare(e: React.FormEvent) {
+    e.preventDefault()
+    const body: Record<string, string> = {}
+    if (cf.apiToken)  body['apiToken']  = cf.apiToken
+    if (cf.accountId) body['accountId'] = cf.accountId
+    if (!Object.keys(body).length) { showToast('error', 'Enter at least one field.'); return }
+    setCfSaving(true)
+    const ok = await saveSection('cloudflare', body, 'Cloudflare')
+    if (ok) setCf({ apiToken: '', accountId: '' })
+    setCfSaving(false)
+  }
+
+  // AWS SES form state — the platform's master SES account, used to send
+  // per-partner cold email and verify each partner's sending domain (DKIM).
+  const [ses, setSes] = useState({ accessKeyId: '', secretAccessKey: '', region: '' })
+  const [sesSaving, setSesSaving] = useState(false)
+  async function saveAwsSes(e: React.FormEvent) {
+    e.preventDefault()
+    const body: Record<string, string> = {}
+    if (ses.accessKeyId)     body['accessKeyId']     = ses.accessKeyId
+    if (ses.secretAccessKey) body['secretAccessKey'] = ses.secretAccessKey
+    if (ses.region)          body['region']          = ses.region
+    if (!Object.keys(body).length) { showToast('error', 'Enter at least one field.'); return }
+    setSesSaving(true)
+    const ok = await saveSection('aws-ses', body, 'Amazon SES')
+    if (ok) setSes({ accessKeyId: '', secretAccessKey: '', region: '' })
+    setSesSaving(false)
+  }
+
   // Reoon form state
   const [r, setR] = useState({ apiKey: '', mode: 'power' })
   const [rSaving, setRSaving] = useState(false)
@@ -655,6 +690,111 @@ export default function SystemSettingsPage() {
               </button>
             </form>
             <AccountEmailField provider="gemini" currentValue={data?.accountEmails?.gemini} onSaved={reload} />
+          </div>
+
+          {/* ── Cloudflare ── */}
+          <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <CardHeader
+              title="Cloudflare"
+              subtitle="The platform's master Cloudflare account. Used to register and DNS-configure each partner's dedicated cold-email sending domain (Bulk Email). One master account provisions every partner domain — partners never touch Cloudflare directly."
+              configured={!!data?.cloudflare?.apiToken && !!data?.cloudflare?.accountId}
+            />
+
+            <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <StatusRow label="API Token" value={!!data?.cloudflare?.apiToken} isSecret />
+              <StatusRow label="Account ID" value={data?.cloudflare?.accountId ?? null} />
+              <div className="rounded-lg px-4 py-3 text-xs space-y-1.5" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>
+                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>How to set this up</p>
+                <ol className="space-y-1 list-decimal list-inside" style={{ color: 'var(--text-tertiary)' }}>
+                  <li>Create the master account at <span className="font-mono">dash.cloudflare.com/sign-up</span> (one account for the whole platform).</li>
+                  <li>Add a payment method — partner sending domains (~$10/yr each) bill to this account.</li>
+                  <li>Copy the <span className="font-mono">Account ID</span> from the right sidebar of any zone, or the account home URL (<span className="font-mono">dash.cloudflare.com/&lt;account-id&gt;</span>).</li>
+                  <li>Generate an API token at <span className="font-mono">dash.cloudflare.com/profile/api-tokens</span> → Create Token. Grant: <span className="font-mono">Zone:DNS:Edit</span>, <span className="font-mono">Zone:Zone:Edit</span>, and <span className="font-mono">Account:Domain Registration</span> (Account-level).</li>
+                  <li>Paste both below. The token is encrypted at rest and never shown again.</li>
+                </ol>
+              </div>
+            </div>
+
+            <form onSubmit={saveCloudflare} className="px-6 py-5 space-y-4">
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                Stored encrypted. Leave a field blank to keep its current value.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelCls}>
+                    API Token <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span>
+                  </label>
+                  <input type="password" className={inputCls} value={cf.apiToken}
+                    onChange={e => setCf(p => ({ ...p, apiToken: e.target.value }))}
+                    placeholder="Cloudflare API token" autoComplete="new-password" />
+                </div>
+                <div>
+                  <label className={labelCls}>Account ID</label>
+                  <input type="text" className={inputCls} value={cf.accountId}
+                    onChange={e => setCf(p => ({ ...p, accountId: e.target.value }))}
+                    placeholder={data?.cloudflare?.accountId ?? '32-character hex ID'} autoComplete="off" />
+                </div>
+              </div>
+              <button type="submit" disabled={cfSaving} className="btn-primary">
+                {cfSaving ? 'Saving…' : 'Save Cloudflare credentials'}
+              </button>
+            </form>
+          </div>
+
+          {/* ── Amazon SES ── */}
+          <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <CardHeader
+              title="Amazon SES + Route 53"
+              subtitle="The platform's AWS credentials for Bulk Email. SES is the cold-email sending provider — it verifies each partner's dedicated domain and supplies the DKIM records. Route 53 Domains registers the .com itself. One AWS account covers both; Cloudflare only hosts DNS. Kept fully separate from transactional mail so cold outreach can never affect booking-confirmation deliverability."
+              configured={!!data?.awsSes?.accessKeyId && !!data?.awsSes?.secretAccessKey}
+            />
+
+            <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <StatusRow label="Access Key ID" value={data?.awsSes?.accessKeyId ?? null} />
+              <StatusRow label="Secret Access Key" value={!!data?.awsSes?.secretAccessKey} isSecret />
+              <StatusRow label="Region" value={data?.awsSes?.region ?? null} />
+              <div className="rounded-lg px-4 py-3 text-xs space-y-1.5" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>
+                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>How to set this up</p>
+                <ol className="space-y-1 list-decimal list-inside" style={{ color: 'var(--text-tertiary)' }}>
+                  <li>Create an AWS account at <span className="font-mono">aws.amazon.com</span> (one master account for the whole platform).</li>
+                  <li>Open <span className="font-mono">SES</span> in a region close to you — <span className="font-mono">us-east-1</span> is recommended. The region you pick here must match the one entered below.</li>
+                  <li><span style={{ color: 'var(--accent-amber, #b45309)' }}>Request production access</span> in the SES console (Account dashboard → Request production access). New accounts start in a sandbox capped at 200 emails/day to verified addresses only — AWS approves the request in roughly 24 hours, so do this first.</li>
+                  <li>In <span className="font-mono">IAM</span>, create a user (e.g. <span className="font-mono">myorbisvoice-bulk-email</span>) and attach both <span className="font-mono">AmazonSESFullAccess</span> and <span className="font-mono">AmazonRoute53DomainsFullAccess</span> (the second lets the wizard register partner domains). Then create an access key for the user.</li>
+                  <li>Paste the Access Key ID, Secret Access Key, and region below. The secret is encrypted at rest and never shown again.</li>
+                </ol>
+              </div>
+            </div>
+
+            <form onSubmit={saveAwsSes} className="px-6 py-5 space-y-4">
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                Stored encrypted. Leave a field blank to keep its current value.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelCls}>Access Key ID</label>
+                  <input type="text" className={inputCls} value={ses.accessKeyId}
+                    onChange={e => setSes(p => ({ ...p, accessKeyId: e.target.value }))}
+                    placeholder={data?.awsSes?.accessKeyId ?? 'AKIA…'} autoComplete="off" />
+                </div>
+                <div>
+                  <label className={labelCls}>
+                    Secret Access Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span>
+                  </label>
+                  <input type="password" className={inputCls} value={ses.secretAccessKey}
+                    onChange={e => setSes(p => ({ ...p, secretAccessKey: e.target.value }))}
+                    placeholder="AWS secret access key" autoComplete="new-password" />
+                </div>
+                <div>
+                  <label className={labelCls}>Region</label>
+                  <input type="text" className={inputCls} value={ses.region}
+                    onChange={e => setSes(p => ({ ...p, region: e.target.value }))}
+                    placeholder={data?.awsSes?.region ?? 'us-east-1'} autoComplete="off" />
+                </div>
+              </div>
+              <button type="submit" disabled={sesSaving} className="btn-primary">
+                {sesSaving ? 'Saving…' : 'Save Amazon SES credentials'}
+              </button>
+            </form>
           </div>
 
           {/* ── Stripe ── */}

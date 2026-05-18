@@ -228,6 +228,41 @@ export async function resolvePartnerDefaultPaymentMethod(
 }
 
 /**
+ * One-time charge for a Bulk Email sending domain (year-1 registration).
+ * Off-session PaymentIntent against the partner's saved card. Returns
+ * { needsCard: true } when the partner has no card on file — the caller
+ * routes them through the Stripe setup session first. The idempotency key
+ * keys on partner+domain so a retry never double-charges.
+ */
+export async function chargePartnerForSendingDomain(
+  partnerId: string,
+  domain: string,
+  amountCents: number,
+): Promise<{ paymentIntentId: string } | { needsCard: true }> {
+  const stripe = getStripe()
+  const pm = await resolvePartnerDefaultPaymentMethod(partnerId)
+  if (!pm) return { needsCard: true }
+
+  const intent = await stripe.paymentIntents.create(
+    {
+      amount:         amountCents,
+      currency:       'usd',
+      customer:       pm.stripeCustomerId,
+      payment_method: pm.paymentMethodId,
+      off_session:    true,
+      confirm:        true,
+      description:    `Bulk Email sending domain — ${domain}`,
+      metadata:       { partnerId, domain, scope: 'sending_domain' },
+    },
+    { idempotencyKey: `sending_domain_${partnerId}_${domain}` },
+  )
+  if (intent.status !== 'succeeded') {
+    throw new AppError('PAYMENT_FAILED', `Card payment did not complete (status: ${intent.status})`, 402)
+  }
+  return { paymentIntentId: intent.id }
+}
+
+/**
  * Create a monthly Subscription for a partner-owned phone number. Fired by
  * the admin approval flow once the Twilio purchase + subaccount move are
  * complete. If this throws, the caller MUST rollback the Twilio purchase to
