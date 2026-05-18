@@ -29,8 +29,8 @@
     "nodemailer": "^8.0.7",
     "pdf-parse": "^2.4.5",
     "pdfkit": "^0.18.0",
-    "stripe": "^22.1.0",
-    "twilio": "^6.0.0",
+    "stripe": "^22.1.1",
+    "twilio": "^6.0.2",
     "web-push": "^3.6.7",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.23.8"
@@ -46,7 +46,7 @@
     "@types/nodemailer": "^8.0.0",
     "@types/pdfkit": "^0.17.6",
     "@types/web-push": "^3.6.4",
-    "tsx": "^4.15.0",
+    "tsx": "^4.22.2",
     "typescript": "^5.5.0"
   }
 }
