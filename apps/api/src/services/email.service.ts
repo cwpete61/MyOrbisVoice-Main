@@ -91,16 +91,18 @@ const BREVO_API    = 'https://api.brevo.com/v3'
  *  match back to the MessageLog row. Falls back to throwing on non-2xx so the
  *  caller can route to SMTP. */
 async function sendViaPostmark(opts: EmailOptions): Promise<{ providerMessageId: string }> {
+  // getConfigValue already decrypts secret rows — the token here is plaintext.
+  // (A previous bug decrypted a second time, which threw "Invalid ciphertext
+  // format" on every send and silently forced the SMTP fallback.)
   const token = await systemConfig.getConfigValue('email.postmark.server_token')
   if (!token) throw new Error('postmark token unset')
-  const decryptedToken = systemConfig.decrypt(token)
 
   const res = await fetch(`${POSTMARK_API}/email`, {
     method:  'POST',
     headers: {
       'Accept':                  'application/json',
       'Content-Type':            'application/json',
-      'X-Postmark-Server-Token': decryptedToken,
+      'X-Postmark-Server-Token': token,
     },
     body: JSON.stringify({
       From:          opts.from ?? 'notify@myorbisvoice.com',
@@ -122,16 +124,16 @@ async function sendViaPostmark(opts: EmailOptions): Promise<{ providerMessageId:
 /** Resend email send. Same contract as Postmark — returns id, throws on
  *  non-2xx. */
 async function sendViaResend(opts: EmailOptions): Promise<{ providerMessageId: string }> {
+  // getConfigValue already decrypts secret rows — key is plaintext here.
   const key = await systemConfig.getConfigValue('email.resend.api_key')
   if (!key) throw new Error('resend api_key unset')
-  const decryptedKey = systemConfig.decrypt(key)
 
   const res = await fetch(`${RESEND_API}/emails`, {
     method:  'POST',
     headers: {
       'Accept':        'application/json',
       'Content-Type':  'application/json',
-      'Authorization': `Bearer ${decryptedKey}`,
+      'Authorization': `Bearer ${key}`,
     },
     body: JSON.stringify({
       from:     opts.from ?? 'notify@myorbisvoice.com',
@@ -153,9 +155,9 @@ async function sendViaResend(opts: EmailOptions): Promise<{ providerMessageId: s
  *  angle brackets — we strip them for consistency with what our webhook
  *  handler stores (it strips on receive). */
 async function sendViaBrevo(opts: EmailOptions): Promise<{ providerMessageId: string }> {
+  // getConfigValue already decrypts secret rows — key is plaintext here.
   const key = await systemConfig.getConfigValue('email.brevo.api_key')
   if (!key) throw new Error('brevo api_key unset')
-  const decryptedKey = systemConfig.decrypt(key)
 
   // Brevo wants sender as {name, email}; parse "Display <addr@x>" or use raw.
   const from = opts.from ?? 'noreply@myorbisresults.com'
@@ -169,7 +171,7 @@ async function sendViaBrevo(opts: EmailOptions): Promise<{ providerMessageId: st
     headers: {
       'Accept':       'application/json',
       'Content-Type': 'application/json',
-      'api-key':      decryptedKey,
+      'api-key':      key,
     },
     body: JSON.stringify({
       sender,
@@ -553,10 +555,10 @@ export async function sendPasswordResetEmail(opts: {
   firstName?: string | null
   resetUrl: string  // already-built URL like https://app.myorbisvoice.com/reset-password?token=…
   expiresInMinutes: number
-}) {
+}): Promise<SendResult> {
   const greeting = opts.firstName ? `Hi ${opts.firstName},` : 'Hi there,'
 
-  await sendEmail({
+  return sendEmail({
     to: opts.to,
     subject: 'Reset your MyOrbisVoice password',
     html: `

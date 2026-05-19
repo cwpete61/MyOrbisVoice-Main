@@ -206,7 +206,18 @@ router.post('/forgot-password', async (req, res, next) => {
         firstName:         result.firstName,
         resetUrl,
         expiresInMinutes:  15,
-      }).catch(e => console.error('[forgot-password] email send failed (non-fatal):', e?.message ?? e))
+      })
+        .then(r => {
+          // sendEmail never throws — it returns a result. A genuine delivery
+          // failure (every provider down, address suppressed) would otherwise
+          // be invisible. Log it server-side so support can see it.
+          if (!r.sent) {
+            console.error(`[forgot-password] reset email NOT sent to ${result.email}: skipped=${r.skipped} reason=${r.reason ?? '-'}`)
+          } else {
+            console.log(`[forgot-password] reset email sent to ${result.email} via ${r.provider}`)
+          }
+        })
+        .catch(e => console.error('[forgot-password] email send threw (non-fatal):', e?.message ?? e))
 
       writeAuditLogFromRequest(req, {
         actorType:    'USER',
@@ -214,6 +225,12 @@ router.post('/forgot-password', async (req, res, next) => {
         targetType:   'User',
         metadataJson: { email: result.email, ip: req.ip },
       }).catch(e => console.error('[audit] write failed:', e))
+    } else {
+      // No active user matched. The response stays success-shaped (enumeration
+      // defense), but log it server-side — otherwise a partner who typo'd their
+      // email, or whose account email differs from what they typed, gets total
+      // silence and support has nothing to go on.
+      console.warn(`[forgot-password] no active user matched "${parsed.data.email}" — no reset email sent`)
     }
     // Same shape regardless — protect against enumeration.
     res.json({ data: { ok: true } })
