@@ -1,6 +1,20 @@
 # Plan — Bulk Email (cold-email engine)
 
-**Status:** Phase 2 complete + deployed (2026-05-19). Next: Phase 3.
+**Status:** Phase 3 complete + deployed (2026-05-19). Next: Phase 4.
+
+## Phase 3 — DONE, deployed 2026-05-19
+
+- Models: `ColdEmailCampaign`, `ColdEmailCampaignTouch`, `ColdEmailCampaignLead`
+  (the enrollment row carries `currentTouch` + `nextTouchAt` — Phase-4-ready).
+- `cold-email-campaign.service` — create/list/get/update campaign (activation
+  gated on ≥1 touch + ≥1 lead), save touch sequence, enroll/remove accepted
+  leads, eligible-leads pool.
+- Campaign routes added to `routes/cold-email.ts` — full CRUD + touches +
+  leads + eligible-leads.
+- Campaign-builder UI — `/partner-portal/bulk-email/campaigns`: campaign list,
+  builder (name, touch-sequence editor, lead picker, activate/pause). Bilingual.
+- "Campaigns →" link on the Bulk Email page.
+- Verified live: routes mounted, page serves, schema pushed.
 
 ## Phase 2 — DONE, deployed 2026-05-19
 

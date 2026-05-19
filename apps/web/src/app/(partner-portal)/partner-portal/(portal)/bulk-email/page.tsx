@@ -151,13 +151,20 @@ export default function BulkEmailPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-          {t('bulkEmail.title')}
-        </h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          {t('bulkEmail.subtitle')}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            {t('bulkEmail.title')}
+          </h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            {t('bulkEmail.subtitle')}
+          </p>
+        </div>
+        <a href="/partner-portal/bulk-email/campaigns"
+          className="text-sm font-medium flex-shrink-0 px-3 py-1.5 rounded-lg"
+          style={{ background: TEAL, color: 'white' }}>
+          {t('bulkEmail.campaignsLink')}
+        </a>
       </div>
 
       <section className="rounded-xl p-4" style={card}>

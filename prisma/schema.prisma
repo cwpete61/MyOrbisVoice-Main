@@ -1854,6 +1854,7 @@ model AffiliateAccount {
   leads                    Lead[]
   sendingDomains           PartnerSendingDomain[]
   coldEmailSends           ColdEmailSend[]
+  coldEmailCampaigns       ColdEmailCampaign[]
 }
 
 /// Lead engine — a partner's business-discovery search. Drives the Search
@@ -1908,6 +1909,7 @@ model Lead {
   updatedAt         DateTime         @updatedAt
   search            LeadSearch       @relation(fields: [searchId], references: [id], onDelete: Cascade)
   partner           AffiliateAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  campaignLeads     ColdEmailCampaignLead[]
 
   @@index([partnerId, reviewStatus])
   @@index([searchId])
@@ -2016,6 +2018,82 @@ enum ColdEmailSendStatus {
   FAILED // SES rejected the send
   BOUNCED // hard bounce reported by an SES webhook
   COMPLAINED // spam complaint reported by an SES webhook
+}
+
+/// Bulk Email Phase 3 — a multi-touch cold-email campaign. A partner picks
+/// accepted leads and builds a touch sequence (touch 1 = the AI intro, then
+/// timed follow-ups). Phase 4's sequencer advances each enrolled lead through
+/// the touches, respecting the partner's cap / send window / drip.
+model ColdEmailCampaign {
+  id          String                  @id @default(uuid())
+  partnerId   String
+  name        String
+  status      ColdEmailCampaignStatus @default(DRAFT)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  partner AffiliateAccount        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  touches ColdEmailCampaignTouch[]
+  leads   ColdEmailCampaignLead[]
+
+  @@index([partnerId, status])
+}
+
+/// One step in a campaign's touch sequence. Ordered by touchNumber; sent
+/// delayDays after the previous touch (touch 1: delayDays after enrollment).
+model ColdEmailCampaignTouch {
+  id          String   @id @default(uuid())
+  campaignId  String
+  touchNumber Int // 1 = intro, 2+ = follow-ups
+  delayDays   Int      @default(0) // days to wait before this touch
+  subject     String
+  bodyHtml    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaign ColdEmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, touchNumber])
+  @@index([campaignId])
+}
+
+/// A lead enrolled in a campaign. Carries the per-lead sequence progress that
+/// Phase 4's sequencer advances. Created at ENROLLED in Phase 3.
+model ColdEmailCampaignLead {
+  id           String                      @id @default(uuid())
+  campaignId   String
+  leadId       String
+  status       ColdEmailCampaignLeadStatus @default(ENROLLED)
+  currentTouch Int                         @default(0) // last touch sent; 0 = none yet
+  nextTouchAt  DateTime? // when the sequencer should act next
+  createdAt    DateTime                    @default(now())
+  updatedAt    DateTime                    @updatedAt
+
+  campaign ColdEmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead     Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, leadId])
+  @@index([campaignId, status])
+  @@index([status, nextTouchAt])
+}
+
+enum ColdEmailCampaignStatus {
+  DRAFT // being built — not sending
+  ACTIVE // running — the sequencer is processing it
+  PAUSED // partner-paused or auto-paused
+  COMPLETED // every enrolled lead finished the sequence
+  ARCHIVED
+}
+
+enum ColdEmailCampaignLeadStatus {
+  ENROLLED // in the campaign, sequence not started
+  IN_PROGRESS // mid-sequence
+  REPLIED // lead replied — sequence stopped
+  BOOKED // lead booked — the win
+  COMPLETED // finished all touches, no reply
+  STOPPED // unsubscribed / bounced / removed
 }
 
 /// Partner-scoped email storage powering the Mailbox UI in /partner.
