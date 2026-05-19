@@ -1,6 +1,28 @@
 # Plan — Bulk Email (cold-email engine)
 
-**Status:** Phase 1 code-complete + deployed (2026-05-18). Next: Phase 2.
+**Status:** Phase 2 complete + deployed (2026-05-19). Next: Phase 3.
+
+## Phase 2 — DONE, deployed 2026-05-19
+
+- `ColdEmailSend` model — send log (cap count, unsubscribe token, bounce
+  reconciliation). Schema pushed.
+- `cold-email.service` — `sendColdEmail()` full pre-send gate (active domain →
+  policy → send window → daily cap → drip → suppression → Reoon), SES send,
+  CAN-SPAM footer (postal address + unsubscribe), `List-Unsubscribe` header.
+- `unsubscribeByToken` + public `/api/public/unsubscribe` (GET page + one-click
+  POST) → suppression list.
+- `recordSesEvent` + auto-pause — hard bounce / complaint → suppress + pause
+  the partner if rates cross policy thresholds.
+- `routes/cold-email.ts` — partner send route. `routes/webhooks-ses.ts` —
+  SNS-signed SES event webhook.
+- AWS wired: SNS topic `myorbisvoice-ses-events`, configuration set
+  `my-first-configuration-set` + `sns-bounce-complaint` event destination,
+  confirmed HTTPS subscription to the webhook.
+- Verified live: routes mounted, subscription CONFIRMED, event destination
+  enabled (BOUNCE + COMPLAINT).
+
+Real sending at volume still waits on SES production access (case
+177918023400963 — pending AWS review of the use-case reply).
 
 ## Phase 1 — DONE (code), deployed 2026-05-18
 

@@ -2,6 +2,7 @@ import {
   SESv2Client,
   CreateEmailIdentityCommand,
   GetEmailIdentityCommand,
+  SendEmailCommand,
 } from '@aws-sdk/client-sesv2'
 import { getConfigValue } from './system-config.service.js'
 
@@ -76,4 +77,37 @@ export async function getDomainIdentity(domain: string): Promise<DomainIdentity>
   const client = await sesClient()
   const res = await client.send(new GetEmailIdentityCommand({ EmailIdentity: domain }))
   return toIdentity(domain, res)
+}
+
+export interface SendEmailInput {
+  from: string // must be on a verified SES domain identity
+  to: string
+  subject: string
+  html: string
+  replyTo?: string
+  /** SES configuration set — routes bounce/complaint events to SNS. */
+  configurationSet?: string
+  /** Extra MIME headers, e.g. List-Unsubscribe for one-click opt-out. */
+  headers?: { name: string; value: string }[]
+}
+
+/** Send one email through SES. Returns the SES message id, which later links
+ *  bounce/complaint webhook events back to the send. */
+export async function sendEmail(input: SendEmailInput): Promise<{ messageId: string }> {
+  const client = await sesClient()
+  const res = await client.send(new SendEmailCommand({
+    FromEmailAddress: input.from,
+    Destination: { ToAddresses: [input.to] },
+    ReplyToAddresses: input.replyTo ? [input.replyTo] : undefined,
+    ConfigurationSetName: input.configurationSet,
+    Content: {
+      Simple: {
+        Subject: { Data: input.subject, Charset: 'UTF-8' },
+        Body: { Html: { Data: input.html, Charset: 'UTF-8' } },
+        Headers: input.headers?.map(h => ({ Name: h.name, Value: h.value })),
+      },
+    },
+  }))
+  if (!res.MessageId) throw new Error('SES SendEmail returned no message id')
+  return { messageId: res.MessageId }
 }

@@ -1853,6 +1853,7 @@ model AffiliateAccount {
   leadSearches             LeadSearch[]
   leads                    Lead[]
   sendingDomains           PartnerSendingDomain[]
+  coldEmailSends           ColdEmailSend[]
 }
 
 /// Lead engine — a partner's business-discovery search. Drives the Search
@@ -1976,6 +1977,45 @@ enum SendingDomainStatus {
   WARMING // verified; warmup runner ramping the cap
   ACTIVE // warmup complete; full daily cap available
   FAILED // provisioning error — see lastError
+}
+
+/// Bulk Email — one cold-email send. The send log: powers the per-partner
+/// daily-cap count, the unsubscribe-token lookup (CAN-SPAM), and bounce /
+/// complaint reconciliation from SES webhooks. Partner-scoped — cold email is
+/// never tenant-scoped; it goes out on the partner's own sending domain.
+model ColdEmailSend {
+  id               String              @id @default(uuid())
+  partnerId        String
+  sendingDomainId  String // PartnerSendingDomain used for this send
+  toEmail          String
+  fromEmail        String
+  subject          String
+  status           ColdEmailSendStatus @default(QUEUED)
+  unsubscribeToken String              @unique // embedded in the CAN-SPAM footer link
+  sesMessageId     String? // SES message id — links webhook events back to this row
+  failureReason    String? // why it was not sent, or why SES rejected it
+  sentAt           DateTime?
+  bouncedAt        DateTime?
+  complainedAt     DateTime?
+  unsubscribedAt   DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  partner AffiliateAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, sentAt])
+  @@index([partnerId, status])
+}
+
+enum ColdEmailSendStatus {
+  QUEUED // created, not yet handed to SES
+  SENT // accepted by SES
+  SUPPRESSED // recipient on the suppression list — not sent
+  INVALID // Reoon flagged the address — not sent
+  BLOCKED // cap / send window / drip / policy / no active domain — not sent
+  FAILED // SES rejected the send
+  BOUNCED // hard bounce reported by an SES webhook
+  COMPLAINED // spam complaint reported by an SES webhook
 }
 
 /// Partner-scoped email storage powering the Mailbox UI in /partner.

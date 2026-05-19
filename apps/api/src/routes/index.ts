@@ -38,6 +38,9 @@ import partnerCampaignsRouter from './partner-campaigns.js'
 import partnerMailboxRouter from './partner-mailbox.js'
 import leadEngineRouter from './lead-engine.js'
 import sendingDomainRouter from './sending-domain.js'
+import coldEmailRouter from './cold-email.js'
+import unsubscribeRouter from './unsubscribe.js'
+import webhooksSesRouter from './webhooks-ses.js'
 import emailPolicyRouter from './email-policy.js'
 import marketingAssetsRouter from './marketing-assets.js'
 import publicRouter from './public.js'
@@ -64,6 +67,8 @@ router.use('/api', internalGatewayRouter)
 router.use('/api', internalMailRouter)
 router.use('/api', marketingAssetsRouter) // public /public/marketing-asset/:filename — no auth
 router.use('/api', publicRouter)        // public /public/social-links — no auth
+router.use('/api', unsubscribeRouter)   // public /public/unsubscribe — no auth (email recipients)
+router.use('/api', webhooksSesRouter)   // public /webhooks/ses — no auth (SNS; signature-verified)
 router.use('/api', publicBookingRouter) // public /public/partners/:slug/booking-info|slots|bookings (E.4) — no auth
 router.use('/api', billingRouter)       // before auth-gated routers — contains public /billing/plans
 router.use('/api', widgetRouter)        // contains public /public/widget/session
@@ -85,6 +90,7 @@ router.use('/api', partnerCampaignsRouter)
 router.use('/api', partnerMailboxRouter)
 router.use('/api', leadEngineRouter)
 router.use('/api', sendingDomainRouter)
+router.use('/api', coldEmailRouter)
 router.use('/api', tenantRouter)
 router.use('/api', businessDNARouter)
 router.use('/api', promptsRouter)
