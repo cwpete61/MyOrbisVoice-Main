@@ -10,6 +10,7 @@ import {
   setDomainNameservers,
   type RegistrantContact,
 } from './route53-domains.service.js'
+import { warmupCapForDay, WARMUP_TARGET_CAP } from '../lib/bulk-email-pure.js'
 
 // Sending-domain orchestration — drives a partner's dedicated cold-email
 // domain through provisioning. The flow is a status state machine advanced
@@ -23,20 +24,6 @@ import {
 // domain's name servers at Cloudflare. registrarOrderRef holds whichever
 // Route 53 operation is currently in flight; cloudflareZoneId being set means
 // the zone exists and the in-flight op is the name-server update.
-
-/** Warmup ramp — daily cap by day number since warmup started. Gentle ramp
- *  protects the domain's reputation; once it reaches the target the domain
- *  goes ACTIVE. Mirrors the 50/day platform cap in email-bulk-policy. */
-const WARMUP_TARGET_CAP = 50
-function warmupCapForDay(day: number): number {
-  if (day <= 1) return 5
-  if (day === 2) return 10
-  if (day === 3) return 15
-  if (day === 4) return 20
-  if (day === 5) return 30
-  if (day === 6) return 40
-  return WARMUP_TARGET_CAP
-}
 
 /** WHOIS registrant contact for Route 53 registration. Address is the
  *  platform's legal entity; phone + email come from SystemConfig and must be

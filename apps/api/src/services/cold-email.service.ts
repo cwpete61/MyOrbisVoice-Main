@@ -5,6 +5,7 @@ import { getPartnerPolicy, setPartnerBulkSuspension } from './email-bulk-policy.
 import { checkSuppression, addSuppression } from './email-suppression.service.js'
 import { verifyEmail, isEmailSafeToContact } from './reoon.service.js'
 import { sendEmail } from './aws-ses.service.js'
+import { escapeHtml, postalAddress } from '../lib/bulk-email-pure.js'
 
 // Cold-email send engine (Bulk Email Phase 2). Sends one compliant cold email
 // through a partner's dedicated SES sending domain. Every send runs the full
@@ -28,10 +29,6 @@ function unsubscribeUrl(token: string): string {
 // SES configuration set — all cold-email sends route bounce/complaint events
 // through this one set's SNS event destination.
 const SES_CONFIGURATION_SET = process.env['AWS_SES_CONFIGURATION_SET'] || 'my-first-configuration-set'
-
-// CAN-SPAM requires a real postal address in every message. Falls back to the
-// platform's legal entity when the partner hasn't set their own.
-const PLATFORM_ADDRESS = 'MyOrbisVoice, 716 Washington St Suite 2, Allentown, PA 18102'
 
 export type ColdEmailOutcome = 'SENT' | 'SUPPRESSED' | 'INVALID' | 'BLOCKED' | 'FAILED'
 
@@ -59,18 +56,6 @@ type PartnerInfo = {
   user: { email: string } | null
 }
 
-/** CAN-SPAM postal address line — the partner's if set, else the platform's. */
-function postalAddress(p: PartnerInfo): string {
-  const parts = [
-    [p.partnerStreet, p.partnerUnit].filter(Boolean).join(' '),
-    p.partnerCity,
-    [p.partnerState, p.partnerPostalCode].filter(Boolean).join(' '),
-  ].map(s => (s ?? '').trim()).filter(Boolean)
-  if (parts.length === 0) return PLATFORM_ADDRESS
-  const name = p.businessName || p.displayName || 'MyOrbisVoice partner'
-  return `${name}, ${parts.join(', ')}`
-}
-
 /** Append the CAN-SPAM footer: sender identity, postal address, unsubscribe. */
 function withFooter(bodyHtml: string, p: PartnerInfo, unsubscribeToken: string): string {
   const unsubUrl = unsubscribeUrl(unsubscribeToken)
@@ -80,10 +65,6 @@ function withFooter(bodyHtml: string, p: PartnerInfo, unsubscribeToken: string):
   <p style="margin:0;"><a href="${unsubUrl}" style="color:#888888;">Unsubscribe</a> — you will not be emailed again.</p>
 </div>`
   return `${bodyHtml}\n${footer}`
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
 }
 
 /** Count of emails this partner has actually SENT today (server-local day). */

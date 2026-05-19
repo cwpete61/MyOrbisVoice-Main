@@ -12,6 +12,7 @@ import { startCampaignScheduler } from './jobs/campaign-scheduler.js'
 import { startOnboardingEmailsJob } from './jobs/onboarding-emails.js'
 import { startReminderRunner } from './jobs/reminder-runner.js'
 import { startSendingDomainRunner } from './jobs/sending-domain-runner.js'
+import { startColdEmailSequencer } from './jobs/cold-email-sequencer.js'
 import { bootStripeFromConfig } from './lib/stripe.js'
 import { recoverStuckExtractions } from './services/knowledge-base.service.js'
 
@@ -149,6 +150,7 @@ async function start() {
     startOnboardingEmailsJob()
     startReminderRunner()
     startSendingDomainRunner()
+    startColdEmailSequencer()
     // Reset any KB extraction jobs left in PROCESSING from a prior crash —
     // we can't resume the original buffer, so they get FAILED with a clear
     // message and the user can re-upload.

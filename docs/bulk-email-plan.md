@@ -1,6 +1,19 @@
 # Plan — Bulk Email (cold-email engine)
 
-**Status:** Phase 3 complete + deployed (2026-05-19). Next: Phase 4.
+**Status:** Phase 4 complete + deployed (2026-05-19). Next: Phase 5.
+
+## Phase 4 — DONE, deployed 2026-05-19
+
+- `cold-email-sequencer.service` — `runSequencerTick()` walks every ACTIVE
+  campaign's enrolled leads through the touch sequence on schedule
+  (`currentTouch` / `nextTouchAt`). Sends go through `sendColdEmail`, so the
+  cap / window / drip gate is reused, not reimplemented.
+- `jobs/cold-email-sequencer.ts` — runner, 5-minute tick, registered in `index.ts`.
+- Lead outcomes: SENT advances, SUPPRESSED/INVALID stops the lead, BLOCKED/
+  FAILED retries next tick; campaign auto-completes when no lead is in flight.
+- Engagement tracking (reply/booking stops a sequence): the model + sequencer
+  already honor REPLIED/BOOKED status — setting them needs inbound-mail
+  detection, carried into Phase 5.
 
 ## Phase 3 — DONE, deployed 2026-05-19
 
