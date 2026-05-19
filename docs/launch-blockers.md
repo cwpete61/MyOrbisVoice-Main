@@ -82,24 +82,15 @@ Original item, for reference:
 
 ---
 
-### S2. Wire Sentry SDK across api / web / voice-gateway
+### S2. Error monitoring — PARKED (portfolio-wide observability, separate effort)
 
-**What:** Currently zero error-aggregation tooling — we rely on the in-house `system.error.unhandled` audit-log row and manual `docker logs` inspection. That's fine for low-volume launch but won't scale: source maps aren't symbolicated, errors aren't grouped, no email/Slack alerting on new patterns.
+**Decision 2026-05-19:** Pulled out of the launch readiness equation. Will be addressed later as part of a **portfolio-wide observability stack** (multiple MyOrbisResults properties, not just MyOrbisVoice) on its own separate hosting plan. Not a launch blocker for MyOrbisVoice on its own.
 
-**Why deferred:** Wiring Sentry across three services touches `index.ts`, error middleware, `next.config.mjs`, `instrumentation.ts`, and adds a new external dependency. Requires creating a Sentry project (user action) and getting DSNs. Doing this at the same time as a security patch + deploy hardening compounds risk — this is its own session.
+**Approach when revived:** Self-hosted **GlitchTip** (open-source, Sentry-protocol-compatible). Same `@sentry/node` + `@sentry/nextjs` SDKs that are already wired in this repo will point at GlitchTip's DSN with zero code change. Hosted on a separate box / separate hosting plan that covers all the portfolio properties' error monitoring centrally.
 
-**Owner:** Me to wire the SDK + the user to create the Sentry project + paste DSN into `Admin → System Settings`.
+**What stays in place meanwhile:** The in-house `system.error.unhandled` audit-log row + manual `docker logs` inspection. Adequate for current volume.
 
-**Sequencing:**
-  1. User creates Sentry project; gets DSN per service (api, web, voice-gateway)
-  2. Add SDK wrapper in `apps/api/src/lib/sentry.ts` that no-ops if DSN is missing
-  3. Init at top of each `index.ts`; wire `Sentry.Handlers.errorHandler()` in api after routes but before our custom errorHandler (so both fire)
-  4. Web: `@sentry/nextjs` integration via `instrumentation.ts` + `sentry.client.config.ts` + `sentry.server.config.ts`
-  5. Voice-gateway: `@sentry/node` init at top of `index.ts` + manual capture in WebSocket handlers
-  6. Add `SENTRY_DSN_API`, `SENTRY_DSN_WEB`, `SENTRY_DSN_GATEWAY` to `.env.prod` template
-  7. Deploy each service separately, verify health, generate one synthetic error per service to confirm Sentry receives it
-
-**Verifies done when:** A deliberately-thrown test error in each of the three services appears in the Sentry dashboard within 60s.
+**SDKs already wired:** `@sentry/node` in api + voice-gateway, `@sentry/nextjs` in web. All gracefully no-op when DSN env vars are unset — so leaving them disabled costs nothing.
 
 ---
 
