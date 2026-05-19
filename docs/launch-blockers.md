@@ -2,7 +2,7 @@
 
 These are the items that **cannot be closed by code alone** — they require external signal (third-party approvals, off-repo actions, real-world data, or specific business decisions). They're tracked here so they don't get lost in conversation history but also don't block the build.
 
-**Last reviewed:** 2026-05-12.
+**Last reviewed:** 2026-05-19.
 
 Items below sorted by urgency. Re-review weekly. When an item is closed, move it to the **Closed** section at the bottom with the date and what unblocked it.
 
@@ -134,6 +134,69 @@ Original item, for reference:
 **Owner:** User to place the call (from a phone NOT in their Google contacts to avoid the carrier reputation issue from #8).
 
 **Verifies done when:** One inbound call of 90+ seconds completes with all artifacts (recording + transcript + summary + latency) populated in the DB.
+
+---
+
+### S5. Approve the Postmark account (transactional email)
+
+**What:** The Postmark account is still in "pending approval" mode. While
+pending, Postmark rejects any send whose recipient domain differs from the
+`From` domain (`422 — all recipient addresses must share the same domain as
+the 'From' address`). So real customer/partner email (gmail.com etc.) cannot
+go out through Postmark yet.
+
+**Why this is NOT a hard blocker:** The transactional path falls back to the
+local Postfix relay on send failure, and that fallback delivers fine for
+`From: bookings@myorbisresults.com` (DKIM-signed, SPF passes). Password
+resets, booking confirms and welcome emails using that From currently reach
+Gmail with `250 OK`. Postmark approval upgrades deliverability + gives webhook
+event correlation; it doesn't gate first customers.
+
+**Context:** The double-decrypt bug that made *every* Postmark send fail with
+`Invalid ciphertext format` is fixed (commit 7bf17f2, deployed 2026-05-19).
+Postmark now authenticates correctly — the only thing left is the account
+being approved on Postmark's side.
+
+**Owner:** User — complete Postmark account approval in the Postmark dashboard
+(provide sending-domain + use-case detail Postmark requests).
+
+**Verifies done when:** A transactional send to an external domain (e.g. a
+gmail.com address) returns `{ sent: true, provider: 'postmark' }` instead of
+falling back to SMTP — visible in API logs as `[forgot-password] reset email
+sent to X via postmark`.
+
+---
+
+### S6. SPF + DKIM for `myorbisvoice.com` (Contabo relay)
+
+**What:** The Contabo host IP `147.93.183.4` is not in `myorbisvoice.com`'s
+SPF record, and there is no DKIM signing for that domain. Any mail sent
+through the local Postfix relay `From:` a `@myorbisvoice.com` address bounces
+at Gmail: `550-5.7.26 Your email has been blocked because the sender is
+unauthenticated`. opendkim already signs `myorbisresults.com` (which is why
+mail From `bookings@myorbisresults.com` delivers); `myorbisvoice.com` has no
+equivalent.
+
+**Impact:** Anything that explicitly sets a `@myorbisvoice.com` From bounces —
+observed on `notify@myorbisvoice.com` synthetic/smoke sends. The password-reset
+email dodges this only because `smtp_from` is `Orby Bookings
+<bookings@myorbisresults.com>`. It's a latent landmine: any future caller that
+passes a `@myorbisvoice.com` From, or a change to `smtp_from`, silently bounces.
+
+**Fix (DNS + host config):**
+  1. Add `147.93.183.4` to `myorbisvoice.com`'s SPF TXT record (e.g.
+     `v=spf1 ip4:147.93.183.4 include:... ~all`).
+  2. Add a DKIM signing entry for `myorbisvoice.com` in opendkim on the
+     Contabo host (mirror the existing `myorbisresults.com` `s=default` setup)
+     and publish the public key as a DNS TXT record.
+  3. Confirm a `_dmarc.myorbisvoice.com` policy exists.
+
+**Owner:** User for the DNS records; the opendkim host config can be done
+together (host-level, not container — `/etc/opendkim`).
+
+**Verifies done when:** A test send `From: notify@myorbisvoice.com` to a
+gmail.com address shows `status=sent (250 ... OK)` in `/var/log/mail.log` with
+`opendkim ... DKIM-Signature field added (d=myorbisvoice.com)`.
 
 ---
 
