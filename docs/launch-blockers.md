@@ -167,39 +167,6 @@ sent to X via postmark`.
 
 ---
 
-### S6. SPF + DKIM for `myorbisvoice.com` (Contabo relay)
-
-**What:** The Contabo host IP `147.93.183.4` is not in `myorbisvoice.com`'s
-SPF record, and there is no DKIM signing for that domain. Any mail sent
-through the local Postfix relay `From:` a `@myorbisvoice.com` address bounces
-at Gmail: `550-5.7.26 Your email has been blocked because the sender is
-unauthenticated`. opendkim already signs `myorbisresults.com` (which is why
-mail From `bookings@myorbisresults.com` delivers); `myorbisvoice.com` has no
-equivalent.
-
-**Impact:** Anything that explicitly sets a `@myorbisvoice.com` From bounces —
-observed on `notify@myorbisvoice.com` synthetic/smoke sends. The password-reset
-email dodges this only because `smtp_from` is `Orby Bookings
-<bookings@myorbisresults.com>`. It's a latent landmine: any future caller that
-passes a `@myorbisvoice.com` From, or a change to `smtp_from`, silently bounces.
-
-**Fix (DNS + host config):**
-  1. Add `147.93.183.4` to `myorbisvoice.com`'s SPF TXT record (e.g.
-     `v=spf1 ip4:147.93.183.4 include:... ~all`).
-  2. Add a DKIM signing entry for `myorbisvoice.com` in opendkim on the
-     Contabo host (mirror the existing `myorbisresults.com` `s=default` setup)
-     and publish the public key as a DNS TXT record.
-  3. Confirm a `_dmarc.myorbisvoice.com` policy exists.
-
-**Owner:** User for the DNS records; the opendkim host config can be done
-together (host-level, not container — `/etc/opendkim`).
-
-**Verifies done when:** A test send `From: notify@myorbisvoice.com` to a
-gmail.com address shows `status=sent (250 ... OK)` in `/var/log/mail.log` with
-`opendkim ... DKIM-Signature field added (d=myorbisvoice.com)`.
-
----
-
 ### 6. Backlog #6 — Tooltips full per-field sweep across remaining pages
 
 **What:** Add `Tooltip` wrappers on misunderstood fields across pages that don't yet have any: business profile, agent role config, admin storage tier, integration setup forms.
@@ -258,6 +225,33 @@ gmail.com address shows `status=sent (250 ... OK)` in `/var/log/mail.log` with
 ## ✅ Closed
 
 *(items move here with a date + what unblocked them)*
+
+### S6. SPF + DKIM for `myorbisvoice.com` — closed 2026-05-19
+
+**What unblocked it:** Mail `From: @myorbisvoice.com` through the Contabo
+Postfix relay was bouncing at Gmail (`550-5.7.26` unauthenticated) — IP
+`147.93.183.4` not in SPF, no DKIM. Both fixed:
+
+- **SPF** — `myorbisvoice.com` TXT record (Cloudflare DNS) now reads
+  `v=spf1 ip4:147.93.183.4 include:spf.shared.spaceship.host include:spf.spacemail.com ~all`.
+- **DKIM** — generated a 2048-bit key on the host
+  (`/etc/opendkim/keys/myorbisvoice.com/default.private`), added it to
+  opendkim `KeyTable` + `SigningTable` (`*@myorbisvoice.com`), restarted
+  opendkim. Public key published as `default._domainkey.myorbisvoice.com`
+  TXT in Cloudflare. (Pre-change backups: `/etc/opendkim/KeyTable.before-myorbisvoice.20260519`,
+  same for `SigningTable`.)
+
+**Verified end-to-end 2026-05-19:** test send `From: notify@myorbisvoice.com`
+→ `opendkim: DKIM-Signature field added (s=default, d=myorbisvoice.com)` →
+`postfix/smtp ... status=sent (250 2.0.0 OK ... gsmtp)`. Same From bounced
+`5.7.26` the day before.
+
+**Note:** `notify@myorbisvoice.com` has no real mailbox — bounce/NDR mail
+addressed back to it is rejected by spacemail (`5.1.1`). Fine for a no-reply
+sender; just don't expect replies to reach anyone.
+
+**Re-open if:** any `opendkim ... no signing table match for '@myorbisvoice.com'`
+or fresh `550-5.7.26` line appears in `/var/log/mail.log`.
 
 ### D1. myorbisresults.com web hosting unreachable — closed 2026-05-12
 
