@@ -73,6 +73,7 @@ export async function runSequencerTick(): Promise<SequencerResult> {
         to: cl.lead.email,
         subject: touch.subject,
         bodyHtml: touch.bodyHtml,
+        campaignLeadId: cl.id,
       })
 
       if (result.outcome === 'SENT') {

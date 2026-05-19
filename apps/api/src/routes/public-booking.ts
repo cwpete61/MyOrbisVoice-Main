@@ -6,6 +6,7 @@ import { AppError } from '@voiceautomation/shared'
 import { getConfigValue } from '../services/system-config.service.js'
 import { searchAvailability, createAppointment } from '../services/appointment.service.js'
 import { createContact } from '../services/contact.service.js'
+import { attributeBooking } from '../services/cold-email-campaign.service.js'
 
 const router: IRouter = Router()
 
@@ -296,6 +297,15 @@ router.post('/public/partners/:slug/bookings', asyncHandler(async (req, res) => 
       throw new AppError('SLOT_TAKEN', 'That slot was just taken. Please pick another.', 409)
     }
     throw err
+  }
+
+  // Bulk Email Phase 5 — if this prospect is a cold-email campaign lead,
+  // mark them BOOKED (closes the funnel + stops their sequence). Best-effort:
+  // a funnel-attribution failure must never fail a real booking.
+  try {
+    await attributeBooking(partner.id, body.email)
+  } catch (err) {
+    console.error('[public-booking] campaign attribution failed:', err)
   }
 
   res.status(201).json({

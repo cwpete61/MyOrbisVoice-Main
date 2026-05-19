@@ -1,6 +1,23 @@
 # Plan — Bulk Email (cold-email engine)
 
-**Status:** Phase 4 complete + deployed (2026-05-19). Next: Phase 5.
+**Status:** ALL 5 PHASES COMPLETE + deployed (2026-05-19). The cold-email
+engine is built end to end. Remaining to go live: SES production access
+(AWS-side wait, case 177918023400963).
+
+## Phase 5 — DONE, deployed 2026-05-19
+
+- Schema: `ColdEmailSend.clickedAt` + `.campaignLeadId`;
+  `ColdEmailCampaignLead.clickedAt` + `.bookedAt`.
+- Every cold email gets a click-tracked "Book a call" CTA (when the partner
+  has a booking page) → `GET /api/public/cl/:token` records the click, then
+  302s to the partner's `/book/<slug>` page.
+- `recordClick` stamps the send + the campaign lead.
+- Booking attribution: a booking on the partner's public page is matched by
+  email to any campaign lead → marked BOOKED (closes the funnel + stops the
+  sequence). Best-effort, never fails a real booking.
+- `getCampaignFunnel` + `GET /campaigns/:id/funnel` — enrolled → contacted →
+  clicked → booked.
+- Campaign UI shows the funnel on the campaign detail.
 
 ## Phase 4 — DONE, deployed 2026-05-19
 

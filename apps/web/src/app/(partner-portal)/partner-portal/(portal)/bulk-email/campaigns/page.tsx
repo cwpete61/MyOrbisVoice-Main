@@ -32,6 +32,7 @@ interface EligibleLead {
   ownerName: string | null
   category: string | null
 }
+interface Funnel { enrolled: number; contacted: number; clicked: number; booked: number }
 
 const card = { background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }
 const inputCls = 'w-full text-sm px-3 py-2 rounded-lg outline-none'
@@ -42,6 +43,7 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true)
   const [campaigns, setCampaigns] = useState<CampaignRow[]>([])
   const [detail, setDetail] = useState<CampaignDetail | null>(null)
+  const [funnel, setFunnel] = useState<Funnel | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -73,6 +75,9 @@ export default function CampaignsPage() {
       const c = await apiFetch<CampaignDetail>(`/api/partner/cold-email/campaigns/${id}`)
       setDetail(c)
       setTouches(c.touches.length ? c.touches.map(x => ({ ...x })) : [{ delayDays: 0, subject: '', bodyHtml: '' }])
+      apiFetch<Funnel>(`/api/partner/cold-email/campaigns/${id}/funnel`)
+        .then(setFunnel)
+        .catch(() => setFunnel(null))
     } catch (e) { setError(errMsg(e)) }
   }
 
@@ -181,7 +186,7 @@ export default function CampaignsPage() {
       ) : detail ? (
         /* ── Detail / builder ── */
         <div className="space-y-5">
-          <button onClick={() => { setDetail(null); setError(null) }} className="text-sm" style={{ color: TEAL }}>
+          <button onClick={() => { setDetail(null); setFunnel(null); setError(null) }} className="text-sm" style={{ color: TEAL }}>
             {t('coldCampaigns.back')}
           </button>
 
@@ -231,6 +236,28 @@ export default function CampaignsPage() {
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('coldCampaigns.draftOnlyNote')}</p>
             )}
           </section>
+
+          {/* Funnel */}
+          {funnel && (
+            <section className="rounded-xl p-4" style={card}>
+              <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>
+                {t('coldCampaigns.funnelTitle')}
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {([
+                  ['funnelEnrolled', funnel.enrolled],
+                  ['funnelContacted', funnel.contacted],
+                  ['funnelClicked', funnel.clicked],
+                  ['funnelBooked', funnel.booked],
+                ] as const).map(([key, n]) => (
+                  <div key={key} className="rounded-lg px-3 py-2 text-center" style={{ background: 'var(--surface-overlay)' }}>
+                    <p className="text-lg font-semibold" style={{ color: TEAL }}>{n}</p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{t(`coldCampaigns.${key}`)}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Touch sequence */}
           <section className="rounded-xl p-4 space-y-3" style={card}>

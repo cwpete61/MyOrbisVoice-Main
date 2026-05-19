@@ -151,6 +151,49 @@ export async function removeLead(partnerId: string, campaignId: string, campaign
   await prisma.coldEmailCampaignLead.deleteMany({ where: { id: campaignLeadId, campaignId } })
 }
 
+/**
+ * Funnel metrics for one campaign: discovered → contacted → clicked → booked.
+ * Computed from the enrolled-lead rows.
+ */
+export async function getCampaignFunnel(partnerId: string, campaignId: string) {
+  await requireCampaign(partnerId, campaignId)
+  const leads = await prisma.coldEmailCampaignLead.findMany({
+    where: { campaignId },
+    select: { currentTouch: true, clickedAt: true, bookedAt: true },
+  })
+  return {
+    enrolled: leads.length,
+    contacted: leads.filter(l => l.currentTouch > 0).length,
+    clicked: leads.filter(l => l.clickedAt != null).length,
+    booked: leads.filter(l => l.bookedAt != null).length,
+  }
+}
+
+/**
+ * Attribute a booking back to a campaign. Called when a prospect books on a
+ * partner's public booking page — any campaign lead of that partner whose
+ * email matches is marked BOOKED, which also stops its sequence. Best-effort:
+ * a no-match is a clean no-op.
+ */
+export async function attributeBooking(partnerId: string, email: string): Promise<void> {
+  const normalized = email.trim().toLowerCase()
+  if (!normalized) return
+  const leads = await prisma.coldEmailCampaignLead.findMany({
+    where: {
+      campaign: { partnerId },
+      bookedAt: null,
+      status: { notIn: ['BOOKED', 'STOPPED'] },
+      lead: { email: { equals: normalized, mode: 'insensitive' } },
+    },
+    select: { id: true },
+  })
+  if (leads.length === 0) return
+  await prisma.coldEmailCampaignLead.updateMany({
+    where: { id: { in: leads.map(l => l.id) } },
+    data: { status: 'BOOKED', bookedAt: new Date(), nextTouchAt: null },
+  })
+}
+
 /** Delete a campaign. Blocked while it is ACTIVE — pause it first. */
 export async function deleteCampaign(partnerId: string, campaignId: string) {
   const campaign = await requireCampaign(partnerId, campaignId)

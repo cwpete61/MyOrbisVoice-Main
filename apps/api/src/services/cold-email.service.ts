@@ -26,6 +26,12 @@ function unsubscribeUrl(token: string): string {
   return `${API_BASE_URL}/api/public/unsubscribe?token=${encodeURIComponent(token)}`
 }
 
+/** The click-tracked booking-CTA URL — records the click, then 302s to the
+ *  partner's booking page. */
+function bookingClickUrl(token: string): string {
+  return `${API_BASE_URL}/api/public/cl/${encodeURIComponent(token)}`
+}
+
 // SES configuration set — all cold-email sends route bounce/complaint events
 // through this one set's SNS event destination.
 const SES_CONFIGURATION_SET = process.env['AWS_SES_CONFIGURATION_SET'] || 'my-first-configuration-set'
@@ -37,6 +43,9 @@ export interface SendColdEmailInput {
   to: string
   subject: string
   bodyHtml: string // the partner's message body (e.g. the AI-generated intro)
+  /** Set when this send is a campaign touch — links the send for funnel
+   *  reporting + click attribution. */
+  campaignLeadId?: string
 }
 
 export interface SendColdEmailResult {
@@ -48,6 +57,7 @@ export interface SendColdEmailResult {
 type PartnerInfo = {
   businessName: string | null
   displayName: string | null
+  slug: string | null
   partnerStreet: string | null
   partnerUnit: string | null
   partnerCity: string | null
@@ -56,15 +66,21 @@ type PartnerInfo = {
   user: { email: string } | null
 }
 
-/** Append the CAN-SPAM footer: sender identity, postal address, unsubscribe. */
-function withFooter(bodyHtml: string, p: PartnerInfo, unsubscribeToken: string): string {
-  const unsubUrl = unsubscribeUrl(unsubscribeToken)
+/** Build the email body: partner content + a click-tracked booking CTA (when
+ *  the partner has a booking page) + the CAN-SPAM footer. */
+function buildEmailHtml(bodyHtml: string, p: PartnerInfo, token: string): string {
+  const cta = p.slug
+    ? `
+<div style="margin-top:24px;font-family:Arial,Helvetica,sans-serif;">
+  <a href="${bookingClickUrl(token)}" style="display:inline-block;background:#1f9c8a;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:10px 20px;border-radius:8px;">Book a call</a>
+</div>`
+    : ''
   const footer = `
 <div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e5e5;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#888888;line-height:1.6;">
   <p style="margin:0 0 6px;">${escapeHtml(postalAddress(p))}</p>
-  <p style="margin:0;"><a href="${unsubUrl}" style="color:#888888;">Unsubscribe</a> — you will not be emailed again.</p>
+  <p style="margin:0;"><a href="${unsubscribeUrl(token)}" style="color:#888888;">Unsubscribe</a> — you will not be emailed again.</p>
 </div>`
-  return `${bodyHtml}\n${footer}`
+  return `${bodyHtml}\n${cta}\n${footer}`
 }
 
 /** Count of emails this partner has actually SENT today (server-local day). */
@@ -144,7 +160,7 @@ export async function sendColdEmail(input: SendColdEmailInput): Promise<SendCold
   const partner = await prisma.affiliateAccount.findUnique({
     where: { id: partnerId },
     select: {
-      businessName: true, displayName: true,
+      businessName: true, displayName: true, slug: true,
       partnerStreet: true, partnerUnit: true, partnerCity: true,
       partnerState: true, partnerPostalCode: true,
       user: { select: { email: true } },
@@ -158,6 +174,7 @@ export async function sendColdEmail(input: SendColdEmailInput): Promise<SendCold
     data: {
       partnerId,
       sendingDomainId: domain.id,
+      campaignLeadId: input.campaignLeadId ?? null,
       toEmail: to,
       fromEmail,
       subject: input.subject,
@@ -167,7 +184,7 @@ export async function sendColdEmail(input: SendColdEmailInput): Promise<SendCold
   })
 
   try {
-    const html = withFooter(input.bodyHtml, partner, token)
+    const html = buildEmailHtml(input.bodyHtml, partner, token)
     const { messageId } = await sendEmail({
       from: fromEmail,
       to,
@@ -307,6 +324,36 @@ async function maybeAutoPause(partnerId: string): Promise<void> {
       reason: `Auto-paused: complaint rate ${(complaintRate * 100).toFixed(2)}% over the last ${recent.length} sends`,
     })
   }
+}
+
+/**
+ * Record a click on a send's booking CTA. Stamps the send (and, for a
+ * campaign touch, the campaign lead) and returns the partner's booking slug
+ * so the caller can redirect there. Idempotent — only the first click stamps.
+ */
+export async function recordClick(token: string): Promise<{ slug: string | null }> {
+  const t = token.trim()
+  if (!t) return { slug: null }
+  const send = await prisma.coldEmailSend.findUnique({
+    where: { unsubscribeToken: t },
+    select: { id: true, partnerId: true, campaignLeadId: true, clickedAt: true },
+  })
+  if (!send) return { slug: null }
+
+  if (!send.clickedAt) {
+    await prisma.coldEmailSend.update({ where: { id: send.id }, data: { clickedAt: new Date() } })
+  }
+  if (send.campaignLeadId) {
+    await prisma.coldEmailCampaignLead.updateMany({
+      where: { id: send.campaignLeadId, clickedAt: null },
+      data: { clickedAt: new Date() },
+    })
+  }
+  const partner = await prisma.affiliateAccount.findUnique({
+    where: { id: send.partnerId },
+    select: { slug: true },
+  })
+  return { slug: partner?.slug ?? null }
 }
 
 /** Log a non-sent outcome (SUPPRESSED / INVALID) and return the result. */

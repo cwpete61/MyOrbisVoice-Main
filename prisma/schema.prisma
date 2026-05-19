@@ -1989,14 +1989,16 @@ model ColdEmailSend {
   id               String              @id @default(uuid())
   partnerId        String
   sendingDomainId  String // PartnerSendingDomain used for this send
+  campaignLeadId   String? // set when the send is a campaign touch (Phase 5 attribution)
   toEmail          String
   fromEmail        String
   subject          String
   status           ColdEmailSendStatus @default(QUEUED)
-  unsubscribeToken String              @unique // embedded in the CAN-SPAM footer link
+  unsubscribeToken String              @unique // per-send public token — unsubscribe + click links
   sesMessageId     String? // SES message id — links webhook events back to this row
   failureReason    String? // why it was not sent, or why SES rejected it
   sentAt           DateTime?
+  clickedAt        DateTime? // when the recipient clicked the booking CTA
   bouncedAt        DateTime?
   complainedAt     DateTime?
   unsubscribedAt   DateTime?
@@ -2068,6 +2070,8 @@ model ColdEmailCampaignLead {
   status       ColdEmailCampaignLeadStatus @default(ENROLLED)
   currentTouch Int                         @default(0) // last touch sent; 0 = none yet
   nextTouchAt  DateTime? // when the sequencer should act next
+  clickedAt    DateTime? // first time this lead clicked a booking CTA
+  bookedAt     DateTime? // when this lead booked — the funnel conversion
   createdAt    DateTime                    @default(now())
   updatedAt    DateTime                    @updatedAt
 

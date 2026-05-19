@@ -87,6 +87,12 @@ router.get('/partner/cold-email/campaigns/:id', async (req: Request, res: Respon
   } catch (err) { next(err) }
 })
 
+router.get('/partner/cold-email/campaigns/:id/funnel', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json({ data: await campaigns.getCampaignFunnel(partnerId(req), req.params['id']!) })
+  } catch (err) { next(err) }
+})
+
 router.patch('/partner/cold-email/campaigns/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = updateCampaignSchema.safeParse(req.body)
