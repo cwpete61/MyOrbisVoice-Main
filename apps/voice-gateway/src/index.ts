@@ -4,9 +4,13 @@ import fs from 'fs'
 import path from 'path'
 import { WebSocketServer } from 'ws'
 import { env } from './lib/env.js'
+import { initSentry } from './lib/sentry.js'
 import { handleWidgetSession } from './session.js'
 import { handleInboundCall } from './inbound.js'
 import { handleOutboundCall } from './outbound.js'
+
+// Error monitoring — armed before the server starts. No-ops without a DSN.
+initSentry()
 
 const WIDGET_JS = path.resolve(process.cwd(), 'apps/voice-gateway/widget/orbisvoice-widget.js')
 

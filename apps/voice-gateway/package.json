@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
+    "@sentry/node": "^10.53.1",
     "dotenv": "^16.4.5",
     "nodemailer": "^8.0.7",
     "openai": "^4.52.7",

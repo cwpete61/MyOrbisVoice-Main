@@ -3,6 +3,7 @@ import { ZodError } from 'zod'
 import { AppError } from '@voiceautomation/shared'
 import type { ApiErrorResponse } from '@voiceautomation/types'
 import { writeAuditLog } from '../lib/audit.js'
+import { captureError } from '../lib/sentry.js'
 
 export function errorHandler(
   err: unknown,
@@ -61,6 +62,8 @@ export function errorHandler(
   }
 
   console.error('[api] unhandled error:', err)
+  // Report to Sentry (no-op when unconfigured) — grouped, alertable.
+  captureError(err, { method: req.method, path: req.originalUrl })
   // Persist unhandled errors to AuditLog so admins can see what's
   // breaking without SSH'ing into the container.
   writeAuditLog({

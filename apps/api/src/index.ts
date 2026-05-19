@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { initSentry } from './lib/sentry.js'
 import express, { type Express } from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -15,6 +16,10 @@ import { startSendingDomainRunner } from './jobs/sending-domain-runner.js'
 import { startColdEmailSequencer } from './jobs/cold-email-sequencer.js'
 import { bootStripeFromConfig } from './lib/stripe.js'
 import { recoverStuckExtractions } from './services/knowledge-base.service.js'
+
+// Error monitoring — first thing in the module body so it's armed before
+// the server starts. No-ops when SENTRY_DSN_API is unset.
+initSentry()
 
 const env = getEnv()
 const app: Express = express()
