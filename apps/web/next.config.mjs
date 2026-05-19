@@ -1,3 +1,5 @@
+import { withSentryConfig } from '@sentry/nextjs'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ['@voiceautomation/types'],
@@ -27,4 +29,9 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+// Sentry wraps the Next build for error monitoring. With no auth token /
+// org / project set, source-map upload is skipped — the build is unaffected,
+// and the runtime SDK no-ops until NEXT_PUBLIC_SENTRY_DSN is set.
+export default withSentryConfig(nextConfig, {
+  silent: true,
+})
