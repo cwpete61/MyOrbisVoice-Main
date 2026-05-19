@@ -23,12 +23,14 @@ function partnerId(req: Request): string {
   return (req as Request & { partnerAccountId: string }).partnerAccountId
 }
 
+// Sending domains are locked to a fixed prefix + exactly 6 digits, for
+// cross-partner continuity: no-reply-myorbisvoice-NNNNNN.com
 const domainSchema = z.object({
   domain: z
     .string()
     .trim()
     .toLowerCase()
-    .regex(/^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]\.com$/, 'Must be a valid .com domain'),
+    .regex(/^no-reply-myorbisvoice-\d{6}\.com$/, 'Domain must be no-reply-myorbisvoice-NNNNNN.com (exactly 6 digits)'),
 })
 
 /** Current sending domain for the partner (null if none). */

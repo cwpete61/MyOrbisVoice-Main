@@ -5,6 +5,11 @@ import { apiFetch } from '@/hooks/useApi'
 import { useT } from '@/lib/i18n/I18nProvider'
 
 const TEAL = 'oklch(55% 0.11 193)'
+const RED  = 'oklch(55% 0.2 25)'
+
+// Sending domains are locked to a fixed prefix + exactly 6 digits, so every
+// partner's cold-email domain shares the same shape: no-reply-myorbisvoice-NNNNNN.com
+const DOMAIN_PREFIX = 'no-reply-myorbisvoice-'
 
 type DomainStatus =
   | 'PENDING_PAYMENT' | 'REGISTERING' | 'DNS_PENDING'
@@ -67,8 +72,10 @@ export default function BulkEmailPage() {
     return () => clearInterval(id)
   }, [domain, load])
 
-  const normalized = name.trim().toLowerCase().replace(/\.com$/, '').replace(/[^a-z0-9-]/g, '')
-  const fullDomain = normalized ? `${normalized}.com` : ''
+  // Only the 6-digit tail is partner-editable; the prefix is fixed.
+  const digits      = name.replace(/\D/g, '').slice(0, 6)
+  const validDigits = digits.length === 6
+  const fullDomain  = validDigits ? `${DOMAIN_PREFIX}${digits}.com` : ''
 
   async function check() {
     if (!fullDomain) return
@@ -207,20 +214,26 @@ export default function BulkEmailPage() {
                 <label className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                   {t('bulkEmail.wizardNameLabel')}
                 </label>
-                <p className="text-xs mt-0.5 mb-2" style={{ color: 'var(--text-tertiary)' }}>
+                <p className="text-xs mt-0.5 mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
                   {t('bulkEmail.wizardNameHint')}
                 </p>
-                <div className="flex items-center gap-2">
+                <p className="text-xs mb-2" style={{ color: RED, fontStyle: 'italic' }}>
+                  {t('bulkEmail.wizardPrefixNote')}
+                </p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-sm font-mono whitespace-nowrap" style={{ color: 'var(--text-tertiary)' }}>{DOMAIN_PREFIX}</span>
                   <input
                     value={name}
-                    onChange={e => { setName(e.target.value); setCheckResult(null) }}
+                    onChange={e => { setName(e.target.value.replace(/\D/g, '').slice(0, 6)); setCheckResult(null) }}
+                    inputMode="numeric"
+                    maxLength={6}
                     placeholder={t('bulkEmail.wizardNamePlaceholder')}
-                    className="flex-1 text-sm px-3 py-2 rounded-lg outline-none"
+                    className="w-28 text-sm px-3 py-2 rounded-lg outline-none font-mono"
                     style={{ background: 'var(--surface-overlay)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
                   />
                   <span className="text-sm font-mono" style={{ color: 'var(--text-tertiary)' }}>{t('bulkEmail.wizardTld')}</span>
                 </div>
-                {normalized && (
+                {validDigits && (
                   <p className="text-xs mt-1.5 font-mono" style={{ color: 'var(--text-secondary)' }}>{fullDomain}</p>
                 )}
               </div>
