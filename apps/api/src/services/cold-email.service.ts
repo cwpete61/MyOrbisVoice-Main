@@ -93,6 +93,52 @@ async function sentToday(partnerId: string): Promise<number> {
 }
 
 /**
+ * Build the recipient-facing `From` header for a cold email.
+ *
+ * Why this is shaped this way (read before changing):
+ *   - The address MUST stay on the partner's authenticated cold-email domain
+ *     (DKIM-signed by SES, SPF-aligned, DMARC-aligned). We CANNOT put the
+ *     partner's gmail / yahoo / outlook address in the From — those domains
+ *     publish DMARC `p=reject`, and every modern receiver will hard-reject
+ *     or spam mail that claims their domain without being signed by them.
+ *     That would tank deliverability for the whole platform and is the
+ *     exact pattern phishers use.
+ *   - The recipient still gets a personal experience because the display
+ *     name reads like the partner ("Alex from Rivera Marketing"), and
+ *     Reply-To is set to the partner's transactional email so replies
+ *     land in their real inbox.
+ *
+ * Display-name preference order: "First from Business" → Business →
+ * displayName → "First Last" → First → "MyOrbisVoice" (final guard).
+ * Quotes / angles / control chars are stripped (RFC 5322 safety).
+ */
+function buildFromHeader(
+  partner: {
+    businessName: string | null
+    displayName:  string | null
+    user: { firstName: string | null; lastName: string | null } | null
+  },
+  fromAddress: string,
+): string {
+  const first = partner.user?.firstName?.trim()
+  const last  = partner.user?.lastName?.trim()
+  const biz   = partner.businessName?.trim()
+  const disp  = partner.displayName?.trim()
+
+  const rawName =
+    first && biz   ? `${first} from ${biz}`
+    : biz          ? biz
+    : disp         ? disp
+    : first && last ? `${first} ${last}`
+    : first        ? first
+    : 'MyOrbisVoice'
+
+  // Strip anything that would break the quoted-string in an RFC 5322 header.
+  const safe = rawName.replace(/[\\"<>\r\n\t]/g, '').trim()
+  return safe ? `"${safe}" <${fromAddress}>` : fromAddress
+}
+
+/**
  * Send one cold email. Never throws — every path resolves to a logged
  * ColdEmailSend row and a typed result, so callers (a route today, the
  * sequencer later) get a clean outcome to act on.
@@ -163,20 +209,27 @@ export async function sendColdEmail(input: SendColdEmailInput): Promise<SendCold
       businessName: true, displayName: true, slug: true,
       partnerStreet: true, partnerUnit: true, partnerCity: true,
       partnerState: true, partnerPostalCode: true,
-      user: { select: { email: true } },
+      user: { select: { email: true, firstName: true, lastName: true } },
     },
   })
   if (!partner) return blocked(partnerId, to, input.subject, 'Partner not found')
 
   const token = randomBytes(24).toString('base64url')
-  const fromEmail = `${FROM_LOCAL_PART}@${domain.domain}`
+
+  // Address stays on the authenticated cold-email domain (DKIM/SPF/DMARC must
+  // align — see buildFromHeader). Local-part = partner.slug when available so
+  // different partners are visibly distinct in recipients' inboxes; falls back
+  // to the generic FROM_LOCAL_PART when a partner predates the slug field.
+  const fromAddress = `${(partner.slug || FROM_LOCAL_PART).toLowerCase()}@${domain.domain}`
+  const fromHeader  = buildFromHeader(partner, fromAddress)
+
   const send = await prisma.coldEmailSend.create({
     data: {
       partnerId,
       sendingDomainId: domain.id,
       campaignLeadId: input.campaignLeadId ?? null,
       toEmail: to,
-      fromEmail,
+      fromEmail: fromAddress, // canonical address only — display name varies
       subject: input.subject,
       status: 'QUEUED',
       unsubscribeToken: token,
@@ -186,10 +239,14 @@ export async function sendColdEmail(input: SendColdEmailInput): Promise<SendCold
   try {
     const html = buildEmailHtml(input.bodyHtml, partner, token)
     const { messageId } = await sendEmail({
-      from: fromEmail,
+      // Recipient sees `"Display Name" <slug@cold-domain>` — personal label,
+      // authenticated address.
+      from: fromHeader,
       to,
       subject: input.subject,
       html,
+      // Replies route to the partner's real transactional inbox (their gmail
+      // or whatever's on their User record).
       replyTo: partner.user?.email ?? undefined,
       configurationSet: SES_CONFIGURATION_SET,
       // One-click unsubscribe — required by Gmail/Yahoo bulk-sender rules.
