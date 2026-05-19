@@ -157,8 +157,11 @@ event correlation; it doesn't gate first customers.
 Postmark now authenticates correctly — the only thing left is the account
 being approved on Postmark's side.
 
-**Owner:** User — complete Postmark account approval in the Postmark dashboard
-(provide sending-domain + use-case detail Postmark requests).
+**Status:** Approval form submitted 2026-05-19 (transactional use-case,
+1–1,000 emails/mo, opt-in account holders only). Awaiting Postmark review
+(~1 business day). Until approved, transactional mail rides the SMTP fallback.
+
+**Owner:** User — completed the submission; now awaiting Postmark's decision.
 
 **Verifies done when:** A transactional send to an external domain (e.g. a
 gmail.com address) returns `{ sent: true, provider: 'postmark' }` instead of
