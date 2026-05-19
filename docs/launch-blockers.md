@@ -49,7 +49,19 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 
 ---
 
-### S1. Next.js 14.2.35 → 15.x upgrade for two open CVEs
+### S1. Next.js 14→15 upgrade — ✅ CLOSED 2026-05-19
+
+**Closed:** upgraded to Next 15.5.18 + React 19.2.6. The codebase was already
+Next-15-clean — `layout.tsx` used `await headers()`, App Router only, no
+Pages Router, no middleware, no sync `params`/`cookies` server-prop usage —
+so the version bump needed zero source changes. `pnpm audit --audit-level=high`
+went 5 high → 0 (2 moderate remain). type-check 8/8, all 8 prod surfaces
+verified (200 / 307 root redirect). The S1 fear of a risky major bump did not
+materialize because the code had been written in the forward-compatible style.
+
+Original item, for reference:
+
+#### S1 (original). Next.js 14.2.35 → 15.x upgrade for two open CVEs
 
 **What:** Two high-severity Next.js advisories require ≥15.0.8 and ≥15.5.15:
 - GHSA-h25m-26qc-wcjf — HTTP request deserialization DoS via insecure RSC
