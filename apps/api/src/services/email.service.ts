@@ -226,6 +226,14 @@ export async function sendEmail(opts: EmailOptions): Promise<SendResult> {
     return { sent: false, skipped: 'suppressed', reason: `${supp.scope}:${supp.reason}` }
   }
 
+  // Default Reply-To from config when the caller didn't set one. Our default
+  // From (notify@myorbisvoice.com) is a no-reply alias with no inbox — without
+  // a Reply-To, customer replies to password resets / confirmations bounce.
+  if (!opts.replyTo) {
+    const rt = await systemConfig.getConfigValue('smtp_reply_to')
+    if (rt) opts = { ...opts, replyTo: rt }
+  }
+
   // Route to the right provider. On provider failure, fall back to SMTP so a
   // misconfigured ESP doesn't take down the whole transactional flow.
   const chosen = pickProvider(opts)
