@@ -230,6 +230,7 @@ export default function AdminPlansPage() {
             <div key={plan.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
               {/* Plan header — clickable accordion */}
               <button
+                data-testid="plan-accordion-toggle"
                 onClick={() => toggleCollapsed(plan.id)}
                 className="w-full text-left px-6 py-4"
                 style={{ background: 'var(--surface-raised)', borderBottom: !collapsed[plan.id] ? 'none' : '1px solid var(--border-subtle)' }}

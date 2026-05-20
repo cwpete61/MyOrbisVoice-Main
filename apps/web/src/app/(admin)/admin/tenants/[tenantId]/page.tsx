@@ -183,6 +183,7 @@ export default function AdminTenantDetailPage() {
         </div>
         <div className="flex gap-2">
           <button
+            data-testid="impersonate-btn"
             onClick={enterAsTenant}
             disabled={impersonating || tenant.status === 'SUSPENDED'}
             className="btn-ghost text-xs"
