@@ -41,6 +41,21 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
 
-// Minimal fetch handler — present so the dashboard meets PWA installability
-// criteria. Pure pass-through (no caching); real offline support comes later.
-self.addEventListener('fetch', () => {})
+// NO fetch handler on purpose.
+//
+// We previously registered an empty `self.addEventListener('fetch', () => {})`
+// for "PWA installability." That was wrong on two counts:
+//   1. Registering ANY fetch listener forces the browser to route every
+//      network request through this SW. Returning undefined from an empty
+//      handler is meant to fall through to the native fetch — but iOS Safari
+//      WebKit (and iOS Chrome, which uses the same engine on Apple's
+//      mandate) treats it as a hang and eventually serves a blank document
+//      or "Safari couldn't open the page because the server stopped
+//      responding." Chronic intermittent blank screens on iPad / iPhone.
+//   2. Modern installability heuristics don't require a fetch handler; the
+//      installable PWA in this product is the separate "MyOrbisVoice Preview"
+//      surface at myorbisresults.com/preview/, not the app dashboard.
+//
+// Without a fetch listener registered, the browser handles every request
+// natively. Push notifications + notification-click flow above are
+// unaffected — those run on separate events.
