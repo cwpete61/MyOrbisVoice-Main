@@ -33,8 +33,10 @@ function SidebarContents({ onNav }: { onNav?: () => void }) {
         </div>
       </div>
 
-      {/* Nav — flex-1 + min-h-0 so it scrolls internally on short viewports. */}
-      <nav className="flex-1 min-h-0 px-3 py-4 overflow-y-auto" onClick={onNav}>
+      {/* Nav — flex-1 + min-h-0 so it scrolls internally on short viewports.
+         nav-scroll keeps a faint thin scrollbar visible so users see there's
+         more below the fold (iOS hides scrollbars by default). */}
+      <nav className="flex-1 min-h-0 px-3 py-4 overflow-y-auto nav-scroll" onClick={onNav}>
         <AdminNav />
       </nav>
 
@@ -53,11 +55,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <AuthGuard>
       <IdleTimeout redirectTo="/login" />
-      <div className="h-screen flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
+      {/* h-[100dvh] (dynamic viewport height) instead of h-screen / 100vh so
+         iOS Safari's collapsing chrome doesn't eat layout space. Desktop rail
+         at lg: (≥1024px) — iPad portrait gets the full-height drawer. */}
+      <div className="h-[100dvh] flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
 
         {/* ── Desktop sidebar ──────────────────────────────────────────────── */}
         <aside
-          className="hidden md:flex w-52 flex-shrink-0 flex-col"
+          className="hidden lg:flex w-52 flex-shrink-0 flex-col"
           style={{ background: 'var(--surface-sidebar)', borderRight: '1px solid var(--border-subtle)' }}
         >
           <SidebarContents />
@@ -65,7 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* ── Mobile drawer ────────────────────────────────────────────────── */}
         {sidebarOpen && (
-          <div className="fixed inset-0 z-40 md:hidden">
+          <div className="fixed inset-0 z-40 lg:hidden">
             <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setSidebarOpen(false)} />
             <aside
               className="relative flex flex-col w-72 max-w-[85vw] h-full z-50"
@@ -78,9 +83,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* ── Main ─────────────────────────────────────────────────────────── */}
         <main className="flex-1 overflow-auto flex flex-col">
-          {/* Mobile top bar — hamburger + brand. */}
+          {/* Mobile top bar — hamburger + brand. Up to lg so iPad portrait sees it. */}
           <header
-            className="flex md:hidden items-center justify-between px-4 py-3 flex-shrink-0"
+            className="flex lg:hidden items-center justify-between px-4 py-3 flex-shrink-0"
             style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-sidebar)' }}
           >
             <button
@@ -100,17 +105,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <RoleBadge />
           </header>
 
-          {/* Desktop top bar. */}
+          {/* Desktop top bar — lg+ (matches sidebar). */}
           <div
-            className="hidden md:flex items-center justify-end gap-3 px-8 py-3 flex-shrink-0"
+            className="hidden lg:flex items-center justify-end gap-3 px-8 py-3 flex-shrink-0"
             style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-sidebar)' }}
           >
             <RoleBadge />
             <LanguageToggle />
           </div>
 
-          {/* Page content — tighter padding on mobile. */}
-          <div className="w-full px-4 py-6 md:px-8 md:py-8">
+          {/* Page content — mobile padding up to lg (iPad portrait uses drawer). */}
+          <div className="w-full px-4 py-6 lg:px-8 lg:py-8">
             {children}
           </div>
         </main>

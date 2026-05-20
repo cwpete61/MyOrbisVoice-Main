@@ -72,8 +72,10 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
           <p className="text-xs mt-0.5" style={{ color: 'oklch(45% 0.13 193)' }}>{t('partnerNav.brandSubtitle')}</p>
         </div>
 
-        {/* Nav — flex-1 + min-h-0 so it scrolls internally on short viewports. */}
-        <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-0.5" onClick={onNav}>
+        {/* Nav — flex-1 + min-h-0 so it scrolls internally on short viewports.
+           nav-scroll keeps a faint thin scrollbar visible so users can see
+           there's more below the fold (iPad / iOS hides it by default). */}
+        <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-0.5 nav-scroll" onClick={onNav}>
           {NAV.map(item => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/')
             // Red-accent items (Bulk Email) render solid red with white text +
@@ -106,40 +108,40 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
           })}
         </nav>
 
-        {/* Footer — pinned. Profile + Sign out always visible. */}
+        {/* Footer — pinned. Profile (single combined row) + Sign out always
+           visible. The old layout duplicated a profile card AND a profile
+           nav link both pointing at /partner-portal/profile, eating ~60px of
+           vertical space; merged into one row so the nav above gets more
+           room on short viewports (iPad / phones). */}
         <div className="px-3 py-3 space-y-0.5 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-          {username && (
-            <Link
-              href={PROFILE_NAV.href}
-              onClick={onNav}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors mb-1"
-              style={{ color: 'var(--text-secondary)' }}
-            >
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold"
-                style={{ background: 'oklch(55% 0.11 193 / 0.18)', color: 'oklch(45% 0.13 193)' }}
-              >
-                {initials}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{username}</p>
-                {fullName && <p className="text-[11px] truncate" style={{ color: 'var(--text-tertiary)' }}>{fullName}</p>}
-              </div>
-            </Link>
-          )}
           {(() => {
             const active = pathname === PROFILE_NAV.href || pathname.startsWith(PROFILE_NAV.href + '/')
             return (
               <Link
                 href={PROFILE_NAV.href}
                 onClick={onNav}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm transition-colors"
                 style={active
                   ? { background: 'var(--nav-active-bg)', color: 'var(--nav-active-text)', fontWeight: 600 }
                   : { color: 'var(--text-secondary)' }}
               >
-                <span style={{ opacity: active ? 1 : 0.7 }}><Icon d={PROFILE_NAV.icon} /></span>
-                {t(PROFILE_NAV.labelKey)}
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold"
+                  style={{ background: 'oklch(55% 0.11 193 / 0.18)', color: 'oklch(45% 0.13 193)' }}
+                >
+                  {username ? initials : (
+                    <Icon d={PROFILE_NAV.icon} />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  {username
+                    ? <>
+                        <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{username}</p>
+                        {fullName && <p className="text-[11px] truncate" style={{ color: 'var(--text-tertiary)' }}>{fullName}</p>}
+                      </>
+                    : <span className="text-sm font-medium">{t(PROFILE_NAV.labelKey)}</span>
+                  }
+                </div>
               </Link>
             )
           })()}
@@ -161,18 +163,23 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
     )
   }
 
+  // h-[100dvh] (dynamic viewport height) instead of h-screen / 100vh so
+  // iOS Safari's collapsing browser chrome doesn't eat layout space.
+  // Desktop rail now appears at lg: (≥1024px) — iPad portrait (768px) gets
+  // the mobile drawer, which is full-height and easy to scroll, instead of
+  // a 224px nested-scroll column with no scrollbar cue.
   return (
-    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
+    <div className="h-[100dvh] flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
       <IdleTimeout redirectTo="/partner-portal/login" />
 
       {/* ── Desktop sidebar ──────────────────────────────────────────────── */}
-      <aside className="hidden md:flex w-56 flex-shrink-0 flex-col" style={{ background: 'var(--surface-raised)', borderRight: '1px solid var(--border-subtle)' }}>
+      <aside className="hidden lg:flex w-56 flex-shrink-0 flex-col" style={{ background: 'var(--surface-raised)', borderRight: '1px solid var(--border-subtle)' }}>
         <SidebarContents />
       </aside>
 
       {/* ── Mobile drawer ────────────────────────────────────────────────── */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setSidebarOpen(false)} />
           <aside
             className="relative flex flex-col w-72 max-w-[85vw] h-full z-50"
@@ -185,9 +192,10 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
 
       {/* ── Main ─────────────────────────────────────────────────────────── */}
       <main className="flex-1 overflow-auto flex flex-col">
-        {/* Mobile top bar — hamburger + brand + bell. */}
+        {/* Mobile top bar — hamburger + brand + bell. Shows up to lg: so
+           iPad portrait sees the hamburger and can open the full-height drawer. */}
         <header
-          className="flex md:hidden items-center justify-between px-4 py-3 flex-shrink-0"
+          className="flex lg:hidden items-center justify-between px-4 py-3 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-app)' }}
         >
           <button
@@ -211,9 +219,9 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
           </div>
         </header>
 
-        {/* Desktop top bar. */}
+        {/* Desktop top bar — visible at lg+ (matches sidebar). */}
         <div
-          className="hidden md:flex items-center justify-end gap-2 px-8 py-3 flex-shrink-0"
+          className="hidden lg:flex items-center justify-end gap-2 px-8 py-3 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-app)' }}
         >
           <PartnerIdBadge />
@@ -225,11 +233,12 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
           <LanguageToggle />
         </div>
 
-        {/* Page content — full-width across the portal; tighter padding on mobile. */}
-        <div className="w-full px-4 py-6 md:px-8 md:py-8 flex-1">{children}</div>
+        {/* Page content — full-width across the portal; tighter padding up to lg
+           so iPad portrait (now using the drawer layout) gets the mobile padding. */}
+        <div className="w-full px-4 py-6 lg:px-8 lg:py-8 flex-1">{children}</div>
 
         {/* Contact emails + social — anchored at the bottom. */}
-        <footer className="px-4 md:px-8 py-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+        <footer className="px-4 lg:px-8 py-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           <div className="w-full flex flex-wrap items-center justify-between gap-4">
             <ContactBlock compact />
             <SocialLinks />

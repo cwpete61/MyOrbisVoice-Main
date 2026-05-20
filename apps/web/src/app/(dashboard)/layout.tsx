@@ -30,8 +30,10 @@ function SidebarContents({ onNav }: { onNav?: () => void }) {
         <ThemeToggle />
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 min-h-0 px-3 py-4 overflow-y-auto" onClick={onNav}>
+      {/* Nav. nav-scroll keeps a faint thin scrollbar visible so the user can
+         see there's more below the fold (iOS hides scrollbars by default,
+         which buried Settings / Help at the bottom of the 23-item rail on iPad). */}
+      <nav className="flex-1 min-h-0 px-3 py-4 overflow-y-auto nav-scroll" onClick={onNav}>
         <SidebarNav />
       </nav>
 
@@ -60,10 +62,20 @@ function ImpersonationBanner() {
     router.push('/admin/tenants')
   }
 
+  // Sticky-overlay banner instead of a pinned flex row — frees the ~32px it
+  // used to take from the main content's pinned height. Still always visible
+  // (sticky top-0, high z), but the underlying content can scroll under it
+  // and the sidebar nav gets back the bottom-most items it would otherwise lose.
   return (
     <div
-      className="flex items-center justify-between px-4 py-2 text-xs font-medium flex-shrink-0"
-      style={{ background: 'oklch(30% 0.12 45)', color: 'oklch(92% 0.06 75)', borderBottom: '1px solid oklch(40% 0.14 45)' }}
+      className="sticky top-0 z-30 flex items-center justify-between px-4 py-2 text-xs font-medium"
+      style={{
+        background: 'oklch(30% 0.12 45 / 0.96)',
+        color: 'oklch(92% 0.06 75)',
+        borderBottom: '1px solid oklch(40% 0.14 45)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+      }}
     >
       <span>Support mode — acting as <strong>{info.tenantName}</strong>. All actions are audit-logged.</span>
       <button onClick={exit} className="px-2 py-0.5 rounded text-xs font-semibold" style={{ background: 'oklch(45% 0.16 45)', color: 'white' }}>
@@ -79,11 +91,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <AuthGuard>
       <IdleTimeout redirectTo="/login" />
-      <div className="h-screen flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
+      {/* h-[100dvh] not h-screen — iOS Safari's 100vh includes chrome that's
+         actually hiding part of the layout. Desktop sidebar at lg: (≥1024px)
+         so iPad portrait (768px) gets the full-height drawer instead of a
+         narrow nested-scroll rail. */}
+      <div className="h-[100dvh] flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
 
         {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
         <aside
-          className="hidden md:flex w-52 flex-shrink-0 flex-col"
+          className="hidden lg:flex w-52 flex-shrink-0 flex-col"
           style={{ background: 'var(--surface-sidebar)', borderRight: '1px solid var(--border-subtle)' }}
         >
           <SidebarContents />
@@ -91,7 +107,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* ── Mobile sidebar overlay ──────────────────────────────────────── */}
         {sidebarOpen && (
-          <div className="fixed inset-0 z-40 md:hidden">
+          <div className="fixed inset-0 z-40 lg:hidden">
             {/* Backdrop */}
             <div
               className="absolute inset-0"
@@ -112,9 +128,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex-1 flex flex-col overflow-hidden">
           <ImpersonationBanner />
 
-          {/* Mobile top bar */}
+          {/* Mobile top bar — shown up to lg so iPad portrait sees the hamburger. */}
           <header
-            className="flex md:hidden items-center justify-between px-4 py-3 flex-shrink-0"
+            className="flex lg:hidden items-center justify-between px-4 py-3 flex-shrink-0"
             style={{ background: 'var(--surface-sidebar)', borderBottom: '1px solid var(--border-subtle)' }}
           >
             <button
@@ -147,9 +163,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </header>
 
-          {/* Desktop top bar — bell always visible top-right */}
+          {/* Desktop top bar — bell always visible top-right (lg+). */}
           <div
-            className="hidden md:flex items-center justify-end px-8 py-3 flex-shrink-0"
+            className="hidden lg:flex items-center justify-end px-8 py-3 flex-shrink-0"
             style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-sidebar)' }}
           >
             <div className="flex items-center gap-2">
@@ -161,9 +177,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
 
-          {/* Page content */}
+          {/* Page content — mobile padding up to lg (iPad portrait uses drawer). */}
           <main className="flex-1 overflow-auto">
-            <div className="w-full px-4 py-6 md:px-8 md:py-8">
+            <div className="w-full px-4 py-6 lg:px-8 lg:py-8">
               {children}
             </div>
           </main>
