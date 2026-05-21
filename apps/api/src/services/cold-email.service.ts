@@ -4,17 +4,23 @@ import { getPartnerSendingDomain } from './sending-domain.service.js'
 import { getPartnerPolicy, setPartnerBulkSuspension } from './email-bulk-policy.service.js'
 import { checkSuppression, addSuppression } from './email-suppression.service.js'
 import { verifyEmail, isEmailSafeToContact } from './reoon.service.js'
-import { sendEmail } from './aws-ses.service.js'
+import { sendEmail } from './email.service.js'
 import { escapeHtml, postalAddress } from '../lib/bulk-email-pure.js'
 
 // Cold-email send engine (Bulk Email Phase 2). Sends one compliant cold email
-// through a partner's dedicated SES sending domain. Every send runs the full
-// pre-send gate: active domain → partner policy → send window → daily cap →
-// drip interval → suppression list → Reoon verification. Only then does it
+// through a partner's dedicated cold-email sending domain. Every send runs the
+// full pre-send gate: active domain → partner policy → send window → daily cap
+// → drip interval → suppression list → Reoon verification. Only then does it
 // build the CAN-SPAM-compliant message (unsubscribe link + postal address)
-// and hand it to SES. Every attempt is logged as a ColdEmailSend row.
+// and hand it to the transport. Every attempt is logged as a ColdEmailSend row.
 //
-// Distinct from the transactional stream (email.service.ts / Postmark): cold
+// Transport: Brevo (forced via provider override). AWS SES was the original
+// design, but their quota-increase request was denied — Brevo absorbs IP
+// reputation, gives us a real free tier (300/day), and the engine
+// architecture is provider-agnostic so the swap is a one-line override.
+// SES remains available as a future option once approved.
+//
+// Distinct from the transactional stream (email.service.ts → Postmark): cold
 // outreach must never share that reputation.
 
 const FROM_LOCAL_PART = 'outreach' // outreach@<partner-sending-domain>
@@ -31,10 +37,6 @@ function unsubscribeUrl(token: string): string {
 function bookingClickUrl(token: string): string {
   return `${API_BASE_URL}/api/public/cl/${encodeURIComponent(token)}`
 }
-
-// SES configuration set — all cold-email sends route bounce/complaint events
-// through this one set's SNS event destination.
-const SES_CONFIGURATION_SET = process.env['AWS_SES_CONFIGURATION_SET'] || 'my-first-configuration-set'
 
 export type ColdEmailOutcome = 'SENT' | 'SUPPRESSED' | 'INVALID' | 'BLOCKED' | 'FAILED'
 
@@ -238,7 +240,7 @@ export async function sendColdEmail(input: SendColdEmailInput): Promise<SendCold
 
   try {
     const html = buildEmailHtml(input.bodyHtml, partner, token)
-    const { messageId } = await sendEmail({
+    const result = await sendEmail({
       // Recipient sees `"Display Name" <slug@cold-domain>` — personal label,
       // authenticated address.
       from: fromHeader,
@@ -248,16 +250,43 @@ export async function sendColdEmail(input: SendColdEmailInput): Promise<SendCold
       // Replies route to the partner's real transactional inbox (their gmail
       // or whatever's on their User record).
       replyTo: partner.user?.email ?? undefined,
-      configurationSet: SES_CONFIGURATION_SET,
+      // Force Brevo for cold outreach — bypasses pickProvider's normal
+      // From-domain inference. Brevo absorbs IP reputation + supports custom
+      // sending-domain verification, so the recipient still sees the
+      // partner's branded From address while Brevo carries the deliverability
+      // load.
+      kind:     'marketing',
+      provider: 'brevo',
+      // Suppression scope: every cold send runs through the partner-scoped
+      // and global suppression lists (already enforced upstream via the
+      // checkSuppression() call at the top of this function, but passing
+      // partnerId here also routes any provider-side compliance events
+      // back to the right partner if/when we wire webhook ingestion).
+      partnerId,
       // One-click unsubscribe — required by Gmail/Yahoo bulk-sender rules.
       headers: [
         { name: 'List-Unsubscribe', value: `<${unsubscribeUrl(token)}>` },
         { name: 'List-Unsubscribe-Post', value: 'List-Unsubscribe=One-Click' },
       ],
     })
+    if (!result.sent) {
+      // Suppression bypass (engine already checked) or provider failure —
+      // treat as a non-fatal SENT-shaped failure with a reason recorded.
+      const reason = result.skipped
+        ? `Send skipped: ${result.skipped}${result.reason ? ' (' + result.reason + ')' : ''}`
+        : 'Send failed for unknown reason'
+      await prisma.coldEmailSend.update({
+        where: { id: send.id },
+        data: { status: 'FAILED', failureReason: reason },
+      })
+      return { outcome: 'FAILED', sendId: send.id, reason }
+    }
     await prisma.coldEmailSend.update({
       where: { id: send.id },
-      data: { status: 'SENT', sesMessageId: messageId, sentAt: new Date() },
+      // `sesMessageId` column kept for now (DB migration to rename →
+      // `providerMessageId` is on the backlog); we store whichever provider
+      // id we got back. Generic name lands when we add the next migration.
+      data: { status: 'SENT', sesMessageId: result.providerMessageId ?? null, sentAt: new Date() },
     })
     return { outcome: 'SENT', sendId: send.id }
   } catch (err) {

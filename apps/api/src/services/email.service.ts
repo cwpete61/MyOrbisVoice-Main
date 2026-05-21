@@ -53,6 +53,15 @@ export interface EmailOptions {
   kind?:      'transactional' | 'marketing'
   tenantId?:  string | null
   partnerId?: string | null
+  /** Extra MIME headers to apply on the outgoing message. Currently used by
+   *  the Bulk Email engine for `List-Unsubscribe` + `List-Unsubscribe-Post`,
+   *  which Gmail/Yahoo bulk-sender rules require. Provider-specific shapes
+   *  are normalised inside each send function. */
+  headers?:   { name: string; value: string }[]
+  /** Explicit provider override. Skips the pickProvider() inference.
+   *  Used by the Bulk Email engine to route cold-outreach through Brevo
+   *  regardless of From-domain pattern. */
+  provider?:  EmailProvider
 }
 
 export type EmailProvider = 'postmark' | 'resend' | 'brevo' | 'smtp'
@@ -76,6 +85,9 @@ export type SendResult =
  * Provider failures fall back to SMTP at the caller layer.
  */
 function pickProvider(opts: EmailOptions): EmailProvider {
+  // Explicit override wins. Used by the Bulk Email engine to force cold
+  // outreach through Brevo regardless of the From-domain pattern.
+  if (opts.provider) return opts.provider
   if (opts.kind === 'transactional' || opts.kind == null) return 'postmark'
   const fromAddr = (opts.from ?? '').toLowerCase()
   if (fromAddr.includes('@myorbisresults.com')) return 'brevo'
@@ -112,6 +124,10 @@ async function sendViaPostmark(opts: EmailOptions): Promise<{ providerMessageId:
       TextBody:      opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
       ReplyTo:       opts.replyTo,
       MessageStream: 'outbound',
+      // Postmark accepts arbitrary MIME headers via a Headers array — used
+      // for List-Unsubscribe etc. on the rare marketing/bulk send that goes
+      // through postmark.
+      Headers:       opts.headers?.map(h => ({ Name: h.name, Value: h.value })),
     }),
   })
   const body = await res.json() as { MessageID?: string; ErrorCode?: number; Message?: string }
@@ -142,6 +158,10 @@ async function sendViaResend(opts: EmailOptions): Promise<{ providerMessageId: s
       html:     opts.html,
       text:     opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
       reply_to: opts.replyTo,
+      // Resend supports custom MIME headers — used for List-Unsubscribe etc.
+      headers:  opts.headers
+        ? Object.fromEntries(opts.headers.map(h => [h.name, h.value]))
+        : undefined,
     }),
   })
   const body = await res.json() as { id?: string; statusCode?: number; message?: string }
@@ -180,6 +200,11 @@ async function sendViaBrevo(opts: EmailOptions): Promise<{ providerMessageId: st
       htmlContent:  opts.html,
       textContent:  opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
       replyTo:      opts.replyTo ? { email: opts.replyTo } : undefined,
+      // Brevo accepts a `headers` map for custom MIME — used for
+      // List-Unsubscribe / List-Unsubscribe-Post on Bulk Email cold sends.
+      headers:      opts.headers
+        ? Object.fromEntries(opts.headers.map(h => [h.name, h.value]))
+        : undefined,
     }),
   })
   const body = await res.json() as { messageId?: string; code?: string; message?: string }
@@ -202,6 +227,11 @@ async function sendViaSmtp(opts: EmailOptions): Promise<{ providerMessageId: str
     text:      opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
     replyTo:   opts.replyTo,
     inReplyTo: opts.inReplyTo,
+    // nodemailer accepts a plain object map for custom MIME headers — used
+    // for List-Unsubscribe etc. on any send that explicitly attaches them.
+    headers:   opts.headers
+      ? Object.fromEntries(opts.headers.map(h => [h.name, h.value]))
+      : undefined,
   })
   // nodemailer's `messageId` is the rfc822 Message-Id; strip angle brackets
   // to match how the Brevo webhook normalizes incoming ids.
