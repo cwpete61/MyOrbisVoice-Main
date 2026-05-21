@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma.js'
 import { getConfigValue } from './system-config.service.js'
-import { createZone, getZone, writeEmailDnsRecords } from './cloudflare.service.js'
-import { createDomainIdentity, getDomainIdentity } from './aws-ses.service.js'
+import { createZone, getZone, writeBrevoDnsRecords } from './cloudflare.service.js'
+import { createBrevoDomain, getBrevoDomain, authenticateBrevoDomain } from './brevo-domain.service.js'
 import {
   isDomainAvailable,
   getRegistrationPriceUsd,
@@ -221,17 +221,25 @@ async function stepDnsPending(d: SendingDomain): Promise<void> {
     await fail(d.id, 'Reached DNS step with no Cloudflare zone')
     return
   }
-  // Create the SES domain identity (idempotent) and write SPF/DKIM/DMARC.
-  const identity = await createDomainIdentity(d.domain)
-  if (identity.dkimTokens.length === 0) {
-    throw new Error('SES returned no DKIM tokens yet')
+  // Brevo path (current): register the domain with Brevo (idempotent), fetch
+  // the DNS records Brevo requires us to publish, and push those to
+  // Cloudflare. The aws-ses.service.js path used to live here — that
+  // module is still in the codebase as a future option once AWS approves
+  // a quota increase, but Brevo carries the production load today.
+  const state = await createBrevoDomain(d.domain)
+  if (state.dnsRecords.length === 0) {
+    // Brevo hasn't returned the DKIM/DMARC records yet — retry on the next
+    // runner tick. (Their API occasionally lags on a fresh domain.)
+    throw new Error('Brevo has not returned DNS records yet')
   }
-  await writeEmailDnsRecords(d.cloudflareZoneId, d.domain, identity.dkimTokens)
+  await writeBrevoDnsRecords(d.cloudflareZoneId, d.domain, state.dnsRecords)
   await prisma.partnerSendingDomain.update({
     where: { id: d.id },
     data: {
       status: 'VERIFYING',
-      sesDkimTokensJson: identity.dkimTokens,
+      // Repurpose the legacy SES column — column rename to
+      // `providerDnsRecordsJson` is on the migrations backlog.
+      sesDkimTokensJson: state.dnsRecords as unknown as object[],
       dnsConfiguredAt: new Date(),
       lastError: null,
     },
@@ -239,23 +247,23 @@ async function stepDnsPending(d: SendingDomain): Promise<void> {
 }
 
 async function stepVerifying(d: SendingDomain): Promise<void> {
-  // Confirm the Cloudflare zone is live, then poll SES for DKIM verification.
+  // Confirm the Cloudflare zone is live, then poll Brevo for the
+  // authenticated flag. Brevo's authenticate endpoint is a re-check trigger;
+  // we call it on each tick and read state from getBrevoDomain afterwards.
   if (d.cloudflareZoneId) {
     const zone = await getZone(d.cloudflareZoneId)
     if (zone.status !== 'active') return // name servers not propagated yet
   }
-  const identity = await getDomainIdentity(d.domain)
-  if (!identity.verified) {
-    if (identity.dkimStatus === 'FAILED') {
-      await fail(d.id, 'SES DKIM verification failed')
-    }
-    return // still verifying
+  const state = await authenticateBrevoDomain(d.domain)
+  if (!state.verified || !state.authenticated) {
+    return // still verifying — runner retries on the next tick
   }
   await prisma.partnerSendingDomain.update({
     where: { id: d.id },
     data: {
       status: 'WARMING',
       verified: true,
+      // Column kept for now — repurposed as "provider verified at."
       sesVerifiedAt: new Date(),
       warmupStartedAt: new Date(),
       warmupDayCap: warmupCapForDay(1),

@@ -163,3 +163,40 @@ export async function writeEmailDnsRecords(
     content: 'v=DMARC1; p=none; adkim=r; aspf=r',
   })
 }
+
+/**
+ * Brevo variant of writeEmailDnsRecords. Pushes the records Brevo returns
+ * from `GET /v3/senders/domains/{domain}` to the partner's Cloudflare zone.
+ *
+ * SPF gets a Brevo-include record; if the domain previously had an
+ * Amazon-SES SPF record from the original SES flow, the upsert REPLACES it.
+ * We deliberately don't merge — running through two providers' SPF includes
+ * simultaneously confuses authentication, and the design is
+ * one-active-provider-per-domain (chosen at registration time).
+ *
+ * DMARC starts at p=none during warmup; tightens after a clean track
+ * record (same policy as the SES variant).
+ */
+export async function writeBrevoDnsRecords(
+  zoneId: string,
+  domain: string,
+  records: { type: 'TXT' | 'CNAME' | 'MX'; name: string; value: string }[],
+): Promise<void> {
+  await upsertDnsRecord(zoneId, {
+    type: 'TXT',
+    name: domain,
+    content: 'v=spf1 include:spf.brevo.com ~all',
+  })
+  for (const rec of records) {
+    await upsertDnsRecord(zoneId, {
+      type:    rec.type,
+      name:    rec.name,
+      content: rec.value,
+    })
+  }
+  await upsertDnsRecord(zoneId, {
+    type: 'TXT',
+    name: `_dmarc.${domain}`,
+    content: 'v=DMARC1; p=none; adkim=r; aspf=r',
+  })
+}
