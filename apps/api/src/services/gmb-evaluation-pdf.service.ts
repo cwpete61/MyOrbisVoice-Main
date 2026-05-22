@@ -167,7 +167,7 @@ export async function streamGmbEvaluationPdf(
   doc.moveDown(0.8)
   doc.strokeColor(BORDER).lineWidth(1).moveTo(PAGE_MARGIN, doc.y).lineTo(doc.page.width - PAGE_MARGIN, doc.y).stroke()
   doc.moveDown(0.4)
-  const sources = r.meta.dataSources.map((s) => GMB_DATA_SOURCE_LABELS[locale][s] ?? s).join(' · ')
+  const sources = (r.meta?.dataSources ?? []).map((s) => GMB_DATA_SOURCE_LABELS[locale][s] ?? s).join(' · ')
   doc.fontSize(8).fillColor(MUTED).font('Helvetica').text(`${ui('dataSources')}: ${sources}`)
   doc.moveDown(0.2)
   const by = [brand.contactName || brand.companyName, brand.phone].filter(Boolean).join(' · ')
