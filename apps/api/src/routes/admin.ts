@@ -552,6 +552,31 @@ router.patch('/system-settings/openai', requirePlatformSuperAdmin, async (req, r
   } catch (err) { next(err) }
 })
 
+const serperSettingsSchema = z.object({
+  apiKey: z.string().min(1).optional(),
+})
+
+router.patch('/system-settings/serper', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const parsed = serperSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const { apiKey } = parsed.data
+    const userId = req.user!.id
+
+    if (apiKey) await systemConfig.setConfigValue('serper_api_key', apiKey, true, userId)
+
+    await writeAuditLogFromRequest(req, {
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.serper.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
 const bunnySettingsSchema = z.object({
   apiKey:          z.string().min(1).optional(),
   storageZone:     z.string().min(1).optional(),

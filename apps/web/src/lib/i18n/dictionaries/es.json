@@ -212,6 +212,7 @@
     "crm": "CRM",
     "contacts": "Contactos",
     "leads": "Búsqueda de Leads",
+    "gmbEval": "Evaluación GMB",
     "campaigns": "Campañas",
     "brandSubtitle": "Portal de Partners",
     "referrals": "Enlaces de referido",
@@ -225,6 +226,70 @@
     "profile": "Perfil",
     "phoneNumbers": "Números de teléfono",
     "a2p": "Cumplimiento SMS"
+  },
+  "gmbEval": {
+    "title": "Evaluación GMB",
+    "subtitle": "Audita el Perfil de Negocio de Google de un prospecto, califica su visibilidad local y exporta un informe con tu marca para iniciar la conversación.",
+    "businessName": "Nombre del negocio",
+    "businessNamePlaceholder": "ej. Robinson Plumbing",
+    "city": "Ciudad",
+    "cityPlaceholder": "ej. Allentown PA",
+    "website": "Sitio web (opcional)",
+    "websitePlaceholder": "ej. robinsonplumbing.com",
+    "keywords": "Palabras clave objetivo (opcional)",
+    "keywordsPlaceholder": "separadas por comas, ej. plomero, destape de drenajes",
+    "runButton": "Ejecutar evaluación",
+    "running": "Evaluando…",
+    "preparing": "Preparando…",
+    "downloadReport": "Descargar informe",
+    "errorGeneric": "No se pudo ejecutar la evaluación. Inténtalo de nuevo.",
+    "notFound": "No encontramos este negocio en Google. Revisa el nombre y la ciudad, e inténtalo de nuevo.",
+    "notRanking": "No aparece en el paquete de mapas de Google para la búsqueda objetivo.",
+    "overallScore": "Puntuación general",
+    "mapPackHeadline": "Aparece en el puesto #{position} del paquete de mapas de Google",
+    "competitorsHeader": "Quién domina el paquete de mapas",
+    "reviewsCount": "{count} reseñas",
+    "recentTitle": "Evaluaciones recientes",
+    "dim": {
+      "mapPack": "Posición en el paquete de mapas",
+      "reviews": "Reseñas",
+      "completeness": "Perfil completo",
+      "categories": "Categorías",
+      "nap": "Nombre / Dirección / Teléfono",
+      "photos": "Fotos"
+    },
+    "finding": {
+      "mapPack": {
+        "good": "Aparece en el puesto #{position} del paquete de mapas — fuerte visibilidad local.",
+        "warn": "Aparece en el puesto #{position} — fuera del top 3, donde se concentran los clics y las llamadas.",
+        "critical": "No aparece en los primeros resultados del paquete de mapas — invisible para la mayoría de los clientes cercanos."
+      },
+      "reviews": {
+        "good": "{count} reseñas con {rating}★ — por encima de la mediana del mercado de {marketMedian}.",
+        "warn": "{count} reseñas con {rating}★ frente a una mediana de mercado de {marketMedian}. Más reseñas mejoran el posicionamiento y la confianza.",
+        "critical": "Solo {count} reseñas frente a una mediana de mercado de {marketMedian}. El volumen de reseñas es una brecha importante."
+      },
+      "completeness": {
+        "good": "El perfil está completo — sitio web, teléfono y horario presentes.",
+        "warn": "Al perfil le faltan campos clave ({present}/{total} presentes). Los perfiles incompletos posicionan peor.",
+        "critical": "El perfil está muy incompleto ({present}/{total}). Google favorece los perfiles completos."
+      },
+      "categories": {
+        "good": "{count} categorías configuradas — buena cobertura de búsquedas relevantes.",
+        "warn": "Solo {count} categoría configurada. Agregar categorías secundarias relevantes capta más búsquedas.",
+        "critical": "No se detectaron categorías. Las categorías deciden en qué búsquedas puede aparecer el perfil."
+      },
+      "nap": {
+        "good": "El nombre, la dirección y el teléfono están presentes y son consistentes.",
+        "warn": "Falta la dirección o el teléfono en el perfil — afecta la confianza y el posicionamiento local.",
+        "critical": "Falta el nombre, la dirección o el teléfono — una brecha básica de confianza y posicionamiento."
+      },
+      "photos": {
+        "good": "El perfil tiene fotos.",
+        "warn": "Pocas fotos detectadas. Las fotos recientes generan más vistas y llamadas.",
+        "critical": "No se detectaron fotos. Las fotos generan interacción y llamadas."
+      }
+    }
   },
   "partnerPhoneNumbers": {
     "title":    "Números de teléfono",

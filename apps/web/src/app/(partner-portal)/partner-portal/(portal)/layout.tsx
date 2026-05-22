@@ -24,6 +24,7 @@ const NAV = [
   { href: '/partner-portal/crm',         labelKey: 'partnerNav.crm',         icon: 'M3 4h4v6H3zm7 0h4v6h-4zm7 0h4v6h-4zM3 13h4v6H3zm7 0h4v6h-4zm7 0h4v6h-4z' },
   { href: '/partner-portal/contacts',    labelKey: 'partnerNav.contacts',    icon: 'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm10 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM21 21v-2a4 4 0 0 0-3-3.87' },
   { href: '/partner-portal/leads',       labelKey: 'partnerNav.leads',       icon: 'M22 3H2l8 9.46V19l4 2v-8.54L22 3z' },
+  { href: '/partner-portal/gmb-evaluation', labelKey: 'partnerNav.gmbEval',   icon: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z' },
   { href: '/partner-portal/campaigns',   labelKey: 'partnerNav.campaigns',   icon: 'M3 12l4-4v8l-4-4zm6-5l8 5-8 5V7zm10 0v10' },
   { href: '/partner-portal/referrals',   labelKey: 'partnerNav.referrals',   icon: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' },
   { href: '/partner-portal/commissions', labelKey: 'partnerNav.commissions', icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' },

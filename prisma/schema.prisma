@@ -1855,6 +1855,34 @@ model AffiliateAccount {
   sendingDomains           PartnerSendingDomain[]
   coldEmailSends           ColdEmailSend[]
   coldEmailCampaigns       ColdEmailCampaign[]
+  gmbEvaluations           GmbEvaluation[]
+}
+
+/// GMB Evaluation — a partner's lead-gen audit of a prospect's Google Business
+/// Profile. Read-only door-opener: the partner enters a prospect business, the
+/// gmb-audit engine fetches public GBP data (via Serper.dev) and scores it, and
+/// the partner exports a brand-parameterized report to pitch the trifecta. The
+/// GBP-audit engine is portable — same logic later powers MyOrbisLocal Phase A.
+model GmbEvaluation {
+  id           String   @id @default(uuid())
+  partnerId    String
+  businessName String
+  city         String
+  website      String?
+  /// Comma-free target keywords the partner wanted ranking checked for. Stored
+  /// so the report and any re-run use the same inputs.
+  keywords     String[] @default([])
+  overallScore Int      @default(0)
+  /// Full typed AuditResult: per-dimension scores + findings + ranked gaps.
+  result       Json
+  /// Raw provider payload (Serper response) so the report re-renders without
+  /// spending another Serper query.
+  rawPayload   Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  partner      AffiliateAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, createdAt])
 }
 
 /// Lead engine — a partner's business-discovery search. Drives the Search

@@ -15,6 +15,7 @@ interface SystemSettings {
   bunny: { apiKey: boolean; storageZone: string | null; cdnHostname: string | null; storageRegion: string; storagePassword: boolean }
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
+  serper: { apiKey: boolean }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
   gemini: { apiKey: boolean; model: string }
@@ -343,6 +344,18 @@ export default function SystemSettingsPage() {
     setOaSaving(false)
   }
 
+  // Serper.dev — powers the partner GMB Evaluation tool (Maps/Places + map-pack).
+  const [serper, setSerper] = useState({ apiKey: '' })
+  const [serperSaving, setSerperSaving] = useState(false)
+  async function saveSerper(e: React.FormEvent) {
+    e.preventDefault()
+    if (!serper.apiKey) { showToast('error', 'Enter the Serper.dev API key.'); return }
+    setSerperSaving(true)
+    const ok = await saveSection('serper', { apiKey: serper.apiKey }, 'Serper.dev')
+    if (ok) setSerper({ apiKey: '' })
+    setSerperSaving(false)
+  }
+
   // Cloudflare form state — the platform's master account, used to register
   // and DNS-configure each partner's cold-email sending domain.
   const [cf, setCf] = useState({ apiToken: '', accountId: '' })
@@ -626,6 +639,43 @@ export default function SystemSettingsPage() {
               </button>
             </form>
             <AccountEmailField provider="openai" currentValue={data?.accountEmails?.openai} onSaved={reload} />
+          </div>
+
+          {/* ── Serper.dev ── */}
+          <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <CardHeader
+              title="Serper.dev"
+              subtitle="Google Maps / Places data API powering the partner GMB Evaluation tool (map-pack ranking, reviews, profile completeness). Get your key at serper.dev → API key."
+              configured={!!data?.serper?.apiKey}
+            />
+
+            <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <StatusRow label="API Key" value={!!data?.serper?.apiKey} isSecret />
+              <div className="rounded-lg px-4 py-3 text-xs space-y-1" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>
+                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Used for</p>
+                <ul className="space-y-0.5 list-disc list-inside" style={{ color: 'var(--text-tertiary)' }}>
+                  <li>Partner GMB Evaluation — prospect business lookup</li>
+                  <li>Local Map Pack ranking + competitor comparison</li>
+                </ul>
+              </div>
+            </div>
+
+            <form onSubmit={saveSerper} className="px-6 py-5 space-y-4">
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                API key is stored encrypted. Leave blank to keep the current value. Each evaluation makes ~2 Serper queries (~$0.001–0.003 each).
+              </p>
+              <div>
+                <label className={labelCls}>
+                  API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span>
+                </label>
+                <input type="password" className={inputCls} value={serper.apiKey}
+                  onChange={e => setSerper({ apiKey: e.target.value })}
+                  placeholder="serper key…" autoComplete="new-password" />
+              </div>
+              <button type="submit" disabled={serperSaving} className="btn-primary">
+                {serperSaving ? 'Saving…' : 'Save Serper.dev key'}
+              </button>
+            </form>
           </div>
 
           {/* ── Gemini ── */}

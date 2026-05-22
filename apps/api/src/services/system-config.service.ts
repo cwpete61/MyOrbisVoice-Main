@@ -109,6 +109,7 @@ export async function getSystemSettings(): Promise<{
   bunny: { apiKey: boolean; storageZone: string | null; cdnHostname: string | null; storageRegion: string; storagePassword: boolean }
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
+  serper: { apiKey: boolean }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
   gemini: { apiKey: boolean; model: string }
@@ -136,6 +137,7 @@ export async function getSystemSettings(): Promise<{
           'bunny_cdn_hostname', 'bunny_storage_region',
           'storage_default_quota_gb', 'storage_warning_threshold_pct', 'storage_retention_days',
           'openai_api_key', 'openai_model',
+          'serper_api_key',
           'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from',
           'overage_markup_percent',
           'gemini_api_key', 'gemini_model',
@@ -193,6 +195,9 @@ export async function getSystemSettings(): Promise<{
       apiKey: !!(get('openai_api_key') || process.env['OPENAI_API_KEY']),
       model:  get('openai_model')?.value ?? process.env['OPENAI_MODEL'] ?? 'gpt-4o-mini',
     },
+    serper: {
+      apiKey: !!(get('serper_api_key') || process.env['SERPER_API_KEY']),
+    },
     smtp: {
       host:     get('smtp_host')?.value     ?? (process.env['SMTP_HOST']     || null),
       port:     parseInt(get('smtp_port')?.value ?? process.env['SMTP_PORT'] ?? '587', 10),
@@ -230,6 +235,12 @@ export async function getSystemSettings(): Promise<{
 export async function getOpenAiApiKey(): Promise<string | null> {
   const dbKey = await getConfigValue('openai_api_key')
   return dbKey || process.env['OPENAI_API_KEY'] || null
+}
+
+/** Serper.dev key powers the partner GMB Evaluation tool. DB first, env fallback. */
+export async function getSerperApiKey(): Promise<string | null> {
+  const dbKey = await getConfigValue('serper_api_key')
+  return dbKey || process.env['SERPER_API_KEY'] || null
 }
 
 // Used by google.service.ts — reads DB first, falls back to env

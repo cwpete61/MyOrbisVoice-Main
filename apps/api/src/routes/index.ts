@@ -36,6 +36,7 @@ import partnerRouter from './partner.js'
 import partnerCrmRouter from './partner-crm.js'
 import partnerCampaignsRouter from './partner-campaigns.js'
 import partnerMailboxRouter from './partner-mailbox.js'
+import partnerGmbRouter from './partner-gmb.js'
 import leadEngineRouter from './lead-engine.js'
 import sendingDomainRouter from './sending-domain.js'
 import coldEmailRouter from './cold-email.js'
@@ -88,6 +89,7 @@ router.use('/api', partnerA2pRouter)
 router.use('/api', partnerCrmRouter)
 router.use('/api', partnerCampaignsRouter)
 router.use('/api', partnerMailboxRouter)
+router.use('/api', partnerGmbRouter)
 router.use('/api', leadEngineRouter)
 router.use('/api', sendingDomainRouter)
 router.use('/api', coldEmailRouter)

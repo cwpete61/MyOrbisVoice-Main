@@ -212,6 +212,7 @@
     "crm": "CRM",
     "contacts": "Contacts",
     "leads": "Leads Search",
+    "gmbEval": "GMB Evaluation",
     "campaigns": "Campaigns",
     "brandSubtitle": "Partner Portal",
     "referrals": "Referral Links",
@@ -225,6 +226,70 @@
     "profile": "Profile",
     "phoneNumbers": "Phone Numbers",
     "a2p": "SMS Compliance"
+  },
+  "gmbEval": {
+    "title": "GMB Evaluation",
+    "subtitle": "Audit a prospect's Google Business Profile, score their local visibility, and export a branded report to open the conversation.",
+    "businessName": "Business name",
+    "businessNamePlaceholder": "e.g. Robinson Plumbing",
+    "city": "City",
+    "cityPlaceholder": "e.g. Allentown PA",
+    "website": "Website (optional)",
+    "websitePlaceholder": "e.g. robinsonplumbing.com",
+    "keywords": "Target keywords (optional)",
+    "keywordsPlaceholder": "comma-separated, e.g. plumber, drain cleaning",
+    "runButton": "Run Evaluation",
+    "running": "Evaluating…",
+    "preparing": "Preparing…",
+    "downloadReport": "Download Report",
+    "errorGeneric": "Could not run the evaluation. Please try again.",
+    "notFound": "We couldn't find this business on Google. Check the name and city, then try again.",
+    "notRanking": "Not appearing in the Google Map Pack for the target search.",
+    "overallScore": "Overall Score",
+    "mapPackHeadline": "Ranks #{position} in the Google Map Pack",
+    "competitorsHeader": "Who is winning the Map Pack",
+    "reviewsCount": "{count} reviews",
+    "recentTitle": "Recent evaluations",
+    "dim": {
+      "mapPack": "Map Pack ranking",
+      "reviews": "Reviews",
+      "completeness": "Profile completeness",
+      "categories": "Categories",
+      "nap": "Name / Address / Phone",
+      "photos": "Photos"
+    },
+    "finding": {
+      "mapPack": {
+        "good": "Ranks #{position} in the map pack — strong local visibility.",
+        "warn": "Ranks #{position} — outside the top 3, where most clicks and calls go.",
+        "critical": "Not appearing in the top map-pack results — invisible to most nearby searchers."
+      },
+      "reviews": {
+        "good": "{count} reviews at {rating}★ — ahead of the market median of {marketMedian}.",
+        "warn": "{count} reviews at {rating}★ vs a market median of {marketMedian}. More reviews lift ranking and trust.",
+        "critical": "Only {count} reviews vs a market median of {marketMedian}. Review volume is a major gap."
+      },
+      "completeness": {
+        "good": "Profile is complete — website, phone, and hours are all present.",
+        "warn": "Profile is missing key fields ({present}/{total} present). Incomplete listings rank lower.",
+        "critical": "Profile is largely incomplete ({present}/{total}). Google favors complete listings."
+      },
+      "categories": {
+        "good": "{count} categories set — good coverage of relevant searches.",
+        "warn": "Only {count} category set. Adding relevant secondary categories captures more searches.",
+        "critical": "No categories detected. Categories decide which searches the listing can appear in."
+      },
+      "nap": {
+        "good": "Name, address, and phone are present and consistent.",
+        "warn": "Address or phone is missing from the listing — hurts trust and local ranking.",
+        "critical": "Name, address, or phone is missing — a basic trust and ranking gap."
+      },
+      "photos": {
+        "good": "Photos are present on the listing.",
+        "warn": "Few photos detected. Fresh photos drive more views and calls.",
+        "critical": "No photos detected. Photos drive engagement and calls."
+      }
+    }
   },
   "partnerPhoneNumbers": {
     "title":    "Phone Numbers",
