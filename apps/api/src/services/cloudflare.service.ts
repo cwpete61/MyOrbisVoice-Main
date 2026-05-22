@@ -127,10 +127,22 @@ export async function upsertDnsRecord(zoneId: string, rec: DnsRecord): Promise<v
       body: JSON.stringify(payload),
     })
   } else {
-    await cfFetch(cfg, `/zones/${zoneId}/dns_records`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    })
+    try {
+      await cfFetch(cfg, `/zones/${zoneId}/dns_records`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+    } catch (err) {
+      // Cloudflare 81058 = "identical record already exists". Our list query
+      // (filtered by type+name) can miss a record when the name we were given
+      // is relative (e.g. Brevo returns `mail._domainkey`) but Cloudflare
+      // stored it as the FQDN — the query misses, we POST, Cloudflare reports
+      // the dupe. The record we wanted is already present with the right
+      // content, so that's the idempotent end-state. Swallow it; rethrow
+      // anything else.
+      const msg = err instanceof Error ? err.message : String(err)
+      if (!msg.includes('81058')) throw err
+    }
   }
 }
 
