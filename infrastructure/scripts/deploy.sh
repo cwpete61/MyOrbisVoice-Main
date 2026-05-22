@@ -79,6 +79,21 @@ commit_image() {  # $1=container  $2..=extra `docker commit` args
   fail "docker commit of $container failed and image is not fresh — investigate the box"
 }
 
+# Poll a container's HTTP health endpoint until it answers, instead of grepping
+# the last few log lines (which a chatty worker can push the startup line past —
+# the false-negative that aborted the 2026-05-22 V2.1 deploy after the API was
+# actually healthy). Retries 20× over ~40s.
+wait_http_healthy() {  # $1=container  $2=port  $3=path(default /health)
+  local container="$1" port="$2" path="${3:-/health}" i
+  for i in $(seq 1 20); do
+    if ssh_t 25 "$SERVER" "docker exec $container node -e 'fetch(\"http://127.0.0.1:${port}${path}\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
 # Sync the three root workspace manifests to the prod host. Run once per
 # deploy. Subsequent ensure_deps calls assume these are present.
 sync_root_manifests() {
@@ -237,16 +252,15 @@ step_api() {
   # Without this, any subsequent `docker compose up --force-recreate` (e.g. after env changes) reverts
   # to the original image and loses everything we just injected via docker cp.
   commit_image myorbisvoice-api && ok "Image updated"
-  ssh "$SERVER" "docker restart myorbisvoice-api"
-  sleep 5
-  # Verify API started
-  RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-api --tail=5 2>&1")
-  if echo "$RESULT" | grep -q "listening on"; then
-    ok "API listening"
+  ssh_t 90 "$SERVER" "docker restart myorbisvoice-api"
+  # Verify API is actually serving (health endpoint, not a log-tail grep).
+  if wait_http_healthy myorbisvoice-api 4000 /health; then
+    ok "API healthy"
   else
-    fail "API did not start cleanly:\n$RESULT"
+    fail "API did not become healthy after restart:\n$(ssh "$SERVER" "docker logs myorbisvoice-api --tail=30 2>&1")"
   fi
-  # Check for stale Prisma errors
+  # Check for stale Prisma errors in the startup window.
+  RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-api --tail=40 2>&1")
   if echo "$RESULT" | grep -q "Cannot read properties of undefined"; then
     fail "Prisma client stale in API container — re-run deploy or push Prisma client manually"
   fi
@@ -266,13 +280,11 @@ step_gateway() {
   rsync -az --delete "$REPO_ROOT/apps/voice-gateway/widget/" "$SERVER:$REMOTE/apps/voice-gateway/widget/"
   ssh "$SERVER" "docker cp $REMOTE/apps/voice-gateway/widget/. myorbisvoice-gateway:/app/apps/voice-gateway/widget/"
   commit_image myorbisvoice-gateway && ok "Image updated"
-  ssh "$SERVER" "docker restart myorbisvoice-gateway"
-  sleep 5
-  RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-gateway --tail=5 2>&1")
-  if echo "$RESULT" | grep -q "listening on port 5000"; then
-    ok "Gateway listening"
+  ssh_t 90 "$SERVER" "docker restart myorbisvoice-gateway"
+  if wait_http_healthy myorbisvoice-gateway 5000 /health; then
+    ok "Gateway healthy"
   else
-    fail "Gateway did not start cleanly:\n$RESULT"
+    fail "Gateway did not become healthy after restart:\n$(ssh "$SERVER" "docker logs myorbisvoice-gateway --tail=30 2>&1")"
   fi
   if echo "$RESULT" | grep -q "Cannot find module"; then
     fail "Missing module in gateway — check container has all dist files"
@@ -338,12 +350,10 @@ step_web() {
   # web silently won't start. Bake the correct CMD into the image so it's self-sufficient).
   commit_image myorbisvoice-web "--change='CMD [\"pnpm\", \"--filter\", \"@voiceautomation/web\", \"start\"]'" && ok "Image updated (incl. CMD fix)"
   ssh_t 90 "$SERVER" "docker restart myorbisvoice-web"
-  sleep 5
-  RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-web --tail=5 2>&1")
-  if echo "$RESULT" | grep -q "Ready in"; then
+  if wait_http_healthy myorbisvoice-web 3000 /partner-portal/login; then
     ok "Web ready"
   else
-    fail "Web did not start cleanly:\n$RESULT"
+    fail "Web did not become healthy after restart:\n$(ssh "$SERVER" "docker logs myorbisvoice-web --tail=30 2>&1")"
   fi
 }
 
