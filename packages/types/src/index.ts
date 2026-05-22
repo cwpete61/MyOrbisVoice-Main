@@ -118,3 +118,5 @@ export interface ApiError {
 export interface ApiErrorResponse {
   errors: ApiError[]
 }
+
+export * from './gmb-catalog.js'

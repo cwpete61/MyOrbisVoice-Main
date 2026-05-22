@@ -14,6 +14,8 @@ import type {
   GbpDataProvider,
   GbpLookupResult,
   MapPackEntry,
+  ReviewSample,
+  ReviewsData,
 } from '../types.js'
 
 const SERPER_BASE = 'https://google.serper.dev'
@@ -87,6 +89,71 @@ function toEntry(p: SerperPlace, fallbackPos: number): MapPackEntry {
     rating: p.rating,
     ratingCount: p.ratingCount,
     cid: p.cid,
+  }
+}
+
+interface SerperReview {
+  rating?: number
+  snippet?: string
+  isoDate?: string
+  date?: string
+  response?: { snippet?: string } | null
+}
+
+/** Fetch a page of Google reviews for a listing (by cid) and derive recency,
+ *  velocity, owner-response rate, and a few text samples. Best-effort: returns
+ *  fetched=false on any failure so scoring degrades gracefully. */
+export async function fetchSerperReviews(apiKey: string, cid: string): Promise<ReviewsData> {
+  const empty: ReviewsData = {
+    fetched: false, count: 0, rating: 0, recencyDays: null,
+    velocityPerMonth: null, ownerResponseRate: null, samples: [],
+  }
+  if (!apiKey || !cid) return empty
+  try {
+    const res = await fetch(`${SERPER_BASE}/reviews`, {
+      method: 'POST',
+      headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cid, gl: 'us' }),
+    })
+    if (!res.ok) return empty
+    const json = (await res.json()) as { reviews?: SerperReview[]; rating?: number; ratingCount?: number }
+    const reviews = json.reviews ?? []
+    if (reviews.length === 0) return { ...empty, fetched: true }
+
+    const dates = reviews
+      .map((r) => (r.isoDate ? Date.parse(r.isoDate) : NaN))
+      .filter((n) => Number.isFinite(n)) as number[]
+    const now = Date.now()
+    const newest = dates.length ? Math.max(...dates) : null
+    const oldest = dates.length ? Math.min(...dates) : null
+    const recencyDays = newest ? Math.floor((now - newest) / 86_400_000) : null
+    // velocity: sampled reviews spread across the sampled window.
+    let velocityPerMonth: number | null = null
+    if (newest && oldest && newest > oldest) {
+      const spanMonths = (newest - oldest) / (86_400_000 * 30.4)
+      if (spanMonths > 0) velocityPerMonth = Math.round((dates.length / spanMonths) * 10) / 10
+    }
+    const withResp = reviews.filter((r) => r.response && r.response.snippet).length
+    const ownerResponseRate = Math.round((withResp / reviews.length) * 100) / 100
+
+    const samples: ReviewSample[] = reviews.slice(0, 5).map((r) => ({
+      rating: r.rating,
+      text: r.snippet,
+      isoDate: r.isoDate,
+      hasOwnerResponse: Boolean(r.response && r.response.snippet),
+    }))
+
+    return {
+      fetched: true,
+      count: json.ratingCount ?? reviews.length,
+      rating: json.rating ?? 0,
+      recencyDays,
+      velocityPerMonth,
+      ownerResponseRate,
+      samples,
+    }
+  } catch {
+    return empty
   }
 }
 

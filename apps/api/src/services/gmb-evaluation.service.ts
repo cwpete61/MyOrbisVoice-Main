@@ -7,7 +7,7 @@
  */
 import { prisma } from '../lib/prisma.js'
 import { AppError } from '@voiceautomation/shared'
-import { evaluate, SerperProvider, type AuditInput, type AuditResult } from './gmb-audit/index.js'
+import { evaluate, type AuditInput, type AuditResult } from './gmb-audit/index.js'
 import { getSerperApiKey, getConfigValue } from './system-config.service.js'
 
 const DEFAULT_MONTHLY_CAP = 100
@@ -60,7 +60,10 @@ export async function runEvaluation(partnerId: string, input: RunEvaluationInput
     keywords: (input.keywords ?? []).map((k) => k.trim()).filter(Boolean),
   }
 
-  const result: AuditResult = await evaluate(auditInput, new SerperProvider(apiKey))
+  // PageSpeed Insights is free; an optional key just lifts the rate limit.
+  const pageSpeedApiKey =
+    (await getConfigValue('pagespeed_api_key')) || process.env['PAGESPEED_API_KEY'] || undefined
+  const result: AuditResult = await evaluate(auditInput, { serperApiKey: apiKey, pageSpeedApiKey })
 
   const row = await prisma.gmbEvaluation.create({
     data: {

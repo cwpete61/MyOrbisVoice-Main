@@ -3,63 +3,51 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch, apiFetchRaw } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import {
+  GMB_CATEGORY_LABELS, GMB_TIME_LABELS, GMB_STATUS_LABELS, GMB_UI,
+  GMB_DATA_SOURCE_LABELS, gmbIssueText, gmbInterpolate, type GmbLocale,
+} from '@voiceautomation/types'
 
 const TEAL = 'oklch(55% 0.11 193)'
+type Severity = 'critical' | 'warn' | 'minor'
+type CatStatus = 'measured' | 'partial' | 'deferred' | 'needsConnect'
 
-type Severity = 'good' | 'warn' | 'critical'
-type DimensionKey = 'mapPack' | 'reviews' | 'completeness' | 'categories' | 'nap' | 'photos'
-
-interface Dimension {
-  key: DimensionKey
-  score: number
-  weight: number
-  severity: Severity
-  params: Record<string, string | number>
-}
+interface Issue { key: string; category: string; severity: Severity; timeTier: string; params: Record<string, string | number> }
+interface Category { key: string; score: number | null; expected: number; weight: number; status: CatStatus; issues: Issue[] }
 interface Competitor { position: number; title: string; rating?: number; ratingCount?: number }
 interface AuditResult {
+  version?: number
   found: boolean
   overallScore: number
   business: { title: string; category?: string; rating?: number; ratingCount?: number } | null
   mapPackPosition: number | null
-  dimensions: Dimension[]
-  gaps: DimensionKey[]
-  competitors: Competitor[]
+  categories?: Category[]
+  topGaps?: Issue[]
+  competitors?: Competitor[]
+  meta?: { dataSources?: string[] }
 }
 interface EvalDetail {
-  id: string
-  businessName: string
-  city: string
-  website: string | null
-  keywords: string[]
-  overallScore: number
-  createdAt: string
-  result: AuditResult
+  id: string; businessName: string; city: string; website: string | null
+  keywords: string[]; overallScore: number; createdAt: string; result: AuditResult
 }
-interface ListItem {
-  id: string
-  businessName: string
-  city: string
-  overallScore: number
-  createdAt: string
-}
+interface ListItem { id: string; businessName: string; city: string; overallScore: number; createdAt: string }
 
 const SEV_COLOR: Record<Severity, string> = {
-  good: 'oklch(58% 0.14 152)',
-  warn: 'oklch(72% 0.15 75)',
-  critical: 'oklch(58% 0.18 25)',
+  critical: 'oklch(58% 0.18 25)', warn: 'oklch(72% 0.15 75)', minor: 'oklch(62% 0.02 250)',
 }
-
-function scoreColor(score: number): string {
-  if (score >= 75) return SEV_COLOR.good
-  if (score >= 45) return SEV_COLOR.warn
-  return SEV_COLOR.critical
+function scoreColor(s: number | null): string {
+  if (s === null) return 'var(--text-tertiary)'
+  if (s >= 75) return 'oklch(58% 0.14 152)'
+  if (s >= 45) return 'oklch(72% 0.15 75)'
+  return 'oklch(58% 0.18 25)'
 }
 
 export default function GmbEvaluationPage() {
   const t = useT()
   const { locale } = useLocale()
+  const lc: GmbLocale = locale === 'es' ? 'es' : 'en'
   const dateLocale = locale === 'es' ? 'es-MX' : 'en-US'
+  const ui = (k: string, p: Record<string, string | number> = {}) => gmbInterpolate(GMB_UI[lc][k] ?? k, p)
 
   const [businessName, setBusinessName] = useState('')
   const [city, setCity] = useState('')
@@ -71,262 +59,209 @@ export default function GmbEvaluationPage() {
   const [history, setHistory] = useState<ListItem[]>([])
   const [downloading, setDownloading] = useState(false)
   const [viewing, setViewing] = useState(false)
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const loadHistory = useCallback(async () => {
-    const resp = await apiFetch<{ items: ListItem[]; total: number }>(
-      '/api/partner/gmb-evaluations',
-    ).catch(() => ({ items: [], total: 0 }))
+    const resp = await apiFetch<{ items: ListItem[]; total: number }>('/api/partner/gmb-evaluations')
+      .catch(() => ({ items: [], total: 0 }))
     setHistory(resp.items)
   }, [])
-
   useEffect(() => { void loadHistory() }, [loadHistory])
+
+  function toggle(key: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
+    })
+  }
 
   async function runEvaluation(e: React.FormEvent) {
     e.preventDefault()
     if (!businessName.trim() || !city.trim()) return
-    setRunning(true)
-    setError(null)
+    setRunning(true); setError(null)
     try {
       const kw = keywords.split(',').map((k) => k.trim()).filter(Boolean).slice(0, 5)
       const data = await apiFetch<{ id: string; createdAt: string; result: AuditResult }>(
         '/api/partner/gmb-evaluations',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            businessName: businessName.trim(),
-            city: city.trim(),
-            website: website.trim() || undefined,
-            keywords: kw.length > 0 ? kw : undefined,
-          }),
-        },
+        { method: 'POST', body: JSON.stringify({ businessName: businessName.trim(), city: city.trim(), website: website.trim() || undefined, keywords: kw.length ? kw : undefined }) },
       )
-      setCurrent({
-        id: data.id,
-        businessName: businessName.trim(),
-        city: city.trim(),
-        website: website.trim() || null,
-        keywords: kw,
-        overallScore: data.result.overallScore,
-        createdAt: data.createdAt,
-        result: data.result,
-      })
+      setCurrent({ id: data.id, businessName: businessName.trim(), city: city.trim(), website: website.trim() || null, keywords: kw, overallScore: data.result.overallScore, createdAt: data.createdAt, result: data.result })
+      setExpanded(new Set())
       await loadHistory()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gmbEval.errorGeneric'))
-    } finally {
-      setRunning(false)
-    }
+    } finally { setRunning(false) }
   }
 
   async function openEvaluation(id: string) {
     setError(null)
     try {
       const data = await apiFetch<EvalDetail>(`/api/partner/gmb-evaluations/${id}`)
-      setCurrent(data)
-    } catch {
-      setError(t('gmbEval.errorGeneric'))
-    }
+      setCurrent(data); setExpanded(new Set())
+    } catch { setError(t('gmbEval.errorGeneric')) }
   }
 
-  async function downloadPdf() {
+  async function exportPdf(open: boolean) {
     if (!current) return
-    setDownloading(true)
+    open ? setViewing(true) : setDownloading(true)
     try {
-      const res = await apiFetchRaw(
-        `/api/partner/gmb-evaluations/${current.id}/export.pdf?locale=${locale}`,
-      )
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `gmb-evaluation-${current.businessName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      URL.revokeObjectURL(url)
-    } finally {
-      setDownloading(false)
-    }
+      const res = await apiFetchRaw(`/api/partner/gmb-evaluations/${current.id}/export.pdf?locale=${locale}`)
+      const url = URL.createObjectURL(await res.blob())
+      if (open) { window.open(url, '_blank', 'noopener'); setTimeout(() => URL.revokeObjectURL(url), 60000) }
+      else {
+        const a = document.createElement('a')
+        a.href = url; a.download = `gmb-evaluation-${current.businessName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`
+        document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url)
+      }
+    } finally { open ? setViewing(false) : setDownloading(false) }
   }
 
-  // Open the branded report inline in a new tab (preview without saving). Auth
-  // is header-based, so we fetch the blob and open an object URL rather than
-  // navigating to the URL directly.
-  async function viewPdf() {
-    if (!current) return
-    setViewing(true)
-    try {
-      const res = await apiFetchRaw(
-        `/api/partner/gmb-evaluations/${current.id}/export.pdf?locale=${locale}`,
-      )
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      window.open(url, '_blank', 'noopener')
-      // Revoke after the new tab has had time to load the document.
-      setTimeout(() => URL.revokeObjectURL(url), 60000)
-    } finally {
-      setViewing(false)
-    }
+  function IssueRow({ it }: { it: Issue }) {
+    const { title, fix } = gmbIssueText(lc, it.key, it.params)
+    return (
+      <div className="flex gap-2.5 py-1.5">
+        <span className="mt-1.5 w-2 h-2 rounded-full shrink-0" style={{ background: SEV_COLOR[it.severity] }} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{title}</span>
+            <span className="text-[11px] whitespace-nowrap px-2 py-0.5 rounded-full" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>
+              {ui('estTime')}: {GMB_TIME_LABELS[lc][it.timeTier] ?? it.timeTier}
+            </span>
+          </div>
+          {fix && <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}><span style={{ color: TEAL }}>{ui('fix')}:</span> {fix}</p>}
+        </div>
+      </div>
+    )
   }
+
+  const r = current?.result
+  const isV2 = !!r?.categories?.length
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-        {t('gmbEval.title')}
-      </h1>
-      <p className="text-sm mb-5" style={{ color: 'var(--text-tertiary)' }}>
-        {t('gmbEval.subtitle')}
-      </p>
+      <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{t('gmbEval.title')}</h1>
+      <p className="text-sm mb-5" style={{ color: 'var(--text-tertiary)' }}>{t('gmbEval.subtitle')}</p>
 
-      {/* Search form */}
+      {/* Form */}
       <form onSubmit={runEvaluation} className="rounded-xl p-4 mb-6" style={{ border: '1px solid var(--border-subtle)' }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {t('gmbEval.businessName')}
-            <input
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-              placeholder={t('gmbEval.businessNamePlaceholder')}
-              className="px-3 py-2 rounded-lg text-sm"
-              style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface-1)' }}
-              required
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {t('gmbEval.city')}
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder={t('gmbEval.cityPlaceholder')}
-              className="px-3 py-2 rounded-lg text-sm"
-              style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface-1)' }}
-              required
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {t('gmbEval.website')}
-            <input
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder={t('gmbEval.websitePlaceholder')}
-              className="px-3 py-2 rounded-lg text-sm"
-              style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface-1)' }}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {t('gmbEval.keywords')}
-            <input
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              placeholder={t('gmbEval.keywordsPlaceholder')}
-              className="px-3 py-2 rounded-lg text-sm"
-              style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface-1)' }}
-            />
-          </label>
+          {([['businessName', businessName, setBusinessName, true], ['city', city, setCity, true], ['website', website, setWebsite, false], ['keywords', keywords, setKeywords, false]] as const).map(([field, val, set, req]) => (
+            <label key={field} className="flex flex-col gap-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {t(`gmbEval.${field}`)}
+              <input value={val} onChange={(e) => set(e.target.value)} required={req}
+                placeholder={t(`gmbEval.${field}Placeholder`)}
+                className="px-3 py-2 rounded-lg text-sm"
+                style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface-1)' }} />
+            </label>
+          ))}
         </div>
-        <button
-          type="submit"
-          disabled={running || !businessName.trim() || !city.trim()}
-          className="mt-3 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-40"
-          style={{ background: TEAL }}
-        >
+        <button type="submit" disabled={running || !businessName.trim() || !city.trim()}
+          className="mt-3 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-40" style={{ background: TEAL }}>
           {running ? t('gmbEval.running') : t('gmbEval.runButton')}
         </button>
-        {error && (
-          <p className="mt-2 text-sm" style={{ color: SEV_COLOR.critical }}>{error}</p>
-        )}
+        {error && <p className="mt-2 text-sm" style={{ color: SEV_COLOR.critical }}>{error}</p>}
       </form>
 
       {/* Result */}
-      {current && (
+      {current && r && (
         <div className="rounded-xl p-5 mb-6" style={{ border: '1px solid var(--border-subtle)' }}>
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
-              <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {current.businessName}
-              </h2>
+              <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{current.businessName}</h2>
               <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{current.city}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={viewPdf}
-                disabled={viewing}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
-                style={{ border: `1px solid ${TEAL}`, color: TEAL }}
-              >
-                {viewing ? t('gmbEval.preparing') : t('gmbEval.viewReport')}
-              </button>
-              <button
-                onClick={downloadPdf}
-                disabled={downloading}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium text-white disabled:opacity-40"
-                style={{ background: TEAL }}
-              >
-                {downloading ? t('gmbEval.preparing') : t('gmbEval.downloadReport')}
-              </button>
+              <button onClick={() => exportPdf(true)} disabled={viewing} className="px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40" style={{ border: `1px solid ${TEAL}`, color: TEAL }}>{viewing ? t('gmbEval.preparing') : t('gmbEval.viewReport')}</button>
+              <button onClick={() => exportPdf(false)} disabled={downloading} className="px-3 py-1.5 rounded-lg text-sm font-medium text-white disabled:opacity-40" style={{ background: TEAL }}>{downloading ? t('gmbEval.preparing') : t('gmbEval.downloadReport')}</button>
             </div>
           </div>
 
-          {!current.result.found ? (
+          {!r.found ? (
             <p className="text-sm py-4" style={{ color: SEV_COLOR.warn }}>{t('gmbEval.notFound')}</p>
           ) : (
             <>
               {/* Score band */}
               <div className="flex items-center gap-4 mb-5 p-4 rounded-lg" style={{ background: 'oklch(55% 0.11 193 / 0.08)' }}>
-                <div className="text-4xl font-bold" style={{ color: scoreColor(current.result.overallScore) }}>
-                  {current.result.overallScore}
-                  <span className="text-base font-normal" style={{ color: 'var(--text-tertiary)' }}>/100</span>
+                <div className="text-4xl font-bold" style={{ color: scoreColor(r.overallScore) }}>
+                  {r.overallScore}<span className="text-base font-normal" style={{ color: 'var(--text-tertiary)' }}>/100</span>
                 </div>
                 <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  <div className="font-medium">{t('gmbEval.overallScore')}</div>
-                  <div style={{ color: 'var(--text-tertiary)' }}>
-                    {current.result.mapPackPosition
-                      ? t('gmbEval.mapPackHeadline', { position: current.result.mapPackPosition })
-                      : t('gmbEval.notRanking')}
-                  </div>
+                  <div className="font-medium">{ui('overallScore')}</div>
+                  <div style={{ color: 'var(--text-tertiary)' }}>{r.mapPackPosition ? ui('mapPackHeadline', { position: r.mapPackPosition }) : ui('notRanking')}</div>
                 </div>
               </div>
 
-              {/* Dimensions */}
-              <div className="space-y-3 mb-5">
-                {current.result.dimensions.map((d) => (
-                  <div key={d.key} className="flex gap-3">
-                    <span className="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0" style={{ background: SEV_COLOR[d.severity] }} />
-                    <div className="flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                          {t(`gmbEval.dim.${d.key}`)}
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{d.score}/100</span>
+              {!isV2 ? (
+                <p className="text-sm py-2" style={{ color: 'var(--text-tertiary)' }}>{t('gmbEval.legacyRerun')}</p>
+              ) : (
+                <>
+                  {/* Top priorities */}
+                  {r.topGaps && r.topGaps.length > 0 && (
+                    <div className="mb-5">
+                      <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{ui('topGaps')}</h3>
+                      <div className="rounded-lg px-3 py-1" style={{ background: 'var(--surface-overlay)' }}>
+                        {r.topGaps.map((g, i) => <IssueRow key={`${g.key}-${i}`} it={g} />)}
                       </div>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                        {t(`gmbEval.finding.${d.key}.${d.severity}`, d.params)}
-                      </p>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  )}
 
-              {/* Competitors */}
-              {current.result.competitors.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                    {t('gmbEval.competitorsHeader')}
-                  </h3>
-                  <div className="space-y-1">
-                    {current.result.competitors.map((c) => (
-                      <div key={c.position} className="flex items-center gap-2 text-sm">
-                        <span className="w-6 text-center font-semibold" style={{ color: TEAL }}>#{c.position}</span>
-                        <span style={{ color: 'var(--text-primary)' }}>{c.title}</span>
-                        {c.ratingCount != null && (
-                          <span style={{ color: 'var(--text-tertiary)' }}>
-                            {c.rating ? `${c.rating}★ · ` : ''}{t('gmbEval.reviewsCount', { count: c.ratingCount })}
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                  {/* Category cards */}
+                  <div className="space-y-2">
+                    {r.categories!.map((c) => {
+                      const open = expanded.has(c.key)
+                      const pct = c.score === null ? 0 : c.score
+                      return (
+                        <div key={c.key} className="rounded-lg" style={{ border: '1px solid var(--border-subtle)' }}>
+                          <button onClick={() => toggle(c.key)} className="w-full flex items-center gap-3 px-3 py-2.5 text-left">
+                            <span className="text-sm font-medium flex-1" style={{ color: 'var(--text-primary)' }}>{GMB_CATEGORY_LABELS[lc][c.key] ?? c.key}</span>
+                            {(c.status === 'deferred' || c.status === 'needsConnect') && (
+                              <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>{GMB_STATUS_LABELS[lc][c.status]}</span>
+                            )}
+                            <span className="w-28 h-1.5 rounded-full overflow-hidden hidden sm:block" style={{ background: 'var(--surface-overlay)' }}>
+                              <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: scoreColor(c.score) }} />
+                            </span>
+                            <span className="text-sm font-semibold w-16 text-right" style={{ color: scoreColor(c.score) }}>
+                              {c.score === null ? '—' : `${c.score}`}<span className="text-xs font-normal" style={{ color: 'var(--text-tertiary)' }}>{c.score === null ? '' : '/100'}</span>
+                            </span>
+                            <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{open ? '▾' : '▸'}</span>
+                          </button>
+                          {open && (
+                            <div className="px-3 pb-2 pt-0.5 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <p className="text-[11px] mt-1.5 mb-0.5" style={{ color: 'var(--text-tertiary)' }}>{ui('target', { expected: c.expected })} · {GMB_STATUS_LABELS[lc][c.status]}</p>
+                              {c.issues.length === 0
+                                ? <p className="text-xs py-1" style={{ color: 'oklch(58% 0.14 152)' }}>✓</p>
+                                : c.issues.map((it, i) => <IssueRow key={`${it.key}-${i}`} it={it} />)}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
-                </div>
+
+                  {/* Competitors */}
+                  {r.competitors && r.competitors.length > 0 && (
+                    <div className="mt-5">
+                      <h3 className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{ui('competitors')}</h3>
+                      <div className="space-y-1">
+                        {r.competitors.map((c) => (
+                          <div key={c.position} className="flex items-center gap-2 text-sm">
+                            <span className="w-6 text-center font-semibold" style={{ color: TEAL }}>#{c.position}</span>
+                            <span style={{ color: 'var(--text-primary)' }}>{c.title}</span>
+                            {c.ratingCount != null && <span style={{ color: 'var(--text-tertiary)' }}>{c.rating ? `${c.rating}★ · ` : ''}{ui('reviewsCount', { count: c.ratingCount })}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Data sources */}
+                  {r.meta?.dataSources && r.meta.dataSources.length > 0 && (
+                    <p className="text-[11px] mt-4" style={{ color: 'var(--text-tertiary)' }}>
+                      {ui('dataSources')}: {r.meta.dataSources.map((s) => GMB_DATA_SOURCE_LABELS[lc][s] ?? s).join(' · ')}
+                    </p>
+                  )}
+                </>
               )}
             </>
           )}
@@ -336,25 +271,14 @@ export default function GmbEvaluationPage() {
       {/* History */}
       {history.length > 0 && (
         <div>
-          <h2 className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-            {t('gmbEval.recentTitle')}
-          </h2>
+          <h2 className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{t('gmbEval.recentTitle')}</h2>
           <div className="space-y-1">
             {history.map((h) => (
-              <button
-                key={h.id}
-                onClick={() => openEvaluation(h.id)}
-                className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-left"
-                style={{ border: '1px solid var(--border-subtle)' }}
-              >
-                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                  {h.businessName} <span style={{ color: 'var(--text-tertiary)' }}>· {h.city}</span>
-                </span>
+              <button key={h.id} onClick={() => openEvaluation(h.id)} className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-left" style={{ border: '1px solid var(--border-subtle)' }}>
+                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{h.businessName} <span style={{ color: 'var(--text-tertiary)' }}>· {h.city}</span></span>
                 <span className="flex items-center gap-3">
                   <span className="text-sm font-semibold" style={{ color: scoreColor(h.overallScore) }}>{h.overallScore}</span>
-                  <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                    {new Date(h.createdAt).toLocaleDateString(dateLocale)}
-                  </span>
+                  <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{new Date(h.createdAt).toLocaleDateString(dateLocale)}</span>
                 </span>
               </button>
             ))}

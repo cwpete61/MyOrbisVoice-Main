@@ -245,6 +245,7 @@
     "downloadReport": "Descargar informe",
     "errorGeneric": "No se pudo ejecutar la evaluación. Inténtalo de nuevo.",
     "notFound": "No encontramos este negocio en Google. Revisa el nombre y la ciudad, e inténtalo de nuevo.",
+    "legacyRerun": "Esta es una evaluación anterior. Vuelve a ejecutarla para obtener la auditoría completa por categorías.",
     "notRanking": "No aparece en el paquete de mapas de Google para la búsqueda objetivo.",
     "overallScore": "Puntuación general",
     "mapPackHeadline": "Aparece en el puesto #{position} del paquete de mapas de Google",

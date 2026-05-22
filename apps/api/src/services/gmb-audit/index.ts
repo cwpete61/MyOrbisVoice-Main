@@ -1,33 +1,23 @@
 /**
- * gmb-audit — public entry point.
+ * gmb-audit — public entry point (V2).
  *
- * `evaluate()` orchestrates: provider lookup → pure scoring → AuditResult.
- * The provider is injected so this module never touches OrbisVoice config; the
- * caller (gmb-evaluation.service) fetches the Serper key and constructs the
- * provider. This keeps the whole directory portable into MyOrbisLocal.
+ * `evaluate()` orchestrates: collect every data source → score into the
+ * language-neutral {@link AuditResult}. Keys are injected so the engine never
+ * touches OrbisVoice config — keeps the whole directory portable into
+ * MyOrbisLocal.
  */
+import { collect, type CollectKeys } from './collect.js'
 import { scoreAudit } from './scoring.js'
-import type { AuditInput, AuditResult, GbpDataProvider, GbpLookupResult } from './types.js'
+import type { AuditInput } from './types.js'
+import type { AuditResult } from './model.js'
 
 export * from './types.js'
-export { SerperProvider } from './providers/serper.js'
+export * from './model.js'
+export { collect } from './collect.js'
 export { scoreAudit } from './scoring.js'
+export { SerperProvider, fetchSerperReviews } from './providers/serper.js'
 
-/** Resolve the keyword used for the headline map-pack search, mirroring the
- *  provider's own choice, so the report shows the real query. */
-function resolvePrimaryKeyword(input: AuditInput, lookup: GbpLookupResult): string {
-  return (
-    input.keywords?.[0]?.trim() ||
-    lookup.business?.category ||
-    input.businessName
-  )
-}
-
-export async function evaluate(
-  input: AuditInput,
-  provider: GbpDataProvider,
-): Promise<AuditResult> {
-  const lookup = await provider.lookup(input)
-  const primaryKeyword = resolvePrimaryKeyword(input, lookup)
-  return scoreAudit(lookup, provider.name, primaryKeyword)
+export async function evaluate(input: AuditInput, keys: CollectKeys): Promise<AuditResult> {
+  const data = await collect(input, keys)
+  return scoreAudit(data, 'serper.dev')
 }

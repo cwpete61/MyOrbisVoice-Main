@@ -1,14 +1,7 @@
 /**
- * gmb-audit — portable Google Business Profile audit engine.
- *
- * Self-contained: NO coupling to OrbisVoice domain models or Prisma. The whole
- * directory lifts into MyOrbisLocal (Phase A — GBP + Category Audit) unchanged;
- * only a new provider is added behind {@link GbpDataProvider}.
- *
- * Language-neutral by design: scoring returns dimension KEYS + numeric PARAMS,
- * never prose. The web screen and the PDF render localized strings (en/es) from
- * those keys, so the bilingual rule is satisfied without the engine knowing any
- * language.
+ * gmb-audit — raw data types the providers gather. Portable: no OrbisVoice or
+ * Prisma coupling. The scoring layer (scoring.ts) turns an {@link AuditData}
+ * into the language-neutral {@link AuditResult} in model.ts.
  */
 
 /** What the partner types in. */
@@ -17,26 +10,25 @@ export interface AuditInput {
   city: string
   website?: string
   /** Target keywords whose map-pack ranking the partner wants checked. The
-   *  first one (or `<category> in <city>`) drives the headline map-pack score. */
+   *  first one (or the listing's category) drives the headline map-pack score. */
   keywords?: string[]
 }
 
-/** A single business as returned by a provider (normalized from raw payload). */
+/** A business as returned by Serper (normalized). */
 export interface GbpBusiness {
   title: string
   address?: string
   phoneNumber?: string
   website?: string
-  /** Primary category label. */
   category?: string
-  /** Primary + secondary categories. */
   types?: string[]
   rating?: number
   ratingCount?: number
   openingHours?: Record<string, string>
   thumbnailUrl?: string
-  /** Google customer id — stable handle for the listing. */
   cid?: string
+  latitude?: number
+  longitude?: number
 }
 
 /** One competitor row in the local map-pack for the niche search. */
@@ -48,61 +40,104 @@ export interface MapPackEntry {
   cid?: string
 }
 
-/** Normalized output of a provider lookup. Prose-free. */
+/** Normalized output of the Serper places+maps lookup. */
 export interface GbpLookupResult {
   found: boolean
   business: GbpBusiness | null
-  /** Map-pack for `<primary keyword> <city>`, ordered by position. */
   mapPack: MapPackEntry[]
-  /** The prospect's own position in `mapPack`, or null if not present. */
   mapPackPosition: number | null
-  /** Raw provider payloads, kept so a report re-renders without re-querying. */
-  raw: {
-    profile?: unknown
-    maps?: unknown
-  }
+  raw: { profile?: unknown; maps?: unknown }
 }
 
-/** Pluggable data source. Serper.dev is the first impl; DataForSEO / Google
- *  Places / the real GBP API slot in later without touching scoring. */
+/** Pluggable GBP data source (Serper today; GBP API later in connected mode). */
 export interface GbpDataProvider {
   readonly name: string
   lookup(input: AuditInput): Promise<GbpLookupResult>
 }
 
-export type GmbDimensionKey =
-  | 'mapPack'
-  | 'reviews'
-  | 'completeness'
-  | 'categories'
-  | 'nap'
-  | 'photos'
+// ── Reviews (Serper /reviews) ────────────────────────────────────────────────
 
-export type GmbSeverity = 'good' | 'warn' | 'critical'
-
-/** One scored dimension. `params` carries the data the UI/PDF interpolate into
- *  a localized finding string keyed by `${key}.${severity}`. */
-export interface DimensionScore {
-  key: GmbDimensionKey
-  /** 0–100. */
-  score: number
-  /** Relative weight in the overall score (weights across dimensions sum to 1). */
-  weight: number
-  severity: GmbSeverity
-  params: Record<string, string | number>
+export interface ReviewSample {
+  rating?: number
+  text?: string
+  isoDate?: string
+  hasOwnerResponse: boolean
 }
 
-/** The full audit. Stored as `GmbEvaluation.result` (jsonb). Prose-free. */
-export interface AuditResult {
+export interface ReviewsData {
+  fetched: boolean
+  count: number
+  rating: number
+  /** Days since the most recent review (null if unknown). */
+  recencyDays: number | null
+  /** Approx reviews/month over the sampled window (null if unknown). */
+  velocityPerMonth: number | null
+  /** Share 0..1 of sampled reviews with an owner response. */
+  ownerResponseRate: number | null
+  samples: ReviewSample[]
+}
+
+// ── Website (homepage + key pages) ───────────────────────────────────────────
+
+export interface PageSignals {
+  url: string
+  kind: 'home' | 'service' | 'location' | 'contact' | 'other'
+  status: number
+  title: string | null
+  h1: string | null
+  hasJsonLdLocalBusiness: boolean
+  hasJsonLdService: boolean
+  hasFaqSchema: boolean
+  napPhonePresent: boolean
+  napAddressPresent: boolean
+  clickToCall: boolean
+  wordCount: number
+}
+
+export interface WebsiteData {
+  attempted: boolean
+  reachable: boolean
+  finalUrl: string | null
+  https: boolean
+  pages: PageSignals[]
+  /** Distinct internal links that look like service pages. */
+  servicePageCount: number
+  /** Distinct internal links that look like city/location/service-area pages. */
+  locationPageCount: number
+  /** City name appears in homepage title/H1/visible copy. */
+  cityMentioned: boolean
+  /** Any schema.org JSON-LD found anywhere. */
+  hasSchema: boolean
+  error?: string
+}
+
+// ── PageSpeed Insights (free) ────────────────────────────────────────────────
+
+export interface PageSpeedData {
+  fetched: boolean
+  /** Lighthouse performance score 0..100 (mobile strategy). */
+  performance: number | null
+  /** Largest Contentful Paint, seconds. */
+  lcpSeconds: number | null
+  /** Cumulative Layout Shift. */
+  cls: number | null
+  /** Interaction to Next Paint, milliseconds. */
+  inpMs: number | null
+  mobileFriendly: boolean | null
+  error?: string
+}
+
+/** Everything the collector gathers, pre-scoring. */
+export interface AuditData {
+  input: AuditInput
   found: boolean
-  overallScore: number
   business: GbpBusiness | null
+  mapPack: MapPackEntry[]
   mapPackPosition: number | null
-  dimensions: DimensionScore[]
-  /** Dimension keys ordered worst-first — the partner's ranked pitch hooks. */
-  gaps: GmbDimensionKey[]
-  /** Top map-pack competitors, for the comparison visual. */
-  competitors: MapPackEntry[]
-  /** Provider name + when produced, for the report footer. */
-  meta: { provider: string; evaluatedAt: string; primaryKeyword: string }
+  primaryKeyword: string
+  reviews: ReviewsData
+  website: WebsiteData
+  pageSpeed: PageSpeedData
+  /** Names of the data sources that actually contributed (for the report). */
+  dataSources: string[]
 }

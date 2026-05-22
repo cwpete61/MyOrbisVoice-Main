@@ -245,6 +245,7 @@
     "downloadReport": "Download Report",
     "errorGeneric": "Could not run the evaluation. Please try again.",
     "notFound": "We couldn't find this business on Google. Check the name and city, then try again.",
+    "legacyRerun": "This is an earlier evaluation. Re-run it to get the full category audit.",
     "notRanking": "Not appearing in the Google Map Pack for the target search.",
     "overallScore": "Overall Score",
     "mapPackHeadline": "Ranks #{position} in the Google Map Pack",

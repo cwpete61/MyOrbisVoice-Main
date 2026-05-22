@@ -112,6 +112,26 @@ ensure_deps() {
   ok "Deps ensured for $container"
 }
 
+# Build workspace packages (types, shared) and ship their dist into the node
+# containers. The api/gateway resolve `@voiceautomation/types` at RUNTIME via a
+# symlink to /app/packages/<pkg>/dist — `ensure_deps`' `pnpm install` relinks but
+# never refreshes that dist, so a new export (e.g. the GMB catalog, 2026-05-22)
+# would be missing in prod and crash the container on startup. (Web is exempt:
+# Next `transpilePackages` inlines these into .next at build time.)
+sync_workspace_packages() {
+  log "Building + shipping workspace packages (types, shared)..."
+  pnpm --filter @voiceautomation/types build  2>&1 | grep -E "error TS" && fail "types build failed" || true
+  pnpm --filter @voiceautomation/shared build 2>&1 | grep -E "error TS" && fail "shared build failed" || true
+  for pkg in types shared; do
+    [ -d "$REPO_ROOT/packages/$pkg/dist" ] || continue
+    rsync -az "$REPO_ROOT/packages/$pkg/dist/" "$SERVER:$REMOTE/packages/$pkg/dist/"
+    for c in myorbisvoice-api myorbisvoice-gateway; do
+      ssh_t 60 "$SERVER" "docker exec $c sh -c 'mkdir -p /app/packages/$pkg/dist' && docker cp $REMOTE/packages/$pkg/dist/. $c:/app/packages/$pkg/dist/" >/dev/null 2>&1 || true
+    done
+  done
+  ok "Workspace packages shipped to api + gateway"
+}
+
 cd "$REPO_ROOT"
 
 # ── 0. Pre-flight security audit ────────────────────────────────────────────
@@ -155,6 +175,10 @@ ssh "$SERVER" "
     myorbisvoice-gateway:/app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/
 "
 ok "Prisma client pushed to api + gateway containers (commit happens in step_api/step_gateway)"
+
+# Ship fresh workspace-package dist (types/shared) before the per-target steps,
+# so api/gateway runtime has current exports before they restart.
+sync_workspace_packages
 
 # Sync the schema file once (used by `prisma db push` below AND mirrored to the
 # api container so /app/prisma/schema.prisma is current).
