@@ -32,14 +32,19 @@ export interface GmbEvaluationPdfInput {
   locale: GmbLocale
 }
 
-const PRIMARY = '#1a9898'
-const TEXT = '#1a1a1a'
-const MUTED = '#666666'
-const BORDER = '#e5e5e5'
-const GOOD = '#1a9d5a'
-const WARN = '#c98a00'
-const CRIT = '#c0392b'
-const PAGE_MARGIN = 50
+// Design system — primary teal + warm coral accent, neutral ink/greys.
+const PRIMARY = '#127a7a'        // deep teal — header band, section rules
+const PRIMARY_LIGHT = '#1a9898'  // brighter teal — accents, "you" column
+const ACCENT = '#e8804d'         // warm coral — complementary highlight
+const TEXT = '#1f2937'           // ink
+const MUTED = '#6b7280'
+const BORDER = '#e5e7eb'         // hairline
+const TINT = '#eef6f6'           // teal panel tint
+const ZEBRA = '#f7f9f9'          // table zebra
+const GOOD = '#16a34a'
+const WARN = '#d97706'
+const CRIT = '#dc2626'
+const PAGE_MARGIN = 54
 
 function sevColor(s: Severity): string {
   return s === 'critical' ? CRIT : s === 'warn' ? WARN : MUTED
@@ -88,16 +93,29 @@ export async function streamGmbEvaluationPdf(
   doc.pipe(out)
   const contentWidth = doc.page.width - PAGE_MARGIN * 2
   const ensureSpace = (need: number) => { if (doc.y > doc.page.height - need) doc.addPage() }
+  /** Section header: bold title + a short accent underline rule. */
+  const sectionHeader = (text: string) => {
+    ensureSpace(60)
+    doc.moveDown(0.6)
+    doc.fontSize(12.5).fillColor(TEXT).font('Helvetica-Bold').text(text, PAGE_MARGIN, doc.y)
+    const ly = doc.y + 2
+    doc.strokeColor(ACCENT).lineWidth(2).moveTo(PAGE_MARGIN, ly).lineTo(PAGE_MARGIN + 34, ly).stroke()
+    doc.y = ly + 6
+    doc.x = PAGE_MARGIN
+  }
 
-  // ── Header ────────────────────────────────────────────────────────────────
-  if (logoBytes) { try { doc.image(logoBytes, PAGE_MARGIN, PAGE_MARGIN, { fit: [120, 48] }) } catch { /* bad image */ } }
-  doc.fontSize(18).fillColor(PRIMARY).font('Helvetica-Bold')
-    .text(brand.companyName, PAGE_MARGIN, PAGE_MARGIN + (logoBytes ? 56 : 0))
-  doc.fontSize(13).fillColor(TEXT).font('Helvetica-Bold')
-    .text(`${evaluation.businessName} — ${evaluation.city}`)
+  // ── Header band ─────────────────────────────────────────────────────────────
+  const bandH = 74
+  doc.save().rect(0, 0, doc.page.width, bandH).fill(PRIMARY).restore()
+  if (logoBytes) { try { doc.image(logoBytes, doc.page.width - PAGE_MARGIN - 110, 16, { fit: [110, 42] }) } catch { /* bad image */ } }
+  doc.fillColor('#ffffff').fontSize(19).font('Helvetica-Bold').text(brand.companyName, PAGE_MARGIN, 20)
+  doc.fillColor('#cdeaea').fontSize(10).font('Helvetica').text(ui('reportTitle'), PAGE_MARGIN, 46)
+  doc.y = bandH + 16
+  doc.x = PAGE_MARGIN
+  doc.fontSize(14).fillColor(TEXT).font('Helvetica-Bold').text(`${evaluation.businessName} — ${evaluation.city}`)
   doc.fontSize(9).fillColor(MUTED).font('Helvetica')
     .text(evaluation.createdAt.toLocaleDateString(locale === 'es' ? 'es-MX' : 'en-US'))
-  doc.moveDown(0.6)
+  doc.moveDown(0.5)
 
   // ── Overall score band ────────────────────────────────────────────────────
   const bandY = doc.y
@@ -141,8 +159,7 @@ export async function streamGmbEvaluationPdf(
 
   // ── Top priorities ────────────────────────────────────────────────────────
   if (topGaps.length) {
-    doc.fontSize(12).fillColor(TEXT).font('Helvetica-Bold').text(ui('topGaps'))
-    doc.moveDown(0.3)
+    sectionHeader(ui('topGaps'))
     for (const g of topGaps) renderIssue(g, true)
     doc.moveDown(0.4)
   }
@@ -158,9 +175,7 @@ export async function streamGmbEvaluationPdf(
       ['priority3', plan.p3, ui('ninetyDay')], ['priority4', plan.p4, ui('ninetyDay')],
     ]
     if (buckets.some(([, list]) => list.length)) {
-      ensureSpace(90)
-      doc.moveDown(0.5)
-      doc.fontSize(12).fillColor(TEXT).font('Helvetica-Bold').text(ui('actionPlan'))
+      sectionHeader(ui('actionPlan'))
       doc.fontSize(8.5).fillColor(MUTED).font('Helvetica').text(ui('actionPlanLead'), { width: contentWidth })
       doc.moveDown(0.2)
       for (const [key, list, tag] of buckets) {
@@ -178,10 +193,7 @@ export async function streamGmbEvaluationPdf(
 
   // ── Competitors ───────────────────────────────────────────────────────────
   if (competitors.length) {
-    ensureSpace(120)
-    doc.moveDown(0.3)
-    doc.fontSize(12).fillColor(TEXT).font('Helvetica-Bold').text(ui('competitors'))
-    doc.moveDown(0.2)
+    sectionHeader(ui('competitors'))
     for (const cmp of competitors) {
       doc.fontSize(10).fillColor(TEXT).font('Helvetica').text(`#${cmp.position}  ${cmp.title}`, { continued: true })
       doc.fillColor(MUTED).text(cmp.ratingCount != null ? `   ${cmp.rating ?? ''}★ · ${ui('reviewsCount', { count: cmp.ratingCount })}` : '')
@@ -240,10 +252,9 @@ export async function streamGmbEvaluationPdf(
   }
 
   function renderHeatMap(h: NonNullable<AuditResult['heatMap']>) {
-    const HEAT: Record<string, string> = { green: '#1a9d5a', yellow: '#e8c14a', orange: '#e08a3c', red: '#c0392b', none: '#e5e5e5' }
+    const HEAT: Record<string, string> = { green: '#16a34a', yellow: '#eab308', orange: '#ea8a2f', red: '#dc2626', none: '#e5e7eb' }
     ensureSpace(60 + h.gridSize * 18)
-    doc.moveDown(0.2)
-    doc.fontSize(12).fillColor(TEXT).font('Helvetica-Bold').text(ui('heatMapTitle'))
+    sectionHeader(ui('heatMapTitle'))
     doc.fontSize(8.5).fillColor(MUTED).font('Helvetica').text(ui('heatMapSub', { keyword: h.keyword }))
     doc.fontSize(9).fillColor(TEXT).text(
       `${ui('avgRank')}: ${h.avgRank ?? '—'}   ${ui('top3Coverage')}: ${h.top3Pct}%   ${ui('top10Coverage')}: ${h.top10Pct}%   ${ui('invisible')}: ${h.invisiblePct}%`,
@@ -260,39 +271,51 @@ export async function streamGmbEvaluationPdf(
           .text(String(p.rank), x, y + 4.5, { width: cell, align: 'center' })
       }
     }
-    doc.y = gridY + h.gridSize * (cell + gap) + 4
+    // Legend — drawn swatches (Helvetica has no ■ glyph).
+    const legendY = gridY + h.gridSize * (cell + gap) + 8
+    let lx = PAGE_MARGIN
+    doc.fontSize(7.5).font('Helvetica')
+    for (const [b, label] of [['green', ui('heatGreen')], ['yellow', ui('heatYellow')], ['orange', ui('heatOrange')], ['red', ui('heatRed')], ['none', ui('heatGray')]] as const) {
+      doc.save().rect(lx, legendY + 1, 7, 7).fill(HEAT[b] ?? '#e5e7eb').restore()
+      doc.fillColor(MUTED).text(label, lx + 10, legendY, { lineBreak: false })
+      lx += 10 + doc.widthOfString(label) + 12
+    }
+    doc.y = legendY + 14
     doc.x = PAGE_MARGIN
-    doc.fontSize(7.5).fillColor(MUTED).font('Helvetica').text(
-      `■ ${ui('heatGreen')}   ■ ${ui('heatYellow')}   ■ ${ui('heatOrange')}   ■ ${ui('heatRed')}   □ ${ui('heatGray')}`,
-    )
     doc.fontSize(8).fillColor(MUTED).text(ui('fastWinsNote'), { width: contentWidth })
     doc.moveDown(0.4)
   }
 
   function renderScorecard() {
-    ensureSpace(140)
-    doc.moveDown(0.2)
-    doc.fontSize(12).fillColor(TEXT).font('Helvetica-Bold').text(ui('whoBeating'))
+    ensureSpace(150)
+    sectionHeader(ui('whoBeating'))
     if (cg?.leaderName && cg.reasons.length) {
-      doc.fontSize(9.5).fillColor('#444').font('Helvetica')
+      doc.fontSize(9.5).fillColor('#374151').font('Helvetica')
         .text(ui('beatingWhy', { leader: cg.leaderName, why: cg.reasons.map((rk) => GMB_REASON_LABELS[locale][rk] ?? rk).join(', ') }), { width: contentWidth })
     }
-    doc.moveDown(0.3)
+    doc.moveDown(0.4)
     const comps = competitorDetails
     const cl = cg!.client
-    // columns
-    const cMetric = PAGE_MARGIN, cYou = PAGE_MARGIN + 200, colW = 90
-    const colX = (i: number) => cYou + (i + 1) * colW
-    const gapX = colX(comps.length)
-    const headY = doc.y
-    doc.fontSize(8.5).font('Helvetica-Bold').fillColor(TEXT)
-    doc.text(ui('metric'), cMetric, headY)
-    doc.text(ui('youLabel'), cYou, headY, { width: colW - 6, align: 'right' })
-    comps.forEach((c, i) => doc.text(c.name.slice(0, 16), colX(i) - colW, headY, { width: colW - 6, align: 'right' }))
-    doc.text(ui('gap'), gapX - colW, headY, { width: colW - 6, align: 'right' })
-    doc.moveDown(0.2)
-    doc.strokeColor(BORDER).lineWidth(0.5).moveTo(PAGE_MARGIN, doc.y).lineTo(doc.page.width - PAGE_MARGIN, doc.y).stroke()
-    doc.moveDown(0.2)
+    const ROW_H = 16
+    const metricW = 168
+    const numCols = comps.length + 2 // You + comps + Gap
+    const numColW = (contentWidth - metricW) / numCols
+    const colLeft = (i: number) => PAGE_MARGIN + metricW + i * numColW // i: 0=You,1..=comps, last=Gap
+    const cellText = (s: string, i: number, y: number, color: string, bold: boolean) =>
+      doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(color).fontSize(8.5)
+        .text(s, colLeft(i) + 3, y, { width: numColW - 6, align: 'right' })
+
+    // Header row (filled)
+    let y = doc.y
+    const tableTop = y
+    doc.save().rect(PAGE_MARGIN, y, contentWidth, ROW_H).fill(PRIMARY).restore()
+    doc.font('Helvetica-Bold').fillColor('#ffffff').fontSize(8.5)
+    doc.text(ui('metric'), PAGE_MARGIN + 6, y + 4)
+    cellText(ui('youLabel'), 0, y + 4, '#ffffff', true)
+    comps.forEach((c, i) => cellText(c.name.slice(0, 14), i + 1, y + 4, '#ffffff', true))
+    cellText(ui('gap'), numCols - 1, y + 4, '#ffffff', true)
+    y += ROW_H
+
     const rows: Array<{ k: string; you: number | null; comps: (number | null)[]; higher: boolean; dec?: number }> = [
       { k: 'reviews', you: cl.reviews, comps: comps.map((c) => c.reviewCount), higher: true },
       { k: 'rating', you: cl.rating, comps: comps.map((c) => c.rating), higher: true, dec: 1 },
@@ -302,20 +325,20 @@ export async function streamGmbEvaluationPdf(
       { k: 'mapPack', you: r.mapPackPosition, comps: comps.map((c) => c.mapPackPosition), higher: false },
     ]
     const fmt = (v: number | null, dec?: number) => v == null ? '—' : dec ? v.toFixed(dec) : String(v)
-    for (const row of rows) {
-      const y = doc.y
+    rows.forEach((row, ri) => {
       const cs = row.comps.filter((x): x is number => x != null)
       let gap: number | null = null, lose = false
       if (row.you != null && cs.length) { const best = row.higher ? Math.max(...cs) : Math.min(...cs); gap = row.higher ? row.you - best : best - row.you; lose = gap < 0 }
-      doc.fontSize(8.5).font('Helvetica').fillColor(TEXT).text(GMB_SCORECARD_LABELS[locale][row.k] ?? row.k, cMetric, y)
-      doc.font('Helvetica-Bold').fillColor(PRIMARY).text(fmt(row.you, row.dec), cYou, y, { width: colW - 6, align: 'right' })
-      doc.font('Helvetica').fillColor(TEXT)
-      row.comps.forEach((c, i) => doc.text(fmt(c, row.dec), colX(i) - colW, y, { width: colW - 6, align: 'right' }))
-      doc.font('Helvetica-Bold').fillColor(gap == null ? MUTED : lose ? CRIT : GOOD)
-        .text(gap == null ? '—' : `${gap > 0 ? '+' : ''}${row.dec ? gap.toFixed(row.dec) : gap}`, gapX - colW, y, { width: colW - 6, align: 'right' })
-      doc.moveDown(0.3)
-    }
+      if (ri % 2 === 1) doc.save().rect(PAGE_MARGIN, y, contentWidth, ROW_H).fill(ZEBRA).restore()
+      doc.font('Helvetica').fillColor(TEXT).fontSize(8.5).text(GMB_SCORECARD_LABELS[locale][row.k] ?? row.k, PAGE_MARGIN + 6, y + 4)
+      cellText(fmt(row.you, row.dec), 0, y + 4, PRIMARY_LIGHT, true)
+      row.comps.forEach((c, i) => cellText(fmt(c, row.dec), i + 1, y + 4, TEXT, false))
+      cellText(gap == null ? '—' : `${gap > 0 ? '+' : ''}${row.dec ? gap.toFixed(row.dec) : gap}`, numCols - 1, y + 4, gap == null ? MUTED : lose ? CRIT : GOOD, true)
+      y += ROW_H
+    })
+    // outer border around the whole table
+    doc.strokeColor(BORDER).lineWidth(0.6).rect(PAGE_MARGIN, tableTop, contentWidth, y - tableTop).stroke()
+    doc.y = y + 4
     doc.x = PAGE_MARGIN
-    doc.moveDown(0.3)
   }
 }

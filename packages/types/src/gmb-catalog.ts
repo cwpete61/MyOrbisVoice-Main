@@ -54,6 +54,7 @@ export const GMB_STATUS_LABELS: Record<GmbLocale, Record<string, string>> = {
 export const GMB_UI: Record<GmbLocale, Record<string, string>> = {
   en: {
     overallScore: 'Overall Score',
+    reportTitle: 'Local Visibility Report',
     mapPackHeadline: 'Ranks #{position} in the Google Map Pack',
     notRanking: 'Not appearing in the Google Map Pack',
     topGaps: 'Top priorities to fix',
@@ -99,6 +100,7 @@ export const GMB_UI: Record<GmbLocale, Record<string, string>> = {
   },
   es: {
     overallScore: 'Puntuación general',
+    reportTitle: 'Informe de Visibilidad Local',
     mapPackHeadline: 'Aparece en el puesto #{position} del paquete de mapas de Google',
     notRanking: 'No aparece en el paquete de mapas de Google',
     topGaps: 'Prioridades a corregir',
