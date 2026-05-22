@@ -55,8 +55,14 @@ export interface BrevoDomainState {
 }
 
 /** Create a sender domain on Brevo. Idempotent — if Brevo already has the
- *  domain (e.g. from a previous attempt), the API returns 400; we treat that
- *  as success and just fetch the existing state. */
+ *  domain (from a previous attempt), treat it as success and fetch the
+ *  existing state.
+ *
+ *  Brevo is inconsistent about the status code for "already exists" — it has
+ *  returned BOTH 400 and 404 with `code: "duplicate_parameter"` /
+ *  message "Domain with same name already exists". So we don't gate on the
+ *  status code: any non-2xx whose body signals already-exists falls through
+ *  to getBrevoDomain. Only a genuinely different error throws. */
 export async function createBrevoDomain(domain: string): Promise<BrevoDomainState> {
   const key = await brevoKey()
   const res = await fetch(`${BREVO_API}/senders/domains`, {
@@ -64,19 +70,17 @@ export async function createBrevoDomain(domain: string): Promise<BrevoDomainStat
     headers: { 'api-key': key, 'content-type': 'application/json', accept: 'application/json' },
     body:    JSON.stringify({ name: domain }),
   })
-  // Brevo returns 400 with a "domain already exists" code when we re-add the
-  // same domain after a partial setup. That's not an error — fetch the
-  // current state and return it.
-  if (res.status === 400) {
+  if (!res.ok) {
     const body = await res.json().catch(() => ({})) as { code?: string; message?: string }
-    if ((body.code ?? '').toLowerCase().includes('already') || (body.message ?? '').toLowerCase().includes('already')) {
+    const sig = `${body.code ?? ''} ${body.message ?? ''}`.toLowerCase()
+    if (
+      (body.code ?? '') === 'duplicate_parameter' ||
+      sig.includes('already')
+    ) {
+      // Domain already registered on Brevo — fetch + return its state.
       return getBrevoDomain(domain)
     }
-    throw new Error(`Brevo create-domain rejected: ${body.message ?? res.statusText}`)
-  }
-  if (!res.ok) {
-    const txt = await res.text().catch(() => '')
-    throw new Error(`Brevo create-domain ${res.status}: ${txt.slice(0, 200)}`)
+    throw new Error(`Brevo create-domain ${res.status}: ${body.message ?? res.statusText}`)
   }
   return getBrevoDomain(domain)
 }
