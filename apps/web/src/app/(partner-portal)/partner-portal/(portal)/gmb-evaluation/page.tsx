@@ -70,6 +70,7 @@ export default function GmbEvaluationPage() {
   const [current, setCurrent] = useState<EvalDetail | null>(null)
   const [history, setHistory] = useState<ListItem[]>([])
   const [downloading, setDownloading] = useState(false)
+  const [viewing, setViewing] = useState(false)
 
   const loadHistory = useCallback(async () => {
     const resp = await apiFetch<{ items: ListItem[]; total: number }>(
@@ -145,6 +146,26 @@ export default function GmbEvaluationPage() {
       URL.revokeObjectURL(url)
     } finally {
       setDownloading(false)
+    }
+  }
+
+  // Open the branded report inline in a new tab (preview without saving). Auth
+  // is header-based, so we fetch the blob and open an object URL rather than
+  // navigating to the URL directly.
+  async function viewPdf() {
+    if (!current) return
+    setViewing(true)
+    try {
+      const res = await apiFetchRaw(
+        `/api/partner/gmb-evaluations/${current.id}/export.pdf?locale=${locale}`,
+      )
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank', 'noopener')
+      // Revoke after the new tab has had time to load the document.
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    } finally {
+      setViewing(false)
     }
   }
 
@@ -226,14 +247,24 @@ export default function GmbEvaluationPage() {
               </h2>
               <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{current.city}</p>
             </div>
-            <button
-              onClick={downloadPdf}
-              disabled={downloading}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
-              style={{ border: `1px solid ${TEAL}`, color: TEAL }}
-            >
-              {downloading ? t('gmbEval.preparing') : t('gmbEval.downloadReport')}
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={viewPdf}
+                disabled={viewing}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
+                style={{ border: `1px solid ${TEAL}`, color: TEAL }}
+              >
+                {viewing ? t('gmbEval.preparing') : t('gmbEval.viewReport')}
+              </button>
+              <button
+                onClick={downloadPdf}
+                disabled={downloading}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium text-white disabled:opacity-40"
+                style={{ background: TEAL }}
+              >
+                {downloading ? t('gmbEval.preparing') : t('gmbEval.downloadReport')}
+              </button>
+            </div>
           </div>
 
           {!current.result.found ? (

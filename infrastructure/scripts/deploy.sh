@@ -54,6 +54,31 @@ log()  { echo ""; echo "── $*"; }
 ok()   { echo "   ✓ $*"; }
 fail() { echo "   ✗ $*"; exit 1; }
 
+# SSH that can't wedge: keepalive drops a dead peer within ~60s, and a hard
+# timeout caps the call. (2026-05-22: a `docker commit` ssh completed the commit
+# on the box but never returned for 30+ min, stalling a deploy mid-restart and
+# degrading prod web. Keepalive + timeout prevent the indefinite wedge.)
+ssh_t() { timeout "${1}" ssh -o ServerAliveInterval=15 -o ServerAliveCountMax=4 "${@:2}"; }
+
+# Commit a container to :latest. If the ssh wedges/times out, verify the image
+# was actually committed in the last few minutes before failing — the commit
+# itself usually finishes even when the ssh transport hangs afterward.
+commit_image() {  # $1=container  $2..=extra `docker commit` args
+  local container="$1"; shift
+  if ssh_t 600 "$SERVER" "docker commit $* $container ${container}:latest" >/dev/null 2>&1; then
+    return 0
+  fi
+  local created epoch now
+  created=$(ssh_t 30 "$SERVER" "docker inspect -f '{{.Created}}' ${container}:latest" 2>/dev/null || true)
+  epoch=$(date -d "$created" +%s 2>/dev/null || echo 0)
+  now=$(date +%s)
+  if [[ "$epoch" -gt 0 && $((now - epoch)) -lt 600 ]]; then
+    ok "commit ssh hung but image ${container}:latest was committed ($((now - epoch))s ago) — continuing"
+    return 0
+  fi
+  fail "docker commit of $container failed and image is not fresh — investigate the box"
+}
+
 # Sync the three root workspace manifests to the prod host. Run once per
 # deploy. Subsequent ensure_deps calls assume these are present.
 sync_root_manifests() {
@@ -187,7 +212,7 @@ step_api() {
   # CRITICAL: commit the running container back into the image so force-recreate doesn't revert code.
   # Without this, any subsequent `docker compose up --force-recreate` (e.g. after env changes) reverts
   # to the original image and loses everything we just injected via docker cp.
-  ssh "$SERVER" "docker commit myorbisvoice-api myorbisvoice-api:latest" >/dev/null && ok "Image updated"
+  commit_image myorbisvoice-api && ok "Image updated"
   ssh "$SERVER" "docker restart myorbisvoice-api"
   sleep 5
   # Verify API started
@@ -216,7 +241,7 @@ step_gateway() {
   # cached copy. Sync the widget folder alongside dist/ so widget edits actually ship.
   rsync -az --delete "$REPO_ROOT/apps/voice-gateway/widget/" "$SERVER:$REMOTE/apps/voice-gateway/widget/"
   ssh "$SERVER" "docker cp $REMOTE/apps/voice-gateway/widget/. myorbisvoice-gateway:/app/apps/voice-gateway/widget/"
-  ssh "$SERVER" "docker commit myorbisvoice-gateway myorbisvoice-gateway:latest" >/dev/null && ok "Image updated"
+  commit_image myorbisvoice-gateway && ok "Image updated"
   ssh "$SERVER" "docker restart myorbisvoice-gateway"
   sleep 5
   RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-gateway --tail=5 2>&1")
@@ -287,8 +312,8 @@ step_web() {
   # Commit the cp'd state AND fix the image's CMD (the original myorbisvoice-web:latest had `tail -f /dev/null` baked in
   # as a placeholder — we override via compose's `command:` directive but if anyone removes that override,
   # web silently won't start. Bake the correct CMD into the image so it's self-sufficient).
-  ssh "$SERVER" "docker commit --change='CMD [\"pnpm\", \"--filter\", \"@voiceautomation/web\", \"start\"]' myorbisvoice-web myorbisvoice-web:latest" >/dev/null && ok "Image updated (incl. CMD fix)"
-  ssh "$SERVER" "docker restart myorbisvoice-web"
+  commit_image myorbisvoice-web "--change='CMD [\"pnpm\", \"--filter\", \"@voiceautomation/web\", \"start\"]'" && ok "Image updated (incl. CMD fix)"
+  ssh_t 90 "$SERVER" "docker restart myorbisvoice-web"
   sleep 5
   RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-web --tail=5 2>&1")
   if echo "$RESULT" | grep -q "Ready in"; then

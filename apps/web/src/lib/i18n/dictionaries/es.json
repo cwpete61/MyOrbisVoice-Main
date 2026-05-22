@@ -241,6 +241,7 @@
     "runButton": "Ejecutar evaluación",
     "running": "Evaluando…",
     "preparing": "Preparando…",
+    "viewReport": "Ver informe",
     "downloadReport": "Descargar informe",
     "errorGeneric": "No se pudo ejecutar la evaluación. Inténtalo de nuevo.",
     "notFound": "No encontramos este negocio en Google. Revisa el nombre y la ciudad, e inténtalo de nuevo.",
