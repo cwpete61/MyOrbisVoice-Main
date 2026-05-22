@@ -18,7 +18,9 @@ const VIDEOS: Record<TabKey, Video[]> = {
     { id: 'M2OOM_rexzM', title: 'Ninja Tactics For Getting Past The Gatekeeper Every Time', author: 'Sabri Suby' },
   ],
   coldEmail: [],
-  socialMedia: [],
+  socialMedia: [
+    { id: 'KKIf2NResX8', title: 'How To Do Social Media Management For Local Businesses', author: 'Lee Blue - DoubleStack' },
+  ],
   ads: [],
 }
 
