@@ -40,7 +40,7 @@ interface AuditResult {
 }
 interface EvalDetail {
   id: string; businessName: string; city: string; website: string | null
-  keywords: string[]; overallScore: number; createdAt: string; result: AuditResult
+  keywords: string[]; overallScore: number; createdAt: string; result: AuditResult; shareToken?: string | null
 }
 interface ListItem { id: string; businessName: string; city: string; overallScore: number; createdAt: string }
 
@@ -105,6 +105,7 @@ export default function GmbEvaluationPage() {
   const [history, setHistory] = useState<ListItem[]>([])
   const [downloading, setDownloading] = useState(false)
   const [viewing, setViewing] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const loadHistory = useCallback(async () => {
@@ -128,11 +129,11 @@ export default function GmbEvaluationPage() {
     setRunning(true); setError(null)
     try {
       const kw = keywords.split(',').map((k) => k.trim()).filter(Boolean).slice(0, 5)
-      const data = await apiFetch<{ id: string; createdAt: string; result: AuditResult }>(
+      const data = await apiFetch<{ id: string; createdAt: string; result: AuditResult; shareToken?: string | null }>(
         '/api/partner/gmb-evaluations',
         { method: 'POST', body: JSON.stringify({ businessName: businessName.trim(), city: city.trim(), website: website.trim() || undefined, keywords: kw.length ? kw : undefined }) },
       )
-      setCurrent({ id: data.id, businessName: businessName.trim(), city: city.trim(), website: website.trim() || null, keywords: kw, overallScore: data.result.overallScore, createdAt: data.createdAt, result: data.result })
+      setCurrent({ id: data.id, businessName: businessName.trim(), city: city.trim(), website: website.trim() || null, keywords: kw, overallScore: data.result.overallScore, createdAt: data.createdAt, result: data.result, shareToken: data.shareToken })
       setExpanded(new Set())
       await loadHistory()
     } catch (err) {
@@ -232,6 +233,22 @@ export default function GmbEvaluationPage() {
               <button onClick={() => exportPdf(false)} disabled={downloading} className="px-3 py-1.5 rounded-lg text-sm font-medium text-white disabled:opacity-40" style={{ background: TEAL }}>{downloading ? t('gmbEval.preparing') : t('gmbEval.downloadReport')}</button>
             </div>
           </div>
+
+          {/* Customer-facing shareable link */}
+          {current.shareToken && r.found && (() => {
+            const link = `${typeof window !== 'undefined' ? window.location.origin : ''}/report/${current.shareToken}`
+            return (
+              <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg" style={{ background: 'oklch(55% 0.11 193 / 0.07)', border: '1px solid var(--border-subtle)' }}>
+                <span className="text-xs shrink-0" style={{ color: 'var(--text-tertiary)' }}>{t('gmbEval.customerLink')}</span>
+                <code className="text-xs flex-1 truncate" style={{ color: 'var(--text-secondary)' }}>{link}</code>
+                <a href={link} target="_blank" rel="noopener" className="text-xs shrink-0 px-2 py-1 rounded" style={{ color: TEAL }}>{t('gmbEval.open')}</a>
+                <button onClick={() => { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1800) }}
+                  className="text-xs shrink-0 px-2.5 py-1 rounded font-medium text-white" style={{ background: TEAL }}>
+                  {copied ? t('gmbEval.copied') : t('gmbEval.copyLink')}
+                </button>
+              </div>
+            )
+          })()}
 
           {!r.found ? (
             <p className="text-sm py-4" style={{ color: SEV_COLOR.warn }}>{t('gmbEval.notFound')}</p>

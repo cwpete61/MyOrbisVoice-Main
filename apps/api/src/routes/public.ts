@@ -2,8 +2,23 @@ import { Router, type IRouter } from 'express'
 import { z } from 'zod'
 import * as systemConfig from '../services/system-config.service.js'
 import { prisma } from '../lib/prisma.js'
+import { getReportByToken } from '../services/gmb-evaluation.service.js'
+import { renderReportHtml } from '../services/gmb-report-html.service.js'
 
 const router: IRouter = Router()
+
+// GET /api/public/gmb-report/:token — the customer-facing shareable report.
+// No auth: the unguessable token IS the access key. Returns the full HTML
+// document (interactive 3D charts); also what the render service prints to PDF.
+router.get('/public/gmb-report/:token', async (req, res, next) => {
+  try {
+    const locale = (req.query['locale'] === 'es' ? 'es' : 'en') as 'en' | 'es'
+    const { evaluation, brand } = await getReportByToken(req.params.token!)
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow')
+    res.send(renderReportHtml({ evaluation, brand, locale }))
+  } catch (err) { next(err) }
+})
 
 // POST /api/public/sms-optin — captures a submission of the "Get text
 // updates" form on the marketing site. Public, no auth. Stores the A2P

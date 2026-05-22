@@ -1882,6 +1882,10 @@ model GmbEvaluation {
   /// is retained so it still counts toward the monthly cap (delete never frees
   /// a slot — bounds Serper spend).
   deletedAt    DateTime?
+  /// Unguessable token for the public, customer-facing shareable report link
+  /// (app.myorbisvoice.com/r/<token>). Generated on create; no auth needed to
+  /// view, so the token IS the access control.
+  shareToken   String?  @unique
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   partner      AffiliateAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)

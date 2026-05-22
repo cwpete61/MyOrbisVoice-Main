@@ -6,9 +6,36 @@
  * persisting results to the GmbEvaluation table.
  */
 import { prisma } from '../lib/prisma.js'
-import { AppError } from '@voiceautomation/shared'
+import { AppError, generateSecureToken } from '@voiceautomation/shared'
 import { evaluate, type AuditInput, type AuditResult } from './gmb-audit/index.js'
 import { getSerperApiKey, getConfigValue } from './system-config.service.js'
+
+/** Brand context for a partner's report (white-label ready). */
+export async function resolvePartnerBrand(partnerId: string) {
+  const p = await prisma.affiliateAccount.findUnique({
+    where: { id: partnerId },
+    select: { displayName: true, businessName: true, avatarUrl: true, partnerPhone: true },
+  })
+  return {
+    companyName: p?.businessName || p?.displayName || 'MyOrbisResults',
+    contactName: p?.displayName ?? null,
+    phone: p?.partnerPhone ?? null,
+    logoUrl: p?.avatarUrl ?? null,
+  }
+}
+
+/** Public report fetch by share token (no auth — the token is the access key). */
+export async function getReportByToken(token: string) {
+  const row = await prisma.gmbEvaluation.findFirst({ where: { shareToken: token, deletedAt: null } })
+  if (!row) throw new AppError('NOT_FOUND', 'Report not found', 404)
+  return {
+    evaluation: {
+      businessName: row.businessName, city: row.city, website: row.website,
+      overallScore: row.overallScore, createdAt: row.createdAt, result: row.result as unknown as AuditResult,
+    },
+    brand: await resolvePartnerBrand(row.partnerId),
+  }
+}
 
 const DEFAULT_MONTHLY_CAP = 30
 
@@ -117,6 +144,7 @@ export async function runEvaluation(partnerId: string, input: RunEvaluationInput
       city: auditInput.city,
       website: auditInput.website,
       keywords: auditInput.keywords ?? [],
+      shareToken: generateSecureToken(16),
       overallScore: result.overallScore,
       // result is self-contained (business + dimensions + competitors), so the
       // report re-renders from it alone — no rawPayload needed. Prisma Json
@@ -125,7 +153,7 @@ export async function runEvaluation(partnerId: string, input: RunEvaluationInput
     },
   })
 
-  return { id: row.id, createdAt: row.createdAt, result }
+  return { id: row.id, createdAt: row.createdAt, shareToken: row.shareToken, result }
 }
 
 export async function listEvaluations(partnerId: string) {
@@ -167,6 +195,7 @@ export async function getEvaluation(partnerId: string, id: string) {
     keywords: row.keywords,
     overallScore: row.overallScore,
     createdAt: row.createdAt,
+    shareToken: row.shareToken,
     result: row.result as unknown as AuditResult,
   }
 }

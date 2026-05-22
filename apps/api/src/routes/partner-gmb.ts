@@ -11,9 +11,10 @@ import { z } from 'zod'
 import { authenticate } from '../middleware/authenticate.js'
 import { requirePartnerContext } from '../middleware/rbac.js'
 import { AppError } from '@voiceautomation/shared'
-import { prisma } from '../lib/prisma.js'
 import * as gmbService from '../services/gmb-evaluation.service.js'
 import { streamGmbEvaluationPdf } from '../services/gmb-evaluation-pdf.service.js'
+import { renderReportHtml } from '../services/gmb-report-html.service.js'
+import { renderPdfFromHtml } from '../services/pdf-render.client.js'
 
 const router: IRouter = Router()
 router.use('/partner', authenticate, requirePartnerContext)
@@ -68,37 +69,17 @@ router.get('/partner/gmb-evaluations/:id/export.pdf', async (req, res, next) => 
   try {
     const partnerId = (req as any).partnerAccountId as string
     const evaluation = await gmbService.getEvaluation(partnerId, req.params.id!)
-
-    // Brand context resolves from the partner's profile (white-label ready).
-    const partner = await prisma.affiliateAccount.findUnique({
-      where: { id: partnerId },
-      select: {
-        displayName: true,
-        businessName: true,
-        avatarUrl: true,
-        partnerPhone: true,
-        slug: true,
-      },
-    })
-
+    const brand = await gmbService.resolvePartnerBrand(partnerId)
     const locale = (req.query['locale'] === 'es' ? 'es' : 'en') as 'en' | 'es'
     const safeName = evaluation.businessName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Disposition', `attachment; filename="gmb-evaluation-${safeName}.pdf"`)
 
-    await streamGmbEvaluationPdf(
-      {
-        evaluation,
-        brand: {
-          companyName: partner?.businessName || partner?.displayName || 'MyOrbisResults',
-          contactName: partner?.displayName || null,
-          phone: partner?.partnerPhone || null,
-          logoUrl: partner?.avatarUrl || null,
-        },
-        locale,
-      },
-      res,
-    )
+    // Prefer the designer-grade HTML→Chromium render; fall back to the pdfkit
+    // report if the render service isn't configured/reachable.
+    const pdf = await renderPdfFromHtml(renderReportHtml({ evaluation, brand, locale }))
+    if (pdf) { res.end(pdf); return }
+    await streamGmbEvaluationPdf({ evaluation, brand, locale }, res)
   } catch (err) { next(err) }
 })
 
