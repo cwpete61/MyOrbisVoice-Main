@@ -130,7 +130,7 @@ export async function runEvaluation(partnerId: string, input: RunEvaluationInput
 
 export async function listEvaluations(partnerId: string) {
   const rows = await prisma.gmbEvaluation.findMany({
-    where: { partnerId },
+    where: { partnerId, deletedAt: null },
     orderBy: { createdAt: 'desc' },
     take: 50,
     select: {
@@ -144,9 +144,19 @@ export async function listEvaluations(partnerId: string) {
   return rows
 }
 
+/** Soft-delete: hide from the partner's list but keep the row so it still
+ *  counts toward the monthly cap. */
+export async function deleteEvaluation(partnerId: string, id: string): Promise<void> {
+  const res = await prisma.gmbEvaluation.updateMany({
+    where: { id, partnerId, deletedAt: null },
+    data: { deletedAt: new Date() },
+  })
+  if (res.count === 0) throw new AppError('NOT_FOUND', 'Evaluation not found', 404)
+}
+
 export async function getEvaluation(partnerId: string, id: string) {
   const row = await prisma.gmbEvaluation.findFirst({
-    where: { id, partnerId },
+    where: { id, partnerId, deletedAt: null },
   })
   if (!row) throw new AppError('NOT_FOUND', 'Evaluation not found', 404)
   return {

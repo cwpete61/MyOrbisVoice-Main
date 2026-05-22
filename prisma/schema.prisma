@@ -1878,6 +1878,10 @@ model GmbEvaluation {
   /// Raw provider payload (Serper response) so the report re-renders without
   /// spending another Serper query.
   rawPayload   Json?
+  /// Soft delete. A partner can hide an evaluation from their list, but the row
+  /// is retained so it still counts toward the monthly cap (delete never frees
+  /// a slot — bounds Serper spend).
+  deletedAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   partner      AffiliateAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)

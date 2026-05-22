@@ -8,7 +8,7 @@ import PDFDocument from 'pdfkit'
 import {
   GMB_CATEGORY_LABELS, GMB_TIME_LABELS, GMB_STATUS_LABELS, GMB_UI,
   GMB_DATA_SOURCE_LABELS, GMB_REASON_LABELS, GMB_SCORECARD_LABELS,
-  gmbIssueText, gmbInterpolate, type GmbLocale,
+  gmbIssueText, gmbInterpolate, buildActionPlan, type GmbLocale,
 } from '@voiceautomation/types'
 import type { AuditResult, CategoryResult, Issue, Severity } from './gmb-audit/index.js'
 
@@ -149,6 +149,32 @@ export async function streamGmbEvaluationPdf(
 
   // ── Categories ────────────────────────────────────────────────────────────
   for (const c of categories) renderCategory(c)
+
+  // ── Recommended action plan ─────────────────────────────────────────────────
+  if (categories.length) {
+    const plan = buildActionPlan(categories.flatMap((c) => c.issues))
+    const buckets: Array<[string, typeof plan.p1, string]> = [
+      ['priority1', plan.p1, ui('thirtyDay')], ['priority2', plan.p2, ui('ninetyDay')],
+      ['priority3', plan.p3, ui('ninetyDay')], ['priority4', plan.p4, ui('ninetyDay')],
+    ]
+    if (buckets.some(([, list]) => list.length)) {
+      ensureSpace(90)
+      doc.moveDown(0.5)
+      doc.fontSize(12).fillColor(TEXT).font('Helvetica-Bold').text(ui('actionPlan'))
+      doc.fontSize(8.5).fillColor(MUTED).font('Helvetica').text(ui('actionPlanLead'), { width: contentWidth })
+      doc.moveDown(0.2)
+      for (const [key, list, tag] of buckets) {
+        if (!list.length) continue
+        ensureSpace(50)
+        const y = doc.y
+        doc.fontSize(10).fillColor(PRIMARY).font('Helvetica-Bold').text(ui(key), PAGE_MARGIN, y)
+        doc.fontSize(7.5).fillColor(MUTED).font('Helvetica').text(tag, PAGE_MARGIN, y, { width: contentWidth, align: 'right' })
+        doc.moveDown(0.1)
+        for (const it of list) renderIssue(it as unknown as Issue, false)
+        doc.moveDown(0.2)
+      }
+    }
+  }
 
   // ── Competitors ───────────────────────────────────────────────────────────
   if (competitors.length) {

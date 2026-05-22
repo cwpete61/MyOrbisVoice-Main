@@ -88,6 +88,14 @@ export const GMB_UI: Record<GmbLocale, Record<string, string>> = {
     summaryFastWins: 'The good news: {count} of your gaps are fast wins.',
     fastWinsNote: 'Yellow points are the fastest wins — you’re close to the top 3 there. Red points need more content, reviews, and authority.',
     categoryScores: 'Category scores',
+    actionPlan: 'Recommended action plan',
+    actionPlanLead: 'Start at Priority 1 — the fastest moves into the top 3. Priorities 2–4 build durable ranking over the next 90 days.',
+    priority1: 'Priority 1 — fastest path into the top 3',
+    priority2: 'Priority 2 — service & content gaps',
+    priority3: 'Priority 3 — citations & authority',
+    priority4: 'Priority 4 — long-term growth',
+    thirtyDay: '~30-day focus',
+    ninetyDay: '~90-day build',
   },
   es: {
     overallScore: 'Puntuación general',
@@ -125,6 +133,14 @@ export const GMB_UI: Record<GmbLocale, Record<string, string>> = {
     summaryFastWins: 'La buena noticia: {count} de tus brechas son victorias rápidas.',
     fastWinsNote: 'Los puntos amarillos son las victorias más rápidas — estás cerca del top 3. Los rojos necesitan más contenido, reseñas y autoridad.',
     categoryScores: 'Puntuaciones por categoría',
+    actionPlan: 'Plan de acción recomendado',
+    actionPlanLead: 'Empieza por la Prioridad 1 — los movimientos más rápidos hacia el top 3. Las Prioridades 2–4 construyen posicionamiento duradero en los próximos 90 días.',
+    priority1: 'Prioridad 1 — camino más rápido al top 3',
+    priority2: 'Prioridad 2 — brechas de servicios y contenido',
+    priority3: 'Prioridad 3 — citas y autoridad',
+    priority4: 'Prioridad 4 — crecimiento a largo plazo',
+    thirtyDay: 'Enfoque ~30 días',
+    ninetyDay: 'Construcción ~90 días',
   },
 }
 
@@ -243,6 +259,38 @@ const ES_ISSUES: Record<string, GmbIssueStrings> = {
 export const GMB_ISSUE_CATALOG: Record<GmbLocale, Record<string, GmbIssueStrings>> = {
   en: EN_ISSUES,
   es: ES_ISSUES,
+}
+
+/** Minimal issue shape the action-plan grouper needs (decoupled from the
+ *  engine's Issue type so this package stays dependency-free). */
+export interface GmbActionIssue {
+  key: string
+  category: string
+  severity: string
+  timeTier: string
+  params: Record<string, string | number>
+}
+
+/** Group the audit's issues into the prioritized action plan (Priority 1–4),
+ *  the spec's "what to do first" close. Deterministic, pure. Excludes
+ *  informational/deferred placeholders. Each issue lands in exactly one bucket:
+ *   P1 fastest path  — quick/medium impactful fixes (lift map-pack now)
+ *   P2 content gaps  — project-scale service/content/category builds
+ *   P3 authority     — citations & backlinks
+ *   P4 long-term     — ongoing effort + everything else
+ */
+export function buildActionPlan(issues: GmbActionIssue[]): {
+  p1: GmbActionIssue[]; p2: GmbActionIssue[]; p3: GmbActionIssue[]; p4: GmbActionIssue[]
+} {
+  const p1: GmbActionIssue[] = [], p2: GmbActionIssue[] = [], p3: GmbActionIssue[] = [], p4: GmbActionIssue[] = []
+  for (const it of issues) {
+    if (it.key.endsWith('Deferred') || it.key.startsWith('siteNeeded')) continue
+    if (it.category === 'citations' || it.category === 'links') p3.push(it)
+    else if ((it.timeTier === 'quick' || it.timeTier === 'medium') && it.severity !== 'minor') p1.push(it)
+    else if (it.timeTier === 'project') p2.push(it)
+    else p4.push(it)
+  }
+  return { p1, p2, p3, p4 }
 }
 
 /** Resolve an issue's localized title + fix with params applied. Falls back to

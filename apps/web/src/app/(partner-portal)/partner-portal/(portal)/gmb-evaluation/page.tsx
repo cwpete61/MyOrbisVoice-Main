@@ -7,7 +7,7 @@ import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import {
   GMB_CATEGORY_LABELS, GMB_TIME_LABELS, GMB_STATUS_LABELS, GMB_UI,
   GMB_DATA_SOURCE_LABELS, GMB_REASON_LABELS, GMB_SCORECARD_LABELS,
-  gmbIssueText, gmbInterpolate, type GmbLocale,
+  gmbIssueText, gmbInterpolate, buildActionPlan, type GmbLocale,
 } from '@voiceautomation/types'
 
 const TEAL = 'oklch(55% 0.11 193)'
@@ -145,6 +145,15 @@ export default function GmbEvaluationPage() {
     try {
       const data = await apiFetch<EvalDetail>(`/api/partner/gmb-evaluations/${id}`)
       setCurrent(data); setExpanded(new Set())
+    } catch { setError(t('gmbEval.errorGeneric')) }
+  }
+
+  async function removeEvaluation(id: string) {
+    if (!window.confirm(t('gmbEval.deleteConfirm'))) return
+    try {
+      await apiFetch<{ deleted: boolean }>(`/api/partner/gmb-evaluations/${id}`, { method: 'DELETE' })
+      if (current?.id === id) setCurrent(null)
+      await loadHistory()
     } catch { setError(t('gmbEval.errorGeneric')) }
   }
 
@@ -396,6 +405,31 @@ export default function GmbEvaluationPage() {
                     })}
                   </div>
 
+                  {/* Recommended action plan */}
+                  {(() => {
+                    const plan = buildActionPlan(r.categories!.flatMap((c) => c.issues))
+                    const buckets: Array<[string, typeof plan.p1]> = [['priority1', plan.p1], ['priority2', plan.p2], ['priority3', plan.p3], ['priority4', plan.p4]]
+                    const tag: Record<string, string> = { priority1: ui('thirtyDay'), priority2: ui('ninetyDay'), priority3: ui('ninetyDay'), priority4: ui('ninetyDay') }
+                    if (!buckets.some(([, list]) => list.length)) return null
+                    return (
+                      <div className="mt-6">
+                        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{ui('actionPlan')}</h3>
+                        <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>{ui('actionPlanLead')}</p>
+                        <div className="space-y-3">
+                          {buckets.filter(([, list]) => list.length).map(([key, list]) => (
+                            <div key={key} className="rounded-lg px-3 py-2" style={{ border: '1px solid var(--border-subtle)' }}>
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{ui(key)}</span>
+                                <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>{tag[key]}</span>
+                              </div>
+                              {list.map((it, i) => <IssueRow key={`${it.key}-${i}`} it={it as unknown as Issue} />)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
                   {/* Competitors */}
                   {r.competitors && r.competitors.length > 0 && (
                     <div className="mt-5">
@@ -431,13 +465,19 @@ export default function GmbEvaluationPage() {
           <h2 className="text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{t('gmbEval.recentTitle')}</h2>
           <div className="space-y-1">
             {history.map((h) => (
-              <button key={h.id} onClick={() => openEvaluation(h.id)} className="w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-left" style={{ border: '1px solid var(--border-subtle)' }}>
-                <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{h.businessName} <span style={{ color: 'var(--text-tertiary)' }}>· {h.city}</span></span>
-                <span className="flex items-center gap-3">
-                  <span className="text-sm font-semibold" style={{ color: scoreColor(h.overallScore) }}>{h.overallScore}</span>
-                  <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{new Date(h.createdAt).toLocaleDateString(dateLocale)}</span>
-                </span>
-              </button>
+              <div key={h.id} className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg" style={{ border: '1px solid var(--border-subtle)' }}>
+                <button onClick={() => openEvaluation(h.id)} className="flex-1 flex items-center justify-between gap-3 text-left">
+                  <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{h.businessName} <span style={{ color: 'var(--text-tertiary)' }}>· {h.city}</span></span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-sm font-semibold" style={{ color: scoreColor(h.overallScore) }}>{h.overallScore}</span>
+                    <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{new Date(h.createdAt).toLocaleDateString(dateLocale)}</span>
+                  </span>
+                </button>
+                <button onClick={() => removeEvaluation(h.id)} title={t('gmbEval.delete')} aria-label={t('gmbEval.delete')}
+                  className="shrink-0 p-1.5 rounded-md" style={{ color: 'var(--text-tertiary)' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" /></svg>
+                </button>
+              </div>
             ))}
           </div>
         </div>

@@ -246,6 +246,8 @@
     "errorGeneric": "Could not run the evaluation. Please try again.",
     "notFound": "We couldn't find this business on Google. Check the name and city, then try again.",
     "legacyRerun": "This is an earlier evaluation. Re-run it to get the full category audit.",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this evaluation? It stays counted toward your monthly limit.",
     "notRanking": "Not appearing in the Google Map Pack for the target search.",
     "overallScore": "Overall Score",
     "mapPackHeadline": "Ranks #{position} in the Google Map Pack",

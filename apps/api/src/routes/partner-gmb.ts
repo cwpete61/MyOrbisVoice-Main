@@ -54,6 +54,15 @@ router.get('/partner/gmb-evaluations/:id', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Soft-delete an evaluation (still counts toward the monthly cap).
+router.delete('/partner/gmb-evaluations/:id', async (req, res, next) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    await gmbService.deleteEvaluation(partnerId, req.params.id!)
+    res.json({ data: { deleted: true } })
+  } catch (err) { next(err) }
+})
+
 // Export the brand-parameterized PDF report.
 router.get('/partner/gmb-evaluations/:id/export.pdf', async (req, res, next) => {
   try {
