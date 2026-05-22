@@ -191,14 +191,24 @@ export async function streamGmbEvaluationPdf(
   }
 
   function renderCategory(c: CategoryResult) {
-    ensureSpace(70)
-    doc.moveDown(0.3)
+    ensureSpace(78)
+    doc.moveDown(0.45)
     const y = doc.y
-    const scoreText = c.score === null ? '—' : `${c.score}/100`
-    doc.fillColor(TEXT).fontSize(11).font('Helvetica-Bold').text(catLabel(c.key), PAGE_MARGIN, y, { continued: true })
-    doc.fillColor(c.score === null ? MUTED : scoreColor(c.score)).text(`   ${scoreText}`, { continued: true })
-    doc.fillColor(MUTED).font('Helvetica').fontSize(9).text(`   ${ui('target', { expected: c.expected })} · ${statusLabel(c.status)}`)
-    doc.moveDown(0.1)
+    const scoreText = c.score === null ? '—' : `${c.score}`
+    // Label (left) + score (right), then a thin score bar beneath.
+    doc.fillColor(TEXT).fontSize(10.5).font('Helvetica-Bold').text(catLabel(c.key), PAGE_MARGIN, y)
+    doc.fillColor(c.score === null ? MUTED : scoreColor(c.score)).fontSize(10.5).font('Helvetica-Bold')
+      .text(c.score === null ? '—' : `${scoreText}/100`, PAGE_MARGIN, y, { width: contentWidth, align: 'right' })
+    // bar track + fill
+    const barY = doc.y + 2, barW = contentWidth, barH = 4
+    doc.roundedRect(PAGE_MARGIN, barY, barW, barH, 2).fill('#eeeeee')
+    if (c.score !== null && c.score > 0) {
+      doc.roundedRect(PAGE_MARGIN, barY, Math.max(3, barW * (c.score / 100)), barH, 2).fill(scoreColor(c.score))
+    }
+    doc.y = barY + barH + 3
+    doc.x = PAGE_MARGIN
+    doc.fillColor(MUTED).font('Helvetica').fontSize(8).text(`${ui('target', { expected: c.expected })} · ${statusLabel(c.status)}`, PAGE_MARGIN, doc.y)
+    doc.moveDown(0.15)
     if (c.issues.length === 0) { doc.moveDown(0.1); return }
     for (const it of c.issues) renderIssue(it, false)
   }

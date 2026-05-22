@@ -87,6 +87,7 @@ export const GMB_UI: Record<GmbLocale, Record<string, string>> = {
     summaryTop3: 'You rank in the top 3 across only {pct}% of the area.',
     summaryFastWins: 'The good news: {count} of your gaps are fast wins.',
     fastWinsNote: 'Yellow points are the fastest wins — you’re close to the top 3 there. Red points need more content, reviews, and authority.',
+    categoryScores: 'Category scores',
   },
   es: {
     overallScore: 'Puntuación general',
@@ -123,6 +124,7 @@ export const GMB_UI: Record<GmbLocale, Record<string, string>> = {
     summaryTop3: 'Apareces en el top 3 solo en el {pct}% de la zona.',
     summaryFastWins: 'La buena noticia: {count} de tus brechas son victorias rápidas.',
     fastWinsNote: 'Los puntos amarillos son las victorias más rápidas — estás cerca del top 3. Los rojos necesitan más contenido, reseñas y autoridad.',
+    categoryScores: 'Puntuaciones por categoría',
   },
 }
 

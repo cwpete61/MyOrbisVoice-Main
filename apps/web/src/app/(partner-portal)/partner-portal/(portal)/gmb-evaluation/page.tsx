@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { BarChart, Bar, XAxis, YAxis, Cell, ReferenceLine, ResponsiveContainer, LabelList } from 'recharts'
 import { apiFetch, apiFetchRaw } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import {
@@ -196,6 +197,7 @@ export default function GmbEvaluationPage() {
               {t(`gmbEval.${field}`)}
               <input value={val} onChange={(e) => set(e.target.value)} required={req}
                 placeholder={t(`gmbEval.${field}Placeholder`)}
+                autoCapitalize="none" autoCorrect="off" spellCheck={false}
                 className="px-3 py-2 rounded-lg text-sm"
                 style={{ border: '1px solid var(--border-subtle)', background: 'var(--surface-1)' }} />
             </label>
@@ -335,6 +337,31 @@ export default function GmbEvaluationPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Category scores chart */}
+                  {(() => {
+                    const data = r.categories!.filter((c) => c.score !== null).map((c) => ({
+                      name: GMB_CATEGORY_LABELS[lc][c.key] ?? c.key, score: c.score as number, fill: scoreColor(c.score),
+                    }))
+                    if (!data.length) return null
+                    return (
+                      <div className="mb-5">
+                        <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>{ui('categoryScores')}</h3>
+                        <ResponsiveContainer width="100%" height={data.length * 30 + 16}>
+                          <BarChart layout="vertical" data={data} margin={{ top: 0, right: 36, bottom: 0, left: 8 }} barCategoryGap={6}>
+                            <XAxis type="number" domain={[0, 100]} hide />
+                            <YAxis type="category" dataKey="name" width={132} tickLine={false} axisLine={false}
+                              tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} />
+                            <ReferenceLine x={75} stroke="var(--border-subtle)" strokeDasharray="3 3" />
+                            <Bar dataKey="score" radius={[3, 3, 3, 3]} isAnimationActive={false}>
+                              {data.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                              <LabelList dataKey="score" position="right" style={{ fontSize: 11, fill: 'var(--text-tertiary)' }} />
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )
+                  })()}
 
                   {/* Category cards */}
                   <div className="space-y-2">
