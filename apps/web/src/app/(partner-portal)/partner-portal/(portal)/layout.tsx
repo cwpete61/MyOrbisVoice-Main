@@ -31,7 +31,7 @@ const NAV = [
   { href: '/partner-portal/payouts',     labelKey: 'partnerNav.payouts',     icon: 'M1 5h14v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5zm0-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2' },
   { href: '/partner-portal/marketing-kit', labelKey: 'partnerNav.marketingKit', icon: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z' },
   { href: '/partner-portal/landing-page',  labelKey: 'partnerNav.landingPage',  icon: 'M3 5h18v14H3zM3 9h18M7 5v14' },
-  { href: '/partner-portal/market-vault',  labelKey: 'partnerNav.marketVault',  icon: 'M5 7h14l-1 12H6L5 7zM9 7V5a3 3 0 0 1 6 0v2',                                                                                                                                                                                                                                                              comingSoon: true },
+  { href: '/partner-portal/market-vault',  labelKey: 'partnerNav.marketVault',  icon: 'M5 7h14l-1 12H6L5 7zM9 7V5a3 3 0 0 1 6 0v2' },
   { href: '/partner-portal/bulk-email',  labelKey: 'partnerNav.bulkEmail',   icon: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z', accent: 'red' },
   { href: '/partner-portal/help',          labelKey: 'partnerNav.help',         icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01' },
 ]
@@ -96,7 +96,7 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
               >
                 <span style={{ opacity: isRed || active ? 1 : 0.7 }}><Icon d={item.icon} /></span>
                 <span className="flex-1">{t(item.labelKey)}</span>
-                {('comingSoon' in item && item.comingSoon) && (
+                {(item as { comingSoon?: boolean }).comingSoon && (
                   <span
                     className="text-[9px] px-1 py-0.5 rounded font-semibold uppercase tracking-wider flex-shrink-0"
                     style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(45% 0.13 193)', letterSpacing: '0.08em' }}
