@@ -209,7 +209,7 @@ td.you{color:var(--teal2);font-weight:700}
   </ul></div></div>` : ''}
 
   ${radarData.length ? `<div class="section"><h2>${esc(ui('categoryScores'))}</h2><div class="rule"></div>
-    <div id="radar" class="chart"></div></div>` : ''}
+    <div id="radar" class="chart" style="height:${Math.max(280, radarData.length * 34 + 20)}px"></div></div>` : ''}
 
   ${heat ? `<div class="section"><h2>${esc(ui('heatMapTitle'))}</h2><div class="rule"></div>
     <div class="metrics">
@@ -236,19 +236,22 @@ td.you{color:var(--teal2);font-weight:700}
     ${esc(ui('dataSources'))}: ${esc(sources)}</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
 <script>
 const D=${JSON.stringify(data)};const SCORE=${evaluation.overallScore};const RC="${scoreColor(evaluation.overallScore)}";
 window.__charts=[];function mk(el){const c=echarts.init(el);window.__charts.push(c);return c}
 // overall score ring
 (function(){const c=mk(document.getElementById('ring'));c.setOption({series:[{type:'pie',radius:['72%','100%'],silent:true,label:{show:false},data:[{value:SCORE,itemStyle:{color:RC}},{value:100-SCORE,itemStyle:{color:'#eef2f5'}}]},{type:'pie',radius:[0,'70%'],silent:true,label:{position:'center',formatter:'{a|'+SCORE+'}\\n{b|/100}',rich:{a:{fontSize:30,fontWeight:800,fontFamily:'Sora',color:RC},b:{fontSize:12,color:'#94a3b8'}}},data:[{value:1,itemStyle:{color:'#fff'}}]}]})})();
-// 3D category bar (echarts-gl) — the wow chart
+// Category scores — clean flat horizontal bars (no 3D), colored by score,
+// dashed target line at 75. Matches the flat ring/bar template aesthetic.
 (function(){const el=document.getElementById('radar');if(!el||!D.radar.length)return;const c=mk(el);
 const names=D.radar.map(d=>d.name),vals=D.radar.map(d=>d.score);
-c.setOption({tooltip:{},visualMap:{show:false,min:0,max:100,inRange:{color:['#dc2626','#d97706','#16a34a']}},
-xAxis3D:{type:'category',data:names,axisLabel:{interval:0,rotate:35,fontSize:9}},yAxis3D:{type:'category',data:['']},zAxis3D:{type:'value',max:100},
-grid3D:{boxWidth:150,boxDepth:18,boxHeight:60,viewControl:{distance:200,alpha:18,beta:18,autoRotate:false},light:{main:{intensity:1.1,shadow:true},ambient:{intensity:.35}}},
-series:[{type:'bar3D',data:D.radar.map((d,i)=>[i,0,d.score]),shading:'realistic',bevelSize:.4,label:{show:false},itemStyle:{opacity:.95}}]})})();
+const col=v=>v>=75?'#16a34a':v>=45?'#d97706':'#dc2626';
+c.setOption({grid:{left:6,right:50,top:6,bottom:6,containLabel:true},tooltip:{trigger:'item'},
+xAxis:{type:'value',max:100,show:false},
+yAxis:{type:'category',data:names,inverse:true,axisLine:{show:false},axisTick:{show:false},axisLabel:{fontSize:12,color:'#475569'}},
+series:[{type:'bar',barWidth:'56%',data:vals.map(v=>({value:v,itemStyle:{borderRadius:[0,7,7,0],color:new echarts.graphic.LinearGradient(1,0,0,0,[{offset:0,color:col(v)},{offset:1,color:col(v)+'cc'}])}})),
+label:{show:true,position:'right',formatter:'{c}',color:'#475569',fontWeight:600,fontFamily:'Sora'},
+markLine:{silent:true,symbol:'none',lineStyle:{type:'dashed',color:'#cbd5e1'},label:{show:false},data:[{xAxis:75}]}}]})})();
 // competitor reviews comparison (gradient bars)
 (function(){const el=document.getElementById('compchart');if(!el)return;const c=mk(el);
 const cats=['${esc(ui('youLabel'))}',...D.comps.map(x=>x.name)],vals=[D.clientReviews,...D.comps.map(x=>x.reviews)];
