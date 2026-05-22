@@ -67,6 +67,13 @@ export async function streamGmbEvaluationPdf(
 ): Promise<void> {
   const { evaluation, brand, locale } = input
   const r = evaluation.result
+  // Older stored evals (V1, or early V2 before heat map/competitors) lack these
+  // arrays. Default them so the report renders for any historical result shape
+  // instead of throwing on `.length`.
+  const topGaps = r.topGaps ?? []
+  const categories = r.categories ?? []
+  const competitorDetails = r.competitorDetails ?? []
+  const competitors = r.competitors ?? []
   const ui = (k: string, p: Record<string, string | number> = {}) => gmbInterpolate(GMB_UI[locale][k] ?? k, p)
   const catLabel = (k: string) => GMB_CATEGORY_LABELS[locale][k] ?? k
   const timeLabel = (t: string) => GMB_TIME_LABELS[locale][t] ?? t
@@ -127,29 +134,29 @@ export async function streamGmbEvaluationPdf(
   }
 
   // ── Heat map ────────────────────────────────────────────────────────────────
-  if (r.heatMap && r.heatMap.points.length) renderHeatMap(r.heatMap)
+  if (r.heatMap && (r.heatMap.points?.length ?? 0) > 0) renderHeatMap(r.heatMap)
 
   // ── Who's beating you + scorecard ──────────────────────────────────────────
-  if (r.competitorDetails.length && cg) renderScorecard()
+  if (competitorDetails.length && cg) renderScorecard()
 
   // ── Top priorities ────────────────────────────────────────────────────────
-  if (r.topGaps.length) {
+  if (topGaps.length) {
     doc.fontSize(12).fillColor(TEXT).font('Helvetica-Bold').text(ui('topGaps'))
     doc.moveDown(0.3)
-    for (const g of r.topGaps) renderIssue(g, true)
+    for (const g of topGaps) renderIssue(g, true)
     doc.moveDown(0.4)
   }
 
   // ── Categories ────────────────────────────────────────────────────────────
-  for (const c of r.categories) renderCategory(c)
+  for (const c of categories) renderCategory(c)
 
   // ── Competitors ───────────────────────────────────────────────────────────
-  if (r.competitors.length) {
+  if (competitors.length) {
     ensureSpace(120)
     doc.moveDown(0.3)
     doc.fontSize(12).fillColor(TEXT).font('Helvetica-Bold').text(ui('competitors'))
     doc.moveDown(0.2)
-    for (const cmp of r.competitors) {
+    for (const cmp of competitors) {
       doc.fontSize(10).fillColor(TEXT).font('Helvetica').text(`#${cmp.position}  ${cmp.title}`, { continued: true })
       doc.fillColor(MUTED).text(cmp.ratingCount != null ? `   ${cmp.rating ?? ''}★ · ${ui('reviewsCount', { count: cmp.ratingCount })}` : '')
     }
@@ -235,7 +242,7 @@ export async function streamGmbEvaluationPdf(
         .text(ui('beatingWhy', { leader: cg.leaderName, why: cg.reasons.map((rk) => GMB_REASON_LABELS[locale][rk] ?? rk).join(', ') }), { width: contentWidth })
     }
     doc.moveDown(0.3)
-    const comps = r.competitorDetails
+    const comps = competitorDetails
     const cl = cg!.client
     // columns
     const cMetric = PAGE_MARGIN, cYou = PAGE_MARGIN + 200, colW = 90

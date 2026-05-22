@@ -259,9 +259,11 @@ step_api() {
   else
     fail "API did not become healthy after restart:\n$(ssh "$SERVER" "docker logs myorbisvoice-api --tail=30 2>&1")"
   fi
-  # Check for stale Prisma errors in the startup window.
+  # Check for stale-Prisma signatures only — NOT any "undefined" error, which
+  # also matches ordinary application bugs (a PDF render throwing on a missing
+  # field once tripped this and aborted the deploy though the API was healthy).
   RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-api --tail=40 2>&1")
-  if echo "$RESULT" | grep -q "Cannot read properties of undefined"; then
+  if echo "$RESULT" | grep -qE "PrismaClient|clientModules|Cannot read properties of undefined \(reading '(findMany|findUnique|findFirst|create|update|delete|upsert|count)'\)"; then
     fail "Prisma client stale in API container — re-run deploy or push Prisma client manually"
   fi
 }
