@@ -10,7 +10,7 @@ import { AppError } from '@voiceautomation/shared'
 import { evaluate, type AuditInput, type AuditResult } from './gmb-audit/index.js'
 import { getSerperApiKey, getConfigValue } from './system-config.service.js'
 
-const DEFAULT_MONTHLY_CAP = 100
+const DEFAULT_MONTHLY_CAP = 30
 
 async function monthlyCap(): Promise<number> {
   const raw = await getConfigValue('gmb_eval_monthly_cap')
@@ -18,12 +18,56 @@ async function monthlyCap(): Promise<number> {
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_MONTHLY_CAP
 }
 
-/** Evaluations this partner has run in the trailing 30 days. */
-export async function countRecentForPartner(partnerId: string): Promise<number> {
-  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-  return prisma.gmbEvaluation.count({
-    where: { partnerId, createdAt: { gte: since } },
+/** The renewal date for a given year/month, anchored to `anchorDay`. If that
+ *  day doesn't exist in the month (e.g. the 31st in February), the renewal
+ *  rolls to the next available day — the 1st of the following month. */
+function renewalOn(year: number, monthIdx: number, anchorDay: number): Date {
+  const daysInMonth = new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate()
+  if (anchorDay <= daysInMonth) return new Date(Date.UTC(year, monthIdx, anchorDay))
+  return new Date(Date.UTC(year, monthIdx + 1, 1)) // next available day
+}
+
+/** First renewal strictly after `d`. Renewals across months form a monotonic
+ *  sequence (overflow months roll to the 1st of the next), so scanning forward
+ *  a few months and taking the first one past `d` is correct — and avoids
+ *  skipping a real renewal that follows an overflow (e.g. Mar 1 → Mar 31). */
+function nextRenewalAfter(d: Date, anchorDay: number): Date {
+  const y = d.getUTCFullYear()
+  const m = d.getUTCMonth()
+  for (let i = 0; i < 4; i++) {
+    const r = renewalOn(y, m + i, anchorDay) // Date.UTC rolls month/year past 11
+    if (r.getTime() > d.getTime()) return r
+  }
+  return renewalOn(y, m + 4, anchorDay)
+}
+
+/** The current billing period [start, resetsAt) for a partner whose monthly
+ *  cap renews on the anniversary of their first evaluation. */
+export function currentPeriod(anchor: Date, now: Date): { start: Date; resetsAt: Date } {
+  const anchorDay = anchor.getUTCDate()
+  let y = now.getUTCFullYear()
+  let m = now.getUTCMonth()
+  let start = renewalOn(y, m, anchorDay)
+  if (start.getTime() > now.getTime()) {
+    // this month's renewal hasn't happened yet → the period began last month
+    m -= 1
+    if (m < 0) { m = 11; y -= 1 }
+    start = renewalOn(y, m, anchorDay)
+  }
+  return { start, resetsAt: nextRenewalAfter(start, anchorDay) }
+}
+
+/** Evaluations this partner has run in the current monthly billing period,
+ *  anchored to the anniversary of their first-ever evaluation. Counts every
+ *  row in the window (a future delete must not free a slot — bounds spend). */
+export async function countInCurrentPeriod(partnerId: string): Promise<{ used: number; resetsAt: Date | null }> {
+  const first = await prisma.gmbEvaluation.findFirst({
+    where: { partnerId }, orderBy: { createdAt: 'asc' }, select: { createdAt: true },
   })
+  if (!first) return { used: 0, resetsAt: null }
+  const { start, resetsAt } = currentPeriod(first.createdAt, new Date())
+  const used = await prisma.gmbEvaluation.count({ where: { partnerId, createdAt: { gte: start } } })
+  return { used, resetsAt }
 }
 
 export interface RunEvaluationInput {
@@ -44,11 +88,12 @@ export async function runEvaluation(partnerId: string, input: RunEvaluationInput
   }
 
   const cap = await monthlyCap()
-  const used = await countRecentForPartner(partnerId)
+  const { used, resetsAt } = await countInCurrentPeriod(partnerId)
   if (used >= cap) {
+    const when = resetsAt ? resetsAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'next month'
     throw new AppError(
       'QUOTA_EXCEEDED',
-      `Monthly GMB Evaluation limit reached (${cap}). It resets on a rolling 30-day window.`,
+      `Monthly GMB Evaluation limit reached (${cap}). Your limit resets on ${when}.`,
       429,
     )
   }
