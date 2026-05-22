@@ -5,10 +5,10 @@ import { useT } from '@/lib/i18n/I18nProvider'
 
 const TEAL = 'oklch(55% 0.11 193)'
 
-type TabKey = 'coldCalling' | 'coldEmail' | 'socialMedia' | 'ads'
+type TabKey = 'coldCalling' | 'coldEmail' | 'socialMedia' | 'ads' | 'closingDeal'
 interface Video { id: string; title: string; author: string; start?: number }
 
-const TABS: TabKey[] = ['coldCalling', 'coldEmail', 'socialMedia', 'ads']
+const TABS: TabKey[] = ['coldCalling', 'coldEmail', 'socialMedia', 'ads', 'closingDeal']
 
 // Curated playbook videos per tab. Thumbnails come from YouTube directly
 // (img.youtube.com) — no API key/cost.
@@ -23,6 +23,9 @@ const VIDEOS: Record<TabKey, Video[]> = {
     { id: 'JXGjeWzzfWI', title: 'Stop Posting on Social Media. Do This Instead!', author: 'Wes McDowell' },
   ],
   ads: [],
+  closingDeal: [
+    { id: 'KPM78PmkobM', title: 'How I Close EVERY Sale in ONE Call (High Ticket Sales Strategy)', author: 'Alex Beck' },
+  ],
 }
 
 export default function MarketVaultPage() {
