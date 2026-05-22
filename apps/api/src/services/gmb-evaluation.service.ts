@@ -135,7 +135,16 @@ export async function runEvaluation(partnerId: string, input: RunEvaluationInput
   // PageSpeed Insights is free; an optional key just lifts the rate limit.
   const pageSpeedApiKey =
     (await getConfigValue('pagespeed_api_key')) || process.env['PAGESPEED_API_KEY'] || undefined
-  const result: AuditResult = await evaluate(auditInput, { serperApiKey: apiKey, pageSpeedApiKey })
+  let result: AuditResult
+  try {
+    result = await evaluate(auditInput, { serperApiKey: apiKey, pageSpeedApiKey })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : ''
+    if (/credit|quota|429/i.test(msg)) {
+      throw new AppError('PROVIDER_QUOTA', 'The evaluation data service is out of credits. An administrator needs to top up the Serper.dev plan.', 503)
+    }
+    throw new AppError('PROVIDER_UNAVAILABLE', 'The evaluation data service is temporarily unavailable. Please try again shortly.', 503)
+  }
 
   const row = await prisma.gmbEvaluation.create({
     data: {

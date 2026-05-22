@@ -168,8 +168,21 @@ td.you{color:var(--teal2);font-weight:700}
 .comp-row{display:flex;gap:10px;align-items:center;font-size:14px}.comp-row .pos{font-weight:700;color:var(--teal);width:26px}
 .foot{padding:20px 48px 40px;color:var(--muted);font-size:12px;border-top:1px solid var(--hair)}
 .foot .by{font-size:13px;color:var(--ink);font-weight:600;margin-bottom:3px}
-@media(max-width:720px){.grid2{grid-template-columns:1fr}.section,.hero{padding-left:24px;padding-right:24px}.scorecard-hero{margin-left:20px;margin-right:20px}}
-@media print{.section{break-inside:avoid}}
+@media(max-width:720px){
+  .grid2{grid-template-columns:1fr}
+  .section,.foot{padding:24px 18px}
+  .hero{padding:28px 18px 92px}
+  .hero h1{font-size:23px}.hero .biz{font-size:17px}
+  .scorecard-hero{margin:-70px 14px 0;padding:18px 16px;gap:16px}
+  .section h2{font-size:18px}
+  .heatwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .section table{display:block;overflow-x:auto;white-space:nowrap;font-size:13px;-webkit-overflow-scrolling:touch}
+  .chart{height:260px!important}
+  .it-title{flex-direction:column;gap:2px}.it-title .chip{align-self:flex-start}
+  .metrics{gap:14px}.metric .n{font-size:19px}
+  .pri-h{flex-wrap:wrap;gap:4px}
+}
+@media print{.section{break-inside:avoid}.hero{padding-bottom:90px}}
 </style></head>
 <body><div class="wrap">
   <div class="hero">
