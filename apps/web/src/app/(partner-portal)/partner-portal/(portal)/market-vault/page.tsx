@@ -20,6 +20,7 @@ const VIDEOS: Record<TabKey, Video[]> = {
   coldEmail: [],
   socialMedia: [
     { id: 'KKIf2NResX8', title: 'How To Do Social Media Management For Local Businesses', author: 'Lee Blue - DoubleStack' },
+    { id: 'JXGjeWzzfWI', title: 'Stop Posting on Social Media. Do This Instead!', author: 'Wes McDowell' },
   ],
   ads: [],
 }
