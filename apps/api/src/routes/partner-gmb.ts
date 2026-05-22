@@ -37,6 +37,14 @@ router.post('/partner/gmb-evaluations', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Monthly cap usage (for the counter).
+router.get('/partner/gmb-evaluations/usage', async (req, res, next) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    res.json({ data: await gmbService.getUsage(partnerId) })
+  } catch (err) { next(err) }
+})
+
 // List this partner's recent evaluations.
 router.get('/partner/gmb-evaluations', async (req, res, next) => {
   try {

@@ -100,6 +100,15 @@ export interface AuditResult {
     criticalCount: number
     fastWinCount: number
   }
+  /** Estimated monthly revenue going to competitors because the business isn't
+   *  in the top-3 across the grid. Heuristic from real visibility loss + default
+   *  industry assumptions (transparent + labeled an estimate). Null w/o heat map. */
+  revenue: {
+    monthlyLost: number
+    visibilityGapPct: number
+    assumedSearches: number
+    avgTicket: number
+  } | null
   meta: {
     provider: string
     evaluatedAt: string

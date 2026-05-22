@@ -107,13 +107,17 @@ export default function GmbEvaluationPage() {
   const [viewing, setViewing] = useState(false)
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [usage, setUsage] = useState<{ used: number; cap: number; remaining: number; resetsAt: string | null } | null>(null)
 
   const loadHistory = useCallback(async () => {
     const resp = await apiFetch<{ items: ListItem[]; total: number }>('/api/partner/gmb-evaluations')
       .catch(() => ({ items: [], total: 0 }))
     setHistory(resp.items)
   }, [])
-  useEffect(() => { void loadHistory() }, [loadHistory])
+  const loadUsage = useCallback(async () => {
+    setUsage(await apiFetch<{ used: number; cap: number; remaining: number; resetsAt: string | null }>('/api/partner/gmb-evaluations/usage').catch(() => null))
+  }, [])
+  useEffect(() => { void loadHistory(); void loadUsage() }, [loadHistory, loadUsage])
 
   function toggle(key: string) {
     setExpanded((prev) => {
@@ -135,7 +139,7 @@ export default function GmbEvaluationPage() {
       )
       setCurrent({ id: data.id, businessName: businessName.trim(), city: city.trim(), website: website.trim() || null, keywords: kw, overallScore: data.result.overallScore, createdAt: data.createdAt, result: data.result, shareToken: data.shareToken })
       setExpanded(new Set())
-      await loadHistory()
+      await loadHistory(); await loadUsage()
     } catch (err) {
       setError(err instanceof Error ? err.message : t('gmbEval.errorGeneric'))
     } finally { setRunning(false) }
@@ -196,7 +200,21 @@ export default function GmbEvaluationPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{t('gmbEval.title')}</h1>
+      <div className="flex items-start justify-between gap-4 mb-1">
+        <h1 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{t('gmbEval.title')}</h1>
+        {usage && (
+          <div className="text-right shrink-0">
+            <div className="flex items-baseline gap-1 justify-end">
+              <span className="text-2xl font-bold" style={{ color: usage.remaining <= 3 ? SEV_COLOR.critical : TEAL }}>{usage.remaining}</span>
+              <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>/ {usage.cap}</span>
+            </div>
+            <div className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>{t('gmbEval.usageRemaining')}</div>
+            <div className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
+              {t('gmbEval.usageNote')}{usage.resetsAt ? ` · ${t('gmbEval.resetsOn', { date: new Date(usage.resetsAt).toLocaleDateString(dateLocale) })}` : ''}
+            </div>
+          </div>
+        )}
+      </div>
       <p className="text-sm mb-5" style={{ color: 'var(--text-tertiary)' }}>{t('gmbEval.subtitle')}</p>
 
       {/* Form */}

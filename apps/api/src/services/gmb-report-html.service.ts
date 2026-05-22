@@ -19,6 +19,7 @@ export interface GmbReportBrand {
   contactName: string | null
   phone: string | null
   logoUrl: string | null
+  bookingSlug?: string | null
 }
 export interface GmbReportHtmlInput {
   evaluation: { businessName: string; city: string; website: string | null; overallScore: number; createdAt: Date; result: AuditResult }
@@ -99,13 +100,18 @@ export function renderReportHtml(input: GmbReportHtmlInput): string {
   const sources = (r.meta?.dataSources ?? []).map((s) => GMB_DATA_SOURCE_LABELS[locale][s] ?? s).join(' · ')
   const dateStr = evaluation.createdAt.toLocaleDateString(locale === 'es' ? 'es-MX' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
-  const data = { radar: radarData, comps: comps.map((c) => ({ name: c.name, reviews: c.reviewCount ?? 0 })), clientReviews: cg?.client.reviews ?? 0 }
+  const HEATJS: Record<string, string> = { green: '#16a34a', yellow: '#eab308', orange: '#ea8a2f', red: '#dc2626', none: '#94a3b8' }
+  const heatPoints = (heat?.points ?? []).map((p) => ({ lat: p.lat, lng: p.lng, rank: p.rank, color: HEATJS[p.bucket] ?? '#94a3b8' }))
+  const bookingHref = brand.bookingSlug ? `/book/${encodeURIComponent(brand.bookingSlug)}` : null
+  const moneyFmt = (n: number) => '$' + Math.round(n).toLocaleString(locale === 'es' ? 'es-MX' : 'en-US')
+  const data = { radar: radarData, comps: comps.map((c) => ({ name: c.name, reviews: c.reviewCount ?? 0 })), clientReviews: cg?.client.reviews ?? 0, heatPoints }
 
   return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex,nofollow"/>
 <title>${esc(brand.companyName)} — ${esc(evaluation.businessName)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 :root{--teal:#127a7a;--teal2:#1aa3a3;--ink:#0f172a;--muted:#64748b;--hair:#e2e8f0;--accent:#e8804d;--bg:#f4f7f8}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -134,9 +140,26 @@ h1,h2,h3{font-family:Sora,sans-serif;letter-spacing:-.01em}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
 .card{background:#fff;border:1px solid var(--hair);border-radius:14px;padding:18px 20px}
 .chart{width:100%;height:300px}
-.heatwrap{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
-.heat{display:grid;gap:5px}
-.hc{width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.heatwrap{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;justify-content:center}
+.heat{display:grid;gap:7px;margin:0 auto}
+.hc{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;box-shadow:0 2px 5px rgba(15,23,42,.12)}
+.metrics{justify-content:center}
+.legend{justify-content:center}
+#geomap{height:320px;border-radius:14px;overflow:hidden;border:1px solid var(--hair);margin-top:16px}
+.leaflet-container{font-family:Inter,sans-serif}
+.lostrev{text-align:center;background:linear-gradient(180deg,#fff4ef,#fff);border:1px solid #ffd6c4;border-radius:18px;padding:28px 22px;margin-top:22px}
+.lostrev .amt{font-family:Sora;font-size:clamp(38px,9vw,52px);font-weight:800;color:#dc2626;line-height:1}
+.lostrev .lbl{color:var(--ink);font-weight:600;margin-top:10px;font-size:16px}
+.lostrev .yr{color:var(--muted);margin-top:4px;font-size:13px;font-weight:600}
+.lostrev .dis{color:var(--muted);font-size:11px;margin-top:12px;max-width:62ch;margin:12px auto 0}
+.cta{text-align:center;margin:18px 0}
+.cta h3{font-size:21px;font-weight:700;color:var(--ink);font-family:Sora}
+.cta p{color:var(--muted);max-width:54ch;margin:6px auto 16px}
+.cta a{display:inline-block;background:var(--accent);color:#fff;font-weight:700;font-family:Sora;padding:15px 34px;border-radius:32px;text-decoration:none;box-shadow:0 12px 26px rgba(232,128,77,.38)}
+.cta.bottom{padding:38px 24px;background:linear-gradient(135deg,#0e6b6b,#16a3a3);border-radius:0;margin:34px 0 0}
+.cta.bottom h3{color:#fff}.cta.bottom p{color:#fff;opacity:.92}
+.cta.bottom a{background:#fff;color:var(--teal);box-shadow:0 12px 26px rgba(0,0,0,.2)}
+.leaflet-tooltip.rk{background:transparent;border:none;box-shadow:none;color:#fff;font-weight:700;font-size:11px;text-shadow:0 1px 2px rgba(0,0,0,.5)}
 .metrics{display:flex;gap:22px;flex-wrap:wrap;margin:6px 0 14px}
 .metric .n{font-family:Sora;font-size:22px;font-weight:700}
 .metric .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
@@ -220,7 +243,16 @@ td.you{color:var(--teal2);font-weight:700}
     </div>
     <div class="heatwrap"><div class="heat" style="grid-template-columns:repeat(${heat.gridSize},30px)">${heatCells}</div></div>
     <div class="legend">${(['green', 'yellow', 'orange', 'red', 'none'] as const).map((b) => `<span><i style="background:${HEAT[b]}"></i>${esc(ui(b === 'green' ? 'heatGreen' : b === 'yellow' ? 'heatYellow' : b === 'orange' ? 'heatOrange' : b === 'red' ? 'heatRed' : 'heatGray'))}</span>`).join('')}</div>
-    <p class="lead" style="margin-top:10px">${esc(ui('fastWinsNote'))}</p></div>` : ''}
+    <p class="lead" style="margin-top:10px">${esc(ui('fastWinsNote'))}</p>
+    ${heatPoints.length ? `<div id="geomap"></div><p class="lead" style="margin-top:8px;text-align:center">${esc(ui('mapHint'))}</p>` : ''}
+    ${r.revenue && r.revenue.monthlyLost > 0 ? `<div class="lostrev">
+      <div class="amt">${esc(moneyFmt(r.revenue.monthlyLost))}</div>
+      <div class="lbl">${esc(ui('lostRevenueLabel'))}</div>
+      <div class="yr">${esc(ui('lostRevenuePerYear', { amount: moneyFmt(r.revenue.monthlyLost * 12) }))}</div>
+      <div class="dis">${esc(ui('lostRevenueDisclaimer'))}</div>
+    </div>` : ''}
+    ${bookingHref ? `<div class="cta"><h3>${esc(ui('bookCta'))}</h3><p>${esc(ui('bookCtaSub'))}</p><a href="${esc(bookingHref)}" target="_blank" rel="noopener">${esc(ui('bookCtaButton'))}</a></div>` : ''}
+    </div>` : ''}
 
   ${comps.length && cg ? `<div class="section"><h2>${esc(ui('whoBeating'))}</h2><div class="rule"></div>
     ${cg.leaderName && cg.reasons.length ? `<p class="lead">${esc(ui('beatingWhy', { leader: cg.leaderName, why: cg.reasons.map((rk) => GMB_REASON_LABELS[locale][rk] ?? rk).join(', ') }))}</p>` : ''}
@@ -232,12 +264,21 @@ td.you{color:var(--teal2);font-weight:700}
 
   ${(r.categories ?? []).length ? `<div class="section"><h2>${esc(ui('overallScore'))}</h2><div class="rule"></div>${catCards}</div>` : ''}
 
+  ${bookingHref ? `<div class="cta bottom"><h3>${esc(ui('bookCta'))}</h3><p>${esc(ui('bookCtaSub'))}</p><a href="${esc(bookingHref)}" target="_blank" rel="noopener">${esc(ui('bookCtaButton'))}</a></div>` : ''}
   <div class="foot"><div class="by">${esc([brand.contactName || brand.companyName, brand.phone].filter(Boolean).join(' · '))}</div>
     ${esc(ui('dataSources'))}: ${esc(sources)}</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const D=${JSON.stringify(data)};const SCORE=${evaluation.overallScore};const RC="${scoreColor(evaluation.overallScore)}";
+// Geographic rank map (free OpenStreetMap tiles via Leaflet) — plots each grid
+// point at its real coordinate, colored by rank bucket.
+(function(){const el=document.getElementById('geomap');if(!el||!D.heatPoints.length||typeof L==='undefined')return;
+try{const map=L.map(el,{zoomControl:true,scrollWheelZoom:false});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+const bounds=[];D.heatPoints.forEach(p=>{const m=L.circleMarker([p.lat,p.lng],{radius:10,fillColor:p.color,color:'#fff',weight:2,fillOpacity:.92});if(p.rank!=null)m.bindTooltip(String(p.rank),{permanent:true,direction:'center',className:'rk'});m.addTo(map);bounds.push([p.lat,p.lng])});
+map.fitBounds(bounds,{padding:[28,28]});setTimeout(()=>map.invalidateSize(),250);}catch(e){}})();
 window.__charts=[];function mk(el){const c=echarts.init(el);window.__charts.push(c);return c}
 // overall score ring
 (function(){const c=mk(document.getElementById('ring'));c.setOption({series:[{type:'pie',radius:['72%','100%'],silent:true,label:{show:false},data:[{value:SCORE,itemStyle:{color:RC}},{value:100-SCORE,itemStyle:{color:'#eef2f5'}}]},{type:'pie',radius:[0,'70%'],silent:true,label:{position:'center',formatter:'{a|'+SCORE+'}\\n{b|/100}',rich:{a:{fontSize:30,fontWeight:800,fontFamily:'Sora',color:RC},b:{fontSize:12,color:'#94a3b8'}}},data:[{value:1,itemStyle:{color:'#fff'}}]}]})})();

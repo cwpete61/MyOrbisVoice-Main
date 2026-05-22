@@ -212,7 +212,7 @@
     "crm": "CRM",
     "contacts": "Contacts",
     "leads": "Leads Search",
-    "gmbEval": "GMB Evaluation",
+    "gmbEval": "GBP Audit",
     "campaigns": "Campaigns",
     "brandSubtitle": "Partner Portal",
     "referrals": "Referral Links",
@@ -228,8 +228,11 @@
     "a2p": "SMS Compliance"
   },
   "gmbEval": {
-    "title": "GMB Evaluation",
+    "title": "GBP Audit",
     "subtitle": "Audit a prospect's Google Business Profile, score their local visibility, and export a branded report to open the conversation.",
+    "usageRemaining": "Audits left this month",
+    "usageNote": "30 audits / month",
+    "resetsOn": "Resets {date}",
     "businessName": "Business name",
     "businessNamePlaceholder": "e.g. Robinson Plumbing",
     "city": "City",

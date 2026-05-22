@@ -14,13 +14,14 @@ import { getSerperApiKey, getConfigValue } from './system-config.service.js'
 export async function resolvePartnerBrand(partnerId: string) {
   const p = await prisma.affiliateAccount.findUnique({
     where: { id: partnerId },
-    select: { displayName: true, businessName: true, avatarUrl: true, partnerPhone: true },
+    select: { displayName: true, businessName: true, avatarUrl: true, partnerPhone: true, slug: true, partnerPageActive: true },
   })
   return {
     companyName: p?.businessName || p?.displayName || 'MyOrbisResults',
     contactName: p?.displayName ?? null,
     phone: p?.partnerPhone ?? null,
     logoUrl: p?.avatarUrl ?? null,
+    bookingSlug: p?.partnerPageActive && p?.slug ? p.slug : null,
   }
 }
 
@@ -95,6 +96,13 @@ export async function countInCurrentPeriod(partnerId: string): Promise<{ used: n
   const { start, resetsAt } = currentPeriod(first.createdAt, new Date())
   const used = await prisma.gmbEvaluation.count({ where: { partnerId, createdAt: { gte: start } } })
   return { used, resetsAt }
+}
+
+/** Monthly cap usage for the partner: used / cap / remaining + reset date. */
+export async function getUsage(partnerId: string): Promise<{ used: number; cap: number; remaining: number; resetsAt: Date | null }> {
+  const cap = await monthlyCap()
+  const { used, resetsAt } = await countInCurrentPeriod(partnerId)
+  return { used, cap, remaining: Math.max(0, cap - used), resetsAt }
 }
 
 export interface RunEvaluationInput {

@@ -193,6 +193,7 @@ export function scoreAudit(d: AuditData, providerName: string): AuditResult {
       version: 2, found: false, overallScore: 0, business: null, mapPackPosition: null,
       categories: [], topGaps: [], competitors: [], heatMap: null, competitorDetails: [], competitorGap: null,
       summary: { overallScore: 0, top3Pct: null, invisiblePct: null, leaderName: null, criticalCount: 0, fastWinCount: 0 },
+      revenue: null,
       meta: { provider: providerName, evaluatedAt: new Date().toISOString(), primaryKeyword: d.primaryKeyword, dataSources: d.dataSources },
     }
   }
@@ -241,6 +242,19 @@ export function scoreAudit(d: AuditData, providerName: string): AuditResult {
     fastWinCount: allIssues.filter((i) => (i.timeTier === 'quick' || i.timeTier === 'medium') && i.severity !== 'minor').length,
   }
 
+  // Estimated revenue lost to competitors: real visibility gap from the heat
+  // map × conservative industry-default assumptions. Scales with their actual
+  // gap (a business already ranking top-3 everywhere shows ~$0 — honest).
+  let revenue: AuditResult['revenue'] = null
+  if (d.heatMap) {
+    const ASSUMED_SEARCHES = 750   // monthly local searches for the niche (default)
+    const PACK_CLICK_SHARE = 0.44  // local pack's share of clicks
+    const LEAD_RATE = 0.30, CLOSE_RATE = 0.30, AVG_TICKET = 350
+    const visibilityGap = Math.max(0, (100 - d.heatMap.top3Pct) / 100)
+    const monthlyLost = Math.round(ASSUMED_SEARCHES * PACK_CLICK_SHARE * visibilityGap * LEAD_RATE * CLOSE_RATE * AVG_TICKET)
+    revenue = { monthlyLost, visibilityGapPct: Math.round(visibilityGap * 100), assumedSearches: ASSUMED_SEARCHES, avgTicket: AVG_TICKET }
+  }
+
   return {
     version: 2,
     found: true,
@@ -254,6 +268,7 @@ export function scoreAudit(d: AuditData, providerName: string): AuditResult {
     competitorDetails: d.competitorDetails,
     competitorGap,
     summary,
+    revenue,
     meta: { provider: providerName, evaluatedAt: new Date().toISOString(), primaryKeyword: d.primaryKeyword, dataSources: d.dataSources },
   }
 }
