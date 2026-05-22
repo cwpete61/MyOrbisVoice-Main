@@ -16,6 +16,7 @@ import { useApi } from '@/hooks/useApi'
 const NAV = [
   { href: '/partner-portal/dashboard',   labelKey: 'partnerNav.dashboard',   icon: 'M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z' },
   { href: '/partner-portal/getting-started', labelKey: 'partnerNav.gettingStarted', icon: 'M9 11l3 3L20 5M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11' },
+  { href: '/partner-portal/contract',    labelKey: 'partnerNav.contract',    icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM14 2v6h6M9 14l2 2 4-4', pulseUntilSigned: true },
   { href: '/partner-portal/mailbox',     labelKey: 'partnerNav.mailbox',     icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM2 6l10 7l10-7' },
   { href: '/partner-portal/calendar',    labelKey: 'partnerNav.calendar',    icon: 'M3 9h18M3 5h18v14H3zM8 3v4M16 3v4' },
   { href: '/partner-portal/phone-numbers', labelKey: 'partnerNav.phoneNumbers', icon: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z' },
@@ -53,6 +54,9 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const { data: me } = useApi<{ user: { username: string; email: string; firstName: string | null; lastName: string | null } }>('/api/auth/me')
+  // Drives the Contract tab's pulse: flash until the partner has signed.
+  const { data: agreement } = useApi<{ accepted: boolean }>('/api/affiliate/agreement')
+  const contractSigned = agreement?.accepted ?? false
   const username = me?.user?.username
   const fullName = [me?.user?.firstName, me?.user?.lastName].filter(Boolean).join(' ').trim() || null
   const initials = (username ?? me?.user?.email ?? '??').slice(0, 2).toUpperCase()
@@ -82,6 +86,8 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
             // Red-accent items (Bulk Email) render solid red with white text +
             // icon at all times — a deliberate "this is a different system" cue.
             const isRed = 'accent' in item && item.accent === 'red'
+            // Contract tab pulses until the partner signs the agreement.
+            const needsSignature = (item as { pulseUntilSigned?: boolean }).pulseUntilSigned && !contractSigned
             const style = isRed
               ? { background: active ? 'oklch(48% 0.20 25)' : 'oklch(55% 0.21 25)', color: 'white', fontWeight: 600 }
               : active
@@ -91,11 +97,14 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors${needsSignature ? ' nav-pulse' : ''}`}
                 style={style}
               >
                 <span style={{ opacity: isRed || active ? 1 : 0.7 }}><Icon d={item.icon} /></span>
                 <span className="flex-1">{t(item.labelKey)}</span>
+                {needsSignature && (
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: 'oklch(60% 0.22 25)' }} aria-hidden />
+                )}
                 {(item as { comingSoon?: boolean }).comingSoon && (
                   <span
                     className="text-[9px] px-1 py-0.5 rounded font-semibold uppercase tracking-wider flex-shrink-0"

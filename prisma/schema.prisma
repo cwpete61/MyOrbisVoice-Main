@@ -1702,6 +1702,16 @@ model AffiliateAccount {
   // completion. Banner shows when wizard incomplete OR this is true.
   showOnboardingWizard   Boolean  @default(false)
 
+  // ── Affiliate Agreement e-signature (immutable once accepted) ────────────
+  // Set once when the partner checks the acknowledgement box, types their
+  // legal name, and submits the Contract tab. Never cleared or overwritten —
+  // the accept endpoint rejects a second submission. agreementVersion records
+  // which revision of the terms they bound themselves to (audit trail).
+  agreementAcceptedAt    DateTime?
+  agreementSignerName    String?
+  agreementVersion       String?
+  agreementIpHash        String?         // sha256(ip)[:16] — audit, not PII reveal
+
   // ── Marketing-page identity (Phase B Partner profile) ────────────────────
   // The slug is the partner's permanent public identifier. It drives both:
   //   1. URL routing — /p/<slug>/voice-1/  (their published partner pages)

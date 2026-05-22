@@ -377,3 +377,16 @@
     background: var(--text-tertiary);
   }
 }
+
+/* Contract tab attention pulse — flashes the nav item until the partner signs
+   the Affiliate Agreement. Background fades in/out behind the row. */
+@keyframes navPulse {
+  0%, 100% { background: transparent; }
+  50%      { background: oklch(60% 0.22 25 / 0.16); }
+}
+.nav-pulse {
+  animation: navPulse 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-pulse { animation: none; background: oklch(60% 0.22 25 / 0.12); }
+}

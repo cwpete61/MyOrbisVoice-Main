@@ -205,6 +205,7 @@
   "partnerNav": {
     "dashboard": "Dashboard",
     "gettingStarted": "Getting Started",
+    "contract": "Contract",
     "mailbox": "Mailbox",
     "bulkEmail": "Bulk Email",
     "calendar": "Calendar",
@@ -752,6 +753,23 @@
     "feature3": "Built-in waitlist email capture — leads pipe straight into your campaign engine",
     "feature4": "One-click publish — no DNS setup, no hosting fees",
     "notify": "We're building this for partners who want to start collecting leads before their full setup is complete. We'll let you know as soon as it's ready."
+  },
+  "partnerContract": {
+    "title": "Affiliate Agreement",
+    "subtitle": "Read the agreement, then acknowledge and sign it below. Your commission rate and payout terms are shown live from your dashboard settings.",
+    "esDisclaimer": "The English version is the official version and prevails in case of any conflict.",
+    "checkboxLabel": "By checking this box, you acknowledge and agree to the terms and conditions of this Agreement.",
+    "nameLabel": "Type your full legal name to sign",
+    "namePlaceholder": "Your full legal name",
+    "submitButton": "Acknowledge & Sign Agreement",
+    "submitting": "Submitting…",
+    "submitError": "Could not submit. Please try again.",
+    "finalNote": "Once submitted, your signature, name, and the date are recorded permanently and cannot be changed.",
+    "signedBadge": "Signed",
+    "signedTitle": "You have signed this Agreement.",
+    "signedByLabel": "Signed by",
+    "signedDateLabel": "Date acknowledged",
+    "immutableNote": "This agreement has been signed and can no longer be changed. Keep a copy for your records."
   },
   "partnerMarketVault": {
     "title": "Market Vault",

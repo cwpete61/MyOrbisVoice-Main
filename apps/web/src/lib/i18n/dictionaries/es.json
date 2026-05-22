@@ -205,6 +205,7 @@
   "partnerNav": {
     "dashboard": "Panel",
     "gettingStarted": "Primeros pasos",
+    "contract": "Contrato",
     "mailbox": "Buzón",
     "bulkEmail": "Bulk Email",
     "calendar": "Calendario",
@@ -752,6 +753,23 @@
     "feature3": "Captura de correos para lista de espera integrada — los prospectos van directo a tu motor de campañas",
     "feature4": "Publicación con un clic — sin configuración de DNS, sin tarifas de alojamiento",
     "notify": "Lo estamos construyendo para los partners que quieren empezar a captar prospectos antes de terminar toda la configuración. Te avisaremos en cuanto esté listo."
+  },
+  "partnerContract": {
+    "title": "Acuerdo de Afiliados",
+    "subtitle": "Lee el acuerdo y luego reconócelo y fírmalo abajo. Tu tasa de comisión y tus términos de pago se muestran en vivo según la configuración de tu panel.",
+    "esDisclaimer": "La versión en inglés es la versión oficial y prevalece en caso de conflicto.",
+    "checkboxLabel": "Al marcar esta casilla, reconoces y aceptas los términos y condiciones de este Acuerdo.",
+    "nameLabel": "Escribe tu nombre legal completo para firmar",
+    "namePlaceholder": "Tu nombre legal completo",
+    "submitButton": "Reconocer y firmar el Acuerdo",
+    "submitting": "Enviando…",
+    "submitError": "No se pudo enviar. Inténtalo de nuevo.",
+    "finalNote": "Una vez enviado, tu firma, tu nombre y la fecha se registran de forma permanente y no se pueden cambiar.",
+    "signedBadge": "Firmado",
+    "signedTitle": "Has firmado este Acuerdo.",
+    "signedByLabel": "Firmado por",
+    "signedDateLabel": "Fecha de reconocimiento",
+    "immutableNote": "Este acuerdo ha sido firmado y ya no se puede cambiar. Guarda una copia para tus registros."
   },
   "partnerMarketVault": {
     "title": "Bóveda de ventas",

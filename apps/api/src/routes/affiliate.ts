@@ -1,5 +1,6 @@
 import { Router, type IRouter } from 'express'
 import { z } from 'zod'
+import crypto from 'crypto'
 import { authenticate } from '../middleware/authenticate.js'
 import { requirePlatformAdmin } from '../middleware/rbac.js'
 import * as affiliateService from '../services/affiliate.service.js'
@@ -28,6 +29,21 @@ tenantRouter.get('/affiliate/account', async (req, res, next) => {
 
 tenantRouter.patch('/affiliate/payout-method', async (req, res, next) => {
   try { res.json({ data: await affiliateService.updatePayoutMethod(req.user!.id, req.body as Record<string, unknown>) }) } catch (err) { next(err) }
+})
+
+// ── Affiliate Agreement e-signature ─────────────────────────────────────────
+tenantRouter.get('/affiliate/agreement', async (req, res, next) => {
+  try { res.json({ data: await affiliateService.getAgreementStatus(req.user!.id) }) } catch (err) { next(err) }
+})
+
+tenantRouter.post('/affiliate/agreement/accept', async (req, res, next) => {
+  try {
+    const { signerName, agreed } = req.body as { signerName?: string; agreed?: boolean }
+    if (!agreed) { res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'You must check the acknowledgement box to accept' }] }); return }
+    const rawIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.ip ?? ''
+    const ipHash = rawIp ? crypto.createHash('sha256').update(rawIp).digest('hex').slice(0, 16) : undefined
+    res.json({ data: await affiliateService.acceptAgreement(req.user!.id, { signerName: signerName ?? '', ipHash }) })
+  } catch (err) { next(err) }
 })
 
 // Marketing voice intensity — see docs/marketing-style-guide.md
@@ -402,7 +418,7 @@ publicRouter.post('/track/click', async (req, res, next) => {
 publicRouter.get('/affiliate/settings', async (_req, res, next) => {
   try {
     const s = await affiliateService.getSettings()
-    res.json({ data: { cookieDurationDays: s.cookieDurationDays, programName: s.programName, programDescription: s.programDescription, commissionRatePct: s.commissionRatePct, termsUrl: s.termsUrl } })
+    res.json({ data: { cookieDurationDays: s.cookieDurationDays, programName: s.programName, programDescription: s.programDescription, commissionRatePct: s.commissionRatePct, minPayoutCents: s.minPayoutCents, termsUrl: s.termsUrl } })
   } catch (err) { next(err) }
 })
 

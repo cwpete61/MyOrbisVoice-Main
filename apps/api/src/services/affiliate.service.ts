@@ -94,6 +94,66 @@ export async function getAffiliateAccountById(id: string) {
   })
 }
 
+// ── Affiliate Agreement e-signature ─────────────────────────────────────────
+// Current revision of the agreement terms. Bump when the contract text
+// materially changes; partners who accepted an older version keep their
+// recorded version for the audit trail. The web Contract page renders the
+// text for whatever AGREEMENT_VERSION is current.
+export const AGREEMENT_VERSION = 'v1-2026-05'
+
+export async function getAgreementStatus(userId: string) {
+  const account = await prisma.affiliateAccount.findUnique({
+    where: { userId },
+    select: { agreementAcceptedAt: true, agreementSignerName: true, agreementVersion: true },
+  })
+  if (!account) throw new AppError('NOT_FOUND', 'No partner account found for this user', 404)
+  return {
+    accepted:       !!account.agreementAcceptedAt,
+    acceptedAt:     account.agreementAcceptedAt,
+    signerName:     account.agreementSignerName,
+    version:        account.agreementVersion,
+    currentVersion: AGREEMENT_VERSION,
+  }
+}
+
+// Records the e-signature. Immutable: once agreementAcceptedAt is set the
+// record can never be re-signed or changed (409). signerName is the partner's
+// typed legal name; ipHash is sha256(ip)[:16] for the audit trail.
+export async function acceptAgreement(
+  userId: string,
+  opts: { signerName: string; ipHash?: string },
+) {
+  const signerName = (opts.signerName ?? '').trim()
+  if (signerName.length < 2) {
+    throw new AppError('BAD_REQUEST', 'A legal name is required to sign the agreement', 400)
+  }
+  const account = await prisma.affiliateAccount.findUnique({
+    where: { userId },
+    select: { id: true, agreementAcceptedAt: true },
+  })
+  if (!account) throw new AppError('NOT_FOUND', 'No partner account found for this user', 404)
+  if (account.agreementAcceptedAt) {
+    throw new AppError('CONFLICT', 'This agreement has already been signed and cannot be changed', 409)
+  }
+  const updated = await prisma.affiliateAccount.update({
+    where: { id: account.id },
+    data: {
+      agreementAcceptedAt: new Date(),
+      agreementSignerName: signerName,
+      agreementVersion:    AGREEMENT_VERSION,
+      agreementIpHash:     opts.ipHash ?? null,
+    },
+    select: { agreementAcceptedAt: true, agreementSignerName: true, agreementVersion: true },
+  })
+  return {
+    accepted:       true,
+    acceptedAt:     updated.agreementAcceptedAt,
+    signerName:     updated.agreementSignerName,
+    version:        updated.agreementVersion,
+    currentVersion: AGREEMENT_VERSION,
+  }
+}
+
 export async function updatePayoutMethod(userId: string, data: Record<string, unknown>) {
   const account = await prisma.affiliateAccount.findUnique({ where: { userId } })
   if (!account) throw new AppError('NOT_FOUND', 'No partner account found for this user', 404)
