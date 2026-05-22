@@ -7,7 +7,8 @@
 import PDFDocument from 'pdfkit'
 import {
   GMB_CATEGORY_LABELS, GMB_TIME_LABELS, GMB_STATUS_LABELS, GMB_UI,
-  GMB_DATA_SOURCE_LABELS, gmbIssueText, gmbInterpolate, type GmbLocale,
+  GMB_DATA_SOURCE_LABELS, GMB_REASON_LABELS, GMB_SCORECARD_LABELS,
+  gmbIssueText, gmbInterpolate, type GmbLocale,
 } from '@voiceautomation/types'
 import type { AuditResult, CategoryResult, Issue, Severity } from './gmb-audit/index.js'
 
@@ -104,6 +105,33 @@ export async function streamGmbEvaluationPdf(
   doc.y = bandY + 70
   doc.x = PAGE_MARGIN
 
+  // ── Executive summary ──────────────────────────────────────────────────────
+  const sum = r.summary
+  const cg = r.competitorGap
+  if (sum) {
+    const lines: string[] = []
+    if (sum.invisiblePct !== null && sum.invisiblePct > 0) lines.push(ui('summaryInvisible', { pct: sum.invisiblePct }))
+    if (sum.top3Pct !== null) lines.push(ui('summaryTop3', { pct: sum.top3Pct }))
+    if (cg?.leaderName && cg.reasons.length) lines.push(ui('beatingWhy', { leader: cg.leaderName, why: cg.reasons.map((rk) => GMB_REASON_LABELS[locale][rk] ?? rk).join(', ') }))
+    if (sum.fastWinCount > 0) lines.push(ui('summaryFastWins', { count: sum.fastWinCount }))
+    if (lines.length) {
+      const boxY = doc.y
+      const boxH = 18 + lines.length * 13
+      doc.roundedRect(PAGE_MARGIN, boxY, contentWidth, boxH, 6).fillAndStroke('#fdf3f2', BORDER)
+      doc.fillColor(TEXT).fontSize(11).font('Helvetica-Bold').text(ui('execSummary'), PAGE_MARGIN + 12, boxY + 8)
+      doc.fontSize(9.5).font('Helvetica').fillColor('#444')
+      for (const l of lines) doc.text(`•  ${l}`, PAGE_MARGIN + 12, doc.y + 1, { width: contentWidth - 24 })
+      doc.y = boxY + boxH + 8
+      doc.x = PAGE_MARGIN
+    }
+  }
+
+  // ── Heat map ────────────────────────────────────────────────────────────────
+  if (r.heatMap && r.heatMap.points.length) renderHeatMap(r.heatMap)
+
+  // ── Who's beating you + scorecard ──────────────────────────────────────────
+  if (r.competitorDetails.length && cg) renderScorecard()
+
   // ── Top priorities ────────────────────────────────────────────────────────
   if (r.topGaps.length) {
     doc.fontSize(12).fillColor(TEXT).font('Helvetica-Bold').text(ui('topGaps'))
@@ -166,5 +194,85 @@ export async function streamGmbEvaluationPdf(
     doc.moveDown(0.1)
     if (c.issues.length === 0) { doc.moveDown(0.1); return }
     for (const it of c.issues) renderIssue(it, false)
+  }
+
+  function renderHeatMap(h: NonNullable<AuditResult['heatMap']>) {
+    const HEAT: Record<string, string> = { green: '#1a9d5a', yellow: '#e8c14a', orange: '#e08a3c', red: '#c0392b', none: '#e5e5e5' }
+    ensureSpace(60 + h.gridSize * 18)
+    doc.moveDown(0.2)
+    doc.fontSize(12).fillColor(TEXT).font('Helvetica-Bold').text(ui('heatMapTitle'))
+    doc.fontSize(8.5).fillColor(MUTED).font('Helvetica').text(ui('heatMapSub', { keyword: h.keyword }))
+    doc.fontSize(9).fillColor(TEXT).text(
+      `${ui('avgRank')}: ${h.avgRank ?? '—'}   ${ui('top3Coverage')}: ${h.top3Pct}%   ${ui('top10Coverage')}: ${h.top10Pct}%   ${ui('invisible')}: ${h.invisiblePct}%`,
+    )
+    doc.moveDown(0.3)
+    const cell = 16, gap = 2, gridY = doc.y, gridX = PAGE_MARGIN
+    const sorted = [...h.points].sort((a, b) => a.row - b.row || a.col - b.col)
+    for (const p of sorted) {
+      const x = gridX + p.col * (cell + gap)
+      const y = gridY + p.row * (cell + gap)
+      doc.roundedRect(x, y, cell, cell, 2).fill(HEAT[p.bucket] ?? '#e5e5e5')
+      if (p.rank !== null) {
+        doc.fillColor(p.bucket === 'yellow' ? '#333' : '#fff').fontSize(7).font('Helvetica-Bold')
+          .text(String(p.rank), x, y + 4.5, { width: cell, align: 'center' })
+      }
+    }
+    doc.y = gridY + h.gridSize * (cell + gap) + 4
+    doc.x = PAGE_MARGIN
+    doc.fontSize(7.5).fillColor(MUTED).font('Helvetica').text(
+      `■ ${ui('heatGreen')}   ■ ${ui('heatYellow')}   ■ ${ui('heatOrange')}   ■ ${ui('heatRed')}   □ ${ui('heatGray')}`,
+    )
+    doc.fontSize(8).fillColor(MUTED).text(ui('fastWinsNote'), { width: contentWidth })
+    doc.moveDown(0.4)
+  }
+
+  function renderScorecard() {
+    ensureSpace(140)
+    doc.moveDown(0.2)
+    doc.fontSize(12).fillColor(TEXT).font('Helvetica-Bold').text(ui('whoBeating'))
+    if (cg?.leaderName && cg.reasons.length) {
+      doc.fontSize(9.5).fillColor('#444').font('Helvetica')
+        .text(ui('beatingWhy', { leader: cg.leaderName, why: cg.reasons.map((rk) => GMB_REASON_LABELS[locale][rk] ?? rk).join(', ') }), { width: contentWidth })
+    }
+    doc.moveDown(0.3)
+    const comps = r.competitorDetails
+    const cl = cg!.client
+    // columns
+    const cMetric = PAGE_MARGIN, cYou = PAGE_MARGIN + 200, colW = 90
+    const colX = (i: number) => cYou + (i + 1) * colW
+    const gapX = colX(comps.length)
+    const headY = doc.y
+    doc.fontSize(8.5).font('Helvetica-Bold').fillColor(TEXT)
+    doc.text(ui('metric'), cMetric, headY)
+    doc.text(ui('youLabel'), cYou, headY, { width: colW - 6, align: 'right' })
+    comps.forEach((c, i) => doc.text(c.name.slice(0, 16), colX(i) - colW, headY, { width: colW - 6, align: 'right' }))
+    doc.text(ui('gap'), gapX - colW, headY, { width: colW - 6, align: 'right' })
+    doc.moveDown(0.2)
+    doc.strokeColor(BORDER).lineWidth(0.5).moveTo(PAGE_MARGIN, doc.y).lineTo(doc.page.width - PAGE_MARGIN, doc.y).stroke()
+    doc.moveDown(0.2)
+    const rows: Array<{ k: string; you: number | null; comps: (number | null)[]; higher: boolean; dec?: number }> = [
+      { k: 'reviews', you: cl.reviews, comps: comps.map((c) => c.reviewCount), higher: true },
+      { k: 'rating', you: cl.rating, comps: comps.map((c) => c.rating), higher: true, dec: 1 },
+      { k: 'categories', you: cl.categories, comps: comps.map((c) => c.categoryCount), higher: true },
+      { k: 'servicePages', you: cl.servicePages, comps: comps.map((c) => c.servicePageCount), higher: true },
+      { k: 'locationPages', you: cl.locationPages, comps: comps.map((c) => c.locationPageCount), higher: true },
+      { k: 'mapPack', you: r.mapPackPosition, comps: comps.map((c) => c.mapPackPosition), higher: false },
+    ]
+    const fmt = (v: number | null, dec?: number) => v == null ? '—' : dec ? v.toFixed(dec) : String(v)
+    for (const row of rows) {
+      const y = doc.y
+      const cs = row.comps.filter((x): x is number => x != null)
+      let gap: number | null = null, lose = false
+      if (row.you != null && cs.length) { const best = row.higher ? Math.max(...cs) : Math.min(...cs); gap = row.higher ? row.you - best : best - row.you; lose = gap < 0 }
+      doc.fontSize(8.5).font('Helvetica').fillColor(TEXT).text(GMB_SCORECARD_LABELS[locale][row.k] ?? row.k, cMetric, y)
+      doc.font('Helvetica-Bold').fillColor(PRIMARY).text(fmt(row.you, row.dec), cYou, y, { width: colW - 6, align: 'right' })
+      doc.font('Helvetica').fillColor(TEXT)
+      row.comps.forEach((c, i) => doc.text(fmt(c, row.dec), colX(i) - colW, y, { width: colW - 6, align: 'right' }))
+      doc.font('Helvetica-Bold').fillColor(gap == null ? MUTED : lose ? CRIT : GOOD)
+        .text(gap == null ? '—' : `${gap > 0 ? '+' : ''}${row.dec ? gap.toFixed(row.dec) : gap}`, gapX - colW, y, { width: colW - 6, align: 'right' })
+      doc.moveDown(0.3)
+    }
+    doc.x = PAGE_MARGIN
+    doc.moveDown(0.3)
   }
 }

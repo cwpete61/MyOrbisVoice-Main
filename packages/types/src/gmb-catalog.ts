@@ -63,6 +63,30 @@ export const GMB_UI: Record<GmbLocale, Record<string, string>> = {
     estTime: 'Est. time',
     dataSources: 'Data sources',
     reviewsCount: '{count} reviews',
+    execSummary: 'The bottom line',
+    heatMapTitle: 'Local rank heat map',
+    heatMapSub: 'Where you rank for “{keyword}” across the area',
+    avgRank: 'Avg rank',
+    bestRank: 'Best',
+    top3Coverage: 'Top-3 coverage',
+    top10Coverage: 'Top-10 coverage',
+    invisible: 'Invisible',
+    whoBeating: 'Who’s beating you',
+    beatingWhy: '{leader} is outranking you — they have {why}.',
+    scorecard: 'Competitor scorecard',
+    metric: 'Metric',
+    youLabel: 'You',
+    gap: 'Gap',
+    fastWins: '{count} fast wins',
+    heatGreen: 'Top 3 (1–3)',
+    heatYellow: 'Close (4–8)',
+    heatOrange: 'Weak (9–15)',
+    heatRed: 'Poor (16+)',
+    heatGray: 'Not found',
+    summaryInvisible: 'You’re invisible in {pct}% of your local market.',
+    summaryTop3: 'You rank in the top 3 across only {pct}% of the area.',
+    summaryFastWins: 'The good news: {count} of your gaps are fast wins.',
+    fastWinsNote: 'Yellow points are the fastest wins — you’re close to the top 3 there. Red points need more content, reviews, and authority.',
   },
   es: {
     overallScore: 'Puntuación general',
@@ -75,12 +99,48 @@ export const GMB_UI: Record<GmbLocale, Record<string, string>> = {
     estTime: 'Tiempo est.',
     dataSources: 'Fuentes de datos',
     reviewsCount: '{count} reseñas',
+    execSummary: 'En resumen',
+    heatMapTitle: 'Mapa de calor de posicionamiento local',
+    heatMapSub: 'Dónde apareces para “{keyword}” en la zona',
+    avgRank: 'Posición prom.',
+    bestRank: 'Mejor',
+    top3Coverage: 'Cobertura top 3',
+    top10Coverage: 'Cobertura top 10',
+    invisible: 'Invisible',
+    whoBeating: 'Quién te está superando',
+    beatingWhy: '{leader} te está superando — tienen {why}.',
+    scorecard: 'Comparativa de competidores',
+    metric: 'Métrica',
+    youLabel: 'Tú',
+    gap: 'Diferencia',
+    fastWins: '{count} victorias rápidas',
+    heatGreen: 'Top 3 (1–3)',
+    heatYellow: 'Cerca (4–8)',
+    heatOrange: 'Débil (9–15)',
+    heatRed: 'Pobre (16+)',
+    heatGray: 'No aparece',
+    summaryInvisible: 'Eres invisible en el {pct}% de tu mercado local.',
+    summaryTop3: 'Apareces en el top 3 solo en el {pct}% de la zona.',
+    summaryFastWins: 'La buena noticia: {count} de tus brechas son victorias rápidas.',
+    fastWinsNote: 'Los puntos amarillos son las victorias más rápidas — estás cerca del top 3. Los rojos necesitan más contenido, reseñas y autoridad.',
   },
 }
 
+/** "Why they're beating you" reason fragments (joined into the callout sentence). */
+export const GMB_REASON_LABELS: Record<GmbLocale, Record<string, string>> = {
+  en: { reviews: 'more reviews', categories: 'more categories', servicePages: 'more service pages', geoPages: 'better local page coverage', schema: 'structured data markup' },
+  es: { reviews: 'más reseñas', categories: 'más categorías', servicePages: 'más páginas de servicio', geoPages: 'mejor cobertura de páginas locales', schema: 'datos estructurados' },
+}
+
+/** Competitor-scorecard row labels. */
+export const GMB_SCORECARD_LABELS: Record<GmbLocale, Record<string, string>> = {
+  en: { reviews: 'Reviews', rating: 'Avg rating', categories: 'GBP categories', servicePages: 'Service pages', locationPages: 'Location pages', mapPack: 'Map Pack position' },
+  es: { reviews: 'Reseñas', rating: 'Calificación prom.', categories: 'Categorías GBP', servicePages: 'Páginas de servicio', locationPages: 'Páginas de ubicación', mapPack: 'Posición en el paquete' },
+}
+
 export const GMB_DATA_SOURCE_LABELS: Record<GmbLocale, Record<string, string>> = {
-  en: { serper: 'Google Maps data', 'serper-reviews': 'Reviews', website: 'Website scan', pagespeed: 'PageSpeed Insights' },
-  es: { serper: 'Datos de Google Maps', 'serper-reviews': 'Reseñas', website: 'Análisis del sitio', pagespeed: 'PageSpeed Insights' },
+  en: { serper: 'Google Maps data', 'serper-reviews': 'Reviews', website: 'Website scan', pagespeed: 'PageSpeed Insights', heatmap: 'Rank-grid heat map', competitors: 'Competitor analysis' },
+  es: { serper: 'Datos de Google Maps', 'serper-reviews': 'Reseñas', website: 'Análisis del sitio', pagespeed: 'PageSpeed Insights', heatmap: 'Mapa de calor', competitors: 'Análisis de competidores' },
 }
 
 const EN_ISSUES: Record<string, GmbIssueStrings> = {

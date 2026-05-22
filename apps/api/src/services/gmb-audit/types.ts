@@ -38,6 +38,7 @@ export interface MapPackEntry {
   rating?: number
   ratingCount?: number
   cid?: string
+  types?: string[]
 }
 
 /** Normalized output of the Serper places+maps lookup. */
@@ -127,6 +128,47 @@ export interface PageSpeedData {
   error?: string
 }
 
+// ── Heat map ─────────────────────────────────────────────────────────────────
+
+export interface HeatMapPoint {
+  row: number
+  col: number
+  lat: number
+  lng: number
+  /** 1..20, or null when the business isn't in the pack at that point. */
+  rank: number | null
+  bucket: 'green' | 'yellow' | 'orange' | 'red' | 'none'
+}
+
+export interface HeatMapData {
+  fetched: boolean
+  keyword: string
+  gridSize: number
+  spanMiles: number
+  points: HeatMapPoint[]
+  avgRank: number | null
+  bestRank: number | null
+  worstRank: number | null
+  top3Pct: number
+  top10Pct: number
+  invisiblePct: number
+}
+
+// ── Competitors ──────────────────────────────────────────────────────────────
+
+export interface CompetitorDetail {
+  name: string
+  mapPackPosition: number
+  rating: number | null
+  reviewCount: number | null
+  categoryCount: number
+  primaryCategory: string | null
+  website: string | null
+  servicePageCount: number | null
+  locationPageCount: number | null
+  hasSchema: boolean | null
+}
+
 /** Everything the collector gathers, pre-scoring. */
 export interface AuditData {
   input: AuditInput
@@ -138,6 +180,8 @@ export interface AuditData {
   reviews: ReviewsData
   website: WebsiteData
   pageSpeed: PageSpeedData
+  heatMap: HeatMapData | null
+  competitorDetails: CompetitorDetail[]
   /** Names of the data sources that actually contributed (for the report). */
   dataSources: string[]
 }

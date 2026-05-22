@@ -7,6 +7,7 @@
  * never a fabricated number.
  */
 import type { AuditData, MapPackEntry } from './types.js'
+import { competitorGaps } from './providers/competitor.js'
 import {
   CATEGORY_META, CATEGORY_ORDER, severityRank,
   type AuditResult, type CategoryKey, type CategoryResult, type Issue, type Severity,
@@ -190,7 +191,8 @@ export function scoreAudit(d: AuditData, providerName: string): AuditResult {
   if (!d.found || !d.business) {
     return {
       version: 2, found: false, overallScore: 0, business: null, mapPackPosition: null,
-      categories: [], topGaps: [], competitors: [],
+      categories: [], topGaps: [], competitors: [], heatMap: null, competitorDetails: [], competitorGap: null,
+      summary: { overallScore: 0, top3Pct: null, invisiblePct: null, leaderName: null, criticalCount: 0, fastWinCount: 0 },
       meta: { provider: providerName, evaluatedAt: new Date().toISOString(), primaryKeyword: d.primaryKeyword, dataSources: d.dataSources },
     }
   }
@@ -225,6 +227,20 @@ export function scoreAudit(d: AuditData, providerName: string): AuditResult {
 
   const competitors: MapPackEntry[] = d.mapPack.slice(0, 5)
 
+  const competitorGap = competitorGaps(
+    d.business, d.website.servicePageCount, d.website.locationPageCount, d.website.hasSchema, d.competitorDetails,
+  )
+
+  const allIssues = categories.flatMap((c) => c.issues)
+  const summary = {
+    overallScore,
+    top3Pct: d.heatMap?.top3Pct ?? null,
+    invisiblePct: d.heatMap?.invisiblePct ?? null,
+    leaderName: competitorGap.leaderName,
+    criticalCount: allIssues.filter((i) => i.severity === 'critical').length,
+    fastWinCount: allIssues.filter((i) => (i.timeTier === 'quick' || i.timeTier === 'medium') && i.severity !== 'minor').length,
+  }
+
   return {
     version: 2,
     found: true,
@@ -234,6 +250,10 @@ export function scoreAudit(d: AuditData, providerName: string): AuditResult {
     categories,
     topGaps,
     competitors,
+    heatMap: d.heatMap,
+    competitorDetails: d.competitorDetails,
+    competitorGap,
+    summary,
     meta: { provider: providerName, evaluatedAt: new Date().toISOString(), primaryKeyword: d.primaryKeyword, dataSources: d.dataSources },
   }
 }

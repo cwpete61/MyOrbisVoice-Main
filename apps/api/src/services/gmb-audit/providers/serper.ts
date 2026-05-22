@@ -58,6 +58,8 @@ function toBusiness(p: SerperPlace): GbpBusiness {
     openingHours: p.openingHours,
     thumbnailUrl: p.thumbnailUrl,
     cid: p.cid,
+    latitude: p.latitude,
+    longitude: p.longitude,
   }
 }
 
@@ -79,6 +81,8 @@ function mergeBusiness(base: GbpBusiness, extra: GbpBusiness): GbpBusiness {
         : extra.openingHours,
     thumbnailUrl: base.thumbnailUrl ?? extra.thumbnailUrl,
     cid: base.cid ?? extra.cid,
+    latitude: base.latitude ?? extra.latitude,
+    longitude: base.longitude ?? extra.longitude,
   }
 }
 
@@ -89,6 +93,7 @@ function toEntry(p: SerperPlace, fallbackPos: number): MapPackEntry {
     rating: p.rating,
     ratingCount: p.ratingCount,
     cid: p.cid,
+    types: p.types,
   }
 }
 

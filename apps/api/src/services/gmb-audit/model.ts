@@ -3,7 +3,7 @@
  * issues are KEYS + numeric PARAMS; the web screen and PDF render localized
  * titles, findings, and fix steps. Time estimates are tiers, not prose.
  */
-import type { GbpBusiness, MapPackEntry } from './types.js'
+import type { CompetitorDetail, GbpBusiness, HeatMapData, MapPackEntry } from './types.js'
 
 export type CategoryKey =
   | 'gbpFoundation'
@@ -81,6 +81,25 @@ export interface AuditResult {
   /** Cross-category issues, ranked worst-first — the partner's pitch hooks. */
   topGaps: Issue[]
   competitors: MapPackEntry[]
+  /** Rank-grid heat map for the primary keyword (null if no coords). */
+  heatMap: HeatMapData | null
+  /** Enriched 2-competitor analysis for the scorecard. */
+  competitorDetails: CompetitorDetail[]
+  /** "Who's beating you and why" — leader name + reason keys + client metrics. */
+  competitorGap: {
+    leaderName: string | null
+    reasons: string[]
+    client: { reviews: number; rating: number; categories: number; servicePages: number | null; locationPages: number | null; hasSchema: boolean }
+  } | null
+  /** Headline numbers for the executive summary block. */
+  summary: {
+    overallScore: number
+    top3Pct: number | null
+    invisiblePct: number | null
+    leaderName: string | null
+    criticalCount: number
+    fastWinCount: number
+  }
   meta: {
     provider: string
     evaluatedAt: string

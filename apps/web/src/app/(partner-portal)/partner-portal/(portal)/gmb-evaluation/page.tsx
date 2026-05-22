@@ -5,7 +5,8 @@ import { apiFetch, apiFetchRaw } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import {
   GMB_CATEGORY_LABELS, GMB_TIME_LABELS, GMB_STATUS_LABELS, GMB_UI,
-  GMB_DATA_SOURCE_LABELS, gmbIssueText, gmbInterpolate, type GmbLocale,
+  GMB_DATA_SOURCE_LABELS, GMB_REASON_LABELS, GMB_SCORECARD_LABELS,
+  gmbIssueText, gmbInterpolate, type GmbLocale,
 } from '@voiceautomation/types'
 
 const TEAL = 'oklch(55% 0.11 193)'
@@ -15,6 +16,12 @@ type CatStatus = 'measured' | 'partial' | 'deferred' | 'needsConnect'
 interface Issue { key: string; category: string; severity: Severity; timeTier: string; params: Record<string, string | number> }
 interface Category { key: string; score: number | null; expected: number; weight: number; status: CatStatus; issues: Issue[] }
 interface Competitor { position: number; title: string; rating?: number; ratingCount?: number }
+type HeatBucket = 'green' | 'yellow' | 'orange' | 'red' | 'none'
+interface HeatPoint { row: number; col: number; rank: number | null; bucket: HeatBucket }
+interface HeatMap { keyword: string; gridSize: number; points: HeatPoint[]; avgRank: number | null; bestRank: number | null; top3Pct: number; top10Pct: number; invisiblePct: number }
+interface CompetitorDetail { name: string; mapPackPosition: number; rating: number | null; reviewCount: number | null; categoryCount: number; servicePageCount: number | null; locationPageCount: number | null; hasSchema: boolean | null }
+interface CompetitorGap { leaderName: string | null; reasons: string[]; client: { reviews: number; rating: number; categories: number; servicePages: number | null; locationPages: number | null; hasSchema: boolean } }
+interface Summary { overallScore: number; top3Pct: number | null; invisiblePct: number | null; leaderName: string | null; criticalCount: number; fastWinCount: number }
 interface AuditResult {
   version?: number
   found: boolean
@@ -24,6 +31,10 @@ interface AuditResult {
   categories?: Category[]
   topGaps?: Issue[]
   competitors?: Competitor[]
+  heatMap?: HeatMap | null
+  competitorDetails?: CompetitorDetail[]
+  competitorGap?: CompetitorGap | null
+  summary?: Summary
   meta?: { dataSources?: string[] }
 }
 interface EvalDetail {
@@ -40,6 +51,40 @@ function scoreColor(s: number | null): string {
   if (s >= 75) return 'oklch(58% 0.14 152)'
   if (s >= 45) return 'oklch(72% 0.15 75)'
   return 'oklch(58% 0.18 25)'
+}
+const HEAT_COLOR: Record<HeatBucket, string> = {
+  green: 'oklch(60% 0.15 152)', yellow: 'oklch(82% 0.15 95)', orange: 'oklch(70% 0.16 55)',
+  red: 'oklch(58% 0.19 25)', none: 'var(--surface-overlay)',
+}
+function heatTextColor(b: HeatBucket): string {
+  return b === 'yellow' || b === 'none' ? 'var(--text-secondary)' : '#fff'
+}
+
+interface ScoreRow { k: string; you: number | null; comps: (number | null)[]; higher: boolean; dec?: number; gap: number | null; lose: boolean }
+function buildScorecard(r: AuditResult): ScoreRow[] {
+  const cg = r.competitorGap
+  const ds = r.competitorDetails ?? []
+  if (!cg || ds.length === 0) return []
+  const cl = cg.client
+  const base = [
+    { k: 'reviews', you: cl.reviews, comps: ds.map((d) => d.reviewCount), higher: true },
+    { k: 'rating', you: cl.rating, comps: ds.map((d) => d.rating), higher: true, dec: 1 },
+    { k: 'categories', you: cl.categories, comps: ds.map((d) => d.categoryCount), higher: true },
+    { k: 'servicePages', you: cl.servicePages, comps: ds.map((d) => d.servicePageCount), higher: true },
+    { k: 'locationPages', you: cl.locationPages, comps: ds.map((d) => d.locationPageCount), higher: true },
+    { k: 'mapPack', you: r.mapPackPosition, comps: ds.map((d) => d.mapPackPosition), higher: false },
+  ]
+  return base.map((row) => {
+    const cs = row.comps.filter((x): x is number => x != null)
+    let gap: number | null = null
+    let lose = false
+    if (row.you != null && cs.length) {
+      const best = row.higher ? Math.max(...cs) : Math.min(...cs)
+      gap = row.higher ? row.you - best : best - row.you
+      lose = gap < 0
+    }
+    return { ...row, gap, lose }
+  })
 }
 
 export default function GmbEvaluationPage() {
@@ -181,6 +226,21 @@ export default function GmbEvaluationPage() {
             <p className="text-sm py-4" style={{ color: SEV_COLOR.warn }}>{t('gmbEval.notFound')}</p>
           ) : (
             <>
+              {/* Executive summary — the hook */}
+              {isV2 && r.summary && (
+                <div className="mb-5 p-4 rounded-lg" style={{ border: '1px solid var(--border-subtle)', background: 'oklch(58% 0.18 25 / 0.05)' }}>
+                  <h3 className="text-sm font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>{ui('execSummary')}</h3>
+                  <ul className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
+                    {r.summary.invisiblePct !== null && r.summary.invisiblePct > 0 && <li>• {ui('summaryInvisible', { pct: r.summary.invisiblePct })}</li>}
+                    {r.summary.top3Pct !== null && <li>• {ui('summaryTop3', { pct: r.summary.top3Pct })}</li>}
+                    {r.competitorGap?.leaderName && r.competitorGap.reasons.length > 0 && (
+                      <li>• {ui('beatingWhy', { leader: r.competitorGap.leaderName, why: r.competitorGap.reasons.map((rk) => GMB_REASON_LABELS[lc][rk] ?? rk).join(', ') })}</li>
+                    )}
+                    {r.summary.fastWinCount > 0 && <li style={{ color: 'oklch(55% 0.14 152)' }}>• {ui('summaryFastWins', { count: r.summary.fastWinCount })}</li>}
+                  </ul>
+                </div>
+              )}
+
               {/* Score band */}
               <div className="flex items-center gap-4 mb-5 p-4 rounded-lg" style={{ background: 'oklch(55% 0.11 193 / 0.08)' }}>
                 <div className="text-4xl font-bold" style={{ color: scoreColor(r.overallScore) }}>
@@ -196,6 +256,76 @@ export default function GmbEvaluationPage() {
                 <p className="text-sm py-2" style={{ color: 'var(--text-tertiary)' }}>{t('gmbEval.legacyRerun')}</p>
               ) : (
                 <>
+                  {/* Heat map */}
+                  {r.heatMap && r.heatMap.points.length > 0 && (
+                    <div className="mb-5">
+                      <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{ui('heatMapTitle')}</h3>
+                      <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>{ui('heatMapSub', { keyword: r.heatMap.keyword })}</p>
+                      <div className="flex flex-wrap gap-4 mb-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        <span><span style={{ color: 'var(--text-tertiary)' }}>{ui('avgRank')}:</span> <b>{r.heatMap.avgRank ?? '—'}</b></span>
+                        <span><span style={{ color: 'var(--text-tertiary)' }}>{ui('top3Coverage')}:</span> <b style={{ color: scoreColor(r.heatMap.top3Pct) }}>{r.heatMap.top3Pct}%</b></span>
+                        <span><span style={{ color: 'var(--text-tertiary)' }}>{ui('top10Coverage')}:</span> <b>{r.heatMap.top10Pct}%</b></span>
+                        <span><span style={{ color: 'var(--text-tertiary)' }}>{ui('invisible')}:</span> <b style={{ color: r.heatMap.invisiblePct > 0 ? SEV_COLOR.critical : 'var(--text-secondary)' }}>{r.heatMap.invisiblePct}%</b></span>
+                      </div>
+                      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${r.heatMap.gridSize}, 1fr)`, maxWidth: 308 }}>
+                        {[...r.heatMap.points].sort((a, b) => a.row - b.row || a.col - b.col).map((p, i) => (
+                          <div key={i} className="aspect-square rounded flex items-center justify-center text-[11px] font-semibold"
+                            style={{ background: HEAT_COLOR[p.bucket], color: heatTextColor(p.bucket) }}>
+                            {p.rank ?? ''}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+                        {(['green', 'yellow', 'orange', 'red', 'none'] as const).map((b) => (
+                          <span key={b} className="flex items-center gap-1">
+                            <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: HEAT_COLOR[b] }} />
+                            {ui(b === 'green' ? 'heatGreen' : b === 'yellow' ? 'heatYellow' : b === 'orange' ? 'heatOrange' : b === 'red' ? 'heatRed' : 'heatGray')}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>{ui('fastWinsNote')}</p>
+                    </div>
+                  )}
+
+                  {/* Who's beating you + scorecard */}
+                  {r.competitorDetails && r.competitorDetails.length > 0 && r.competitorGap && (
+                    <div className="mb-5">
+                      <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{ui('whoBeating')}</h3>
+                      {r.competitorGap.leaderName && r.competitorGap.reasons.length > 0 && (
+                        <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
+                          {ui('beatingWhy', { leader: r.competitorGap.leaderName, why: r.competitorGap.reasons.map((rk) => GMB_REASON_LABELS[lc][rk] ?? rk).join(', ') })}
+                        </p>
+                      )}
+                      <div className="overflow-x-auto rounded-lg" style={{ border: '1px solid var(--border-subtle)' }}>
+                        <table className="w-full text-xs" style={{ color: 'var(--text-secondary)' }}>
+                          <thead>
+                            <tr style={{ background: 'var(--surface-overlay)' }}>
+                              <th className="text-left px-3 py-1.5 font-medium">{ui('metric')}</th>
+                              <th className="text-right px-3 py-1.5 font-medium" style={{ color: 'oklch(55% 0.11 193)' }}>{ui('youLabel')}</th>
+                              {r.competitorDetails.map((c, i) => <th key={i} className="text-right px-3 py-1.5 font-medium truncate" style={{ maxWidth: 120 }}>{c.name}</th>)}
+                              <th className="text-right px-3 py-1.5 font-medium">{ui('gap')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {buildScorecard(r).map((row) => {
+                              const fmt = (v: number | null) => v == null ? '—' : (row.dec ? v.toFixed(row.dec) : v)
+                              return (
+                                <tr key={row.k} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                                  <td className="px-3 py-1.5">{GMB_SCORECARD_LABELS[lc][row.k] ?? row.k}</td>
+                                  <td className="text-right px-3 py-1.5 font-semibold" style={{ color: 'var(--text-primary)' }}>{fmt(row.you)}</td>
+                                  {row.comps.map((c, i) => <td key={i} className="text-right px-3 py-1.5">{fmt(c)}</td>)}
+                                  <td className="text-right px-3 py-1.5 font-semibold" style={{ color: row.lose ? SEV_COLOR.critical : 'oklch(55% 0.14 152)' }}>
+                                    {row.gap == null ? '—' : `${row.gap > 0 ? '+' : ''}${row.dec ? row.gap.toFixed(row.dec) : row.gap}`}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Top priorities */}
                   {r.topGaps && r.topGaps.length > 0 && (
                     <div className="mb-5">
