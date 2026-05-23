@@ -33,12 +33,6 @@ interface VideoAsset {
 // Single source of truth for the video library. Order here = order shown in
 // the "All" tab. Filter by intent for the other tabs.
 const VIDEOS: VideoAsset[] = [
-  // ── Pitch Product — Orby power-statement (Aoede voice), 4 cuts ────────────
-  { id: 'orby-pitch-horizontal-en', intent: 'pitch-product', durationSec: 44, aspectRatio: 'horizontal', filename: 'orby-pitch-horizontal-en.mp4' },
-  { id: 'orby-pitch-vertical-en',   intent: 'pitch-product', durationSec: 44, aspectRatio: 'vertical',   filename: 'orby-pitch-vertical-en.mp4'   },
-  { id: 'orby-pitch-horizontal-es', intent: 'pitch-product', durationSec: 53, aspectRatio: 'horizontal', filename: 'orby-pitch-horizontal-es.mp4' },
-  { id: 'orby-pitch-vertical-es',   intent: 'pitch-product', durationSec: 53, aspectRatio: 'vertical',   filename: 'orby-pitch-vertical-es.mp4'   },
-
   // ── Recruit Partners (Phase 1: new) ────────────────────────────────────────
   { id: 'partner-recruiting-en',        intent: 'recruit-partners', durationSec: 65,  aspectRatio: 'horizontal', filename: 'partner-recruiting-en.mp4' },
 

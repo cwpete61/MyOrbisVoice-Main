@@ -10,11 +10,6 @@ const ASSETS: Record<string, { path: string; contentType: string }> = {
   'promo-horizontal.mp4':            { path: 'marketing-kit/promo-horizontal.mp4',            contentType: 'video/mp4' },
   'promo-vertical.mp4':              { path: 'marketing-kit/promo-vertical.mp4',              contentType: 'video/mp4' },
   'partner-recruiting-en.mp4':       { path: 'marketing-kit/partner-recruiting-en.mp4',       contentType: 'video/mp4' },
-  // Orby Pitch (power-statement, Aoede voice) — landscape + vertical, EN + ES.
-  'orby-pitch-horizontal-en.mp4':    { path: 'marketing-kit/orby-pitch-horizontal-en.mp4',    contentType: 'video/mp4' },
-  'orby-pitch-horizontal-es.mp4':    { path: 'marketing-kit/orby-pitch-horizontal-es.mp4',    contentType: 'video/mp4' },
-  'orby-pitch-vertical-en.mp4':      { path: 'marketing-kit/orby-pitch-vertical-en.mp4',      contentType: 'video/mp4' },
-  'orby-pitch-vertical-es.mp4':      { path: 'marketing-kit/orby-pitch-vertical-es.mp4',      contentType: 'video/mp4' },
   'social-cut-01-85-percent.mp4':    { path: 'marketing-kit/social-cut-01-85-percent.mp4',    contentType: 'video/mp4' },
   'social-cut-02-five-minute.mp4':   { path: 'marketing-kit/social-cut-02-five-minute.mp4',   contentType: 'video/mp4' },
   'social-cut-03-daily-math.mp4':    { path: 'marketing-kit/social-cut-03-daily-math.mp4',    contentType: 'video/mp4' },
