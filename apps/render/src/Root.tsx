@@ -5,9 +5,9 @@
 import './index.css'
 import React from 'react'
 import { Composition } from 'remotion'
-import { SocialStatic } from './compositions/SocialStatic.js'
-import { SocialImagery } from './compositions/SocialImagery.js'
-import { SocialReel } from './compositions/SocialReel.js'
+import { SocialStatic } from './compositions/SocialStatic'
+import { SocialImagery } from './compositions/SocialImagery'
+import { SocialReel } from './compositions/SocialReel'
 
 export const RemotionRoot: React.FC = () => {
   return (
