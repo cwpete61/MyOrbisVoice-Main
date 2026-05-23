@@ -49,3 +49,6 @@ snapshots/
 # /graphify analysis output (graph.html / graph.json / GRAPH_REPORT.md / cache).
 # Regenerable from source any time via /graphify — never commit the artifacts.
 graphify-out/
+
+# Local source-media folder (uploaded to Bunny, not tracked)
+Videos/

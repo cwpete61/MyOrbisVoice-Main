@@ -1124,13 +1124,21 @@
         "socialCuts": "Social Cuts"
       },
       "videos": {
-        "product-explainer-horizontal": {
-          "title": "Product Explainer — 16:9",
-          "description": "The full 3-minute walkthrough of MyOrbisVoice. Use on websites, in email, or as the YouTube embed."
+        "orby-pitch-horizontal-en": {
+          "title": "Orby Pitch — 16:9 (EN)",
+          "description": "Orby's 30-second power statement: Map Pack losses, weak websites, missed calls — and a free audit + plan to fix it. Use on websites, YouTube, and email."
         },
-        "product-explainer-vertical": {
-          "title": "Product Explainer — 9:16",
-          "description": "Same content, vertical format. For TikTok, Reels, and YouTube Shorts."
+        "orby-pitch-vertical-en": {
+          "title": "Orby Pitch — 9:16 (EN)",
+          "description": "Same hook, vertical format. For TikTok, Reels, and YouTube Shorts."
+        },
+        "orby-pitch-horizontal-es": {
+          "title": "Orby Pitch — 16:9 (ES)",
+          "description": "El power statement de Orby en español: pérdidas fuera del Map Pack, sitios débiles, llamadas perdidas — y auditoría gratis + plan."
+        },
+        "orby-pitch-vertical-es": {
+          "title": "Orby Pitch — 9:16 (ES)",
+          "description": "Mismo gancho en formato vertical. Para TikTok, Reels y YouTube Shorts."
         },
         "partner-recruiting-en": {
           "title": "Become a Partner",

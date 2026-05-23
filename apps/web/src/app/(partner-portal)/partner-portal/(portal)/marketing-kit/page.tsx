@@ -33,9 +33,11 @@ interface VideoAsset {
 // Single source of truth for the video library. Order here = order shown in
 // the "All" tab. Filter by intent for the other tabs.
 const VIDEOS: VideoAsset[] = [
-  // ── Pitch Product (Phase 1: existing 3-min explainer in both formats) ─────
-  { id: 'product-explainer-horizontal', intent: 'pitch-product',    durationSec: 200, aspectRatio: 'horizontal', filename: 'promo-horizontal.mp4' },
-  { id: 'product-explainer-vertical',   intent: 'pitch-product',    durationSec: 200, aspectRatio: 'vertical',   filename: 'promo-vertical.mp4'   },
+  // ── Pitch Product — Orby power-statement (Aoede voice), 4 cuts ────────────
+  { id: 'orby-pitch-horizontal-en', intent: 'pitch-product', durationSec: 37, aspectRatio: 'horizontal', filename: 'orby-pitch-horizontal-en.mp4' },
+  { id: 'orby-pitch-vertical-en',   intent: 'pitch-product', durationSec: 37, aspectRatio: 'vertical',   filename: 'orby-pitch-vertical-en.mp4'   },
+  { id: 'orby-pitch-horizontal-es', intent: 'pitch-product', durationSec: 47, aspectRatio: 'horizontal', filename: 'orby-pitch-horizontal-es.mp4' },
+  { id: 'orby-pitch-vertical-es',   intent: 'pitch-product', durationSec: 47, aspectRatio: 'vertical',   filename: 'orby-pitch-vertical-es.mp4'   },
 
   // ── Recruit Partners (Phase 1: new) ────────────────────────────────────────
   { id: 'partner-recruiting-en',        intent: 'recruit-partners', durationSec: 65,  aspectRatio: 'horizontal', filename: 'partner-recruiting-en.mp4' },
