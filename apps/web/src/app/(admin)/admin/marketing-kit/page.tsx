@@ -32,6 +32,7 @@ interface Settings {
   columnsMobile:  number
   defaultSort:    string
   defaultTab:     string
+  hiddenTabs:     string[]
 }
 
 const INTENTS: { key: Intent; label: string }[] = [
@@ -395,6 +396,31 @@ function SettingsPanel({ settings, onChange, showToast }: {
               { value: 'how-to-sell',      label: 'How to Sell' },
               { value: 'social-cuts',      label: 'Social Cuts' },
             ]} />
+        </div>
+
+        {/* Tab visibility — uncheck to hide that tab from partners. Admin
+            always sees every tab in this admin panel. */}
+        <div>
+          <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Tabs visible to partners</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            {INTENTS.map(tab => {
+              const hidden = draft.hiddenTabs.includes(tab.key)
+              return (
+                <label key={tab.key} className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: 'var(--text-primary)' }}>
+                  <input
+                    type="checkbox"
+                    checked={!hidden}
+                    onChange={(e) => {
+                      const next = new Set(draft.hiddenTabs)
+                      if (e.target.checked) next.delete(tab.key); else next.add(tab.key)
+                      setDraft({ ...draft, hiddenTabs: Array.from(next) })
+                    }}
+                  />
+                  {tab.label}
+                </label>
+              )
+            })}
+          </div>
         </div>
         <button type="submit" disabled={saving}
           className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'oklch(55% 0.11 193)', color: '#fff', opacity: saving ? 0.5 : 1 }}>

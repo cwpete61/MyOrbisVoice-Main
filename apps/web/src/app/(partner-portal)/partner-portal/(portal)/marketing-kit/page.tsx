@@ -40,6 +40,7 @@ interface KitSettings {
   columnsMobile:  number
   defaultSort:    string  // 'manual' | 'newest' | 'duration'
   defaultTab:     string  // 'all' | VideoIntent
+  hiddenTabs:     string[]  // VideoIntent slugs hidden from this list
 }
 
 const BRAND_COLORS = [
@@ -98,8 +99,9 @@ export default function MarketingKitPage() {
     apiFetch<{ videos: VideoAsset[]; settings: KitSettings }>('/api/public/marketing-kit/videos')
       .then(({ videos, settings }) => {
         setVideos(videos); setSettings(settings)
-        // Honor the admin's default tab on first render.
-        if (settings.defaultTab && settings.defaultTab !== 'all') {
+        // Honor the admin's default tab on first render — unless that tab
+        // was also marked hidden, in which case fall back to "All".
+        if (settings.defaultTab && settings.defaultTab !== 'all' && !settings.hiddenTabs?.includes(settings.defaultTab)) {
           setActiveTab(settings.defaultTab as VideoIntent)
         }
       })
@@ -112,10 +114,15 @@ export default function MarketingKitPage() {
 
   // Each row carries copy in ONE language (admin choice on upload). Show only
   // rows whose ACTIVE-LOCALE copy is filled — never display untranslated
-  // content from the other language.
+  // content from the other language. Also drop rows whose intent (tab) the
+  // admin has hidden, so hidden tabs don't bleed into the "All" view.
   const localized = useMemo(() => {
-    return videos.filter(v => locale === 'es' ? !!v.titleEs?.trim() : !!v.titleEn?.trim())
-  }, [videos, locale])
+    const h = new Set(settings?.hiddenTabs ?? [])
+    return videos.filter(v =>
+      !h.has(v.intent)
+      && (locale === 'es' ? !!v.titleEs?.trim() : !!v.titleEn?.trim()),
+    )
+  }, [videos, locale, settings?.hiddenTabs])
   // Sort by the admin's chosen mode, then filter by the active tab.
   const sortedVideos = useMemo(() => {
     const sort = settings?.defaultSort ?? 'manual'
@@ -129,13 +136,21 @@ export default function MarketingKitPage() {
     [sortedVideos, activeTab],
   )
 
-  const tabs: { key: VideoIntent | 'all'; labelKey: string }[] = [
+  // Admin can hide tabs from the partner-side list via MarketingKitSettings.
+  // The "All" tab is always present. If the partner's currently-selected tab
+  // is hidden by the admin, snap them back to "All".
+  const hidden = new Set(settings?.hiddenTabs ?? [])
+  const ALL_TABS: { key: VideoIntent | 'all'; labelKey: string }[] = [
     { key: 'all',              labelKey: 'partnerMarketingKit.videoLibrary.tabs.all' },
     { key: 'pitch-product',    labelKey: 'partnerMarketingKit.videoLibrary.tabs.pitchProduct' },
     { key: 'recruit-partners', labelKey: 'partnerMarketingKit.videoLibrary.tabs.recruitPartners' },
     { key: 'how-to-sell',      labelKey: 'partnerMarketingKit.videoLibrary.tabs.howToSell' },
     { key: 'social-cuts',      labelKey: 'partnerMarketingKit.videoLibrary.tabs.socialCuts' },
   ]
+  const tabs = ALL_TABS.filter(t => t.key === 'all' || !hidden.has(t.key))
+  useEffect(() => {
+    if (activeTab !== 'all' && hidden.has(activeTab)) setActiveTab('all')
+  }, [activeTab, hidden])
 
   // Admin sets column counts per breakpoint at runtime. Tailwind classes can't
   // be synthesized from runtime values, so we inject a tiny scoped stylesheet

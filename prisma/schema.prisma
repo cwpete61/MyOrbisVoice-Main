@@ -2811,5 +2811,9 @@ model MarketingKitSettings {
   defaultSort     String   @default("manual")
   // 'all' | one of the intent slugs above
   defaultTab      String   @default("all")
+  // Intent slugs hidden from the partner Marketing Kit. Each entry must
+  // be one of: 'pitch-product' | 'recruit-partners' | 'how-to-sell' | 'social-cuts'.
+  // Admin still sees every tab in the admin panel; the hide is partner-side only.
+  hiddenTabs      String[] @default([])
   updatedAt       DateTime @updatedAt
 }

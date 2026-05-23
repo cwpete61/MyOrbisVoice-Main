@@ -264,6 +264,7 @@ export interface SettingsPatch {
   columnsMobile?:  number
   defaultSort?:    string
   defaultTab?:     string
+  hiddenTabs?:     string[]
 }
 export async function updateSettings(patch: SettingsPatch) {
   const data: Record<string, unknown> = {}
@@ -282,6 +283,13 @@ export async function updateSettings(patch: SettingsPatch) {
     const ok = ['all', ...VALID_INTENTS].includes(patch.defaultTab as never)
     if (!ok) throw new AppError('VALIDATION_ERROR', 'defaultTab must be all or a known intent', 422)
     data['defaultTab'] = patch.defaultTab
+  }
+  if (patch.hiddenTabs !== undefined) {
+    if (!Array.isArray(patch.hiddenTabs)) throw new AppError('VALIDATION_ERROR', 'hiddenTabs must be an array', 422)
+    const bad = patch.hiddenTabs.filter(t => !VALID_INTENTS.includes(t as never))
+    if (bad.length) throw new AppError('VALIDATION_ERROR', `hiddenTabs contains unknown intent(s): ${bad.join(', ')}`, 422)
+    // De-dupe defensively; order doesn't matter for set semantics.
+    data['hiddenTabs'] = Array.from(new Set(patch.hiddenTabs))
   }
   return prisma.marketingKitSettings.upsert({
     where:  { id: 'singleton' },
