@@ -10,7 +10,11 @@ import { prisma } from '../lib/prisma.js'
 import { AppError } from '@voiceautomation/shared'
 import { getBunnyConfig, storageHostForRegion } from './bunny.service.js'
 
-export const VALID_INTENTS = ['pitch-product', 'recruit-partners', 'how-to-sell', 'social-cuts'] as const
+export const VALID_INTENTS = [
+  'pitch-product', 'recruit-partners', 'how-to-sell', 'social-cuts',
+  // Phase B (Social Content Engine) tabs:
+  'social-posts', 'reels-shorts-tiktok', 'audio', 'youtube-longform',
+] as const
 export type Intent = typeof VALID_INTENTS[number]
 export const VALID_ASPECT = ['horizontal', 'vertical'] as const
 export type Aspect = typeof VALID_ASPECT[number]

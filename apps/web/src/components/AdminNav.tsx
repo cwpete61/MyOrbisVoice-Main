@@ -68,6 +68,9 @@ export function AdminNav() {
     {
       section: 'Content',
       items: [
+        // Media Center — single pane of glass for everything that goes to
+        // partners (Marketing Kit + Social Content Engine output). QC + edit.
+        { href: '/admin/media-center', label: 'Media Center', icon: <DashboardIcon />, minTier: 'admin' },
         // Marketing Kit — admin-managed partner-facing video library
         // (replaces what used to be hardcoded in marketing-kit/page.tsx).
         { href: '/admin/marketing-kit', label: 'Marketing Kit', icon: <FilmIcon />, minTier: 'admin' },
@@ -126,6 +129,17 @@ function TeamIcon() {
       <circle cx="11" cy="6" r="2.2" />
       <path d="M1.5 13c0-2 1.6-3.5 3.5-3.5S8.5 11 8.5 13" />
       <path d="M7.5 13c0-2 1.6-3.5 3.5-3.5S14.5 11 14.5 13" />
+    </svg>
+  )
+}
+
+function DashboardIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1.5" y="1.5" width="6" height="9" rx="1" />
+      <rect x="9" y="1.5" width="5.5" height="5" rx="1" />
+      <rect x="1.5" y="12" width="6" height="2.5" rx="0.5" />
+      <rect x="9" y="8" width="5.5" height="6.5" rx="1" />
     </svg>
   )
 }

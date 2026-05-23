@@ -2772,7 +2772,8 @@ model EmailCampaignRecipient {
 
 model MarketingKitVideo {
   id             String   @id @default(uuid())
-  // One of: 'pitch-product' | 'recruit-partners' | 'how-to-sell' | 'social-cuts'.
+  // One of: 'pitch-product' | 'recruit-partners' | 'how-to-sell' | 'social-cuts'
+  //       | 'social-posts' | 'reels-shorts-tiktok' | 'audio' | 'youtube-longform'.
   // Tabs are fixed in the partner UI; admins only manage the videos within them.
   intent         String
   titleEn        String
@@ -2793,12 +2794,33 @@ model MarketingKitVideo {
   visible        Boolean  @default(true)
   // Manual ordering for the "All" tab and within each intent group.
   sortOrder      Int      @default(0)
+
+  // ── Social Content Engine extensions (Phase B) ─────────────────────────────
+  // 'video' | 'image' | 'audio' | 'carousel'. Legacy rows default to 'video';
+  // partner page picks the right player (modal for video, inline for audio,
+  // lightbox for image/carousel).
+  mediaType      String   @default("video")
+  // Mime type the marketing-asset proxy serves with. Null = derive from
+  // extension at request time.
+  mimeType       String?
+  // Carousel slides 2..N (filename basenames under marketing-kit/). Empty
+  // for non-carousel rows. First slide = `filename` for back-compat.
+  secondaryFilenames String[] @default([])
+  // Per-platform caption variants from the AI copy generator. Shape:
+  // { x?: string, ig?: string, linkedin?: string, tiktok?: string }
+  captionsJson   Json?
+  // YouTube long-form sub-track only: 'partner' | 'corporate'. Null for
+  // every other intent.
+  track          String?
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   createdById    String?
 
   @@index([intent, sortOrder])
   @@index([visible, sortOrder])
+  @@index([mediaType])
+  @@index([updatedAt])
 }
 
 // Singleton settings for the partner Marketing Kit grid. One row, id = 'singleton'.
