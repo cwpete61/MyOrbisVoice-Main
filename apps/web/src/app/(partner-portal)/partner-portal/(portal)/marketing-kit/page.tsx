@@ -1,56 +1,46 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { apiFetch } from '@/hooks/useApi'
-import { useT } from '@/lib/i18n/I18nProvider'
+import { apiFetch, API_BASE } from '@/hooks/useApi'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
-// Marketing-asset proxy serves whitelisted videos + brand assets.
-// Updates here also need updates to apps/api/src/routes/marketing-assets.ts
-// (the whitelist is the source of truth for what's serveable).
-const ASSET_BASE = 'https://api.myorbisvoice.com/api/public/marketing-asset'
+// Marketing-asset proxy streams whitelisted videos from Bunny. The whitelist
+// is now driven by the admin-managed MarketingKitVideo DB table — admins
+// upload + edit + delete videos from "Content > Marketing Kit" in the admin
+// portal, no code change needed.
+const ASSET_BASE = `${API_BASE}/api/public/marketing-asset`
 
 const TEAL = 'oklch(55% 0.11 193)'
 
 type Account = { referralCode: string }
 
 type VideoIntent =
-  | 'pitch-product'        // existing 3-min explainer + future industry demos
+  | 'pitch-product'        // pitch a product to a customer
   | 'recruit-partners'     // pitch the partner program to prospective partners
   | 'how-to-sell'          // walkthroughs for current partners
   | 'social-cuts'          // short 9:16 hooks for partners' organic social
 
+// One row of MarketingKitVideo from /api/public/marketing-kit/videos.
 interface VideoAsset {
-  id:           string
-  intent:       VideoIntent
-  durationSec:  number
-  aspectRatio:  'horizontal' | 'vertical'
-  /** Filename in the marketing-asset proxy whitelist. Undefined = placeholder. */
-  filename?:    string
-  /** Set true when the asset hasn't been produced yet. Renders a "Coming Soon" card. */
-  comingSoon?:  boolean
+  id:            string
+  intent:        VideoIntent
+  durationSec:   number
+  aspectRatio:   'horizontal' | 'vertical'
+  filename:      string | null
+  titleEn:       string
+  titleEs:       string
+  descriptionEn: string
+  descriptionEs: string
+  comingSoon:    boolean
 }
 
-// Single source of truth for the video library. Order here = order shown in
-// the "All" tab. Filter by intent for the other tabs.
-const VIDEOS: VideoAsset[] = [
-  // ── Recruit Partners (Phase 1: new) ────────────────────────────────────────
-  { id: 'partner-recruiting-en',        intent: 'recruit-partners', durationSec: 65,  aspectRatio: 'horizontal', filename: 'partner-recruiting-en.mp4' },
-
-  // ── Pitch Product — Industry Demos (Phase 2: placeholders) ────────────────
-  { id: 'industry-dental',        intent: 'pitch-product', durationSec: 45, aspectRatio: 'horizontal', comingSoon: true },
-  { id: 'industry-legal',         intent: 'pitch-product', durationSec: 45, aspectRatio: 'horizontal', comingSoon: true },
-  { id: 'industry-home-services', intent: 'pitch-product', durationSec: 45, aspectRatio: 'horizontal', comingSoon: true },
-  { id: 'industry-fitness',       intent: 'pitch-product', durationSec: 45, aspectRatio: 'horizontal', comingSoon: true },
-  { id: 'industry-beauty',        intent: 'pitch-product', durationSec: 45, aspectRatio: 'horizontal', comingSoon: true },
-
-  // ── How-to-Sell (Phase 3: placeholder) ────────────────────────────────────
-  { id: 'how-to-sell-walkthrough',     intent: 'how-to-sell',  durationSec: 150, aspectRatio: 'horizontal', comingSoon: true },
-
-  // ── Social Cuts (Phase 2A: live, stat-anchored 9:16 hooks) ────────────────
-  { id: 'social-hook-missed-calls', intent: 'social-cuts', durationSec: 18, aspectRatio: 'vertical', filename: 'social-cut-01-85-percent.mp4' },
-  { id: 'social-hook-247-coverage', intent: 'social-cuts', durationSec: 23, aspectRatio: 'vertical', filename: 'social-cut-02-five-minute.mp4' },
-  { id: 'social-hook-roi',          intent: 'social-cuts', durationSec: 20, aspectRatio: 'vertical', filename: 'social-cut-03-daily-math.mp4' },
-]
+interface KitSettings {
+  columnsDesktop: number
+  columnsTablet:  number
+  columnsMobile:  number
+  defaultSort:    string  // 'manual' | 'newest' | 'duration'
+  defaultTab:     string  // 'all' | VideoIntent
+}
 
 const BRAND_COLORS = [
   { name: 'Teal 1', hex: '#3dbcbc' },
@@ -92,8 +82,11 @@ function fmtDuration(secs: number): string {
 
 export default function MarketingKitPage() {
   const t = useT()
+  const { locale } = useLocale()
   const [referralCode, setReferralCode] = useState<string>('')
   const [copied, setCopied] = useState<string | null>(null)
+  const [videos, setVideos] = useState<VideoAsset[]>([])
+  const [settings, setSettings] = useState<KitSettings | null>(null)
   const [activeTab, setActiveTab] = useState<VideoIntent | 'all'>('all')
   const [activePlayer, setActivePlayer] = useState<VideoAsset | null>(null)
 
@@ -101,15 +94,33 @@ export default function MarketingKitPage() {
     apiFetch<Account>('/api/affiliate/account')
       .then(a => setReferralCode(a.referralCode))
       .catch(() => { /* ignore */ })
+    // Library data comes from the admin-managed table. Visible-only.
+    apiFetch<{ videos: VideoAsset[]; settings: KitSettings }>('/api/public/marketing-kit/videos')
+      .then(({ videos, settings }) => {
+        setVideos(videos); setSettings(settings)
+        // Honor the admin's default tab on first render.
+        if (settings.defaultTab && settings.defaultTab !== 'all') {
+          setActiveTab(settings.defaultTab as VideoIntent)
+        }
+      })
+      .catch(() => { /* keep empty list — page still renders the other sections */ })
   }, [])
 
   const referralUrl = referralCode
     ? `https://app.myorbisvoice.com/r/${referralCode}`
     : 'https://app.myorbisvoice.com/'
 
+  // Sort by the admin's chosen mode, then filter by the active tab.
+  const sortedVideos = useMemo(() => {
+    const sort = settings?.defaultSort ?? 'manual'
+    const out = [...videos]
+    if (sort === 'newest') return out // server returns sortOrder asc already; client-side: leave
+    if (sort === 'duration') out.sort((a, b) => a.durationSec - b.durationSec)
+    return out
+  }, [videos, settings?.defaultSort])
   const visibleVideos = useMemo(
-    () => activeTab === 'all' ? VIDEOS : VIDEOS.filter(v => v.intent === activeTab),
-    [activeTab],
+    () => activeTab === 'all' ? sortedVideos : sortedVideos.filter(v => v.intent === activeTab),
+    [sortedVideos, activeTab],
   )
 
   const tabs: { key: VideoIntent | 'all'; labelKey: string }[] = [
@@ -119,6 +130,15 @@ export default function MarketingKitPage() {
     { key: 'how-to-sell',      labelKey: 'partnerMarketingKit.videoLibrary.tabs.howToSell' },
     { key: 'social-cuts',      labelKey: 'partnerMarketingKit.videoLibrary.tabs.socialCuts' },
   ]
+
+  // Admin sets column counts per breakpoint at runtime. Tailwind classes can't
+  // be synthesized from runtime values, so we inject a tiny scoped stylesheet
+  // with media queries.
+  const cols = {
+    mobile:  settings?.columnsMobile  ?? 1,
+    tablet:  settings?.columnsTablet  ?? 2,
+    desktop: settings?.columnsDesktop ?? 3,
+  }
 
   const emailTemplates = [
     // Pattern-interrupt cold goes first — it's the highest-stopping-power
@@ -150,7 +170,7 @@ export default function MarketingKitPage() {
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('partnerMarketingKit.videoLibrary.title')}</h2>
           <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-            {VIDEOS.filter(v => !v.comingSoon).length} / {VIDEOS.length} {t('partnerMarketingKit.videoLibrary.availableSuffix')}
+            {videos.filter(v => !v.comingSoon).length} / {videos.length} {t('partnerMarketingKit.videoLibrary.availableSuffix')}
           </span>
         </div>
         <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>{t('partnerMarketingKit.videoLibrary.subtitle')}</p>
@@ -159,7 +179,7 @@ export default function MarketingKitPage() {
         <div className="flex gap-1.5 mb-4 flex-wrap">
           {tabs.map(tab => {
             const active = activeTab === tab.key
-            const count = tab.key === 'all' ? VIDEOS.length : VIDEOS.filter(v => v.intent === tab.key).length
+            const count = tab.key === 'all' ? videos.length : videos.filter(v => v.intent === tab.key).length
             return (
               <button
                 key={tab.key}
@@ -177,14 +197,19 @@ export default function MarketingKitPage() {
           })}
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {/* Grid — column counts driven by MarketingKitSettings (admin-controlled). */}
+        <style>{`
+          .mk-grid { display: grid; gap: 12px; grid-template-columns: repeat(${cols.mobile}, minmax(0, 1fr)); }
+          @media (min-width: 640px)  { .mk-grid { grid-template-columns: repeat(${cols.tablet}, minmax(0, 1fr)); } }
+          @media (min-width: 1024px) { .mk-grid { grid-template-columns: repeat(${cols.desktop}, minmax(0, 1fr)); } }
+        `}</style>
+        <div className="mk-grid">
           {visibleVideos.map(v => (
             <VideoCard
               key={v.id}
               video={v}
-              labelTitle={t(`partnerMarketingKit.videoLibrary.videos.${v.id}.title`)}
-              labelDesc={t(`partnerMarketingKit.videoLibrary.videos.${v.id}.description`)}
+              labelTitle={locale === 'es' ? v.titleEs : v.titleEn}
+              labelDesc={locale === 'es' ? v.descriptionEs : v.descriptionEn}
               tComingSoon={t('partnerMarketingKit.videoLibrary.comingSoonBadge')}
               tWatch={t('partnerMarketingKit.videoLibrary.watchAction')}
               tDownload={t('partnerMarketingKit.videoLibrary.downloadAction')}

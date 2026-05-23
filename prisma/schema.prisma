@@ -2763,3 +2763,53 @@ model EmailCampaignRecipient {
   @@index([campaignId, status])
   @@index([status, sentAt])      // worker scan
 }
+
+// ── Marketing Kit (admin-managed partner-facing video library) ──────────────
+// Replaces the hardcoded VIDEOS array in the partner Marketing Kit page so
+// platform admins can upload, edit, reorder, and delete videos without a
+// code deploy. The asset proxy (apps/api/src/routes/marketing-assets.ts)
+// reads its whitelist from this table at request time.
+
+model MarketingKitVideo {
+  id             String   @id @default(uuid())
+  // One of: 'pitch-product' | 'recruit-partners' | 'how-to-sell' | 'social-cuts'.
+  // Tabs are fixed in the partner UI; admins only manage the videos within them.
+  intent         String
+  titleEn        String
+  titleEs        String
+  descriptionEn  String
+  descriptionEs  String
+  // Filename under marketing-kit/ on Bunny storage. The proxy looks up this
+  // column to decide if a public asset URL is serveable. Null = placeholder
+  // ("Coming Soon" card with no playable file yet).
+  filename       String?  @unique
+  durationSec    Int      @default(0)
+  // 'horizontal' (16:9) or 'vertical' (9:16). The partner card uses this to
+  // pick the correct aspect-ratio thumbnail container.
+  aspectRatio    String   @default("horizontal")
+  comingSoon     Boolean  @default(false)
+  // Draft toggle — when false, hidden from the partner-facing list, still
+  // visible (and editable) in the admin table.
+  visible        Boolean  @default(true)
+  // Manual ordering for the "All" tab and within each intent group.
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  createdById    String?
+
+  @@index([intent, sortOrder])
+  @@index([visible, sortOrder])
+}
+
+// Singleton settings for the partner Marketing Kit grid. One row, id = 'singleton'.
+model MarketingKitSettings {
+  id              String   @id @default("singleton")
+  columnsDesktop  Int      @default(3)
+  columnsTablet   Int      @default(2)
+  columnsMobile   Int      @default(1)
+  // 'manual' (uses sortOrder) | 'newest' | 'duration'
+  defaultSort     String   @default("manual")
+  // 'all' | one of the intent slugs above
+  defaultTab      String   @default("all")
+  updatedAt       DateTime @updatedAt
+}

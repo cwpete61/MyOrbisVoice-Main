@@ -66,6 +66,14 @@ export function AdminNav() {
       ],
     },
     {
+      section: 'Content',
+      items: [
+        // Marketing Kit — admin-managed partner-facing video library
+        // (replaces what used to be hardcoded in marketing-kit/page.tsx).
+        { href: '/admin/marketing-kit', label: 'Marketing Kit', icon: <FilmIcon />, minTier: 'admin' },
+      ],
+    },
+    {
       section: 'Account',
       items: [
         { href: '/admin/profile', label: 'Profile', icon: <UserIcon /> },
@@ -118,6 +126,15 @@ function TeamIcon() {
       <circle cx="11" cy="6" r="2.2" />
       <path d="M1.5 13c0-2 1.6-3.5 3.5-3.5S8.5 11 8.5 13" />
       <path d="M7.5 13c0-2 1.6-3.5 3.5-3.5S14.5 11 14.5 13" />
+    </svg>
+  )
+}
+
+function FilmIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" />
+      <path d="M1.5 6h13M1.5 10h13M5 2.5v11M11 2.5v11" />
     </svg>
   )
 }

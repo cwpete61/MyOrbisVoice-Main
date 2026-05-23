@@ -44,6 +44,7 @@ import unsubscribeRouter from './unsubscribe.js'
 import webhooksSesRouter from './webhooks-ses.js'
 import emailPolicyRouter from './email-policy.js'
 import marketingAssetsRouter from './marketing-assets.js'
+import marketingKitRouter from './marketing-kit.js'
 import publicRouter from './public.js'
 import { publicBookingRouter } from './public-booking.js'
 import authGoogleRouter from './auth-google.js'
@@ -67,6 +68,7 @@ router.use('/api', internalGatewayRouter)
 // Protected by MAIL_INGEST_TOKEN shared secret; raw body parser set in index.ts.
 router.use('/api', internalMailRouter)
 router.use('/api', marketingAssetsRouter) // public /public/marketing-asset/:filename — no auth
+router.use('/', marketingKitRouter)       // /api/public/marketing-kit/* (no auth) + /api/admin/marketing-kit/* (PlatformAdmin)
 router.use('/api', publicRouter)        // public /public/social-links — no auth
 router.use('/api', unsubscribeRouter)   // public /public/unsubscribe — no auth (email recipients)
 router.use('/api', webhooksSesRouter)   // public /webhooks/ses — no auth (SNS; signature-verified)

@@ -16,6 +16,7 @@ import { startSendingDomainRunner } from './jobs/sending-domain-runner.js'
 import { startColdEmailSequencer } from './jobs/cold-email-sequencer.js'
 import { bootStripeFromConfig } from './lib/stripe.js'
 import { recoverStuckExtractions } from './services/knowledge-base.service.js'
+import { ensureSeed as seedMarketingKit } from './services/marketing-kit.service.js'
 
 // Error monitoring — first thing in the module body so it's armed before
 // the server starts. No-ops when SENTRY_DSN_API is unset.
@@ -146,6 +147,12 @@ async function start() {
   await bootStripeFromConfig().catch(err => {
     console.error('[api] bootStripeFromConfig failed, falling back to env vars:', err?.message ?? err)
   })
+
+  // One-time seed of the Marketing Kit table from the legacy hardcoded list,
+  // plus a default settings row. Idempotent: only inserts if the table is empty.
+  await seedMarketingKit()
+    .then((r) => { if (r.seededVideos > 0) console.log(`[api] marketing-kit: seeded ${r.seededVideos} videos`) })
+    .catch((e) => console.error('[api] marketing-kit seed failed:', e?.message ?? e))
 
   app.listen(PORT, () => {
     console.log(`[api] listening on http://localhost:${PORT}`)
