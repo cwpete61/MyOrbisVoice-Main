@@ -10,6 +10,8 @@ import { authenticate } from '../middleware/authenticate.js'
 import { requirePlatformAdmin } from '../middleware/rbac.js'
 import * as svc from '../services/marketing-kit.service.js'
 import { translateText, generateMarketingDescription } from '../services/marketing-kit-ai.service.js'
+// translateText is exposed via /ai/translate for ad-hoc admin use; the
+// with-file path no longer calls it (each video lives in one language).
 
 const router: IRouter = Router()
 
@@ -83,13 +85,12 @@ adminRouter.post('/marketing-kit/videos/:id/upload', upload.single('file'), asyn
 })
 
 // Combined create + upload — the admin UI's only "new video" entry point.
-// Multipart body: 'file' (the MP4) + metadata fields. Two acceptable shapes:
-//   A. Single-language (UI default): primaryLang + title + description. The
-//      server translates to the other language to satisfy the bilingual rule.
-//   B. Bilingual: titleEn + titleEs + descriptionEn + descriptionEs. No
-//      translation step; persisted as-is.
-// durationSec + aspectRatio come from the client's HTMLVideoElement metadata
-// read before submit (the api container has no ffprobe).
+// Multipart body: 'file' (the MP4) + metadata. Two acceptable shapes:
+//   A. Single-language (UI default): primaryLang + title + description.
+//      The other language's columns are left EMPTY by design — videos are
+//      scoped to one language, no auto-translation.
+//   B. Bilingual (legacy): titleEn + titleEs + descriptionEn + descriptionEs.
+// durationSec + aspectRatio come from the client's HTMLVideoElement metadata.
 adminRouter.post('/marketing-kit/videos/with-file', upload.single('file'), async (req, res, next) => {
   try {
     if (!req.file) { res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'file required' }] }); return }
@@ -106,17 +107,10 @@ adminRouter.post('/marketing-kit/videos/with-file', upload.single('file'), async
 
     const primaryLang = body['primaryLang'] as 'en' | 'es' | undefined
     if (primaryLang === 'en' || primaryLang === 'es') {
-      const title       = body['title'] ?? ''
-      const description = body['description'] ?? ''
-      if (!title.trim() || !description.trim()) {
-        throw new (await import('@voiceautomation/shared')).AppError('VALIDATION_ERROR', 'title and description are required', 422)
-      }
-      const [otherTitle, otherDesc] = await Promise.all([
-        translateText(title, primaryLang),
-        translateText(description, primaryLang),
-      ])
-      if (primaryLang === 'en') { titleEn = title; descriptionEn = description; titleEs = otherTitle; descriptionEs = otherDesc }
-      else                      { titleEs = title; descriptionEs = description; titleEn = otherTitle; descriptionEn = otherDesc }
+      const title       = (body['title'] ?? '').trim()
+      const description = (body['description'] ?? '').trim()
+      if (primaryLang === 'en') { titleEn = title; descriptionEn = description; titleEs = ''; descriptionEs = '' }
+      else                      { titleEs = title; descriptionEs = description; titleEn = ''; descriptionEn = '' }
     }
 
     const data: svc.CreateInput = { intent, titleEn, titleEs, descriptionEn, descriptionEs, aspectRatio, durationSec, visible }

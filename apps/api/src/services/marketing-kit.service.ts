@@ -55,8 +55,16 @@ export interface CreateInput {
 }
 function validateCreate(d: CreateInput) {
   if (!VALID_INTENTS.includes(d.intent)) throw new AppError('VALIDATION_ERROR', `intent must be one of: ${VALID_INTENTS.join(', ')}`, 422)
-  if (!d.titleEn?.trim() || !d.titleEs?.trim()) throw new AppError('VALIDATION_ERROR', 'Both English and Spanish titles are required', 422)
-  if (!d.descriptionEn?.trim() || !d.descriptionEs?.trim()) throw new AppError('VALIDATION_ERROR', 'Both English and Spanish descriptions are required', 422)
+  // Each video lives in ONE language by default — admin types copy in either
+  // English or Spanish, not both. The partner page filters by locale, so a
+  // row only appears for partners reading in its language. To satisfy that,
+  // the row must carry a complete title+description pair on at least ONE
+  // side. Both sides filled is also valid (legacy rows / dual-target).
+  const hasEn = !!d.titleEn?.trim() && !!d.descriptionEn?.trim()
+  const hasEs = !!d.titleEs?.trim() && !!d.descriptionEs?.trim()
+  if (!hasEn && !hasEs) {
+    throw new AppError('VALIDATION_ERROR', 'A title + description in at least one language is required', 422)
+  }
   if (d.aspectRatio && !VALID_ASPECT.includes(d.aspectRatio)) throw new AppError('VALIDATION_ERROR', 'aspectRatio must be horizontal or vertical', 422)
 }
 

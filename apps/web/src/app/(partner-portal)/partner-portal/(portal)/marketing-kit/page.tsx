@@ -110,14 +110,20 @@ export default function MarketingKitPage() {
     ? `https://app.myorbisvoice.com/r/${referralCode}`
     : 'https://app.myorbisvoice.com/'
 
+  // Each row carries copy in ONE language (admin choice on upload). Show only
+  // rows whose ACTIVE-LOCALE copy is filled — never display untranslated
+  // content from the other language.
+  const localized = useMemo(() => {
+    return videos.filter(v => locale === 'es' ? !!v.titleEs?.trim() : !!v.titleEn?.trim())
+  }, [videos, locale])
   // Sort by the admin's chosen mode, then filter by the active tab.
   const sortedVideos = useMemo(() => {
     const sort = settings?.defaultSort ?? 'manual'
-    const out = [...videos]
+    const out = [...localized]
     if (sort === 'newest') return out // server returns sortOrder asc already; client-side: leave
     if (sort === 'duration') out.sort((a, b) => a.durationSec - b.durationSec)
     return out
-  }, [videos, settings?.defaultSort])
+  }, [localized, settings?.defaultSort])
   const visibleVideos = useMemo(
     () => activeTab === 'all' ? sortedVideos : sortedVideos.filter(v => v.intent === activeTab),
     [sortedVideos, activeTab],
@@ -170,7 +176,7 @@ export default function MarketingKitPage() {
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
           <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{t('partnerMarketingKit.videoLibrary.title')}</h2>
           <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-            {videos.filter(v => !v.comingSoon).length} / {videos.length} {t('partnerMarketingKit.videoLibrary.availableSuffix')}
+            {localized.filter(v => !v.comingSoon).length} / {localized.length} {t('partnerMarketingKit.videoLibrary.availableSuffix')}
           </span>
         </div>
         <p className="text-xs mb-4" style={{ color: 'var(--text-secondary)' }}>{t('partnerMarketingKit.videoLibrary.subtitle')}</p>
@@ -179,7 +185,7 @@ export default function MarketingKitPage() {
         <div className="flex gap-1.5 mb-4 flex-wrap">
           {tabs.map(tab => {
             const active = activeTab === tab.key
-            const count = tab.key === 'all' ? videos.length : videos.filter(v => v.intent === tab.key).length
+            const count = tab.key === 'all' ? localized.length : localized.filter(v => v.intent === tab.key).length
             return (
               <button
                 key={tab.key}

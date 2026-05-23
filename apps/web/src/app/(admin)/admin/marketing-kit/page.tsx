@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch, API_BASE } from '@/hooks/useApi'
 import { getAccessToken } from '@/lib/auth'
+import { useLocale } from '@/lib/i18n/I18nProvider'
 
 // ── Types (mirror the API service) ───────────────────────────────────────────
 type Intent = 'pitch-product' | 'recruit-partners' | 'how-to-sell' | 'social-cuts'
@@ -47,6 +48,7 @@ function fmtDuration(s: number) {
 }
 
 export default function AdminMarketingKitPage() {
+  const { locale } = useLocale()
   const [videos, setVideos] = useState<VideoRow[] | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
@@ -235,7 +237,7 @@ export default function AdminMarketingKitPage() {
                   <thead style={{ background: 'var(--surface-raised)' }}>
                     <tr>
                       <th className="text-left px-3 py-2 text-xs font-semibold w-8"  style={{ color: 'var(--text-tertiary)' }}>#</th>
-                      <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Title (EN / ES)</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Title</th>
                       <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Aspect</th>
                       <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Duration</th>
                       <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>File</th>
@@ -256,8 +258,26 @@ export default function AdminMarketingKitPage() {
                           </div>
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <p className="font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>{v.titleEn}</p>
-                          <p className="text-xs leading-tight" style={{ color: 'var(--text-tertiary)' }}>{v.titleEs}</p>
+                          {/* Show the title in its own language with a small EN/ES badge.
+                              Rows can carry just one language (post-refactor) or both
+                              (legacy seeded rows); badge reflects which. */}
+                          {(() => {
+                            const en = !!v.titleEn?.trim()
+                            const es = !!v.titleEs?.trim()
+                            const display = en && es
+                              ? (locale === 'es' ? v.titleEs : v.titleEn)
+                              : (v.titleEn?.trim() || v.titleEs?.trim() || '—')
+                            const badge = en && es ? 'EN+ES' : (en ? 'EN' : 'ES')
+                            return (
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>{display}</p>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider"
+                                  style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>
+                                  {badge}
+                                </span>
+                              </div>
+                            )
+                          })()}
                         </td>
                         <td className="px-3 py-2 align-top text-xs" style={{ color: 'var(--text-secondary)' }}>{v.aspectRatio === 'horizontal' ? '16:9' : '9:16'}</td>
                         <td className="px-3 py-2 align-top text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{fmtDuration(v.durationSec)}</td>
@@ -587,7 +607,7 @@ function UploadModal({ draft, onClose, onSaved }: {
         style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
         <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Upload video</h2>
         <p className="text-xs mb-4" style={{ color: 'var(--text-tertiary)' }}>
-          Type the copy in one language — we auto-translate the other on save. Duration, aspect ratio, and file name are auto-detected.
+          This video lives in the language you pick — partners reading in the other language won&apos;t see it. Upload it again in the other language if you want both audiences. Duration, aspect ratio, and file name are auto-detected.
         </p>
 
         {/* Auto-detected summary */}
@@ -614,7 +634,7 @@ function UploadModal({ draft, onClose, onSaved }: {
             ))}
           </div>
           <span className="text-xs ml-3" style={{ color: 'var(--text-tertiary)' }}>
-            {otherLang} will be auto-translated on save.
+            Card shows only to partners reading in {langLabel(primaryLang)}. Upload again in {otherLang} for the other audience.
           </span>
         </div>
 
@@ -654,7 +674,7 @@ function UploadModal({ draft, onClose, onSaved }: {
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--surface-overlay)', color: 'var(--text-primary)' }}>Cancel</button>
           <button onClick={submit} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'oklch(55% 0.11 193)', color: '#fff', opacity: saving ? 0.5 : 1 }}>
-            {saving ? 'Uploading & translating…' : 'Upload & publish'}
+            {saving ? 'Uploading…' : 'Upload & publish'}
           </button>
         </div>
       </div>
