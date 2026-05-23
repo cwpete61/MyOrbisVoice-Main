@@ -52,7 +52,10 @@ export default function AdminMarketingKitPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [editing, setEditing] = useState<VideoRow | 'new' | null>(null)
+  // `mode: 'new'` opens a blank create form; `intent` (optional) pre-fills the
+  // tab dropdown when the admin clicked the "+ New" button inside a tab.
+  type EditingState = null | { mode: 'new'; intent?: Intent } | { mode: 'edit'; row: VideoRow }
+  const [editing, setEditing] = useState<EditingState>(null)
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setToast({ type, text })
@@ -93,13 +96,21 @@ export default function AdminMarketingKitPage() {
     } catch (e) { showToast('error', e instanceof Error ? e.message : 'Failed') }
   }
 
+  // Move a video up/down WITHIN ITS OWN TAB. Finds the adjacent sibling (same
+  // intent), swaps their positions in the flat list, sends the new flat order
+  // to the reorder API which re-stamps sortOrder. Other tabs' relative order
+  // is untouched.
   async function move(v: VideoRow, dir: -1 | 1) {
     if (!videos) return
-    const i = videos.findIndex(x => x.id === v.id); const j = i + dir
-    if (j < 0 || j >= videos.length) return
+    const sameTab = videos.filter(x => x.intent === v.intent)
+    const idxInTab = sameTab.findIndex(x => x.id === v.id)
+    const swapTarget = sameTab[idxInTab + dir]
+    if (!swapTarget) return
+    const i = videos.findIndex(x => x.id === v.id)
+    const j = videos.findIndex(x => x.id === swapTarget.id)
+    if (i < 0 || j < 0) return
     const reordered = [...videos]
-    const [r] = reordered.splice(i, 1)
-    reordered.splice(j, 0, r!)
+    ;[reordered[i], reordered[j]] = [reordered[j]!, reordered[i]!]
     setVideos(reordered) // optimistic
     try {
       await apiFetch('/api/admin/marketing-kit/videos/reorder', {
@@ -156,79 +167,98 @@ export default function AdminMarketingKitPage() {
 
       <SettingsPanel settings={settings} onChange={setSettings} showToast={showToast} />
 
-      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
-        <div className="flex items-center justify-between px-4 py-3" style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
-          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Videos ({videos.length})</p>
-          <button onClick={() => setEditing('new')} className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}>+ New video</button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead style={{ background: 'var(--surface-raised)' }}>
-              <tr>
-                <th className="text-left px-3 py-2 text-xs font-semibold w-8"  style={{ color: 'var(--text-tertiary)' }}>#</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Title (EN / ES)</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Tab</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Aspect</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Duration</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>File</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Visible</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Coming&nbsp;Soon</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold w-44" style={{ color: 'var(--text-tertiary)' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {videos.map((v, i) => (
-                <tr key={v.id} style={{ background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)', borderTop: '1px solid var(--border-subtle)' }}>
-                  <td className="px-3 py-2 align-top">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <button onClick={() => move(v, -1)} aria-label="Move up" disabled={i === 0}
-                        className="w-5 h-5 rounded text-[10px]" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', opacity: i === 0 ? 0.4 : 1 }}>▲</button>
-                      <button onClick={() => move(v, +1)} aria-label="Move down" disabled={i === videos.length - 1}
-                        className="w-5 h-5 rounded text-[10px]" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', opacity: i === videos.length - 1 ? 0.4 : 1 }}>▼</button>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <p className="font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>{v.titleEn}</p>
-                    <p className="text-xs leading-tight" style={{ color: 'var(--text-tertiary)' }}>{v.titleEs}</p>
-                  </td>
-                  <td className="px-3 py-2 align-top text-xs" style={{ color: 'var(--text-secondary)' }}>{INTENTS.find(x => x.key === v.intent)?.label ?? v.intent}</td>
-                  <td className="px-3 py-2 align-top text-xs" style={{ color: 'var(--text-secondary)' }}>{v.aspectRatio === 'horizontal' ? '16:9' : '9:16'}</td>
-                  <td className="px-3 py-2 align-top text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{fmtDuration(v.durationSec)}</td>
-                  <td className="px-3 py-2 align-top text-xs" style={{ color: v.filename ? 'oklch(45% 0.13 145)' : 'var(--text-tertiary)' }}>
-                    {v.filename ? '✓ uploaded' : '— no file'}
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <button onClick={() => toggleVisible(v)}
-                      className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                      style={{ background: v.visible ? 'oklch(96% 0.05 145)' : 'oklch(95% 0.02 0)', color: v.visible ? 'oklch(35% 0.16 145)' : 'var(--text-tertiary)' }}>
-                      {v.visible ? 'Visible' : 'Hidden'}
-                    </button>
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <button onClick={() => toggleComingSoon(v)}
-                      className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                      style={{ background: v.comingSoon ? 'oklch(94% 0.06 80)' : 'oklch(95% 0.02 0)', color: v.comingSoon ? 'oklch(40% 0.15 80)' : 'var(--text-tertiary)' }}>
-                      {v.comingSoon ? 'Coming soon' : 'Live'}
-                    </button>
-                  </td>
-                  <td className="px-3 py-2 align-top text-right whitespace-nowrap">
-                    <label className="inline-block mr-1 cursor-pointer">
-                      <span className="px-2 py-1 rounded text-xs font-semibold" style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}>Upload</span>
-                      <input type="file" accept="video/mp4,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFor(v, f); e.currentTarget.value = '' }} />
-                    </label>
-                    <button onClick={() => setEditing(v)} className="px-2 py-1 rounded text-xs font-medium mr-1" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>Edit</button>
-                    <button onClick={() => remove(v)} className="px-2 py-1 rounded text-xs font-medium" style={{ background: 'oklch(95% 0.05 25)', color: 'oklch(35% 0.18 25)' }}>Delete</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* One card per tab — count in the header, "+ New" creates a row in
+          that tab pre-selected, up/down arrows reorder within the tab only. */}
+      {INTENTS.map(tab => {
+        const rows = videos.filter(v => v.intent === tab.key)
+        return (
+          <div key={tab.key} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+            <div className="flex items-center justify-between px-4 py-3" style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {tab.label}
+                <span className="ml-2 text-xs px-2 py-0.5 rounded-full font-semibold"
+                  style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(45% 0.13 193)' }}>{rows.length}</span>
+              </p>
+              <button onClick={() => setEditing({ mode: 'new', intent: tab.key })}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}>
+                + New video
+              </button>
+            </div>
+            {rows.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-center" style={{ color: 'var(--text-tertiary)' }}>
+                No videos in this tab yet. Click <b>+ New video</b> to add one.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead style={{ background: 'var(--surface-raised)' }}>
+                    <tr>
+                      <th className="text-left px-3 py-2 text-xs font-semibold w-8"  style={{ color: 'var(--text-tertiary)' }}>#</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Title (EN / ES)</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Aspect</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Duration</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>File</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Visible</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold"      style={{ color: 'var(--text-tertiary)' }}>Coming&nbsp;Soon</th>
+                      <th className="text-right px-3 py-2 text-xs font-semibold w-44" style={{ color: 'var(--text-tertiary)' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((v, i) => (
+                      <tr key={v.id} style={{ background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)', borderTop: '1px solid var(--border-subtle)' }}>
+                        <td className="px-3 py-2 align-top">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <button onClick={() => move(v, -1)} aria-label="Move up" disabled={i === 0}
+                              className="w-5 h-5 rounded text-[10px]" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', opacity: i === 0 ? 0.4 : 1 }}>▲</button>
+                            <button onClick={() => move(v, +1)} aria-label="Move down" disabled={i === rows.length - 1}
+                              className="w-5 h-5 rounded text-[10px]" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', opacity: i === rows.length - 1 ? 0.4 : 1 }}>▼</button>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <p className="font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>{v.titleEn}</p>
+                          <p className="text-xs leading-tight" style={{ color: 'var(--text-tertiary)' }}>{v.titleEs}</p>
+                        </td>
+                        <td className="px-3 py-2 align-top text-xs" style={{ color: 'var(--text-secondary)' }}>{v.aspectRatio === 'horizontal' ? '16:9' : '9:16'}</td>
+                        <td className="px-3 py-2 align-top text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{fmtDuration(v.durationSec)}</td>
+                        <td className="px-3 py-2 align-top text-xs" style={{ color: v.filename ? 'oklch(45% 0.13 145)' : 'var(--text-tertiary)' }}>
+                          {v.filename ? '✓ uploaded' : '— no file'}
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <button onClick={() => toggleVisible(v)}
+                            className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                            style={{ background: v.visible ? 'oklch(96% 0.05 145)' : 'oklch(95% 0.02 0)', color: v.visible ? 'oklch(35% 0.16 145)' : 'var(--text-tertiary)' }}>
+                            {v.visible ? 'Visible' : 'Hidden'}
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <button onClick={() => toggleComingSoon(v)}
+                            className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                            style={{ background: v.comingSoon ? 'oklch(94% 0.06 80)' : 'oklch(95% 0.02 0)', color: v.comingSoon ? 'oklch(40% 0.15 80)' : 'var(--text-tertiary)' }}>
+                            {v.comingSoon ? 'Coming soon' : 'Live'}
+                          </button>
+                        </td>
+                        <td className="px-3 py-2 align-top text-right whitespace-nowrap">
+                          <label className="inline-block mr-1 cursor-pointer">
+                            <span className="px-2 py-1 rounded text-xs font-semibold" style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}>Upload</span>
+                            <input type="file" accept="video/mp4,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFor(v, f); e.currentTarget.value = '' }} />
+                          </label>
+                          <button onClick={() => setEditing({ mode: 'edit', row: v })} className="px-2 py-1 rounded text-xs font-medium mr-1" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>Edit</button>
+                          <button onClick={() => remove(v)} className="px-2 py-1 rounded text-xs font-medium" style={{ background: 'oklch(95% 0.05 25)', color: 'oklch(35% 0.18 25)' }}>Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       {editing && (
         <EditModal
-          video={editing === 'new' ? null : editing}
+          video={editing.mode === 'edit' ? editing.row : null}
+          initialIntent={editing.mode === 'new' ? editing.intent : undefined}
           onClose={() => setEditing(null)}
           onSaved={(row, isNew) => {
             setVideos(prev => {
@@ -332,14 +362,15 @@ function SelField({ label, value, onChange, options }: { label: string; value: s
 
 // ── Create/Edit modal ────────────────────────────────────────────────────────
 
-function EditModal({ video, onClose, onSaved }: {
+function EditModal({ video, initialIntent, onClose, onSaved }: {
   video: VideoRow | null
+  initialIntent?: Intent
   onClose: () => void
   onSaved: (row: VideoRow, isNew: boolean) => void
 }) {
   const isNew = video === null
   const [form, setForm] = useState({
-    intent:        video?.intent        ?? 'pitch-product' as Intent,
+    intent:        video?.intent        ?? initialIntent ?? 'pitch-product' as Intent,
     aspectRatio:   video?.aspectRatio   ?? 'horizontal' as Aspect,
     titleEn:       video?.titleEn       ?? '',
     titleEs:       video?.titleEs       ?? '',
