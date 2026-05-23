@@ -9,6 +9,7 @@ import multer from 'multer'
 import { authenticate } from '../middleware/authenticate.js'
 import { requirePlatformAdmin } from '../middleware/rbac.js'
 import * as svc from '../services/marketing-kit.service.js'
+import { translateText, generateMarketingDescription } from '../services/marketing-kit-ai.service.js'
 
 const router: IRouter = Router()
 
@@ -82,25 +83,69 @@ adminRouter.post('/marketing-kit/videos/:id/upload', upload.single('file'), asyn
 })
 
 // Combined create + upload — the admin UI's only "new video" entry point.
-// Multipart body: 'file' (the MP4) + the JSON-ish metadata fields posted as
-// individual form fields (titleEn, titleEs, etc.). durationSec + aspectRatio
-// come from the client's HTMLVideoElement metadata read before submit.
+// Multipart body: 'file' (the MP4) + metadata fields. Two acceptable shapes:
+//   A. Single-language (UI default): primaryLang + title + description. The
+//      server translates to the other language to satisfy the bilingual rule.
+//   B. Bilingual: titleEn + titleEs + descriptionEn + descriptionEs. No
+//      translation step; persisted as-is.
+// durationSec + aspectRatio come from the client's HTMLVideoElement metadata
+// read before submit (the api container has no ffprobe).
 adminRouter.post('/marketing-kit/videos/with-file', upload.single('file'), async (req, res, next) => {
   try {
     if (!req.file) { res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'file required' }] }); return }
     const body = req.body as Record<string, string>
-    const data: svc.CreateInput = {
-      intent:        body['intent'] as svc.Intent,
-      titleEn:       body['titleEn'] ?? '',
-      titleEs:       body['titleEs'] ?? '',
-      descriptionEn: body['descriptionEn'] ?? '',
-      descriptionEs: body['descriptionEs'] ?? '',
-      aspectRatio:   (body['aspectRatio'] as svc.Aspect) || 'horizontal',
-      durationSec:   parseInt(body['durationSec'] ?? '0', 10) || 0,
-      visible:       body['visible'] === 'false' ? false : true,
+    const intent       = body['intent'] as svc.Intent
+    const aspectRatio  = (body['aspectRatio'] as svc.Aspect) || 'horizontal'
+    const durationSec  = parseInt(body['durationSec'] ?? '0', 10) || 0
+    const visible      = body['visible'] === 'false' ? false : true
+
+    let titleEn = body['titleEn'] ?? ''
+    let titleEs = body['titleEs'] ?? ''
+    let descriptionEn = body['descriptionEn'] ?? ''
+    let descriptionEs = body['descriptionEs'] ?? ''
+
+    const primaryLang = body['primaryLang'] as 'en' | 'es' | undefined
+    if (primaryLang === 'en' || primaryLang === 'es') {
+      const title       = body['title'] ?? ''
+      const description = body['description'] ?? ''
+      if (!title.trim() || !description.trim()) {
+        throw new (await import('@voiceautomation/shared')).AppError('VALIDATION_ERROR', 'title and description are required', 422)
+      }
+      const [otherTitle, otherDesc] = await Promise.all([
+        translateText(title, primaryLang),
+        translateText(description, primaryLang),
+      ])
+      if (primaryLang === 'en') { titleEn = title; descriptionEn = description; titleEs = otherTitle; descriptionEs = otherDesc }
+      else                      { titleEs = title; descriptionEs = description; titleEn = otherTitle; descriptionEn = otherDesc }
     }
+
+    const data: svc.CreateInput = { intent, titleEn, titleEs, descriptionEn, descriptionEs, aspectRatio, durationSec, visible }
     const created = await svc.createVideoWithFile(data, req.file.buffer, req.file.mimetype, req.user!.id)
     res.status(201).json({ data: created })
+  } catch (err) { next(err) }
+})
+
+// AI helpers used by the Upload modal — generate a description from a title,
+// or translate copy to the OTHER language. Both gated by Platform Admin.
+adminRouter.post('/marketing-kit/ai/describe', async (req, res, next) => {
+  try {
+    const { title, intent, lang } = req.body as { title?: string; intent?: string; lang?: 'en' | 'es' }
+    if (!title?.trim()) { res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'title required' }] }); return }
+    const description = await generateMarketingDescription({
+      title: title.trim(),
+      intent: intent ?? 'pitch-product',
+      lang: lang === 'es' ? 'es' : 'en',
+    })
+    res.json({ data: { description } })
+  } catch (err) { next(err) }
+})
+
+adminRouter.post('/marketing-kit/ai/translate', async (req, res, next) => {
+  try {
+    const { text, from } = req.body as { text?: string; from?: 'en' | 'es' }
+    if (!text?.trim()) { res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'text required' }] }); return }
+    const out = await translateText(text, from === 'es' ? 'es' : 'en')
+    res.json({ data: { text: out } })
   } catch (err) { next(err) }
 })
 

@@ -524,31 +524,45 @@ function UploadModal({ draft, onClose, onSaved }: {
   onSaved: (row: VideoRow) => void
 }) {
   const filenameRoot = draft.file.name.replace(/\.[^/.]+$/, '')
+  // Admin picks ONE language; the server auto-translates to the other to
+  // satisfy the bilingual rule. Default = English.
+  const [primaryLang, setPrimaryLang] = useState<'en' | 'es'>('en')
   const [form, setForm] = useState({
-    intent:        draft.intent,
-    aspectRatio:   draft.aspectRatio,
-    titleEn:       filenameRoot,
-    titleEs:       '',
-    descriptionEn: '',
-    descriptionEs: '',
-    visible:       true,
+    intent:      draft.intent,
+    aspectRatio: draft.aspectRatio,
+    title:       filenameRoot,
+    description: '',
+    visible:     true,
   })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving]   = useState(false)
+  const [aiBusy, setAiBusy]   = useState(false)
+  const [error, setError]     = useState<string | null>(null)
+
+  async function generateDescription() {
+    if (!form.title.trim()) { setError('Add a title first — AI generates the description from it.'); return }
+    setError(null); setAiBusy(true)
+    try {
+      const out = await apiFetch<{ description: string }>('/api/admin/marketing-kit/ai/describe', {
+        method: 'POST',
+        body: JSON.stringify({ title: form.title.trim(), intent: form.intent, lang: primaryLang }),
+      })
+      setForm(f => ({ ...f, description: out.description }))
+    } catch (e) { setError(e instanceof Error ? e.message : 'AI could not generate a description.') }
+    finally { setAiBusy(false) }
+  }
 
   async function submit() {
     setError(null); setSaving(true)
     try {
       const fd = new FormData()
-      fd.append('file', draft.file)
-      fd.append('intent',        form.intent)
-      fd.append('titleEn',       form.titleEn.trim())
-      fd.append('titleEs',       form.titleEs.trim())
-      fd.append('descriptionEn', form.descriptionEn.trim())
-      fd.append('descriptionEs', form.descriptionEs.trim())
-      fd.append('aspectRatio',   form.aspectRatio)
-      fd.append('durationSec',   String(draft.durationSec))
-      fd.append('visible',       form.visible ? 'true' : 'false')
+      fd.append('file',        draft.file)
+      fd.append('intent',      form.intent)
+      fd.append('primaryLang', primaryLang)
+      fd.append('title',       form.title.trim())
+      fd.append('description', form.description.trim())
+      fd.append('aspectRatio', form.aspectRatio)
+      fd.append('durationSec', String(draft.durationSec))
+      fd.append('visible',     form.visible ? 'true' : 'false')
       const token = getAccessToken()
       const res = await fetch(`${API_BASE}/api/admin/marketing-kit/videos/with-file`, {
         method: 'POST',
@@ -563,13 +577,18 @@ function UploadModal({ draft, onClose, onSaved }: {
   }
 
   const sizeMB = (draft.file.size / 1024 / 1024).toFixed(1)
+  const langLabel = (l: 'en' | 'es') => l === 'en' ? 'English' : 'Spanish'
+  const otherLang = primaryLang === 'en' ? 'Spanish' : 'English'
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()}
         className="rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
         <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Upload video</h2>
-        <p className="text-xs mb-4" style={{ color: 'var(--text-tertiary)' }}>Duration, aspect ratio and file name are auto-detected — only the bilingual copy is required.</p>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-tertiary)' }}>
+          Type the copy in one language — we auto-translate the other on save. Duration, aspect ratio, and file name are auto-detected.
+        </p>
 
         {/* Auto-detected summary */}
         <div className="rounded-lg p-3 mb-4 text-xs grid grid-cols-2 sm:grid-cols-4 gap-2" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
@@ -579,6 +598,26 @@ function UploadModal({ draft, onClose, onSaved }: {
           <Detected label="Aspect"   value={draft.aspectRatio === 'horizontal' ? '16:9' : '9:16'} />
         </div>
 
+        {/* Language toggle */}
+        <div className="mb-3">
+          <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>I&apos;m writing in</p>
+          <div className="inline-flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+            {(['en', 'es'] as const).map((l) => (
+              <button key={l} type="button" onClick={() => setPrimaryLang(l)}
+                className="px-4 py-1.5 text-sm font-semibold"
+                style={{
+                  background: primaryLang === l ? 'oklch(55% 0.11 193)' : 'var(--surface-raised)',
+                  color:      primaryLang === l ? '#fff' : 'var(--text-secondary)',
+                }}>
+                {langLabel(l)}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs ml-3" style={{ color: 'var(--text-tertiary)' }}>
+            {otherLang} will be auto-translated on save.
+          </span>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <SelField label="Tab" value={form.intent} onChange={(v) => setForm({ ...form, intent: v as Intent })}
             options={INTENTS.map(i => ({ value: i.key, label: i.label }))} />
@@ -586,14 +625,23 @@ function UploadModal({ draft, onClose, onSaved }: {
             options={[{ value: 'horizontal', label: '16:9 horizontal' }, { value: 'vertical', label: '9:16 vertical' }]} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-          <TxtField label="Title (English) *" value={form.titleEn} onChange={(v) => setForm({ ...form, titleEn: v })} />
-          <TxtField label="Title (Spanish) *" value={form.titleEs} onChange={(v) => setForm({ ...form, titleEs: v })} />
+        <div className="mb-3">
+          <TxtField label={`Title (${langLabel(primaryLang)}) *`} value={form.title} onChange={(v) => setForm({ ...form, title: v })} />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-          <TxtArea label="Description (English) *" value={form.descriptionEn} onChange={(v) => setForm({ ...form, descriptionEn: v })} />
-          <TxtArea label="Description (Spanish) *" value={form.descriptionEs} onChange={(v) => setForm({ ...form, descriptionEs: v })} />
+        <div className="mb-4">
+          <div className="flex items-end justify-between mb-1">
+            <label className="block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Description ({langLabel(primaryLang)}) *</label>
+            <button type="button" onClick={generateDescription} disabled={aiBusy || !form.title.trim()}
+              className="text-xs px-2 py-1 rounded-md font-semibold"
+              style={{ background: aiBusy ? 'var(--surface-overlay)' : 'oklch(55% 0.11 193 / 0.12)', color: 'oklch(45% 0.13 193)', border: '1px solid oklch(55% 0.11 193 / 0.35)', opacity: (!form.title.trim()) ? 0.5 : 1 }}
+              title="Generate a description from the title with AI">
+              {aiBusy ? '…thinking' : '✨ AI describe from title'}
+            </button>
+          </div>
+          <textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className="w-full px-3 py-2 rounded-lg text-sm"
+            style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', resize: 'vertical' }} />
         </div>
 
         <label className="flex items-center gap-2 mb-4">
@@ -606,7 +654,7 @@ function UploadModal({ draft, onClose, onSaved }: {
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--surface-overlay)', color: 'var(--text-primary)' }}>Cancel</button>
           <button onClick={submit} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'oklch(55% 0.11 193)', color: '#fff', opacity: saving ? 0.5 : 1 }}>
-            {saving ? 'Uploading…' : 'Upload & publish'}
+            {saving ? 'Uploading & translating…' : 'Upload & publish'}
           </button>
         </div>
       </div>
