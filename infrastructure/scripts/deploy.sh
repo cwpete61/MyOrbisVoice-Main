@@ -363,6 +363,24 @@ step_web() {
 # source + compose file, then rebuild the image and recreate the container
 # via `docker compose up --build`. The container reads SERPER_API_KEY +
 # LEADENGINE_INTERNAL_TOKEN from .env.prod (set there once, out of band).
+step_render() {
+  log "Render service — sync source → rebuild image → recreate container..."
+  rsync -az --exclude='node_modules' --exclude='dist' \
+    "$REPO_ROOT/apps/render/" "$SERVER:$REMOTE/apps/render/"
+  rsync -az "$REPO_ROOT/infrastructure/docker/docker-compose.prod.yml" \
+    "$SERVER:$REMOTE/infrastructure/docker/docker-compose.prod.yml"
+  ssh "$SERVER" "cd $REMOTE/infrastructure/docker && docker compose -f docker-compose.prod.yml up -d --build render 2>&1 | tail -8" \
+    || fail "render compose up failed"
+  sleep 8
+  local HEALTH
+  HEALTH=$(ssh "$SERVER" "docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' myorbisvoice-render 2>/dev/null")
+  if [[ "$HEALTH" == "healthy" || "$HEALTH" == "starting" ]]; then
+    ok "Render service deployed (health: $HEALTH)"
+  else
+    fail "Render service container unhealthy after deploy: $HEALTH"
+  fi
+}
+
 step_leadengine() {
   log "Lead engine — sync source → rebuild image → recreate container..."
   rsync -az --exclude='.venv' --exclude='__pycache__' --exclude='*.pyc' \
@@ -393,14 +411,18 @@ case "$TARGET" in
   gateway)    step_gateway ;;
   web)        step_web ;;
   leadengine) step_leadengine ;;
+  render)     step_render ;;
   all)
     step_api
     step_gateway
     step_web
     step_leadengine
+    # render intentionally NOT in 'all' yet — heavyweight Chromium image;
+    # deploy explicitly with `./deploy.sh render "<reason>"` after the
+    # initial standup is verified.
     ;;
   *)
-    echo "Unknown target: $TARGET. Use api|web|gateway|leadengine|all"
+    echo "Unknown target: $TARGET. Use api|web|gateway|leadengine|render|all"
     exit 1
     ;;
 esac

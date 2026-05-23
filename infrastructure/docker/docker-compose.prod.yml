@@ -190,6 +190,33 @@ services:
       timeout: 5s
       retries: 5
 
+  render:
+    build:
+      context: ../../
+      dockerfile: apps/render/Dockerfile
+    image: myorbisvoice-render:latest
+    container_name: myorbisvoice-render
+    restart: unless-stopped
+    # RENDER_TOKEN is optional — when unset the service skips token auth and
+    # relies on internal-network isolation. Add to .env.prod later for
+    # defense-in-depth: RENDER_TOKEN=<32-byte hex>
+    env_file: .env.prod
+    environment:
+      NODE_ENV: production
+      PORT:     "4600"
+    # `internal` so the api container can reach it; egress so Remotion can
+    # download chrome-headless-shell + fetch any AI-generated bg URLs. Never
+    # exposed to the caddy edge — this service is platform-internal only.
+    networks:
+      - internal
+      - render_egress
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4600/health | grep -q '\"ok\":true'"]
+      interval: 30s
+      timeout: 8s
+      retries: 5
+      start_period: 60s
+
   db-backup:
     image: postgres:16-alpine
     container_name: myorbisvoice-db-backup
@@ -238,6 +265,9 @@ networks:
     internal: true
   leadengine_egress:
     name: myorbisvoice_leadengine_egress
+    driver: bridge
+  render_egress:
+    name: myorbisvoice_render_egress
     driver: bridge
   caddy_app_edge:
     name: bps_zf_caddy_app_edge
