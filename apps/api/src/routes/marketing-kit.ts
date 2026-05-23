@@ -81,6 +81,29 @@ adminRouter.post('/marketing-kit/videos/:id/upload', upload.single('file'), asyn
   } catch (err) { next(err) }
 })
 
+// Combined create + upload — the admin UI's only "new video" entry point.
+// Multipart body: 'file' (the MP4) + the JSON-ish metadata fields posted as
+// individual form fields (titleEn, titleEs, etc.). durationSec + aspectRatio
+// come from the client's HTMLVideoElement metadata read before submit.
+adminRouter.post('/marketing-kit/videos/with-file', upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) { res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'file required' }] }); return }
+    const body = req.body as Record<string, string>
+    const data: svc.CreateInput = {
+      intent:        body['intent'] as svc.Intent,
+      titleEn:       body['titleEn'] ?? '',
+      titleEs:       body['titleEs'] ?? '',
+      descriptionEn: body['descriptionEn'] ?? '',
+      descriptionEs: body['descriptionEs'] ?? '',
+      aspectRatio:   (body['aspectRatio'] as svc.Aspect) || 'horizontal',
+      durationSec:   parseInt(body['durationSec'] ?? '0', 10) || 0,
+      visible:       body['visible'] === 'false' ? false : true,
+    }
+    const created = await svc.createVideoWithFile(data, req.file.buffer, req.file.mimetype, req.user!.id)
+    res.status(201).json({ data: created })
+  } catch (err) { next(err) }
+})
+
 adminRouter.get('/marketing-kit/settings', async (_req, res, next) => {
   try { res.json({ data: await svc.getSettings() }) } catch (err) { next(err) }
 })

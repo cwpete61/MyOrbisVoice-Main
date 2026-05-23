@@ -52,10 +52,19 @@ export default function AdminMarketingKitPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  // `mode: 'new'` opens a blank create form; `intent` (optional) pre-fills the
-  // tab dropdown when the admin clicked the "+ New" button inside a tab.
-  type EditingState = null | { mode: 'new'; intent?: Intent } | { mode: 'edit'; row: VideoRow }
-  const [editing, setEditing] = useState<EditingState>(null)
+  // Edit only fires for existing rows; the create flow is the file-driven
+  // upload modal below (no separate "+ New video" button).
+  const [editing, setEditing] = useState<VideoRow | null>(null)
+  // Upload modal — opened after the admin picks a file from a tab's "+ Upload
+  // video" button. We pre-read duration + aspect from <video> metadata so the
+  // server doesn't need ffprobe.
+  interface UploadDraft {
+    file:        File
+    intent:      Intent
+    durationSec: number
+    aspectRatio: Aspect
+  }
+  const [uploadDraft, setUploadDraft] = useState<UploadDraft | null>(null)
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setToast({ type, text })
@@ -129,7 +138,39 @@ export default function AdminMarketingKitPage() {
     } catch (e) { showToast('error', e instanceof Error ? e.message : 'Delete failed') }
   }
 
-  async function uploadFor(v: VideoRow, file: File) {
+  // Read a video file's duration + dimensions client-side via HTMLVideoElement.
+  // We use these to pre-populate the upload modal and post them as the
+  // authoritative values to the server (which has no ffprobe).
+  async function probeVideoFile(file: File): Promise<{ durationSec: number; width: number; height: number }> {
+    const url = URL.createObjectURL(file)
+    try {
+      const el = document.createElement('video')
+      el.preload = 'metadata'
+      el.muted = true
+      el.src = url
+      await new Promise<void>((resolve, reject) => {
+        el.onloadedmetadata = () => resolve()
+        el.onerror = () => reject(new Error('Could not read video metadata'))
+      })
+      return { durationSec: Math.round(el.duration), width: el.videoWidth, height: el.videoHeight }
+    } finally { URL.revokeObjectURL(url) }
+  }
+
+  // The single "+ Upload video" entry point per tab. Reads metadata from the
+  // file before showing the bilingual modal, so duration + aspect ratio are
+  // already filled in by the time the admin sees the form.
+  async function startUploadForTab(intent: Intent, file: File) {
+    try {
+      const meta = await probeVideoFile(file)
+      setUploadDraft({
+        file, intent,
+        durationSec: meta.durationSec,
+        aspectRatio: meta.width >= meta.height ? 'horizontal' : 'vertical',
+      })
+    } catch (e) { showToast('error', e instanceof Error ? e.message : 'Could not read video') }
+  }
+
+  async function replaceFor(v: VideoRow, file: File) {
     const fd = new FormData(); fd.append('file', file)
     const token = getAccessToken()
     try {
@@ -179,14 +220,14 @@ export default function AdminMarketingKitPage() {
                 <span className="ml-2 text-xs px-2 py-0.5 rounded-full font-semibold"
                   style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(45% 0.13 193)' }}>{rows.length}</span>
               </p>
-              <button onClick={() => setEditing({ mode: 'new', intent: tab.key })}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}>
-                + New video
-              </button>
+              <label className="cursor-pointer" title={`Upload a video into ${tab.label}`}>
+                <span className="px-3 py-1.5 rounded-lg text-xs font-semibold inline-block" style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}>+ Upload video</span>
+                <input type="file" accept="video/mp4,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) startUploadForTab(tab.key, f); e.currentTarget.value = '' }} />
+              </label>
             </div>
             {rows.length === 0 ? (
               <p className="px-4 py-6 text-sm text-center" style={{ color: 'var(--text-tertiary)' }}>
-                No videos in this tab yet. Click <b>+ New video</b> to add one.
+                No videos in this tab yet. Click <b>+ Upload video</b> to add one.
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -238,11 +279,11 @@ export default function AdminMarketingKitPage() {
                           </button>
                         </td>
                         <td className="px-3 py-2 align-top text-right whitespace-nowrap">
-                          <label className="inline-block mr-1 cursor-pointer">
-                            <span className="px-2 py-1 rounded text-xs font-semibold" style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}>Upload</span>
-                            <input type="file" accept="video/mp4,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFor(v, f); e.currentTarget.value = '' }} />
+                          <label className="inline-block mr-1 cursor-pointer" title="Swap in a new MP4 at the same Bunny path">
+                            <span className="px-2 py-1 rounded text-xs font-semibold" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>Replace</span>
+                            <input type="file" accept="video/mp4,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) replaceFor(v, f); e.currentTarget.value = '' }} />
                           </label>
-                          <button onClick={() => setEditing({ mode: 'edit', row: v })} className="px-2 py-1 rounded text-xs font-medium mr-1" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>Edit</button>
+                          <button onClick={() => setEditing(v)} className="px-2 py-1 rounded text-xs font-medium mr-1" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>Edit</button>
                           <button onClick={() => remove(v)} className="px-2 py-1 rounded text-xs font-medium" style={{ background: 'oklch(95% 0.05 25)', color: 'oklch(35% 0.18 25)' }}>Delete</button>
                         </td>
                       </tr>
@@ -257,17 +298,24 @@ export default function AdminMarketingKitPage() {
 
       {editing && (
         <EditModal
-          video={editing.mode === 'edit' ? editing.row : null}
-          initialIntent={editing.mode === 'new' ? editing.intent : undefined}
+          video={editing}
           onClose={() => setEditing(null)}
-          onSaved={(row, isNew) => {
-            setVideos(prev => {
-              if (!prev) return [row]
-              if (isNew) return [...prev, row]
-              return prev.map(x => x.id === row.id ? row : x)
-            })
+          onSaved={(row) => {
+            setVideos(prev => prev?.map(x => x.id === row.id ? row : x) ?? null)
             setEditing(null)
-            showToast('success', isNew ? 'Video created.' : 'Saved.')
+            showToast('success', 'Saved.')
+          }}
+        />
+      )}
+
+      {uploadDraft && (
+        <UploadModal
+          draft={uploadDraft}
+          onClose={() => setUploadDraft(null)}
+          onSaved={(row) => {
+            setVideos(prev => prev ? [...prev, row] : [row])
+            setUploadDraft(null)
+            showToast('success', `${row.titleEn} uploaded.`)
           }}
         />
       )}
@@ -362,23 +410,21 @@ function SelField({ label, value, onChange, options }: { label: string; value: s
 
 // ── Create/Edit modal ────────────────────────────────────────────────────────
 
-function EditModal({ video, initialIntent, onClose, onSaved }: {
-  video: VideoRow | null
-  initialIntent?: Intent
+function EditModal({ video, onClose, onSaved }: {
+  video: VideoRow
   onClose: () => void
-  onSaved: (row: VideoRow, isNew: boolean) => void
+  onSaved: (row: VideoRow) => void
 }) {
-  const isNew = video === null
   const [form, setForm] = useState({
-    intent:        video?.intent        ?? initialIntent ?? 'pitch-product' as Intent,
-    aspectRatio:   video?.aspectRatio   ?? 'horizontal' as Aspect,
-    titleEn:       video?.titleEn       ?? '',
-    titleEs:       video?.titleEs       ?? '',
-    descriptionEn: video?.descriptionEn ?? '',
-    descriptionEs: video?.descriptionEs ?? '',
-    durationSec:   video?.durationSec   ?? 0,
-    comingSoon:    video?.comingSoon    ?? true,
-    visible:       video?.visible       ?? true,
+    intent:        video.intent,
+    aspectRatio:   video.aspectRatio,
+    titleEn:       video.titleEn,
+    titleEs:       video.titleEs,
+    descriptionEn: video.descriptionEn,
+    descriptionEs: video.descriptionEs,
+    durationSec:   video.durationSec,
+    comingSoon:    video.comingSoon,
+    visible:       video.visible,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -386,11 +432,10 @@ function EditModal({ video, initialIntent, onClose, onSaved }: {
   async function submit() {
     setError(null); setSaving(true)
     try {
-      const body = JSON.stringify(form)
-      const row = isNew
-        ? await apiFetch<VideoRow>('/api/admin/marketing-kit/videos', { method: 'POST', body })
-        : await apiFetch<VideoRow>(`/api/admin/marketing-kit/videos/${video!.id}`, { method: 'PATCH', body })
-      onSaved(row, isNew)
+      const row = await apiFetch<VideoRow>(`/api/admin/marketing-kit/videos/${video.id}`, {
+        method: 'PATCH', body: JSON.stringify(form),
+      })
+      onSaved(row)
     } catch (e) { setError(e instanceof Error ? e.message : 'Save failed') }
     finally { setSaving(false) }
   }
@@ -400,7 +445,7 @@ function EditModal({ video, initialIntent, onClose, onSaved }: {
       <div onClick={(e) => e.stopPropagation()}
         className="rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
-        <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>{isNew ? 'New video' : 'Edit video'}</h2>
+        <h2 className="text-base font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Edit video</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <SelField label="Tab (intent)" value={form.intent} onChange={(v) => setForm({ ...form, intent: v as Intent })}
@@ -440,14 +485,9 @@ function EditModal({ video, initialIntent, onClose, onSaved }: {
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--surface-overlay)', color: 'var(--text-primary)' }}>Cancel</button>
           <button onClick={submit} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'oklch(55% 0.11 193)', color: '#fff', opacity: saving ? 0.5 : 1 }}>
-            {saving ? 'Saving…' : (isNew ? 'Create' : 'Save')}
+            {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
-        {isNew && (
-          <p className="text-xs mt-3" style={{ color: 'var(--text-tertiary)' }}>
-            After creating, use the Upload button in the row to attach the video file. Until then it shows as a Coming Soon placeholder.
-          </p>
-        )}
       </div>
     </div>
   )
@@ -470,6 +510,115 @@ function TxtArea({ label, value, onChange }: { label: string; value: string; onC
       <textarea rows={3} value={value} onChange={(e) => onChange(e.target.value)}
         className="w-full px-3 py-2 rounded-lg text-sm"
         style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', resize: 'vertical' }} />
+    </div>
+  )
+}
+
+// ── Upload modal — the single new-video path. The MP4 is already in memory
+// (picked by the admin), and we've read duration + aspect from it via
+// HTMLVideoElement. The admin fills bilingual title/description; Save streams
+// the file + metadata to the API in one multipart POST.
+function UploadModal({ draft, onClose, onSaved }: {
+  draft: { file: File; intent: Intent; durationSec: number; aspectRatio: Aspect }
+  onClose: () => void
+  onSaved: (row: VideoRow) => void
+}) {
+  const filenameRoot = draft.file.name.replace(/\.[^/.]+$/, '')
+  const [form, setForm] = useState({
+    intent:        draft.intent,
+    aspectRatio:   draft.aspectRatio,
+    titleEn:       filenameRoot,
+    titleEs:       '',
+    descriptionEn: '',
+    descriptionEs: '',
+    visible:       true,
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function submit() {
+    setError(null); setSaving(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', draft.file)
+      fd.append('intent',        form.intent)
+      fd.append('titleEn',       form.titleEn.trim())
+      fd.append('titleEs',       form.titleEs.trim())
+      fd.append('descriptionEn', form.descriptionEn.trim())
+      fd.append('descriptionEs', form.descriptionEs.trim())
+      fd.append('aspectRatio',   form.aspectRatio)
+      fd.append('durationSec',   String(draft.durationSec))
+      fd.append('visible',       form.visible ? 'true' : 'false')
+      const token = getAccessToken()
+      const res = await fetch(`${API_BASE}/api/admin/marketing-kit/videos/with-file`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      })
+      const json = await res.json() as { data?: VideoRow; errors?: { message: string }[] }
+      if (!res.ok) throw new Error(json.errors?.[0]?.message ?? 'Upload failed')
+      onSaved(json.data!)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Upload failed') }
+    finally { setSaving(false) }
+  }
+
+  const sizeMB = (draft.file.size / 1024 / 1024).toFixed(1)
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}
+        className="rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
+        <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Upload video</h2>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-tertiary)' }}>Duration, aspect ratio and file name are auto-detected — only the bilingual copy is required.</p>
+
+        {/* Auto-detected summary */}
+        <div className="rounded-lg p-3 mb-4 text-xs grid grid-cols-2 sm:grid-cols-4 gap-2" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+          <Detected label="File"     value={draft.file.name} />
+          <Detected label="Size"     value={`${sizeMB} MB`} />
+          <Detected label="Duration" value={`${Math.floor(draft.durationSec / 60)}:${(draft.durationSec % 60).toString().padStart(2, '0')}`} />
+          <Detected label="Aspect"   value={draft.aspectRatio === 'horizontal' ? '16:9' : '9:16'} />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <SelField label="Tab" value={form.intent} onChange={(v) => setForm({ ...form, intent: v as Intent })}
+            options={INTENTS.map(i => ({ value: i.key, label: i.label }))} />
+          <SelField label="Aspect ratio (override)" value={form.aspectRatio} onChange={(v) => setForm({ ...form, aspectRatio: v as Aspect })}
+            options={[{ value: 'horizontal', label: '16:9 horizontal' }, { value: 'vertical', label: '9:16 vertical' }]} />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <TxtField label="Title (English) *" value={form.titleEn} onChange={(v) => setForm({ ...form, titleEn: v })} />
+          <TxtField label="Title (Spanish) *" value={form.titleEs} onChange={(v) => setForm({ ...form, titleEs: v })} />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <TxtArea label="Description (English) *" value={form.descriptionEn} onChange={(v) => setForm({ ...form, descriptionEn: v })} />
+          <TxtArea label="Description (Spanish) *" value={form.descriptionEs} onChange={(v) => setForm({ ...form, descriptionEs: v })} />
+        </div>
+
+        <label className="flex items-center gap-2 mb-4">
+          <input type="checkbox" checked={form.visible} onChange={(e) => setForm({ ...form, visible: e.target.checked })} />
+          <span className="text-sm" style={{ color: 'var(--text-primary)' }}>Visible to partners on save</span>
+        </label>
+
+        {error && <div className="rounded-lg p-2 mb-3 text-xs" style={{ background: 'oklch(95% 0.05 25)', color: 'oklch(35% 0.18 25)' }}>{error}</div>}
+
+        <div className="flex gap-2 justify-end">
+          <button onClick={onClose} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--surface-overlay)', color: 'var(--text-primary)' }}>Cancel</button>
+          <button onClick={submit} disabled={saving} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'oklch(55% 0.11 193)', color: '#fff', opacity: saving ? 0.5 : 1 }}>
+            {saving ? 'Uploading…' : 'Upload & publish'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Detected({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--text-tertiary)' }}>{label}</p>
+      <p className="text-xs truncate font-medium" style={{ color: 'var(--text-primary)' }} title={value}>{value}</p>
     </div>
   )
 }

@@ -170,6 +170,68 @@ export async function uploadVideoFile(id: string, buffer: Buffer, mime: string) 
   })
 }
 
+// Combined create + upload — one round-trip the admin UI uses as its only
+// new-video path. The client supplies durationSec + aspectRatio (read from
+// HTMLVideoElement before submitting) so the server doesn't need ffprobe.
+// Bilingual + intent validation reuses validateCreate(). The row is created
+// first, then the file is PUT to Bunny at marketing-kit/<row-id>.mp4. If the
+// upload fails the row is rolled back so we never leave an orphan placeholder.
+export async function createVideoWithFile(
+  data: CreateInput,
+  fileBuffer: Buffer,
+  mime: string,
+  userId?: string,
+) {
+  validateCreate(data)
+  if (!mime.startsWith('video/')) throw new AppError('VALIDATION_ERROR', 'file must be a video', 422)
+  const config = await getBunnyConfig()
+  if (!config) throw new AppError('STORAGE_UNAVAILABLE', 'Storage is not configured', 503)
+
+  const last = await prisma.marketingKitVideo.findFirst({
+    where: { intent: data.intent },
+    orderBy: { sortOrder: 'desc' },
+    select: { sortOrder: true },
+  })
+  const created = await prisma.marketingKitVideo.create({
+    data: {
+      intent:        data.intent,
+      titleEn:       data.titleEn.trim(),
+      titleEs:       data.titleEs.trim(),
+      descriptionEn: data.descriptionEn.trim(),
+      descriptionEs: data.descriptionEs.trim(),
+      aspectRatio:   data.aspectRatio ?? 'horizontal',
+      durationSec:   data.durationSec ?? 0,
+      comingSoon:    false,
+      visible:       data.visible ?? true,
+      sortOrder:     data.sortOrder ?? ((last?.sortOrder ?? 0) + 10),
+      createdById:   userId,
+    },
+  })
+
+  const filename = `${created.id}.mp4`
+  const url = `https://${storageHostForRegion(config.storageRegion)}/${config.storageZone}/marketing-kit/${filename}`
+  try {
+    const res = await fetch(url, {
+      method:  'PUT',
+      headers: { AccessKey: config.storagePassword, 'Content-Type': 'video/mp4' },
+      body:    fileBuffer,
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new AppError('UPSTREAM_ERROR', `Bunny upload failed: ${res.status} ${text.slice(0, 200)}`, 502)
+    }
+  } catch (err) {
+    // Roll back the orphan DB row if the file never made it to Bunny.
+    await prisma.marketingKitVideo.delete({ where: { id: created.id } }).catch(() => undefined)
+    throw err
+  }
+
+  return prisma.marketingKitVideo.update({
+    where: { id: created.id },
+    data:  { filename },
+  })
+}
+
 async function deleteBunnyObject(filename: string) {
   const config = await getBunnyConfig()
   if (!config) return
