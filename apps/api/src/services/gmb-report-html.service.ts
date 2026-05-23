@@ -241,10 +241,21 @@ td.you{color:var(--teal2);font-weight:700}
       <div class="metric"><div class="n">${heat.top10Pct}%</div><div class="l">${esc(ui('top10Coverage'))}</div></div>
       <div class="metric"><div class="n" style="color:${heat.invisiblePct > 0 ? '#dc2626' : 'inherit'}">${heat.invisiblePct}%</div><div class="l">${esc(ui('invisible'))}</div></div>
     </div>
-    <div class="heatwrap"><div class="heat" style="grid-template-columns:repeat(${heat.gridSize},30px)">${heatCells}</div></div>
-    <div class="legend">${(['green', 'yellow', 'orange', 'red', 'none'] as const).map((b) => `<span><i style="background:${HEAT[b]}"></i>${esc(ui(b === 'green' ? 'heatGreen' : b === 'yellow' ? 'heatYellow' : b === 'orange' ? 'heatOrange' : b === 'red' ? 'heatRed' : 'heatGray'))}</span>`).join('')}</div>
-    <p class="lead" style="margin-top:10px">${esc(ui('fastWinsNote'))}</p>
-    ${heatPoints.length ? `<div id="geomap"></div><p class="lead" style="margin-top:8px;text-align:center">${esc(ui('mapHint'))}</p>` : ''}
+    ${(() => {
+      const legendHtml = (['green', 'yellow', 'orange', 'red', 'none'] as const).map((b) => `<span><i style="background:${HEAT[b]}"></i>${esc(ui(b === 'green' ? 'heatGreen' : b === 'yellow' ? 'heatYellow' : b === 'orange' ? 'heatOrange' : b === 'red' ? 'heatRed' : 'heatGray'))}</span>`).join('')
+      const noteCss = 'margin:10px auto 0;text-align:center;max-width:60ch'
+      // When real coordinates exist, show only the geographic map (one heat
+      // visualization, not two). Fall back to the abstract grid for legacy
+      // evaluations that lack lat/lng.
+      return heatPoints.length
+        ? `<div id="geomap"></div>
+           <div class="legend" style="margin-top:14px">${legendHtml}</div>
+           <p class="lead" style="${noteCss}">${esc(ui('mapHint'))}</p>
+           <p class="lead" style="${noteCss};margin-top:6px">${esc(ui('fastWinsNote'))}</p>`
+        : `<div class="heatwrap"><div class="heat" style="grid-template-columns:repeat(${heat.gridSize},30px)">${heatCells}</div></div>
+           <div class="legend">${legendHtml}</div>
+           <p class="lead" style="${noteCss}">${esc(ui('fastWinsNote'))}</p>`
+    })()}
     ${r.revenue && r.revenue.monthlyLost > 0 ? `<div class="lostrev">
       <div class="amt">${esc(moneyFmt(r.revenue.monthlyLost))}</div>
       <div class="lbl">${esc(ui('lostRevenueLabel'))}</div>
