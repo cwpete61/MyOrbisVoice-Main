@@ -21,6 +21,7 @@ type VideoIntent =
   | 'social-cuts'          // short 9:16 hooks for partners' organic social
 
 // One row of MarketingKitVideo from /api/public/marketing-kit/videos.
+type MediaType = 'video' | 'image' | 'audio' | 'carousel'
 interface VideoAsset {
   id:            string
   intent:        VideoIntent
@@ -32,6 +33,9 @@ interface VideoAsset {
   descriptionEn: string
   descriptionEs: string
   comingSoon:    boolean
+  mediaType:     MediaType
+  mimeType:      string | null
+  secondaryFilenames: string[]
 }
 
 interface KitSettings {
@@ -324,10 +328,11 @@ export default function MarketingKitPage() {
       <p className="text-xs text-center mt-6" style={{ color: 'var(--text-tertiary)' }}>{t('partnerMarketingKit.footer')}</p>
 
       {/* ─── Modal player ───────────────────────────────────────────────── */}
-      {activePlayer && activePlayer.filename && (
-        <VideoModal
-          src={`${ASSET_BASE}/${activePlayer.filename}`}
-          aspectRatio={activePlayer.aspectRatio}
+      {/* Audio has no modal — it plays inline on the card. Everything else
+          (video, image, carousel) opens the appropriate full-screen modal. */}
+      {activePlayer && activePlayer.filename && activePlayer.mediaType !== 'audio' && (
+        <MediaModal
+          asset={activePlayer}
           tClose={t('actions.close')}
           onClose={() => setActivePlayer(null)}
         />
@@ -352,94 +357,106 @@ function VideoCard(props: {
   setCopied:    (k: string | null) => void
 }) {
   const { video, labelTitle, labelDesc, tComingSoon, tWatch, tDownload, tCopyLink, tCopied, onWatch, copied, setCopied } = props
-  const isComing = video.comingSoon || !video.filename
-  const mp4Url   = video.filename ? `${ASSET_BASE}/${video.filename}` : ''
+  const isComing  = video.comingSoon || !video.filename
+  const mediaUrl  = video.filename ? `${ASSET_BASE}/${video.filename}` : ''
+  const mt        = video.mediaType ?? 'video'
+  const isAudio   = mt === 'audio'
+  const slideCount = (video.secondaryFilenames?.length ?? 0) + 1
 
   return (
     <div
       className="rounded-xl overflow-hidden flex flex-col"
       style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', opacity: isComing ? 0.7 : 1 }}
     >
-      {/* Thumbnail surface — for live videos we render a muted <video> with
-          preload="metadata" so the browser fetches just enough to display
-          the first frame as a thumbnail. Click anywhere on the surface
-          opens the full-bleed modal player. For coming-soon cards the
-          gradient + lock icon remain. */}
+      {/* Thumbnail surface — content branches by mediaType:
+          - video    → muted <video> first-frame poster + Play button → modal
+          - image    → <img> + click → lightbox
+          - carousel → cover <img> + "1 / N" slide-count badge + click → swiper modal
+          - audio    → speaker icon (no thumbnail); player goes inline below
+          coming-soon = gradient + lock icon, no click. */}
       <div
-        onClick={isComing ? undefined : onWatch}
+        onClick={isComing || isAudio ? undefined : onWatch}
         className="relative flex items-center justify-center overflow-hidden"
         style={{
           aspectRatio: video.aspectRatio === 'horizontal' ? '16 / 9' : '9 / 16',
           background:  'linear-gradient(135deg, oklch(40% 0.10 193) 0%, oklch(20% 0.05 193) 100%)',
           maxHeight:   video.aspectRatio === 'horizontal' ? 200 : 320,
-          cursor:      isComing ? 'default' : 'pointer',
+          cursor:      isComing || isAudio ? 'default' : 'pointer',
         }}
       >
-        {!isComing && mp4Url && (
-          <video
-            src={mp4Url + '#t=0.5'}
-            preload="metadata"
-            muted
-            playsInline
-            // Don't show native controls on the card — that's reserved for
-            // the modal player. The card is a clickable poster.
-            controls={false}
-            // Ensure first frame paints in cards: jumping to t=0.5 forces
-            // most browsers to render a frame even when paused.
-            style={{
-              position: 'absolute', inset: 0, width: '100%', height: '100%',
-              objectFit: 'cover', display: 'block',
-            }}
-            aria-hidden="true"
-          />
+        {!isComing && mediaUrl && (mt === 'video') && (
+          <video src={mediaUrl + '#t=0.5'} preload="metadata" muted playsInline controls={false}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} aria-hidden="true" />
+        )}
+        {!isComing && mediaUrl && (mt === 'image' || mt === 'carousel') && (
+          <img src={mediaUrl} alt={labelTitle} loading="lazy"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        )}
+        {!isComing && isAudio && (
+          // Speaker / waveform icon for audio cards.
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke={TEAL} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'relative', zIndex: 2, opacity: 0.85 }}>
+            <path d="M11 5L6 9H2v6h4l5 4V5z" />
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+          </svg>
         )}
 
-        {/* Play icon when available, lock when not — sits on top of the
-            video poster frame. */}
+        {/* Play / lock icon overlay. Hidden for audio (player is inline). */}
         {isComing ? (
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeOpacity="0.6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'relative', zIndex: 2 }}>
             <rect x="3" y="11" width="18" height="11" rx="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
-        ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); onWatch() }}
+        ) : !isAudio ? (
+          <button onClick={(e) => { e.stopPropagation(); onWatch() }}
             className="rounded-full flex items-center justify-center"
             style={{ width: 56, height: 56, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', border: 'none', cursor: 'pointer', position: 'relative', zIndex: 2 }}
-            aria-label={tWatch}
-          >
+            aria-label={tWatch}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-              <path d="M8 5v14l11-7z" />
+              {mt === 'image' || mt === 'carousel'
+                ? <path d="M15 3h6v6M14 10l7-7M9 21H3v-6M10 14l-7 7" />
+                : <path d="M8 5v14l11-7z" />}
             </svg>
           </button>
+        ) : null}
+
+        {/* Duration pill (video/audio) OR slide-count badge (carousel). */}
+        {(mt === 'video' || mt === 'audio') && video.durationSec > 0 && (
+          <span className="absolute bottom-2 right-2 text-[10px] px-1.5 py-0.5 rounded font-mono"
+            style={{ background: 'rgba(0,0,0,0.6)', color: 'white', zIndex: 2 }}>
+            {fmtDuration(video.durationSec)}
+          </span>
+        )}
+        {mt === 'carousel' && (
+          <span className="absolute bottom-2 right-2 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
+            style={{ background: 'rgba(0,0,0,0.7)', color: 'white', zIndex: 2 }}>
+            1 / {slideCount}
+          </span>
         )}
 
-        {/* Duration pill — z-index 2 to sit above the video poster */}
-        <span
-          className="absolute bottom-2 right-2 text-[10px] px-1.5 py-0.5 rounded font-mono"
-          style={{ background: 'rgba(0,0,0,0.6)', color: 'white', zIndex: 2 }}
-        >
-          {fmtDuration(video.durationSec)}
-        </span>
-
-        {/* Coming Soon pill */}
         {isComing && (
-          <span
-            className="absolute top-2 left-2 text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider"
-            style={{ background: TEAL, color: '#fff', letterSpacing: '0.08em', zIndex: 2 }}
-          >
+          <span className="absolute top-2 left-2 text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider"
+            style={{ background: TEAL, color: '#fff', letterSpacing: '0.08em', zIndex: 2 }}>
             {tComingSoon}
           </span>
         )}
 
-        {/* Aspect indicator */}
-        <span
-          className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded font-semibold"
-          style={{ background: 'rgba(0,0,0,0.6)', color: 'white', letterSpacing: '0.04em', zIndex: 2 }}
-        >
-          {video.aspectRatio === 'horizontal' ? '16:9' : '9:16'}
+        {/* Media-type / aspect indicator. */}
+        <span className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider"
+          style={{ background: 'rgba(0,0,0,0.6)', color: 'white', letterSpacing: '0.04em', zIndex: 2 }}>
+          {mt === 'audio' ? 'AUDIO' : mt === 'image' ? 'IMAGE' : mt === 'carousel' ? `CAROUSEL` : (video.aspectRatio === 'horizontal' ? '16:9' : '9:16')}
         </span>
       </div>
+
+      {/* Inline audio player — audio cards show <audio controls> directly
+          below the thumbnail surface. No modal needed. */}
+      {!isComing && isAudio && mediaUrl && (
+        <div className="px-3 pt-3">
+          <audio controls preload="metadata" src={mediaUrl} className="w-full" style={{ height: 36 }}>
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+      )}
 
       {/* Card body */}
       <div className="p-3 flex-1 flex flex-col">
@@ -456,7 +473,7 @@ function VideoCard(props: {
               ▶ {tWatch}
             </button>
             <a
-              href={mp4Url}
+              href={mediaUrl}
               download={video.filename}
               className="px-2 py-1.5 rounded-md text-xs font-medium text-center"
               style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)', textDecoration: 'none', minWidth: 36 }}
@@ -467,7 +484,7 @@ function VideoCard(props: {
             <button
               onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(mp4Url)
+                  await navigator.clipboard.writeText(mediaUrl)
                   setCopied('vid-' + video.id)
                   setTimeout(() => setCopied(null), 1500)
                 } catch { /* ignore */ }
@@ -490,38 +507,51 @@ function VideoCard(props: {
   )
 }
 
-function VideoModal({ src, aspectRatio, tClose, onClose }: { src: string; aspectRatio: 'horizontal' | 'vertical'; tClose: string; onClose: () => void }) {
+// Media-aware modal: picks the right inner element from the row's mediaType.
+// Video → autoplay <video controls>. Image → fullsize <img>. Carousel →
+// swiper with prev/next buttons + slide indicator. (Audio never opens here.)
+function MediaModal({ asset, tClose, onClose }: { asset: VideoAsset; tClose: string; onClose: () => void }) {
+  const [slideIdx, setSlideIdx] = useState(0)
+  const slides = asset.mediaType === 'carousel'
+    ? [asset.filename!, ...(asset.secondaryFilenames ?? [])]
+    : [asset.filename!]
+  const src = `${ASSET_BASE}/${slides[slideIdx]}`
+  const isVideo = asset.mediaType === 'video'
+  const isImage = asset.mediaType === 'image' || asset.mediaType === 'carousel'
+
   return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.85)' }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative rounded-xl overflow-hidden"
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.88)' }}>
+      <div onClick={(e) => e.stopPropagation()} className="relative rounded-xl overflow-hidden"
         style={{
-          background:  '#000',
-          width:       aspectRatio === 'horizontal' ? '90vw' : 'auto',
-          maxWidth:    aspectRatio === 'horizontal' ? 1100 : 480,
-          maxHeight:   '90vh',
-        }}
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 z-10 rounded-full flex items-center justify-center"
+          background: '#000',
+          width:     asset.aspectRatio === 'horizontal' ? '90vw' : 'auto',
+          maxWidth:  asset.aspectRatio === 'horizontal' ? 1100 : 600,
+          maxHeight: '90vh',
+        }}>
+        <button onClick={onClose} className="absolute top-2 right-2 z-10 rounded-full flex items-center justify-center"
           style={{ width: 36, height: 36, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', cursor: 'pointer', backdropFilter: 'blur(4px)' }}
-          aria-label={tClose}
-        >
-          ✕
-        </button>
-        <video
-          src={src}
-          controls
-          autoPlay
-          preload="metadata"
-          style={{ width: '100%', display: 'block', maxHeight: '85vh' }}
-        />
+          aria-label={tClose}>✕</button>
+
+        {isVideo && <video src={src} controls autoPlay preload="metadata" style={{ width: '100%', display: 'block', maxHeight: '85vh' }} />}
+        {isImage && <img src={src} alt="" style={{ width: '100%', display: 'block', maxHeight: '85vh', objectFit: 'contain' }} />}
+
+        {/* Carousel controls: prev / next + slide indicator. */}
+        {asset.mediaType === 'carousel' && slides.length > 1 && (
+          <>
+            <button onClick={() => setSlideIdx((i) => (i - 1 + slides.length) % slides.length)}
+              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full flex items-center justify-center"
+              style={{ width: 44, height: 44, background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', cursor: 'pointer', backdropFilter: 'blur(4px)' }}
+              aria-label="Previous slide">‹</button>
+            <button onClick={() => setSlideIdx((i) => (i + 1) % slides.length)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full flex items-center justify-center"
+              style={{ width: 44, height: 44, background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', cursor: 'pointer', backdropFilter: 'blur(4px)' }}
+              aria-label="Next slide">›</button>
+            <span className="absolute bottom-3 left-1/2 -translate-x-1/2 text-xs font-mono px-2 py-1 rounded"
+              style={{ background: 'rgba(0,0,0,0.65)', color: '#fff' }}>
+              {slideIdx + 1} / {slides.length}
+            </span>
+          </>
+        )}
       </div>
     </div>
   )

@@ -64,22 +64,23 @@ adminRouter.post('/marketing-kit/videos/reorder', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-// Multipart upload — single 'file' field, video MIME, 100 MB cap.
+// Multipart upload — 'file' field, accepts video/image/audio MIMEs, up to 10
+// files per request (carousels). 100 MB per file, 300 MB total.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits:  { fileSize: 100 * 1024 * 1024 },
+  limits:  { fileSize: 100 * 1024 * 1024, files: 10 },
   fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('video/')) {
-      cb(new Error('file must be a video') as never)
-      return
+    const m = file.mimetype.toLowerCase()
+    if (m.startsWith('video/') || m.startsWith('image/') || m.startsWith('audio/')) {
+      cb(null, true); return
     }
-    cb(null, true)
+    cb(new Error(`Unsupported MIME type: ${file.mimetype}. Allowed: video/*, image/*, audio/*`) as never)
   },
 })
 adminRouter.post('/marketing-kit/videos/:id/upload', upload.single('file'), async (req, res, next) => {
   try {
     if (!req.file) { res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'file required (multipart field name: "file")' }] }); return }
-    const updated = await svc.uploadVideoFile(req.params['id']!, req.file.buffer, req.file.mimetype)
+    const updated = await svc.uploadAssetFile(req.params['id']!, req.file.buffer, req.file.mimetype)
     res.json({ data: updated })
   } catch (err) { next(err) }
 })
@@ -91,33 +92,54 @@ adminRouter.post('/marketing-kit/videos/:id/upload', upload.single('file'), asyn
 //      scoped to one language, no auto-translation.
 //   B. Bilingual (legacy): titleEn + titleEs + descriptionEn + descriptionEs.
 // durationSec + aspectRatio come from the client's HTMLVideoElement metadata.
-adminRouter.post('/marketing-kit/videos/with-file', upload.single('file'), async (req, res, next) => {
-  try {
-    if (!req.file) { res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'file required' }] }); return }
-    const body = req.body as Record<string, string>
-    const intent       = body['intent'] as svc.Intent
-    const aspectRatio  = (body['aspectRatio'] as svc.Aspect) || 'horizontal'
-    const durationSec  = parseInt(body['durationSec'] ?? '0', 10) || 0
-    const visible      = body['visible'] === 'false' ? false : true
+// Accepts EITHER a single 'file' field (video/image/audio) OR a 'files' array
+// (carousel, 2-10 images). The handler picks the right service call based on
+// what arrived in req.files.
+adminRouter.post('/marketing-kit/videos/with-file',
+  upload.fields([{ name: 'file', maxCount: 1 }, { name: 'files', maxCount: 10 }]),
+  async (req, res, next) => {
+    try {
+      const filesMap = (req.files ?? {}) as Record<string, Express.Multer.File[]>
+      const single = filesMap['file']?.[0]
+      const many   = filesMap['files'] ?? []
+      if (!single && many.length === 0) {
+        res.status(400).json({ errors: [{ code: 'BAD_REQUEST', message: 'file or files required' }] }); return
+      }
+      const body = req.body as Record<string, string>
+      const intent       = body['intent'] as svc.Intent
+      const aspectRatio  = (body['aspectRatio'] as svc.Aspect) || 'horizontal'
+      const durationSec  = parseInt(body['durationSec'] ?? '0', 10) || 0
+      const visible      = body['visible'] === 'false' ? false : true
+      const track        = body['track'] || undefined
 
-    let titleEn = body['titleEn'] ?? ''
-    let titleEs = body['titleEs'] ?? ''
-    let descriptionEn = body['descriptionEn'] ?? ''
-    let descriptionEs = body['descriptionEs'] ?? ''
+      let titleEn = body['titleEn'] ?? ''
+      let titleEs = body['titleEs'] ?? ''
+      let descriptionEn = body['descriptionEn'] ?? ''
+      let descriptionEs = body['descriptionEs'] ?? ''
+      const primaryLang = body['primaryLang'] as 'en' | 'es' | undefined
+      if (primaryLang === 'en' || primaryLang === 'es') {
+        const title       = (body['title'] ?? '').trim()
+        const description = (body['description'] ?? '').trim()
+        if (primaryLang === 'en') { titleEn = title; descriptionEn = description; titleEs = ''; descriptionEs = '' }
+        else                      { titleEs = title; descriptionEs = description; titleEn = ''; descriptionEn = '' }
+      }
 
-    const primaryLang = body['primaryLang'] as 'en' | 'es' | undefined
-    if (primaryLang === 'en' || primaryLang === 'es') {
-      const title       = (body['title'] ?? '').trim()
-      const description = (body['description'] ?? '').trim()
-      if (primaryLang === 'en') { titleEn = title; descriptionEn = description; titleEs = ''; descriptionEs = '' }
-      else                      { titleEs = title; descriptionEs = description; titleEn = ''; descriptionEn = '' }
-    }
-
-    const data: svc.CreateInput = { intent, titleEn, titleEs, descriptionEn, descriptionEs, aspectRatio, durationSec, visible }
-    const created = await svc.createVideoWithFile(data, req.file.buffer, req.file.mimetype, req.user!.id)
-    res.status(201).json({ data: created })
-  } catch (err) { next(err) }
-})
+      const data: svc.CreateInput = { intent, titleEn, titleEs, descriptionEn, descriptionEs, aspectRatio, durationSec, visible, track }
+      let created
+      if (many.length >= 2) {
+        created = await svc.createCarouselWithFiles(
+          data,
+          many.map(f => ({ buffer: f.buffer, mime: f.mimetype })),
+          req.user!.id,
+        )
+      } else {
+        const f = single ?? many[0]!
+        created = await svc.createVideoWithFile(data, f.buffer, f.mimetype, req.user!.id)
+      }
+      res.status(201).json({ data: created })
+    } catch (err) { next(err) }
+  },
+)
 
 // AI helpers used by the Upload modal — generate a description from a title,
 // or translate copy to the OTHER language. Both gated by Platform Admin.

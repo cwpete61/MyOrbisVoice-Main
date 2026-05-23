@@ -18,6 +18,30 @@ export const VALID_INTENTS = [
 export type Intent = typeof VALID_INTENTS[number]
 export const VALID_ASPECT = ['horizontal', 'vertical'] as const
 export type Aspect = typeof VALID_ASPECT[number]
+export const VALID_MEDIA_TYPES = ['video', 'image', 'audio', 'carousel'] as const
+export type MediaType = typeof VALID_MEDIA_TYPES[number]
+
+// Map a MIME to a Bunny-storage file extension. Falls back to .bin so an
+// unrecognized type never crashes — admin can still upload, just be cautious.
+const MIME_EXT: Record<string, string> = {
+  'video/mp4':       'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
+  'image/png':       'png', 'image/jpeg': 'jpg',  'image/jpg':       'jpg',
+  'image/webp':      'webp', 'image/gif': 'gif',
+  'audio/mpeg':      'mp3', 'audio/mp3':  'mp3', 'audio/wav':       'wav',
+  'audio/x-wav':     'wav', 'audio/ogg':  'ogg', 'audio/aac':       'aac',
+}
+export function extFromMime(mime: string): string {
+  return MIME_EXT[mime.toLowerCase()] ?? mime.split('/')[1]?.replace(/[^a-z0-9]/g, '') ?? 'bin'
+}
+
+// Infer the MediaType from a MIME. Used when a route handler only has the
+// file in its hands and needs to set the row's `mediaType` consistently.
+export function mediaTypeFromMime(mime: string): MediaType {
+  if (mime.startsWith('video/')) return 'video'
+  if (mime.startsWith('image/')) return 'image'
+  if (mime.startsWith('audio/')) return 'audio'
+  throw new AppError('VALIDATION_ERROR', `Unsupported media type: ${mime}`, 422)
+}
 
 // ── Read ─────────────────────────────────────────────────────────────────────
 
@@ -40,7 +64,27 @@ export async function getVideo(id: string) {
 // hard-revoke access.)
 export async function isPublishableFilename(filename: string) {
   const row = await prisma.marketingKitVideo.findUnique({ where: { filename }, select: { id: true } })
-  return !!row
+  if (row) return true
+  // Carousel slides aren't in `filename` (only the cover is) — check the
+  // secondaryFilenames array via a raw filter.
+  const slide = await prisma.marketingKitVideo.findFirst({
+    where: { secondaryFilenames: { has: filename } },
+    select: { id: true },
+  })
+  return !!slide
+}
+
+// Returns the row's stored mimeType so the asset proxy can serve the right
+// Content-Type when Bunny doesn't return one. Checks the cover filename and
+// every carousel-slide filename.
+export async function getMimeForFilename(filename: string): Promise<string | null> {
+  const row = await prisma.marketingKitVideo.findUnique({ where: { filename }, select: { mimeType: true } })
+  if (row?.mimeType) return row.mimeType
+  const slide = await prisma.marketingKitVideo.findFirst({
+    where: { secondaryFilenames: { has: filename } },
+    select: { mimeType: true },
+  })
+  return slide?.mimeType ?? null
 }
 
 // ── Write — metadata ────────────────────────────────────────────────────────
@@ -56,6 +100,8 @@ export interface CreateInput {
   comingSoon?:   boolean
   visible?:      boolean
   sortOrder?:    number
+  mediaType?:    MediaType
+  track?:        string
 }
 function validateCreate(d: CreateInput) {
   if (!VALID_INTENTS.includes(d.intent)) throw new AppError('VALIDATION_ERROR', `intent must be one of: ${VALID_INTENTS.join(', ')}`, 422)
@@ -92,6 +138,8 @@ export async function createVideo(data: CreateInput, userId?: string) {
       comingSoon:    data.comingSoon ?? true, // no file yet by default
       visible:       data.visible ?? true,
       sortOrder:     data.sortOrder ?? ((last?.sortOrder ?? 0) + 10),
+      mediaType:     data.mediaType ?? 'video',
+      track:         data.track ?? null,
       createdById:   userId,
     },
   })
@@ -130,11 +178,12 @@ export async function patchVideo(id: string, patch: PatchInput) {
 
 export async function deleteVideo(id: string) {
   const existing = await getVideo(id)
-  // Best-effort delete of the Bunny object; tolerate failures so a broken
-  // upstream doesn't strand the DB row.
-  if (existing.filename) {
-    try { await deleteBunnyObject(existing.filename) } catch (e) {
-      console.error('[marketing-kit] bunny delete failed:', existing.filename, e)
+  // Best-effort delete of every Bunny object (cover + carousel slides);
+  // tolerate failures so a broken upstream doesn't strand the DB row.
+  const toRemove = [existing.filename, ...(existing.secondaryFilenames ?? [])].filter(Boolean) as string[]
+  for (const f of toRemove) {
+    try { await deleteBunnyObject(f) } catch (e) {
+      console.error('[marketing-kit] bunny delete failed:', f, e)
     }
   }
   await prisma.marketingKitVideo.delete({ where: { id: existing.id } })
@@ -153,41 +202,83 @@ export async function reorderVideos(orderedIds: string[]) {
 
 // ── File upload (Bunny PUT) ─────────────────────────────────────────────────
 
-export async function uploadVideoFile(id: string, buffer: Buffer, mime: string) {
-  const row = await getVideo(id)
-  if (!mime.startsWith('video/')) throw new AppError('VALIDATION_ERROR', 'file must be a video', 422)
+// Low-level: PUT a single buffer to Bunny at marketing-kit/<basename>. Used
+// by every upload helper below.
+async function putBunny(buffer: Buffer, basename: string, mime: string) {
   const config = await getBunnyConfig()
   if (!config) throw new AppError('STORAGE_UNAVAILABLE', 'Storage is not configured', 503)
-
-  // Tie the filename to the row id so the bunny path is unambiguous and a
-  // re-upload safely overwrites. Keep the existing filename if the row was
-  // seeded with a legacy name (so partner deep-links stay working).
-  const filename = row.filename ?? `${row.id}.mp4`
-  const path = `marketing-kit/${filename}`
-  const host = storageHostForRegion(config.storageRegion)
-  const url  = `https://${host}/${config.storageZone}/${path}`
-  const res  = await fetch(url, {
+  const url = `https://${storageHostForRegion(config.storageRegion)}/${config.storageZone}/marketing-kit/${basename}`
+  const res = await fetch(url, {
     method:  'PUT',
-    headers: { AccessKey: config.storagePassword, 'Content-Type': 'video/mp4' },
+    headers: { AccessKey: config.storagePassword, 'Content-Type': mime },
     body:    buffer,
   })
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new AppError('UPSTREAM_ERROR', `Bunny upload failed: ${res.status} ${text.slice(0, 200)}`, 502)
   }
+}
 
+// Replace / set the cover file on an existing row. Works for ANY media type
+// (video / image / audio); the mediaType + mimeType on the row are updated
+// to match the new file. Carousels use uploadCarouselFiles instead.
+export async function uploadAssetFile(id: string, buffer: Buffer, mime: string) {
+  const row = await getVideo(id)
+  const mediaType = mediaTypeFromMime(mime)
+  // Preserve the existing filename if there is one (deep-link stability);
+  // otherwise generate <row.id>.<ext>.
+  const filename = row.filename ?? `${row.id}.${extFromMime(mime)}`
+  await putBunny(buffer, filename, mime)
   return prisma.marketingKitVideo.update({
     where: { id: row.id },
-    data:  { filename, comingSoon: false },
+    data:  { filename, mimeType: mime, mediaType, comingSoon: false },
   })
 }
 
-// Combined create + upload — one round-trip the admin UI uses as its only
-// new-video path. The client supplies durationSec + aspectRatio (read from
-// HTMLVideoElement before submitting) so the server doesn't need ffprobe.
-// Bilingual + intent validation reuses validateCreate(). The row is created
-// first, then the file is PUT to Bunny at marketing-kit/<row-id>.mp4. If the
-// upload fails the row is rolled back so we never leave an orphan placeholder.
+// Back-compat alias — the admin "Replace" button still hits the old route
+// name; preserve the old function so importers don't break.
+export const uploadVideoFile = uploadAssetFile
+
+// Carousel: N images uploaded in one go. First image becomes the cover
+// (`filename`), rest land in `secondaryFilenames`. Bunny paths use the row
+// id + a 1-based slide index so re-uploads overwrite predictably.
+export async function uploadCarouselFiles(
+  id: string,
+  files: { buffer: Buffer; mime: string }[],
+) {
+  if (files.length < 2) throw new AppError('VALIDATION_ERROR', 'carousel requires 2 or more files', 422)
+  if (files.length > 10) throw new AppError('VALIDATION_ERROR', 'carousel max is 10 slides', 422)
+  const row = await getVideo(id)
+  // Every slide must be an image.
+  for (const f of files) {
+    if (!f.mime.startsWith('image/')) throw new AppError('VALIDATION_ERROR', 'carousel slides must all be images', 422)
+  }
+  const cover = `${row.id}-1.${extFromMime(files[0]!.mime)}`
+  await putBunny(files[0]!.buffer, cover, files[0]!.mime)
+  const rest: string[] = []
+  for (let i = 1; i < files.length; i++) {
+    const name = `${row.id}-${i + 1}.${extFromMime(files[i]!.mime)}`
+    await putBunny(files[i]!.buffer, name, files[i]!.mime)
+    rest.push(name)
+  }
+  return prisma.marketingKitVideo.update({
+    where: { id: row.id },
+    data:  {
+      filename:           cover,
+      secondaryFilenames: rest,
+      mimeType:           files[0]!.mime,
+      mediaType:          'carousel',
+      comingSoon:         false,
+    },
+  })
+}
+
+// Combined create + upload — single round-trip the admin UI uses as its only
+// new-asset path for single-file media (video / image / audio). Carousels
+// use createCarouselWithFiles below. durationSec + aspectRatio come from the
+// client (HTMLVideoElement / Image / Audio metadata read before submit). If
+// the Bunny upload fails the row is rolled back so no orphan placeholder is
+// left behind.
 export async function createVideoWithFile(
   data: CreateInput,
   fileBuffer: Buffer,
@@ -195,9 +286,7 @@ export async function createVideoWithFile(
   userId?: string,
 ) {
   validateCreate(data)
-  if (!mime.startsWith('video/')) throw new AppError('VALIDATION_ERROR', 'file must be a video', 422)
-  const config = await getBunnyConfig()
-  if (!config) throw new AppError('STORAGE_UNAVAILABLE', 'Storage is not configured', 503)
+  const mediaType = data.mediaType ?? mediaTypeFromMime(mime)
 
   const last = await prisma.marketingKitVideo.findFirst({
     where: { intent: data.intent },
@@ -216,32 +305,77 @@ export async function createVideoWithFile(
       comingSoon:    false,
       visible:       data.visible ?? true,
       sortOrder:     data.sortOrder ?? ((last?.sortOrder ?? 0) + 10),
+      mediaType,
+      mimeType:      mime,
+      track:         data.track ?? null,
       createdById:   userId,
     },
   })
 
-  const filename = `${created.id}.mp4`
-  const url = `https://${storageHostForRegion(config.storageRegion)}/${config.storageZone}/marketing-kit/${filename}`
+  const filename = `${created.id}.${extFromMime(mime)}`
   try {
-    const res = await fetch(url, {
-      method:  'PUT',
-      headers: { AccessKey: config.storagePassword, 'Content-Type': 'video/mp4' },
-      body:    fileBuffer,
-    })
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      throw new AppError('UPSTREAM_ERROR', `Bunny upload failed: ${res.status} ${text.slice(0, 200)}`, 502)
-    }
+    await putBunny(fileBuffer, filename, mime)
   } catch (err) {
-    // Roll back the orphan DB row if the file never made it to Bunny.
     await prisma.marketingKitVideo.delete({ where: { id: created.id } }).catch(() => undefined)
     throw err
   }
+  return prisma.marketingKitVideo.update({ where: { id: created.id }, data: { filename } })
+}
 
-  return prisma.marketingKitVideo.update({
-    where: { id: created.id },
-    data:  { filename },
+// Combined create + carousel upload — single round-trip. files[0] becomes
+// the cover (`filename`); slides 2..N go into `secondaryFilenames`. Each
+// slide must be an image; min 2, max 10. Rolls back the row if any PUT fails.
+export async function createCarouselWithFiles(
+  data: CreateInput,
+  files: { buffer: Buffer; mime: string }[],
+  userId?: string,
+) {
+  validateCreate(data)
+  if (files.length < 2)  throw new AppError('VALIDATION_ERROR', 'carousel requires 2 or more slides', 422)
+  if (files.length > 10) throw new AppError('VALIDATION_ERROR', 'carousel max is 10 slides', 422)
+  for (const f of files) {
+    if (!f.mime.startsWith('image/')) throw new AppError('VALIDATION_ERROR', 'carousel slides must all be images', 422)
+  }
+  const last = await prisma.marketingKitVideo.findFirst({
+    where: { intent: data.intent },
+    orderBy: { sortOrder: 'desc' },
+    select: { sortOrder: true },
   })
+  const created = await prisma.marketingKitVideo.create({
+    data: {
+      intent:        data.intent,
+      titleEn:       data.titleEn.trim(),
+      titleEs:       data.titleEs.trim(),
+      descriptionEn: data.descriptionEn.trim(),
+      descriptionEs: data.descriptionEs.trim(),
+      aspectRatio:   data.aspectRatio ?? 'horizontal',
+      durationSec:   0,
+      comingSoon:    false,
+      visible:       data.visible ?? true,
+      sortOrder:     data.sortOrder ?? ((last?.sortOrder ?? 0) + 10),
+      mediaType:     'carousel',
+      mimeType:      files[0]!.mime,
+      track:         data.track ?? null,
+      createdById:   userId,
+    },
+  })
+  try {
+    const cover = `${created.id}-1.${extFromMime(files[0]!.mime)}`
+    await putBunny(files[0]!.buffer, cover, files[0]!.mime)
+    const rest: string[] = []
+    for (let i = 1; i < files.length; i++) {
+      const name = `${created.id}-${i + 1}.${extFromMime(files[i]!.mime)}`
+      await putBunny(files[i]!.buffer, name, files[i]!.mime)
+      rest.push(name)
+    }
+    return prisma.marketingKitVideo.update({
+      where: { id: created.id },
+      data:  { filename: cover, secondaryFilenames: rest },
+    })
+  } catch (err) {
+    await prisma.marketingKitVideo.delete({ where: { id: created.id } }).catch(() => undefined)
+    throw err
+  }
 }
 
 async function deleteBunnyObject(filename: string) {

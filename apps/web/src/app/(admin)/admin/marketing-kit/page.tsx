@@ -58,14 +58,18 @@ export default function AdminMarketingKitPage() {
   // Edit only fires for existing rows; the create flow is the file-driven
   // upload modal below (no separate "+ New video" button).
   const [editing, setEditing] = useState<VideoRow | null>(null)
-  // Upload modal — opened after the admin picks a file from a tab's "+ Upload
-  // video" button. We pre-read duration + aspect from <video> metadata so the
-  // server doesn't need ffprobe.
+  // Upload modal — opened after the admin picks file(s) from a tab's "+
+  // Upload" button. We pre-read media metadata client-side (video duration,
+  // image dimensions, audio duration) so the server doesn't need ffprobe.
+  // 1 file = single asset (video / image / audio); 2+ images = carousel.
+  type DraftMedia = 'video' | 'image' | 'audio' | 'carousel'
   interface UploadDraft {
-    file:        File
+    files:       File[]
     intent:      Intent
+    mediaType:   DraftMedia
     durationSec: number
     aspectRatio: Aspect
+    mime:        string
   }
   const [uploadDraft, setUploadDraft] = useState<UploadDraft | null>(null)
 
@@ -141,36 +145,56 @@ export default function AdminMarketingKitPage() {
     } catch (e) { showToast('error', e instanceof Error ? e.message : 'Delete failed') }
   }
 
-  // Read a video file's duration + dimensions client-side via HTMLVideoElement.
-  // We use these to pre-populate the upload modal and post them as the
-  // authoritative values to the server (which has no ffprobe).
-  async function probeVideoFile(file: File): Promise<{ durationSec: number; width: number; height: number }> {
+  // Probe a single file client-side. Each helper returns the bits the upload
+  // form needs to pre-populate; if probe fails (corrupt file, missing codec)
+  // we fall back to safe defaults so the admin can still try the upload.
+  async function probeMedia(file: File): Promise<{ durationSec: number; width: number; height: number }> {
     const url = URL.createObjectURL(file)
     try {
-      const el = document.createElement('video')
-      el.preload = 'metadata'
-      el.muted = true
-      el.src = url
-      await new Promise<void>((resolve, reject) => {
-        el.onloadedmetadata = () => resolve()
-        el.onerror = () => reject(new Error('Could not read video metadata'))
-      })
-      return { durationSec: Math.round(el.duration), width: el.videoWidth, height: el.videoHeight }
+      const m = file.type.toLowerCase()
+      if (m.startsWith('image/')) {
+        const img = document.createElement('img')
+        img.src = url
+        await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(new Error('Could not read image')) })
+        return { durationSec: 0, width: img.naturalWidth, height: img.naturalHeight }
+      }
+      if (m.startsWith('audio/')) {
+        const a = document.createElement('audio')
+        a.preload = 'metadata'; a.src = url
+        await new Promise<void>((resolve, reject) => { a.onloadedmetadata = () => resolve(); a.onerror = () => reject(new Error('Could not read audio')) })
+        return { durationSec: Math.round(a.duration), width: 0, height: 0 }
+      }
+      // default: video
+      const v = document.createElement('video')
+      v.preload = 'metadata'; v.muted = true; v.src = url
+      await new Promise<void>((resolve, reject) => { v.onloadedmetadata = () => resolve(); v.onerror = () => reject(new Error('Could not read video')) })
+      return { durationSec: Math.round(v.duration), width: v.videoWidth, height: v.videoHeight }
     } finally { URL.revokeObjectURL(url) }
   }
 
-  // The single "+ Upload video" entry point per tab. Reads metadata from the
-  // file before showing the bilingual modal, so duration + aspect ratio are
-  // already filled in by the time the admin sees the form.
-  async function startUploadForTab(intent: Intent, file: File) {
+  // Single "+ Upload" entry point per tab. 1 file = single asset (video /
+  // image / audio detected by MIME). 2+ files = carousel (must all be images;
+  // first slide drives aspect ratio).
+  async function startUploadForTab(intent: Intent, files: File[]) {
+    if (files.length === 0) return
     try {
-      const meta = await probeVideoFile(file)
-      setUploadDraft({
-        file, intent,
-        durationSec: meta.durationSec,
-        aspectRatio: meta.width >= meta.height ? 'horizontal' : 'vertical',
-      })
-    } catch (e) { showToast('error', e instanceof Error ? e.message : 'Could not read video') }
+      if (files.length === 1) {
+        const f = files[0]!
+        const m = f.type.toLowerCase()
+        const mediaType: DraftMedia = m.startsWith('image/') ? 'image' : m.startsWith('audio/') ? 'audio' : 'video'
+        const meta = await probeMedia(f)
+        const aspectRatio: Aspect = meta.width >= meta.height || meta.width === 0 ? 'horizontal' : 'vertical'
+        setUploadDraft({ files, intent, mediaType, durationSec: meta.durationSec, aspectRatio, mime: f.type })
+      } else {
+        // Carousel — verify every file is an image
+        for (const f of files) {
+          if (!f.type.startsWith('image/')) { showToast('error', `Carousel slides must all be images (${f.name} is ${f.type || 'unknown'})`); return }
+        }
+        const meta = await probeMedia(files[0]!)
+        const aspectRatio: Aspect = meta.width >= meta.height ? 'horizontal' : 'vertical'
+        setUploadDraft({ files, intent, mediaType: 'carousel', durationSec: 0, aspectRatio, mime: files[0]!.type })
+      }
+    } catch (e) { showToast('error', e instanceof Error ? e.message : 'Could not read file') }
   }
 
   async function replaceFor(v: VideoRow, file: File) {
@@ -223,9 +247,9 @@ export default function AdminMarketingKitPage() {
                 <span className="ml-2 text-xs px-2 py-0.5 rounded-full font-semibold"
                   style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(45% 0.13 193)' }}>{rows.length}</span>
               </p>
-              <label className="cursor-pointer" title={`Upload a video into ${tab.label}`}>
-                <span className="px-3 py-1.5 rounded-lg text-xs font-semibold inline-block" style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}>+ Upload video</span>
-                <input type="file" accept="video/mp4,video/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) startUploadForTab(tab.key, f); e.currentTarget.value = '' }} />
+              <label className="cursor-pointer" title={`Upload media into ${tab.label}. 1 file = video/image/audio. Multi-select images = carousel.`}>
+                <span className="px-3 py-1.5 rounded-lg text-xs font-semibold inline-block" style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}>+ Upload</span>
+                <input type="file" multiple accept="video/*,image/*,audio/*" className="hidden" onChange={(e) => { const fs = Array.from(e.target.files ?? []); if (fs.length) startUploadForTab(tab.key, fs); e.currentTarget.value = '' }} />
               </label>
             </div>
             {rows.length === 0 ? (
@@ -565,11 +589,11 @@ function TxtArea({ label, value, onChange }: { label: string; value: string; onC
 // HTMLVideoElement. The admin fills bilingual title/description; Save streams
 // the file + metadata to the API in one multipart POST.
 function UploadModal({ draft, onClose, onSaved }: {
-  draft: { file: File; intent: Intent; durationSec: number; aspectRatio: Aspect }
+  draft: { files: File[]; intent: Intent; mediaType: 'video' | 'image' | 'audio' | 'carousel'; durationSec: number; aspectRatio: Aspect; mime: string }
   onClose: () => void
   onSaved: (row: VideoRow) => void
 }) {
-  const filenameRoot = draft.file.name.replace(/\.[^/.]+$/, '')
+  const filenameRoot = (draft.files[0]?.name ?? 'untitled').replace(/\.[^/.]+$/, '')
   // Admin picks ONE language; the server auto-translates to the other to
   // satisfy the bilingual rule. Default = English.
   const [primaryLang, setPrimaryLang] = useState<'en' | 'es'>('en')
@@ -601,7 +625,12 @@ function UploadModal({ draft, onClose, onSaved }: {
     setError(null); setSaving(true)
     try {
       const fd = new FormData()
-      fd.append('file',        draft.file)
+      // Carousel = multiple 'files' fields; everything else = single 'file'.
+      if (draft.mediaType === 'carousel') {
+        for (const f of draft.files) fd.append('files', f)
+      } else {
+        fd.append('file', draft.files[0]!)
+      }
       fd.append('intent',      form.intent)
       fd.append('primaryLang', primaryLang)
       fd.append('title',       form.title.trim())
@@ -622,9 +651,13 @@ function UploadModal({ draft, onClose, onSaved }: {
     finally { setSaving(false) }
   }
 
-  const sizeMB = (draft.file.size / 1024 / 1024).toFixed(1)
+  const totalBytes = draft.files.reduce((sum, f) => sum + f.size, 0)
+  const sizeMB = (totalBytes / 1024 / 1024).toFixed(1)
   const langLabel = (l: 'en' | 'es') => l === 'en' ? 'English' : 'Spanish'
   const otherLang = primaryLang === 'en' ? 'Spanish' : 'English'
+  const mediaLabel: Record<typeof draft.mediaType, string> = {
+    video: 'Video', image: 'Image', audio: 'Audio', carousel: `Carousel (${draft.files.length} slides)`,
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={onClose}>
@@ -638,10 +671,13 @@ function UploadModal({ draft, onClose, onSaved }: {
 
         {/* Auto-detected summary */}
         <div className="rounded-lg p-3 mb-4 text-xs grid grid-cols-2 sm:grid-cols-4 gap-2" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <Detected label="File"     value={draft.file.name} />
+          <Detected label="File"     value={draft.mediaType === 'carousel' ? `${draft.files.length} slides` : (draft.files[0]?.name ?? '—')} />
           <Detected label="Size"     value={`${sizeMB} MB`} />
-          <Detected label="Duration" value={`${Math.floor(draft.durationSec / 60)}:${(draft.durationSec % 60).toString().padStart(2, '0')}`} />
-          <Detected label="Aspect"   value={draft.aspectRatio === 'horizontal' ? '16:9' : '9:16'} />
+          <Detected label="Type"     value={mediaLabel[draft.mediaType]} />
+          <Detected label={draft.mediaType === 'audio' || draft.mediaType === 'video' ? 'Duration' : 'Aspect'}
+            value={draft.mediaType === 'audio' || draft.mediaType === 'video'
+              ? `${Math.floor(draft.durationSec / 60)}:${(draft.durationSec % 60).toString().padStart(2, '0')}`
+              : (draft.aspectRatio === 'horizontal' ? '16:9' : '9:16')} />
         </div>
 
         {/* Language toggle */}

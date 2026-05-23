@@ -1,7 +1,7 @@
 import { Router, type IRouter } from 'express'
 import { asyncHandler } from '../lib/async-handler.js'
 import { getBunnyConfig, storageHostForRegion } from '../services/bunny.service.js'
-import { isPublishableFilename } from '../services/marketing-kit.service.js'
+import { isPublishableFilename, getMimeForFilename } from '../services/marketing-kit.service.js'
 
 const router: IRouter = Router()
 
@@ -41,7 +41,11 @@ router.get('/public/marketing-asset/:filename', asyncHandler(async (req, res) =>
   }
 
   res.status(upstream.status)
-  res.setHeader('Content-Type', upstream.headers.get('Content-Type') ?? 'video/mp4')
+  // Prefer Bunny's upstream Content-Type; fall back to the row's stored mime
+  // (covers image/audio/carousel uploaded via the new media-agnostic path);
+  // ultimate fallback = video/mp4 for legacy rows that pre-date mimeType.
+  const dbMime = await getMimeForFilename(filename)
+  res.setHeader('Content-Type', upstream.headers.get('Content-Type') ?? dbMime ?? 'video/mp4')
   const cl = upstream.headers.get('Content-Length'); if (cl) res.setHeader('Content-Length', cl)
   const cr = upstream.headers.get('Content-Range');  if (cr) res.setHeader('Content-Range',  cr)
   res.setHeader('Accept-Ranges', 'bytes')
