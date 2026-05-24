@@ -7,15 +7,25 @@ interface PlatformStatus {
   google: { configured: boolean }
   stripe: { configured: boolean }
   twilio: { configured: boolean }
-  tenantCount: number
-  activeCount: number
+  // All counts EXCLUDE soft-deleted tenants (deletedAt IS NOT NULL).
+  tenantCount:      number
+  activeCount:      number
+  trialCount:       number
+  suspendedCount:   number
+  softDeletedCount: number
 }
 
 export default function AdminOverviewPage() {
   const { data, loading } = useApi<PlatformStatus>('/api/admin/platform/status')
 
+  // Live tenants = ACTIVE + TRIAL + SUSPENDED. Soft-deleted shown as a small
+  // muted suffix so admins know history exists without burying the headline.
   const cards = data ? [
-    { label: 'Tenants', value: data.tenantCount, sub: `${data.activeCount} active` },
+    {
+      label: 'Tenants',
+      value: data.tenantCount,
+      sub: `${data.activeCount} active · ${data.trialCount} trial${data.suspendedCount > 0 ? ` · ${data.suspendedCount} suspended` : ''}${data.softDeletedCount > 0 ? ` · ${data.softDeletedCount} archived` : ''}`,
+    },
   ] : []
 
   const integrations = data ? [

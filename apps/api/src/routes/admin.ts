@@ -24,9 +24,18 @@ router.use(authenticate, requirePlatformSupport)
 router.get('/platform/status', async (_req, res, next) => {
   try {
     const env = getEnv()
-    const [tenantCount, activeCount] = await Promise.all([
-      prisma.tenant.count(),
-      prisma.tenant.count({ where: { status: 'ACTIVE' } }),
+    // Exclude soft-deleted Tenant rows from every metric here. The total
+    // (`tenantCount`) used to include rows with deletedAt set — most of
+    // those are test signups, churned trials, and abandoned onboarding
+    // shells, so the headline was meaningless (e.g. "173 — 1 active" when
+    // only 6 rows are alive). Filter once, surface a per-status breakdown.
+    const NOT_DELETED = { deletedAt: null } as const
+    const [tenantCount, activeCount, trialCount, suspendedCount, softDeletedCount] = await Promise.all([
+      prisma.tenant.count({ where: NOT_DELETED }),
+      prisma.tenant.count({ where: { ...NOT_DELETED, status: 'ACTIVE' } }),
+      prisma.tenant.count({ where: { ...NOT_DELETED, status: 'TRIAL' } }),
+      prisma.tenant.count({ where: { ...NOT_DELETED, status: 'SUSPENDED' } }),
+      prisma.tenant.count({ where: { deletedAt: { not: null } } }),
     ])
     res.json({
       data: {
@@ -42,6 +51,9 @@ router.get('/platform/status', async (_req, res, next) => {
         },
         tenantCount,
         activeCount,
+        trialCount,
+        suspendedCount,
+        softDeletedCount,
       },
     })
   } catch (err) { next(err) }
