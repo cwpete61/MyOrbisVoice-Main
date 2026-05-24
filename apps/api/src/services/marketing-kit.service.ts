@@ -399,10 +399,64 @@ async function deleteBunnyObject(filename: string) {
 //   6. Insert MarketingKitVideo row with filename + captionsJson populated.
 
 import { generateSocialPost, generateAiImage, type SocialPostPayload } from './marketing-kit-ai.service.js'
-import { findAngle, ANGLES, type SocialAngle } from './social-angles.js'
-import { renderStill } from './render.client.js'
+import { findAngle, ANGLES, type SocialAngle, type CompositionId } from './social-angles.js'
+import { renderStill, renderVideo } from './render.client.js'
 
 export { ANGLES } from './social-angles.js'
+export type { CompositionId } from './social-angles.js'
+
+// Which compositions take an AI photographic background. Everything else is
+// pure typography / animation and skips the gpt-image-1 step (saves $0.07 +
+// ~5s per generation).
+const NEEDS_AI_BG: CompositionId[] = ['Social-Imagery']
+// Which compositions are videos (use renderVideo + image/png → video/mp4 row).
+const IS_VIDEO: CompositionId[] = ['Social-Reel', 'Hook-Reel', 'Partner-LongForm']
+// Default aspect ratio per composition (used to populate the DB row's
+// aspectRatio so the partner card picks the right thumbnail frame).
+const ASPECT_BY_COMP: Record<CompositionId, Aspect> = {
+  'Social-Static':    'horizontal', // 1:1 — we treat square as horizontal for layout
+  'Social-Imagery':   'vertical',   // 4:5 portrait
+  'Social-Reel':      'vertical',   // 9:16
+  'Stat-Card':        'horizontal', // 1:1
+  'Hook-Card':        'horizontal', // 1:1
+  'Quote-Card':       'vertical',   // 4:5
+  'Comparison-Card':  'horizontal', // 1:1
+  'Value-Pillars':    'vertical',   // 4:5
+  'Hook-Reel':        'vertical',   // 9:16
+  'Partner-LongForm': 'horizontal', // 16:9
+}
+
+// Map the AI payload onto each composition's prop shape. Every composition
+// silently falls back to its own default for props it doesn't get.
+function propsForComposition(comp: CompositionId, payload: SocialPostPayload, bgDataUrl?: string): Record<string, unknown> {
+  const cta = 'myorbisvoice.com'
+  switch (comp) {
+    case 'Social-Imagery':
+      return { bgUrl: bgDataUrl, kicker: payload.title.toUpperCase().slice(0, 60), title: payload.title, sub: payload.description, cta }
+    case 'Social-Static':
+      return {}
+    case 'Stat-Card':
+      // Description as supporting body; title used as the kicker. The AI is
+      // told to put the stat itself in the title field for this composition.
+      return { kicker: payload.title.toUpperCase().slice(0, 40), stat: payload.title, unit: '', body: payload.description, cta }
+    case 'Hook-Card':
+      return { kicker: payload.title.toUpperCase().slice(0, 40), hook: payload.description.split('.')[0] ?? payload.description, sub: payload.description, cta }
+    case 'Quote-Card':
+      return { quote: `"${payload.description}"`, author: payload.title, role: 'MyOrbisVoice', cta }
+    case 'Comparison-Card':
+      // Compare card needs structured bullets; the simple AI payload doesn't
+      // produce them yet so we fall back to defaults baked into the comp.
+      return { title: payload.title, cta }
+    case 'Value-Pillars':
+      return { kicker: payload.title.toUpperCase().slice(0, 40), title: payload.title, cta }
+    case 'Social-Reel':
+      return {}
+    case 'Hook-Reel':
+      return { kicker: payload.title.toUpperCase().slice(0, 40), hook: payload.title, ctaHeadline: payload.description.split('.')[0] ?? "Let's talk.", ctaSub: payload.description, ctaUrl: cta }
+    case 'Partner-LongForm':
+      return { topic: payload.title.toUpperCase().slice(0, 50), hookLine: payload.title, ctaHeadline: "Let's talk.", ctaUrl: cta }
+  }
+}
 
 export interface GenerateInput {
   // EITHER angleKey (curated) OR brief (free prompt). At least one required.
@@ -413,7 +467,7 @@ export interface GenerateInput {
   // Required. Single-language model — partner sees this only in this locale.
   lang:         'en' | 'es'
   // Optional override of the angle's default composition.
-  composition?: 'Social-Static' | 'Social-Imagery' | 'Social-Reel'
+  composition?: CompositionId
   visible?:     boolean
 }
 
@@ -423,7 +477,7 @@ export async function generatePostAndRender(input: GenerateInput, userId?: strin
   }
   let angle: SocialAngle | undefined
   let brief: string
-  let composition: 'Social-Static' | 'Social-Imagery' | 'Social-Reel'
+  let composition: CompositionId
   let imageStyle: string | undefined
   if (input.angleKey) {
     angle = findAngle(input.angleKey)
@@ -436,26 +490,28 @@ export async function generatePostAndRender(input: GenerateInput, userId?: strin
     composition = input.composition ?? 'Social-Imagery'
   }
 
-  // 1. Copy + caption variants + image prompt
+  // 1. AI copy + caption variants + image prompt
   const payload: SocialPostPayload = await generateSocialPost({
     brief, intent: input.intent, lang: input.lang, imageStyle, freeMode: !input.angleKey,
   })
 
-  // 2. AI background only when the composition uses one. Static text-led
-  //    layouts skip the image gen (saves ~$0.07 + ~5 sec).
+  // 2. AI background only for compositions that consume one. Saves ~$0.07
+  //    + ~5s per generation when the composition is text-only.
   let bgDataUrl: string | undefined
-  if (composition === 'Social-Imagery') {
+  if (NEEDS_AI_BG.includes(composition)) {
     const img = await generateAiImage({ prompt: payload.imagePrompt, size: '1024x1536', quality: 'high' })
     bgDataUrl = `data:${img.mime};base64,${img.bytes.toString('base64')}`
   }
 
-  // 3. Render Remotion comp → final composite PNG bytes
-  const finalPng = await renderStill({
-    compositionId: composition,
-    props: composition === 'Social-Imagery'
-      ? { bgUrl: bgDataUrl, kicker: payload.title.toUpperCase().slice(0, 60), title: payload.title, sub: payload.description, cta: 'myorbisvoice.com' }
-      : {},
-  })
+  // 3. Render via the dedicated render service. Video comps render to MP4;
+  //    everything else renders to PNG.
+  const props = propsForComposition(composition, payload, bgDataUrl)
+  const isVideo  = IS_VIDEO.includes(composition)
+  const finalBuf = isVideo
+    ? await renderVideo({ compositionId: composition, props })
+    : await renderStill({ compositionId: composition, props })
+  const ext  = isVideo ? 'mp4' : 'png'
+  const mime = isVideo ? 'video/mp4' : 'image/png'
 
   // 4. Create row + upload (mirrors createVideoWithFile's rollback semantics)
   validateCreate({
@@ -468,7 +524,6 @@ export async function generatePostAndRender(input: GenerateInput, userId?: strin
   const last = await prisma.marketingKitVideo.findFirst({
     where: { intent: input.intent }, orderBy: { sortOrder: 'desc' }, select: { sortOrder: true },
   })
-  const aspectRatio: Aspect = composition === 'Social-Reel' ? 'vertical' : 'vertical' // 1080x1350 = portrait
   const created = await prisma.marketingKitVideo.create({
     data: {
       intent:        input.intent,
@@ -476,20 +531,20 @@ export async function generatePostAndRender(input: GenerateInput, userId?: strin
       titleEs:       input.lang === 'es' ? payload.title       : '',
       descriptionEn: input.lang === 'en' ? payload.description : '',
       descriptionEs: input.lang === 'es' ? payload.description : '',
-      aspectRatio,
+      aspectRatio:   ASPECT_BY_COMP[composition],
       durationSec:   0,
       comingSoon:    false,
       visible:       input.visible ?? true,
       sortOrder:     (last?.sortOrder ?? 0) + 10,
-      mediaType:     'image',
-      mimeType:      'image/png',
+      mediaType:     isVideo ? 'video' : 'image',
+      mimeType:      mime,
       captionsJson:  payload.captions as unknown as object,
       createdById:   userId,
     },
   })
   try {
-    const filename = `${created.id}.png`
-    await putBunny(finalPng, filename, 'image/png')
+    const filename = `${created.id}.${ext}`
+    await putBunny(finalBuf, filename, mime)
     return prisma.marketingKitVideo.update({ where: { id: created.id }, data: { filename } })
   } catch (err) {
     await prisma.marketingKitVideo.delete({ where: { id: created.id } }).catch(() => undefined)

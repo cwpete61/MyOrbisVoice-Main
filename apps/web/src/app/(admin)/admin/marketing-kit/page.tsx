@@ -881,9 +881,16 @@ function GenerateModal({ intent, onClose, onGenerated }: {
             options={[{ value: 'en', label: 'English' }, { value: 'es', label: 'Spanish' }]} />
           <SelField label="Composition" value={composition} onChange={(v) => setComposition(v as typeof composition)}
             options={[
-              { value: 'Social-Imagery', label: 'AI photo + text (4:5)' },
-              { value: 'Social-Static',  label: 'Typography card (1:1)' },
-              { value: 'Social-Reel',    label: 'Animated reel (9:16)' },
+              { value: 'Social-Imagery',   label: 'AI photo + text (4:5)' },
+              { value: 'Social-Static',    label: 'Typography card (1:1)' },
+              { value: 'Stat-Card',        label: 'Stat card — big number (1:1)' },
+              { value: 'Hook-Card',        label: 'Hook card — question (1:1)' },
+              { value: 'Quote-Card',       label: 'Quote / testimonial (4:5)' },
+              { value: 'Comparison-Card',  label: 'You vs them (1:1)' },
+              { value: 'Value-Pillars',    label: 'Value pillars 1-2-3 (4:5)' },
+              { value: 'Social-Reel',      label: 'Animated reel — 12s (9:16)' },
+              { value: 'Hook-Reel',        label: 'Hook reel — 15s (9:16)' },
+              { value: 'Partner-LongForm', label: 'YouTube long-form intro/outro (16:9)' },
             ]} />
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Visibility</label>

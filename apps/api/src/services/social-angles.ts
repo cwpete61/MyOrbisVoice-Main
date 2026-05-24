@@ -12,11 +12,16 @@ export type AngleIntent =
   | 'reels-shorts-tiktok'
   | 'audio'
 
+export type CompositionId =
+  | 'Social-Static' | 'Social-Imagery' | 'Social-Reel'
+  | 'Stat-Card' | 'Hook-Card' | 'Quote-Card' | 'Comparison-Card' | 'Value-Pillars'
+  | 'Hook-Reel' | 'Partner-LongForm'
+
 export interface SocialAngle {
   key:           string                // slug — stable id used in API + JSON
   label:         string                // admin-facing pick-list label
   intent:        AngleIntent           // default tab for posts using this angle
-  composition:   'Social-Static' | 'Social-Imagery' | 'Social-Reel'
+  composition:   CompositionId
   aggression:    'conservative' | 'balanced' | 'direct' | 'aggressive'
   briefEn:       string                // English seed for the AI
   briefEs:       string                // Spanish seed (used when partner picks ES)
@@ -79,6 +84,49 @@ export const ANGLES: SocialAngle[] = [
   },
 
   // ── How-to-Sell angles ────────────────────────────────────────────────────
+  // ── New (B.5 template library) ────────────────────────────────────────────
+  {
+    key: 'stat-daily-math',
+    label: 'Stat card: daily math ($/day lost)',
+    intent: 'social-posts', composition: 'Stat-Card', aggression: 'direct',
+    briefEn: 'Single big-number stat. The daily $ figure a small business loses to missed calls (use 5 calls × $210 = $1,050/day). Treat the AI output title as the kicker, description as the supporting paragraph.',
+    briefEs: 'Una sola estadística grande. Lo que pierde un negocio al día por llamadas perdidas (5 llamadas × $210 = $1.050/día). El título sirve de gancho; la descripción es el párrafo de apoyo.',
+  },
+  {
+    key: 'hook-invisible-to-ai',
+    label: 'Hook card: invisible to AI?',
+    intent: 'social-posts', composition: 'Hook-Card', aggression: 'direct',
+    briefEn: 'Typography hook only. Question form, ≤7 words. Title field = the kicker ("GBP / Mobile AI"), description field = the punchy 1-line question (e.g. "Are you invisible to AI?").',
+    briefEs: 'Solo tipografía. Forma de pregunta, ≤7 palabras. Título = gancho ("GBP / IA móvil"), descripción = pregunta directa ("¿Eres invisible para la IA?").',
+  },
+  {
+    key: 'compare-voicemail-vs-orby',
+    label: 'Comparison: voicemail vs Orby',
+    intent: 'social-posts', composition: 'Comparison-Card', aggression: 'balanced',
+    briefEn: 'Two-column side-by-side. Left = "WITHOUT ORBY" (4 lose-state bullets, e.g. "Caller hangs up", "Books your competitor"). Right = "WITH ORBY" (4 win-state bullets). Title field = the framing question.',
+    briefEs: 'Dos columnas. Izquierda = "SIN ORBY" (4 viñetas de pérdida). Derecha = "CON ORBY" (4 viñetas de ganancia). Título = pregunta marco.',
+  },
+  {
+    key: 'pillars-trifecta',
+    label: 'Pillars: capture · rank · convert',
+    intent: 'pitch-product', composition: 'Value-Pillars', aggression: 'balanced',
+    briefEn: 'Three numbered pillars. Capture (voice agents), Rank (local SEO), Convert (matched website). Title = "Three engines." Description = "One growth system."',
+    briefEs: 'Tres pilares numerados. Captar (agentes de voz), Posicionar (SEO local), Convertir (sitio a la medida). Título = "Tres motores." Descripción = "Un sistema de crecimiento."',
+  },
+  {
+    key: 'reel-3-things-losing',
+    label: 'Reel: 3 things you\'re losing (15s)',
+    intent: 'reels-shorts-tiktok', composition: 'Hook-Reel', aggression: 'direct',
+    briefEn: '15-second short. Hook → 3-item agitate list → CTA. Title = the hook line ("Most local businesses are invisible."). Description = the CTA sub ("Free GBP audit, no obligation.").',
+    briefEs: 'Corto de 15s. Gancho → lista de 3 → CTA. Título = gancho ("La mayoría de negocios locales son invisibles."). Descripción = sub del CTA ("Auditoría GBP gratis, sin compromiso.").',
+  },
+  {
+    key: 'longform-gbp-walkthrough',
+    label: 'YT long-form: GBP audit walkthrough intro+outro',
+    intent: 'how-to-sell', composition: 'Partner-LongForm', aggression: 'conservative',
+    briefEn: 'Intro card + outro card for a 5-15 min YouTube walkthrough. Title = the episode topic. Description = the one-line hook that opens the video.',
+    briefEs: 'Tarjeta de intro + outro para video de YouTube de 5-15 min. Título = tema del episodio. Descripción = gancho de una línea para abrir el video.',
+  },
   {
     key: 'how-to-discovery-script',
     label: 'How to: 4 discovery questions',
