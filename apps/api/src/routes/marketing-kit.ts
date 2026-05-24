@@ -6,12 +6,26 @@
 
 import { Router, type IRouter } from 'express'
 import multer from 'multer'
+import rateLimit from 'express-rate-limit'
 import { authenticate } from '../middleware/authenticate.js'
 import { requirePlatformAdmin } from '../middleware/rbac.js'
 import * as svc from '../services/marketing-kit.service.js'
 import { translateText, generateMarketingDescription } from '../services/marketing-kit-ai.service.js'
+import { writeAuditLogFromRequest } from '../lib/audit.js'
 // translateText is exposed via /ai/translate for ad-hoc admin use; the
 // with-file path no longer calls it (each video lives in one language).
+
+// /generate runs OpenAI + gpt-image-1 + Remotion render (~10-70s each) and
+// costs money per call — cap each admin at 5/min so a stuck UI loop or a
+// curious admin can't accidentally rack up $5+ of OpenAI charges.
+const generateLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req as { user?: { id?: string } }).user?.id ?? req.ip ?? 'anon',
+  message: { errors: [{ code: 'RATE_LIMITED', message: 'Generate limit: 5 per minute. Slow down.' }] },
+})
 
 const router: IRouter = Router()
 
@@ -162,11 +176,39 @@ adminRouter.get('/marketing-kit/angles', async (_req, res, next) => {
   try { res.json({ data: svc.ANGLES }) } catch (err) { next(err) }
 })
 
-adminRouter.post('/marketing-kit/generate', async (req, res, next) => {
+adminRouter.post('/marketing-kit/generate', generateLimiter, async (req, res, next) => {
+  const started = Date.now()
+  const body = req.body as svc.GenerateInput
   try {
-    const row = await svc.generatePostAndRender(req.body as svc.GenerateInput, req.user!.id)
+    const row = await svc.generatePostAndRender(body, req.user!.id)
+    writeAuditLogFromRequest(req, {
+      actorType: 'USER', actorUserId: req.user!.id,
+      action:     'marketing_kit.generate.success',
+      targetType: 'MarketingKitVideo', targetId: row.id,
+      metadataJson: {
+        angleKey:    body.angleKey,
+        composition: body.composition,
+        intent:      body.intent,
+        lang:        body.lang,
+        freePrompt:  !body.angleKey,
+        durationMs:  Date.now() - started,
+      },
+    }).catch(() => null)
     res.status(201).json({ data: row })
-  } catch (err) { next(err) }
+  } catch (err) {
+    writeAuditLogFromRequest(req, {
+      actorType: 'USER', actorUserId: req.user!.id,
+      action:    'marketing_kit.generate.failure',
+      targetType: 'MarketingKitVideo', targetId: 'none',
+      metadataJson: {
+        angleKey: body.angleKey, composition: body.composition,
+        intent:   body.intent,   lang:        body.lang,
+        error:    err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300),
+        durationMs: Date.now() - started,
+      },
+    }).catch(() => null)
+    next(err)
+  }
 })
 
 adminRouter.post('/marketing-kit/ai/translate', async (req, res, next) => {

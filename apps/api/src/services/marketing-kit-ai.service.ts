@@ -122,7 +122,7 @@ export async function generateSocialPost(opts: {
     "linkedin": "3 short paragraphs (40-90 words total), thought-leader voice, no emoji, no hashtags",
     "tiktok":   "≤150 chars, hooky, 1-2 trending hashtags allowed"
   },
-  "imagePrompt": "Detailed prompt for an AI image generator (gpt-image-1) describing ONLY the background photograph for this post. No text, no logos, no people speaking, no signage. Cinematic, photographic, on-brand (deep blue + teal palette, warm interior amber as accent). 30-70 words."
+  "imagePrompt": "Detailed prompt for an AI image generator (gpt-image-1) describing ONLY the background photograph. Cinematic, photographic, on-brand (deep blue + teal palette, warm interior amber as accent). 30-70 words. MUST end with the literal sentence: 'No text, no letters, no signage, no logos, no readable writing of any kind anywhere in the image.' Compose the scene with NO storefronts that have visible signs, NO menu boards, NO posters, NO numbered signs, NO book covers, NO documents. If a sign appears in concept it must be blurred beyond readability."
 }`,
   ].join('\n')
 
@@ -149,19 +149,42 @@ export async function generateSocialPost(opts: {
 // ── AI image generation (gpt-image-1) ──────────────────────────────────────
 // Returns raw bytes — caller is responsible for storing them (Bunny upload
 // happens in marketing-kit.service.ts so this module stays storage-agnostic).
+// Belt-and-suspenders no-text guardrail. gpt-image-1 still occasionally
+// hallucinates signage / book covers / posters into backgrounds even when the
+// prompt forbids it; prepending this hard instruction up front reduces the
+// rate dramatically. We keep the user's prompt intact after it.
+const NO_TEXT_GUARDRAIL = [
+  'ABSOLUTE REQUIREMENT — read this first:',
+  'The output image MUST contain ZERO text, ZERO letters, ZERO numbers, ZERO signage, ZERO logos, ZERO writing of any kind.',
+  'No storefronts with visible signs. No menu boards. No book covers. No posters. No documents. No phone screens with visible text. No price tags. No numbered signs. No graffiti. No license plates.',
+  'If the scene concept implies a sign, the sign must be blurred beyond all readability OR removed entirely.',
+  'Violation of this rule = bad output. Comply strictly.',
+  '',
+  'Scene to render:',
+].join(' ')
+
 export async function generateAiImage(opts: { prompt: string; size?: '1024x1024' | '1024x1536' | '1536x1024'; quality?: 'low' | 'medium' | 'high' }): Promise<{ bytes: Buffer; mime: string }> {
   const { apiKey } = await getKeyAndModel()
-  const res = await fetch('https://api.openai.com/v1/images/generations', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model:   'gpt-image-1',
-      prompt:  opts.prompt,
-      size:    opts.size    ?? '1024x1024',
-      quality: opts.quality ?? 'high',
-      n:       1,
-    }),
-  })
+  const fullPrompt = `${NO_TEXT_GUARDRAIL}\n\n${opts.prompt.trim()}`
+  // One retry on transient 5xx — gpt-image-1 occasionally 502s under load.
+  const attempt = async () => {
+    return fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model:   'gpt-image-1',
+        prompt:  fullPrompt,
+        size:    opts.size    ?? '1024x1024',
+        quality: opts.quality ?? 'high',
+        n:       1,
+      }),
+    })
+  }
+  let res = await attempt()
+  if (!res.ok && res.status >= 500) {
+    await new Promise(r => setTimeout(r, 1500))
+    res = await attempt()
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new AppError('UPSTREAM_ERROR', `gpt-image-1 ${res.status}: ${text.slice(0, 200)}`, 502)

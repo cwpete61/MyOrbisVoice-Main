@@ -33,7 +33,15 @@ async function postRender(kind: 'still' | 'video', req: RenderRequest): Promise<
   const url = `${RENDER_URL}/${kind}`
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (RENDER_TOKEN) headers['X-Render-Token'] = RENDER_TOKEN
-  const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(req) })
+  const body = JSON.stringify(req)
+  // One retry on 5xx — render container occasionally returns 503 during a
+  // cold-start bundle, or 500 from a transient Chromium hiccup. The render
+  // itself is deterministic so a retry won't double-charge anything.
+  let res = await fetch(url, { method: 'POST', headers, body })
+  if (!res.ok && res.status >= 500) {
+    await new Promise(r => setTimeout(r, 2000))
+    res = await fetch(url, { method: 'POST', headers, body })
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => '')
     throw new AppError('UPSTREAM_ERROR', `render service ${res.status}: ${text.slice(0, 200)}`, 502)
