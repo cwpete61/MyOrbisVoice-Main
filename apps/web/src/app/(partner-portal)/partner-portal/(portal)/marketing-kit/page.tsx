@@ -22,6 +22,10 @@ type VideoIntent =
 
 // One row of MarketingKitVideo from /api/public/marketing-kit/videos.
 type MediaType = 'video' | 'image' | 'audio' | 'carousel'
+// Per-platform caption variants the AI generator populates. Older rows have
+// captionsJson === null; the partner card shows per-platform Copy buttons
+// only for the variants that are non-empty.
+interface PlatformCaptions { x?: string; ig?: string; linkedin?: string; tiktok?: string }
 interface VideoAsset {
   id:            string
   intent:        VideoIntent
@@ -36,6 +40,7 @@ interface VideoAsset {
   mediaType:     MediaType
   mimeType:      string | null
   secondaryFilenames: string[]
+  captionsJson:  PlatformCaptions | null
 }
 
 interface KitSettings {
@@ -500,6 +505,53 @@ function VideoCard(props: {
             >
               {copied === 'vid-' + video.id ? '✓' : '⎘'}
             </button>
+          </div>
+        )}
+
+        {/* Per-platform Copy buttons — only rendered when captionsJson is
+            populated (AI-generated posts). Each button copies the platform-
+            tuned caption. X + LinkedIn also expose a share-intent link to
+            open a pre-filled compose window. IG / TikTok are copy-only
+            (no web compose API). */}
+        {!isComing && video.captionsJson && (
+          <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <p className="text-[10px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Copy caption for</p>
+            <div className="flex flex-wrap gap-1">
+              {([
+                { k: 'x',        label: 'X',        intent: (t: string) => `https://twitter.com/intent/tweet?text=${encodeURIComponent(t)}` },
+                { k: 'ig',       label: 'Instagram' },
+                { k: 'linkedin', label: 'LinkedIn', intent: (t: string) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(mediaUrl)}&summary=${encodeURIComponent(t)}` },
+                { k: 'tiktok',   label: 'TikTok' },
+              ] as const).map(p => {
+                const text = (video.captionsJson as PlatformCaptions | null)?.[p.k]
+                if (!text) return null
+                const id = `cap-${video.id}-${p.k}`
+                const open = (p as { intent?: (t: string) => string }).intent
+                return (
+                  <span key={p.k} className="inline-flex">
+                    <button
+                      onClick={async () => {
+                        try { await navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(null), 1800) } catch { /* ignore */ }
+                      }}
+                      className="px-2 py-1 rounded text-xs font-medium"
+                      style={{
+                        background: copied === id ? 'oklch(55% 0.18 145)' : 'var(--surface-app)',
+                        color:      copied === id ? '#fff'              : 'var(--text-secondary)',
+                        border:     `1px solid ${copied === id ? 'oklch(55% 0.18 145)' : 'var(--border-subtle)'}`,
+                      }}
+                      title={text.slice(0, 200) + (text.length > 200 ? '…' : '')}>
+                      {copied === id ? '✓ ' + p.label : '⎘ ' + p.label}
+                    </button>
+                    {open && (
+                      <a href={open(text)} target="_blank" rel="noopener noreferrer"
+                        className="px-1.5 py-1 -ml-px rounded-r text-xs font-medium"
+                        style={{ background: 'var(--surface-app)', color: 'var(--text-tertiary)', border: '1px solid var(--border-subtle)', borderLeft: 'none', textDecoration: 'none' }}
+                        title={`Open ${p.label} compose with this caption pre-filled`}>↗</a>
+                    )}
+                  </span>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>
