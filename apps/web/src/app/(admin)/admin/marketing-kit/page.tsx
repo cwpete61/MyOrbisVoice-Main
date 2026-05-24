@@ -72,6 +72,8 @@ export default function AdminMarketingKitPage() {
     mime:        string
   }
   const [uploadDraft, setUploadDraft] = useState<UploadDraft | null>(null)
+  // Generator modal — opens when the admin clicks "✨ Generate" on a tab.
+  const [genFor, setGenFor] = useState<Intent | null>(null)
 
   const showToast = (type: 'success' | 'error', text: string) => {
     setToast({ type, text })
@@ -247,10 +249,18 @@ export default function AdminMarketingKitPage() {
                 <span className="ml-2 text-xs px-2 py-0.5 rounded-full font-semibold"
                   style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(45% 0.13 193)' }}>{rows.length}</span>
               </p>
-              <label className="cursor-pointer" title={`Upload media into ${tab.label}. 1 file = video/image/audio. Multi-select images = carousel.`}>
-                <span className="px-3 py-1.5 rounded-lg text-xs font-semibold inline-block" style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}>+ Upload</span>
-                <input type="file" multiple accept="video/*,image/*,audio/*" className="hidden" onChange={(e) => { const fs = Array.from(e.target.files ?? []); if (fs.length) startUploadForTab(tab.key, fs); e.currentTarget.value = '' }} />
-              </label>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setGenFor(tab.key)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: 'oklch(45% 0.13 193)', border: '1px solid oklch(55% 0.11 193 / 0.4)' }}
+                  title={`Generate a post for ${tab.label} with AI`}>
+                  ✨ Generate
+                </button>
+                <label className="cursor-pointer" title={`Upload media into ${tab.label}. 1 file = video/image/audio. Multi-select images = carousel.`}>
+                  <span className="px-3 py-1.5 rounded-lg text-xs font-semibold inline-block" style={{ background: 'oklch(55% 0.11 193)', color: '#fff' }}>+ Upload</span>
+                  <input type="file" multiple accept="video/*,image/*,audio/*" className="hidden" onChange={(e) => { const fs = Array.from(e.target.files ?? []); if (fs.length) startUploadForTab(tab.key, fs); e.currentTarget.value = '' }} />
+                </label>
+              </div>
             </div>
             {rows.length === 0 ? (
               <p className="px-4 py-6 text-sm text-center" style={{ color: 'var(--text-tertiary)' }}>
@@ -361,6 +371,18 @@ export default function AdminMarketingKitPage() {
             setVideos(prev => prev ? [...prev, row] : [row])
             setUploadDraft(null)
             showToast('success', `${row.titleEn} uploaded.`)
+          }}
+        />
+      )}
+
+      {genFor && (
+        <GenerateModal
+          intent={genFor}
+          onClose={() => setGenFor(null)}
+          onGenerated={(row) => {
+            setVideos(prev => prev ? [...prev, row] : [row])
+            setGenFor(null)
+            showToast('success', `Generated: ${row.titleEn || row.titleEs}`)
           }}
         />
       )}
@@ -749,6 +771,143 @@ function Detected({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--text-tertiary)' }}>{label}</p>
       <p className="text-xs truncate font-medium" style={{ color: 'var(--text-primary)' }} title={value}>{value}</p>
+    </div>
+  )
+}
+
+// ── Generate modal — admin picks an angle (or free prompt), language, and
+// composition, then the server orchestrates AI copy + AI image + Remotion
+// render + Bunny upload + DB row insertion. ~10-20s end-to-end.
+interface Angle {
+  key:         string
+  label:       string
+  intent:      string
+  composition: 'Social-Static' | 'Social-Imagery' | 'Social-Reel'
+  aggression:  string
+  briefEn:     string
+  briefEs:     string
+  imageStyle?: string
+}
+function GenerateModal({ intent, onClose, onGenerated }: {
+  intent:       Intent
+  onClose:      () => void
+  onGenerated:  (row: VideoRow) => void
+}) {
+  const [angles, setAngles]       = useState<Angle[] | null>(null)
+  const [mode, setMode]           = useState<'angle' | 'free'>('angle')
+  const [angleKey, setAngleKey]   = useState<string>('')
+  const [brief, setBrief]         = useState<string>('')
+  const [lang, setLang]           = useState<'en' | 'es'>('en')
+  const [composition, setComposition] = useState<'Social-Static' | 'Social-Imagery' | 'Social-Reel'>('Social-Imagery')
+  const [visible, setVisible]     = useState(true)
+  const [busy, setBusy]           = useState(false)
+  const [error, setError]         = useState<string | null>(null)
+
+  useEffect(() => {
+    apiFetch<Angle[]>('/api/admin/marketing-kit/angles')
+      .then(list => {
+        setAngles(list)
+        // Default to the first angle that matches this tab.
+        const fit = list.find(a => a.intent === intent) ?? list[0]
+        if (fit) { setAngleKey(fit.key); setComposition(fit.composition) }
+      })
+      .catch(e => setError(e instanceof Error ? e.message : 'Failed to load angles'))
+  }, [intent])
+
+  async function submit() {
+    setBusy(true); setError(null)
+    try {
+      const body: Record<string, unknown> = { intent, lang, composition, visible }
+      if (mode === 'angle') body.angleKey = angleKey
+      else                  body.brief    = brief.trim()
+      const row = await apiFetch<VideoRow>('/api/admin/marketing-kit/generate', {
+        method: 'POST', body: JSON.stringify(body),
+      })
+      onGenerated(row)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Generation failed') }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+      <div onClick={(e) => e.stopPropagation()} className="rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
+        <h2 className="text-base font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>✨ Generate a post</h2>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-tertiary)' }}>
+          AI writes the copy (4 per-platform variants), generates an on-brand background, and renders the final card. ~10-20 seconds.
+        </p>
+
+        {/* Mode toggle */}
+        <div className="mb-3 inline-flex rounded-lg overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+          {(['angle', 'free'] as const).map(m => (
+            <button key={m} type="button" onClick={() => setMode(m)}
+              className="px-4 py-1.5 text-sm font-semibold"
+              style={{ background: mode === m ? 'oklch(55% 0.11 193)' : 'var(--surface-raised)', color: mode === m ? '#fff' : 'var(--text-secondary)' }}>
+              {m === 'angle' ? 'Curated angle' : 'Free prompt'}
+            </button>
+          ))}
+        </div>
+
+        {mode === 'angle' ? (
+          <div className="mb-3">
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Angle</label>
+            <select value={angleKey} onChange={(e) => {
+              setAngleKey(e.target.value)
+              const a = angles?.find(x => x.key === e.target.value)
+              if (a) setComposition(a.composition)
+            }}
+              className="w-full px-3 py-2 rounded-lg text-sm"
+              style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+              {angles?.map(a => <option key={a.key} value={a.key}>{a.label}  ({a.intent})</option>)}
+            </select>
+            {angles?.find(a => a.key === angleKey) && (
+              <p className="text-xs mt-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                {lang === 'es' ? angles.find(a => a.key === angleKey)!.briefEs : angles.find(a => a.key === angleKey)!.briefEn}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mb-3">
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Free prompt</label>
+            <textarea rows={4} value={brief} onChange={(e) => setBrief(e.target.value)}
+              placeholder={`e.g. Hook: most local biz owners spend 60% of their day inside Google but their GBP is half-empty. Pitch: free GBP audit shows what they are missing. Pattern: PAS, direct tier.`}
+              className="w-full px-3 py-2 rounded-lg text-sm"
+              style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', resize: 'vertical' }} />
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+          <SelField label="Language" value={lang} onChange={(v) => setLang(v as 'en' | 'es')}
+            options={[{ value: 'en', label: 'English' }, { value: 'es', label: 'Spanish' }]} />
+          <SelField label="Composition" value={composition} onChange={(v) => setComposition(v as typeof composition)}
+            options={[
+              { value: 'Social-Imagery', label: 'AI photo + text (4:5)' },
+              { value: 'Social-Static',  label: 'Typography card (1:1)' },
+              { value: 'Social-Reel',    label: 'Animated reel (9:16)' },
+            ]} />
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Visibility</label>
+            <label className="flex items-center gap-2 mt-2 text-sm cursor-pointer" style={{ color: 'var(--text-primary)' }}>
+              <input type="checkbox" checked={visible} onChange={(e) => setVisible(e.target.checked)} />
+              Visible to partners on generate
+            </label>
+          </div>
+        </div>
+
+        {error && <div className="rounded-lg p-2 mb-3 text-xs" style={{ background: 'oklch(95% 0.05 25)', color: 'oklch(35% 0.18 25)' }}>{error}</div>}
+        {busy && <div className="rounded-lg p-3 mb-3 text-xs" style={{ background: 'oklch(96% 0.04 230)', color: 'oklch(35% 0.16 230)' }}>
+          Generating… (copy → AI image → render → upload). Don't close this window.
+        </div>}
+
+        <div className="flex gap-2 justify-end">
+          <button onClick={onClose} disabled={busy} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'var(--surface-overlay)', color: 'var(--text-primary)' }}>Cancel</button>
+          <button onClick={submit} disabled={busy || (mode === 'free' && !brief.trim()) || (mode === 'angle' && !angleKey)}
+            className="px-4 py-2 rounded-lg text-sm font-semibold"
+            style={{ background: 'oklch(55% 0.11 193)', color: '#fff', opacity: busy ? 0.5 : 1 }}>
+            {busy ? 'Generating…' : '✨ Generate & publish'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

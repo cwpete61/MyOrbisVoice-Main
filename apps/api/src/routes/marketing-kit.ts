@@ -156,6 +156,19 @@ adminRouter.post('/marketing-kit/ai/describe', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// AI generator — "✨ Generate" button. One round-trip = copy + AI image +
+// Remotion render + Bunny upload + DB row. Slow (~10-20s end-to-end).
+adminRouter.get('/marketing-kit/angles', async (_req, res, next) => {
+  try { res.json({ data: svc.ANGLES }) } catch (err) { next(err) }
+})
+
+adminRouter.post('/marketing-kit/generate', async (req, res, next) => {
+  try {
+    const row = await svc.generatePostAndRender(req.body as svc.GenerateInput, req.user!.id)
+    res.status(201).json({ data: row })
+  } catch (err) { next(err) }
+})
+
 adminRouter.post('/marketing-kit/ai/translate', async (req, res, next) => {
   try {
     const { text, from } = req.body as { text?: string; from?: 'en' | 'es' }

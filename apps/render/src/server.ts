@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url'
 
 const PORT          = Number(process.env.PORT || 4600)
 const RENDER_TOKEN  = process.env.RENDER_TOKEN || ''
-const MAX_BODY      = '4mb' // JSON body size cap (props can include base64 thumbs in future)
+const MAX_BODY      = '16mb' // JSON body size cap; props can carry base64 image bg (gpt-image-1 ≈ 3 MB)
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname  = dirname(__filename)

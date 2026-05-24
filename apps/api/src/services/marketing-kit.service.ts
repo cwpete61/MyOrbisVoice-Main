@@ -386,6 +386,117 @@ async function deleteBunnyObject(filename: string) {
   await fetch(url, { method: 'DELETE', headers: { AccessKey: config.storagePassword } })
 }
 
+// ── Generate post: AI copy + AI image + Remotion render → Bunny → DB row ───
+//
+// One-shot orchestrator the admin "✨ Generate" button calls. Steps:
+//   1. Resolve angle from key (or use raw brief).
+//   2. OpenAI gpt-4o-mini → SocialPostPayload (title, description, 4 caption
+//      variants, imagePrompt).
+//   3. OpenAI gpt-image-1 → background PNG bytes.
+//   4. Render service POST /still with the AI bg passed as a data: URL prop
+//      → composited final PNG (text on top of photo).
+//   5. PUT final PNG to Bunny under marketing-kit/<row-id>.png.
+//   6. Insert MarketingKitVideo row with filename + captionsJson populated.
+
+import { generateSocialPost, generateAiImage, type SocialPostPayload } from './marketing-kit-ai.service.js'
+import { findAngle, ANGLES, type SocialAngle } from './social-angles.js'
+import { renderStill } from './render.client.js'
+
+export { ANGLES } from './social-angles.js'
+
+export interface GenerateInput {
+  // EITHER angleKey (curated) OR brief (free prompt). At least one required.
+  angleKey?:    string
+  brief?:       string
+  // Required. Tab the new row lands in.
+  intent:       Intent
+  // Required. Single-language model — partner sees this only in this locale.
+  lang:         'en' | 'es'
+  // Optional override of the angle's default composition.
+  composition?: 'Social-Static' | 'Social-Imagery' | 'Social-Reel'
+  visible?:     boolean
+}
+
+export async function generatePostAndRender(input: GenerateInput, userId?: string) {
+  if (!input.angleKey && !input.brief?.trim()) {
+    throw new AppError('VALIDATION_ERROR', 'angleKey or brief is required', 422)
+  }
+  let angle: SocialAngle | undefined
+  let brief: string
+  let composition: 'Social-Static' | 'Social-Imagery' | 'Social-Reel'
+  let imageStyle: string | undefined
+  if (input.angleKey) {
+    angle = findAngle(input.angleKey)
+    if (!angle) throw new AppError('NOT_FOUND', `Unknown angle: ${input.angleKey}`, 404)
+    brief = input.lang === 'es' ? angle.briefEs : angle.briefEn
+    composition = input.composition ?? angle.composition
+    imageStyle = angle.imageStyle
+  } else {
+    brief = input.brief!.trim()
+    composition = input.composition ?? 'Social-Imagery'
+  }
+
+  // 1. Copy + caption variants + image prompt
+  const payload: SocialPostPayload = await generateSocialPost({
+    brief, intent: input.intent, lang: input.lang, imageStyle, freeMode: !input.angleKey,
+  })
+
+  // 2. AI background only when the composition uses one. Static text-led
+  //    layouts skip the image gen (saves ~$0.07 + ~5 sec).
+  let bgDataUrl: string | undefined
+  if (composition === 'Social-Imagery') {
+    const img = await generateAiImage({ prompt: payload.imagePrompt, size: '1024x1536', quality: 'high' })
+    bgDataUrl = `data:${img.mime};base64,${img.bytes.toString('base64')}`
+  }
+
+  // 3. Render Remotion comp → final composite PNG bytes
+  const finalPng = await renderStill({
+    compositionId: composition,
+    props: composition === 'Social-Imagery'
+      ? { bgUrl: bgDataUrl, kicker: payload.title.toUpperCase().slice(0, 60), title: payload.title, sub: payload.description, cta: 'myorbisvoice.com' }
+      : {},
+  })
+
+  // 4. Create row + upload (mirrors createVideoWithFile's rollback semantics)
+  validateCreate({
+    intent: input.intent,
+    titleEn: input.lang === 'en' ? payload.title       : '',
+    titleEs: input.lang === 'es' ? payload.title       : '',
+    descriptionEn: input.lang === 'en' ? payload.description : '',
+    descriptionEs: input.lang === 'es' ? payload.description : '',
+  })
+  const last = await prisma.marketingKitVideo.findFirst({
+    where: { intent: input.intent }, orderBy: { sortOrder: 'desc' }, select: { sortOrder: true },
+  })
+  const aspectRatio: Aspect = composition === 'Social-Reel' ? 'vertical' : 'vertical' // 1080x1350 = portrait
+  const created = await prisma.marketingKitVideo.create({
+    data: {
+      intent:        input.intent,
+      titleEn:       input.lang === 'en' ? payload.title       : '',
+      titleEs:       input.lang === 'es' ? payload.title       : '',
+      descriptionEn: input.lang === 'en' ? payload.description : '',
+      descriptionEs: input.lang === 'es' ? payload.description : '',
+      aspectRatio,
+      durationSec:   0,
+      comingSoon:    false,
+      visible:       input.visible ?? true,
+      sortOrder:     (last?.sortOrder ?? 0) + 10,
+      mediaType:     'image',
+      mimeType:      'image/png',
+      captionsJson:  payload.captions as unknown as object,
+      createdById:   userId,
+    },
+  })
+  try {
+    const filename = `${created.id}.png`
+    await putBunny(finalPng, filename, 'image/png')
+    return prisma.marketingKitVideo.update({ where: { id: created.id }, data: { filename } })
+  } catch (err) {
+    await prisma.marketingKitVideo.delete({ where: { id: created.id } }).catch(() => undefined)
+    throw err
+  }
+}
+
 // ── Settings ────────────────────────────────────────────────────────────────
 
 export async function getSettings() {

@@ -78,6 +78,100 @@ export async function translateText(text: string, from: 'en' | 'es'): Promise<st
   return (await callOpenAi(system, trimmed, model, apiKey)).replace(/^["']|["']$/g, '').trim()
 }
 
+// ── Full social-post generator ─────────────────────────────────────────────
+// Single OpenAI call returns:
+//   title         — short, partner-facing card title (≤60 chars)
+//   description   — 2-3 sentence card body
+//   captions:     — per-platform variants (X / IG / LinkedIn / TikTok)
+//   imagePrompt   — gpt-image-1 prompt for the background (no text in image)
+//
+// The angle library entry (or free prompt) seeds the system message; lang
+// + intent shape voice + framework choice.
+
+export interface SocialPostPayload {
+  title:       string
+  description: string
+  captions:    { x: string; ig: string; linkedin: string; tiktok: string }
+  imagePrompt: string
+}
+
+const BRAND_PROTECT = `Keep these brand and product terms in English in BOTH languages, never translate: MyOrbisVoice, MyOrbisLocal, MyOrbisWeb, MyOrbisResults, Orby, Map Pack, GBP, Google Business Profile.`
+
+export async function generateSocialPost(opts: {
+  brief:        string                    // angle.briefXx OR raw user prompt
+  intent:       string                    // marketing-kit intent (tab)
+  lang:         'en' | 'es'
+  imageStyle?:  string                    // optional photo-style hint from the angle
+  freeMode?:    boolean                   // true when admin typed a free prompt
+}): Promise<SocialPostPayload> {
+  const { apiKey, model } = await getKeyAndModel()
+  const language = opts.lang === 'es' ? 'Latin American Spanish (informal "tú")' : 'English'
+
+  const system = [
+    'You write a single social-media post for a SaaS called MyOrbisVoice (AI voice agents for small local businesses).',
+    `Write in ${language}.`,
+    BRAND_PROTECT,
+    'Tone: confident, direct-response, no fluff, no AI vocabulary (no "delve", "crucial", "robust", "comprehensive", "tapestry", "underscore", etc).',
+    'Return STRICTLY a JSON object with this exact shape and nothing else (no preamble, no markdown fences):',
+    `{
+  "title": "short partner-facing card title, max 60 chars",
+  "description": "2-3 sentences for the partner card under the title, max 220 chars",
+  "captions": {
+    "x":        "≤270 chars, hook-led, 0-1 hashtag, no emoji",
+    "ig":       "Instagram caption with 1-2 line breaks, 1-3 emoji, hook on line 1, CTA on last line, ≤2200 chars but aim ≤600",
+    "linkedin": "3 short paragraphs (40-90 words total), thought-leader voice, no emoji, no hashtags",
+    "tiktok":   "≤150 chars, hooky, 1-2 trending hashtags allowed"
+  },
+  "imagePrompt": "Detailed prompt for an AI image generator (gpt-image-1) describing ONLY the background photograph for this post. No text, no logos, no people speaking, no signage. Cinematic, photographic, on-brand (deep blue + teal palette, warm interior amber as accent). 30-70 words."
+}`,
+  ].join('\n')
+
+  const user = [
+    `Intent (which tab): ${opts.intent}`,
+    `Angle / brief:`, opts.brief.trim(),
+    opts.imageStyle ? `Suggested image style: ${opts.imageStyle}` : '',
+    opts.freeMode ? 'This is a free-form admin prompt — follow it closely; use the brief as the message.' : 'This is from the curated angle library — keep the framework intact.',
+  ].filter(Boolean).join('\n')
+
+  const out = await callOpenAi(system, user, model, apiKey)
+  // Strip accidental ```json fences if the model returns them.
+  const clean = out.replace(/^```(?:json)?\s*|\s*```$/g, '').trim()
+  let parsed: SocialPostPayload
+  try { parsed = JSON.parse(clean) }
+  catch { throw new AppError('AI_INVALID_RESPONSE', 'AI returned non-JSON; retry or refine prompt.', 422) }
+  // Defensive shape check — refuse partial payloads rather than persist garbage.
+  if (!parsed.title || !parsed.description || !parsed.captions?.x || !parsed.captions?.ig || !parsed.captions?.linkedin || !parsed.captions?.tiktok || !parsed.imagePrompt) {
+    throw new AppError('AI_INVALID_RESPONSE', 'AI response missing required fields.', 422)
+  }
+  return parsed
+}
+
+// ── AI image generation (gpt-image-1) ──────────────────────────────────────
+// Returns raw bytes — caller is responsible for storing them (Bunny upload
+// happens in marketing-kit.service.ts so this module stays storage-agnostic).
+export async function generateAiImage(opts: { prompt: string; size?: '1024x1024' | '1024x1536' | '1536x1024'; quality?: 'low' | 'medium' | 'high' }): Promise<{ bytes: Buffer; mime: string }> {
+  const { apiKey } = await getKeyAndModel()
+  const res = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model:   'gpt-image-1',
+      prompt:  opts.prompt,
+      size:    opts.size    ?? '1024x1024',
+      quality: opts.quality ?? 'high',
+      n:       1,
+    }),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new AppError('UPSTREAM_ERROR', `gpt-image-1 ${res.status}: ${text.slice(0, 200)}`, 502)
+  }
+  const json = await res.json() as { data?: { b64_json?: string }[] }
+  const b64 = json.data?.[0]?.b64_json
+  if (!b64) throw new AppError('AI_INVALID_RESPONSE', 'gpt-image-1 returned no image', 422)
+  return { bytes: Buffer.from(b64, 'base64'), mime: 'image/png' }
+}
+
 // Generates a 1-2 sentence partner-facing description for a video, in `lang`,
 // based on the title + the kit "intent" (which tab it lives in).
 const INTENT_PURPOSE: Record<string, string> = {
