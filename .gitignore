@@ -52,3 +52,22 @@ graphify-out/
 
 # Local source-media folder (uploaded to Bunny, not tracked)
 Videos/
+
+# Transient scratch dirs — recording pulls, raw audio captures, resampler WAVs.
+# Regenerable via infrastructure/scripts/pull-twilio-recordings.sh; never commit
+# (contains private call audio).
+tmp/
+apps/api/tmp/
+
+# Local scratch / reference material folder (screen-capture PDFs, working assets).
+Resources/
+
+# Per-machine wiki binding marker (gmb-audit). Machine-local, not shared state.
+.wiki-link
+
+# Local third-party reference PDF (copyrighted — never commit).
+pdfcoffee.com-*.pdf
+
+# One-off local HTML backups of the marketing index (kept locally, not tracked).
+site/index.legacy.html
+site/index.shell-backup.html

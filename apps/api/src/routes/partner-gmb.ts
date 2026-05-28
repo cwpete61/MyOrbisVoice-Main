@@ -63,6 +63,16 @@ router.get('/partner/gmb-evaluations/:id', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Promote one GMB Evaluation row to a Contact on the partner's CRM and
+// place it on the default pipeline's "New Lead" stage.
+router.post('/partner/gmb-evaluations/:id/add-to-crm', async (req, res, next) => {
+  try {
+    const partnerId = (req as any).partnerAccountId as string
+    const data = await gmbService.addEvaluationToCrm(partnerId, req.params.id!)
+    res.json({ data })
+  } catch (err) { next(err) }
+})
+
 // Soft-delete an evaluation (still counts toward the monthly cap).
 router.delete('/partner/gmb-evaluations/:id', async (req, res, next) => {
   try {

@@ -66,7 +66,7 @@ async function leadengineFetch<T>(path: string, init?: RequestInit): Promise<T> 
  * partner-crm.ts: prefer a tenant that has hosted this partner's conversations,
  * else the platform demo tenant.
  */
-async function resolveHostingTenantId(partnerId: string): Promise<string> {
+export async function resolveHostingTenantId(partnerId: string): Promise<string> {
   const recent = await prisma.conversation.findFirst({
     where: { partnerId },
     orderBy: { startedAt: 'desc' },

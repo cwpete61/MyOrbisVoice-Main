@@ -6,6 +6,16 @@ import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
 const TEAL = 'oklch(55% 0.11 193)'
 
+// Parse "10210 Systems Pkwy #370, Sacramento, CA 95827" → "Sacramento".
+// Fallback: detail.search.location is preferred. This helper covers leads
+// whose row pre-dates the search-level location capture.
+function extractCityFromAddress(addr: string | null): string | null {
+  if (!addr) return null
+  const parts = addr.split(',').map((s) => s.trim())
+  // US address shape: [street, city, state+zip]
+  return parts.length >= 3 ? (parts[parts.length - 2] ?? null) : null
+}
+
 type SearchStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED'
 type ReviewStatus = 'NEW' | 'SAVED' | 'REJECTED' | 'PROMOTED'
 
@@ -610,6 +620,7 @@ function SearchResults(props: {
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colMapRank')}</th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colRating')}</th>
                     <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colScore')}</th>
+                    <th className="text-left px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colGbp')}</th>
                     <th className="text-right px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{t('partnerLeads.colActions')}</th>
                   </tr>
                 </thead>
@@ -663,6 +674,27 @@ function SearchResults(props: {
                         >
                           {lead.score}
                         </span>
+                      </td>
+                      <td className="px-3 py-2.5 align-top">
+                        {/* Handoff → GBP Audit page with query params; the
+                            GBP page reads them, fills the form, auto-runs. */}
+                        <a
+                          href={(() => {
+                            const params = new URLSearchParams({
+                              business: lead.businessName,
+                              city: detail?.search.location ?? extractCityFromAddress(lead.address) ?? '',
+                              autorun: '1',
+                              ...(lead.website ? { website: lead.website } : {}),
+                              ...(detail?.search.industry ? { keywords: detail.search.industry } : {}),
+                            })
+                            return `/partner-portal/gmb-evaluation?${params.toString()}`
+                          })()}
+                          className="text-xs px-2 py-1 rounded font-medium inline-flex items-center gap-1"
+                          style={{ background: TEAL, color: 'white' }}
+                          title={t('partnerLeads.gbpRunTitle')}
+                        >
+                          {t('partnerLeads.gbpRun')}
+                        </a>
                       </td>
                       <td className="px-3 py-2.5 align-top text-right whitespace-nowrap">
                         {lead.reviewStatus === 'PROMOTED' ? (

@@ -78,6 +78,19 @@ export default function PartnerCrmKanbanPage() {
     }
   }
 
+  /** Soft-delete a contact from the CRM. Pops a native confirm() first so
+   *  one accidental click can't wipe a lead. Board reloads on success. */
+  async function removeContact(contactId: string, displayName: string) {
+    if (!window.confirm(t('partnerCrm.removeConfirm').replace('{name}', displayName))) return
+    try {
+      await apiFetch(`/api/partner/crm/contacts/${contactId}`, { method: 'DELETE' })
+      reload()
+    } catch (e) {
+      console.warn('[partner-crm] remove failed:', e)
+      window.alert(t('partnerCrm.removeError'))
+    }
+  }
+
   function fullName(c: BoardContact): string {
     return c.fullName ?? [c.firstName, c.lastName].filter(Boolean).join(' ') ?? t('partnerCrm.unnamed')
   }
@@ -163,19 +176,19 @@ export default function PartnerCrmKanbanPage() {
                       </div>
                     )}
                     {items.map((c) => (
-                      <Link
-                        key={c.id}
-                        href={`/partner-portal/contacts/${c.id}`}
-                        draggable
-                        onDragStart={() => setDraggedId(c.id)}
-                        onDragEnd={() => setDraggedId(null)}
-                        className="block p-2 rounded-lg cursor-move transition-shadow hover:shadow-md"
-                        style={{
-                          background: 'var(--surface-raised)',
-                          border:     '1px solid var(--border-subtle)',
-                          opacity:    draggedId === c.id ? 0.4 : 1,
-                        }}
-                      >
+                      <div key={c.id} className="relative group">
+                        <Link
+                          href={`/partner-portal/contacts/${c.id}`}
+                          draggable
+                          onDragStart={() => setDraggedId(c.id)}
+                          onDragEnd={() => setDraggedId(null)}
+                          className="block p-2 pr-7 rounded-lg cursor-move transition-shadow hover:shadow-md"
+                          style={{
+                            background: 'var(--surface-raised)',
+                            border:     '1px solid var(--border-subtle)',
+                            opacity:    draggedId === c.id ? 0.4 : 1,
+                          }}
+                        >
                         <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
                           {fullName(c)}
                         </div>
@@ -200,7 +213,30 @@ export default function PartnerCrmKanbanPage() {
                             {new Date(c.stageUpdatedAt ?? c.createdAt).toLocaleDateString(dateLocale)}
                           </span>
                         </div>
-                      </Link>
+                        </Link>
+                        {/* Remove button — only visible on hover, sits in
+                            top-right corner above the Link. preventDefault +
+                            stopPropagation so the Link navigation doesn't
+                            fire on click. */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); void removeContact(c.id, fullName(c)) }}
+                          onMouseDown={(e) => { e.stopPropagation() }}
+                          draggable={false}
+                          aria-label={t('partnerCrm.removeAria')}
+                          title={t('partnerCrm.remove')}
+                          className="absolute top-1 right-1 w-5 h-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{
+                            background: 'var(--surface-overlay)',
+                            color: 'var(--text-tertiary)',
+                            border: '1px solid var(--border-subtle)',
+                            fontSize: '12px',
+                            lineHeight: 1,
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>

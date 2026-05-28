@@ -108,6 +108,11 @@ export default function GmbEvaluationPage() {
   const [copied, setCopied] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [usage, setUsage] = useState<{ used: number; cap: number; remaining: number; resetsAt: string | null } | null>(null)
+  // Add-to-CRM state on the result block. Once promoted, contactId stays
+  // so the button shows "Added" + a hint of the contact name.
+  const [addingToCrm, setAddingToCrm] = useState(false)
+  const [crmContact, setCrmContact] = useState<{ id: string; fullName: string } | null>(null)
+  const [crmError, setCrmError] = useState<string | null>(null)
 
   const loadHistory = useCallback(async () => {
     const resp = await apiFetch<{ items: ListItem[]; total: number }>('/api/partner/gmb-evaluations')
@@ -118,6 +123,52 @@ export default function GmbEvaluationPage() {
     setUsage(await apiFetch<{ used: number; cap: number; remaining: number; resetsAt: string | null }>('/api/partner/gmb-evaluations/usage').catch(() => null))
   }, [])
   useEffect(() => { void loadHistory(); void loadUsage() }, [loadHistory, loadUsage])
+
+  // Handoff from Leads Search → fill form from query params + auto-run when
+  // ?autorun=1. Reads once on mount. We avoid useSearchParams() to keep this
+  // a non-Suspense page; URLSearchParams off window.location works for our
+  // client-side render.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const qs = new URLSearchParams(window.location.search)
+    const business = qs.get('business') ?? ''
+    const cityQ = qs.get('city') ?? ''
+    const websiteQ = qs.get('website') ?? ''
+    const keywordsQ = qs.get('keywords') ?? ''
+    if (business) setBusinessName(business)
+    if (cityQ) setCity(cityQ)
+    if (websiteQ) setWebsite(websiteQ)
+    if (keywordsQ) setKeywords(keywordsQ)
+    if (qs.get('autorun') === '1' && business && cityQ) {
+      // Defer one tick so state-set above commits before we read it.
+      setTimeout(() => {
+        // Build a synthetic submit by calling the API directly (the form
+        // handler reads from React state which is stale on the same tick).
+        void (async () => {
+          if (running) return
+          setRunning(true); setError(null)
+          try {
+            const kw = keywordsQ.split(',').map((k) => k.trim()).filter(Boolean).slice(0, 5)
+            const data = await apiFetch<{ id: string; createdAt: string; result: AuditResult; shareToken?: string | null }>(
+              '/api/partner/gmb-evaluations',
+              { method: 'POST', body: JSON.stringify({ businessName: business, city: cityQ, website: websiteQ || undefined, keywords: kw.length ? kw : undefined }) },
+            )
+            setCurrent({ id: data.id, businessName: business, city: cityQ, website: websiteQ || null, keywords: kw, overallScore: data.result.overallScore, createdAt: data.createdAt, result: data.result, shareToken: data.shareToken })
+            setExpanded(new Set())
+            await loadHistory(); await loadUsage()
+          } catch (err) {
+            setError(err instanceof Error ? err.message : t('gmbEval.errorGeneric'))
+          } finally {
+            setRunning(false)
+            // Strip query string so refresh doesn't re-fire the audit.
+            const cleanUrl = window.location.pathname
+            window.history.replaceState(null, '', cleanUrl)
+          }
+        })()
+      }, 0)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function toggle(key: string) {
     setExpanded((prev) => {
@@ -249,8 +300,41 @@ export default function GmbEvaluationPage() {
             <div className="flex items-center gap-2 shrink-0">
               <button onClick={() => exportPdf(true)} disabled={viewing} className="px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40" style={{ border: `1px solid ${TEAL}`, color: TEAL }}>{viewing ? t('gmbEval.preparing') : t('gmbEval.viewReport')}</button>
               <button onClick={() => exportPdf(false)} disabled={downloading} className="px-3 py-1.5 rounded-lg text-sm font-medium text-white disabled:opacity-40" style={{ background: TEAL }}>{downloading ? t('gmbEval.preparing') : t('gmbEval.downloadReport')}</button>
+              {crmContact ? (
+                <span className="px-3 py-1.5 rounded-lg text-sm font-medium" style={{ background: 'oklch(50% 0.13 150 / 0.15)', color: 'oklch(50% 0.13 150)' }}>
+                  ✓ {t('gmbEval.addedToCrm')}
+                </span>
+              ) : (
+                <button
+                  onClick={async () => {
+                    if (!current) return
+                    setAddingToCrm(true); setCrmError(null)
+                    try {
+                      const c = await apiFetch<{ id: string; fullName: string }>(
+                        `/api/partner/gmb-evaluations/${current.id}/add-to-crm`,
+                        { method: 'POST', body: JSON.stringify({}) },
+                      )
+                      setCrmContact(c)
+                    } catch (err) {
+                      setCrmError(err instanceof Error ? err.message : t('gmbEval.addToCrmError'))
+                    } finally { setAddingToCrm(false) }
+                  }}
+                  disabled={addingToCrm}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
+                  style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+                  title={t('gmbEval.addToCrmTitle')}
+                >
+                  {addingToCrm ? t('gmbEval.adding') : t('gmbEval.addToCrm')}
+                </button>
+              )}
             </div>
           </div>
+
+          {crmError && (
+            <div className="mb-3 px-3 py-2 rounded-lg text-sm" style={{ background: 'oklch(58% 0.18 25 / 0.1)', color: 'oklch(58% 0.18 25)', border: '1px solid oklch(58% 0.18 25 / 0.3)' }}>
+              {crmError}
+            </div>
+          )}
 
           {/* Customer-facing shareable link */}
           {current.shareToken && r.found && (() => {

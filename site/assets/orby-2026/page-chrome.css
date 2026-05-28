@@ -1,0 +1,447 @@
+/* ==========================================================================
+   MyOrbisVoice — Page Chrome 2026
+   Applies prototype look-and-feel on legacy static-HTML pages. Loaded AFTER
+   the legacy style.css so its overrides win.
+
+   Default = LIGHT (legacy style.css handles it; this file does NOT paint).
+   Dark mode = activated by data-theme="dark" on <html>; all dark overrides
+   live under :root[data-theme="dark"] so toggling is reversible.
+
+   Family-column injection + lang-pill + theme-toggle UI: see page-chrome.js.
+   ========================================================================== */
+
+/* ----- LIGHT defaults (no overrides; legacy style.css owns this mode) ---- */
+
+/* Universal nav-cta polish for the toggle button (light + dark) */
+.site-nav .theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 999px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  opacity: 0.65;
+}
+.site-nav .theme-toggle:hover { opacity: 1; }
+.site-nav .theme-toggle svg { display: block; }
+
+/* Lang toggle baseline (brand-teal pill on both modes) */
+.site-nav .lang-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #15A8A8;
+  color: #04151A !important;
+  font-family: 'Sora', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+  transition: background 0.15s ease;
+}
+.site-nav .lang-toggle:hover { background: #3FE3E3; color: #02181C !important; }
+
+/* Signup NOW! amber pill — injected by page-chrome.js into every legacy nav */
+.site-nav .signup-cta {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #FFB341, #FF8C42);
+  color: #1A0E04 !important;
+  font-family: 'Sora', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  box-shadow:
+    0 0 0 1px rgba(255, 179, 65, 0.55),
+    0 10px 28px -10px rgba(255, 140, 66, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+  white-space: nowrap;
+}
+.site-nav .signup-cta:hover {
+  background: linear-gradient(135deg, #FFC062, #FFA160);
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(255, 192, 98, 0.7),
+    0 14px 34px -8px rgba(255, 140, 66, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ==========================================================================
+   Pricing card uniformity — align all CTA buttons to the bottom edge
+   regardless of bullet-list length. Applies in both light + dark modes.
+   ========================================================================== */
+.price-card {
+  display: flex;
+  flex-direction: column;
+}
+.price-card .btn {
+  margin-top: auto;
+}
+
+/* Force 3-column layout (2 rows × 3 cards = 6 cards) — overrides
+   the auto-fit minmax that produces 4+2 layouts. Collapses to 2 then 1
+   on smaller viewports. */
+.pricing-grid-6 {
+  grid-template-columns: repeat(3, 1fr) !important;
+}
+@media (max-width: 980px) {
+  .pricing-grid-6 { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 640px) {
+  .pricing-grid-6 { grid-template-columns: 1fr !important; }
+}
+
+/* Family column "soon" pill (works in both modes) */
+.footer-soon {
+  font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+  font-size: 9px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+/* ==========================================================================
+   DARK MODE — activated by data-theme="dark" on <html>
+   ========================================================================== */
+
+:root[data-theme="dark"] {
+  --teal-1: #88E2E2;
+  --teal-2: #3FE3E3;
+  --teal-3: #1FC4C4;
+  --teal-4: #15A8A8;
+  --teal-5: #0E8C8C;
+  --teal-6: #3FE3E3;
+
+  --bg:          #06141A;
+  --bg-soft:     #0A1B22;
+  --bg-card:     #15222A;
+  --bg-tinted:   #0E1B22;
+  --bg-darker:   #031318;
+
+  --text:        rgba(255, 255, 255, 0.92);
+  --text-muted:  rgba(255, 255, 255, 0.65);
+  --text-subtle: rgba(255, 255, 255, 0.50);
+
+  --border:        rgba(63, 227, 227, 0.12);
+  --border-strong: rgba(63, 227, 227, 0.22);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.50);
+}
+
+[data-theme="dark"] html, [data-theme="dark"] body,
+html[data-theme="dark"], html[data-theme="dark"] body {
+  background: #06141A !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+html[data-theme="dark"] {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] h5,
+html[data-theme="dark"] h6 {
+  font-family: 'Sora', 'Inter', system-ui, sans-serif !important;
+  letter-spacing: -0.025em;
+}
+html[data-theme="dark"] h1 { color: #FBFFFF !important; }
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] h5,
+html[data-theme="dark"] h6 { color: rgba(255,255,255,0.92) !important; }
+html[data-theme="dark"] h1 mark {
+  background: linear-gradient(120deg, #3FE3E3, #15A8A8 60%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; padding: 0;
+}
+
+html[data-theme="dark"] p,
+html[data-theme="dark"] li,
+html[data-theme="dark"] dd,
+html[data-theme="dark"] dt { color: rgba(255,255,255,0.92) !important; }
+html[data-theme="dark"] p.subtle { color: rgba(255,255,255,0.50) !important; }
+html[data-theme="dark"] strong,
+html[data-theme="dark"] b { color: #FBFFFF; }
+html[data-theme="dark"] a { color: #3FE3E3; }
+html[data-theme="dark"] a:hover { color: #FBFFFF; }
+html[data-theme="dark"] hr { border-color: rgba(63,227,227,0.12); }
+html[data-theme="dark"] code,
+html[data-theme="dark"] pre,
+html[data-theme="dark"] kbd,
+html[data-theme="dark"] samp {
+  background: rgba(63, 227, 227, 0.08); color: #3FE3E3;
+}
+
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .pricing-card,
+html[data-theme="dark"] .price-card,
+html[data-theme="dark"] .solution-card,
+html[data-theme="dark"] .step-card,
+html[data-theme="dark"] .feature-card,
+html[data-theme="dark"] section.section--alt,
+html[data-theme="dark"] section.bg-soft,
+html[data-theme="dark"] .bg-soft {
+  background: #15222A !important;
+  border: 1px solid rgba(63, 227, 227, 0.12) !important;
+  color: rgba(255,255,255,0.92) !important;
+}
+/* Popular tier keeps its teal accent border in dark mode */
+html[data-theme="dark"] .price-card.popular {
+  border: 2px solid #3FE3E3 !important;
+  box-shadow: 0 14px 40px -16px rgba(63, 227, 227, 0.5) !important;
+}
+/* Price-tag pill above each card */
+html[data-theme="dark"] .price-card .price-tag {
+  background: rgba(63, 227, 227, 0.12) !important;
+  color: #3FE3E3 !important;
+  border: 1px solid rgba(63, 227, 227, 0.25) !important;
+}
+/* Bullet text inside card */
+html[data-theme="dark"] .price-card ul li {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+html[data-theme="dark"] .price-card .price-desc,
+html[data-theme="dark"] .price-card .price small {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* === Pricing comparison matrix (full feature table) === */
+html[data-theme="dark"] .compare-matrix {
+  background: #15222A !important;
+  border: 1px solid rgba(63, 227, 227, 0.12) !important;
+  box-shadow: 0 14px 36px -16px rgba(0, 0, 0, 0.6) !important;
+}
+html[data-theme="dark"] .compare-matrix th,
+html[data-theme="dark"] .compare-matrix td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+html[data-theme="dark"] .compare-matrix thead th {
+  background: #0E1B22 !important;
+  color: #3FE3E3 !important;
+}
+html[data-theme="dark"] .compare-matrix thead th .price-mini {
+  color: #3FE3E3 !important;
+}
+html[data-theme="dark"] .compare-matrix thead th.popular {
+  background: #15A8A8 !important;
+  color: #04151A !important;
+}
+html[data-theme="dark"] .compare-matrix thead th.popular .price-mini {
+  color: #04151A !important;
+}
+html[data-theme="dark"] .compare-matrix tbody th {
+  color: rgba(255, 255, 255, 0.92) !important;
+  background: transparent !important;
+}
+html[data-theme="dark"] .compare-matrix tbody td {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+html[data-theme="dark"] .compare-matrix tbody td.popular {
+  background: rgba(63, 227, 227, 0.08) !important;
+  color: #FBFFFF !important;
+}
+html[data-theme="dark"] .compare-matrix tbody tr.section-row td,
+html[data-theme="dark"] .compare-matrix tbody tr.section-row th {
+  background: #0A181D !important;
+  color: #3FE3E3 !important;
+}
+html[data-theme="dark"] .compare-matrix .yes { color: #3FE3E3 !important; }
+html[data-theme="dark"] .compare-matrix .no  { color: rgba(255, 255, 255, 0.25) !important; }
+
+/* === ROI calculator card === */
+html[data-theme="dark"] .calc {
+  background: #15222A !important;
+  border: 1px solid rgba(63, 227, 227, 0.12) !important;
+  box-shadow: 0 14px 36px -16px rgba(0, 0, 0, 0.6) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+html[data-theme="dark"] .calc input,
+html[data-theme="dark"] .calc select,
+html[data-theme="dark"] .calc textarea {
+  background: #0A181D !important;
+  color: #FBFFFF !important;
+  border: 1px solid rgba(63, 227, 227, 0.18) !important;
+}
+html[data-theme="dark"] .calc label {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+/* === FAQ accordion === */
+html[data-theme="dark"] .faq-item {
+  background: #15222A !important;
+  border: 1px solid rgba(63, 227, 227, 0.12) !important;
+}
+html[data-theme="dark"] .faq-item:hover {
+  border-color: rgba(63, 227, 227, 0.28) !important;
+}
+html[data-theme="dark"] .faq-item summary {
+  color: #FBFFFF !important;
+}
+html[data-theme="dark"] .faq-item summary::after {
+  color: #3FE3E3 !important;
+}
+html[data-theme="dark"] .faq-body {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+html[data-theme="dark"] section { background: transparent; }
+
+html[data-theme="dark"] .btn { font-family: 'Sora', 'Inter', sans-serif !important; }
+html[data-theme="dark"] .btn-primary {
+  background: #15A8A8 !important;
+  color: #04151A !important;
+  border: 1px solid transparent !important;
+  box-shadow: 0 10px 30px -10px rgba(21, 168, 168, 0.55) !important;
+}
+html[data-theme="dark"] .btn-primary:hover { background: #3FE3E3 !important; }
+html[data-theme="dark"] .btn-secondary,
+html[data-theme="dark"] .btn-ghost {
+  background: rgba(20, 36, 42, 0.6) !important;
+  color: #FBFFFF !important;
+  border: 1px solid rgba(63, 227, 227, 0.22) !important;
+}
+html[data-theme="dark"] .btn-secondary:hover,
+html[data-theme="dark"] .btn-ghost:hover {
+  border-color: #15A8A8 !important;
+  color: #3FE3E3 !important;
+}
+
+html[data-theme="dark"] .hero-eyebrow {
+  background: rgba(21, 168, 168, 0.10) !important;
+  border: 1px solid rgba(21, 168, 168, 0.30) !important;
+  color: #3FE3E3 !important;
+}
+html[data-theme="dark"] .hero-eyebrow .pulse { background: #3FE3E3 !important; }
+
+/* Nav dark adaptation */
+html[data-theme="dark"] .site-nav {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: blur(16px) saturate(140%);
+  background: rgba(6, 20, 26, 0.75) !important;
+  border-bottom: 1px solid rgba(31, 42, 42, 0.7) !important;
+}
+html[data-theme="dark"] .site-nav .nav-logo,
+html[data-theme="dark"] .site-nav .nav-links a { color: #B5C5C5 !important; transition: color 0.15s ease; }
+html[data-theme="dark"] .site-nav .nav-logo:hover,
+html[data-theme="dark"] .site-nav .nav-links a:hover { color: #FBFFFF !important; }
+html[data-theme="dark"] .site-nav .nav-links a.active { color: #FBFFFF !important; }
+html[data-theme="dark"] .site-nav .nav-logo-icon { background: linear-gradient(135deg, #3FE3E3, #15A8A8); }
+html[data-theme="dark"] .site-nav .btn.btn-sm {
+  border-radius: 999px; padding: 9px 16px; font-size: 14px;
+  font-family: 'Sora', sans-serif; font-weight: 600;
+}
+html[data-theme="dark"] .site-nav .btn-primary.btn-sm {
+  background: #15A8A8 !important; color: #04151A !important;
+}
+html[data-theme="dark"] .site-nav .btn-ghost.btn-sm {
+  background: rgba(20, 36, 42, 0.5) !important;
+  color: #FBFFFF !important;
+  border: 1px solid rgba(63, 227, 227, 0.22) !important;
+}
+html[data-theme="dark"] .site-nav .theme-toggle {
+  color: #B5C5C5;
+  border-color: rgba(63, 227, 227, 0.22);
+}
+html[data-theme="dark"] .site-nav .theme-toggle:hover {
+  color: #3FE3E3;
+  border-color: #15A8A8;
+}
+html[data-theme="dark"] .nav-mobile { background: #06141A; border-bottom: 1px solid rgba(31, 42, 42, 0.7); }
+html[data-theme="dark"] .nav-mobile a { color: #B5C5C5; }
+html[data-theme="dark"] .nav-mobile a:hover { color: #FBFFFF; }
+html[data-theme="dark"] .nav-burger { color: #FBFFFF; }
+
+/* Footer dark adaptation */
+html[data-theme="dark"] .site-footer {
+  background: #031318 !important;
+  color: #B5C5C5 !important;
+  border-top: 1px solid #1F2A2A !important;
+  padding: 80px 0 32px !important;
+}
+html[data-theme="dark"] .site-footer a { color: #B5C5C5 !important; }
+html[data-theme="dark"] .site-footer a:hover { color: #FBFFFF !important; }
+html[data-theme="dark"] .site-footer h3,
+html[data-theme="dark"] .site-footer h4,
+html[data-theme="dark"] .site-footer h5 {
+  color: #FBFFFF !important;
+  font-family: 'Sora', sans-serif !important;
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  margin-bottom: 16px !important;
+}
+html[data-theme="dark"] .site-footer .nav-logo { color: #FBFFFF !important; font-family: 'Sora', sans-serif; }
+html[data-theme="dark"] .site-footer .footer-bottom { border-top: 1px solid #1F2A2A; color: #8B9C9C; }
+html[data-theme="dark"] .site-footer .footer-bottom span,
+html[data-theme="dark"] .site-footer .footer-bottom a {
+  color: #8B9C9C !important;
+  font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+  font-size: 11px;
+}
+html[data-theme="dark"] .site-footer .footer-bottom a:hover { color: #3FE3E3 !important; }
+html[data-theme="dark"] .site-footer .footer-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr;
+  gap: 40px;
+}
+@media (max-width: 1024px) {
+  html[data-theme="dark"] .site-footer .footer-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  html[data-theme="dark"] .site-footer .footer-grid { grid-template-columns: 1fr 1fr; }
+}
+html[data-theme="dark"] .site-footer .footer-col a {
+  display: block; margin-bottom: 10px; font-size: 13px;
+}
+html[data-theme="dark"] .site-footer .footer-brand p {
+  color: #B5C5C5 !important; font-size: 13px; line-height: 1.55;
+}
+html[data-theme="dark"] .footer-soon {
+  color: #8B9C9C;
+  background: #15222A;
+}
+
+html[data-theme="dark"] table { color: rgba(255,255,255,0.92); }
+html[data-theme="dark"] table th,
+html[data-theme="dark"] table td { border-color: rgba(63, 227, 227, 0.12) !important; }
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select {
+  background: #0F1B1B !important;
+  color: rgba(255,255,255,0.92) !important;
+  border: 1px solid rgba(63, 227, 227, 0.22) !important;
+}
+html[data-theme="dark"] input:focus,
+html[data-theme="dark"] textarea:focus,
+html[data-theme="dark"] select:focus {
+  border-color: #15A8A8 !important;
+  outline: none;
+}
+
+html[data-theme="dark"] mark {
+  background: linear-gradient(120deg, rgba(63,227,227,0.20), rgba(21,168,168,0.20));
+  color: #3FE3E3;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+html[data-theme="dark"] ::selection { background: #15A8A8; color: #02181C; }
+
+/* LIGHT-mode Family-column "soon" pill */
+html:not([data-theme="dark"]) .footer-soon {
+  color: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.06);
+}

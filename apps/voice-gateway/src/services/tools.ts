@@ -229,6 +229,67 @@ export const TOOL_DECLARATIONS = [
       required: ['reason'],
     },
   },
+  {
+    // Backlog #2 — Single-specialist Handoff. Pins the conversation onto ONE
+    // specialist's role rules until exit_specialist() is called. Use when the
+    // caller's intent is clearly inside one specialist's wheelhouse for the next
+    // multi-turn flow (mid-booking, mid-objection-handling, etc.). The model
+    // already has every loaded role prompt in its system instruction; this tool
+    // just tells it which one to active-pin and stop cross-routing. Caller never
+    // hears any handoff language — the pin is silent. Pattern: OpenSwarm Handoff,
+    // adapted for our single-Gemini-Live runtime (no system-prompt mutation).
+    name: 'enter_specialist',
+    description:
+      'Pin the active conversation to ONE specialist role for the next series of turns. ' +
+      'Call this the moment the caller\'s intent clearly settles into one specialist\'s area ' +
+      '(for example: caller says "yes let\'s book a time" → enter_specialist(role:"APPOINTMENT") ' +
+      'and run the entire booking flow as the Appointment specialist). ' +
+      'While pinned, ignore other specialists\' rules and do NOT re-route per turn. ' +
+      'Call exit_specialist when the flow completes, the caller abandons it, or their intent ' +
+      'clearly leaves that specialist\'s scope. Do NOT call this for one-off questions — only ' +
+      'when you expect multiple turns inside the same specialist. Never announce the pin to ' +
+      'the caller; the switch is silent.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        role: {
+          type: 'STRING',
+          description:
+            'One of: APPOINTMENT, SALES, CUSTOMER_SERVICE, MARKETING, ASSISTANT, SECRETARY. ' +
+            'Must match a specialist role that is loaded in your system prompt. ORCHESTRATOR ' +
+            'is not pinnable — it IS the routing layer.',
+        },
+        reason: {
+          type: 'STRING',
+          description:
+            'One-line note on why you are pinning (for the audit log). For example: ' +
+            '"caller agreed to schedule a demo" or "caller raised a pricing objection".',
+        },
+      },
+      required: ['role', 'reason'],
+    },
+  },
+  {
+    name: 'exit_specialist',
+    description:
+      'Release the specialist pin set by enter_specialist and return to multi-specialist ' +
+      'routing per the Specialist Routing meta in your system prompt. Call this when: the ' +
+      'pinned flow completed (e.g. appointment was booked), the caller abandoned it, or their ' +
+      'intent clearly shifted to a different specialist\'s area. Safe to call when no pin is ' +
+      'active (no-op). Never announce the release to the caller.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        reason: {
+          type: 'STRING',
+          description:
+            'One-line note on why you are exiting. For example: "appointment booked", ' +
+            '"caller switched to a billing question", "caller declined to schedule".',
+        },
+      },
+      required: ['reason'],
+    },
+  },
 ] as const
 
 export type ToolName = (typeof TOOL_DECLARATIONS)[number]['name']
@@ -480,6 +541,58 @@ const handlers: Record<ToolName, ToolHandler> = {
   async end_call() {
     return { ok: true, message: 'end_call acknowledged (gateway closes the session directly).' }
   },
+
+  // Backlog #2 — Soft-pin onto one specialist role. We can't mutate the
+  // Gemini Live system prompt mid-session, so the "pin" is enforced by a
+  // strong instruction in the tool_response. The model already has every
+  // role prompt in its system instruction; this just tells it which one
+  // to active-pin and stop cross-routing. Session.ts may also write the
+  // role to session-local state (for telemetry / future hooks) — the
+  // handler stays pure here so it's easy to test in isolation.
+  async enter_specialist(args, _ctx) {
+    const PINNABLE = new Set([
+      'APPOINTMENT', 'SALES', 'CUSTOMER_SERVICE',
+      'MARKETING', 'ASSISTANT', 'SECRETARY',
+    ])
+    const role   = String(args['role']   ?? '').trim().toUpperCase()
+    const reason = String(args['reason'] ?? '').trim()
+    if (!role) {
+      return { ok: false, error: 'role is required (APPOINTMENT, SALES, CUSTOMER_SERVICE, MARKETING, ASSISTANT, or SECRETARY).' }
+    }
+    if (role === 'ORCHESTRATOR') {
+      return { ok: false, error: 'ORCHESTRATOR is the routing layer — not a pinnable specialist. Pick one of: APPOINTMENT, SALES, CUSTOMER_SERVICE, MARKETING, ASSISTANT, SECRETARY.' }
+    }
+    if (!PINNABLE.has(role)) {
+      return { ok: false, error: `Unknown specialist role "${role}". Valid: APPOINTMENT, SALES, CUSTOMER_SERVICE, MARKETING, ASSISTANT, SECRETARY.` }
+    }
+    if (!reason) {
+      return { ok: false, error: 'reason is required (one-line note for the audit log).' }
+    }
+    return {
+      ok:       true,
+      pinned:   role,
+      reason,
+      message:
+        `ACTIVE SPECIALIST PINNED = ${role}. From now until you call exit_specialist, you ARE the ${role} ` +
+        `specialist exclusively. Apply ONLY the ${role} role rules from your system prompt. ` +
+        `Ignore the Specialist Routing meta and other specialists' rules until you exit. ` +
+        `Stay pinned through every caller turn even if the topic drifts briefly — only exit when the flow ` +
+        `completes, the caller abandons it, or their intent clearly leaves ${role}'s scope. ` +
+        `Do NOT announce the pin to the caller. Continue the conversation naturally.`,
+    }
+  },
+
+  async exit_specialist(args, _ctx) {
+    const reason = String(args['reason'] ?? '').trim()
+    return {
+      ok:       true,
+      reason:   reason || '(no reason given)',
+      message:
+        'SPECIALIST PIN RELEASED. Resume multi-specialist routing per the Specialist Routing meta in your ' +
+        'system prompt: detect intent each turn, apply the matching specialist\'s rules, switch silently. ' +
+        'Do NOT announce the release to the caller.',
+    }
+  },
 }
 
 // --- Public dispatcher -------------------------------------------------------
@@ -537,7 +650,7 @@ export async function rollbackToolCall(
 export function buildToolGuidanceBlock(): string {
   return [
     '--- Tools available ---',
-    'You have six tools you may call during this conversation. Use them when appropriate; do not announce them.',
+    'You have eight tools you may call during this conversation. Use them when appropriate; do not announce them.',
     '',
     '1. lookup_contact(query) — Search for an existing customer by phone, email, or name. Call this once early when the caller has shared a phone or email so you can recognise returning customers.',
     '2. save_contact(full_name, phone_e164, email, notes?) — Save the caller\'s contact details to the database. ALWAYS call this after collecting the caller\'s full name, phone, AND email. Required on every call. Feeds campaigns and follow-up.',
@@ -545,6 +658,8 @@ export function buildToolGuidanceBlock(): string {
     '4. book_appointment(starts_at_iso, duration_minutes, contact_phone_or_email, notes?, appointment_type?, timezone?) — Book on the business calendar. Only after explicit confirmation of date, time, duration, and contact info — AND only after search_availability confirmed the slot is open.',
     '5. send_followup_email(contact_id_or_phone, subject, body) — Send a follow-up email from the business\'s Gmail. Only call when the caller asks for something in writing.',
     '6. record_disposition(outcome_code, notes?) — Record the call outcome near the end of the conversation. Allowed codes: BOOKED, QUALIFIED_LEAD, NOT_QUALIFIED, INFO_REQUEST, COMPLAINT, CALLBACK_REQUESTED, WRONG_NUMBER, SPAM, NO_ACTION.',
+    '7. enter_specialist(role, reason) — Pin onto ONE specialist role (APPOINTMENT, SALES, CUSTOMER_SERVICE, MARKETING, ASSISTANT, SECRETARY) for a multi-turn flow. Use ONLY when 2+ role prompts are loaded AND the caller is clearly inside one specialist\'s wheelhouse for the next several turns. See the Specialist Routing section of your system prompt for when to pin vs not. Silent to the caller.',
+    '8. exit_specialist(reason) — Release the pin set by enter_specialist and return to multi-specialist routing. Call when the pinned flow completes, the caller abandons it, or their intent leaves the pinned specialist\'s scope. Safe to call when no pin is active (no-op). Silent to the caller.',
     '',
     'Rules — contact capture (mandatory):',
     '- ALWAYS collect the caller\'s full name AND phone number AND email address. All three. Never settle for one or the other.',

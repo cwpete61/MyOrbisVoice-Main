@@ -9,6 +9,8 @@ import { prisma } from '../lib/prisma.js'
 import { AppError, generateSecureToken } from '@voiceautomation/shared'
 import { evaluate, type AuditInput, type AuditResult } from './gmb-audit/index.js'
 import { getSerperApiKey, getConfigValue } from './system-config.service.js'
+import * as crmService from './crm.service.js'
+import { resolveHostingTenantId } from './lead-engine.service.js'
 
 /** Brand context for a partner's report (white-label ready). */
 export async function resolvePartnerBrand(partnerId: string) {
@@ -215,4 +217,75 @@ export async function getEvaluation(partnerId: string, id: string) {
     shareToken: row.shareToken,
     result: row.result as unknown as AuditResult,
   }
+}
+
+/**
+ * Promote a GMB Evaluation row to the partner's CRM as a new Contact + place
+ * it on the default pipeline's "New Lead" stage.
+ *
+ * Compliance posture mirrors lead-engine.promoteLead(): contacts born from
+ * cold sources start opted-out of voice + SMS, so the voice gateway and
+ * SMS service refuse them until consent is recorded. Cold email stays
+ * available since CAN-SPAM allows it with unsubscribe footer.
+ *
+ * Idempotent on the GMB evaluation row: if a partner already added this
+ * audit to CRM, returns 409. The metadataJson.gmbEvaluationId field is the
+ * dedupe key on the Contact side.
+ */
+export async function addEvaluationToCrm(partnerId: string, evaluationId: string) {
+  const row = await prisma.gmbEvaluation.findFirst({
+    where: { id: evaluationId, partnerId, deletedAt: null },
+  })
+  if (!row) throw new AppError('NOT_FOUND', 'Evaluation not found', 404)
+
+  // Dedupe: have we promoted this exact evaluation before?
+  const existing = await prisma.contact.findFirst({
+    where: {
+      partnerId,
+      metadataJson: { path: ['gmbEvaluationId'], equals: row.id },
+    },
+    select: { id: true, fullName: true },
+  })
+  if (existing) {
+    throw new AppError('CONFLICT', 'This audit was already added to CRM', 409)
+  }
+
+  const hostingTenantId = await resolveHostingTenantId(partnerId)
+  const now = new Date()
+  const result = row.result as unknown as AuditResult
+  const businessRating = result?.business?.rating ?? null
+
+  const contact = await prisma.contact.create({
+    data: {
+      tenantId: hostingTenantId,
+      partnerId,
+      fullName: row.businessName,
+      email: null,
+      phoneE164: null,
+      addressLine1: row.city,
+      source: 'GBP_AUDIT',
+      // Cold-source compliance wall — same posture as lead-engine.promoteLead.
+      optedOutSms: true,
+      optedOutSmsAt: now,
+      optedOutVoice: true,
+      optedOutVoiceAt: now,
+      metadataJson: {
+        gmbEvaluationId: row.id,
+        website: row.website,
+        keywords: row.keywords,
+        overallScore: row.overallScore,
+        rating: businessRating,
+        category: result?.business?.category ?? null,
+        shareToken: row.shareToken,
+      },
+    },
+  })
+
+  await crmService.seedDefaultPipelineForPartner({ partnerId, hostingTenantId })
+  await crmService.placeNewContactOnPipeline(
+    { kind: 'partner', partnerId, hostingTenantId },
+    contact.id,
+  )
+
+  return { id: contact.id, fullName: contact.fullName }
 }

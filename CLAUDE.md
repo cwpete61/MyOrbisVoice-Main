@@ -947,3 +947,16 @@ See [docs/launch-blockers.md](docs/launch-blockers.md) — open pre-launch items
 - [docs/stripe-config.md](docs/stripe-config.md) — Stripe account reconstruction guide (account ID, webhook destinations, plan price mapping).
 - [docs/twilio-toll-free-verification.md](docs/twilio-toll-free-verification.md) — drafted toll-free verification submission package.
 - [docs/twilio-a2p-automation.md](docs/twilio-a2p-automation.md) — **A2P 10DLC auto-submission reference. READ THIS FIRST whenever working on the A2P compliance application / submission flow.** Covers what an ISV can automate via Twilio Trust Hub / TrustProduct / BrandRegistration / UsAppToPerson APIs, the full submission pipeline + state machine, the SIDs to persist, the review-before-submit safeguard, and what stays manual (customer-provided data + Twilio/TCR/carrier approval). Manual fallback: [docs/runbook-a2p-manual-submission.md](docs/runbook-a2p-manual-submission.md).
+
+<!-- claude-watch:wiki-binding-start -->
+## Wiki binding
+
+This project is bound to wiki **MyOrbisLocal - GMB** (slug: `gmb-audit`). It holds research, decisions, and notes folded in over time. Reach it via:
+
+- `/wiki-ask <question>` — grounded answer from the wiki
+- `/wiki-page <filename.md>` — read a specific page
+- `/wiki-capture <path|url|text>` — queue something for review
+- `/wiki-status` — binding info + recent activity
+
+Dashboard runs locally at http://127.0.0.1:8001. If a command fails with "Claude Watch not running", launch it: click the Claude Watch dock icon, or run `claude-watch`.
+<!-- claude-watch:wiki-binding-end -->

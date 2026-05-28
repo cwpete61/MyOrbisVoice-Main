@@ -2410,4 +2410,17 @@ router.patch('/conversations/:id/featured-demo', requirePlatformAdmin, async (re
   } catch (err) { next(err) }
 })
 
+// ─── Twilio number reconcile (Phase 4) ──────────────────────────────────────
+// On-demand drift detector. Walks every PURCHASED PhoneNumber, fetches its
+// live owner from Twilio, returns the set of rows where DB and Twilio
+// disagree. Also writes audit log entries for each drift.
+router.post('/twilio/reconcile', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const { reconcileTwilioNumbers } = await import('../services/twilio-reconcile.service.js')
+    const limit = typeof req.body?.limit === 'number' ? req.body.limit : undefined
+    const data = await reconcileTwilioNumbers({ limit })
+    res.json({ data })
+  } catch (err) { next(err) }
+})
+
 export default router

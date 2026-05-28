@@ -234,6 +234,29 @@ router.get('/partner/crm/contacts/:id/timeline', async (req: Request, res: Respo
   } catch (err) { next(err) }
 })
 
+// ── Remove from CRM (soft-delete) ───────────────────────────────────────────
+//
+// Sets Contact.deletedAt — keeps the row for audit + suppression history
+// (email-suppression checks key off the email, not Contact existence), but
+// hides it from board / list / timeline queries. Also nulls pipelineStageId
+// so even queries that ignore deletedAt won't grab the card.
+router.delete('/partner/crm/contacts/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const pid       = partnerId(req)
+    const contactId = req.params.id!
+    const contact = await prisma.contact.findFirst({
+      where: { id: contactId, partnerId: pid, deletedAt: null },
+      select: { id: true },
+    })
+    if (!contact) throw new AppError('NOT_FOUND', 'Contact not found', 404)
+    await prisma.contact.update({
+      where: { id: contact.id },
+      data:  { deletedAt: new Date(), pipelineStageId: null, stageUpdatedAt: new Date() },
+    })
+    res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
+
 // ── Stage move ──────────────────────────────────────────────────────────────
 
 router.patch('/partner/crm/contacts/:id/stage', async (req: Request, res: Response, next: NextFunction) => {
