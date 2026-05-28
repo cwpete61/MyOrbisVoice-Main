@@ -56,8 +56,11 @@ function App() {
     });
   };
 
-  // Delegate clicks on any anchor pointing to #orby-demo: scroll to widget
-  // then auto-click its start button so the conversation begins immediately.
+  // Delegate clicks on any anchor pointing to #orby-demo: open the REAL Orby
+  // voice widget (floating bottom-right, injected by page-chrome.js). Calling
+  // OrbisVoice.open() inside the click handler preserves the user gesture the
+  // browser needs to start audio. If the widget isn't ready, fall back to the
+  // in-page demo section (scroll + auto-click its start button).
   useEffect(() => {
     function handleClick(e) {
       const a = e.target.closest && e.target.closest("a");
@@ -65,6 +68,9 @@ function App() {
       const href = a.getAttribute("href") || "";
       if (!href.endsWith("#orby-demo")) return;
       e.preventDefault();
+      if (window.OrbisVoice && typeof window.OrbisVoice.open === "function" && window.OrbisVoice.open()) {
+        return;
+      }
       const target = document.getElementById("orby-demo");
       if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
       const tryStart = (attempts = 0) => {

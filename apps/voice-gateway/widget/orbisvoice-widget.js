@@ -783,5 +783,17 @@
       _instance = new OrbisVoiceWidget(config)
       return _instance
     },
+    // Programmatically open + start the widget from any external trigger
+    // (e.g. a "Talk to Orby" CTA elsewhere on the page). No-ops gracefully
+    // if init() hasn't run yet. Idempotent — _open() guards against a
+    // double-start while connecting/recording.
+    open() {
+      if (!_instance) {
+        console.warn('[OrbisVoice] open() called before init()')
+        return false
+      }
+      _instance._open()
+      return true
+    },
   }
 })(window)

@@ -56,9 +56,13 @@ function App() {
     });
   };
 
-  // Any link pointing to #orby-demo (teal CTAs in nav/hero/finalCTA) should
-  // scroll to the demo widget AND auto-trigger the conversation by clicking
-  // the widget's start button. Single global listener — covers every CTA.
+  // Any link pointing to #orby-demo (teal "Talk to Orby" CTAs in nav/hero/
+  // finalCTA) opens the REAL Orby voice widget (the floating bottom-right one
+  // injected by page-chrome.js). Calling OrbisVoice.open() inside this click
+  // handler preserves the user gesture the browser requires to start audio.
+  // If the widget isn't ready yet, fall back to the in-page demo section:
+  // scroll to it + auto-click its start button. Single global listener —
+  // covers every CTA.
   useEffect(() => {
     function handleClick(e) {
       const a = e.target.closest && e.target.closest("a");
@@ -66,9 +70,14 @@ function App() {
       const href = a.getAttribute("href") || "";
       if (!href.endsWith("#orby-demo")) return;
       e.preventDefault();
+      // Real widget first.
+      if (window.OrbisVoice && typeof window.OrbisVoice.open === "function" && window.OrbisVoice.open()) {
+        return;
+      }
+      // Fallback — widget not initialized: scroll to the in-page demo section
+      // and auto-trigger its start button.
       const target = document.getElementById("orby-demo");
       if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
-      // Wait for scroll + render, then click the widget's start button.
       const tryStart = (attempts = 0) => {
         const btn = document.getElementById("talk-to-orby-cta");
         if (btn) {

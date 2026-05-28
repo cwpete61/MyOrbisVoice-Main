@@ -14,11 +14,12 @@
 
   var STORAGE_KEY = 'orby-theme';
 
-  // Platform tenant WIDGET channel publicKey — embeds the real Orby voice
-  // widget on every marketing page. Grab from Admin → Tenants →
-  // orbis-platform → Channels → WIDGET. Update + redeploy when rotated.
-  // If empty, widget is skipped (no JS error, just no floating button).
-  var ORBY_WIDGET_PUBLIC_KEY = '';
+  // WIDGET channel publicKey for the "MyOrbisResults Demo — Voice Marketing"
+  // tenant — the purpose-built demo Orby (same agent the partner /p/ landing
+  // pages use). Embeds the real voice widget bottom-right on every marketing
+  // page. Update + redeploy when rotated (Admin → Tenants → that demo tenant
+  // → Channels → WIDGET). If empty, widget is skipped (no JS error).
+  var ORBY_WIDGET_PUBLIC_KEY = 'f8512971245c559ded6baf206b3adb9c4fca987f2ba6c571';
   var GATEWAY_WIDGET_URL = 'https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js';
 
   function ready(fn) {
