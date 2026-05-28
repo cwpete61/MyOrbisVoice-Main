@@ -25,7 +25,18 @@ router.post('/webhooks/twilio/outbound/twiml', asyncHandler(async (req, res) => 
       cId = attempt?.campaignId ?? ''
       resolvedTenantId = attempt?.tenantId ?? resolvedTenantId
     }
-    twiml = await buildOutboundTwiml(resolvedTenantId, cId ?? '', attemptId ?? '')
+    // Partner attribution: if the outbound from-number (From) is partner-owned,
+    // resolve its partnerId so the gateway tags the conversation to the partner.
+    // Mirrors the status-callback voice-usage logic + the inbound partner path.
+    let partnerId: string | null = null
+    if (From) {
+      const pn = await prisma.phoneNumber.findFirst({
+        where:  { e164Number: From, partnerId: { not: null } },
+        select: { partnerId: true },
+      })
+      partnerId = pn?.partnerId ?? null
+    }
+    twiml = await buildOutboundTwiml(resolvedTenantId, cId ?? '', attemptId ?? '', partnerId)
     if (resolvedTenantId) {
       // Start recording immediately — same pattern as inbound
       // For outbound, From is the tenant's owned number — that's the

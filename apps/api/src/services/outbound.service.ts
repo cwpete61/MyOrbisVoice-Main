@@ -92,7 +92,12 @@ export async function dispatchPendingCalls(tenantId: string, campaignId: string)
   }
 }
 
-export async function buildOutboundTwiml(tenantId: string, campaignId: string, attemptId: string): Promise<string> {
+export async function buildOutboundTwiml(
+  tenantId: string,
+  campaignId: string,
+  attemptId: string,
+  partnerId?: string | null,
+): Promise<string> {
   const VoiceResponse = twilio.twiml.VoiceResponse
   const response      = new VoiceResponse()
 
@@ -101,6 +106,10 @@ export async function buildOutboundTwiml(tenantId: string, campaignId: string, a
   stream.parameter({ name: 'tenantId',   value: tenantId })
   stream.parameter({ name: 'campaignId', value: campaignId })
   stream.parameter({ name: 'attemptId',  value: attemptId })
+  // Partner-owned from-number → thread partnerId so the gateway tags the
+  // conversation to the partner (mirrors the inbound path). Empty when the
+  // call rides a tenant/platform number.
+  if (partnerId) stream.parameter({ name: 'partnerId', value: partnerId })
 
   return response.toString()
 }

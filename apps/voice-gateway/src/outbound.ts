@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
+import { loadPartnerContext } from './lib/partner-context.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { getContactHistory, formatContactHistoryForPrompt } from './lib/contact-history.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
@@ -35,6 +36,9 @@ export async function handleOutboundCall(ws: WebSocket) {
   let campaignId      = ''
   let ownerAccountSid: string | null = null
   let initialized     = false
+  // Set in initSession when the from-number is partner-owned; read in finalize
+  // so the persisted Conversation is tagged to the partner.
+  let partnerSlug: string | null = null
 
   const transcript: TranscriptEntry[] = []
   let gemini: ReturnType<typeof openGeminiLiveSession> | null = null
@@ -126,14 +130,20 @@ export async function handleOutboundCall(ws: WebSocket) {
     attemptId  = params['attemptId']  ?? ''
     campaignId = params['campaignId'] ?? ''
     callSid    = params['callSid']    ?? callSid
+    const partnerId = params['partnerId'] ?? ''
 
-    console.log(`[outbound] init session tenantId=${tenantId} attemptId=${attemptId} callSid=${callSid}`)
+    console.log(`[outbound] init session tenantId=${tenantId} attemptId=${attemptId} callSid=${callSid} partnerId=${partnerId || '(none)'}`)
 
     if (!tenantId) {
       console.error('[outbound] missing tenantId in stream params')
       ws.close()
       return
     }
+
+    // Partner-owned from-number → load the partner identity so Orby speaks AS
+    // the partner and the conversation gets tagged to them (mirrors inbound).
+    const partnerCtx = partnerId ? await loadPartnerContext(partnerId) : null
+    partnerSlug = partnerCtx?.slug ?? null
 
     // Load campaign context for the greeting
     let campaignDescription = ''
@@ -206,7 +216,7 @@ export async function handleOutboundCall(ws: WebSocket) {
       'OUTBOUND',
       buildToolGuidanceBlock(),
       kbText,
-      null,                  // partner — outbound is never partner-routed
+      partnerCtx,            // partner identity when the from-number is partner-owned
       callerHistoryBlock,    // E.7 — Callee Context layer
     )
 
@@ -357,6 +367,7 @@ export async function handleOutboundCall(ws: WebSocket) {
           transcript: cleaned,
           summary,
           channelType: 'OUTBOUND',
+          partnerSlug,
         })
 
         // Link conversation back to the OutboundCallAttempt

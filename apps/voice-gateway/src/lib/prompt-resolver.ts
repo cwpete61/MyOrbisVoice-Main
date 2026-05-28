@@ -135,12 +135,15 @@ export function resolveSystemPrompt(
   if (resolvedBusinessName) {
     layers.push(
       `You are ${resolvedAgentName}, an AI assistant for ${resolvedBusinessName}. ` +
-      `Introduce yourself by name when greeting a caller ` +
+      `Your VERY FIRST words to anyone — every call, every session — MUST state your name "${resolvedAgentName}". ` +
+      `Never open without it. ` +
       `(for example: "Hi, this is ${resolvedAgentName} from ${resolvedBusinessName} — how can I help?").`,
     )
   } else {
     layers.push(
-      `Your name is ${resolvedAgentName}. Introduce yourself by name when greeting a caller ` +
+      `Your name is ${resolvedAgentName}. ` +
+      `Your VERY FIRST words to anyone — every call, every session — MUST state your name "${resolvedAgentName}". ` +
+      `Never open without it. ` +
       `(for example: "Hi, this is ${resolvedAgentName} — how can I help?").`,
     )
   }

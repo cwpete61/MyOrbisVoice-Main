@@ -74,8 +74,30 @@ export async function persistConversation(opts: {
    *  the admin central call log's colour + alerting. */
   attentionLevel?: 'NONE' | 'WATCH' | 'ALERT'
   attentionReason?: string | null
+  /** Partner slug when the call's number is partner-owned. Inbound sets
+   *  Conversation.partnerId at logCallStart, so it passes nothing here.
+   *  Outbound has no pre-create step, so it passes the slug and we resolve +
+   *  set partnerId on the row (create + update). Never nulls an existing
+   *  partnerId. */
+  partnerSlug?: string | null
 }): Promise<string> {
-  const { tenantId, sessionId, transcript, summary, channelType = 'WIDGET', turnLatenciesMs, attentionLevel, attentionReason } = opts
+  const { tenantId, sessionId, transcript, summary, channelType = 'WIDGET', turnLatenciesMs, attentionLevel, attentionReason, partnerSlug } = opts
+
+  // Resolve partner slug → id (outbound partner attribution). Only set when a
+  // slug was supplied + matches; otherwise leave undefined so we never wipe a
+  // partnerId already set upstream (inbound's logCallStart).
+  let resolvedPartnerId: string | null | undefined = undefined
+  if (partnerSlug) {
+    const partner = await prisma.affiliateAccount.findFirst({
+      where:  { slug: partnerSlug },
+      select: { id: true },
+    })
+    resolvedPartnerId = partner?.id ?? undefined
+    if (!resolvedPartnerId) {
+      console.warn(`[conversation] partner slug "${partnerSlug}" did not match — outbound conversation left untagged`)
+    }
+  }
+  const partnerPatch = resolvedPartnerId ? { partnerId: resolvedPartnerId } : {}
 
   const transcriptJson = transcript.map(e => ({
     role:      e.role,
@@ -113,6 +135,7 @@ export async function persistConversation(opts: {
         transcriptJson: transcriptJson as any,
         ...(Object.keys(metadataPatch).length > 0 ? { metadataJson: metadataPatch as any } : {}),
         ...attentionData,
+        ...partnerPatch,
       },
     })
 
@@ -130,6 +153,7 @@ export async function persistConversation(opts: {
           transcriptJson: transcriptJson as any,
           externalCallId: sessionId,
           ...attentionData,
+          ...partnerPatch,
         },
       })
       return conv.id
