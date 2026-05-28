@@ -6,7 +6,7 @@ import { findContactIdByPhone, getContactHistory, formatContactHistoryForPrompt 
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { analyzeConversation, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
-import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
+import { mulawToPcm16, pcm16ToMulaw, resamplePcm16, MulawFrameBuffer } from './lib/mulaw.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 import { sendCallNotificationEmail } from './services/notify.service.js'
 import { sendToTenant as sendPushToTenant } from './services/push.service.js'
@@ -109,6 +109,16 @@ export async function handleInboundCall(ws: WebSocket) {
   let tenantId   = ''
   let channelConfigId = ''
   let ownerAccountSid: string | null = null
+
+  // ── Raw audio capture (diagnostic) ─────────────────────────────────────────
+  // When VG_CAPTURE_RAW=1, accumulate the raw 24 kHz PCM16 chunks Gemini emits
+  // (BEFORE our downsample) so we can validate the resampler offline without
+  // the MP3 transcode confound that Twilio's recording introduces. Written to
+  // /tmp/vg-capture/<callSid>.pcm24k on call finalize. Off by default — no
+  // perf or privacy impact in normal operation. See
+  // infrastructure/scripts/analyze-resampler.mjs for the offline comparison.
+  const CAPTURE_RAW = process.env['VG_CAPTURE_RAW'] === '1'
+  const rawChunks: Buffer[] = []
   let initialized = false
 
   const transcript: TranscriptEntry[] = []
@@ -130,6 +140,9 @@ export async function handleInboundCall(ws: WebSocket) {
 
   // Gemini outputs PCM16 24kHz → downsample to 8kHz → mulaw → Twilio
   let audioChunksSent = 0
+  // Frame normalizer — accumulates outbound μ-law into exact 160-byte (20ms)
+  // frames so Twilio doesn't see boundary discontinuities. See mulaw.ts.
+  const outboundFrameBuf = new MulawFrameBuffer()
 
   // Latency telemetry. We can't observe Gemini's internal "user stopped"
   // moment, but we CAN measure "user's last audio frame went to Gemini" →
@@ -163,11 +176,16 @@ export async function handleInboundCall(ws: WebSocket) {
         console.log('[inbound] first audio chunk → Twilio')
       }
     }
+    if (CAPTURE_RAW) rawChunks.push(Buffer.from(pcm24k))
     try {
-      const pcm8k   = resamplePcm16(pcm24k, 24000, 8000)
-      const mulaw   = pcm16ToMulaw(pcm8k)
-      const payload = mulaw.toString('base64')
-      ws.send(JSON.stringify({ event: 'media', streamSid, media: { payload } }))
+      const pcm8k = resamplePcm16(pcm24k, 24000, 8000)
+      const mulaw = pcm16ToMulaw(pcm8k)
+      // Emit only whole 160-byte (20ms) frames to Twilio. Partial tail
+      // stays buffered; flushes on call-end or onInterrupted.
+      const frames = outboundFrameBuf.push(mulaw)
+      for (const f of frames) {
+        ws.send(JSON.stringify({ event: 'media', streamSid, media: { payload: f.toString('base64') } }))
+      }
       // Agent audio counts as activity — caller is listening, not silent.
       // Without this, a long agent reply (or multi-tool sequence) trips the
       // watchdog right when the conversation is healthiest.
@@ -180,6 +198,9 @@ export async function handleInboundCall(ws: WebSocket) {
   // Stop Twilio from playing buffered agent audio (barge-in)
   function clearTwilioAudio() {
     if (!streamSid || ws.readyState !== 1) return
+    // Drop any pending tail — barge-in means the user is cutting off the
+    // agent; stale agent bytes shouldn't trickle onto the wire after clear.
+    outboundFrameBuf.reset()
     try { ws.send(JSON.stringify({ event: 'clear', streamSid })) } catch { /* ignore */ }
   }
 
@@ -517,6 +538,19 @@ export async function handleInboundCall(ws: WebSocket) {
   async function finalize(status: 'COMPLETED' | 'FAILED') {
     if (finalized) return
     finalized = true
+    // Dump captured raw 24kHz agent PCM for offline resampler analysis.
+    if (CAPTURE_RAW && rawChunks.length > 0) {
+      try {
+        const { promises: fsp } = await import('node:fs')
+        await fsp.mkdir('/tmp/vg-capture', { recursive: true })
+        const out = Buffer.concat(rawChunks)
+        const fpath = `/tmp/vg-capture/${callSid || 'unknown'}.pcm24k`
+        await fsp.writeFile(fpath, out)
+        console.log(`[inbound] CAPTURE_RAW wrote ${out.length} bytes (${(out.length / 2 / 24000).toFixed(1)}s @ 24kHz) → ${fpath}`)
+      } catch (err) {
+        console.error('[inbound] CAPTURE_RAW write failed:', err)
+      }
+    }
     try {
       // Flush any incomplete turn buffers before persisting
       if (userBuffer.trim())  flushBuffer('user')

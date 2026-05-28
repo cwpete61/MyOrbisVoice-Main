@@ -6,7 +6,7 @@ import { getContactHistory, formatContactHistoryForPrompt } from './lib/contact-
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { generateSummary, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
-import { mulawToPcm16, pcm16ToMulaw, resamplePcm16 } from './lib/mulaw.js'
+import { mulawToPcm16, pcm16ToMulaw, resamplePcm16, MulawFrameBuffer } from './lib/mulaw.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
 import { hangUpTwilioCall } from './lib/twilio-call-control.js'
@@ -71,15 +71,19 @@ export async function handleOutboundCall(ws: WebSocket) {
   }
 
   let audioChunksSent = 0
+  // Frame normalizer — see mulaw.ts MulawFrameBuffer for why.
+  const outboundFrameBuf = new MulawFrameBuffer()
   function sendAudioToTwilio(pcm24k: Buffer) {
     if (!streamSid || ws.readyState !== 1) return
     audioChunksSent++
     if (audioChunksSent === 1) console.log('[outbound] first audio chunk → Twilio')
     try {
-      const pcm8k   = resamplePcm16(pcm24k, 24000, 8000)
-      const mulaw   = pcm16ToMulaw(pcm8k)
-      const payload = mulaw.toString('base64')
-      ws.send(JSON.stringify({ event: 'media', streamSid, media: { payload } }))
+      const pcm8k = resamplePcm16(pcm24k, 24000, 8000)
+      const mulaw = pcm16ToMulaw(pcm8k)
+      const frames = outboundFrameBuf.push(mulaw)
+      for (const f of frames) {
+        ws.send(JSON.stringify({ event: 'media', streamSid, media: { payload: f.toString('base64') } }))
+      }
       // Agent audio counts as activity — caller listening is not silence.
       resetInCallSilenceTimer()
     } catch (err) {
@@ -89,6 +93,7 @@ export async function handleOutboundCall(ws: WebSocket) {
 
   function clearTwilioAudio() {
     if (!streamSid || ws.readyState !== 1) return
+    outboundFrameBuf.reset() // drop pending tail on barge-in
     try { ws.send(JSON.stringify({ event: 'clear', streamSid })) } catch { /* ignore */ }
   }
 
