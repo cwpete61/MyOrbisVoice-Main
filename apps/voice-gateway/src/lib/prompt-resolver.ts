@@ -72,9 +72,18 @@ export function resolveSystemPrompt(
       : `You are running on the marketing landing page of partner ${partner.displayName}${businessLine}. ` +
         `When you describe the demo booking flow to the visitor, refer to the partner by FIRST NAME: "${partner.firstName}".`
     const audienceWord = isPhoneChannel ? 'caller' : 'visitor'
+    // Opening greeting MUST name BOTH the agent (own name, supplied by the
+    // agent-identity layer below) AND the partner being represented. "Your
+    // own name" composes with the Layer 1.1 directive so a custom agent name
+    // flows through (e.g. "Hi, I'm Orby, Alex's AI assistant — ...").
+    const greetingLine =
+      `Your VERY FIRST words MUST introduce BOTH: yourself by your own name AND ` +
+      `${partner.displayName} (the advisor you represent) by FIRST NAME "${partner.firstName}". ` +
+      `Example shape: "Hi, I'm <your name>, ${partner.firstName}'s AI assistant — how can I help?". Never open without naming both.`
     layers.push(
       `--- Partner Context ---\n` +
       `${surfaceLine} ` +
+      `${greetingLine} ` +
       `Sample phrasing: "I'll get 15 minutes on ${partner.firstName}'s calendar" or "${partner.firstName} will follow up to confirm."` +
       `${phoneLine}${emailLine}\n` +
       `Do NOT invent partner details beyond what's in this block. If the ${audienceWord} asks about ${partner.firstName} something not stated here, say you'll have ${partner.firstName} follow up directly.`
