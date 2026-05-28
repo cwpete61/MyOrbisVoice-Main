@@ -50,6 +50,14 @@ snapshots/
 # Regenerable from source any time via /graphify — never commit the artifacts.
 graphify-out/
 
+# CodeGraph local index (SQLite DB + cache). Machine-local, regenerable via
+# `codegraph index`. Never commit — see .codegraph/.gitignore for inner rules.
+.codegraph/
+# CodeGraph MCP registration — personal agent tooling, requires the `codegraph`
+# binary + a local index on each machine. Keep local until the team standardizes
+# on it (then commit + document `codegraph install` as a setup step).
+.mcp.json
+
 # Local source-media folder (uploaded to Bunny, not tracked)
 Videos/
 
