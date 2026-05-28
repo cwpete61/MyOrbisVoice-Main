@@ -2,7 +2,7 @@
 
 These are the items that **cannot be closed by code alone** — they require external signal (third-party approvals, off-repo actions, real-world data, or specific business decisions). They're tracked here so they don't get lost in conversation history but also don't block the build.
 
-**Last reviewed:** 2026-05-19.
+**Last reviewed:** 2026-05-28.
 
 Items below sorted by urgency. Re-review weekly. When an item is closed, move it to the **Closed** section at the bottom with the date and what unblocked it.
 
@@ -23,6 +23,8 @@ Items below sorted by urgency. Re-review weekly. When an item is closed, move it
 **Why:** Per-turn telemetry shipped 2026-05-05 (commit 85bcd46). The next move on backlog #3 (latency reduction) is data-gated by these distributions. Without 50+ real samples, tuning VAD silence_duration_ms or prompt size is just guessing.
 
 **First sample landed 2026-05-06** from the test call diagnosing G1: `{"max":31,"min":2,"p95":31,"count":5,"turns":[31,2,3,7,23],"median":7}`. Median 7 ms, p95 31 ms across 5 turns. **Numbers look excellent on the first sample** — well below the 800ms target stated in backlog #3. If the next 49 calls land in the same distribution, latency tuning may not be needed at all and the item closes as "current numbers are acceptable, no further work."
+
+**Progress 2026-05-28:** 33 inbound calls in prod, 32 carry latency metadata. ~18 short of the 50-sample bar. Still data-gated, but accumulating from real traffic (no synthetic calls needed). Re-check the distribution once the count crosses 50.
 
 **Owner:** Me, once data exists.
 
@@ -111,7 +113,21 @@ Original item, for reference:
 
 ---
 
-### S4. Voice runtime end-to-end retest (single real call)
+### S4. Voice runtime end-to-end retest — ✅ CLOSED 2026-05-28
+
+**What unblocked it:** Multiple real inbound calls placed 2026-05-27/28 during
+the call-static investigation. Full pipeline verified end-to-end: Twilio →
+gateway WebSocket → Gemini Live → agent greets → multi-turn → recording webhook →
+Bunny upload. Prod DB now holds 33 inbound Conversations — 32 with
+`metadataJson.latency`, 27 with `recordingBunnyPath`, transcripts populated.
+A 195s and a 59s call both completed cleanly with all artifacts. Gateway logs
+show zero `code: 1008` closes (G1 stays closed). Bonus: the retest surfaced +
+fixed audible call static (FIR anti-aliasing on the 24k→8k downsample, commit
+1b57df3) — a real quality win the single-call gate would not have caught.
+
+Original item, for reference:
+
+#### S4 (original). Voice runtime end-to-end retest (single real call)
 
 **What:** Place one real inbound call from a personal phone to the platform's Twilio number and verify the full pipeline:
 - Twilio routes inbound → gateway accepts WebSocket
@@ -120,11 +136,7 @@ Original item, for reference:
 - Call ends; recording webhook fires; recording lands in Bunny
 - Conversation row in DB has `transcriptJson`, `summaryText`, `recordingRef`, `metadataJson.latency`
 
-**Why this is open:** Last verified 2026-05-06 — surfaced G1 (Gemini 1008 mid-call disconnect, separate item). Recently shipped: theme overhaul, Google sign-in, deploy-script hardening. None of those touched the voice path, but per the autonomous-verify rule we should re-test before claiming "voice is launch-ready" with confidence.
-
-**Owner:** User to place the call (from a phone NOT in their Google contacts to avoid the carrier reputation issue from #8).
-
-**Verifies done when:** One inbound call of 90+ seconds completes with all artifacts (recording + transcript + summary + latency) populated in the DB.
+**Verified done when:** One inbound call of 90+ seconds completes with all artifacts (recording + transcript + summary + latency) populated in the DB.
 
 ---
 

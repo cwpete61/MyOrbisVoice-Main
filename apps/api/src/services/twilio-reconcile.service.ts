@@ -75,6 +75,11 @@ export async function reconcileTwilioNumbers(opts?: {
   })
 
   const masterClient = await getTwilioClient('live')
+  // Per the PhoneNumber.twilioSubaccountSid schema comment, a NULL value means
+  // "the number lives on the master account" (no subaccount provisioned). So
+  // the expected owner for a null-db row is the master account SID — comparing
+  // against null would flag every master-account number as drift forever.
+  const masterAccountSid = masterClient.accountSid
 
   for (const row of rows) {
     if (!row.twilioNumberSid) continue
@@ -84,13 +89,14 @@ export async function reconcileTwilioNumbers(opts?: {
       // master client can read it because subaccounts share the parent.
       const live = await masterClient.incomingPhoneNumbers(row.twilioNumberSid).fetch()
       const liveAccountSid = live.accountSid
+      const expectedSid = row.twilioSubaccountSid ?? masterAccountSid
       if (!liveAccountSid) {
         errors.push({
           phoneNumberId: row.id,
           e164Number: row.e164Number,
           message: 'Twilio returned no accountSid',
         })
-      } else if (liveAccountSid !== row.twilioSubaccountSid) {
+      } else if (liveAccountSid !== expectedSid) {
         drifts.push({
           phoneNumberId: row.id,
           e164Number: row.e164Number,

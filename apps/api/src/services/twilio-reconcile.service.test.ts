@@ -8,6 +8,7 @@ const { prismaMock, twilioMock, fetchMock } = vi.hoisted(() => {
       auditLog: { create: vi.fn() },
     },
     twilioMock: {
+      accountSid: 'ACmaster',
       incomingPhoneNumbers: (_sid: string) => ({ fetch }),
     },
     fetchMock: fetch,
@@ -43,6 +44,27 @@ describe('reconcileTwilioNumbers', () => {
     expect(r.checkedCount).toBe(1)
     expect(r.drifts).toEqual([])
     expect(prismaMock.auditLog.create).not.toHaveBeenCalled()
+  })
+
+  it('no drift when DB subaccount is null and Twilio reports the master account', async () => {
+    // null twilioSubaccountSid means "on master" per schema — must NOT flag.
+    prismaMock.phoneNumber.findMany.mockResolvedValue([
+      { id: 'N1', e164Number: '+15550001', twilioNumberSid: 'PN1', twilioSubaccountSid: null },
+    ])
+    fetchMock.mockResolvedValueOnce({ accountSid: 'ACmaster' })
+    const r = await reconcileTwilioNumbers()
+    expect(r.drifts).toEqual([])
+    expect(prismaMock.auditLog.create).not.toHaveBeenCalled()
+  })
+
+  it('flags drift when DB subaccount is null but Twilio shows a non-master account', async () => {
+    prismaMock.phoneNumber.findMany.mockResolvedValue([
+      { id: 'N1', e164Number: '+15550001', twilioNumberSid: 'PN1', twilioSubaccountSid: null },
+    ])
+    fetchMock.mockResolvedValueOnce({ accountSid: 'ACsomeother' })
+    const r = await reconcileTwilioNumbers()
+    expect(r.drifts).toHaveLength(1)
+    expect(r.drifts[0]).toMatchObject({ dbSubaccountSid: null, twilioSubaccountSid: 'ACsomeother' })
   })
 
   it('flags drift when Twilio shows different subaccount than DB', async () => {
