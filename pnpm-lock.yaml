@@ -91,8 +91,8 @@ importers:
         specifier: ^171.4.0
         version: 171.4.0
       helmet:
-        specifier: ^7.1.0
-        version: 7.2.0
+        specifier: ^8.1.0
+        version: 8.1.0
       ioredis:
         specifier: ^5.4.1
         version: 5.10.1
@@ -4023,9 +4023,9 @@ packages:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
 
-  helmet@7.2.0:
-    resolution: {integrity: sha512-ZRiwvN089JfMXokizgqEPXsl2Guk094yExfoDXR0cBYWxtBbaSww/w+vT4WEJsBW2iTUi1GgZ6swmoug3Oy4Xw==}
-    engines: {node: '>=16.0.0'}
+  helmet@8.1.0:
+    resolution: {integrity: sha512-jOiHyAZsmnr8LqoPGmCjYAaiuWwjAPLgY8ZX2XrmHawt99/u1y6RgrZMTeoPfpUbV96HOalYgz1qzkRbw54Pmg==}
+    engines: {node: '>=18.0.0'}
 
   html-entities@2.6.0:
     resolution: {integrity: sha512-kig+rMn/QOVRvr7c86gQ8lWXq+Hkv6CbAH1hLu+RG338StTpE8Z0b44SDVaqVu7HGKf27frdmUYEs9hTUX/cLQ==}
@@ -10021,7 +10021,7 @@ snapshots:
 
   he@1.2.0: {}
 
-  helmet@7.2.0: {}
+  helmet@8.1.0: {}
 
   html-entities@2.6.0: {}
 
