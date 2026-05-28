@@ -98,7 +98,7 @@ enum ConversationStatus {
 
 // Post-call AI assessment of whether a conversation needs admin attention.
 enum ConversationAttentionLevel {
-  NONE  // normal, successful call
+  NONE // normal, successful call
   WATCH // mild concern — unclear outcome, follow-up promised, mild dissatisfaction
   ALERT // a customer issue an admin should review — frustration, unresolved, failed booking, escalation ask
 }
@@ -445,7 +445,7 @@ model Tenant {
   /// has auto-hidden on completion. The dashboard banner shows when the
   /// wizard is incomplete OR this flag is true. Partner/tenant flips it from
   /// the profile/settings page.
-  showOnboardingWizard      Boolean  @default(false)
+  showOnboardingWizard      Boolean                 @default(false)
   /// Tracks which onboarding emails have been sent + when. Shape:
   /// { setupNudge: ISO, featureSpotlight: ISO, weekTwoCheckIn: ISO }.
   /// Populated by the onboarding-emails job. Idempotent — once a key is set,
@@ -625,7 +625,7 @@ model BusinessProfile {
   // polls AppointmentReminder.PENDING rows and dispatches via the existing
   // email + SMS services. See apps/api/src/jobs/reminder-runner.ts.
   reminderEnabled           Boolean  @default(true)
-  reminderOffsetsMin        Int[]    @default([1440, 60])  // 24h + 1h before
+  reminderOffsetsMin        Int[]    @default([1440, 60]) // 24h + 1h before
   reminderEmailEnabled      Boolean  @default(true)
   reminderSmsEnabled        Boolean  @default(true)
   // Phase E.8 — reminder copy customization. Optional overrides for the
@@ -727,7 +727,7 @@ model PromptVersion {
 }
 
 model AgentProfile {
-  id              String         @id @default(uuid())
+  id              String            @id @default(uuid())
   // Exactly one of tenantId / partnerId is set. Tenant-scoped agents serve
   // calls hitting a tenant's numbers; partner-scoped agents serve calls
   // hitting a partner's numbers (Phase G.1+). Routing dispatches off
@@ -736,13 +736,13 @@ model AgentProfile {
   partnerId       String?
   agentRoleType   AgentRoleType
   displayName     String
-  isEnabled       Boolean        @default(false)
+  isEnabled       Boolean           @default(false)
   modelProvider   String
   modelName       String
   promptVersionId String?
   settingsJson    Json?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   // Soft-delete anchor. NULL = active. Set to a timestamp when the agent is
   // "deleted" — record stays in DB so it can be restored by clearing the
   // field. Default list queries filter `WHERE deletedAt IS NULL`.
@@ -851,30 +851,30 @@ model PartnerStripeCustomerRef {
 /// AffiliateAccount.smsCreditBalance is the running total — every row writes
 /// the balanceAfter snapshot for forensic reconstruction.
 model PartnerSmsCreditLedger {
-  id                    String                       @id @default(uuid())
+  id                    String                   @id @default(uuid())
   partnerId             String
   eventType             PartnerSmsCreditEvent
-  creditsDelta          Decimal                      @db.Decimal(10, 2) // positive on grant, negative on consume
-  balanceAfter          Decimal                      @db.Decimal(10, 2)
+  creditsDelta          Decimal                  @db.Decimal(10, 2) // positive on grant, negative on consume
+  balanceAfter          Decimal                  @db.Decimal(10, 2)
   /// Channel of the message that triggered this row (CONSUME/REFUND only).
   /// Null for PURCHASE / ADJUST.
   channel               PartnerSmsCreditChannel?
   /// Stripe price metadata pack id ("pack_5" / "pack_10") for PURCHASE rows.
   packId                String?
-  usdAmountCents        Int?                          // PURCHASE: pack price; CONSUME: null
+  usdAmountCents        Int? // PURCHASE: pack price; CONSUME: null
   /// Phase G.2.1 — actual Twilio cost (USD cents) captured from the sms-status
   /// webhook's Price field. Used to compute net pack profitability per partner
   /// so we can flag partners whose real Twilio spend approaches their pack
   /// purchase total (margin protection). Populated only on CONSUME rows; null
   /// when the message hasn't reached a terminal Twilio status yet.
-  twilioCostCents       Decimal?                      @db.Decimal(10, 4)
-  stripePaymentIntentId String?                       @unique
-  stripeSessionId       String?                       @unique
-  messageLogId          String?                       // CONSUME: FK to MessageLog.id (no DB-level constraint to keep it loose)
+  twilioCostCents       Decimal?                 @db.Decimal(10, 4)
+  stripePaymentIntentId String?                  @unique
+  stripeSessionId       String?                  @unique
+  messageLogId          String? // CONSUME: FK to MessageLog.id (no DB-level constraint to keep it loose)
   note                  String?
-  createdAt             DateTime                      @default(now())
+  createdAt             DateTime                 @default(now())
 
-  partner               AffiliateAccount             @relation("PartnerSmsCreditLedger", fields: [partnerId], references: [id], onDelete: Cascade)
+  partner AffiliateAccount @relation("PartnerSmsCreditLedger", fields: [partnerId], references: [id], onDelete: Cascade)
 
   @@index([partnerId, createdAt])
   @@index([eventType])
@@ -882,17 +882,17 @@ model PartnerSmsCreditLedger {
 }
 
 enum PartnerSmsCreditEvent {
-  PURCHASE   // Stripe one-time payment cleared
-  CONSUME    // outbound message deducted credits
-  REFUND     // CONSUME reversed (send failed post-deduct)
-  ADJUST     // admin manual adjustment (audit-logged elsewhere)
+  PURCHASE // Stripe one-time payment cleared
+  CONSUME // outbound message deducted credits
+  REFUND // CONSUME reversed (send failed post-deduct)
+  ADJUST // admin manual adjustment (audit-logged elsewhere)
 }
 
 enum PartnerSmsCreditChannel {
-  SMS         // 1 segment SMS
-  SMS_LONG    // 2-segment SMS = 2 credits
-  MMS         // 2.5 credits
-  WHATSAPP    // reserved — pricing TBD
+  SMS // 1 segment SMS
+  SMS_LONG // 2-segment SMS = 2 credits
+  MMS // 2.5 credits
+  WHATSAPP // reserved — pricing TBD
 }
 
 /// Phase G.3 — per-call voice usage meter for partner numbers.
@@ -907,27 +907,27 @@ enum PartnerSmsCreditChannel {
 ///   LOCAL    inbound/outbound = 2¢
 ///   TOLLFREE inbound/outbound = 3¢
 model PartnerVoiceUsageLedger {
-  id                  String   @id @default(uuid())
+  id                  String                 @id @default(uuid())
   partnerId           String
   phoneNumberId       String
   /// Twilio CallSid — unique so a repeated status webhook can't double-bill.
-  callSid             String   @unique
+  callSid             String                 @unique
   direction           PartnerVoiceDirection
   numberType          PartnerVoiceNumberType
   durationSeconds     Int
-  billableMinutes     Int      // ceil(durationSeconds / 60), min 1 for a connected call
+  billableMinutes     Int // ceil(durationSeconds / 60), min 1 for a connected call
   ratePerMinuteCents  Int
-  amountCents         Int      // billableMinutes * ratePerMinuteCents
+  amountCents         Int // billableMinutes * ratePerMinuteCents
   /// Actual Twilio cost (USD cents) from the status callback Price field, when
   /// present. Lets us reconcile real cost vs. billed amount for margin checks.
-  twilioCostCents     Decimal? @db.Decimal(10, 4)
+  twilioCostCents     Decimal?               @db.Decimal(10, 4)
   /// Stripe invoice item created for this call. Unique — the dedupe anchor for
   /// the billing side (callSid dedupes the ledger row; this dedupes Stripe).
-  stripeInvoiceItemId String?  @unique
+  stripeInvoiceItemId String?                @unique
   billedAt            DateTime? // set when the invoice item is created
-  createdAt           DateTime @default(now())
+  createdAt           DateTime               @default(now())
 
-  partner             AffiliateAccount @relation("PartnerVoiceUsage", fields: [partnerId], references: [id], onDelete: Cascade)
+  partner AffiliateAccount @relation("PartnerVoiceUsage", fields: [partnerId], references: [id], onDelete: Cascade)
 
   @@index([partnerId, createdAt])
   @@index([phoneNumberId])
@@ -1016,26 +1016,26 @@ model PhoneNumber {
   // Tenant-owned numbers go straight to PURCHASED on creation; partner-owned
   // numbers go PENDING → APPROVED → PURCHASED through the admin queue.
   // RELEASED happens when the number is sent back to Twilio.
-  purchaseStatus       PhoneNumberPurchaseStatus @default(PURCHASED)
+  purchaseStatus        PhoneNumberPurchaseStatus @default(PURCHASED)
   // Capability tier sets the monthly price + which features unlock.
   // Null for tenant numbers (tenant has its own pricing model).
   partnerCapabilityTier PartnerNumberTier?
   // A2P 10DLC status for SMS-enabled numbers. NOT_REQUIRED means voice-only
   // (no SMS) or toll-free (different verification flow).
-  a2pStatus             A2pStatus               @default(NOT_REQUIRED)
-  requestedAt          DateTime?
-  requestedByUserId    String?
-  approvedAt           DateTime?
-  approvedByUserId     String?
-  rejectionReason      String?
+  a2pStatus             A2pStatus                 @default(NOT_REQUIRED)
+  requestedAt           DateTime?
+  requestedByUserId     String?
+  approvedAt            DateTime?
+  approvedByUserId      String?
+  rejectionReason       String?
   // Phase G.1.B-2 — Stripe Subscription that auto-renews this number's
   // monthly charge. Set when admin approves the number. Null for non-partner
   // numbers and historic rows. Cancellation = number gets released to Twilio.
-  stripeSubscriptionId String?
+  stripeSubscriptionId  String?
 
-  tenant              Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  partner             AffiliateAccount? @relation("PartnerPhoneNumbers", fields: [partnerId], references: [id], onDelete: Cascade)
-  agentProfile        AgentProfile?     @relation(fields: [agentProfileId], references: [id], onDelete: SetNull)
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner      AffiliateAccount? @relation("PartnerPhoneNumbers", fields: [partnerId], references: [id], onDelete: Cascade)
+  agentProfile AgentProfile?     @relation(fields: [agentProfileId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([partnerId])
@@ -1045,27 +1045,27 @@ model PhoneNumber {
 // Lifecycle for a PhoneNumber row. Existing tenant numbers default to
 // PURCHASED on backfill; new partner requests start at PENDING.
 enum PhoneNumberPurchaseStatus {
-  PENDING    // partner requested, awaiting admin approval
-  APPROVED   // admin approved, Twilio purchase pending (transient)
-  PURCHASED  // bought from Twilio, twilioNumberSid populated
-  REJECTED   // admin rejected — request killed
-  RELEASED   // returned to Twilio
+  PENDING // partner requested, awaiting admin approval
+  APPROVED // admin approved, Twilio purchase pending (transient)
+  PURCHASED // bought from Twilio, twilioNumberSid populated
+  REJECTED // admin rejected — request killed
+  RELEASED // returned to Twilio
 }
 
 // Capability tier — drives monthly price + features available on the number.
 enum PartnerNumberTier {
-  VOICE       // $2/mo  US local, voice in+out, no SMS
-  VOICE_SMS   // $15/mo US local, voice + SMS, includes A2P brand + campaign
-  TOLLFREE    // $5/mo  toll-free, voice + SMS (no A2P required, separate verification)
+  VOICE // $2/mo  US local, voice in+out, no SMS
+  VOICE_SMS // $15/mo US local, voice + SMS, includes A2P brand + campaign
+  TOLLFREE // $5/mo  toll-free, voice + SMS (no A2P required, separate verification)
 }
 
 // A2P 10DLC registration state for the partner number's brand + campaign.
 enum A2pStatus {
-  NOT_REQUIRED    // voice-only OR toll-free — no A2P registration applies
-  PENDING_QUEUE   // partner asked for SMS — sitting in admin queue
-  SUBMITTED       // admin submitted to Twilio Trust Hub, awaiting review
-  APPROVED        // Twilio approved — SMS enabled
-  REJECTED        // Twilio rejected — partner needs to fix something
+  NOT_REQUIRED // voice-only OR toll-free — no A2P registration applies
+  PENDING_QUEUE // partner asked for SMS — sitting in admin queue
+  SUBMITTED // admin submitted to Twilio Trust Hub, awaiting review
+  APPROVED // Twilio approved — SMS enabled
+  REJECTED // Twilio rejected — partner needs to fix something
 }
 
 // One row per tenant — created lazily on the tenant's FIRST number purchase.
@@ -1113,62 +1113,62 @@ model PartnerTwilioSubaccount {
 // Submission to Twilio Trust Hub APIs is gated on platform's ISV approval;
 // until then this stores the data so we can submit in bulk once unblocked.
 model TenantA2PApplication {
-  id                       String               @id @default(uuid())
+  id                        String               @id @default(uuid())
   /// Scope key. Exactly one of tenantId / partnerId is set, or both null
   /// for the platform-scope row (MyOrbisVoice's own A2P registration on the
   /// master Twilio account). tenantId-scope = a tenant's registration;
   /// partnerId-scope = a partner's registration for their managed numbers.
   /// At most one row per tenant, per partner, and one platform-scope row.
-  tenantId                 String?              @unique
-  partnerId                String?              @unique
-  legalName                String // exact business legal name (matches EIN registration)
-  ein                      String? // US EIN — optional for sole-prop
-  businessType             String // SOLE_PROP / LLC / CORP / NON_PROFIT etc.
-  vertical                 String // healthcare, retail, professional_services, etc.
-  websiteUrl               String?
-  addressLine1             String
-  addressLine2             String?
-  city                     String
-  region                   String // state for US
-  postalCode               String
-  country                  String               @default("US")
-  contactFirstName         String
-  contactLastName          String
-  contactEmail             String
-  contactPhone             String
-  useCase                  String // marketing / mixed / customer_care / 2fa / utility
-  sampleMessagesJson       Json // array of 5 sample SMS bodies
+  tenantId                  String?              @unique
+  partnerId                 String?              @unique
+  legalName                 String // exact business legal name (matches EIN registration)
+  ein                       String? // US EIN — optional for sole-prop
+  businessType              String // SOLE_PROP / LLC / CORP / NON_PROFIT etc.
+  vertical                  String // healthcare, retail, professional_services, etc.
+  websiteUrl                String?
+  addressLine1              String
+  addressLine2              String?
+  city                      String
+  region                    String // state for US
+  postalCode                String
+  country                   String               @default("US")
+  contactFirstName          String
+  contactLastName           String
+  contactEmail              String
+  contactPhone              String
+  useCase                   String // marketing / mixed / customer_care / 2fa / utility
+  sampleMessagesJson        Json // array of 5 sample SMS bodies
   // Trust Hub pipeline SIDs — populated step-by-step as the submission
   // engine advances. All null until submit; each persists once its step
   // succeeds so the engine is resumable.
-  twilioCustomerProfileSid String? // Secondary Customer Profile bundle
-  twilioTrustProductSid    String? // A2P TrustProduct (Trust Bundle)
-  twilioBrandSid           String? // BrandRegistration
+  twilioCustomerProfileSid  String? // Secondary Customer Profile bundle
+  twilioTrustProductSid     String? // A2P TrustProduct (Trust Bundle)
+  twilioBrandSid            String? // BrandRegistration
   twilioMessagingServiceSid String? // Messaging Service the campaign attaches to
-  twilioCampaignSid        String? // UsAppToPerson Campaign
+  twilioCampaignSid         String? // UsAppToPerson Campaign
   // 'mock' (default — Twilio mock APIs / local simulation, no TCR billing,
   // no live SMS) or 'live' (real Trust Hub submission). A live submission
   // is only allowed once an operator flips this explicitly.
-  submissionMode           String               @default("mock")
-  status                   A2PApplicationStatus @default(DRAFT)
-  rejectionReason          String?
+  submissionMode            String               @default("mock")
+  status                    A2PApplicationStatus @default(DRAFT)
+  rejectionReason           String?
   // 4-layer validation gate output — the full report (per-layer pass/fail,
   // findings, AI compliance notes). Refreshed each time the gate runs.
-  validationReportJson     Json?
-  validatedAt              DateTime?
+  validationReportJson      Json?
+  validatedAt               DateTime?
   // Explicit customer authorization (gate layer 4). The submission engine
   // refuses to run until this is set — the app must not submit on the
   // customer's behalf without recorded consent.
-  authorizedAt             DateTime?
-  authorizedByUserId       String?
-  submittedAt              DateTime?
-  approvedAt               DateTime?
-  lastTwilioSyncAt         DateTime? // last time status was polled/synced from Twilio
-  createdAt                DateTime             @default(now())
-  updatedAt                DateTime             @updatedAt
-  tenant                   Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  partner                  AffiliateAccount?    @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  operatorNotes            A2POperatorNote[]
+  authorizedAt              DateTime?
+  authorizedByUserId        String?
+  submittedAt               DateTime?
+  approvedAt                DateTime?
+  lastTwilioSyncAt          DateTime? // last time status was polled/synced from Twilio
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+  tenant                    Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner                   AffiliateAccount?    @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  operatorNotes             A2POperatorNote[]
 }
 
 // A2P application lifecycle — modeled as a state machine, not a single
@@ -1255,77 +1255,77 @@ model PushSubscription {
 }
 
 model Contact {
-  id                   String                @id @default(uuid())
-  tenantId             String
-  firstName            String?
-  lastName             String?
-  fullName             String?
-  email                String?
-  phoneE164            String?
-  addressLine1         String?
-  city                 String?
-  region               String?
-  postalCode           String?
-  country              String?
-  source               String
-  tagsJson             Json?
-  metadataJson         Json?
-  emailStatus          String?
-  emailVerifiedAt      DateTime?
-  phoneStatus          String?
-  phoneVerifiedAt      DateTime?
-  agentConfirmedAt     DateTime?
-  optedOutSms          Boolean               @default(false)
-  optedOutSmsAt        DateTime?
-  optedOutVoice        Boolean               @default(false)
-  optedOutVoiceAt      DateTime?
-  optedOutEmail        Boolean               @default(false)
-  optedOutEmailAt      DateTime?
-  optedOutWhatsapp     Boolean               @default(false)
-  optedOutWhatsappAt   DateTime?
+  id                      String                   @id @default(uuid())
+  tenantId                String
+  firstName               String?
+  lastName                String?
+  fullName                String?
+  email                   String?
+  phoneE164               String?
+  addressLine1            String?
+  city                    String?
+  region                  String?
+  postalCode              String?
+  country                 String?
+  source                  String
+  tagsJson                Json?
+  metadataJson            Json?
+  emailStatus             String?
+  emailVerifiedAt         DateTime?
+  phoneStatus             String?
+  phoneVerifiedAt         DateTime?
+  agentConfirmedAt        DateTime?
+  optedOutSms             Boolean                  @default(false)
+  optedOutSmsAt           DateTime?
+  optedOutVoice           Boolean                  @default(false)
+  optedOutVoiceAt         DateTime?
+  optedOutEmail           Boolean                  @default(false)
+  optedOutEmailAt         DateTime?
+  optedOutWhatsapp        Boolean                  @default(false)
+  optedOutWhatsappAt      DateTime?
   // CRM relationship fields — collected during OUTBOUND campaigns only.
   // The inbound agent is instructed never to ask for these (privacy + flow).
   // Outbound campaigns can opt-in per-campaign by listing fields to collect.
-  birthday             DateTime? // anchor date; year is informational only
-  anniversary          DateTime? // wedding / relationship anniversary
-  spouseName           String?
-  kidsInfoJson         Json? // [{ name, age?, birthday?, notes? }]
-  petsInfoJson         Json? // [{ name, type, age?, notes? }]
-  importantDatesJson   Json? // [{ label, date, notes? }] — arbitrary recurring dates
-  hobbies              String? // freeform / comma-separated interests
-  preferredContactTime String? // 'morning' | 'afternoon' | 'evening' | freeform
-  customerSince        DateTime?
-  personalNotes        String? // freeform internal-only notes (legacy single-field; ContactNote thread is the active surface)
+  birthday                DateTime? // anchor date; year is informational only
+  anniversary             DateTime? // wedding / relationship anniversary
+  spouseName              String?
+  kidsInfoJson            Json? // [{ name, age?, birthday?, notes? }]
+  petsInfoJson            Json? // [{ name, type, age?, notes? }]
+  importantDatesJson      Json? // [{ label, date, notes? }] — arbitrary recurring dates
+  hobbies                 String? // freeform / comma-separated interests
+  preferredContactTime    String? // 'morning' | 'afternoon' | 'evening' | freeform
+  customerSince           DateTime?
+  personalNotes           String? // freeform internal-only notes (legacy single-field; ContactNote thread is the active surface)
   // Phase F.1 — CRM pipeline. Optional; null when the contact hasn't been
   // placed on a pipeline yet (e.g. seed data from before the feature shipped).
   // stageUpdatedAt is the timestamp of the LAST stage change — drives the
   // "X days in stage" indicator on the kanban + flags stuck deals.
-  pipelineStageId      String?
-  stageUpdatedAt       DateTime?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  pipelineStageId         String?
+  stageUpdatedAt          DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
   // Soft-delete anchor (data-loss prevention). When set, the contact is
   // hidden from list/search queries but remains in the DB so it can be
   // restored. Hard-delete is reserved for admin-side compliance purges.
-  deletedAt            DateTime?
+  deletedAt               DateTime?
   // Phase F.3 — partner-scoped CRM. When this contact was captured via a
   // partner's landing-page widget, partnerId points at that AffiliateAccount.
   // tenantId remains the hosting tenant (currently the platform demo tenant)
   // but the partner CRM filters on partnerId so partners only see their own
   // leads. Null partnerId → tenant-side contact, surfaced in the tenant CRM.
-  partnerId            String?
-  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  partner              AffiliateAccount?     @relation("PartnerContacts", fields: [partnerId], references: [id], onDelete: SetNull)
-  pipelineStage        PipelineStage?        @relation(fields: [pipelineStageId], references: [id], onDelete: SetNull)
-  conversations        Conversation[]
-  appointments         Appointment[]
-  appointmentReminders AppointmentReminder[]
-  messageLogs          MessageLog[]
-  callLogs             CallLog[]
-  outboundAttempts     OutboundCallAttempt[]
-  campaignEnrollments  CampaignEnrollment[]
-  optOutLogs           OptOutLog[]
-  notes                ContactNote[]
+  partnerId               String?
+  tenant                  Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner                 AffiliateAccount?        @relation("PartnerContacts", fields: [partnerId], references: [id], onDelete: SetNull)
+  pipelineStage           PipelineStage?           @relation(fields: [pipelineStageId], references: [id], onDelete: SetNull)
+  conversations           Conversation[]
+  appointments            Appointment[]
+  appointmentReminders    AppointmentReminder[]
+  messageLogs             MessageLog[]
+  callLogs                CallLog[]
+  outboundAttempts        OutboundCallAttempt[]
+  campaignEnrollments     CampaignEnrollment[]
+  optOutLogs              OptOutLog[]
+  notes                   ContactNote[]
   emailCampaignRecipients EmailCampaignRecipient[]
 
   @@index([tenantId, email])
@@ -1341,27 +1341,27 @@ model Contact {
 // truth for kanban column ordering.
 
 model PipelineStage {
-  id           String   @id @default(uuid())
-  tenantId     String
+  id        String            @id @default(uuid())
+  tenantId  String
   // Phase F.3 — partner-scoped pipeline. When non-null, this stage belongs to
   // a partner's CRM (independent from any tenant's pipeline that may also use
   // the same hosting tenantId). Tenant stages have partnerId NULL.
-  partnerId    String?
-  name         String   @db.VarChar(80)
-  sortOrder    Int      // ascending — kanban renders left-to-right by this
-  color        String?  @db.VarChar(40)  // CSS color string (hex or oklch)
+  partnerId String?
+  name      String            @db.VarChar(80)
+  sortOrder Int // ascending — kanban renders left-to-right by this
+  color     String?           @db.VarChar(40) // CSS color string (hex or oklch)
   // Terminal flags — when set, contacts in this stage are excluded from
   // "active pipeline" filters and surfaced under Won / Lost reports.
-  isWon        Boolean  @default(false)
-  isLost       Boolean  @default(false)
+  isWon     Boolean           @default(false)
+  isLost    Boolean           @default(false)
   // System-seeded stages are protected from delete (can rename + reorder).
   // Tenants can delete their custom stages freely once empty.
-  isSystem     Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  partner      AffiliateAccount? @relation("PartnerPipelineStages", fields: [partnerId], references: [id], onDelete: Cascade)
-  contacts     Contact[]
+  isSystem  Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner   AffiliateAccount? @relation("PartnerPipelineStages", fields: [partnerId], references: [id], onDelete: Cascade)
+  contacts  Contact[]
 
   // The previous `@@unique([tenantId, sortOrder])` is gone because partners
   // share a hosting tenantId and would collide. Application-level two-pass
@@ -1377,16 +1377,16 @@ model PipelineStage {
 // can be attributed to no human author.
 
 model ContactNote {
-  id           String   @id @default(uuid())
+  id           String            @id @default(uuid())
   tenantId     String
   // Phase F.3 — denormalized for fast partner-scoped queries. Mirrors the
   // owning Contact.partnerId at write time.
   partnerId    String?
   contactId    String
-  authorUserId String?  // null = system-generated
-  body         String   @db.Text
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  authorUserId String? // null = system-generated
+  body         String            @db.Text
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
   tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   partner      AffiliateAccount? @relation("PartnerContactNotes", fields: [partnerId], references: [id], onDelete: Cascade)
   contact      Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
@@ -1425,39 +1425,39 @@ model Conversation {
   // Set on call finalize by the gateway's post-call AI pass. Drives the
   // colour + alerting on the admin central call log: ALERT = a customer
   // issue an admin should look at, WATCH = mild concern, NONE = normal call.
-  attentionLevel        ConversationAttentionLevel @default(NONE)
-  attentionReason       String? // one-line reason when WATCH/ALERT; null otherwise
+  attentionLevel  ConversationAttentionLevel @default(NONE)
+  attentionReason String? // one-line reason when WATCH/ALERT; null otherwise
 
   // ── Partner context (Phase E.2) ───────────────────────────────────────────
   // Set when this conversation originated on a partner's landing page widget.
   // Drives where book_appointment writes: partnerId set → partner's Google
   // Calendar; partnerId null → tenant's Google Calendar (the existing flow).
-  partnerId             String?
+  partnerId String?
 
   // ── Demo Gallery (Phase D.1) ──────────────────────────────────────────────
   // Conversations curated by admin as public demos at /demos/<id>.
   // featuredSummary / featuredTranscript override the raw fields when set,
   // letting admin redact PII before publishing without losing the originals.
-  isFeaturedDemo        Boolean               @default(false)
-  featuredTitle         String?               // e.g. "Bright Smile Dental — after-hours booking"
-  featuredCategory      String?               // dental | legal | hvac | beauty | fitness | real-estate | coaching | medical
-  featuredSortOrder     Int                   @default(100)
-  featuredAt            DateTime?
-  featuredById          String?               // FK to User (admin who curated it)
-  featuredSummary       String?               // redacted display summary (falls back to summaryText)
-  featuredTranscript    Json?                 // redacted transcript (falls back to transcriptJson)
-  featuredViewCount     Int                   @default(0)
+  isFeaturedDemo     Boolean   @default(false)
+  featuredTitle      String? // e.g. "Bright Smile Dental — after-hours booking"
+  featuredCategory   String? // dental | legal | hvac | beauty | fitness | real-estate | coaching | medical
+  featuredSortOrder  Int       @default(100)
+  featuredAt         DateTime?
+  featuredById       String? // FK to User (admin who curated it)
+  featuredSummary    String? // redacted display summary (falls back to summaryText)
+  featuredTranscript Json? // redacted transcript (falls back to transcriptJson)
+  featuredViewCount  Int       @default(0)
 
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  tenant                Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact               Contact?              @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  featuredBy            User?                 @relation("DemoFeaturedBy", fields: [featuredById], references: [id], onDelete: SetNull)
-  partner               AffiliateAccount?     @relation("PartnerConversations", fields: [partnerId], references: [id], onDelete: SetNull)
-  appointments          Appointment[]
-  messageLogs           MessageLog[]
-  callLogs              CallLog[]
-  outboundCallAttempts  OutboundCallAttempt[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact              Contact?              @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  featuredBy           User?                 @relation("DemoFeaturedBy", fields: [featuredById], references: [id], onDelete: SetNull)
+  partner              AffiliateAccount?     @relation("PartnerConversations", fields: [partnerId], references: [id], onDelete: SetNull)
+  appointments         Appointment[]
+  messageLogs          MessageLog[]
+  callLogs             CallLog[]
+  outboundCallAttempts OutboundCallAttempt[]
 
   @@index([tenantId, startedAt])
   @@index([tenantId, channelType])
@@ -1490,7 +1490,7 @@ model StaffMember {
 }
 
 model Appointment {
-  id              String            @id @default(uuid())
+  id              String                @id @default(uuid())
   tenantId        String
   contactId       String?
   conversationId  String?
@@ -1512,13 +1512,13 @@ model Appointment {
   /// Set when the customer ticked the SMS-consent checkbox on the public
   /// booking page — A2P opt-in proof for appointment-reminder texts.
   smsConsentAt    DateTime?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact         Contact?          @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  conversation    Conversation?     @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-  staffMember     StaffMember?      @relation(fields: [staffMemberId], references: [id], onDelete: SetNull)
-  partner         AffiliateAccount? @relation("PartnerAppointments", fields: [partnerId], references: [id], onDelete: SetNull)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact         Contact?              @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  conversation    Conversation?         @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  staffMember     StaffMember?          @relation(fields: [staffMemberId], references: [id], onDelete: SetNull)
+  partner         AffiliateAccount?     @relation("PartnerAppointments", fields: [partnerId], references: [id], onDelete: SetNull)
   reminders       AppointmentReminder[]
 
   @@index([partnerId])
@@ -1540,35 +1540,35 @@ enum ReminderStatus {
   PENDING
   SENT
   FAILED
-  CANCELLED  // appointment was cancelled or rescheduled before the reminder fired
+  CANCELLED // appointment was cancelled or rescheduled before the reminder fired
 }
 
 model AppointmentReminder {
-  id            String           @id @default(uuid())
+  id            String          @id @default(uuid())
   tenantId      String
   appointmentId String
   contactId     String
   channel       ReminderChannel
-  offsetMin     Int              // minutes before appointment.startAt — kept for audit / debug
-  scheduledAt   DateTime         // = appointment.startAt - offsetMin
-  status        ReminderStatus   @default(PENDING)
+  offsetMin     Int // minutes before appointment.startAt — kept for audit / debug
+  scheduledAt   DateTime // = appointment.startAt - offsetMin
+  status        ReminderStatus  @default(PENDING)
   sentAt        DateTime?
   errorReason   String?
-  attemptCount  Int              @default(0)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  attemptCount  Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  appointment   Appointment      @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  contact       Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  contact     Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  @@unique([appointmentId, channel, offsetMin])  // one reminder per (channel, offset) per appointment
-  @@index([status, scheduledAt])                  // scheduler hot path
+  @@unique([appointmentId, channel, offsetMin]) // one reminder per (channel, offset) per appointment
+  @@index([status, scheduledAt]) // scheduler hot path
   @@index([tenantId, scheduledAt])
 }
 
 model MessageLog {
-  id                String           @id @default(uuid())
+  id                String            @id @default(uuid())
   tenantId          String
   contactId         String?
   conversationId    String?
@@ -1595,20 +1595,20 @@ model MessageLog {
   // complaints auto-add the recipient to EmailSuppression so subsequent
   // sends to the same address skip cleanly.
   bouncedAt         DateTime?
-  bounceType        String?          // 'hard' | 'soft' — null when no bounce
-  bounceReason      String?          // ESP-provided description
+  bounceType        String? // 'hard' | 'soft' — null when no bounce
+  bounceReason      String? // ESP-provided description
   complainedAt      DateTime?
-  optOutDetected    Boolean          @default(false)
+  optOutDetected    Boolean           @default(false)
   // Phase F.4 — partnerId mirrored from owning Contact at write time so
   // partner-scoped queries (campaign stats, per-partner bounce rate) don't
   // need to join through Contact every time.
   partnerId         String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   partner           AffiliateAccount? @relation("PartnerMessageLogs", fields: [partnerId], references: [id], onDelete: SetNull)
-  contact           Contact?         @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  conversation      Conversation?    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  contact           Contact?          @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  conversation      Conversation?     @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, channel, direction, createdAt])
   @@index([tenantId, contactId])
@@ -1700,17 +1700,17 @@ model AffiliateAccount {
   onboardingMarkedDone   Json?
   // Manual override to re-show the onboarding wizard after it auto-hid on
   // completion. Banner shows when wizard incomplete OR this is true.
-  showOnboardingWizard   Boolean  @default(false)
+  showOnboardingWizard   Boolean         @default(false)
 
   // ── Affiliate Agreement e-signature (immutable once accepted) ────────────
   // Set once when the partner checks the acknowledgement box, types their
   // legal name, and submits the Contract tab. Never cleared or overwritten —
   // the accept endpoint rejects a second submission. agreementVersion records
   // which revision of the terms they bound themselves to (audit trail).
-  agreementAcceptedAt    DateTime?
-  agreementSignerName    String?
-  agreementVersion       String?
-  agreementIpHash        String?         // sha256(ip)[:16] — audit, not PII reveal
+  agreementAcceptedAt DateTime?
+  agreementSignerName String?
+  agreementVersion    String?
+  agreementIpHash     String? // sha256(ip)[:16] — audit, not PII reveal
 
   // ── Marketing-page identity (Phase B Partner profile) ────────────────────
   // The slug is the partner's permanent public identifier. It drives both:
@@ -1719,27 +1719,27 @@ model AffiliateAccount {
   // Derived once at partner creation from firstName.lastName (with collision-handling
   // suffix: alex.rivera -> alex.rivera2). Immutable after first save so external
   // links and email threads don't break when a partner changes their display name.
-  slug                  String? @unique
-  avatarUrl             String?
-  displayName           String? // From-header label; null falls back to "First Last"
-  bio                   String? // shown on partner pages as short author copy
-  partnerPhone          String? // public-facing partner phone (distinct from User-level phone)
-  businessName          String?
+  slug                      String? @unique
+  avatarUrl                 String?
+  displayName               String? // From-header label; null falls back to "First Last"
+  bio                       String? // shown on partner pages as short author copy
+  partnerPhone              String? // public-facing partner phone (distinct from User-level phone)
+  businessName              String?
   // ── Partner public mailing address (Phase F.5) ───────────────────────────
   // Optional. Shown on partner pages and used as the CAN-SPAM postal address
   // in marketing email footers when the partner sends bulk campaigns. Free-
   // text fields — we don't enforce US-only or strict ZIP format, because
   // partners outside the US still need to identify their business location.
   // Empty string = unset (so `null` and `""` are interchangeable upstream).
-  partnerStreet         String? // "716 Washington St"
-  partnerUnit           String? // "Suite 2" / "Apt 4B" / "Floor 3"
-  partnerCity           String? // "Allentown"
-  partnerState          String? // "PA"  (or province / region outside US)
-  partnerPostalCode     String? // "18102" (or "K1A 0B1" / "EC1A 1BB" / etc.)
-  emailSignature        String? // appended to every outbound email composed by this partner
-  calendarId            String? // Google Calendar ID for booking routing
-  forwardPlatformEmails Boolean @default(true) // copy inbound to user.email Gmail
-  partnerPageActive     Boolean @default(false) // /p/<slug>/ pages live + Mailbox accessible
+  partnerStreet             String? // "716 Washington St"
+  partnerUnit               String? // "Suite 2" / "Apt 4B" / "Floor 3"
+  partnerCity               String? // "Allentown"
+  partnerState              String? // "PA"  (or province / region outside US)
+  partnerPostalCode         String? // "18102" (or "K1A 0B1" / "EC1A 1BB" / etc.)
+  emailSignature            String? // appended to every outbound email composed by this partner
+  calendarId                String? // Google Calendar ID for booking routing
+  forwardPlatformEmails     Boolean @default(true) // copy inbound to user.email Gmail
+  partnerPageActive         Boolean @default(false) // /p/<slug>/ pages live + Mailbox accessible
   // Phase E.10 — partner notification preferences. Each Boolean controls a
   // distinct partner-bound notification path. Set true by default — partners
   // opt-OUT of noise rather than opting in. Wire new notifications through
@@ -1750,48 +1750,48 @@ model AffiliateAccount {
   // BusinessProfile). When a booking is routed to this partner's calendar
   // (Appointment.partnerId set), the reminder runner reads these instead of
   // the tenant defaults. Lets partners run different SLAs from the platform.
-  partnerReminderEnabled        Boolean  @default(true)
-  partnerReminderOffsetsMin     Int[]    @default([1440, 60])   // 24h + 1h before
-  partnerReminderEmailEnabled   Boolean  @default(true)
-  partnerReminderSmsEnabled     Boolean  @default(true)
+  partnerReminderEnabled      Boolean @default(true)
+  partnerReminderOffsetsMin   Int[]   @default([1440, 60]) // 24h + 1h before
+  partnerReminderEmailEnabled Boolean @default(true)
+  partnerReminderSmsEnabled   Boolean @default(true)
 
   // ── Phase E.3 — Partner booking preferences ──────────────────────────────
   // Controls when prospects can book the partner via the agent or the public
   // /p/<slug>/book page (E.4). Same shape as BusinessProfile.businessHoursJson:
   //   { mon: { open: "09:00", close: "17:00" }, tue: {...}, sun: null, ... }
   // A day omitted or set to null means "closed that day".
-  bookingHoursJson        Json?
+  bookingHoursJson       Json?
   // Default appointment length in minutes — used when the agent/booker
   // doesn't specify, and as the slot increment on the public booking page.
-  bookingSlotDurationMin  Int     @default(30)
+  bookingSlotDurationMin Int     @default(30)
   // Minimum lead time: a slot starting less than this many minutes from "now"
   // is hidden. Prevents same-minute bookings during a live conversation.
-  bookingMinNoticeMin     Int     @default(60)
+  bookingMinNoticeMin    Int     @default(60)
   // Maximum lookahead: slots more than this many days from "now" are hidden.
-  bookingMaxAdvanceDays   Int     @default(60)
+  bookingMaxAdvanceDays  Int     @default(60)
   // Buffer minutes inserted before / after each calendar busy block so the
   // partner gets breathing room between back-to-back appointments.
-  bookingBufferBeforeMin  Int     @default(0)
-  bookingBufferAfterMin   Int     @default(0)
+  bookingBufferBeforeMin Int     @default(0)
+  bookingBufferAfterMin  Int     @default(0)
   // IANA timezone used to interpret bookingHoursJson "09:00" labels.
   // Falls back to user.preferredTimezone, then to America/New_York.
-  bookingTimezone         String?
+  bookingTimezone        String?
 
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
-  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clicks         AffiliateClick[]
-  conversions    AffiliateConversion[]
-  commissions    AffiliateCommission[]
-  payoutRequests AffiliatePayoutRequest[]
-  customLinks    AffiliateCustomLink[]
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clicks                  AffiliateClick[]
+  conversions             AffiliateConversion[]
+  commissions             AffiliateCommission[]
+  payoutRequests          AffiliatePayoutRequest[]
+  customLinks             AffiliateCustomLink[]
   // Per-partner Google Calendar OAuth (Phase E.0). The partner connects
   // their OWN Google account via /api/partner/integrations/google/connect;
   // OAuth tokens land in the linked IntegrationConnection. Used by the
   // partner-portal calendar view (E.1), the agent's book_appointment when
   // the widget runs on a partner page (E.2), and the public booking page (E.4).
-  integrationConnectionId String?               @unique
-  integrationConnection   IntegrationConnection? @relation("PartnerGoogle", fields: [integrationConnectionId], references: [id], onDelete: SetNull)
+  integrationConnectionId String?                  @unique
+  integrationConnection   IntegrationConnection?   @relation("PartnerGoogle", fields: [integrationConnectionId], references: [id], onDelete: SetNull)
 
   emails         Email[]
   emailTemplates EmailTemplate[]
@@ -1804,26 +1804,26 @@ model AffiliateAccount {
 
   // Phase F.3 — partner-scoped CRM. Pipeline stages, contacts, and notes
   // owned by this partner. Independent of any tenant's CRM data.
-  partnerContacts      Contact[]       @relation("PartnerContacts")
+  partnerContacts       Contact[]       @relation("PartnerContacts")
   partnerPipelineStages PipelineStage[] @relation("PartnerPipelineStages")
-  partnerContactNotes  ContactNote[]   @relation("PartnerContactNotes")
+  partnerContactNotes   ContactNote[]   @relation("PartnerContactNotes")
 
   // Phase G.1 — partner-scoped Twilio. Each partner gets their own Twilio
   // subaccount + can own phone numbers + agent configs. Mirrors the tenant
   // surface so inbound voice/SMS can route to the partner's agent.
-  twilioSubaccount      PartnerTwilioSubaccount?  @relation("PartnerTwilioSubaccount")
-  partnerPhoneNumbers   PhoneNumber[]             @relation("PartnerPhoneNumbers")
-  partnerAgentProfiles  AgentProfile[]            @relation("PartnerAgentProfiles")
-  stripeCustomer        PartnerStripeCustomerRef? @relation("PartnerStripeCustomer")
+  twilioSubaccount     PartnerTwilioSubaccount?  @relation("PartnerTwilioSubaccount")
+  partnerPhoneNumbers  PhoneNumber[]             @relation("PartnerPhoneNumbers")
+  partnerAgentProfiles AgentProfile[]            @relation("PartnerAgentProfiles")
+  stripeCustomer       PartnerStripeCustomerRef? @relation("PartnerStripeCustomer")
 
   // ── Phase G.2 — Partner SMS / MMS credit balance ─────────────────────────
   // Decimal (10,2) so MMS-at-2.5-credits doesn't accumulate FP error across
   // many sends. Credits roll over forever — never reset, never expire. Top-up
   // packs grant credits via Stripe one-time Checkout; each outbound message
   // deducts according to channel weight (SMS=1, long SMS=2/seg, MMS=2.5).
-  smsCreditBalance      Decimal @default(0) @db.Decimal(10, 2)
-  smsCreditLedger       PartnerSmsCreditLedger[] @relation("PartnerSmsCreditLedger")
-  voiceUsageLedger      PartnerVoiceUsageLedger[] @relation("PartnerVoiceUsage")
+  smsCreditBalance Decimal                   @default(0) @db.Decimal(10, 2)
+  smsCreditLedger  PartnerSmsCreditLedger[]  @relation("PartnerSmsCreditLedger")
+  voiceUsageLedger PartnerVoiceUsageLedger[] @relation("PartnerVoiceUsage")
 
   // Phase G.2.1 — last time we emailed the partner about low credits OR
   // negative pack margin. Dedup window is 24h so we don't spam on every
@@ -1841,24 +1841,24 @@ model AffiliateAccount {
   // platform defaults. Null on most fields means "inherit platform default."
   // Required boolean fields (emailBulkEnabled, emailBulkSuspended) are
   // explicit per-partner state.
-  emailBulkEnabled         Boolean   @default(false)  // master gate — admin flips ON after review
+  emailBulkEnabled         Boolean   @default(false) // master gate — admin flips ON after review
   emailBulkSuspendedAt     DateTime? // manual or auto suspension (bounce/complaint threshold)
   emailBulkSuspendedReason String?
   emailLastBulkWarningAt   DateTime? // tracks last "approaching threshold" warning so we dedupe
   // Per-partner overrides (null = inherit platform default from SystemConfig)
-  emailDailyCap             Int?
-  emailSendWindowStartHour  Int?
-  emailSendWindowEndHour    Int?
-  emailDripIntervalSecs     Int?
+  emailDailyCap            Int?
+  emailSendWindowStartHour Int?
+  emailSendWindowEndHour   Int?
+  emailDripIntervalSecs    Int?
 
   // Lead engine — remaining lead-search credits. ~1 credit per result
   // returned. Default is a trial allotment; admin can top up. Decremented
   // when a search is submitted.
-  leadSearchCredits         Int @default(250)
+  leadSearchCredits Int @default(250)
 
-  partnerMessageLogs       MessageLog[]       @relation("PartnerMessageLogs")
-  partnerEmailSuppressions EmailSuppression[] @relation("PartnerEmailSuppressions")
-  partnerEmailCampaigns    EmailCampaign[]    @relation("PartnerEmailCampaigns")
+  partnerMessageLogs       MessageLog[]                   @relation("PartnerMessageLogs")
+  partnerEmailSuppressions EmailSuppression[]             @relation("PartnerEmailSuppressions")
+  partnerEmailCampaigns    EmailCampaign[]                @relation("PartnerEmailCampaigns")
   a2pApplication           TenantA2PApplication?
   leadSearches             LeadSearch[]
   leads                    Lead[]
@@ -1866,6 +1866,44 @@ model AffiliateAccount {
   coldEmailSends           ColdEmailSend[]
   coldEmailCampaigns       ColdEmailCampaign[]
   gmbEvaluations           GmbEvaluation[]
+  // Webinar Marketing (partner-scoped lead-discovery + invite list system)
+  webinarLists             WebinarLeadList[]              @relation("PartnerWebinarLists")
+  webinarContacts          WebinarInviteContact[]         @relation("PartnerWebinarContacts")
+  webinarSuppressions      WebinarSuppression[]           @relation("PartnerWebinarSuppressions")
+  // Daily Activity playbook tracker (Market Vault → Daily Activity tab)
+  dailyActivities          PartnerDailyActivityProgress[] @relation("PartnerDailyActivities")
+
+  // ── Commission structure (locked at signup, admin-overridable) ───────────
+  // A new partner snapshots Tier 1's recurringPct onto commissionRatePct at
+  // signup — that frozen rate is theirs for life. Editing a CommissionTier
+  // later only affects FUTURE signups, not anyone already locked. Admin can
+  // re-assign a partner to another tier (re-snapshots that tier's current
+  // rate) or set a fully custom rate (commissionTierId → null).
+  //   commissionTierId   — which tier they're on (reference/label); null = custom override
+  //   commissionRatePct  — the FROZEN recurring % used by recordConversion;
+  //                        null = legacy partner, falls back to AffiliateSettings.commissionRatePct
+  //   commissionLockedAt — when the rate was last snapshotted/overridden (audit)
+  commissionTierId   String?
+  commissionRatePct  Float?
+  commissionLockedAt DateTime?
+  commissionTier     CommissionTier? @relation(fields: [commissionTierId], references: [id], onDelete: SetNull)
+}
+
+// Admin-customizable commission tiers. Exactly three rows in practice
+// (level 1/2/3), seeded on first read. A new partner locks to level 1 at
+// signup. recurringPct is the % of each subscription payment the partner
+// earns EVERY billing cycle the referred customer keeps paying (lifetime
+// recurring). name is an admin-editable label (e.g. "Standard"/"Silver"/
+// "Gold"). Editing a tier never retroactively changes locked partners —
+// see AffiliateAccount.commissionRatePct for the freeze semantics.
+model CommissionTier {
+  id           String             @id @default(uuid())
+  level        Int                @unique // 1 = signup default, ascending
+  name         String
+  recurringPct Float
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  partners     AffiliateAccount[]
 }
 
 /// GMB Evaluation — a partner's lead-gen audit of a prospect's Google Business
@@ -1874,15 +1912,15 @@ model AffiliateAccount {
 /// the partner exports a brand-parameterized report to pitch the trifecta. The
 /// GBP-audit engine is portable — same logic later powers MyOrbisLocal Phase A.
 model GmbEvaluation {
-  id           String   @id @default(uuid())
+  id           String           @id @default(uuid())
   partnerId    String
   businessName String
   city         String
   website      String?
   /// Comma-free target keywords the partner wanted ranking checked for. Stored
   /// so the report and any re-run use the same inputs.
-  keywords     String[] @default([])
-  overallScore Int      @default(0)
+  keywords     String[]         @default([])
+  overallScore Int              @default(0)
   /// Full typed AuditResult: per-dimension scores + findings + ranked gaps.
   result       Json
   /// Raw provider payload (Serper response) so the report re-renders without
@@ -1895,9 +1933,9 @@ model GmbEvaluation {
   /// Unguessable token for the public, customer-facing shareable report link
   /// (app.myorbisvoice.com/r/<token>). Generated on create; no auth needed to
   /// view, so the token IS the access control.
-  shareToken   String?  @unique
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  shareToken   String?          @unique
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
   partner      AffiliateAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)
 
   @@index([partnerId, createdAt])
@@ -1931,7 +1969,7 @@ model LeadSearch {
 /// consented to nothing — the promote path marks the Contact's source SCRAPED
 /// and born-opted-out of voice + SMS; cold email is the only allowed channel.
 model Lead {
-  id                String           @id @default(uuid())
+  id                String                  @id @default(uuid())
   searchId          String
   partnerId         String
   businessName      String
@@ -1948,13 +1986,13 @@ model Lead {
   mapRank           Int? // position in the Google Maps results for the search query
   category          String?
   socialsJson       Json?
-  score             Int              @default(0)
-  reviewStatus      LeadReviewStatus @default(NEW)
+  score             Int                     @default(0)
+  reviewStatus      LeadReviewStatus        @default(NEW)
   promotedContactId String? // set when the lead is promoted to a Contact
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  search            LeadSearch       @relation(fields: [searchId], references: [id], onDelete: Cascade)
-  partner           AffiliateAccount @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  search            LeadSearch              @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  partner           AffiliateAccount        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   campaignLeads     ColdEmailCampaignLead[]
 
   @@index([partnerId, reviewStatus])
@@ -2082,7 +2120,7 @@ model ColdEmailCampaign {
   createdAt   DateTime                @default(now())
   updatedAt   DateTime                @updatedAt
 
-  partner AffiliateAccount        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  partner AffiliateAccount         @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   touches ColdEmailCampaignTouch[]
   leads   ColdEmailCampaignLead[]
 
@@ -2167,13 +2205,13 @@ enum ColdEmailCampaignLeadStatus {
 ///   {{prospect.businessName}} - same
 model EmailTemplate {
   id          String            @id @default(uuid())
-  partnerId   String?           // null = system template available to all partners
-  category    String            // followup | thankyou | callback | reengagement | intro | custom
-  name        String            // shown in the picker dropdown
-  description String?           // one-line help text
-  subject     String            // may contain {{variables}}
-  bodyHtml    String            // may contain {{variables}}
-  isSystem    Boolean           @default(false)  // true for platform-seeded library entries
+  partnerId   String? // null = system template available to all partners
+  category    String // followup | thankyou | callback | reengagement | intro | custom
+  name        String // shown in the picker dropdown
+  description String? // one-line help text
+  subject     String // may contain {{variables}}
+  bodyHtml    String // may contain {{variables}}
+  isSystem    Boolean           @default(false) // true for platform-seeded library entries
   sortOrder   Int               @default(100)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -2648,27 +2686,27 @@ model Notification {
 //      because two partners' value props may legitimately differ.
 
 enum EmailSuppressionReason {
-  HARD_BOUNCE          // ESP webhook reported hard bounce — never retry
-  COMPLAINT            // recipient hit "this is spam" — never retry
-  UNSUBSCRIBE          // recipient clicked the unsubscribe footer link
-  MANUAL               // partner / tenant added the address by hand
+  HARD_BOUNCE // ESP webhook reported hard bounce — never retry
+  COMPLAINT // recipient hit "this is spam" — never retry
+  UNSUBSCRIBE // recipient clicked the unsubscribe footer link
+  MANUAL // partner / tenant added the address by hand
   SOFT_BOUNCE_REPEATED // 5+ soft bounces in 30d — treat as hard
 }
 
 model EmailSuppression {
-  id        String                @id @default(uuid())
+  id        String                 @id @default(uuid())
   // Scope: at most one of (tenantId, partnerId) should be set. Both null =
   // global suppression. Application enforces the invariant; the column
   // shape allows simple WHERE OR queries from the send path.
   tenantId  String?
   partnerId String?
-  email     String                @db.VarChar(320)  // RFC 5321 max
+  email     String                 @db.VarChar(320) // RFC 5321 max
   reason    EmailSuppressionReason
-  note      String?               // freeform — ESP error message, partner annotation, etc.
-  createdAt DateTime              @default(now())
+  note      String? // freeform — ESP error message, partner annotation, etc.
+  createdAt DateTime               @default(now())
 
-  tenant    Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  partner   AffiliateAccount? @relation("PartnerEmailSuppressions", fields: [partnerId], references: [id], onDelete: Cascade)
+  tenant  Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner AffiliateAccount? @relation("PartnerEmailSuppressions", fields: [partnerId], references: [id], onDelete: Cascade)
 
   // Lookup is always "is this email suppressed for this scope?" → index
   // covers the three-way OR cleanly when query orders email first.
@@ -2698,45 +2736,45 @@ enum EmailCampaignStatus {
 
 model EmailCampaign {
   id              String              @id @default(uuid())
-  tenantId        String              // hosting tenant (always set; mirrors AffiliateAccount.partnerId tenant)
-  partnerId       String?             // null = tenant-side campaign (future); set = partner campaign
+  tenantId        String // hosting tenant (always set; mirrors AffiliateAccount.partnerId tenant)
+  partnerId       String? // null = tenant-side campaign (future); set = partner campaign
   name            String              @db.VarChar(120)
   subject         String              @db.VarChar(200)
-  bodyText        String              @db.Text       // plain-text template (no rendering yet — partner pastes content)
-  bodyHtml        String?             @db.Text       // optional pre-rendered HTML
-  fromName        String?             // overrides partner displayName if set
+  bodyText        String              @db.Text // plain-text template (no rendering yet — partner pastes content)
+  bodyHtml        String?             @db.Text // optional pre-rendered HTML
+  fromName        String? // overrides partner displayName if set
   status          EmailCampaignStatus @default(DRAFT)
-  scheduledAt     DateTime?           // null = send-when-RUNNING (manual start)
+  scheduledAt     DateTime? // null = send-when-RUNNING (manual start)
   startedAt       DateTime?
   completedAt     DateTime?
-  pausedReason    String?             // populated when status flipped to PAUSED
+  pausedReason    String? // populated when status flipped to PAUSED
   // Counters maintained by the worker as it drains the queue. Reading these
   // is much cheaper than aggregating EmailCampaignRecipient on every poll.
   totalRecipients Int                 @default(0)
   sentCount       Int                 @default(0)
   bouncedCount    Int                 @default(0)
   complainedCount Int                 @default(0)
-  skippedCount    Int                 @default(0)   // suppression hits + opt-outs
+  skippedCount    Int                 @default(0) // suppression hits + opt-outs
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
-  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  partner    AffiliateAccount? @relation("PartnerEmailCampaigns", fields: [partnerId], references: [id], onDelete: Cascade)
+  tenant     Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner    AffiliateAccount?        @relation("PartnerEmailCampaigns", fields: [partnerId], references: [id], onDelete: Cascade)
   recipients EmailCampaignRecipient[]
 
   @@index([partnerId, status, createdAt])
   @@index([tenantId, status])
-  @@index([status, scheduledAt])  // worker scan path
+  @@index([status, scheduledAt]) // worker scan path
 }
 
 enum EmailCampaignRecipientStatus {
-  PENDING   // waiting in the queue
-  SENT      // handed to ESP; awaiting bounce window
+  PENDING // waiting in the queue
+  SENT // handed to ESP; awaiting bounce window
   DELIVERED // ESP confirmed delivery
-  BOUNCED   // hard bounce — also added to suppression
+  BOUNCED // hard bounce — also added to suppression
   COMPLAINED
-  SKIPPED   // suppression hit before send
-  FAILED    // ESP rejected synchronously (auth error, malformed, etc.)
+  SKIPPED // suppression hit before send
+  FAILED // ESP rejected synchronously (auth error, malformed, etc.)
 }
 
 model EmailCampaignRecipient {
@@ -2747,11 +2785,11 @@ model EmailCampaignRecipient {
   // the scraped industry pool. Exactly one should be non-null.
   contactId    String?
   // leadId      String?  // wired in Phase F.5 when Lead model lands
-  email        String                       @db.VarChar(320)  // snapshotted at queue time
-  name         String?                      @db.VarChar(200)  // snapshotted for template merge
+  email        String                       @db.VarChar(320) // snapshotted at queue time
+  name         String?                      @db.VarChar(200) // snapshotted for template merge
   status       EmailCampaignRecipientStatus @default(PENDING)
   sentAt       DateTime?
-  messageLogId String?                      // ← MessageLog.id once handed to ESP
+  messageLogId String? // ← MessageLog.id once handed to ESP
   errorReason  String?
   createdAt    DateTime                     @default(now())
   updatedAt    DateTime                     @updatedAt
@@ -2759,9 +2797,9 @@ model EmailCampaignRecipient {
   campaign EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   contact  Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
 
-  @@unique([campaignId, email])  // can't queue the same address twice in one campaign
+  @@unique([campaignId, email]) // can't queue the same address twice in one campaign
   @@index([campaignId, status])
-  @@index([status, sentAt])      // worker scan
+  @@index([status, sentAt]) // worker scan
 }
 
 // ── Marketing Kit (admin-managed partner-facing video library) ──────────────
@@ -2771,51 +2809,51 @@ model EmailCampaignRecipient {
 // reads its whitelist from this table at request time.
 
 model MarketingKitVideo {
-  id             String   @id @default(uuid())
+  id            String  @id @default(uuid())
   // One of: 'pitch-product' | 'recruit-partners' | 'how-to-sell' | 'social-cuts'
   //       | 'social-posts' | 'reels-shorts-tiktok' | 'audio' | 'youtube-longform'.
   // Tabs are fixed in the partner UI; admins only manage the videos within them.
-  intent         String
-  titleEn        String
-  titleEs        String
-  descriptionEn  String
-  descriptionEs  String
+  intent        String
+  titleEn       String
+  titleEs       String
+  descriptionEn String
+  descriptionEs String
   // Filename under marketing-kit/ on Bunny storage. The proxy looks up this
   // column to decide if a public asset URL is serveable. Null = placeholder
   // ("Coming Soon" card with no playable file yet).
-  filename       String?  @unique
-  durationSec    Int      @default(0)
+  filename      String? @unique
+  durationSec   Int     @default(0)
   // 'horizontal' (16:9) or 'vertical' (9:16). The partner card uses this to
   // pick the correct aspect-ratio thumbnail container.
-  aspectRatio    String   @default("horizontal")
-  comingSoon     Boolean  @default(false)
+  aspectRatio   String  @default("horizontal")
+  comingSoon    Boolean @default(false)
   // Draft toggle — when false, hidden from the partner-facing list, still
   // visible (and editable) in the admin table.
-  visible        Boolean  @default(true)
+  visible       Boolean @default(true)
   // Manual ordering for the "All" tab and within each intent group.
-  sortOrder      Int      @default(0)
+  sortOrder     Int     @default(0)
 
   // ── Social Content Engine extensions (Phase B) ─────────────────────────────
   // 'video' | 'image' | 'audio' | 'carousel'. Legacy rows default to 'video';
   // partner page picks the right player (modal for video, inline for audio,
   // lightbox for image/carousel).
-  mediaType      String   @default("video")
+  mediaType          String   @default("video")
   // Mime type the marketing-asset proxy serves with. Null = derive from
   // extension at request time.
-  mimeType       String?
+  mimeType           String?
   // Carousel slides 2..N (filename basenames under marketing-kit/). Empty
   // for non-carousel rows. First slide = `filename` for back-compat.
   secondaryFilenames String[] @default([])
   // Per-platform caption variants from the AI copy generator. Shape:
   // { x?: string, ig?: string, linkedin?: string, tiktok?: string }
-  captionsJson   Json?
+  captionsJson       Json?
   // YouTube long-form sub-track only: 'partner' | 'corporate'. Null for
   // every other intent.
-  track          String?
+  track              String?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  createdById    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
 
   @@index([intent, sortOrder])
   @@index([visible, sortOrder])
@@ -2825,17 +2863,341 @@ model MarketingKitVideo {
 
 // Singleton settings for the partner Marketing Kit grid. One row, id = 'singleton'.
 model MarketingKitSettings {
-  id              String   @id @default("singleton")
-  columnsDesktop  Int      @default(3)
-  columnsTablet   Int      @default(2)
-  columnsMobile   Int      @default(1)
+  id             String   @id @default("singleton")
+  columnsDesktop Int      @default(3)
+  columnsTablet  Int      @default(2)
+  columnsMobile  Int      @default(1)
   // 'manual' (uses sortOrder) | 'newest' | 'duration'
-  defaultSort     String   @default("manual")
+  defaultSort    String   @default("manual")
   // 'all' | one of the intent slugs above
-  defaultTab      String   @default("all")
+  defaultTab     String   @default("all")
   // Intent slugs hidden from the partner Marketing Kit. Each entry must
   // be one of: 'pitch-product' | 'recruit-partners' | 'how-to-sell' | 'social-cuts'.
   // Admin still sees every tab in the admin panel; the hide is partner-side only.
-  hiddenTabs      String[] @default([])
-  updatedAt       DateTime @updatedAt
+  hiddenTabs     String[] @default([])
+  updatedAt      DateTime @updatedAt
+}
+
+// ============================================================================
+// WEBINAR MARKETING — partner-scoped lead discovery + invite list system
+//
+// Compliance-first design. Free-mail addresses NEVER auto-promote to
+// WebinarInviteContact; they require manual review with consentStatus +
+// lawfulBasisNotes. SourceUrl is always stored to satisfy GDPR Art. 14
+// disclosure-of-source requirement.
+//
+// Pipeline:
+//   LeadList → SearchQuery → DiscoveredUrl → ExtractedEmail
+//   → EmailVerification → (gates) → WebinarInviteContact
+//                                  ↓ rejected
+//                              ManualReviewQueue (free-mail / risky / unknown)
+//                                  ↓ approved
+//                              WebinarInviteContact
+// ============================================================================
+
+enum WebinarListStatus {
+  DRAFT
+  DISCOVERING
+  EXTRACTING
+  VERIFYING
+  READY
+  ARCHIVED
+}
+
+enum WebinarSearchStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum WebinarUrlStatus {
+  PENDING
+  CRAWLED
+  SKIPPED_ROBOTS
+  SKIPPED_RATE_LIMIT
+  FAILED
+}
+
+enum WebinarEmailType {
+  BUSINESS_DOMAIN
+  ROLE_BASED_BUSINESS
+  PERSONAL_FREE_MAIL
+  NO_REPLY_OR_SUPPRESSED
+  INVALID_FORMAT
+  DISPOSABLE_DOMAIN
+  MANUAL_REVIEW_REQUIRED
+}
+
+enum WebinarClassificationStatus {
+  PENDING
+  CLASSIFIED
+  QUARANTINED
+  REJECTED
+  APPROVED
+}
+
+enum WebinarVerificationStatus {
+  DELIVERABLE
+  UNDELIVERABLE
+  RISKY
+  UNKNOWN
+  PENDING
+}
+
+enum WebinarConsentStatus {
+  OPTED_IN
+  EXISTING_CUSTOMER
+  MANUAL_LAWFUL_BASIS_REVIEWED
+  NOT_APPROVED
+}
+
+enum WebinarVerificationMode {
+  SYNTAX_DNS_ONLY
+  EXTERNAL_PROVIDER
+}
+
+// One named lead list per discovery campaign. Partner-scoped (every row tied
+// to an AffiliateAccount). Each list defines its own niche/location/search
+// config and is the parent of all downstream rows.
+model WebinarLeadList {
+  id                        String                  @id @default(uuid())
+  partnerId                 String
+  name                      String
+  niche                     String
+  location                  String
+  // Optional filter: when set, only emails on this domain (or its subdomains)
+  // are extracted. Example: "example.com". Null = no domain filter.
+  optionalEmailDomainFilter String?
+  // Array of provider slugs the operator selected for this list. Values:
+  // "duckduckgo" | "bing_web_search" | "google_scrape" | "serpapi" |
+  // "google_custom_search".
+  searchEngines             String[]                @default([])
+  maxResultsPerQuery        Int                     @default(100)
+  maxPagesPerDomain         Int                     @default(5)
+  verificationMode          WebinarVerificationMode @default(EXTERNAL_PROVIDER)
+  // Array of WebinarEmailType-ish strings indicating what's eligible for
+  // auto-promotion. Defaults exclude personal_free_mail (quarantine only).
+  // Values: "business_domain_only" | "role_based_business" | "manual_review_free_mail".
+  allowedEmailTypes         String[]                @default(["business_domain_only", "role_based_business"])
+  status                    WebinarListStatus       @default(DRAFT)
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+  // Soft-delete anchor. NULL = active.
+  deletedAt                 DateTime?
+
+  partner         AffiliateAccount        @relation("PartnerWebinarLists", fields: [partnerId], references: [id], onDelete: Cascade)
+  searchQueries   WebinarSearchQuery[]
+  discoveredUrls  WebinarDiscoveredUrl[]
+  extractedEmails WebinarExtractedEmail[]
+  inviteContacts  WebinarInviteContact[]
+
+  @@index([partnerId, status])
+  @@index([partnerId, createdAt])
+}
+
+// One row per (provider × generated query string). Records what was sent to
+// each search engine. Used to dedup queries and audit per-provider usage.
+model WebinarSearchQuery {
+  id           String              @id @default(uuid())
+  leadListId   String
+  queryText    String
+  provider     String // "duckduckgo" | "bing_web_search" | ...
+  status       WebinarSearchStatus @default(PENDING)
+  resultCount  Int                 @default(0)
+  errorMessage String?
+  createdAt    DateTime            @default(now())
+  completedAt  DateTime?
+
+  leadList       WebinarLeadList        @relation(fields: [leadListId], references: [id], onDelete: Cascade)
+  discoveredUrls WebinarDiscoveredUrl[]
+
+  @@unique([leadListId, queryText, provider])
+  @@index([leadListId, status])
+}
+
+// Each URL returned by a search provider. Same URL may appear multiple times
+// across queries; we keep them all (partition by searchQueryId) and dedup at
+// the email-extraction layer instead.
+model WebinarDiscoveredUrl {
+  id            String           @id @default(uuid())
+  leadListId    String
+  searchQueryId String
+  url           String
+  domain        String
+  title         String?
+  snippet       String?
+  provider      String
+  status        WebinarUrlStatus @default(PENDING)
+  // Robots.txt result snapshotted at crawl time. "allowed" | "disallowed" |
+  // "no_robots_file" | "fetch_failed". Null until crawler touches it.
+  robotsCheck   String?
+  errorMessage  String?
+  discoveredAt  DateTime         @default(now())
+  crawledAt     DateTime?
+
+  leadList        WebinarLeadList         @relation(fields: [leadListId], references: [id], onDelete: Cascade)
+  searchQuery     WebinarSearchQuery      @relation(fields: [searchQueryId], references: [id], onDelete: Cascade)
+  extractedEmails WebinarExtractedEmail[]
+
+  @@index([leadListId, status])
+  @@index([domain])
+}
+
+// One row per (sourceUrl × email) pair found during crawl. Pre-classification
+// raw findings. Same email may appear from multiple URLs across lists; we
+// dedup at the WebinarInviteContact promotion stage.
+model WebinarExtractedEmail {
+  id                   String                      @id @default(uuid())
+  leadListId           String
+  discoveredUrlId      String
+  email                String
+  // Lowercased + trimmed. Used for dedup + suppression lookup.
+  normalizedEmail      String
+  domain               String
+  sourceUrl            String
+  sourcePageTitle      String?
+  // ~200-char text window around the email in HTML, for operator review.
+  rawContextSnippet    String?
+  emailType            WebinarEmailType?
+  classificationStatus WebinarClassificationStatus @default(PENDING)
+  // When operator quarantines/rejects/approves, optional note.
+  reviewerNotes        String?
+  createdAt            DateTime                    @default(now())
+
+  leadList      WebinarLeadList            @relation(fields: [leadListId], references: [id], onDelete: Cascade)
+  discoveredUrl WebinarDiscoveredUrl       @relation(fields: [discoveredUrlId], references: [id], onDelete: Cascade)
+  verifications WebinarEmailVerification[]
+
+  @@index([leadListId, classificationStatus])
+  @@index([normalizedEmail])
+  @@index([domain])
+}
+
+// Verification result from internal or external provider. Multiple rows
+// per ExtractedEmail possible (e.g. re-verification weeks later).
+model WebinarEmailVerification {
+  id                 String   @id @default(uuid())
+  extractedEmailId   String
+  normalizedEmail    String
+  syntaxValid        Boolean
+  mxValid            Boolean
+  disposable         Boolean  @default(false)
+  // "deliverable" | "undeliverable" | "risky" | "unknown" | "skipped".
+  // Mirrors WebinarVerificationStatus but kept as string for forward-compat
+  // with new provider statuses.
+  providerStatus     String
+  providerConfidence Float?
+  providerReason     String?
+  provider           String // "reoon" | "zerobounce" | "internal_dns"
+  verifiedAt         DateTime @default(now())
+
+  extractedEmail WebinarExtractedEmail @relation(fields: [extractedEmailId], references: [id], onDelete: Cascade)
+
+  @@index([extractedEmailId])
+  @@index([normalizedEmail])
+}
+
+// Final, gated, ready-to-invite contact. Promotion gated by:
+//   - syntaxValid + mxValid + disposable=false
+//   - providerStatus = "deliverable"
+//   - not in WebinarSuppression
+//   - sourceUrl present
+//   - consentStatus != NOT_APPROVED
+//   - if consentStatus = MANUAL_LAWFUL_BASIS_REVIEWED then lawfulBasisNotes required
+//   - dedup by normalizedEmail within (partnerId, leadListId) AND across all
+//     partner lists (one promotion per email per partner)
+model WebinarInviteContact {
+  id                 String                    @id @default(uuid())
+  leadListId         String
+  partnerId          String
+  email              String
+  normalizedEmail    String
+  businessName       String?
+  niche              String
+  location           String
+  sourceUrl          String
+  consentStatus      WebinarConsentStatus
+  lawfulBasisNotes   String?
+  verificationStatus WebinarVerificationStatus
+  addedAt            DateTime                  @default(now())
+  lastInvitedAt      DateTime?
+  unsubscribedAt     DateTime?
+
+  leadList WebinarLeadList  @relation(fields: [leadListId], references: [id], onDelete: Cascade)
+  partner  AffiliateAccount @relation("PartnerWebinarContacts", fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerId, normalizedEmail])
+  @@index([leadListId])
+  @@index([unsubscribedAt])
+}
+
+// Suppression list — global per partner. Any email added here will never
+// auto-promote, regardless of source. Unsubscribe webhook writes here.
+model WebinarSuppression {
+  id              String   @id @default(uuid())
+  partnerId       String
+  email           String
+  normalizedEmail String
+  // "unsubscribed" | "bounce" | "complaint" | "manual" | "role_suppressed" |
+  // "imported".
+  reason          String
+  source          String?
+  createdAt       DateTime @default(now())
+
+  partner AffiliateAccount @relation("PartnerWebinarSuppressions", fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerId, normalizedEmail])
+  @@index([partnerId])
+}
+
+// Append-only audit log for the Webinar Marketing module. Mirrors the
+// platform AuditLog pattern but partner-scoped + module-scoped to avoid
+// noise in the platform audit table.
+model WebinarAuditLog {
+  id          String   @id @default(uuid())
+  partnerId   String
+  // "list_created" | "discovery_started" | "url_crawled" | "email_extracted" |
+  // "email_classified" | "email_verified" | "promoted_to_invite" |
+  // "suppression_hit" | "manual_review_approved" | "exported_csv" | ...
+  action      String
+  entityType  String? // "WebinarLeadList" | "WebinarExtractedEmail" | ...
+  entityId    String?
+  detailsJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([partnerId, createdAt])
+  @@index([action])
+}
+
+// ============================================================================
+// PARTNER DAILY ACTIVITY — daily playbook checkbox tracker
+//
+// One row per (partner × activityKey × dayKey). dayKey = YYYY-MM-DD in
+// partner-local time. Tick → row insert; untick → row delete. Yesterday's
+// rows stay for history + rollup metrics. Midnight = new dayKey = fresh
+// checkboxes for the new day.
+//
+// Activity catalog (section / key / label / importance / target / follow-ups)
+// lives in code at apps/api/src/services/partner-daily-activity/catalog.ts —
+// NOT in the DB. The catalog evolves with the playbook + needs i18n; tying
+// it to a table forces a migration every time we add a coaching activity.
+// ============================================================================
+model PartnerDailyActivityProgress {
+  id          String   @id @default(uuid())
+  partnerId   String
+  // Slug from the catalog. Format: `<section>.<sub>.<verb>`
+  // (e.g. `morning.cold_calls.10`).
+  activityKey String
+  // YYYY-MM-DD in partner-local time. Computed server-side.
+  dayKey      String
+  completedAt DateTime @default(now())
+  // Optional reviewer-supplied note; ≤500 chars.
+  notes       String?
+
+  partner AffiliateAccount @relation("PartnerDailyActivities", fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerId, activityKey, dayKey])
+  @@index([partnerId, dayKey])
+  @@index([dayKey])
 }

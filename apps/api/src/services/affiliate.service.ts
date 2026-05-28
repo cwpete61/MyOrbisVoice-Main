@@ -74,12 +74,16 @@ export async function applyForAffiliate(userId: string) {
   }
 
   const code = await uniqueCode()
+  // Lock the partner to Tier 1's current commission rate for life (admin can
+  // re-tier or set a custom rate later). See commission-tier.service.ts.
+  const { getSignupCommissionSnapshot } = await import('./commission-tier.service.js')
+  const commissionSnapshot = await getSignupCommissionSnapshot()
   // Auto-approve on application (decided 2026-05-04 — reverses earlier "vetted
   // application" decision). Partners get an active referral link immediately
   // and can start sending traffic. They still need to complete payout-account
   // setup (Stripe Connect) before they can actually receive money.
   return prisma.affiliateAccount.create({
-    data: { userId, referralCode: code, status: 'ACTIVE', slug },
+    data: { userId, referralCode: code, status: 'ACTIVE', slug, ...commissionSnapshot },
   })
 }
 
@@ -466,6 +470,201 @@ export async function updateAffiliateNotes(id: string, notes: string) {
   return prisma.affiliateAccount.update({ where: { id }, data: { notes } })
 }
 
+/**
+ * Admin-level partner record edit. Updates fields on the linked User row
+ * (firstName, lastName, email) and on the AffiliateAccount row (notes,
+ * aggressionTier). Each field is optional — only patched if explicitly
+ * present. Email is unique on User, so a conflict throws AppError 409.
+ *
+ * The admin's authority bypasses normal email-verification — they fix
+ * typos / change identities directly. The User.passwordHash + sessions
+ * stay intact (renaming the email doesn't log them out).
+ */
+export interface AdminAffiliateEdit {
+  // User-level
+  firstName?: string | null
+  lastName?: string | null
+  email?: string
+  // Profile / identity
+  displayName?: string | null
+  businessName?: string | null
+  bio?: string | null
+  partnerPhone?: string | null
+  partnerStreet?: string | null
+  partnerUnit?: string | null
+  partnerCity?: string | null
+  partnerState?: string | null
+  partnerPostalCode?: string | null
+  emailSignature?: string | null
+  // Settings
+  aggressionTier?: 'conservative' | 'balanced' | 'direct' | 'aggressive'
+  forwardPlatformEmails?: boolean
+  notifyAppointmentsEnabled?: boolean
+  // Booking
+  bookingSlotDurationMin?: number
+  bookingMinNoticeMin?: number
+  bookingMaxAdvanceDays?: number
+  bookingBufferBeforeMin?: number
+  bookingBufferAfterMin?: number
+  bookingTimezone?: string | null
+  // Usage / credits
+  leadSearchCredits?: number
+  // Email policy overrides (null = inherit platform default)
+  emailBulkEnabled?: boolean
+  emailDailyCap?: number | null
+  emailSendWindowStartHour?: number | null
+  emailSendWindowEndHour?: number | null
+  emailDripIntervalSecs?: number | null
+  // Admin
+  notes?: string | null
+}
+
+const USER_KEYS = ['firstName', 'lastName', 'email'] as const
+const NULLABLE_STR_KEYS = [
+  'displayName', 'businessName', 'bio', 'partnerPhone',
+  'partnerStreet', 'partnerUnit', 'partnerCity', 'partnerState', 'partnerPostalCode',
+  'emailSignature', 'bookingTimezone', 'notes',
+] as const
+const STR_KEYS = ['aggressionTier'] as const
+const BOOL_KEYS = ['forwardPlatformEmails', 'notifyAppointmentsEnabled', 'emailBulkEnabled'] as const
+const INT_KEYS = [
+  'bookingSlotDurationMin', 'bookingMinNoticeMin', 'bookingMaxAdvanceDays',
+  'bookingBufferBeforeMin', 'bookingBufferAfterMin', 'leadSearchCredits',
+] as const
+const NULLABLE_INT_KEYS = [
+  'emailDailyCap', 'emailSendWindowStartHour', 'emailSendWindowEndHour', 'emailDripIntervalSecs',
+] as const
+
+export async function adminEditAffiliate(id: string, patch: AdminAffiliateEdit) {
+  const acct = await prisma.affiliateAccount.findUnique({
+    where: { id },
+    select: { id: true, userId: true },
+  })
+  if (!acct) throw new AppError('NOT_FOUND', 'Partner not found', 404)
+
+  // ── User-level patch ──
+  const userPatch: Record<string, string | null> = {}
+  for (const k of USER_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(patch, k)) continue
+    if (k === 'email') {
+      const email = (patch.email ?? '').trim().toLowerCase()
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new AppError('VALIDATION_ERROR', 'Invalid email format', 422)
+      }
+      const dupe = await prisma.user.findFirst({
+        where: { email, NOT: { id: acct.userId } },
+        select: { id: true },
+      })
+      if (dupe) throw new AppError('CONFLICT', 'Email already in use by another user', 409)
+      userPatch.email = email
+    } else {
+      const v = (patch as Record<string, unknown>)[k]
+      userPatch[k] = v == null ? null : String(v)
+    }
+  }
+
+  // ── Affiliate-level patch ──
+  const acctPatch: Record<string, unknown> = {}
+  for (const k of NULLABLE_STR_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(patch, k)) continue
+    const v = (patch as Record<string, unknown>)[k]
+    acctPatch[k] = v == null || v === '' ? null : String(v)
+  }
+  for (const k of STR_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(patch, k)) continue
+    const v = (patch as Record<string, unknown>)[k]
+    if (v != null) acctPatch[k] = String(v)
+  }
+  for (const k of BOOL_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(patch, k)) continue
+    const v = (patch as Record<string, unknown>)[k]
+    if (typeof v === 'boolean') acctPatch[k] = v
+  }
+  for (const k of INT_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(patch, k)) continue
+    const v = (patch as Record<string, unknown>)[k]
+    const n = typeof v === 'number' ? v : Number(v)
+    if (!Number.isFinite(n) || n < 0) {
+      throw new AppError('VALIDATION_ERROR', `Invalid value for ${k}`, 422)
+    }
+    acctPatch[k] = Math.floor(n)
+  }
+  for (const k of NULLABLE_INT_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(patch, k)) continue
+    const v = (patch as Record<string, unknown>)[k]
+    if (v == null || v === '') {
+      acctPatch[k] = null
+    } else {
+      const n = typeof v === 'number' ? v : Number(v)
+      if (!Number.isFinite(n) || n < 0) {
+        throw new AppError('VALIDATION_ERROR', `Invalid value for ${k}`, 422)
+      }
+      acctPatch[k] = Math.floor(n)
+    }
+  }
+
+  // ── Transaction ──
+  await prisma.$transaction(async (tx) => {
+    if (Object.keys(userPatch).length > 0) {
+      await tx.user.update({ where: { id: acct.userId }, data: userPatch })
+    }
+    if (Object.keys(acctPatch).length > 0) {
+      await tx.affiliateAccount.update({ where: { id: acct.id }, data: acctPatch })
+    }
+  })
+
+  return prisma.affiliateAccount.findUnique({
+    where: { id: acct.id },
+    include: {
+      user: { select: { id: true, email: true, firstName: true, lastName: true } },
+    },
+  })
+}
+
+/**
+ * Returns the full editable shape of a partner for the admin edit modal.
+ * Includes User fields + every AffiliateAccount field admin can change.
+ * Excludes computed/immutable fields (slug, referralCode, agreement*,
+ * smsCreditBalance, totalEarnedCents/totalPaidCents, status).
+ */
+export async function adminGetAffiliateEditShape(id: string) {
+  const acct = await prisma.affiliateAccount.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      // Profile
+      displayName: true, businessName: true, bio: true, partnerPhone: true,
+      partnerStreet: true, partnerUnit: true, partnerCity: true,
+      partnerState: true, partnerPostalCode: true,
+      emailSignature: true,
+      // Settings
+      aggressionTier: true,
+      forwardPlatformEmails: true, notifyAppointmentsEnabled: true,
+      // Booking
+      bookingSlotDurationMin: true, bookingMinNoticeMin: true,
+      bookingMaxAdvanceDays: true, bookingBufferBeforeMin: true,
+      bookingBufferAfterMin: true, bookingTimezone: true,
+      // Usage
+      leadSearchCredits: true,
+      // Email policy
+      emailBulkEnabled: true, emailDailyCap: true,
+      emailSendWindowStartHour: true, emailSendWindowEndHour: true,
+      emailDripIntervalSecs: true,
+      // Commission (frozen-at-signup rate + which tier, if any)
+      commissionTierId: true, commissionRatePct: true, commissionLockedAt: true,
+      commissionTier: { select: { id: true, level: true, name: true, recurringPct: true } },
+      // Admin
+      notes: true,
+      user: { select: { id: true, email: true, firstName: true, lastName: true } },
+    },
+  })
+  if (!acct) throw new AppError('NOT_FOUND', 'Partner not found', 404)
+  // Include the full tier list so the edit modal can offer tier re-assignment.
+  const { listCommissionTiers } = await import('./commission-tier.service.js')
+  const commissionTiers = await listCommissionTiers()
+  return { ...acct, commissionTiers }
+}
+
 // ── Referral link ─────────────────────────────────────────────────────────────
 
 /** Returns the partner's referral link, or null if the user doesn't have a
@@ -797,8 +996,16 @@ export async function recordConversion(opts: {
     },
   })
 
+  // Commission rate resolution:
+  //   1. Partner's frozen rate (commissionRatePct, snapshotted at signup or
+  //      set by an admin tier-assignment / custom override) — recurring % of
+  //      EVERY subscription payment, for life. This is the source of truth.
+  //   2. Legacy partners (pre-tier feature) have null frozen rate → fall back
+  //      to the global AffiliateSettings rate so existing partners keep paying.
   let amountMinor = 0
-  if (settings.commissionType === 'PERCENTAGE' && opts.conversionValueCents) {
+  if (account.commissionRatePct != null && opts.conversionValueCents) {
+    amountMinor = Math.round(opts.conversionValueCents * account.commissionRatePct / 100)
+  } else if (settings.commissionType === 'PERCENTAGE' && opts.conversionValueCents) {
     amountMinor = Math.round(opts.conversionValueCents * settings.commissionRatePct / 100)
   } else if (settings.commissionType === 'FLAT') {
     amountMinor = settings.minPayoutCents

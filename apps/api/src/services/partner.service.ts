@@ -491,6 +491,9 @@ export async function bootstrapPartner(input: BootstrapPartnerInput) {
   const slug         = await generatePartnerSlug(input.firstName, input.lastName)
   const referralCode = Math.random().toString(36).slice(2, 10).toUpperCase()
   const passwordHash = await bcrypt.hash(input.password, 12)
+  // Lock to Tier 1's current commission rate for life (see commission-tier.service.ts).
+  const { getSignupCommissionSnapshot } = await import('./commission-tier.service.js')
+  const commissionSnapshot = await getSignupCommissionSnapshot()
 
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -516,6 +519,7 @@ export async function bootstrapPartner(input: BootstrapPartnerInput) {
         avatarUrl:             input.avatarUrl,
         partnerPageActive:     input.partnerPageActive ?? false,
         forwardPlatformEmails: true,
+        ...commissionSnapshot,
       },
     })
 

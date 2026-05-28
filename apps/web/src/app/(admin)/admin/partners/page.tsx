@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Fragment } from 'react'
-import { apiFetchRaw, useApi } from '@/hooks/useApi'
+import { apiFetch, apiFetchRaw, useApi } from '@/hooks/useApi'
 
 interface AffiliateUser { id: string; email: string; firstName: string | null; lastName: string | null }
 interface AffiliateAccount {
@@ -44,6 +44,9 @@ interface AffiliateSettings {
   minPayoutCents: number; autoApproveAfterDays: number
   programName: string; programDescription: string; termsUrl: string | null
 }
+interface CommissionTier {
+  id: string; level: number; name: string; recurringPct: number
+}
 
 function cents(n: number) { return `$${(n / 100).toFixed(2)}` }
 function userName(u: AffiliateUser) { return [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email }
@@ -74,6 +77,8 @@ export default function AdminAffiliatesPage() {
   )
   // F.4 — per-partner email policy editor (inline expansion under each row)
   const [emailPolicyOpen, setEmailPolicyOpen] = useState<string | null>(null)
+  // Edit-partner modal — null = closed, AffiliateAccount = open editing that row.
+  const [editModal, setEditModal] = useState<AffiliateAccount | null>(null)
   const { data: emailDefaults } = useApi<PlatformEmailPolicy>('/api/admin/email-policy', [])
 
   // Commissions tab state
@@ -95,6 +100,30 @@ export default function AdminAffiliatesPage() {
   const { data: settings, reload: reloadSettings } = useApi<AffiliateSettings>('/api/admin/affiliate/settings')
   const [settingsForm, setSettingsForm] = useState<Partial<AffiliateSettings>>({})
   const [savingSettings, setSavingSettings] = useState(false)
+
+  // Commission tiers (admin-editable; new partners lock to Tier 1 at signup)
+  const { data: tiersData, reload: reloadTiers } = useApi<CommissionTier[]>('/api/admin/commission-tiers')
+  const [tierEdits, setTierEdits] = useState<Record<string, { name?: string; recurringPct?: number }>>({})
+  const [savingTierId, setSavingTierId] = useState<string | null>(null)
+  async function saveTier(id: string) {
+    const patch = tierEdits[id]
+    if (!patch || Object.keys(patch).length === 0) return
+    setSavingTierId(id)
+    try {
+      const res = await apiFetchRaw(`/api/admin/commission-tiers/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      })
+      if (!res.ok) throw new Error('save failed')
+      showToast('success', 'Tier updated. Applies to new signups only — existing partners keep their locked rate.')
+      setTierEdits(e => { const n = { ...e }; delete n[id]; return n })
+      reloadTiers()
+    } catch {
+      showToast('error', 'Failed to update tier.')
+    } finally {
+      setSavingTierId(null)
+    }
+  }
 
   // Modals
   const [working, setWorking] = useState<string | null>(null)
@@ -301,6 +330,15 @@ export default function AdminAffiliatesPage() {
                             {a.status === 'ACTIVE'   && <button onClick={() => doAffAction(a.id, 'pause')}      disabled={!!working} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>Pause</button>}
                             {a.status === 'PAUSED'   && <button onClick={() => doAffAction(a.id, 'reactivate')} disabled={!!working} className="text-xs px-2 py-1 rounded" style={{ background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }}>Reactivate</button>}
                             {a.status !== 'DISABLED' && <button onClick={() => doAffAction(a.id, 'disable')}    disabled={!!working} className="text-xs px-2 py-1 rounded" style={{ background: 'oklch(13% 0.04 25)', color: 'oklch(68% 0.20 25)' }}>Disable</button>}
+                            <button
+                              onClick={() => setEditModal(a)}
+                              disabled={!!working}
+                              className="text-xs px-2 py-1 rounded"
+                              style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+                              title="Edit partner record (name, email, notes, aggression tier)"
+                            >
+                              Edit
+                            </button>
                             <button
                               onClick={() => {
                                 if (!confirm(`Regenerate referral code for ${userName(a.user)}?\n\nThe old code will stop working immediately. Existing tracked clicks/conversions on the old code stay attributed.`)) return
@@ -577,6 +615,47 @@ export default function AdminAffiliatesPage() {
               </button>
             </div>
           </div>
+
+          {/* ── Commission tiers ── */}
+          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border-subtle)' }}>
+            <div className="px-5 py-4" style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--border-subtle)' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Commission tiers</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                Recurring % a partner earns on every payment, for the life of the referred customer.
+                New partners lock to <strong>Tier 1</strong> at signup. Editing a tier here applies to
+                <strong> future signups only</strong> — partners already locked keep their rate unless you edit them individually.
+              </p>
+            </div>
+            <div className="p-5 space-y-3">
+              {(tiersData ?? []).map(t => {
+                const edit = tierEdits[t.id] ?? {}
+                const nameVal = edit.name ?? t.name
+                const pctVal = edit.recurringPct ?? t.recurringPct
+                const dirty = Object.keys(edit).length > 0
+                return (
+                  <div key={t.id} className="flex items-end gap-3 rounded-lg p-3" style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)' }}>
+                    <span className="text-xs font-bold px-2 py-1 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                      Tier {t.level}
+                    </span>
+                    <div className="flex-1">
+                      <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Name</label>
+                      <input className="input-field text-sm w-full" type="text" value={nameVal}
+                        onChange={e => setTierEdits(s => ({ ...s, [t.id]: { ...s[t.id], name: e.target.value } }))} />
+                    </div>
+                    <div style={{ width: 120 }}>
+                      <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Recurring %</label>
+                      <input className="input-field text-sm w-full" type="number" min={0} max={100} step="0.5" value={pctVal}
+                        onChange={e => setTierEdits(s => ({ ...s, [t.id]: { ...s[t.id], recurringPct: parseFloat(e.target.value) || 0 } }))} />
+                    </div>
+                    <button onClick={() => saveTier(t.id)} disabled={!dirty || savingTierId === t.id}
+                      className="btn-primary text-sm" style={{ whiteSpace: 'nowrap' }}>
+                      {savingTierId === t.id ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -623,7 +702,440 @@ export default function AdminAffiliatesPage() {
           </div>
         </div>
       )}
+
+      {editModal && (
+        <EditPartnerModal
+          partner={editModal}
+          onClose={() => setEditModal(null)}
+          onSaved={(updated) => {
+            setEditModal(null)
+            showToast('success', `Partner ${userName(updated.user)} updated.`)
+            reloadAff()
+          }}
+          onError={(msg) => showToast('error', msg)}
+        />
+      )}
     </div>
+  )
+}
+
+// ─── Edit partner modal (full record: profile + booking + usage + policy) ──
+//
+// On open: GETs /api/admin/affiliates/:id/edit-shape to hydrate the full
+// editable shape (some fields aren't on the list-table response). Submit
+// PATCHes /api/admin/affiliates/:id with the diff. Single transactional
+// save server-side.
+interface EditShape {
+  id: string
+  user: { id: string; email: string; firstName: string | null; lastName: string | null }
+  // Profile
+  displayName: string | null; businessName: string | null; bio: string | null
+  partnerPhone: string | null
+  partnerStreet: string | null; partnerUnit: string | null; partnerCity: string | null
+  partnerState: string | null; partnerPostalCode: string | null
+  emailSignature: string | null
+  // Settings
+  aggressionTier: string
+  forwardPlatformEmails: boolean; notifyAppointmentsEnabled: boolean
+  // Booking
+  bookingSlotDurationMin: number; bookingMinNoticeMin: number; bookingMaxAdvanceDays: number
+  bookingBufferBeforeMin: number; bookingBufferAfterMin: number
+  bookingTimezone: string | null
+  // Usage
+  leadSearchCredits: number
+  // Email policy
+  emailBulkEnabled: boolean; emailDailyCap: number | null
+  emailSendWindowStartHour: number | null; emailSendWindowEndHour: number | null
+  emailDripIntervalSecs: number | null
+  // Commission (frozen-at-signup)
+  commissionTierId: string | null
+  commissionRatePct: number | null
+  commissionLockedAt: string | null
+  commissionTier: { id: string; level: number; name: string; recurringPct: number } | null
+  commissionTiers: CommissionTier[]
+  // Admin
+  notes: string | null
+}
+
+function EditPartnerModal({
+  partner, onClose, onSaved, onError,
+}: {
+  partner: AffiliateAccount
+  onClose: () => void
+  onSaved: (updated: AffiliateAccount) => void
+  onError: (msg: string) => void
+}) {
+  const [shape, setShape] = useState<EditShape | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [tab, setTab] = useState<'profile' | 'booking' | 'usage' | 'notes'>('profile')
+  // Commission edit is a separate endpoint (re-snapshots / sets custom rate).
+  const [commMode, setCommMode] = useState<'tier' | 'custom'>('tier')
+  const [commTierId, setCommTierId] = useState<string>('')
+  const [commCustomPct, setCommCustomPct] = useState<string>('')
+  const [savingComm, setSavingComm] = useState(false)
+  const [commMsg, setCommMsg] = useState<string | null>(null)
+
+  async function saveCommission() {
+    if (!shape) return
+    setSavingComm(true)
+    setCommMsg(null)
+    try {
+      const body = commMode === 'tier'
+        ? { tierId: commTierId }
+        : { customRecurringPct: parseFloat(commCustomPct) || 0 }
+      const res = await apiFetchRaw(`/api/admin/affiliates/${partner.id}/commission`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) throw new Error('save failed')
+      const json = await res.json() as { data: { commissionRatePct: number; commissionTierId: string | null } }
+      setShape(s => s ? { ...s, commissionRatePct: json.data.commissionRatePct, commissionTierId: json.data.commissionTierId } : s)
+      setCommMsg(`Locked to ${json.data.commissionRatePct}% recurring.`)
+    } catch {
+      setCommMsg('Failed to update commission.')
+    } finally {
+      setSavingComm(false)
+    }
+  }
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await apiFetch<EditShape>(`/api/admin/affiliates/${partner.id}/edit-shape`)
+        setShape(res)
+        // Seed commission controls: default to current tier, or custom mode if overridden.
+        if (res.commissionTierId) {
+          setCommMode('tier'); setCommTierId(res.commissionTierId)
+        } else {
+          setCommMode(res.commissionRatePct != null ? 'custom' : 'tier')
+          setCommCustomPct(res.commissionRatePct != null ? String(res.commissionRatePct) : '')
+          setCommTierId(res.commissionTiers[0]?.id ?? '')
+        }
+      } catch (err) {
+        onError(err instanceof Error ? err.message : 'Failed to load partner')
+        onClose()
+      } finally { setLoading(false) }
+    })()
+  }, [partner.id, onClose, onError])
+
+  function patchField<K extends keyof EditShape>(k: K, v: EditShape[K]) {
+    if (!shape) return
+    setShape({ ...shape, [k]: v })
+  }
+  function patchUser(k: 'firstName' | 'lastName' | 'email', v: string | null) {
+    if (!shape) return
+    setShape({ ...shape, user: { ...shape.user, [k]: v ?? '' } })
+  }
+
+  async function save() {
+    if (!shape) return
+    setSaving(true)
+    try {
+      const res = await apiFetch<{ data: AffiliateAccount } | AffiliateAccount>(
+        `/api/admin/affiliates/${partner.id}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            firstName: shape.user.firstName || null,
+            lastName: shape.user.lastName || null,
+            email: shape.user.email.trim().toLowerCase(),
+            displayName: shape.displayName,
+            businessName: shape.businessName,
+            bio: shape.bio,
+            partnerPhone: shape.partnerPhone,
+            partnerStreet: shape.partnerStreet,
+            partnerUnit: shape.partnerUnit,
+            partnerCity: shape.partnerCity,
+            partnerState: shape.partnerState,
+            partnerPostalCode: shape.partnerPostalCode,
+            emailSignature: shape.emailSignature,
+            aggressionTier: shape.aggressionTier,
+            forwardPlatformEmails: shape.forwardPlatformEmails,
+            notifyAppointmentsEnabled: shape.notifyAppointmentsEnabled,
+            bookingSlotDurationMin: shape.bookingSlotDurationMin,
+            bookingMinNoticeMin: shape.bookingMinNoticeMin,
+            bookingMaxAdvanceDays: shape.bookingMaxAdvanceDays,
+            bookingBufferBeforeMin: shape.bookingBufferBeforeMin,
+            bookingBufferAfterMin: shape.bookingBufferAfterMin,
+            bookingTimezone: shape.bookingTimezone,
+            leadSearchCredits: shape.leadSearchCredits,
+            emailBulkEnabled: shape.emailBulkEnabled,
+            emailDailyCap: shape.emailDailyCap,
+            emailSendWindowStartHour: shape.emailSendWindowStartHour,
+            emailSendWindowEndHour: shape.emailSendWindowEndHour,
+            emailDripIntervalSecs: shape.emailDripIntervalSecs,
+            notes: shape.notes,
+          }),
+        },
+      )
+      const updated = ('data' in res ? res.data : res) as AffiliateAccount
+      onSaved(updated)
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Failed to save partner')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.55)' }}
+      onClick={onClose}>
+      <div className="rounded-xl w-full max-w-2xl"
+        style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', maxHeight: 'calc(100vh - 32px)', display: 'flex', flexDirection: 'column' }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 pt-5 pb-3 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Edit partner {shape && <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>— {[shape.user.firstName, shape.user.lastName].filter(Boolean).join(' ') || shape.user.email}</span>}
+          </h2>
+          <div className="flex gap-1 mt-3 -mb-1">
+            {(['profile', 'booking', 'usage', 'notes'] as const).map((k) => (
+              <button key={k} onClick={() => setTab(k)}
+                className="text-xs px-3 py-1.5 rounded-t font-medium"
+                style={{
+                  background: tab === k ? 'var(--background)' : 'transparent',
+                  color: tab === k ? 'oklch(55% 0.11 193)' : 'var(--text-secondary)',
+                  borderBottom: tab === k ? '2px solid oklch(55% 0.11 193)' : '2px solid transparent',
+                }}>
+                {k === 'profile' ? 'Profile' : k === 'booking' ? 'Booking' : k === 'usage' ? 'Usage & Email' : 'Notes'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-5 py-4 overflow-y-auto" style={{ flex: 1 }}>
+          {loading || !shape ? (
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading…</p>
+          ) : (
+            <>
+              {tab === 'profile' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="First name">
+                      <Input value={shape.user.firstName ?? ''} onChange={(v) => patchUser('firstName', v)} />
+                    </Field>
+                    <Field label="Last name">
+                      <Input value={shape.user.lastName ?? ''} onChange={(v) => patchUser('lastName', v)} />
+                    </Field>
+                  </div>
+                  <Field label="Email" hint="also their login — change with care" hintWarn>
+                    <Input type="email" value={shape.user.email} onChange={(v) => patchUser('email', v)} />
+                  </Field>
+                  <Field label="Display name" hint="from-header label; defaults to first+last">
+                    <Input value={shape.displayName ?? ''} onChange={(v) => patchField('displayName', v || null)} />
+                  </Field>
+                  <Field label="Business name">
+                    <Input value={shape.businessName ?? ''} onChange={(v) => patchField('businessName', v || null)} />
+                  </Field>
+                  <Field label="Public partner phone">
+                    <Input value={shape.partnerPhone ?? ''} onChange={(v) => patchField('partnerPhone', v || null)} />
+                  </Field>
+                  <Field label="Bio" hint="shown on partner pages">
+                    <Textarea rows={2} value={shape.bio ?? ''} onChange={(v) => patchField('bio', v || null)} />
+                  </Field>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Street"><Input value={shape.partnerStreet ?? ''} onChange={(v) => patchField('partnerStreet', v || null)} /></Field>
+                    <Field label="Unit / Suite"><Input value={shape.partnerUnit ?? ''} onChange={(v) => patchField('partnerUnit', v || null)} /></Field>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Field label="City"><Input value={shape.partnerCity ?? ''} onChange={(v) => patchField('partnerCity', v || null)} /></Field>
+                    <Field label="State"><Input value={shape.partnerState ?? ''} onChange={(v) => patchField('partnerState', v || null)} /></Field>
+                    <Field label="Postal code"><Input value={shape.partnerPostalCode ?? ''} onChange={(v) => patchField('partnerPostalCode', v || null)} /></Field>
+                  </div>
+                  <Field label="Email signature" hint="appended to outbound emails">
+                    <Textarea rows={2} value={shape.emailSignature ?? ''} onChange={(v) => patchField('emailSignature', v || null)} />
+                  </Field>
+                  <Field label="Aggression tier" hint="marketing voice intensity">
+                    <select value={shape.aggressionTier}
+                      onChange={(e) => patchField('aggressionTier', e.target.value)}
+                      className="w-full mt-1 px-2 py-1.5 rounded text-sm"
+                      style={{ background: 'var(--background)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+                      <option value="conservative">Conservative</option>
+                      <option value="balanced">Balanced</option>
+                      <option value="direct">Direct</option>
+                      <option value="aggressive">Aggressive</option>
+                    </select>
+                  </Field>
+                  <Toggle checked={shape.forwardPlatformEmails} onChange={(v) => patchField('forwardPlatformEmails', v)}
+                    label="Forward platform emails to their Gmail" />
+                  <Toggle checked={shape.notifyAppointmentsEnabled} onChange={(v) => patchField('notifyAppointmentsEnabled', v)}
+                    label="Notify on new appointments" />
+                </div>
+              )}
+
+              {tab === 'booking' && (
+                <div className="space-y-3">
+                  <Field label="Booking timezone" hint="IANA — e.g. America/New_York">
+                    <Input value={shape.bookingTimezone ?? ''} onChange={(v) => patchField('bookingTimezone', v || null)} />
+                  </Field>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Field label="Slot length (min)">
+                      <NumberInput value={shape.bookingSlotDurationMin} onChange={(v) => patchField('bookingSlotDurationMin', v)} />
+                    </Field>
+                    <Field label="Min notice (min)">
+                      <NumberInput value={shape.bookingMinNoticeMin} onChange={(v) => patchField('bookingMinNoticeMin', v)} />
+                    </Field>
+                    <Field label="Max advance (days)">
+                      <NumberInput value={shape.bookingMaxAdvanceDays} onChange={(v) => patchField('bookingMaxAdvanceDays', v)} />
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Buffer before (min)">
+                      <NumberInput value={shape.bookingBufferBeforeMin} onChange={(v) => patchField('bookingBufferBeforeMin', v)} />
+                    </Field>
+                    <Field label="Buffer after (min)">
+                      <NumberInput value={shape.bookingBufferAfterMin} onChange={(v) => patchField('bookingBufferAfterMin', v)} />
+                    </Field>
+                  </div>
+                </div>
+              )}
+
+              {tab === 'usage' && (
+                <div className="space-y-3">
+                  {/* ── Commission (separate endpoint — re-snapshots / custom) ── */}
+                  <div className="rounded-lg p-3" style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)' }}>
+                    <p className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Commission (recurring %, locked for life)</p>
+                    <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
+                      Current: <strong>{shape.commissionRatePct != null ? `${shape.commissionRatePct}%` : 'inherits global rate'}</strong>
+                      {shape.commissionTier ? ` — Tier ${shape.commissionTier.level} (${shape.commissionTier.name})` : shape.commissionRatePct != null ? ' — custom override' : ''}
+                      {shape.commissionLockedAt ? ` · locked ${new Date(shape.commissionLockedAt).toLocaleDateString()}` : ''}
+                    </p>
+                    <div className="flex gap-3 mb-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      <label className="flex items-center gap-1">
+                        <input type="radio" checked={commMode === 'tier'} onChange={() => setCommMode('tier')} /> Assign tier
+                      </label>
+                      <label className="flex items-center gap-1">
+                        <input type="radio" checked={commMode === 'custom'} onChange={() => setCommMode('custom')} /> Custom rate
+                      </label>
+                    </div>
+                    {commMode === 'tier' ? (
+                      <select className="input-field text-sm w-full" value={commTierId} onChange={e => setCommTierId(e.target.value)}>
+                        {shape.commissionTiers.map(t => (
+                          <option key={t.id} value={t.id}>Tier {t.level} — {t.name} ({t.recurringPct}%)</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input className="input-field text-sm w-full" type="number" min={0} max={100} step="0.5"
+                        placeholder="Custom recurring %" value={commCustomPct} onChange={e => setCommCustomPct(e.target.value)} />
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <button onClick={saveCommission} disabled={savingComm || (commMode === 'tier' ? !commTierId : !commCustomPct)}
+                        className="btn-primary text-sm">
+                        {savingComm ? 'Saving…' : 'Update commission'}
+                      </button>
+                      {commMsg && <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{commMsg}</span>}
+                    </div>
+                  </div>
+                  <hr style={{ borderColor: 'var(--border-subtle)' }} />
+                  <Field label="Lead search credits" hint="~1 credit per result returned">
+                    <NumberInput value={shape.leadSearchCredits} onChange={(v) => patchField('leadSearchCredits', v)} />
+                  </Field>
+                  <hr style={{ borderColor: 'var(--border-subtle)' }} />
+                  <p className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Bulk email policy</p>
+                  <Toggle checked={shape.emailBulkEnabled} onChange={(v) => patchField('emailBulkEnabled', v)}
+                    label="Bulk email enabled (master gate)" />
+                  <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    Leave any number field empty to inherit the platform default.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Daily cap (emails)">
+                      <NullableNumberInput value={shape.emailDailyCap} onChange={(v) => patchField('emailDailyCap', v)} />
+                    </Field>
+                    <Field label="Drip interval (sec)">
+                      <NullableNumberInput value={shape.emailDripIntervalSecs} onChange={(v) => patchField('emailDripIntervalSecs', v)} />
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Send window start hour (0–23)">
+                      <NullableNumberInput value={shape.emailSendWindowStartHour} onChange={(v) => patchField('emailSendWindowStartHour', v)} />
+                    </Field>
+                    <Field label="Send window end hour (0–23)">
+                      <NullableNumberInput value={shape.emailSendWindowEndHour} onChange={(v) => patchField('emailSendWindowEndHour', v)} />
+                    </Field>
+                  </div>
+                </div>
+              )}
+
+              {tab === 'notes' && (
+                <Field label="Admin notes" hint="internal — partner doesn't see this">
+                  <Textarea rows={8} value={shape.notes ?? ''} onChange={(v) => patchField('notes', v || null)} maxLength={2000} />
+                </Field>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="px-5 py-3 border-t flex gap-2" style={{ borderColor: 'var(--border-subtle)' }}>
+          <button onClick={save} disabled={saving || loading || !shape}
+            className="flex-1 text-sm py-2 rounded font-medium disabled:opacity-40"
+            style={{ background: 'oklch(55% 0.11 193)', color: 'white' }}>
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
+          <button onClick={onClose} disabled={saving}
+            className="text-sm px-4 py-2 rounded"
+            style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Small form primitives used by the edit modal ─────────────────────────
+function Field({ label, hint, hintWarn, children }: { label: string; hint?: string; hintWarn?: boolean; children: React.ReactNode }) {
+  return (
+    <label className="text-xs block" style={{ color: 'var(--text-secondary)' }}>
+      {label}
+      {hint && (
+        <span style={{ color: hintWarn ? 'oklch(70% 0.16 55)' : 'var(--text-tertiary)', marginLeft: 6 }}>
+          ({hint})
+        </span>
+      )}
+      <div className="mt-1">{children}</div>
+    </label>
+  )
+}
+function Input({ value, onChange, type = 'text' }: { value: string; onChange: (v: string) => void; type?: string }) {
+  return (
+    <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
+      className="w-full px-2 py-1.5 rounded text-sm"
+      style={{ background: 'var(--background)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
+  )
+}
+function Textarea({ value, onChange, rows = 3, maxLength = 1000 }: { value: string; onChange: (v: string) => void; rows?: number; maxLength?: number }) {
+  return (
+    <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={rows} maxLength={maxLength}
+      className="w-full px-2 py-1.5 rounded text-sm"
+      style={{ background: 'var(--background)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
+  )
+}
+function NumberInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <input type="number" min={0} value={value}
+      onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
+      className="w-full px-2 py-1.5 rounded text-sm"
+      style={{ background: 'var(--background)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
+  )
+}
+function NullableNumberInput({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+  return (
+    <input type="number" min={0} value={value ?? ''}
+      placeholder="(inherit)"
+      onChange={(e) => {
+        const raw = e.target.value
+        if (raw === '') onChange(null)
+        else onChange(Math.max(0, Number(raw) || 0))
+      }}
+      className="w-full px-2 py-1.5 rounded text-sm"
+      style={{ background: 'var(--background)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }} />
+  )
+}
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <label className="text-sm flex items-center gap-2 cursor-pointer" style={{ color: 'var(--text-primary)' }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      {label}
+    </label>
   )
 }
 

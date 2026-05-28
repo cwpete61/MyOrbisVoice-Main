@@ -20,6 +20,7 @@ const NAV = [
   { href: '/partner-portal/mailbox',     labelKey: 'partnerNav.mailbox',     icon: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2zM2 6l10 7l10-7' },
   { href: '/partner-portal/calendar',    labelKey: 'partnerNav.calendar',    icon: 'M3 9h18M3 5h18v14H3zM8 3v4M16 3v4' },
   { href: '/partner-portal/phone-numbers', labelKey: 'partnerNav.phoneNumbers', icon: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z' },
+  { href: '/partner-portal/my-twilio', labelKey: 'partnerNav.myTwilio', icon: 'M4 4h16v12H5.17L4 17.17V4zm0-2a2 2 0 0 0-2 2v16l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4zm6 11h2v2h-2v-2zm0-7h2v5h-2V6z' },
   { href: '/partner-portal/a2p',           labelKey: 'partnerNav.a2p',          icon: 'M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4zM9 12l2 2 4-4' },
   { href: '/partner-portal/conversations', labelKey: 'partnerNav.conversations', icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
   { href: '/partner-portal/crm',         labelKey: 'partnerNav.crm',         icon: 'M3 4h4v6H3zm7 0h4v6h-4zm7 0h4v6h-4zM3 13h4v6H3zm7 0h4v6h-4zm7 0h4v6h-4z' },
@@ -34,6 +35,7 @@ const NAV = [
   { href: '/partner-portal/landing-page',  labelKey: 'partnerNav.landingPage',  icon: 'M3 5h18v14H3zM3 9h18M7 5v14' },
   { href: '/partner-portal/market-vault',  labelKey: 'partnerNav.marketVault',  icon: 'M5 7h14l-1 12H6L5 7zM9 7V5a3 3 0 0 1 6 0v2' },
   { href: '/partner-portal/bulk-email',  labelKey: 'partnerNav.bulkEmail',   icon: 'M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z', accent: 'red' },
+  { href: '/partner-portal/webinar-marketing', labelKey: 'partnerNav.webinarMarketing', icon: 'M23 7l-7 5 7 5V7zM14 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z' },
   { href: '/partner-portal/help',          labelKey: 'partnerNav.help',         icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01' },
 ]
 

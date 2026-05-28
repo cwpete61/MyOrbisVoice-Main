@@ -171,6 +171,11 @@ async function start() {
     // daily cap, send window, and drip interval. Safe to no-op when no
     // RUNNING campaigns exist.
     void import('./services/email-campaign-worker.service.js').then(m => m.startCampaignWorker())
+    // Webinar Marketing worker — partner-scoped lead-discovery pipeline.
+    // Phase 1: tick is a no-op. Phase 2+ stages discovery/crawl/verify.
+    void import('./services/webinar-marketing/worker.service.js').then(m => m.startWebinarMarketingWorker())
+    // Twilio reconcile worker — detects DB↔Twilio drift every 30 min.
+    void import('./services/twilio-reconcile.service.js').then(m => m.startTwilioReconcileWorker())
   })
 }
 

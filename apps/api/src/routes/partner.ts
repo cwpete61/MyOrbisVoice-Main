@@ -633,17 +633,30 @@ router.get('/partner/calendar/events', async (req: Request, res: Response, next:
     const targetCalendarId = calendarId ?? partner.calendarId ?? 'primary'
 
     const { google } = await import('googleapis')
-    const client = await googleService.getAuthenticatedGoogleClientForPartner(partnerId)
-    const cal = google.calendar({ version: 'v3', auth: client })
-
-    const resp = await cal.events.list({
-      calendarId:  targetCalendarId,
-      timeMin:     from,
-      timeMax:     to,
-      singleEvents: true,                  // expands recurring events into instances
-      orderBy:     'startTime',
-      maxResults:  250,
-    })
+    let resp
+    try {
+      const client = await googleService.getAuthenticatedGoogleClientForPartner(partnerId)
+      const cal = google.calendar({ version: 'v3', auth: client })
+      resp = await cal.events.list({
+        calendarId:  targetCalendarId,
+        timeMin:     from,
+        timeMax:     to,
+        singleEvents: true,                  // expands recurring events into instances
+        orderBy:     'startTime',
+        maxResults:  250,
+      })
+    } catch (err) {
+      // invalid_grant = token revoked or expired. Surface the same signal the
+      // UI uses for never-connected partners so they see a "Reconnect Google"
+      // CTA instead of a 500.
+      const msg = (err as { message?: string }).message ?? ''
+      const code = (err as { code?: number }).code
+      if (msg.includes('invalid_grant') || code === 401 || code === 403) {
+        res.json({ data: { events: [], notConnected: true, calendarId: null, reason: 'token_revoked' } })
+        return
+      }
+      throw err
+    }
 
     // Normalize for the UI. Events with no `start.dateTime` are all-day —
     // expose their `start.date` separately so the component can render them

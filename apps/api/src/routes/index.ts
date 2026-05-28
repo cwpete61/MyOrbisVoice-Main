@@ -37,6 +37,9 @@ import partnerCrmRouter from './partner-crm.js'
 import partnerCampaignsRouter from './partner-campaigns.js'
 import partnerMailboxRouter from './partner-mailbox.js'
 import partnerGmbRouter from './partner-gmb.js'
+import partnerWebinarMarketingRouter from './partner-webinar-marketing.js'
+import partnerDailyActivityRouter from './partner-daily-activity.js'
+import meTwilioRouter from './me-twilio.js'
 import leadEngineRouter from './lead-engine.js'
 import sendingDomainRouter from './sending-domain.js'
 import coldEmailRouter from './cold-email.js'
@@ -92,6 +95,9 @@ router.use('/api', partnerCrmRouter)
 router.use('/api', partnerCampaignsRouter)
 router.use('/api', partnerMailboxRouter)
 router.use('/api', partnerGmbRouter)
+router.use('/api', partnerWebinarMarketingRouter)
+router.use('/api', partnerDailyActivityRouter)
+router.use('/api', meTwilioRouter)
 router.use('/api', leadEngineRouter)
 router.use('/api', sendingDomainRouter)
 router.use('/api', coldEmailRouter)

@@ -5,6 +5,7 @@ import { authenticate } from '../middleware/authenticate.js'
 import { requirePlatformAdmin } from '../middleware/rbac.js'
 import * as affiliateService from '../services/affiliate.service.js'
 import * as leadEngineService from '../services/lead-engine.service.js'
+import * as commissionTierService from '../services/commission-tier.service.js'
 
 const router: IRouter = Router()
 
@@ -346,6 +347,49 @@ adminRouter.post('/affiliates/:id/reactivate', async (req, res, next) => { try {
 adminRouter.post('/affiliates/:id/disable',    async (req, res, next) => { try { const { notes } = req.body as { notes?: string }; res.json({ data: await affiliateService.disableAffiliate(req.params.id!, notes) }) } catch (err) { next(err) } })
 adminRouter.patch('/affiliates/:id/notes',     async (req, res, next) => { try { const { notes } = req.body as { notes: string }; res.json({ data: await affiliateService.updateAffiliateNotes(req.params.id!, notes) }) } catch (err) { next(err) } })
 
+// Full editable partner record (profile + settings + booking + usage + email policy).
+adminRouter.get('/affiliates/:id/edit-shape', async (req, res, next) => {
+  try {
+    res.json({ data: await affiliateService.adminGetAffiliateEditShape(req.params.id!) })
+  } catch (err) { next(err) }
+})
+
+// Comprehensive admin-level partner edit. Accepts any subset of:
+//   firstName, lastName, email,
+//   displayName, businessName, bio, partnerPhone,
+//   partnerStreet, partnerUnit, partnerCity, partnerState, partnerPostalCode,
+//   emailSignature, aggressionTier,
+//   forwardPlatformEmails, notifyAppointmentsEnabled,
+//   bookingSlotDurationMin, bookingMinNoticeMin, bookingMaxAdvanceDays,
+//   bookingBufferBeforeMin, bookingBufferAfterMin, bookingTimezone,
+//   leadSearchCredits,
+//   emailBulkEnabled, emailDailyCap, emailSendWindowStartHour,
+//   emailSendWindowEndHour, emailDripIntervalSecs,
+//   notes
+adminRouter.patch('/affiliates/:id', async (req, res, next) => {
+  try {
+    const body = (req.body ?? {}) as Record<string, unknown>
+    const ALLOWED = [
+      'firstName', 'lastName', 'email',
+      'displayName', 'businessName', 'bio', 'partnerPhone',
+      'partnerStreet', 'partnerUnit', 'partnerCity', 'partnerState', 'partnerPostalCode',
+      'emailSignature', 'aggressionTier',
+      'forwardPlatformEmails', 'notifyAppointmentsEnabled',
+      'bookingSlotDurationMin', 'bookingMinNoticeMin', 'bookingMaxAdvanceDays',
+      'bookingBufferBeforeMin', 'bookingBufferAfterMin', 'bookingTimezone',
+      'leadSearchCredits',
+      'emailBulkEnabled', 'emailDailyCap', 'emailSendWindowStartHour',
+      'emailSendWindowEndHour', 'emailDripIntervalSecs',
+      'notes',
+    ]
+    const patch: Record<string, unknown> = {}
+    for (const k of ALLOWED) {
+      if (Object.prototype.hasOwnProperty.call(body, k)) patch[k] = body[k]
+    }
+    res.json({ data: await affiliateService.adminEditAffiliate(req.params.id!, patch) })
+  } catch (err) { next(err) }
+})
+
 // ── Lead engine credits ──────────────────────────────────────────────────────
 // Global default (granted to a partner on approval) + per-partner override.
 const creditsSchema = z.object({ credits: z.number().int().min(0).max(1_000_000) })
@@ -368,6 +412,38 @@ adminRouter.patch('/affiliates/:id/lead-credits', async (req, res, next) => {
   try {
     const { credits } = creditsSchema.parse(req.body)
     res.json({ data: await leadEngineService.setPartnerCredits(req.params.id!, credits) })
+  } catch (err) { next(err) }
+})
+
+// ── Commission tiers (admin-customizable, locked at signup for life) ──────────
+adminRouter.get('/commission-tiers', async (_req, res, next) => {
+  try { res.json({ data: await commissionTierService.listCommissionTiers() }) } catch (err) { next(err) }
+})
+
+const tierPatchSchema = z.object({
+  name:         z.string().min(1).max(40).optional(),
+  recurringPct: z.number().min(0).max(100).optional(),
+})
+adminRouter.patch('/commission-tiers/:id', async (req, res, next) => {
+  try {
+    const patch = tierPatchSchema.parse(req.body)
+    res.json({ data: await commissionTierService.updateCommissionTier(req.params.id!, patch) })
+  } catch (err) { next(err) }
+})
+
+// Assign a partner to a tier (re-snapshots that tier's CURRENT rate) OR set a
+// fully custom recurring rate (tierId cleared). Exactly one of the two bodies.
+const partnerCommissionSchema = z.union([
+  z.object({ tierId: z.string().min(1) }),
+  z.object({ customRecurringPct: z.number().min(0).max(100) }),
+])
+adminRouter.patch('/affiliates/:id/commission', async (req, res, next) => {
+  try {
+    const body = partnerCommissionSchema.parse(req.body)
+    const data = 'tierId' in body
+      ? await commissionTierService.assignPartnerToTier(req.params.id!, body.tierId)
+      : await commissionTierService.setPartnerCustomRate(req.params.id!, body.customRecurringPct)
+    res.json({ data })
   } catch (err) { next(err) }
 })
 

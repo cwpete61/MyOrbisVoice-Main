@@ -2,17 +2,20 @@
 
 import { useState } from 'react'
 import { useT } from '@/lib/i18n/I18nProvider'
+import DailyActivity from './DailyActivity'
 
 const TEAL = 'oklch(55% 0.11 193)'
 
-type TabKey = 'coldCalling' | 'coldEmail' | 'socialMedia' | 'ads' | 'closingDeal'
+type TabKey = 'dailyActivity' | 'coldCalling' | 'coldEmail' | 'socialMedia' | 'ads' | 'closingDeal'
 interface Video { id: string; title: string; author: string; start?: number }
 
-const TABS: TabKey[] = ['coldCalling', 'coldEmail', 'socialMedia', 'ads', 'closingDeal']
+const TABS: TabKey[] = ['dailyActivity', 'coldCalling', 'coldEmail', 'socialMedia', 'ads', 'closingDeal']
 
 // Curated playbook videos per tab. Thumbnails come from YouTube directly
 // (img.youtube.com) — no API key/cost.
 const VIDEOS: Record<TabKey, Video[]> = {
+  // Daily Activity uses its own component (DailyActivity), not the video grid.
+  dailyActivity: [],
   coldCalling: [
     { id: 'ThE3yXiNX4o', title: 'How to Get Past The Gatekeeper (Cold Calling)', author: '30 Minutes to President’s Club', start: 265 },
     { id: 'M2OOM_rexzM', title: 'Ninja Tactics For Getting Past The Gatekeeper Every Time', author: 'Sabri Suby' },
@@ -30,10 +33,10 @@ const VIDEOS: Record<TabKey, Video[]> = {
 
 export default function MarketVaultPage() {
   const t = useT()
-  const [tab, setTab] = useState<TabKey>('coldCalling')
+  const [tab, setTab] = useState<TabKey>('dailyActivity')
   const [playing, setPlaying] = useState<string | null>(null)
 
-  const videos = VIDEOS[tab]
+  const videos = tab === 'dailyActivity' ? [] : VIDEOS[tab]
 
   return (
     <div>
@@ -56,7 +59,9 @@ export default function MarketVaultPage() {
       </div>
 
       {/* Content */}
-      {videos.length === 0 ? (
+      {tab === 'dailyActivity' ? (
+        <DailyActivity />
+      ) : videos.length === 0 ? (
         <div className="rounded-2xl p-12 text-center" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
           <span className="inline-block text-xs px-3 py-1 rounded-full font-semibold uppercase tracking-wider mb-3" style={{ background: 'oklch(55% 0.11 193 / 0.15)', color: TEAL, letterSpacing: '0.08em' }}>{t('partnerMarketVault.soonBadge')}</span>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('partnerMarketVault.tabEmpty')}</p>
