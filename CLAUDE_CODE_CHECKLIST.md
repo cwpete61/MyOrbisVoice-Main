@@ -1,68 +1,32 @@
 # Claude Code Execution Checklist
 
-> Done (see git): box #2 baseline · Keycloak IdP · Account Hub (foundation +
-> box #1 deploy + OIDC + Stripe→entitlement) · MyOrbisReviews (box #2).
+> Done (see git): box #2 baseline · Keycloak IdP (public auth.) · Account Hub
+> (foundation + box #1 + OIDC + Stripe→entitlement + public hub.) · MyOrbisReviews
+> (box #2, consuming Hub cross-box) · Voice→Hub cutover PLAN.
 
 ## Objective
-Publicly expose the Account Hub (and IdP) so products on box #2 can reach the Hub
-on box #1, then wire MyOrbisReviews to the live Hub. Hostnames:
-`auth.myorbisresults.com` (Keycloak), `hub.myorbisresults.com` (Hub).
+Build the Hub prerequisites for the Voice→Hub Phase 0 backfill: idempotent
+admin upserts (tenant, entitlement, stripe-customer). Greenfield Hub code; no
+Voice risk.
 
 ## Phases
-- [x] Phase 1 — Read-only recon of the shared (fragile) Caddyfile on box #1
-- [x] Phase 2 — Decide hostnames (auth. + hub.) + confirm DNS
-- [x] Phase 3 — Expose HUB (guarded Caddy edit) — backup, append, validate, reload
-- [x] Phase 4 — Verify no regression (both stacks) + hub public TLS/health
-- [x] Phase 5 — Wire Reviews → public Hub + cross-box entitlement verify
-- [x] Phase 6 — Expose KEYCLOAK (auth.) + finalize issuer chain + verify
-
-### Phase 6 (done 2026-06-05)
-- `auth.myorbisresults.com` A → 147.93.183.4 (DNS-only) added; resolved.
-- Guarded Caddy edit (backup `Caddyfile.before-auth-exposure.2026-06-05`): appended
-  `auth.myorbisresults.com { reverse_proxy myorbis-id-keycloak:8080 }`; connected
-  `bps_zf-caddy-1` to `myorbis_id_net`; validate → reload. No regression
-  (myorbisvoice + bpszerofees + hub all serve, valid TLS).
-- Keycloak public: discovery issuer = `https://auth.myorbisresults.com/realms/myorbis`
-  (dynamic via proxy headers — no KC_HOSTNAME pin needed).
-- Issuer chain finalized: Hub `KC_ISSUER` → public issuer, hub-api recreated.
-- **Verified public end-to-end:** token from `auth.` → `hub./v1/me` 200; bad → 401.
-- **Security cleanup:** deleted the Keycloak `testuser` + its auto-provisioned Hub
-  User row (realm now 0 users) — auth is public now.
+- [x] Phase 1 — Add PUT upsert endpoints (tenant / entitlement / stripe-customer)
+- [x] Phase 2 — Build + local verify (idempotent; param-conflict fix)
+- [x] Phase 3 — Deploy to box #1 + verify on prod hub + commit
 
 ## Error Log
-None. Caddy edit validated before reload; backup taken first.
+- **All PUTs 404 + stale 401:** Fastify rejects differing param names at the same
+  path position (`:id` vs `:tenantId`); a stale local hub server on 4100 answered
+  with old code. Fix: use `:id` consistently; `fuser -k 4100`. (Also: `pkill -f
+  dist/server.js` self-killed the shell — removed.)
 
 ## Completed Work
-- **Recon:** `bps_zf-caddy-1` owns 80/443; `/opt/bps_zf/caddy/Caddyfile` holds
-  BOTH myorbisvoice + bpszerofees host blocks (the CLAUDE.md hazard); proxies by
-  container name over shared docker nets.
-- **DNS:** `hub.myorbisresults.com` → 147.93.183.4 (DNS-only/direct). `auth.` NOT
-  yet present (both resolvers empty).
-- **Hub exposure (guarded):** backed up Caddyfile →
-  `Caddyfile.before-hub-exposure.2026-06-05`; appended a `hub.myorbisresults.com`
-  block (`reverse_proxy myorbis-hub-api:4100`); connected `bps_zf-caddy-1` to
-  `myorbis_hub_net`; `caddy validate` → valid; `caddy reload`. All existing host
-  blocks preserved.
-- **Verify:** api/app/gateway.myorbisvoice.com + app.bpszerofees.com all still
-  serve with valid TLS (no regression); `https://hub.myorbisresults.com/health`
-  → 200 (cert auto-issued).
-- **Cross-box wiring:** set Reviews `.env.prod` `HUB_URL=https://hub.myorbisresults.com`
-  + the Hub's real service token; recreated. Repo defaults updated (commit
-  `MyOrbisReviews` `6faeb61`).
-- **Cross-box verify:** entitled tenant (REVIEWS on box #1 Hub) → Reviews on
-  box #2 → POST review-request **201** (was 503); non-entitled → 403. Test data
-  cleaned both DBs.
+- `PUT /v1/tenants/:id` (upsert tenant+profile), `PUT .../entitlements/:productCode`
+  (upsert entitlement + ensure Product), `PUT .../stripe-customer` (upsert link).
+  Service-token auth; 404 on missing tenant. MyOrbis-Hub `1f1aa81`.
+- Verified local + box #1: idempotent PUT x2 → 200/200; entitlement (lc→UC) +
+  stripe; aggregate reflects all three; missing-tenant 404. Prod probe cleaned.
 
 ## Result
-The Account Hub is **publicly reachable** (`hub.myorbisresults.com`, service-token
-+ OIDC protected) and **MyOrbisReviews on box #2 now consumes it live across
-boxes.** Both pre-existing stacks (myorbisvoice, bpszerofees) verified intact.
-
-## Remaining / next
-- **Expose Keycloak (`auth.`)** — add the `auth.myorbisresults.com` DNS A record
-  → 147.93.183.4, then the same guarded Caddy edit (`reverse_proxy
-  myorbis-id-keycloak:8080`) + set Keycloak `KC_HOSTNAME=https://auth...` and
-  finalize Hub `KC_ISSUER` (the issuer-finalization chain).
-- Security follow-up: Hub is public with a static service token + OIDC; consider
-  IP allowlist / mTLS later. Keycloak `testuser` still present — remove.
-- Voice → Hub backfill (Phase 0), still pending/planned.
+Hub can now accept the Phase 0 backfill (idempotent writes). Next: the backfill
+script (Voice read-only → Hub PUTs, dry-run first) — see docs/voice-hub-cutover-plan.md.

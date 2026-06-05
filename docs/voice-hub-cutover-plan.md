@@ -43,16 +43,14 @@ For each of the 11 active Voice tenants:
 
 **Excluded from Phase 0:** users, auth, memberships (Phase 2). No Voice writes.
 
-### Phase 0 prerequisites (Hub enhancements needed first)
-- [ ] **Idempotent tenant create** — `POST /v1/tenants` currently 500s if id exists.
-  Add upsert (or `PUT /v1/tenants/:id`) so backfill is re-runnable.
-- [ ] **Entitlement admin endpoint** — Hub has no direct entitlement-write today
-  (only via Stripe webhook). Add service-token `PUT /v1/tenants/:id/entitlements/:product`
-  for backfill (and admin overrides).
-- [ ] **StripeCustomer admin endpoint** (or fold into tenant upsert).
-- [ ] Backfill script: reads Voice DB read-only (or via a Voice export endpoint),
-  POSTs to `https://hub.myorbisresults.com` with the Hub service token. Idempotent,
-  dry-run first, logs per-tenant result.
+### Phase 0 prerequisites (Hub enhancements)
+- [x] **Idempotent tenant upsert** — `PUT /v1/tenants/:id` (re-runnable). DONE,
+  live on box #1 (MyOrbis-Hub `1f1aa81`).
+- [x] **Entitlement admin endpoint** — `PUT /v1/tenants/:id/entitlements/:productCode`. DONE.
+- [x] **StripeCustomer admin endpoint** — `PUT /v1/tenants/:id/stripe-customer`. DONE.
+- [ ] **Backfill script** — reads Voice DB read-only (or a Voice export endpoint),
+  PUTs to `https://hub.myorbisresults.com` with the Hub service token. Idempotent,
+  dry-run first, per-tenant result log. **NEXT.**
 
 ### Phase 0 verification gate
 - Hub active-tenant count == 11; each profile/stripe/entitlement spot-checked vs
