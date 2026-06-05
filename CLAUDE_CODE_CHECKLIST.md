@@ -14,7 +14,20 @@ on box #1, then wire MyOrbisReviews to the live Hub. Hostnames:
 - [x] Phase 3 — Expose HUB (guarded Caddy edit) — backup, append, validate, reload
 - [x] Phase 4 — Verify no regression (both stacks) + hub public TLS/health
 - [x] Phase 5 — Wire Reviews → public Hub + cross-box entitlement verify
-- [ ] Phase 6 — Expose KEYCLOAK (auth.) — BLOCKED: auth. DNS record not present yet
+- [x] Phase 6 — Expose KEYCLOAK (auth.) + finalize issuer chain + verify
+
+### Phase 6 (done 2026-06-05)
+- `auth.myorbisresults.com` A → 147.93.183.4 (DNS-only) added; resolved.
+- Guarded Caddy edit (backup `Caddyfile.before-auth-exposure.2026-06-05`): appended
+  `auth.myorbisresults.com { reverse_proxy myorbis-id-keycloak:8080 }`; connected
+  `bps_zf-caddy-1` to `myorbis_id_net`; validate → reload. No regression
+  (myorbisvoice + bpszerofees + hub all serve, valid TLS).
+- Keycloak public: discovery issuer = `https://auth.myorbisresults.com/realms/myorbis`
+  (dynamic via proxy headers — no KC_HOSTNAME pin needed).
+- Issuer chain finalized: Hub `KC_ISSUER` → public issuer, hub-api recreated.
+- **Verified public end-to-end:** token from `auth.` → `hub./v1/me` 200; bad → 401.
+- **Security cleanup:** deleted the Keycloak `testuser` + its auto-provisioned Hub
+  User row (realm now 0 users) — auth is public now.
 
 ## Error Log
 None. Caddy edit validated before reload; backup taken first.
