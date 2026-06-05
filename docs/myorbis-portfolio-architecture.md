@@ -42,7 +42,7 @@ product must not bleed into another).
 |---|---|---|
 | Identity | System of record for shared tenant data | **Central Account Hub (parent-brand owned)** |
 | Key | Canonical tenant identifier | **Hub adopts Voice's existing tenant UUIDs as the canonical `tenantId`** (no FK rewrite) |
-| Auth | Sign-in across products | **SSO via off-the-shelf IdP** (Keycloak/Ory self-host, or hosted WorkOS/Clerk) — *IdP choice still open* |
+| Auth | Sign-in across products | **SSO via Keycloak (self-hosted)** |
 | Sync | How products get shared data | **API-first + event/webhook cache invalidation; eventual consistency; products tolerate Hub-down via local cache** |
 | Stripe account | One vs many | **Promote Voice's existing Stripe account; rebrand billing name → MyOrbisResults** (settings change, not migration; assumes same legal entity) |
 | Subscription shape | Invoice structure | **Single subscription per customer, multiple items** → one native consolidated invoice with per-product line items |
@@ -223,14 +223,18 @@ cache on Hub outage.
 
 ---
 
-## 11. Open decisions (still yours)
+## 11. Decisions — RESOLVED 2026-06-05
 
-1. **IdP:** self-hosted (Keycloak/Ory) vs hosted (WorkOS/Clerk)?
-2. **Bootstrap path:** extract identity out of Voice into the Hub cleanly now, vs
-   stand up a fresh Hub and migrate Voice to it later (phased — current lean)?
-3. **Hub home:** own stack on box #1 (lean), box #2, or a third small VPS?
-4. **Legal entity confirmation** for the Stripe rebrand (same company on the
-   account as "MyOrbisResults"?).
+1. **IdP:** **Keycloak, self-hosted.** Runs as its own stack on box #1.
+2. **Bootstrap path:** **Fresh Hub + phased migrate.** Stand up a new Hub,
+   backfill from Voice's data, migrate Voice to consume it in phases (Voice stays
+   live). Lower risk than extracting auth out of the live app up front.
+3. **Hub home:** **Own stack on box #1** (RAM headroom, co-located with Voice
+   billing/Stripe). Serves products on both boxes over HTTPS + service auth.
+4. **Legal entity:** **MyOrbisResults is the entity** → Stripe rebrand is a
+   pure display-name settings change (no new account, no tax/payout impact).
+   *(Confirm MyOrbisResults is the same legal company already on Voice's Stripe
+   account before executing the rebrand.)*
 
 ---
 
