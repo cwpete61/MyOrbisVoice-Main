@@ -48,7 +48,7 @@ For each of the 11 active Voice tenants:
   live on box #1 (MyOrbis-Hub `1f1aa81`).
 - [x] **Entitlement admin endpoint** — `PUT /v1/tenants/:id/entitlements/:productCode`. DONE.
 - [x] **StripeCustomer admin endpoint** — `PUT /v1/tenants/:id/stripe-customer`. DONE.
-- [ ] **Backfill script** — reads Voice DB read-only (or a Voice export endpoint),
+- [x] **Backfill script** — `scripts/backfill-voice.mjs` (dry-run/--apply). DONE + RUN.
   PUTs to `https://hub.myorbisresults.com` with the Hub service token. Idempotent,
   dry-run first, per-tenant result log. **NEXT.**
 
@@ -90,3 +90,10 @@ For each of the 11 active Voice tenants:
 3. **Keycloak bcrypt import** — confirm Voice's hash format/cost matches what
    Keycloak's bcrypt hash-provider accepts (verify with one user before bulk).
 4. Backfill all 211 (preserving deleted) vs only the 11 active? (Recommend 11.)
+
+## Phase 0 — EXECUTED 2026-06-05
+Backfilled the 11 active Voice tenants into the Hub (idempotent PUTs; Voice
+read-only). Verified: 11 tenants/profiles/entitlements + 9 Stripe links; entitlement
+mix ENTERPRISE×1, PREMIER×1, PRO×2, FREE×7; **canonical IDs == Voice IDs**;
+re-run idempotent (stays 11). Hub data is inert until Phase 3. Voice untouched.
+Next: Phase 1 (new/expansion onboarding+billing via Hub) or Phase 2 (SSO).
