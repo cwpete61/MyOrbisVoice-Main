@@ -1,49 +1,45 @@
 # Claude Code Execution Checklist
 
-> Done previously (see git): box #2 baseline (`ced8f9c`), Keycloak IdP (`23021b0`),
-> Account Hub foundation (`MyOrbis-Hub` `3a6fcfa`), Hub→box #1 (`ba22eab`),
-> Keycloak↔Hub OIDC (`07de122` / `9097e5e`).
+> Done (see git): box #2 baseline, Keycloak IdP, Account Hub (foundation + box #1
+> deploy + OIDC + Stripe→entitlement sync). Repos: MyOrbis-Hub, MyOrbisReviews.
 
 ## Objective
-Add **Stripe → entitlement sync** to the Hub: a signature-verified webhook that
-maps Stripe subscription events onto the entitlement matrix + Stripe customer
-link. Greenfield; verify locally + on box #1.
+Scaffold **MyOrbisReviews** (Local-family wedge) as its own repo
+`~/Antigravity/MyOrbisReviews`, demonstrating the **Hub-consumer pattern** (read
+entitlements from the Account Hub, gate features), with its own ops DB. Verify
+the Hub integration locally; deploy to box #2 internal-first.
 
 ## Phases
-- [x] Phase 1 — Webhook code (constructEvent verify, subscription→entitlement, customer link)
-- [x] Phase 2 — rawBody capture, env (STRIPE_WEBHOOK_SECRET), stripe client
-- [x] Phase 3 — Local build + end-to-end (signed event → entitlement, idempotent, bad-sig)
-- [x] Phase 4 — Deploy to box #1 (fix 3 deploy bugs)
-- [x] Phase 5 — Verify on box #1 (signed event → entitlement) + commit
+- [x] Phase 1 — Repo + tooling
+- [x] Phase 2 — Prisma (ReviewRequest, Review) + init migration
+- [x] Phase 3 — Hub client (cached, degrade-to-stale) + entitlement gate
+- [x] Phase 4 — Routes (health + gated review-requests) + server
+- [x] Phase 5 — Build clean
+- [x] Phase 6 — Local e2e vs a local Hub (entitled→201, not→403, no-token→401)
+- [x] Phase 7 — Dockerfile + compose + deploy-box2.sh
+- [x] Phase 8 — Deploy to box #2 internal-first + commit
 
 ## Error Log
-- **Crash #1 — env-validation:** `STRIPE_WEBHOOK_SECRET Required`. Backfilled into
-  `.env.prod` but not declared in compose `environment:` → not passed to container.
-  Fix: declare `STRIPE_WEBHOOK_SECRET`/`STRIPE_SECRET_KEY` in compose.
-- **Crash #2 — Stripe ctor:** "Neither apiKey nor config.authenticator". compose
-  passes `${STRIPE_SECRET_KEY:-}` = "" (empty); code used `??` (nullish, doesn't
-  catch ""). Fix: `||`. (Local passed because the var was unset→undefined.)
-- **Crash #3 — Prisma engine:** added `openssl` to the runtime image → Prisma
-  flipped to a 3.0 engine the generated client doesn't bundle → engine load crash.
-  Fix: reverted; base libssl3 + the cosmetic detection warning is the working
-  config (proven by prior deploys). Documented "do not add openssl" in Dockerfile.
+None — clean (reused the Hub's proven Dockerfile/patterns; no openssl).
 
 ## Completed Work
-- `routes/stripe-webhook.ts`: `POST /webhooks/stripe`, signature-verified; maps
-  `customer.subscription.created/updated/deleted` → entitlement matrix
-  (tenantId from `subscription.metadata`, productCode/plan from `price.metadata`,
-  Stripe status → EntitlementStatus); `customer.*` → StripeCustomer link.
-  Idempotent upserts.
-- `server.ts` rawBody capture; `stripe.ts` client; env additions; compose env;
-  deploy-script backfill; `test/webhook-smoke.mjs`. Commit `MyOrbis-Hub` `66ff6d6`.
-- **Verified local + box #1:** signed event → 200 + entitlement (VOICE/PRO/ACTIVE,
-  +REVIEWS/STARTER local); bad-sig → 400; idempotent re-fire; test data cleaned.
+- Repo `~/Antigravity/MyOrbisReviews` (commit `b55b5d2`). Node/TS/Fastify/Prisma/PG.
+- `src/hub.ts`: entitlements from Hub (service-token), ~30s cache, stale-on-blip.
+- `src/entitlement.ts`: `requireEntitlement('REVIEWS')` → 403 missing / 503 Hub-down.
+- Own ops model (ReviewRequest, Review) + init migration; gated POST review-requests.
+- **Local e2e (Hub + Reviews together):** T1 entitled (VOICE+REVIEWS via Hub
+  webhook) → POST 201; T2 not entitled → 403; no-token → 401; list ok.
+- **Box #2 deploy:** stack `myorbis-reviews` (api + db), `myorbis_reviews_net`,
+  internal-only `127.0.0.1:4200`. Verified: health 200, ready db up, isolated;
+  gated endpoint → 503 (graceful — Hub not cross-box reachable yet), no-token 401.
+  Box #2 now runs edge-caddy + the reviews stack.
 
 ## Result
-Stripe → entitlement sync is **live + verified on box #1**, isolated, internal.
-`STRIPE_WEBHOOK_SECRET` is a placeholder until the real Stripe endpoint is created
-(then replace + point the Stripe dashboard webhook at the public Hub URL).
+MyOrbisReviews is **live internal-first on box #2**, with the Hub-consumer +
+entitlement-gate pattern proven (locally end-to-end; on box #2 it degrades
+gracefully to 503 until the Hub is reachable).
 
-## Backlog flag
-- Base image `node:22-slim` reports CVEs (1 critical / 13 high) — pin to a patched
-  digest or move to a hardened base in a later pass.
+## Known dependency / next
+Live Reviews→Hub calls need the Hub reachable from box #2 → lands with **Hub
+public exposure** (IdP/Hub hostnames + DNS + the careful shared-Caddy edit), the
+recommended next infra step. Then set Reviews' real `HUB_URL`/`HUB_SERVICE_TOKEN`.
