@@ -1,43 +1,55 @@
 # Claude Code Execution Checklist
 
+> Previous step (box #2 baseline provisioning) — DONE, see commit `ced8f9c`
+> + `infrastructure/scripts/provision-box2.sh`.
+
 ## Objective
-Provision Contabo box #2 (`109.123.249.34`, fresh Ubuntu 24.04) to a
-**deploy-ready baseline** for the Local family (MyOrbisLocal + MyOrbisReviews):
-Docker Engine + Compose, base directory layout, and a shared Caddy edge with
-per-product `conf.d/` fragments. No product code is deployed in this step.
-Greenfield only — does not touch the live MyOrbisVoice app on box #1.
+Deploy the **MyOrbis Account Hub identity provider (Keycloak)** as an ISOLATED
+stack on box #1 (`147.93.183.4`) — own DB, own network, own volume, sharing
+nothing with the live MyOrbisVoice stack. **Internal-first**: bound to
+127.0.0.1; public exposure (hostname + TLS via shared Caddy) deferred to a
+deliberate later step.
 
 ## Phases
-- [x] Phase 1 — Verify access + system prep (apt update, prerequisites)
-- [x] Phase 2 — Install Docker Engine + Compose plugin
-- [x] Phase 3 — Base directory layout (/opt/edge, /opt/myorbislocal, /opt/myorbisreviews)
-- [x] Phase 4 — Shared Caddy edge skeleton (Caddyfile + conf.d + compose), start it
-- [x] Phase 5 — Verify (docker hello-world, compose version, caddy health, firewall check)
-- [x] Phase 6 — Codify into infrastructure/scripts/provision-box2.sh (idempotent runbook)
-- [x] Phase 7 — Commit runbook + checklist (branch, no push without approval)
+- [x] Phase 1 — Recon box #1 (access, headroom, free local port, isolation check)
+- [x] Phase 2 — Lock Keycloak image tag (26.4)
+- [x] Phase 3 — Deploy myorbis-id stack (Keycloak + own Postgres, secrets, compose)
+- [x] Phase 4 — Wait for ready + verify (health UP, admin console, isolation)
+- [x] Phase 5 — Codify (compose + .env.example + deploy-keycloak-box1.sh, idempotent)
+- [x] Phase 6 — Commit (no secrets; branch, no push without approval)
+- [ ] Phase 7 — PUBLIC EXPOSURE — BLOCKED on decisions (see below)
 
 ## Error Log
-None — all phases passed first time.
+None — all executed phases passed first time.
 
 ## Completed Work
-- **Phase 1:** Confirmed box `vmi3318357` / `109.123.249.34` / Ubuntu 24.04.4.
-  `apt-get update` + installed ca-certificates/curl/gnupg/lsb-release. ufw
-  inactive — left as-is (avoid SSH-lockout risk; provider firewall at edge).
-- **Phase 2:** Docker official apt repo + GPG added; installed **Docker 29.5.3**
-  + **Compose v5.1.4** (docker-ce, cli, containerd, buildx, compose plugins);
-  `systemctl enable --now docker`.
-- **Phase 3:** Created `/opt/edge/conf.d`, `/opt/myorbislocal`, `/opt/myorbisreviews`.
-- **Phase 4:** `/opt/edge/Caddyfile` (global ACME email, `import conf.d/*.caddy`,
-  baseline `:80` health) + `/opt/edge/docker-compose.yml` (caddy:2, 80/443,
-  named volumes, `edge_net`). `docker compose up -d` → `edge-caddy` running.
-- **Phase 5 verify:** `docker run hello-world` OK; `edge-caddy` Up, ports
-  `0.0.0.0:80->80`, `0.0.0.0:443->443`; `curl localhost/health` → `ok`;
-  `caddy validate` → Valid configuration.
-- **Phase 6:** Wrote idempotent `infrastructure/scripts/provision-box2.sh`;
-  re-ran it end-to-end → container reused (not recreated), all checks green,
-  `PROVISION_COMPLETE`.
+- **Recon:** box #1 19 GiB free; no existing keycloak/myorbis-id stack; port 8080
+  free; only `/opt/myorbis-id` created (isolation respected).
+- **Image:** locked `quay.io/keycloak/keycloak:26.4` (pull-verified).
+- **Deploy:** stack `myorbis-id` — `myorbis-id-keycloak` (KC 26.4) +
+  `myorbis-id-db` (postgres:16-alpine), network `myorbis_id_net`, volume `id_db`.
+  Secrets generated into `/opt/myorbis-id/.env.prod` (600, hidden, never committed).
+  Keycloak bound to `127.0.0.1:8080` (SSO/admin) + `127.0.0.1:9000` (health).
+- **Verify:** `/health/ready` → `status UP`; both containers Up (db healthy);
+  `GET /` → 302 → `/admin/`; keycloak on `myorbis_id_net` ONLY (not Voice's net).
+- **Codify:** `infrastructure/myorbis-id/{docker-compose.yml,.env.example}` +
+  `infrastructure/scripts/deploy-keycloak-box1.sh` (idempotent; re-run kept
+  secrets, reused containers, ready in ~5s, `KEYCLOAK_DEPLOY_COMPLETE`).
+
+## BLOCKED — Phase 7 (public exposure) needs decisions
+Going public requires, in order:
+1. **IdP hostname** — e.g. `auth.myorbisresults.com` / `id.myorbisresults.com`
+   (product/branding decision; not chosen yet).
+2. **DNS A record** → `147.93.183.4` for that hostname (manual in the DNS panel;
+   myorbisresults.com is on Cloudflare).
+3. **Shared Caddyfile edit** — box #1's public proxy is `bps_zf-caddy` with the
+   FRAGILE shared Caddyfile holding BOTH bpszerofees AND myorbisvoice host blocks
+   (CLAUDE.md hazard). Adding the IdP host block must preserve all existing blocks
+   + back up first (`/opt/bps_zf/caddy/Caddyfile.before-<reason>.<date>`).
+4. Set `KC_HOSTNAME: https://<idp-host>` + re-tighten hostname strictness.
+
+Stop here until the hostname + DNS are decided.
 
 ## Result
-Box #2 is a **deploy-ready baseline**. Next (separate, gated): deploy Keycloak
-as its own stack on box #1, then the Account Hub, then MyOrbisReviews on box #2.
-No product deployed in this step; live MyOrbisVoice untouched.
+Keycloak IdP is **live, healthy, isolated, internal-only** on box #1. Live
+MyOrbisVoice untouched. Ready for realm/client config + (later) public exposure.
