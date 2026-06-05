@@ -1,50 +1,49 @@
 # Claude Code Execution Checklist
 
 > Done previously (see git): box #2 baseline (`ced8f9c`), Keycloak IdP (`23021b0`),
-> Account Hub foundation (`MyOrbis-Hub` `3a6fcfa`), Hub deployed to box #1
-> (`ba22eab`).
+> Account Hub foundation (`MyOrbis-Hub` `3a6fcfa`), Hub→box #1 (`ba22eab`),
+> Keycloak↔Hub OIDC (`07de122` / `9097e5e`).
 
 ## Objective
-Wire **Keycloak ↔ Account Hub OIDC**: configure the `myorbis` realm + client in
-Keycloak; add Keycloak access-token validation to the Hub for user-facing
-endpoints (distinct from the existing service-token auth). Verify end-to-end
-internally (public issuer/hostname finalizes when Keycloak is exposed).
+Add **Stripe → entitlement sync** to the Hub: a signature-verified webhook that
+maps Stripe subscription events onto the entitlement matrix + Stripe customer
+link. Greenfield; verify locally + on box #1.
 
 ## Phases
-- [x] Phase 1 — Keycloak realm `myorbis` + public client `myorbis-apps` + test user (kcadm)
-- [x] Phase 2 — Hub OIDC code (jose JWKS verify, requireUser, /v1/me auto-provision)
-- [x] Phase 3 — Local build (fix pnpm 9/10 store conflict), redeploy to box #1
-- [x] Phase 4 — Verify end-to-end (token → /v1/me 200, bad token 401, persist)
-- [x] Phase 5 — Clean test data + codify realm setup + commit
+- [x] Phase 1 — Webhook code (constructEvent verify, subscription→entitlement, customer link)
+- [x] Phase 2 — rawBody capture, env (STRIPE_WEBHOOK_SECRET), stripe client
+- [x] Phase 3 — Local build + end-to-end (signed event → entitlement, idempotent, bad-sig)
+- [x] Phase 4 — Deploy to box #1 (fix 3 deploy bugs)
+- [x] Phase 5 — Verify on box #1 (signed event → entitlement) + commit
 
 ## Error Log
-- **kcadm token verify in-container:** `curl: command not found` (Keycloak image
-  has no curl). Fix: minted token/checked discovery via a throwaway
-  `curlimages/curl` container on `myorbis_id_net`.
-- **Local `tsc`: jose not found + `sub` missing:** pnpm 9 vs 10 store conflict
-  blocked the install. Fix: clean reinstall via `corepack pnpm` (respects pinned
-  pnpm@9.15.0) → jose resolved, build exit 0.
+- **Crash #1 — env-validation:** `STRIPE_WEBHOOK_SECRET Required`. Backfilled into
+  `.env.prod` but not declared in compose `environment:` → not passed to container.
+  Fix: declare `STRIPE_WEBHOOK_SECRET`/`STRIPE_SECRET_KEY` in compose.
+- **Crash #2 — Stripe ctor:** "Neither apiKey nor config.authenticator". compose
+  passes `${STRIPE_SECRET_KEY:-}` = "" (empty); code used `??` (nullish, doesn't
+  catch ""). Fix: `||`. (Local passed because the var was unset→undefined.)
+- **Crash #3 — Prisma engine:** added `openssl` to the runtime image → Prisma
+  flipped to a 3.0 engine the generated client doesn't bundle → engine load crash.
+  Fix: reverted; base libssl3 + the cosmetic detection warning is the working
+  config (proven by prior deploys). Documented "do not add openssl" in Dockerfile.
 
 ## Completed Work
-- **Keycloak:** realm `myorbis`; public client `myorbis-apps` (auth-code + PKCE +
-  direct grants); test user `testuser`. Issuer (internal):
-  `http://myorbis-id-keycloak:8080/realms/myorbis`. Codified in
-  `infrastructure/myorbis-id/setup-realm.sh` (idempotent; test user gated behind
-  `TEST_USER_PASSWORD` env — no secret committed).
-- **Hub:** `oidc.ts` (jose JWKS verify, issuer-pinned), `routes/me.ts`
-  (requireUser → upsert User by Keycloak `sub`; `GET /v1/me` → user + memberships),
-  `KC_ISSUER` env, api attached to `myorbis_id_net`. Two auth modes now:
-  service-token (product→Hub) + OIDC user token. Commit `MyOrbis-Hub` `07de122`.
-- **Verify:** token minted from realm → `/v1/me` 200 with auto-provisioned user;
-  bad token 401; user persisted in Hub DB; both test rows then cleaned (Hub DB
-  back to 0 users).
+- `routes/stripe-webhook.ts`: `POST /webhooks/stripe`, signature-verified; maps
+  `customer.subscription.created/updated/deleted` → entitlement matrix
+  (tenantId from `subscription.metadata`, productCode/plan from `price.metadata`,
+  Stripe status → EntitlementStatus); `customer.*` → StripeCustomer link.
+  Idempotent upserts.
+- `server.ts` rawBody capture; `stripe.ts` client; env additions; compose env;
+  deploy-script backfill; `test/webhook-smoke.mjs`. Commit `MyOrbis-Hub` `66ff6d6`.
+- **Verified local + box #1:** signed event → 200 + entitlement (VOICE/PRO/ACTIVE,
+  +REVIEWS/STARTER local); bad-sig → 400; idempotent re-fire; test data cleaned.
 
 ## Result
-Keycloak ↔ Hub OIDC is **live + verified internally on box #1**. Hub now
-authenticates both products (service token) and end users (Keycloak JWT).
+Stripe → entitlement sync is **live + verified on box #1**, isolated, internal.
+`STRIPE_WEBHOOK_SECRET` is a placeholder until the real Stripe endpoint is created
+(then replace + point the Stripe dashboard webhook at the public Hub URL).
 
-## Pre-exposure cleanup (flag)
-- Keycloak `testuser` (weak test password) still exists in the realm — internal
-  only now; **remove/disable before public exposure**.
-- Issuer is internal; set `KC_HOSTNAME` + finalize `KC_ISSUER` to the public IdP
-  URL when Keycloak goes public.
+## Backlog flag
+- Base image `node:22-slim` reports CVEs (1 critical / 13 high) — pin to a patched
+  digest or move to a hardened base in a later pass.
