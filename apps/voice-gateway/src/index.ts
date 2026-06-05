@@ -2,6 +2,7 @@ import 'dotenv/config'
 import http from 'http'
 import fs from 'fs'
 import path from 'path'
+import zlib from 'zlib'
 import { WebSocketServer } from 'ws'
 import { env } from './lib/env.js'
 import { initSentry } from './lib/sentry.js'
@@ -13,6 +14,21 @@ import { handleOutboundCall } from './outbound.js'
 initSentry()
 
 const WIDGET_JS = path.resolve(process.cwd(), 'apps/voice-gateway/widget/orbisvoice-widget.js')
+
+// Widget JS is served raw from disk so edits propagate without a rebuild. We
+// gzip it (Samsung/mobile pays full uncompressed bytes over cellular otherwise:
+// ~40 KB → ~10 KB) and cache the compressed copy keyed by file mtime, so the
+// gzip cost is paid once per deploy, not once per request. A deploy rewrites
+// the file → new mtime → re-read + re-gzip on the next hit.
+let _widgetCache: { mtimeMs: number; raw: Buffer; gz: Buffer } | null = null
+function loadWidget() {
+  const stat = fs.statSync(WIDGET_JS)
+  if (!_widgetCache || _widgetCache.mtimeMs !== stat.mtimeMs) {
+    const raw = fs.readFileSync(WIDGET_JS)
+    _widgetCache = { mtimeMs: stat.mtimeMs, raw, gz: zlib.gzipSync(raw) }
+  }
+  return _widgetCache
+}
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -36,13 +52,22 @@ const server = http.createServer((req, res) => {
 
   if (req.url === '/widget/orbisvoice-widget.js') {
     try {
-      const js = fs.readFileSync(WIDGET_JS, 'utf8')
-      res.writeHead(200, {
+      const w = loadWidget()
+      const acceptsGzip = /\bgzip\b/.test(req.headers['accept-encoding'] || '')
+      const headers: Record<string, string> = {
         'Content-Type': 'application/javascript; charset=utf-8',
-        'Cache-Control': 'public, max-age=300',
+        'Cache-Control': 'public, max-age=3600',
+        'Vary': 'Accept-Encoding',
         ...CORS_HEADERS,
-      })
-      res.end(js)
+      }
+      if (acceptsGzip) {
+        headers['Content-Encoding'] = 'gzip'
+        res.writeHead(200, headers)
+        res.end(w.gz)
+      } else {
+        res.writeHead(200, headers)
+        res.end(w.raw)
+      }
     } catch {
       res.writeHead(404, CORS_HEADERS)
       res.end('Widget not found')

@@ -465,12 +465,14 @@
   document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 </script>
 
-<script src="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js"></script>
+<script src="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js" defer></script>
 <script>
   var __orbisPartnerSlug = (location.pathname.match(/^\/(?:es\/)?p\/([^\/]+)\//) || [])[1] || "alex.rivera";
-  OrbisVoice.init({
+  window.addEventListener('DOMContentLoaded', function () {
+    OrbisVoice.init({
     publicKey: "f8512971245c559ded6baf206b3adb9c4fca987f2ba6c571",
     partnerSlug: __orbisPartnerSlug,
+  });
   });
 
   // Phase E.15 — track this pageview as an AffiliateClick so the partner can

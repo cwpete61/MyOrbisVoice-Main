@@ -130,7 +130,11 @@
     constructor(config) {
       this.publicKey    = config.publicKey
       this.partnerSlug  = config.partnerSlug || null  // optional — set when loaded on /p/<slug>/ pages
-      this.businessName = config.businessName || 'AI Assistant'
+      // Header identity. Title is always the agent (default "Orby"); subtitle
+      // is context: the business on the marketing/demo site, or the partner
+      // advisor's name on partner pages (fetched below when partnerSlug is set).
+      this.agentName    = config.agentName || 'Orby'
+      this.subtitle     = config.businessName || 'AI Voice Assistant'
       this.ws           = null
       this.connecting   = false  // covers the dial-intro window before ws exists, so X/Stop and a second click are both safe
       this.geminiReady  = false
@@ -139,14 +143,21 @@
       this.audioCtx     = null
       this.processor    = null
 
-      // Audio playback — chunks are batched every 60 ms then scheduled end-to-end
-      this._playCtx   = null
+      // Audio playback — chunks are batched every 60 ms then scheduled end-to-end.
+      // A SINGLE output AudioContext (_outCtx) is created during the _open() click
+      // gesture and reused for BOTH the dial intro and Orby's voice. Mobile browsers
+      // (Samsung Internet, Android Chrome) only let a context start/resume inside a
+      // user gesture; the old code created the playback context lazily when the first
+      // audio chunk arrived — seconds after the click, with no active gesture — so it
+      // stayed suspended and Orby was silent. One gesture-born context fixes that.
+      this._outCtx    = null
       this._playHead  = 0
       this._pcmQueue  = []    // Uint8Array chunks waiting to be flushed
       this._flushTimer = null
+      this._scheduledSources = []  // live AudioBufferSourceNodes, so a hard stop can .stop() them
 
       // Dial-intro state — held so X/Stop during the intro stops the oscillators immediately
-      this._dialCtx     = null
+      this._dialNodes   = []   // live {osc1,osc2,g} for the in-flight tone
       this._dialAborted = false
 
       // Idle-timeout state — last time we observed agent audio or user speech.
@@ -195,8 +206,8 @@
             </svg>
           </div>
           <div class="ov-header-text">
-            <div class="ov-header-title">${this.businessName}</div>
-            <div class="ov-header-sub">AI Voice Assistant</div>
+            <div class="ov-header-title">${this.agentName}</div>
+            <div class="ov-header-sub">${this.subtitle}</div>
           </div>
           <button class="ov-close-btn" aria-label="Close">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
@@ -225,6 +236,22 @@
 
       this.statusEl = document.getElementById('ov-status')
       this.endBtn   = document.getElementById('ov-end-btn')
+      this.subEl    = this.panel.querySelector('.ov-header-sub')
+
+      // Partner page → set the subtitle to the partner advisor's name so the
+      // header reads "Orby / <Partner>'s advisor". Self-contained: the page
+      // only passes partnerSlug; the widget fetches the display name. Falls
+      // back silently to the existing subtitle on any miss.
+      if (this.partnerSlug) {
+        fetch(`${API_BASE}/api/public/partner/${encodeURIComponent(this.partnerSlug)}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((payload) => {
+            const p = payload && payload.data
+            const name = p && (p.displayName || p.firstName)
+            if (name && this.subEl) this.subEl.textContent = name + "'s advisor"
+          })
+          .catch(() => { /* keep default subtitle */ })
+      }
     }
 
     _bindEvents() {
@@ -245,6 +272,11 @@
       if (this.ws || this.connecting) return
       this.connecting = true
       this._dialAborted = false
+      // CRITICAL (mobile): create + resume the shared output context HERE,
+      // synchronously inside the click handler while the user gesture is still
+      // active. Every later playback reuses it. Done before any await below so
+      // the gesture activation hasn't expired yet.
+      this._ensureOutputCtx()
       // Fresh session — reset any state left over from a prior ended call.
       this.endBtn.disabled = false
       // Play a short dial-tone + ring intro to mimic placing a real phone call,
@@ -268,18 +300,43 @@
       this.panel.classList.remove('ov-open')
     }
 
+    /** Create the shared output AudioContext (dial tones + Orby's voice) and
+     *  resume it. MUST be called from within a user-gesture handler (the widget
+     *  button / End-call click) so mobile browsers actually unlock it. Idempotent:
+     *  reuses an already-open context across calls, which keeps it unlocked for
+     *  the whole page lifetime. No forced sampleRate — the context runs at the
+     *  device's native rate (typically 48 kHz) and Web Audio auto-resamples each
+     *  24 kHz buffer on playback. Forcing a non-native rate throws on some Samsung
+     *  devices, which is the second reason the old playback path failed. */
+    _ensureOutputCtx() {
+      if (this._outCtx && this._outCtx.state !== 'closed') {
+        if (this._outCtx.state === 'suspended') { try { this._outCtx.resume() } catch {} }
+        return this._outCtx
+      }
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      if (!Ctx) return null
+      try {
+        this._outCtx   = new Ctx()
+        this._playHead = 0
+        if (this._outCtx.state === 'suspended') { try { this._outCtx.resume() } catch {} }
+      } catch (e) {
+        console.warn('[OrbisVoice] output context init failed:', e)
+        this._outCtx = null
+      }
+      return this._outCtx
+    }
+
     /** Disconnect Orby immediately — used by the End-call button and the X.
      *  Closes the WS without waiting for the server roundtrip; the gateway
      *  interprets ws.close as session-end and runs finalize (transcript +
      *  summary + persist). */
     _endNow() {
-      // Abort an in-progress dial intro: setting the flag exits the loop,
-      // closing the dial ctx immediately kills any sounding oscillators.
+      // Abort an in-progress dial intro: setting the flag exits the loop, and
+      // silencing the live tone nodes kills any sounding oscillators immediately.
+      // (We no longer close a context here — the shared output context stays open
+      // and unlocked for reuse on the next call.)
       this._dialAborted = true
-      if (this._dialCtx) {
-        try { this._dialCtx.close() } catch {}
-        this._dialCtx = null
-      }
+      this._killDialNodes()
       if (this.recording) this._stopRecording()
       // Hard stop: close the playback AudioContext so already-scheduled
       // AudioBufferSourceNodes (Orby's in-flight sentence) stop immediately.
@@ -435,13 +492,26 @@
     async _startRecording() {
       try {
         this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } })
-        this.audioCtx    = new AudioContext({ sampleRate: 16000 })
+        // Primary path: a 16 kHz capture context (matches what the gateway expects).
+        // Some Samsung devices throw NotSupportedError when forced off their native
+        // rate — fall back to an unconstrained context and downsample to 16 kHz in
+        // software. The fallback branch only runs on devices that reject 16 kHz, so
+        // the happy path (desktop/iOS) is byte-for-byte unchanged.
+        const Ctx = window.AudioContext || window.webkitAudioContext
+        try {
+          this.audioCtx = new Ctx({ sampleRate: 16000 })
+        } catch {
+          this.audioCtx = new Ctx()
+        }
+        const inRate     = this.audioCtx.sampleRate  // 16000 on the happy path
         const source     = this.audioCtx.createMediaStreamSource(this.mediaStream)
         this.processor   = this.audioCtx.createScriptProcessor(4096, 1, 1)
 
         this.processor.onaudioprocess = (e) => {
           if (!this.ws || !this.recording) return
-          const float32 = e.inputBuffer.getChannelData(0)
+          let float32 = e.inputBuffer.getChannelData(0)
+          // Downsample to 16 kHz only when the context didn't honor 16 kHz.
+          if (inRate !== 16000) float32 = this._downsampleTo16k(float32, inRate)
           const pcm16   = this._float32ToPCM16(float32)
           const b64     = this._bufferToBase64(pcm16)
           this.ws.send(JSON.stringify({ type: 'audio', data: b64 }))
@@ -465,6 +535,23 @@
       }
     }
 
+    /** Linear-interpolation downsample of mono float32 PCM from inRate to 16 kHz.
+     *  Only used on the Samsung fallback path where the capture context refused a
+     *  forced 16 kHz rate; the gateway always receives 16 kHz PCM regardless. */
+    _downsampleTo16k(float32, inRate) {
+      const ratio  = inRate / 16000
+      const outLen = Math.floor(float32.length / ratio)
+      const out    = new Float32Array(outLen)
+      for (let i = 0; i < outLen; i++) {
+        const pos  = i * ratio
+        const lo   = Math.floor(pos)
+        const hi   = Math.min(lo + 1, float32.length - 1)
+        const frac = pos - lo
+        out[i] = float32[lo] * (1 - frac) + float32[hi] * frac
+      }
+      return out
+    }
+
     _stopRecording() {
       this.recording = false
       this.processor?.disconnect()
@@ -485,12 +572,9 @@
     // actually happening: it's a phone call to the agent.
 
     async _playDialIntro() {
-      // Open the AudioContext on the click that triggered this — required for
-      // unmuted playback in all modern browsers.
-      const Ctx = window.AudioContext || window.webkitAudioContext
-      if (!Ctx) return
-      const ctx = new Ctx()
-      this._dialCtx = ctx
+      // Reuse the shared output context created in _open() during the click gesture.
+      const ctx = this._ensureOutputCtx()
+      if (!ctx) return
       if (ctx.state === 'suspended') { try { await ctx.resume() } catch {} }
 
       this._setStatus('Dialing…', true)
@@ -511,8 +595,7 @@
         if (i < 1) await this._silence(700)
       }
 
-      try { ctx.close() } catch {}
-      this._dialCtx = null
+      // Leave the context OPEN — Orby's voice playback reuses it.
       this._setStatus('Connecting…', true)
     }
 
@@ -535,12 +618,32 @@
         osc1.connect(g); osc2.connect(g); g.connect(ctx.destination)
         osc1.start(now); osc2.start(now)
         osc1.stop(now + durationSec); osc2.stop(now + durationSec)
-        setTimeout(resolve, durationSec * 1000)
+        // Track live nodes so _endNow can silence an in-flight tone immediately
+        // (we can't close the shared context to kill it anymore).
+        const node = { osc1, osc2, g }
+        this._dialNodes.push(node)
+        setTimeout(() => {
+          const i = this._dialNodes.indexOf(node)
+          if (i !== -1) this._dialNodes.splice(i, 1)
+          resolve()
+        }, durationSec * 1000)
       })
     }
 
     _silence(ms) {
       return new Promise((r) => setTimeout(r, ms))
+    }
+
+    /** Immediately silence any in-flight dial/ring tone. Used on abort (X / End
+     *  call during the intro). Stops the oscillators and disconnects the gain node
+     *  so sound stops at once, without closing the shared output context. */
+    _killDialNodes() {
+      for (const n of this._dialNodes) {
+        try { n.osc1.stop() } catch {}
+        try { n.osc2.stop() } catch {}
+        try { n.g.disconnect() } catch {}
+      }
+      this._dialNodes = []
     }
 
     _playAudio(base64) {
@@ -570,12 +673,14 @@
       if (this._pcmQueue.length === 0) return
 
       try {
-        const SR = 24000
-        if (!this._playCtx || this._playCtx.state === 'closed') {
-          this._playCtx  = new AudioContext({ sampleRate: SR })
-          this._playHead = 0
-        }
-        if (this._playCtx.state === 'suspended') this._playCtx.resume()
+        // SR is the TRUE rate of Orby's PCM (24 kHz). We build the AudioBuffer at
+        // 24 kHz and let the shared output context (running at its native rate)
+        // resample on playback — correct pitch, and no forced-sampleRate throw on
+        // Samsung. The context is the one unlocked during the _open() click gesture.
+        const SR  = 24000
+        const ctx = this._ensureOutputCtx()
+        if (!ctx) return
+        if (ctx.state === 'suspended') ctx.resume()
 
         // Concatenate all queued chunks into one buffer
         const totalBytes = this._pcmQueue.reduce((s, b) => s + b.length, 0)
@@ -586,7 +691,7 @@
 
         // Build AudioBuffer from raw PCM16 LE mono
         const numSamples = combined.length / 2
-        const audioBuf   = this._playCtx.createBuffer(1, numSamples, SR)
+        const audioBuf   = ctx.createBuffer(1, numSamples, SR)
         const channel    = audioBuf.getChannelData(0)
         const view       = new DataView(combined.buffer)
         for (let i = 0; i < numSamples; i++) {
@@ -594,12 +699,19 @@
         }
 
         // Schedule immediately after the last block, with a small lookahead to avoid underruns
-        const startAt = Math.max(this._playCtx.currentTime + 0.04, this._playHead)
-        const src     = this._playCtx.createBufferSource()
+        const startAt = Math.max(ctx.currentTime + 0.04, this._playHead || 0)
+        const src     = ctx.createBufferSource()
         src.buffer    = audioBuf
-        src.connect(this._playCtx.destination)
+        src.connect(ctx.destination)
         src.start(startAt)
         this._playHead = startAt + audioBuf.duration
+        // Track the node so a hard stop can silence in-flight audio without
+        // closing the shared context. Prune on natural end to bound the array.
+        this._scheduledSources.push(src)
+        src.onended = () => {
+          const i = this._scheduledSources.indexOf(src)
+          if (i !== -1) this._scheduledSources.splice(i, 1)
+        }
       } catch (e) {
         console.error('[OrbisVoice] audio flush error', e)
       }
@@ -612,16 +724,21 @@
       this._playHead   = 0
     }
 
-    /** Hard stop for end-of-call: closes the playback AudioContext so
-     *  AudioBufferSourceNodes already scheduled into the future stop firing.
-     *  Clearing _pcmQueue alone (the soft _resetPlayback) does NOT stop audio
-     *  that has already been .start()'d — only context.close() does. */
+    /** Hard stop for end-of-call: stops every scheduled AudioBufferSourceNode so
+     *  audio already .start()'d into the future is silenced. Clearing _pcmQueue
+     *  alone (the soft _resetPlayback) does NOT stop already-started sources —
+     *  calling src.stop() on each does. The shared output context stays open. */
     _stopPlaybackHard() {
       this._resetPlayback()
-      if (this._playCtx) {
-        try { this._playCtx.close() } catch {}
-        this._playCtx = null
+      // Stop every scheduled (and future-scheduled) source so Orby's in-flight
+      // sentence cuts off at once. We deliberately keep the shared output context
+      // OPEN and unlocked so the next call can reuse it without another gesture.
+      for (const src of this._scheduledSources) {
+        try { src.stop() } catch {}
+        try { src.disconnect() } catch {}
       }
+      this._scheduledSources = []
+      this._playHead = 0
     }
 
     _setStatus(text, pulsing = false) {
