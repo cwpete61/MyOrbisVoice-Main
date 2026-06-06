@@ -76,3 +76,19 @@ entitlements from the Hub (cached, fallback-to-local, hot-path safe).
 2. Bundle SKUs / pricing for Local + Reviews (product/pricing call).
 3. Migrate legacy subs (4e) now or leave grandfathered indefinitely?
 4. Who sends the customer billing-rebrand email + when (4a)?
+
+## 4b — DONE 2026-06-06 (Stripe price metadata)
+Tagged all 6 live Voice Stripe prices with metadata productCode=VOICE + plan
+(BASIC/PRO/PREMIER/ENTERPRISE/LTD ×2). Money-neutral (metadata only, no charge
+impact, inert until 4c). The Hub webhook can now map Voice subscription events.
+
+### 4c is the PIVOT — needs a conscious go (gated)
+4c (point Stripe webhook at the Hub) requires, and each is a real decision:
+- Backfill `subscription.metadata.tenantId` on live subs (so the Hub maps them) —
+  money-neutral but a live-Stripe write; needs Voice's stripe-sub-id ↔ tenant map.
+- Create a live Stripe webhook endpoint → hub.myorbisresults.com/webhooks/stripe
+  + put its whsec in the Hub (Hub starts receiving REAL billing events).
+- **Open decision:** retire the Phase 1b Voice→Hub push (Hub source = Stripe
+  direct) vs keep both (idempotent). 
+- New-checkout code must set subscription.metadata.tenantId going forward.
+This is the consolidation pivot — do it deliberately, Stripe-test-first, you-in-loop.
