@@ -110,3 +110,16 @@ stripe), then cleaned. Merged to master + deployed via deploy.sh api.
 
 Next (Phase 1b): paid-plan entitlement reconciliation Voice→Hub (point Stripe
 webhooks at the Hub too, or push entitlement changes from Voice). Then Phase 2 (SSO).
+
+## Phase 1b — EXECUTED 2026-06-05 (entitlement/billing reconciliation)
+Hub sync now fires from the single entitlement chokepoint
+(`syncEntitlementsFromPlan`) — covering signup, Stripe upgrades/cancels, admin
+grants. `syncTenantToHub` derives the current VOICE plan/status from the tenant's
+subscriptions (active preferred, plan-code mapped; else FREE). Best-effort,
+non-fatal, post-tx. Removed the redundant explicit Phase 1a signup calls.
+Verified live (signup → chokepoint → Hub VOICE/FREE/TRIALING). Deployed via
+deploy.sh api from master.
+
+Phase 1 (a+b) COMPLETE: the Hub now tracks Voice tenants + their VOICE
+entitlement/billing, for both existing (backfill) and new/changed tenants.
+Next: Phase 2 (SSO — Keycloak user import + Voice as OIDC client).
