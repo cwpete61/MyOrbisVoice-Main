@@ -5,6 +5,7 @@ import { hashToken, generateSecureToken, AppError, toSlug } from '@voiceautomati
 import type { RoleKey } from '@voiceautomation/types'
 import { getOrCreateStripeCustomer } from './stripe.service.js'
 import { syncEntitlementsFromPlan } from './entitlement.service.js'
+import { syncUserToKeycloak } from './keycloak-sync.service.js'
 import { attributeTenant, applyForAffiliate } from './affiliate.service.js'
 
 const SALT_ROUNDS = 12
@@ -101,6 +102,9 @@ export async function signupUser(data: {
     await attributeTenant(tenant.id, data.affiliateCode).catch(() => {})
   }
 
+  // Phase 2: provision the new user into Keycloak for SSO (best-effort, non-fatal).
+  await syncUserToKeycloak(user.id)
+
   const tokens = await issueTokens(user.id, user.email, tenant.id, 'tenant_owner', false)
   return { user: sanitizeUser(user), tenant: sanitizeTenant(tenant), ...tokens }
 }
@@ -196,6 +200,9 @@ export async function signupUserFromGoogle(data: {
   if (data.affiliateCode) {
     await attributeTenant(tenant.id, data.affiliateCode).catch(() => {})
   }
+
+  // Phase 2: provision the new user into Keycloak for SSO (best-effort, non-fatal).
+  await syncUserToKeycloak(user.id)
 
   const tokens = await issueTokens(user.id, user.email, tenant.id, 'tenant_owner', false)
   return { user: sanitizeUser(user), tenant: sanitizeTenant(tenant), ...tokens }
