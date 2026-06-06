@@ -140,3 +140,23 @@ Now users can self-set passwords (forgot-password / setup email). Rollout prereq
 #1 + #2 done. Remaining: #3 Google IdP (blocked on Google Console), #4 web button
 rebuild (NEXT_PUBLIC_OIDC_ENABLED), #5 flip OIDC_ENABLED + send the 9 imported
 users their password-setup emails, then retire local auth (gated).
+
+## SSO CUTOVER — LIVE 2026-06-05
+Coordinated go-live executed + verified:
+- `OIDC_ENABLED=true` (api) — /api/auth/oidc/login → Keycloak.
+- "Continue with MyOrbis" button live on app.myorbisvoice.com/login (web rebuilt
+  with NEXT_PUBLIC_OIDC_ENABLED=true). **Local username/password login still works**
+  (additive — not retired).
+- 9 real users emailed password-setup links (execute-actions-email, 204, 3-day).
+- Test-account filter added to hub-sync + keycloak-sync (skip @orbisvoice.test /
+  e2e-*); cleaned junk (KC=9 real, Hub e2e removed). Verified: a test signup no
+  longer reaches KC/Hub.
+
+Phase 2 (SSO) FUNCTIONALLY COMPLETE + LIVE. Users can SSO via Keycloak (set
+password from email → "Continue with MyOrbis") or keep local login.
+
+### Remaining follow-ups (non-blocking)
+- Brand/localize Keycloak emails (currently default template, English-only).
+- #3 Google IdP (blocked on Google Console) for the 1 Google user.
+- Retire local auth (Phase 2 final) once SSO adoption is confirmed.
+- Phase 3 (Voice reads entitlements from Hub) + Phase 4 (consolidated billing).
