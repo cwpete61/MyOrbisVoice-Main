@@ -51,12 +51,15 @@ import marketingKitRouter from './marketing-kit.js'
 import publicRouter from './public.js'
 import { publicBookingRouter } from './public-booking.js'
 import authGoogleRouter from './auth-google.js'
+import authOidcRouter from './auth-oidc.js'
 import { validateTwilioWebhook } from '../middleware/twilio-signature.js'
 
 const router: IRouter = Router()
 
 router.use('/', healthRouter)
 router.use('/api/auth', authRouter)
+// Phase 2.4 — Keycloak OIDC login (public, pre-auth; feature-flagged OFF by default)
+router.use('/api/auth/oidc', authOidcRouter)
 // Google Sign-In (Thing A) — anonymous OAuth, distinct from /api/integrations/google/*
 // (which connects an authenticated tenant's Gmail to the agent — Thing B).
 router.use('/api', authGoogleRouter)
