@@ -91,3 +91,19 @@ The backend spine for this already exists (Hub + entitlements + consolidated che
 2. **Enable checkout** (money-gated): set STRIPE_SECRET_KEY + CONSOLIDATED_CHECKOUT_ENABLED
    on the Hub; test in Stripe test mode first. Until then the UI's "Buy" → 503.
 3. Provisioning on purchase (Voice already provisions; storefront-purchase path).
+
+## Phase A — STOREFRONT LIVE 2026-06-06 (pending DNS)
+- New app: ~/Antigravity/MyOrbis-Storefront (Next.js, repo cwpete61/MyOrbis-Storefront).
+- Deployed to box #2 (myorbis-storefront-api, edge_net). Renders the LIVE Hub
+  catalog (server-side fetch of /v1/catalog with the service token) — all 5 VOICE
+  plans with prices. (`force-dynamic` so it fetches at runtime, not prerendered.)
+- Caddy route added: products.myorbisresults.com -> storefront:4300 (config valid,
+  reloaded).
+- **GO-LIVE STEP (you):** add DNS A `products.myorbisresults.com -> 109.123.249.34`
+  (box #2, DNS-only) → Caddy auto-issues the cert → publicly live.
+
+### Storefront remaining:
+- `/start` checkout flow (CTA target): collect email/business → create Hub tenant →
+  call /v1/tenants/:id/checkout → Stripe. Currently CTA links to /start (not built).
+- Enable live checkout (Hub: STRIPE_SECRET_KEY + CONSOLIDATED_CHECKOUT_ENABLED,
+  test-mode first) — until then it's a browse-only preview.
