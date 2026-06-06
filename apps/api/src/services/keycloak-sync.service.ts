@@ -32,6 +32,8 @@ export async function syncUserToKeycloak(userId: string): Promise<void> {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } })
     if (!user?.email) return
+    // Never provision test/automation accounts (deploy smoke signups etc.) into the IdP.
+    if (/(@orbisvoice\.test$)|(\.test$)|(^e2e-)/i.test(user.email)) return
     const token = await adminToken()
     const auth = { authorization: `Bearer ${token}` }
 

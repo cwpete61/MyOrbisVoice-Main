@@ -70,6 +70,8 @@ export async function syncTenantToHub(tenantId: string): Promise<void> {
       include: { businessProfile: true, stripeCustomerRef: true },
     })
     if (!tenant) return
+    // Skip test/automation tenants (deploy smoke signups etc.) — don't pollute the Hub.
+    if (/(@orbisvoice\.test$)|(\.test$)|(^e2e-)/i.test(tenant.registrationEmail ?? '')) return
 
     await hubPut(`/v1/tenants/${tenant.id}`, {
       slug: tenant.slug,
