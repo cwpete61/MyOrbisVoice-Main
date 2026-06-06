@@ -76,3 +76,18 @@ myorbisresults.com
 
 ## 9. Bottom line
 The backend spine for this already exists (Hub + entitlements + consolidated checkout + SSO + Stripe feed). This sketch adds the **storefront UI + catalog + per-product provisioning** on top. Start with **Phase A (Voice-only storefront)** to make it real + revenue-capable, then add products into the same picker. This is the strategic endpoint of the whole consolidation.
+
+## Phase A — backend foundation DONE 2026-06-06
+- Hub price catalog: `ProductPlan` model + migration; `GET /v1/catalog` (storefront
+  menu) + `PUT /v1/catalog/:product/:plan` (seed/admin).
+- VOICE catalog seeded: Basic $197/mo, Pro $497/mo, Premier $997/mo, Enterprise
+  $1997/mo, Lifetime $497 one-time (mapped to the live Stripe Prices).
+- Checkout now resolves `{productCode, plan}` → Stripe Price via the catalog.
+- All inert (consolidated checkout still flag-off). No customer/billing impact.
+
+### Phase A remaining:
+1. **Storefront UI** (new MyOrbisResults Next.js app): reads /v1/catalog → picker
+   → calls /v1/tenants/:id/checkout. (Needs repo decision — new app.)
+2. **Enable checkout** (money-gated): set STRIPE_SECRET_KEY + CONSOLIDATED_CHECKOUT_ENABLED
+   on the Hub; test in Stripe test mode first. Until then the UI's "Buy" → 503.
+3. Provisioning on purchase (Voice already provisions; storefront-purchase path).
