@@ -475,6 +475,14 @@ else
   echo "  ⚠ if any failure looks real, roll back via the procedure in CLAUDE.md."
 fi
 
+# Clean up the disposable @orbisvoice.test tenant(s) the api smoke just created.
+# The smoke signs up via the public API and has no admin creds to self-clean, so
+# we soft-delete directly (deploy already has box access). Without this, a junk
+# tenant + user accumulates on every deploy (and would otherwise sync to the Hub).
+ssh "$SERVER" "docker exec myorbisvoice-postgres psql -U voiceautomation -d voiceautomation -c \"UPDATE \\\"Tenant\\\" SET \\\"deletedAt\\\"=now() WHERE \\\"deletedAt\\\" IS NULL AND \\\"registrationEmail\\\" LIKE '%@orbisvoice.test'; UPDATE \\\"User\\\" SET status='SUSPENDED' WHERE status='ACTIVE' AND email LIKE '%@orbisvoice.test';\"" >/dev/null 2>&1 \
+  && ok "Smoke cleanup: @orbisvoice.test test tenants soft-deleted" \
+  || echo "  ⚠ smoke cleanup skipped (non-fatal)"
+
 # ── 6c. Browser smoke (opt-in via E2E_ADMIN_LOGIN_EMAIL) ──────────────────
 # Heavier customer-journey flow (signup → onboarding → channels) requiring
 # admin creds for cleanup. Skipped without creds. Set
