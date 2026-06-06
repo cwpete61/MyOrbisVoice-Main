@@ -113,3 +113,20 @@ This is the consolidation pivot — do it deliberately, Stripe-test-first, you-i
   customers are billed) + central MyOrbisResults checkout.
 - 4e migrate legacy subs (optional; or leave grandfathered + on Phase 1b).
 - Phase 3 enforcement flip (Voice reads entitlements from Hub) — after the above.
+
+## 4a — PREPARED 2026-06-06 (email drafted; execution = your dashboard + send)
+- Customer heads-up email drafted (bilingual, on-brand): docs/comms/billing-rebrand-email.md.
+  NOT sent.
+- 4a Stripe change (public business name + statement descriptor → MyOrbisResults)
+  is a **Stripe Dashboard** action on your own account (not reliably API-settable
+  for the platform's own account) → **you do it in the dashboard, after the email
+  goes out.** Reversible (display setting).
+
+## Open decisions — resolved where safe:
+1. Retire Phase 1b? → NO, keep both (done, 4c).
+2. Bundle SKUs/pricing for Local+Reviews → YOUR call (product/pricing).
+3. Migrate legacy subs? → DEFAULT: grandfather (leave on Phase 1b); revisit later.
+4. Who sends rebrand email + when → YOUR call (operational).
+
+## Status: all autonomous-safe Phase 4 work done (4b, 4c). 4a needs you (email
+## send + dashboard). 4d/Phase-3-flip are charge/access-affecting — gated.
