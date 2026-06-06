@@ -130,3 +130,19 @@ This is the consolidation pivot — do it deliberately, Stripe-test-first, you-i
 
 ## Status: all autonomous-safe Phase 4 work done (4b, 4c). 4a needs you (email
 ## send + dashboard). 4d/Phase-3-flip are charge/access-affecting — gated.
+
+## 4d — SCAFFOLDED 2026-06-06 (flag-gated, inert)
+Hub: POST /v1/tenants/:id/checkout (MyOrbis-Hub/src/routes/checkout.ts) — creates
+ONE Stripe subscription on the tenant's customer, one line item per product →
+consolidated invoice; subscription.metadata.tenantId for Hub mapping. DISABLED
+unless CONSOLIDATED_CHECKOUT_ENABLED + STRIPE_SECRET_KEY set (neither in prod →
+503). Verified inert. No live Stripe key in the Hub. Caller supplies Stripe price
+IDs (a price catalog / bundle SKUs = open decision #2, yours).
+
+To enable later (gated): set STRIPE_SECRET_KEY + CONSOLIDATED_CHECKOUT_ENABLED on
+the Hub, decide bundle SKUs/pricing, point central onboarding at this endpoint,
+test in Stripe test mode first.
+
+### Phase 4 status: 4b ✓ 4c ✓ (verified) 4d ✓ scaffolded-inert.
+Remaining (your action / charge-affecting): 4a (email + dashboard descriptor),
+4d enablement (key+flag+pricing), 4e legacy migration, then Phase 3 enforcement flip.
