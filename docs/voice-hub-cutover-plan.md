@@ -97,3 +97,16 @@ read-only). Verified: 11 tenants/profiles/entitlements + 9 Stripe links; entitle
 mix ENTERPRISE×1, PREMIER×1, PRO×2, FREE×7; **canonical IDs == Voice IDs**;
 re-run idempotent (stays 11). Hub data is inert until Phase 3. Voice untouched.
 Next: Phase 1 (new/expansion onboarding+billing via Hub) or Phase 2 (SSO).
+
+## Phase 1a — EXECUTED 2026-06-05 (best-effort tenant sync on signup)
+Voice now mirrors NEW tenants into the Hub at signup (both password + Google
+paths) via `apps/api/src/services/hub-sync.service.ts` — idempotent Hub PUTs
+(tenant + profile + VOICE/FREE/TRIALING entitlement + stripe-customer),
+best-effort + non-fatal (no-ops if `HUB_URL`/`HUB_SERVICE_TOKEN` unset; never
+breaks signup). Requires env on the Voice api: `HUB_URL=https://hub.myorbisresults.com`
++ `HUB_SERVICE_TOKEN` (= Hub SERVICE_TOKEN) in `/opt/myorbisvoice/infrastructure/docker/.env.prod`.
+Verified on prod: a test signup auto-appeared in the Hub (VOICE/FREE/TRIALING +
+stripe), then cleaned. Merged to master + deployed via deploy.sh api.
+
+Next (Phase 1b): paid-plan entitlement reconciliation Voice→Hub (point Stripe
+webhooks at the Hub too, or push entitlement changes from Voice). Then Phase 2 (SSO).
