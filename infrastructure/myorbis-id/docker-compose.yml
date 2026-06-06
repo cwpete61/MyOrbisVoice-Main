@@ -51,6 +51,10 @@ services:
     # voice_net: reach the host Postfix relay (172.18.0.1:25, trusts this bridge)
     # so Keycloak can send password-reset/verify emails. id_net: own DB.
     networks: [id_net, voice_net]
+    volumes:
+      # Custom MyOrbis login theme (brand + light/dark toggle). Mount the single
+      # theme subdir so the built-in themes (keycloak.v2, etc.) stay intact.
+      - ./themes/myorbis:/opt/keycloak/themes/myorbis:ro
 
 networks:
   id_net:

@@ -1,0 +1,67 @@
+/* MyOrbis login theme — brand + light/dark (data-theme on <html>). Targets both
+   keycloak.v2 (PatternFly v5 .pf-v5-c-*) and legacy .login-pf selectors. */
+:root {
+  --mor-teal: #23c4c4; --mor-teal-bright: #46e6e6; --mor-teal-dim: #15817f;
+  --mor-accent: #f5b53d;
+  --mor-bg: #06100f; --mor-bg2: #0a1716; --mor-card: #0d1f1d;
+  --mor-line: rgba(43, 212, 212, 0.18); --mor-text: #eafcfb; --mor-muted: #88b6b3;
+  --mor-input: #0a1817;
+}
+:root[data-theme="light"] {
+  --mor-bg: #eef5f4; --mor-bg2: #e3eeec; --mor-card: #ffffff;
+  --mor-line: rgba(14, 143, 143, 0.20); --mor-text: #0a201f; --mor-muted: #3f615f;
+  --mor-teal: #0e8f8f; --mor-teal-bright: #0a9c9c; --mor-teal-dim: #0c6f6e; --mor-accent: #cf8a14;
+  --mor-input: #ffffff;
+}
+
+html, body, body.login-pf, .login-pf body,
+.pf-v5-c-page, .pf-v5-c-login, .pf-v5-c-login__main {
+  background:
+    radial-gradient(900px 520px at 12% -8%, rgba(35, 196, 196, 0.16), transparent 60%),
+    radial-gradient(820px 520px at 100% 8%, rgba(245, 181, 61, 0.10), transparent 55%),
+    var(--mor-bg) !important;
+  color: var(--mor-text) !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important;
+}
+
+/* card */
+.pf-v5-c-login__main, .pf-v5-c-card, #kc-content, .card-pf, .login-pf-page .card-pf {
+  background: linear-gradient(180deg, var(--mor-bg2), var(--mor-card)) !important;
+  border: 1px solid var(--mor-line) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 30px 80px -45px rgba(0,0,0,.6) !important;
+  color: var(--mor-text) !important;
+}
+h1, h2, #kc-page-title, .pf-v5-c-title { color: var(--mor-text) !important; }
+label, .pf-v5-c-form__label-text, #kc-form-options, .pf-v5-c-form__group-label { color: var(--mor-muted) !important; }
+a, .pf-v5-c-button.pf-m-link { color: var(--mor-teal-bright) !important; }
+
+/* inputs */
+input[type="text"], input[type="password"], input[type="email"], .pf-v5-c-form-control, .pf-v5-c-text-input-group__text-input {
+  background: var(--mor-input) !important;
+  border: 1px solid var(--mor-line) !important;
+  color: var(--mor-text) !important;
+  border-radius: 10px !important;
+}
+input:focus, .pf-v5-c-form-control:focus { outline: none !important; border-color: var(--mor-teal) !important; box-shadow: 0 0 0 3px rgba(35,196,196,.18) !important; }
+
+/* primary button */
+.pf-v5-c-button.pf-m-primary, input[type="submit"], #kc-login, .btn-primary {
+  background: linear-gradient(100deg, var(--mor-teal), var(--mor-teal-dim)) !important;
+  border: none !important; color: #04100f !important; font-weight: 700 !important; border-radius: 11px !important;
+}
+.pf-v5-c-button.pf-m-primary:hover { filter: brightness(1.1) !important; }
+
+/* locale (EN/ES) selector that Keycloak renders when i18n is on */
+#kc-locale, .pf-v5-c-dropdown, #kc-locale-dropdown { color: var(--mor-text) !important; }
+
+/* theme toggle injected by theme.js */
+.mor-theme-toggle {
+  position: fixed; top: 16px; right: 16px; z-index: 999;
+  width: 38px; height: 38px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--mor-card); border: 1px solid var(--mor-line); color: var(--mor-muted);
+  cursor: pointer; transition: color .15s, border-color .15s;
+}
+.mor-theme-toggle:hover { color: var(--mor-teal-bright); border-color: var(--mor-teal); }
+.mor-theme-toggle svg { width: 18px; height: 18px; }
