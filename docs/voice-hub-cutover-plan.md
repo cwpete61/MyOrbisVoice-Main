@@ -123,3 +123,16 @@ deploy.sh api from master.
 Phase 1 (a+b) COMPLETE: the Hub now tracks Voice tenants + their VOICE
 entitlement/billing, for both existing (backfill) and new/changed tenants.
 Next: Phase 2 (SSO — Keycloak user import + Voice as OIDC client).
+
+## Phase 3 — foundation validated 2026-06-06 (enforcement flip DEFERRED)
+Read-only reconciliation: all 9 active Voice tenants' VOICE entitlement (plan +
+status) MATCH the Hub exactly (0 mismatch, 0 missing) — Phase 1b sync is correct
+across the base, so the Hub is a trustworthy mirror.
+
+**Decision: do NOT flip Voice's live entitlement gating to read from the Hub yet.**
+It's circular (Voice still feeds the Hub) + adds live risk to paying-customer
+gating for no benefit until the Hub is an INDEPENDENT source. The flip belongs
+AFTER Phase 4 (consolidated billing makes the Hub the real billing source). When
+flipped: read Hub entitlement (cached) → map plan→Voice feature entitlements →
+keep local enforcement + fall back to local on Hub-miss; widget/inbound stay on
+the local cached projection (never block voice on Hub).
