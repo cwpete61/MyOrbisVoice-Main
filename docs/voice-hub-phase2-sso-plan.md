@@ -73,3 +73,24 @@ it against a disposable account and delete after.
 - **2.4** Voice as OIDC client: add "Sign in with MyOrbis" alongside local auth,
   validate KC tokens (map by email), then flip primary + retire local. Phased,
   reversible, feature-flagged.
+
+## 2.3 / 2.4 status (2026-06-05)
+- **2.3 Google IdP — BLOCKED:** Voice `GOOGLE_CLIENT_ID` empty in env; configuring
+  Keycloak's Google IdP also needs the Keycloak broker redirect URI added to the
+  Google OAuth app in Google Cloud Console (manual, owner-only). Deferred — the 1
+  Google user can password-reset like the rest, or do this later.
+- **2.4 STARTED (safe step):** registered Keycloak confidential client
+  `myorbis-voice` (redirect `https://api.myorbisvoice.com/api/auth/oidc/callback`,
+  webOrigin app.myorbisvoice.com). Secret/issuer/client-id staged in Voice
+  `/opt/myorbisvoice/infrastructure/docker/.env.prod` (OIDC_CLIENT_SECRET/
+  OIDC_ISSUER/OIDC_CLIENT_ID).
+
+### 2.4 remaining — GATED (user-facing login change), build deliberately:
+1. Voice api: `/api/auth/oidc/login` (redirect → KC authorize) + `/api/auth/oidc/
+   callback` (code exchange w/ client secret → validate id_token → find Voice user
+   by email → issue Voice session). Behind a feature flag (OFF).
+2. Voice web: "Sign in with MyOrbis" button on the login page (flag-gated).
+3. **Test with ONE account in a browser** (set that KC user a password) end-to-end
+   before any default change.
+4. Flip primary → retire local auth (separate gate). Reversible via the flag.
+Recommended as a focused, browser-tested unit — not a rushed flip.
