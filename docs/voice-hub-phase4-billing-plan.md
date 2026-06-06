@@ -92,3 +92,24 @@ impact, inert until 4c). The Hub webhook can now map Voice subscription events.
   direct) vs keep both (idempotent). 
 - New-checkout code must set subscription.metadata.tenantId going forward.
 This is the consolidation pivot — do it deliberately, Stripe-test-first, you-in-loop.
+
+## 4c — DONE 2026-06-06 (Stripe→Hub webhook live, keep-both mode)
+- Created live Stripe webhook endpoint → hub.myorbisresults.com/webhooks/stripe
+  (5 sub/customer events, real whsec loaded into Hub, Hub recreated + healthy).
+  Voice's own webhook untouched.
+- New subs already carry subscription.metadata.tenantId (Voice checkout sets it) +
+  prices tagged (4b) → Hub maps them directly.
+- **Finding:** 4 of 5 active subs are LEGACY (no tenantId metadata + untagged
+  legacy prices) → the direct Hub feed skips them. **Phase 1b (Voice→Hub push)
+  covers them, so the Hub matrix stays accurate.**
+- **DECISION (open #1): keep BOTH feeds. Do NOT retire Phase 1b** — the direct
+  feed can't fully map legacy subs; Phase 1b is the complete/reliable feed.
+- Customer impact: NONE. The Hub matrix is informational (not enforced by Voice
+  until the Phase 3 flip), so the feed source change charges/affects nothing.
+
+### Remaining (4d/4e + Phase 3 flip) — still gated, money/charge-affecting:
+- 4a Stripe display rebrand (needs customer comms — descriptor change).
+- 4d consolidated multi-item subscription for NEW checkouts (changes how new
+  customers are billed) + central MyOrbisResults checkout.
+- 4e migrate legacy subs (optional; or leave grandfathered + on Phase 1b).
+- Phase 3 enforcement flip (Voice reads entitlements from Hub) — after the above.
