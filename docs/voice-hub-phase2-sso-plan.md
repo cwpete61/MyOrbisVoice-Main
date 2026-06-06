@@ -109,3 +109,20 @@ OFF**: /login bounces to /login (verified 302). No user impact.
    password, run authorize->callback->session), confirm, then surface to all.
 3. State cookie verified; consider id_token signature verify (currently trusts
    userinfo over TLS to the same KC) — fine, optionally harden.
+
+## Rollout prereq #2 — DONE 2026-06-05 (signup -> Keycloak)
+New Voice signups now auto-provision into Keycloak (forced-reset) via
+apps/api/src/services/keycloak-sync.service.ts, using a scoped service-account
+client `myorbis-voice-provisioner` (manage-users only, client_credentials) — not
+the admin password. Best-effort/non-fatal. Verified live (test signup -> KC user
+with UPDATE_PASSWORD). Existing 9 (bulk import) + all new users now in Keycloak.
+
+Reminder: deploy.sh *restarts* the api (keeps env); new env vars need a
+`docker compose up -d api` recreate to load (hit twice now — HUB_*, KC_PROVISION_*).
+
+### Remaining rollout prereqs:
+- #1 Keycloak SMTP + resetPasswordAllowed=true (users self-set passwords) — or
+  admin-set temp passwords. **NOT done.**
+- #3 Google IdP (2.3) — blocked on Google Console.
+- #4 Web button (NEXT_PUBLIC_OIDC_ENABLED + web rebuild) — built, off.
+- #5 Flip OIDC_ENABLED + retire local — gated, after #1.
