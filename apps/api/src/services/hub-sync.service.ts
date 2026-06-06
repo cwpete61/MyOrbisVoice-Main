@@ -1,18 +1,33 @@
 import { prisma } from '../lib/prisma.js'
 
 /**
- * MyOrbis Account Hub sync (Phase 1a) — best-effort, NON-FATAL.
+ * MyOrbis Account Hub sync — best-effort, NON-FATAL.
  *
- * On new-tenant signup, mirror the tenant's identity into the parent-brand
- * Account Hub (canonical id == Voice tenant id). Purely additive: if the Hub is
- * unconfigured or unreachable, this no-ops/logs and Voice signup is unaffected.
+ * Mirrors a tenant's identity + current VOICE entitlement + Stripe customer into
+ * the parent-brand Account Hub (canonical id == Voice tenant id). Called on
+ * signup (Phase 1a) and after any entitlement change (Phase 1b, via
+ * syncEntitlementsFromPlan), so the Hub tracks Voice's billing state.
  *
- * Entitlement/billing reconciliation is owned by a later phase (Stripe → Hub);
- * here we push a baseline VOICE entitlement reflecting the tenant's free/trial
- * state at signup. Never throws.
+ * Purely additive: no-ops when HUB_URL/HUB_SERVICE_TOKEN are unset; all failures
+ * caught + logged; never throws into the caller. Runs outside DB transactions.
  */
 const HUB_URL = process.env.HUB_URL
 const HUB_TOKEN = process.env.HUB_SERVICE_TOKEN
+
+// Voice plan code -> portfolio plan name.
+const PLAN_MAP: Record<string, string> = {
+  free: 'FREE',
+  basic_monthly: 'BASIC',
+  pro_monthly: 'PRO',
+  premier_monthly: 'PREMIER',
+  enterprise_monthly: 'ENTERPRISE',
+  ltd: 'LTD',
+}
+const SUB_STATUS_MAP: Record<string, string> = {
+  ACTIVE: 'ACTIVE',
+  CANCELED: 'CANCELED',
+  PAST_DUE: 'PAST_DUE',
+}
 
 async function hubPut(path: string, body: unknown): Promise<void> {
   const res = await fetch(`${HUB_URL}${path}`, {
@@ -21,6 +36,30 @@ async function hubPut(path: string, body: unknown): Promise<void> {
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`hub PUT ${path} -> ${res.status}`)
+}
+
+/** Derive the tenant's current VOICE entitlement from its subscriptions
+ *  (active preferred, else most recent), falling back to the free tier. */
+async function deriveVoiceEntitlement(tenantId: string, tenantStatus: string) {
+  let sub = await prisma.subscription.findFirst({
+    where: { tenantId, status: 'ACTIVE' },
+    orderBy: { createdAt: 'desc' },
+    include: { plan: true },
+  })
+  if (!sub) {
+    sub = await prisma.subscription.findFirst({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      include: { plan: true },
+    })
+  }
+  if (!sub?.plan) {
+    return { plan: 'FREE', status: tenantStatus === 'ACTIVE' ? 'ACTIVE' : 'TRIALING' }
+  }
+  return {
+    plan: PLAN_MAP[sub.plan.code] ?? sub.plan.code.toUpperCase(),
+    status: SUB_STATUS_MAP[sub.status] ?? 'TRIALING',
+  }
 }
 
 export async function syncTenantToHub(tenantId: string): Promise<void> {
@@ -45,10 +84,8 @@ export async function syncTenantToHub(tenantId: string): Promise<void> {
       },
     })
 
-    await hubPut(`/v1/tenants/${tenant.id}/entitlements/VOICE`, {
-      plan: 'FREE',
-      status: tenant.status === 'ACTIVE' ? 'ACTIVE' : 'TRIALING',
-    })
+    const ent = await deriveVoiceEntitlement(tenant.id, tenant.status)
+    await hubPut(`/v1/tenants/${tenant.id}/entitlements/VOICE`, ent)
 
     if (tenant.stripeCustomerRef?.stripeCustomerId) {
       await hubPut(`/v1/tenants/${tenant.id}/stripe-customer`, {

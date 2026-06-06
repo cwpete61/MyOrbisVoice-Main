@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js'
+import { syncTenantToHub } from './hub-sync.service.js'
 
 export async function syncEntitlementsFromPlan(tenantId: string, planId: string): Promise<void> {
   const entitlements = await prisma.planEntitlement.findMany({ where: { planId } })
@@ -28,6 +29,11 @@ export async function syncEntitlementsFromPlan(tenantId: string, planId: string)
       }),
     ),
   )
+
+  // Phase 1b — reflect the new entitlement/billing state into the Account Hub
+  // (best-effort, non-fatal). Single chokepoint: covers signup, Stripe
+  // upgrades/cancels, and admin plan grants.
+  await syncTenantToHub(tenantId)
 }
 
 export async function getEffectiveEntitlements(tenantId: string) {
