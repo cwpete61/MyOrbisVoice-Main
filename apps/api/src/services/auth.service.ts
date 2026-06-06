@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { prisma } from '../lib/prisma.js'
+import { syncTenantToHub } from './hub-sync.service.js'
 import { signAccessToken } from '../lib/jwt.js'
 import { hashToken, generateSecureToken, AppError, toSlug } from '@voiceautomation/shared'
 import type { RoleKey } from '@voiceautomation/types'
@@ -101,6 +102,9 @@ export async function signupUser(data: {
     await attributeTenant(tenant.id, data.affiliateCode).catch(() => {})
   }
 
+  // Phase 1a — mirror the new tenant into the Account Hub (best-effort, non-fatal).
+  await syncTenantToHub(tenant.id)
+
   const tokens = await issueTokens(user.id, user.email, tenant.id, 'tenant_owner', false)
   return { user: sanitizeUser(user), tenant: sanitizeTenant(tenant), ...tokens }
 }
@@ -196,6 +200,9 @@ export async function signupUserFromGoogle(data: {
   if (data.affiliateCode) {
     await attributeTenant(tenant.id, data.affiliateCode).catch(() => {})
   }
+
+  // Phase 1a — mirror the new tenant into the Account Hub (best-effort, non-fatal).
+  await syncTenantToHub(tenant.id)
 
   const tokens = await issueTokens(user.id, user.email, tenant.id, 'tenant_owner', false)
   return { user: sanitizeUser(user), tenant: sanitizeTenant(tenant), ...tokens }
