@@ -107,3 +107,15 @@ The backend spine for this already exists (Hub + entitlements + consolidated che
   call /v1/tenants/:id/checkout → Stripe. Currently CTA links to /start (not built).
 - Enable live checkout (Hub: STRIPE_SECRET_KEY + CONSOLIDATED_CHECKOUT_ENABLED,
   test-mode first) — until then it's a browse-only preview.
+
+## /start checkout flow BUILT 2026-06-06
+- /start?product=&plan= → form (business + email) → server action: create Hub
+  tenant (lead) → POST /v1/tenants/:id/checkout → redirect to Stripe.
+- Checkout flag-gated (503) → shows "you're on the list" (lead captured as TRIAL
+  tenant). When enabled → redirects to Stripe Checkout.
+- Fixed: Next standalone binding (pin HOSTNAME=0.0.0.0 in Dockerfile) — was 000.
+- Verified: / 200 (catalog), /start 200 (form), Hub flow tenant→checkout→503.
+
+**Phase A storefront COMPLETE as a preview.** Go-live needs: (1) DNS
+products.myorbisresults.com → 109.123.249.34, (2) enable live checkout (Hub
+STRIPE_SECRET_KEY + CONSOLIDATED_CHECKOUT_ENABLED, Stripe test-mode first).
