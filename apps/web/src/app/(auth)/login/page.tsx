@@ -179,6 +179,19 @@ export default function LoginPage() {
           {t('auth.login.continueWithGoogle')}
         </button>
 
+        {process.env['NEXT_PUBLIC_OIDC_ENABLED'] === 'true' && (
+          <button
+            type="button"
+            onClick={() => {
+              const apiBase = process.env['NEXT_PUBLIC_API_URL'] ?? 'https://api.myorbisvoice.com'
+              window.location.href = `${apiBase}/api/auth/oidc/login`
+            }}
+            className="btn-ghost w-full flex items-center justify-center gap-2.5 mt-3"
+          >
+            {t('auth.login.continueWithMyOrbis')}
+          </button>
+        )}
+
         <p className="text-center mt-5 text-sm" style={{ color: 'var(--text-tertiary)' }}>
           {t('auth.login.noAccount')}{' '}
           <Link href="/signup" className="font-semibold" style={{ color: 'oklch(55% 0.11 193)' }}>
