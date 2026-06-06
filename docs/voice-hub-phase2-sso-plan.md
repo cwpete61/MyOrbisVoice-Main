@@ -126,3 +126,17 @@ Reminder: deploy.sh *restarts* the api (keeps env); new env vars need a
 - #3 Google IdP (2.3) — blocked on Google Console.
 - #4 Web button (NEXT_PUBLIC_OIDC_ENABLED + web rebuild) — built, off.
 - #5 Flip OIDC_ENABLED + retire local — gated, after #1.
+
+## Rollout prereq #1 — DONE 2026-06-05 (Keycloak SMTP)
+Keycloak attached to the `myorbisvoice_internal` bridge (gw 172.18.0.1) so it can
+relay through the host Postfix that already trusts that bridge — NO Postfix change.
+Realm SMTP set: host 172.18.0.1:25, from notify@myorbisvoice.com, no auth;
+`resetPasswordAllowed=true`. Verified: execute-actions-email → HTTP 204 + Postfix
+logged the relay (full ehlo/mail/rcpt/data/quit from the IdP container).
+Persisted in infrastructure/myorbis-id/docker-compose.yml (voice_net external) so
+a Keycloak recreate keeps SMTP.
+
+Now users can self-set passwords (forgot-password / setup email). Rollout prereqs
+#1 + #2 done. Remaining: #3 Google IdP (blocked on Google Console), #4 web button
+rebuild (NEXT_PUBLIC_OIDC_ENABLED), #5 flip OIDC_ENABLED + send the 9 imported
+users their password-setup emails, then retire local auth (gated).

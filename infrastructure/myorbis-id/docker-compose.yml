@@ -48,11 +48,16 @@ services:
     ports:
       - "127.0.0.1:8080:8080"   # http (admin/SSO) — localhost only until proxied
       - "127.0.0.1:9000:9000"   # management/health — localhost only
-    networks: [id_net]
+    # voice_net: reach the host Postfix relay (172.18.0.1:25, trusts this bridge)
+    # so Keycloak can send password-reset/verify emails. id_net: own DB.
+    networks: [id_net, voice_net]
 
 networks:
   id_net:
     name: myorbis_id_net
+  voice_net:
+    name: myorbisvoice_internal
+    external: true
 
 volumes:
   id_db:
