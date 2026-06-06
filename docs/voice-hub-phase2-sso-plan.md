@@ -94,3 +94,18 @@ it against a disposable account and delete after.
    before any default change.
 4. Flip primary → retire local auth (separate gate). Reversible via the flag.
 Recommended as a focused, browser-tested unit — not a rushed flip.
+
+## 2.4 API side — DONE 2026-06-05 (flagged OFF, inert)
+Voice api OIDC routes deployed: `/api/auth/oidc/login` + `/callback`
+(apps/api/src/routes/auth-oidc.ts), confidential client `myorbis-voice`, CSRF
+state cookie, code-exchange -> userinfo -> find user by email ->
+issueTokensForUserId -> tokens to SPA via URL fragment. **OIDC_ENABLED unset =
+OFF**: /login bounces to /login (verified 302). No user impact.
+
+### Remaining (GATED — user-facing):
+1. Web: `/oidc-complete` page (read token fragment -> setTokens -> /dashboard) +
+   "Sign in with MyOrbis" button on the login page (env-gated NEXT_PUBLIC_OIDC_ENABLED).
+2. Flip `OIDC_ENABLED=true`, **browser test ONE account** (set that KC user a
+   password, run authorize->callback->session), confirm, then surface to all.
+3. State cookie verified; consider id_token signature verify (currently trusts
+   userinfo over TLS to the same KC) — fine, optionally harden.
