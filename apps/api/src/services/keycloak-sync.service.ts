@@ -52,6 +52,8 @@ export async function syncUserToKeycloak(userId: string): Promise<void> {
         emailVerified: true,
         firstName: user.firstName ?? undefined,
         lastName: user.lastName ?? undefined,
+        // Carry the user's language so Keycloak sends localized (en/es) emails + UI.
+        attributes: { locale: [user.preferredLocale || 'en'] },
         requiredActions: ['UPDATE_PASSWORD'],
       }),
     })
