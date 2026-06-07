@@ -80,23 +80,30 @@ export function normalizeForVoice(effective: Record<string, unknown>): BusinessD
   }
 }
 
-async function getHubDNA(tenantId: string) {
+// Short cache + degrade-to-stale so the voice hot path never makes a Hub call per
+// session and never breaks if the Hub blips.
+type HubDNA = { id: string; tenantId: string; version: number; isActive: boolean; createdAt: Date; updatedAt: Date } & BusinessDNAInput
+const HUB_TTL_MS = 30_000
+const hubCache = new Map<string, { at: number; dna: HubDNA | null }>()
+
+async function getHubDNA(tenantId: string): Promise<HubDNA | null> {
+  const cached = hubCache.get(tenantId)
+  if (cached && Date.now() - cached.at < HUB_TTL_MS) return cached.dna
   if (!HUB_URL || !HUB_SVC) return null
   try {
     const res = await fetch(`${HUB_URL}/v1/tenants/${tenantId}/dna/effective?product=VOICE`, {
       headers: { authorization: `Bearer ${HUB_SVC}` },
     })
-    if (!res.ok) return null
+    if (res.status === 404) { hubCache.set(tenantId, { at: Date.now(), dna: null }); return null }
+    if (!res.ok) throw new Error(`hub ${res.status}`)
     const data = (await res.json()) as { effective?: Record<string, unknown>; version?: number }
-    if (!data.effective) return null
+    if (!data.effective) { hubCache.set(tenantId, { at: Date.now(), dna: null }); return null }
     const now = new Date()
-    return {
-      id: 'hub', tenantId, version: data.version ?? 0, isActive: true,
-      ...normalizeForVoice(data.effective),
-      createdAt: now, updatedAt: now,
-    }
+    const dna: HubDNA = { id: 'hub', tenantId, version: data.version ?? 0, isActive: true, ...normalizeForVoice(data.effective), createdAt: now, updatedAt: now }
+    hubCache.set(tenantId, { at: Date.now(), dna })
+    return dna
   } catch {
-    return null
+    return cached ? cached.dna : null // serve stale rather than fail the session
   }
 }
 
