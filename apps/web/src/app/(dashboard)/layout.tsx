@@ -90,7 +90,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <AuthGuard>
-      <IdleTimeout redirectTo="/login" />
+      <IdleTimeout redirectTo="https://myorbisresults.com" />
       {/* h-[100dvh] not h-screen — iOS Safari's 100vh includes chrome that's
          actually hiding part of the layout. Desktop sidebar at lg: (≥1024px)
          so iPad portrait (768px) gets the full-height drawer instead of a

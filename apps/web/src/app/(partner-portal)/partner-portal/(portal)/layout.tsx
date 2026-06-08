@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { clearTokens } from '@/lib/auth'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
@@ -51,7 +51,6 @@ function Icon({ d }: { d: string }) {
 
 export default function AffiliatePortalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const router = useRouter()
   const t = useT()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -65,7 +64,7 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
 
   function logout() {
     clearTokens()
-    router.push('/partner-portal/login')
+    window.location.href = 'https://myorbisresults.com'
   }
 
   // Sidebar inner content — shared by the desktop rail + the mobile drawer.
@@ -182,7 +181,7 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
   // a 224px nested-scroll column with no scrollbar cue.
   return (
     <div className="h-[100dvh] flex overflow-hidden" style={{ background: 'var(--surface-app)' }}>
-      <IdleTimeout redirectTo="/partner-portal/login" />
+      <IdleTimeout redirectTo="https://myorbisresults.com" />
 
       {/* ── Desktop sidebar ──────────────────────────────────────────────── */}
       <aside className="hidden lg:flex w-56 flex-shrink-0 flex-col" style={{ background: 'var(--surface-raised)', borderRight: '1px solid var(--border-subtle)' }}>

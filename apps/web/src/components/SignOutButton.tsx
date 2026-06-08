@@ -1,11 +1,12 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { clearTokens, getRefreshToken } from '@/lib/auth'
 import { useT } from '@/lib/i18n/I18nProvider'
 
+// All roles land on the umbrella site after logout.
+const LOGOUT_REDIRECT = 'https://myorbisresults.com'
+
 export function SignOutButton() {
-  const router = useRouter()
   const t = useT()
 
   async function handleSignOut() {
@@ -19,7 +20,7 @@ export function SignOutButton() {
       }).catch(() => {})
     }
     clearTokens()
-    router.push('/login')
+    window.location.href = LOGOUT_REDIRECT
   }
 
   return (

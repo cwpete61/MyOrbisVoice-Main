@@ -54,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <AuthGuard>
-      <IdleTimeout redirectTo="/login" />
+      <IdleTimeout redirectTo="https://myorbisresults.com" />
       {/* h-[100dvh] (dynamic viewport height) instead of h-screen / 100vh so
          iOS Safari's collapsing chrome doesn't eat layout space. Desktop rail
          at lg: (≥1024px) — iPad portrait gets the full-height drawer. */}

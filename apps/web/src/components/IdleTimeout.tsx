@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { clearTokens } from '@/lib/auth'
 import { useT } from '@/lib/i18n/I18nProvider'
 
@@ -34,7 +33,6 @@ export function IdleTimeout({
   redirectTo,
 }: Props) {
   const t = useT()
-  const router = useRouter()
   const [warning, setWarning] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(Math.ceil(graceMs / 1000))
 
@@ -53,8 +51,8 @@ export function IdleTimeout({
     clearAllTimers()
     setWarning(false)
     clearTokens()
-    router.push(redirectTo)
-  }, [router, redirectTo])
+    window.location.href = redirectTo
+  }, [redirectTo])
 
   const startIdleTimer = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
