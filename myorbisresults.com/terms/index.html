@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>/* mor_theme: light/dark — pre-paint set + nav toggle (self-contained, all pages) */
+(function(){try{var t=localStorage.getItem('mor_theme');if(t!=='light'&&t!=='dark'){t='dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+document.addEventListener('DOMContentLoaded',function(){
+  var cta=document.querySelector('.nav-cta');if(!cta||cta.querySelector('.theme-toggle'))return;
+  var SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></svg>';
+  var MOON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
+  function cur(){return document.documentElement.getAttribute('data-theme')||'dark';}
+  var b=document.createElement('button');b.type='button';b.className='lang-toggle theme-toggle';b.setAttribute('aria-label','Toggle light or dark theme');
+  function paint(){b.innerHTML=cur()==='dark'?SUN:MOON;}
+  paint();
+  b.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('mor_theme',n);}catch(e){}paint();});
+  var lt=cta.querySelector('.lang-toggle');cta.insertBefore(b,lt||cta.firstChild);
+});</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyOrbisResults — Terms of Service</title>
+  <meta name="description" content="The terms governing your use of MyOrbisResults products." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://myorbisresults.com/" />
+  <link rel="alternate" hreflang="en" href="https://myorbisresults.com/" />
+  <link rel="alternate" hreflang="es" href="https://myorbisresults.com/es/" />
+  <link rel="alternate" hreflang="x-default" href="https://myorbisresults.com/" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://myorbisresults.com/" />
+  <meta property="og:title" content="MyOrbisResults — One growth system for local service businesses" />
+  <meta property="og:description" content="Six leaks drain every local business. MyOrbisResults finds them, plugs them, and turns lost revenue into booked customers — one connected system." />
+  <meta property="og:site_name" content="MyOrbisResults" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="MyOrbisResults — One growth system for local service businesses" />
+  <meta name="twitter:description" content="Find every revenue leak in one consultation. Then watch the system turn it into booked customers." />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://myorbisresults.com/#organization",
+        "name": "MyOrbisResults",
+        "legalName": "MyOrbisResults",
+        "url": "https://myorbisresults.com/",
+        "logo": "https://myorbisresults.com/assets/logo.png",
+        "description": "MyOrbisResults installs one connected growth system for local service businesses: MyOrbisLocal for local visibility, MyOrbisWeb for conversion websites, MyOrbisVoice for AI customer operations, and Staff Training. The system seals six revenue leaks — Dead Money, Invisible Online, Cold Leads, No Sales Process, Wasted Marketing, and Owner Drowning.",
+        "slogan": "One growth system. Every leak sealed. Revenue that compounds.",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "716 Washington St, Suite 2",
+          "addressLocality": "Allentown",
+          "addressRegion": "PA",
+          "postalCode": "18102",
+          "addressCountry": "US"
+        },
+        "email": "hello@myorbisresults.com",
+        "areaServed": { "@type": "Country", "name": "United States" },
+        "audience": { "@type": "BusinessAudience", "name": "Local service businesses" },
+        "knowsAbout": [
+          "Local SEO", "Google Business Profile optimization", "Google Map Pack ranking",
+          "Local search", "Conversational AI voice agents", "AI receptionist",
+          "Lead generation", "Lead reactivation", "Customer relationship management",
+          "Appointment scheduling", "Online reputation management", "Missed call recovery",
+          "Website conversion optimization", "Bilingual customer communication"
+        ],
+        "subOrganization": [
+          { "@type": "Organization", "@id": "https://myorbisvoice.com/#organization", "name": "MyOrbisVoice", "url": "https://myorbisvoice.com/", "description": "AI voice agent and CRM that answers calls, qualifies callers, books appointments, and follows up by email and SMS — day or night, in English or Spanish." },
+          { "@type": "Organization", "name": "MyOrbisLocal", "url": "https://myorbislocal.com/", "description": "Local visibility engine that optimizes your Google Business Profile and lifts your Google Map Pack ranking." },
+          { "@type": "Organization", "name": "MyOrbisWeb", "url": "https://myorbisweb.com/", "description": "Conversion website that mirrors your Google Business Profile and turns local search traffic into calls and bookings." }
+        ],
+        "brand": [
+          { "@type": "Brand", "name": "MyOrbisVoice" },
+          { "@type": "Brand", "name": "MyOrbisLocal" },
+          { "@type": "Brand", "name": "MyOrbisWeb" }
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://myorbisresults.com/#website",
+        "url": "https://myorbisresults.com/",
+        "name": "MyOrbisResults",
+        "inLanguage": ["en", "es"],
+        "publisher": { "@id": "https://myorbisresults.com/#organization" }
+      },
+      {
+        "@type": "Service",
+        "@id": "https://myorbisresults.com/#growth-system",
+        "name": "The MyOrbisResults Growth System",
+        "serviceType": "Local business growth system",
+        "provider": { "@id": "https://myorbisresults.com/#organization" },
+        "areaServed": { "@type": "Country", "name": "United States" },
+        "description": "One connected system that gets local service businesses found, converts the demand, answers and books every opportunity, and trains the team to run the process — so growth compounds instead of leaking.",
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "name": "The Trifecta — three products plus Staff Training",
+          "itemListElement": [
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "MyOrbisLocal — Get Found", "description": "Google Business Profile optimization and local search visibility that lifts you into the Google Map Pack." } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "MyOrbisWeb — Convert Demand", "description": "A conversion website that mirrors your Google Business Profile and turns visitors into calls and bookings." } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "MyOrbisVoice — Answer & Book", "description": "An AI voice agent and CRM that answers calls, qualifies, books appointments, and follows up by email and SMS in English and Spanish." } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Staff Training — Make It Stick", "description": "Team training on lead intake, missed-call recovery, CRM discipline, sales handoffs, and the review-and-referral process." } }
+          ]
+        }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://myorbisresults.com/#webpage",
+        "url": "https://myorbisresults.com/",
+        "name": "MyOrbisResults — One growth system for local service businesses",
+        "isPartOf": { "@id": "https://myorbisresults.com/#website" },
+        "about": { "@id": "https://myorbisresults.com/#organization" },
+        "inLanguage": "en",
+        "mentions": [
+          { "@type": "Thing", "name": "Google Business Profile" },
+          { "@type": "Thing", "name": "Google Map Pack" },
+          { "@type": "Thing", "name": "Speed to lead" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://myorbisresults.com/#faq",
+        "mainEntity": [
+          { "@type": "Question", "name": "Why is there no pricing on the site?", "acceptedAnswer": { "@type": "Answer", "text": "Every business leaks in different places. We scope the right plan in a free consultation instead of forcing you into a package that fixes the wrong holes." } },
+          { "@type": "Question", "name": "Is this just an AI receptionist?", "acceptedAnswer": { "@type": "Answer", "text": "No — that is one piece. MyOrbisResults is a connected system: local visibility, a conversion website, AI voice plus CRM, and staff training, all feeding each other." } },
+          { "@type": "Question", "name": "What is actually built today?", "acceptedAnswer": { "@type": "Answer", "text": "MyOrbisVoice is live and deep. MyOrbisLocal and MyOrbisWeb are managed and rolling out. The consultation shows you exactly what is ready for your business." } },
+          { "@type": "Question", "name": "Do you support English and Spanish?", "acceptedAnswer": { "@type": "Answer", "text": "Yes — every customer touchpoint works in both languages, from the voice agent to the follow-up." } }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <link rel="icon" href="/assets/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="theme-color" content="#06141A" />
+  <meta property="og:image" content="https://myorbisresults.com/assets/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:image" content="https://myorbisresults.com/assets/og-image.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/orbis.css" />
+  <link rel="stylesheet" href="/assets/css/mor.css?v=20260530a" />
+<style>.legal{max-width:820px;margin:0 auto;padding:90px 22px 80px}.legal h1{font-size:2.2rem;line-height:1.15;margin:0 0 6px}.legal h2{font-size:1.25rem;margin:30px 0 8px}.legal p,.legal li{color:var(--mor-text-dim,#94a3b8);line-height:1.7}.legal a{color:var(--mor-accent,#e8a317)}.legal code{background:rgba(127,127,127,.15);padding:1px 6px;border-radius:5px;font-size:.9em}.legal .muted{color:var(--mor-text-dim,#94a3b8);font-size:.95rem}.legal .note{border:1px solid rgba(232,163,23,.4);background:rgba(232,163,23,.08);border-radius:10px;padding:12px 14px;margin:14px 0;font-size:.95rem}</style></head>
+<body>
+<nav class="nav">
+    <div class="container nav-inner">
+      <a href="/" class="brand-mark"><img class="brand-logo" src="/assets/logo-mark.png" alt="MyOrbisResults logo" width="30" height="30" /> MyOrbisResults</a>
+      <div class="nav-links">
+        <a href="/problem/">The Problem</a>
+        <a href="/system/">The System</a>
+        <a href="/industries/">Industries</a>
+        <a href="/partners/">Partners</a>
+      </div>
+      <div class="nav-cta">
+        <a href="/es/" class="lang-toggle" aria-label="Cambiar a español" hreflang="es"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>ES</a>
+        <a href="#consult" class="btn btn-primary">Book a Free Consultation</a>
+      </div>
+    </div>
+  </nav>
+<main class="legal">
+
+<h1>Terms of Service</h1><p class="muted">Last updated: June 8, 2026</p>
+<p>These Terms govern your use of the MyOrbisResults products and services (the &ldquo;Service&rdquo;). By using the Service you agree to these Terms.</p>
+<h2>1. The Service</h2><p>MyOrbisResults provides software for local-business growth, including visibility, conversion websites, AI voice, staff training, and review management. Some features connect to third-party platforms with your authorization.</p>
+<h2>2. Accounts</h2><p>You are responsible for your account, the accuracy of the information you provide, and activity under your credentials. You must have authority to connect any account or business profile you link.</p>
+<h2>3. Acceptable use</h2><p>You agree not to misuse the Service, access data that is not yours, interfere with its operation, or use it to violate the policies of connected platforms.</p>
+<h2>4. Your data</h2><p>You retain ownership of your business data and grant us a limited license to process it to provide the Service. Our handling of personal and provider-derived data is described in our <a href="/privacy/">Privacy Policy</a>.</p>
+<h2>5. Third-party connections</h2><p>Your use of any connected provider remains subject to that provider&rsquo;s terms. You may disconnect at any time.</p>
+<h2>6. Availability &amp; changes</h2><p>We may update or modify the Service. We aim for high availability but provide the Service &ldquo;as is&rdquo; without warranty of uninterrupted operation.</p>
+<h2>7. Disclaimers &amp; liability</h2><p>To the maximum extent permitted by law, the Service is provided without warranties, and MyOrbisResults is not liable for indirect or consequential damages. Total liability is limited to fees paid in the prior 12 months.</p>
+<h2>8. Termination</h2><p>You may stop using the Service anytime. We may suspend or terminate access for breach. On termination you may request export or deletion of your data.</p>
+<h2>9. Changes</h2><p>We may update these Terms; material changes are posted here with a new date.</p>
+<h2>10. Contact</h2><p><b>support@myorbisresults.com</b></p>
+</main>
+<footer class="mor-footer" aria-label="Site footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="brand-mark"><img class="brand-logo" src="/assets/logo-mark.png" alt="MyOrbisResults logo" width="30" height="30" /> MyOrbisResults</div>
+          <p>The growth system for local service businesses. We seal the six leaks draining your revenue — visibility, lead response, follow-up, and the busywork — with one connected system: <strong>MyOrbisLocal</strong>, <strong>MyOrbisWeb</strong>, <strong>MyOrbisVoice</strong>, and Staff Training.</p>
+          <p class="footer-meta">
+            MyOrbisResults<br />
+            716 Washington St, Suite 2<br />
+            Allentown, PA 18102
+          </p>
+          <p class="footer-meta" style="margin-top:12px;">
+            General: <a href="mailto:hello@myorbisresults.com">hello@myorbisresults.com</a><br />
+            Partners: <a href="mailto:partners@myorbisresults.com">partners@myorbisresults.com</a>
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h5>Explore</h5>
+          <a href="/problem/">The Problem</a>
+          <a href="/system/">The System</a>
+          <a href="/industries/">Industries</a>
+          <a href="/partners/">Partners</a>
+        </div>
+
+        <div class="footer-col">
+          <h5>The System</h5>
+          <a href="https://myorbisvoice.com" target="_blank" rel="noopener">MyOrbisVoice</a>
+          <a href="https://myorbislocal.com" target="_blank" rel="noopener">MyOrbisLocal <span class="footer-soon">soon</span></a>
+          <a href="https://myorbisweb.com" target="_blank" rel="noopener">MyOrbisWeb <span class="footer-soon">soon</span></a>
+        </div>
+
+        <div class="footer-col">
+          <h5>Company</h5>
+          <a href="/contact/">Book a Consultation</a>
+          <a href="/partners/apply/">Apply to Partner</a>
+          <a href="https://app.myorbisvoice.com/login" target="_blank" rel="noopener">Customer Login</a>
+        </div>
+
+        <div class="footer-col">
+          <h5>Legal</h5>
+          <a href="/terms/">Terms of Service</a>
+          <a href="/privacy/">Privacy Policy</a>
+          <a href="/cookies/">Cookie Policy</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>© 2026 MyOrbisResults. All rights reserved.</span>
+        <div class="footer-bottom-links">
+          <a href="/terms/">Terms</a>
+          <a href="/privacy/">Privacy</a>
+          <a href="/cookies/">Cookies</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+</body></html>
