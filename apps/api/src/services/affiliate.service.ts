@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js'
+import { syncCommissionToHub, syncCommissionsToHub } from './hub-commission-sync.service.js'
 import crypto from 'crypto'
 import { AppError } from '@voiceautomation/shared'
 import { getStripe } from '../lib/stripe.js'
@@ -1016,7 +1017,7 @@ export async function recordConversion(opts: {
       opts.conversionType,
       conversion.occurredAt,
     )
-    await prisma.affiliateCommission.create({
+    const createdCommission = await prisma.affiliateCommission.create({
       data: {
         affiliateConversionId: conversion.id,
         affiliateAccountId:    account.id,
@@ -1028,6 +1029,8 @@ export async function recordConversion(opts: {
         scheduledPayoutDate,
       },
     })
+    void syncCommissionToHub(createdCommission.id) // report up to the Hub partner ledger
+
     await prisma.affiliateAccount.update({
       where: { id: account.id },
       data:  { totalEarnedCents: { increment: amountMinor } },
@@ -1590,14 +1593,18 @@ export async function getCommissions(affiliateAccountId: string, page = 1, limit
 }
 
 export async function approveCommission(id: string) {
-  return prisma.affiliateCommission.update({
+  const c = await prisma.affiliateCommission.update({
     where: { id },
     data:  { status: 'APPROVED', approvedAt: new Date() },
   })
+  void syncCommissionToHub(c.id)
+  return c
 }
 
 export async function holdCommission(id: string) {
-  return prisma.affiliateCommission.update({ where: { id }, data: { status: 'HOLD' } })
+  const c = await prisma.affiliateCommission.update({ where: { id }, data: { status: 'HOLD' } })
+  void syncCommissionToHub(c.id)
+  return c
 }
 
 export async function reverseCommission(id: string) {
@@ -1606,6 +1613,7 @@ export async function reverseCommission(id: string) {
     where: { id: c.affiliateAccountId },
     data:  { totalEarnedCents: { decrement: c.amountMinor } },
   })
+  void syncCommissionToHub(c.id)
   return c
 }
 
@@ -1618,14 +1626,17 @@ export async function markCommissionPaid(id: string, payoutRef: string) {
     where: { id: c.affiliateAccountId },
     data:  { totalPaidCents: { increment: c.amountMinor } },
   })
+  void syncCommissionToHub(c.id)
   return c
 }
 
 export async function bulkApproveCommissions(ids: string[]) {
-  return prisma.affiliateCommission.updateMany({
+  const r = await prisma.affiliateCommission.updateMany({
     where: { id: { in: ids }, status: 'PENDING' },
     data:  { status: 'APPROVED', approvedAt: new Date() },
   })
+  void syncCommissionsToHub(ids)
+  return r
 }
 
 // ── Payout requests ───────────────────────────────────────────────────────────

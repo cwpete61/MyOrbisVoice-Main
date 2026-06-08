@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js'
+import { syncCommissionToHub, syncCommissionsToHub } from './hub-commission-sync.service.js'
 import { getStripe, getWebhookSecrets } from '../lib/stripe.js'
 import { getEnv } from '@voiceautomation/config'
 import { AppError } from '@voiceautomation/shared'
@@ -297,6 +298,7 @@ async function handleChargeRefunded(charge: StripeCharge) {
 
   for (const c of commissions) {
     await prisma.affiliateCommission.update({ where: { id: c.id }, data: { status: 'REVERSED' } })
+    void syncCommissionToHub(c.id)
     if (c.status === 'APPROVED') {
       // APPROVED commissions had already been added to totalEarnedCents;
       // PENDING ones never were. Decrement only what we previously credited.
@@ -352,6 +354,7 @@ async function handleChargeDisputeCreated(dispute: StripeDispute) {
     where:  { affiliateConversionId: conversion.id, status: { in: ['PENDING', 'APPROVED'] } },
     data:   { status: 'HOLD' },
   })
+  void prisma.affiliateCommission.findMany({ where: { affiliateConversionId: conversion.id }, select: { id: true } }).then((cs) => syncCommissionsToHub(cs.map((c) => c.id)))
 
   writeAuditLog({
     actorType: 'SYSTEM',
