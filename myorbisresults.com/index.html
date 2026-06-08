@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>/* mor_theme: light/dark — pre-paint set + nav toggle (self-contained, all pages) */
+(function(){try{var t=localStorage.getItem('mor_theme');if(t!=='light'&&t!=='dark'){t='dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+document.addEventListener('DOMContentLoaded',function(){
+  var cta=document.querySelector('.nav-cta');if(!cta||cta.querySelector('.theme-toggle'))return;
+  var SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></svg>';
+  var MOON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
+  function cur(){return document.documentElement.getAttribute('data-theme')||'dark';}
+  var b=document.createElement('button');b.type='button';b.className='lang-toggle theme-toggle';b.setAttribute('aria-label','Toggle light or dark theme');
+  function paint(){b.innerHTML=cur()==='dark'?SUN:MOON;}
+  paint();
+  b.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('mor_theme',n);}catch(e){}paint();});
+  var lt=cta.querySelector('.lang-toggle');cta.insertBefore(b,lt||cta.firstChild);
+});</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MyOrbisResults — One growth system for local service businesses</title>
@@ -144,7 +157,7 @@
         <a href="/problem/">The Problem</a>
         <a href="/system/">The System</a>
         <a href="/industries/">Industries</a>
-        <a href="/partners/">Partners</a>
+        <a href="https://products.myorbisresults.com">Login</a>
       </div>
       <div class="nav-cta">
         <a href="/es/" class="lang-toggle" aria-label="Cambiar a español" hreflang="es"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>ES</a>
@@ -483,7 +496,7 @@
           <a href="/problem/">The Problem</a>
           <a href="/system/">The System</a>
           <a href="/industries/">Industries</a>
-          <a href="/partners/">Partners</a>
+          <a href="https://products.myorbisresults.com">Login</a>
         </div>
 
         <div class="footer-col">

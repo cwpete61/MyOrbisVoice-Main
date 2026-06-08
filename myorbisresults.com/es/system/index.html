@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script>/* mor_theme: light/dark — pre-paint set + nav toggle (self-contained, all pages) */
+(function(){try{var t=localStorage.getItem('mor_theme');if(t!=='light'&&t!=='dark'){t='dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+document.addEventListener('DOMContentLoaded',function(){
+  var cta=document.querySelector('.nav-cta');if(!cta||cta.querySelector('.theme-toggle'))return;
+  var SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M19 5l-1.4 1.4M6.4 17.6 5 19"/></svg>';
+  var MOON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
+  function cur(){return document.documentElement.getAttribute('data-theme')||'dark';}
+  var b=document.createElement('button');b.type='button';b.className='lang-toggle theme-toggle';b.setAttribute('aria-label','Toggle light or dark theme');
+  function paint(){b.innerHTML=cur()==='dark'?SUN:MOON;}
+  paint();
+  b.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('mor_theme',n);}catch(e){}paint();});
+  var lt=cta.querySelector('.lang-toggle');cta.insertBefore(b,lt||cta.firstChild);
+});</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>El Sistema — Un solo sistema de crecimiento conectado | MyOrbisResults</title>
+  <meta name="description" content="MyOrbisResults instala un solo sistema conectado: MyOrbisLocal te hace visible, MyOrbisWeb convierte la demanda, MyOrbisVoice contesta y agenda, y Staff Training hace que perdure. Cada parte alimenta a la siguiente — ese ciclo cerrado es el foso." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://myorbisresults.com/es/system/" />
+  <link rel="alternate" hreflang="en" href="https://myorbisresults.com/system/" />
+  <link rel="alternate" hreflang="es" href="https://myorbisresults.com/es/system/" />
+  <link rel="alternate" hreflang="x-default" href="https://myorbisresults.com/system/" />
+  <meta property="og:title" content="El Sistema — Un solo sistema de crecimiento conectado" />
+  <meta property="og:description" content="Hazte visible → convierte la demanda → contesta y agenda → capacita al equipo → aprende de cada cliente → mejora el sistema." />
+  <meta property="og:url" content="https://myorbisresults.com/es/system/" />
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://myorbisresults.com/#organization",
+        "name": "MyOrbisResults",
+        "url": "https://myorbisresults.com/",
+        "address": { "@type": "PostalAddress", "streetAddress": "716 Washington St, Suite 2", "addressLocality": "Allentown", "addressRegion": "PA", "postalCode": "18102", "addressCountry": "US" }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://myorbisresults.com/es/system/#webpage",
+        "url": "https://myorbisresults.com/es/system/",
+        "name": "El Sistema — Un solo sistema de crecimiento conectado",
+        "about": { "@id": "https://myorbisresults.com/#growth-system" },
+        "inLanguage": "es"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Inicio", "item": "https://myorbisresults.com/es/" },
+          { "@type": "ListItem", "position": 2, "name": "El Sistema", "item": "https://myorbisresults.com/es/system/" }
+        ]
+      },
+      {
+        "@type": "Service",
+        "@id": "https://myorbisresults.com/#growth-system",
+        "name": "El Sistema de Crecimiento MyOrbisResults",
+        "serviceType": "Sistema de crecimiento para negocios locales",
+        "provider": { "@id": "https://myorbisresults.com/#organization" },
+        "areaServed": { "@type": "Country", "name": "United States" },
+        "description": "El Trifecta — tres productos que se alimentan entre sí: MyOrbisLocal te hace visible, MyOrbisWeb convierte la demanda, MyOrbisVoice contesta y agenda — más Staff Training para que perdure. Juntos forman un ciclo cerrado que se acumula.",
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "name": "Los cuatro pilares conectados",
+          "itemListElement": [
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "MyOrbisLocal — Hazte Visible", "serviceType": "SEO local y optimización de Google Business Profile", "description": "Analiza tu Google Business Profile, competidores, reseñas y brechas de servicio y ubicación, y construye el plan de visibilidad que te mete al Google Map Pack y te mantiene ahí." } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "MyOrbisWeb — Convierte la Demanda", "serviceType": "Sitio web que convierte", "description": "Un sitio local que refleja tu Google Business Profile — servicios, horarios, ubicación y schema — con CTAs claros de reserva y llamada, sincronizado a medida que cambia tu perfil." } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "MyOrbisVoice — Contesta y Agenda", "serviceType": "Agente de voz con IA y CRM", "description": "Contesta en menos de un segundo en el teléfono, el widget del sitio y la página de reservas; califica; agenda en tu calendario real; y da seguimiento por correo y SMS en inglés y español." } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Staff Training — Que Perdure", "serviceType": "Capacitación del equipo", "description": "Capacita a tu equipo en captación de prospectos, recuperación de llamadas perdidas, etiquetado de CRM, traspasos de ventas, manejo de objeciones y el proceso de reseñas y referidos." } }
+          ]
+        }
+      }
+    ]
+  }
+  </script>
+
+  <link rel="icon" href="/assets/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="theme-color" content="#06141A" />
+  <meta property="og:image" content="https://myorbisresults.com/assets/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:image" content="https://myorbisresults.com/assets/og-image.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/orbis.css" />
+  <link rel="stylesheet" href="/assets/css/mor.css" />
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="/es/" class="brand-mark"><img class="brand-logo" src="/assets/logo-mark.png" alt="Logo de MyOrbisResults" width="30" height="30" /> MyOrbisResults</a>
+      <div class="nav-links">
+        <a href="/es/problem/">El Problema</a>
+        <a href="/es/system/" style="color:var(--text)">El Sistema</a>
+        <a href="/es/industries/">Industrias</a>
+        <a href="https://products.myorbisresults.com">Iniciar sesión</a>
+      </div>
+      <div class="nav-cta"><a href="/system/" class="lang-toggle" aria-label="Switch to English" hreflang="en"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>EN</a><a href="/es/contact/" class="btn btn-primary">Agenda una consulta gratis</a></div>
+    </div>
+  </nav>
+
+  <header class="page-hero">
+    <div class="container">
+      <span class="mor-eyebrow">El Sistema</span>
+      <h1>Un sistema. Cada fuga sellada. Ingresos que se acumulan.</h1>
+      <p class="sub">Tres productos — Local, Web, Voice — más Staff Training para que perdure. Cada uno tapa una fuga y alimenta al siguiente, para que tu crecimiento se construya solo en vez de reiniciarse cada mes.</p>
+      <div class="hero-cta-row"><a href="/es/contact/" class="btn btn-cta">Agenda una Consulta Trifecta gratis</a></div>
+    </div>
+  </header>
+
+  <section style="padding-top:0">
+    <div class="container">
+      <div class="leg-deep">
+        <div class="leg-badge">01</div>
+        <div>
+          <span class="leg-tag">MyOrbisLocal — Hazte Visible</span>
+          <h3>Gana la búsqueda donde los clientes ya están.</h3>
+          <p>Tus clientes abren Google o Maps y escriben "[servicio] cerca de mí." Si no estás en el top tres, no existes para esa búsqueda. MyOrbisLocal analiza tu Google Business Profile, tus competidores, tus reseñas y tus brechas de servicio y ubicación, y construye el plan de visibilidad que te mete al pack — y te mantiene ahí mientras cambia el panorama de la búsqueda local impulsada por IA.</p>
+          <ul><li>Optimización de Google Business Profile</li><li>Auditoría de competidores + categoría</li><li>Señales de reseñas y reputación</li><li>Plan de contenido de servicio + ubicación</li><li>Seguimiento de posición</li></ul>
+        </div>
+      </div>
+      <div class="leg-deep">
+        <div class="leg-badge">02</div>
+        <div>
+          <span class="leg-tag">MyOrbisWeb — Convierte la Demanda</span>
+          <h3>Un sitio que refleja tu perfil de Google y convierte.</h3>
+          <p>La visibilidad manda tráfico; el sitio tiene que convertirlo en llamadas y reservas. MyOrbisWeb crea un sitio local que refleja tu Google Business Profile — servicios, horarios, ubicación y schema — para que Google confíe en la alineación y los visitantes encuentren un camino claro para actuar. No un folleto que solo está ahí. Una superficie de conversión que alimenta el teléfono.</p>
+          <ul><li>Estructura espejo del GBP</li><li>Páginas de servicio + ubicación</li><li>Alineación de schema + NAP</li><li>CTAs de reserva + llamada</li><li>Sincronizado a medida que cambia tu perfil</li></ul>
+        </div>
+      </div>
+      <div class="leg-deep">
+        <div class="leg-badge">03</div>
+        <div>
+          <span class="leg-tag">MyOrbisVoice — Contesta y Agenda</span>
+          <h3>Atrapa cada oportunidad que crean las primeras dos partes.</h3>
+          <p>Las posiciones y un sitio que convierte se desperdician si la llamada cae al buzón. MyOrbisVoice contesta en menos de un segundo — en el teléfono, el widget del sitio y tu página de reservas — califica al cliente, agenda en tu calendario real y da seguimiento por correo y SMS. Construye un CRM a partir de conversaciones reales y funciona de día o de noche, en inglés o español. <strong>Esta es la parte que está viva y completa hoy.</strong></p>
+          <ul><li>Voz con IA: entrante, saliente, widget, página de reservas</li><li>Agenda en tu calendario real</li><li>CRM que crece con las llamadas</li><li>Campañas de seguimiento por correo + SMS</li><li>Bilingüe EN / ES</li></ul>
+        </div>
+      </div>
+      <div class="leg-deep">
+        <div class="leg-badge">04</div>
+        <div>
+          <span class="leg-tag">Staff Training — Que Perdure</span>
+          <h3>El sistema solo funciona si tu equipo lo opera.</h3>
+          <p>La tecnología no arregla sola un recorrido del cliente roto. Capacitamos a tu equipo en el proceso sobre el que corre el sistema — captación de prospectos, traspasos de llamadas, flujo de citas, tiempos de seguimiento, etiquetado de CRM, la solicitud de reseña y referido — para que el sistema funcione <em>dentro</em> de tu negocio, no solo alrededor.</p>
+          <ul><li>Captación de prospectos + estándares de llamada</li><li>Recuperación de llamadas perdidas</li><li>Disciplina de CRM + etiquetado</li><li>Traspaso de ventas + manejo de objeciones</li><li>Proceso de reseñas + referidos</li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="container hero-grid">
+      <div>
+        <span class="mor-eyebrow">Seis Fugas, Un Panal</span>
+        <h2 style="font-size:clamp(28px,3.6vw,44px); margin:16px 0 14px;">Seis hoyos, una estructura — nada se cae.</h2>
+        <p style="color:var(--text-2); font-size:18px; line-height:1.6;">Una cubeta gotea porque cada hoyo está abierto al aire. Un panal no — cada celda está sostenida por las de alrededor. Esa es la diferencia entre seis herramientas desconectadas y un solo sistema conectado. Cada una de tus seis fugas de ingresos vive en su propia celda, sellada y sostenida por las partes de al lado. <strong>MyOrbisLocal</strong> alimenta a <strong>MyOrbisVoice</strong>; Voice alimenta el CRM; el CRM afina a Local. Quita una celda y la estructura aguanta.</p>
+        <p style="color:var(--text-3); font-size:15px; line-height:1.6; margin-top:14px;">Dinero Muerto, Invisible en Línea, Prospectos Fríos, Sin Proceso de Ventas, Marketing Desperdiciado, Dueño Ahogado — un panal, cada celda con dueño.</p>
+      </div>
+      <div class="graphic-wrap">
+        <svg class="graphic" viewBox="0 0 420 320" role="img" aria-label="Un panal de seis fugas de ingresos selladas alrededor de un solo sistema conectado">
+          <g stroke-width="1.6" font-family="Sora, sans-serif" font-size="10" font-weight="700" text-anchor="middle">
+            <g><polygon points="164,80 187,40.16 233,40.16 256,80 233,119.84 187,119.84" fill="#FFD23F" fill-opacity="0.12" stroke="#FFD23F"/><text x="210" y="76" fill="#FFD23F">Invisible</text><text x="210" y="90" fill="#FFD23F">en Línea</text></g>
+            <g><polygon points="233,120 256,80.16 302,80.16 325,120 302,159.84 256,159.84" fill="#3FE3E3" fill-opacity="0.12" stroke="#3FE3E3"/><text x="279" y="116" fill="#3FE3E3">Prospectos</text><text x="279" y="130" fill="#3FE3E3">Fríos</text></g>
+            <g><polygon points="233,200 256,160.16 302,160.16 325,200 302,239.84 256,239.84" fill="#5BC8FF" fill-opacity="0.12" stroke="#5BC8FF"/><text x="279" y="196" fill="#5BC8FF">Sin</text><text x="279" y="210" fill="#5BC8FF">Proceso</text></g>
+            <g><polygon points="164,240 187,200.16 233,200.16 256,240 233,279.84 187,279.84" fill="#9B7BFF" fill-opacity="0.14" stroke="#9B7BFF"/><text x="210" y="236" fill="#9B7BFF">Marketing</text><text x="210" y="250" fill="#9B7BFF">Perdido</text></g>
+            <g><polygon points="95,200 118,160.16 164,160.16 187,200 164,239.84 118,239.84" fill="#E85D9A" fill-opacity="0.13" stroke="#E85D9A"/><text x="141" y="196" fill="#E85D9A">Dueño</text><text x="141" y="210" fill="#E85D9A">Ahogado</text></g>
+            <g><polygon points="95,120 118,80.16 164,80.16 187,120 164,159.84 118,159.84" fill="#FF8C42" fill-opacity="0.13" stroke="#FF8C42"/><text x="141" y="116" fill="#FF8C42">Dinero</text><text x="141" y="130" fill="#FF8C42">Muerto</text></g>
+            <g><polygon points="164,160 187,120.16 233,120.16 256,160 233,199.84 187,199.84" fill="#15A8A8" fill-opacity="0.9" stroke="#3FE3E3"/><text x="210" y="156" fill="#06141A" font-size="10" font-weight="800">UN SOLO</text><text x="210" y="170" fill="#06141A" font-size="10" font-weight="800">SISTEMA</text></g>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="container hero-grid">
+      <div>
+        <span class="mor-eyebrow">Por Qué Gana lo Conectado</span>
+        <h2 style="font-size:clamp(30px,4vw,48px); margin:16px 0 16px;">El todo es mayor que la suma de las partes.</h2>
+        <p style="color:var(--text-2); font-size:18px; line-height:1.6;">Seis herramientas sueltas no se hablan. Este sistema sí. Cada conversación afina tu perfil de cliente. Esa inteligencia mejora tu contenido local. Mejor contenido sube tu posición. Mejor posición trae más llamadas. Más llamadas significan más datos. El ciclo se aprieta cada mes — y un competidor con apps desconectadas no puede alcanzarlo, porque no es dueño de las conexiones entre ellas.</p>
+        <p class="flow-line" style="text-align:left; margin-top:22px;">Hazte visible <span>→</span> convierte <span>→</span> contesta y agenda <span>→</span> capacita <span>→</span> aprende <span>→</span> mejora</p>
+      </div>
+      <div class="graphic-wrap">
+        <svg class="graphic" viewBox="0 0 380 320" role="img" aria-label="El ciclo cerrado de crecimiento">
+          <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="6" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#15A8A8"/></marker></defs>
+          <g font-family="Sora, sans-serif" font-size="12" font-weight="600">
+            <g><circle cx="190" cy="48" r="40" fill="#171d20" stroke="#FFD23F" stroke-width="1.5"/><text x="190" y="44" text-anchor="middle" fill="#FFD23F">Hazte</text><text x="190" y="60" text-anchor="middle" fill="#FFD23F">Visible</text></g>
+            <g><circle cx="310" cy="160" r="40" fill="#171d20" stroke="#5BC8FF" stroke-width="1.5"/><text x="310" y="156" text-anchor="middle" fill="#5BC8FF">Convierte</text><text x="310" y="172" text-anchor="middle" fill="#5BC8FF">Demanda</text></g>
+            <g><circle cx="190" cy="272" r="40" fill="#171d20" stroke="#3FE3E3" stroke-width="1.5"/><text x="190" y="268" text-anchor="middle" fill="#3FE3E3">Contesta</text><text x="190" y="284" text-anchor="middle" fill="#3FE3E3">y Agenda</text></g>
+            <g><circle cx="70" cy="160" r="40" fill="#171d20" stroke="#9B7BFF" stroke-width="1.5"/><text x="70" y="156" text-anchor="middle" fill="#9B7BFF">Datos del</text><text x="70" y="172" text-anchor="middle" fill="#9B7BFF">Cliente</text></g>
+          </g>
+          <g fill="none" stroke="#15A8A8" stroke-width="2" marker-end="url(#ah)" opacity="0.85">
+            <path d="M226 70 A120 120 0 0 1 286 128"/><path d="M300 196 A120 120 0 0 1 224 254"/><path d="M154 254 A120 120 0 0 1 90 196"/><path d="M84 124 A120 120 0 0 1 152 68"/>
+          </g>
+          <text x="190" y="166" text-anchor="middle" font-family="Sora,sans-serif" font-size="11" fill="#6b7a80">el ciclo</text>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="container">
+      <div class="section-head"><span class="mor-eyebrow">Ninguna Fuga Sin Dueño</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Cada fuga tiene su responsable.</h2></div>
+      <div class="card" style="padding:8px 28px;">
+        <div class="map-row"><span class="map-leak" style="color:#FF8C42">Dinero Muerto</span><span class="map-arrow">→</span><span class="map-fix">Campañas de reactivación por voz reenganchan prospectos fríos</span></div>
+        <div class="map-row"><span class="map-leak" style="color:#FFD23F">Invisible en Línea</span><span class="map-arrow">→</span><span class="map-fix">Local sube tu posición en el Map Pack + reseñas</span></div>
+        <div class="map-row"><span class="map-leak" style="color:#3FE3E3">Prospectos Fríos</span><span class="map-arrow">→</span><span class="map-fix">Voice contesta en menos de un segundo, siempre</span></div>
+        <div class="map-row"><span class="map-leak" style="color:#5BC8FF">Sin Proceso de Ventas</span><span class="map-arrow">→</span><span class="map-fix">Capacitación + coaching de ventas con IA sobre llamadas reales</span></div>
+        <div class="map-row"><span class="map-leak" style="color:#9B7BFF">Marketing Desperdiciado</span><span class="map-arrow">→</span><span class="map-fix">Voice nutre + el CRM trabaja cada prospecto que pagaste</span></div>
+        <div class="map-row"><span class="map-leak" style="color:#E85D9A">Dueño Ahogado</span><span class="map-arrow">→</span><span class="map-fix">Todo el sistema hace las tareas pesadas por ti</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="container">
+      <div class="callout">
+        <span class="mor-eyebrow">Qué Está Vivo Hoy</span>
+        <h2 style="font-size:clamp(24px,3vw,34px); margin:14px 0 14px;">Construido, no prometido — y honestos sobre lo demás.</h2>
+        <p style="color:var(--text-2); font-size:17px; line-height:1.65; max-width:820px;"><strong>MyOrbisVoice</strong> está vivo y completo hoy: el agente de voz con IA contesta llamadas entrantes, hace llamadas salientes, opera el widget del sitio y la página de reservas, califica clientes, agenda en tu <strong>Google Calendar</strong>, construye un <strong>CRM</strong> a partir de conversaciones reales y da seguimiento por correo y SMS en inglés y español. Esa es la parte haciendo el trabajo ahora mismo.</p>
+        <p style="color:var(--text-2); font-size:17px; line-height:1.65; max-width:820px; margin-top:14px;"><strong>MyOrbisLocal</strong> (optimización de Google Business Profile y posición en el Map Pack) y <strong>MyOrbisWeb</strong> (el sitio que convierte espejo del GBP) son servicios gestionados en despliegue ahora. <strong>Staff Training</strong> llega junto con los pilares que enciendas. Preferimos decirte exactamente qué está listo a venderte una hoja de ruta — tu Consulta Trifecta mapea qué fugas sellar primero y qué está disponible para tu negocio hoy.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="container">
+      <h2>Mira el sistema en tu negocio.</h2>
+      <p>En una consulta mapeamos qué partes arreglan tus fugas más grandes primero — y qué está listo para encender hoy.</p>
+      <a href="/es/contact/" class="btn btn-cta btn-cta-big">Agenda una Consulta Trifecta gratis</a>
+    </div>
+  </section>
+
+  <footer class="mor-footer" aria-label="Pie de página">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="brand-mark"><img class="brand-logo" src="/assets/logo-mark.png" alt="Logo de MyOrbisResults" width="30" height="30" /> MyOrbisResults</div>
+          <p>El sistema de crecimiento para negocios de servicios locales. Sellamos las seis fugas que drenan tus ingresos — visibilidad, respuesta a prospectos, seguimiento y las tareas pesadas — con un solo sistema conectado: <strong>MyOrbisLocal</strong>, <strong>MyOrbisWeb</strong>, <strong>MyOrbisVoice</strong> y Staff Training.</p>
+          <p class="footer-meta">
+            MyOrbisResults<br />
+            716 Washington St, Suite 2<br />
+            Allentown, PA 18102
+          </p>
+          <p class="footer-meta" style="margin-top:12px;">
+            General: <a href="mailto:hello@myorbisresults.com">hello@myorbisresults.com</a><br />
+            Socios: <a href="mailto:partners@myorbisresults.com">partners@myorbisresults.com</a>
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h5>Explorar</h5>
+          <a href="/es/problem/">El Problema</a>
+          <a href="/es/system/">El Sistema</a>
+          <a href="/es/industries/">Industrias</a>
+          <a href="https://products.myorbisresults.com">Iniciar sesión</a>
+        </div>
+
+        <div class="footer-col">
+          <h5>El Sistema</h5>
+          <a href="https://myorbisvoice.com" target="_blank" rel="noopener">MyOrbisVoice</a>
+          <a href="https://myorbislocal.com" target="_blank" rel="noopener">MyOrbisLocal <span class="footer-soon">pronto</span></a>
+          <a href="https://myorbisweb.com" target="_blank" rel="noopener">MyOrbisWeb <span class="footer-soon">pronto</span></a>
+        </div>
+
+        <div class="footer-col">
+          <h5>Empresa</h5>
+          <a href="/es/contact/">Agenda una consulta</a>
+          <a href="/es/partners/apply/">Postúlate como socio</a>
+          <a href="https://app.myorbisvoice.com/login" target="_blank" rel="noopener">Acceso de clientes</a>
+        </div>
+
+        <div class="footer-col">
+          <h5>Legal</h5>
+          <a href="/es/terms/">Términos del servicio</a>
+          <a href="/es/privacy/">Política de privacidad</a>
+          <a href="/es/cookies/">Política de cookies</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>© 2026 MyOrbisResults. Todos los derechos reservados.</span>
+        <div class="footer-bottom-links">
+          <a href="/es/terms/">Términos</a>
+          <a href="/es/privacy/">Privacidad</a>
+          <a href="/es/cookies/">Cookies</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/assets/js/orby.js" defer></script>
+</body>
+</html>
