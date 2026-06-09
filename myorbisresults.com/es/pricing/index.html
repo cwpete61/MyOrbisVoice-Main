@@ -17,14 +17,14 @@ document.addEventListener('DOMContentLoaded',function(){
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Precios — Planes simples y transparentes para la suite | MyOrbisResults</title>
-  <meta name="description" content="Precios de MyOrbisResults: planes de MyOrbisVoice de Free a Enterprise — Free $0, Basic $197/mes, Pro $497/mes, Premier $997/mes, Enterprise $1,997/mes. MyOrbisReviews, MyOrbisLocal, MyOrbisWeb y MyOrbisSocial son parte de la suite — habla con nosotros para conocer el precio." />
+  <meta name="description" content="Precios de MyOrbisResults: MyOrbisVoice desde Free — Basic $197, Pro $497, Premier $997; Enterprise por cita. MyOrbisReviews $297, MyOrbisLocal $497, MyOrbisWeb $997 y el paquete MyOrbisTrifecta $4,997. Facturación mensual o anual — ahorra 16.7% con el plan anual." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://myorbisresults.com/es/pricing/" />
   <link rel="alternate" hreflang="en" href="https://myorbisresults.com/pricing/" />
   <link rel="alternate" hreflang="es" href="https://myorbisresults.com/es/pricing/" />
   <link rel="alternate" hreflang="x-default" href="https://myorbisresults.com/pricing/" />
   <meta property="og:title" content="Precios — Planes simples y transparentes para la suite" />
-  <meta property="og:description" content="MyOrbisVoice de Free a Enterprise. El resto de la suite, a una consulta de distancia." />
+  <meta property="og:description" content="MyOrbisVoice desde Free. Reviews, Local, Web y el paquete Trifecta — mensual o anual. Enterprise por cita." />
   <meta property="og:url" content="https://myorbisresults.com/es/pricing/" />
 
   <script type="application/ld+json">
@@ -63,8 +63,36 @@ document.addEventListener('DOMContentLoaded',function(){
           { "@type": "Offer", "name": "Basic", "price": "197", "priceCurrency": "USD", "url": "https://products.myorbisresults.com/login" },
           { "@type": "Offer", "name": "Pro", "price": "497", "priceCurrency": "USD", "url": "https://products.myorbisresults.com/login" },
           { "@type": "Offer", "name": "Premier", "price": "997", "priceCurrency": "USD", "url": "https://products.myorbisresults.com/login" },
-          { "@type": "Offer", "name": "Enterprise", "price": "1997", "priceCurrency": "USD", "url": "https://products.myorbisresults.com/login" }
+          { "@type": "Offer", "name": "Enterprise", "priceCurrency": "USD", "url": "https://myorbisresults.com/es/#consult", "description": "Volumen a medida — por cita" }
         ]
+      },
+      {
+        "@type": "Product",
+        "name": "MyOrbisReviews",
+        "description": "Generación de reseñas y gestión de reputación — solicitudes de reseña por SMS y correo, bandeja unificada de reseñas y flujo de resolución para calificaciones bajas.",
+        "brand": { "@type": "Brand", "name": "MyOrbisResults" },
+        "offers": { "@type": "Offer", "price": "297", "priceCurrency": "USD", "url": "https://reviews.myorbisresults.com" }
+      },
+      {
+        "@type": "Product",
+        "name": "MyOrbisLocal",
+        "description": "Optimización del Perfil de Empresa en Google y SEO local — posicionamiento en el Map Pack y visibilidad 'cerca de mí' para negocios de servicios locales.",
+        "brand": { "@type": "Brand", "name": "MyOrbisResults" },
+        "offers": { "@type": "Offer", "price": "497", "priceCurrency": "USD", "url": "https://myorbisresults.com/es/#consult" }
+      },
+      {
+        "@type": "Product",
+        "name": "MyOrbisWeb",
+        "description": "Un sitio web construido para convertir y páginas de aterrizaje de alta intención, conectados al agendamiento y al widget de Voice — hosting y actualizaciones incluidos.",
+        "brand": { "@type": "Brand", "name": "MyOrbisResults" },
+        "offers": { "@type": "Offer", "price": "997", "priceCurrency": "USD", "url": "https://myorbisresults.com/es/#consult" }
+      },
+      {
+        "@type": "Product",
+        "name": "MyOrbisTrifecta",
+        "description": "La suite completa — MyOrbisVoice, MyOrbisReviews, MyOrbisLocal y MyOrbisWeb, totalmente gestionados con soporte prioritario, reportes unificados y un estratega dedicado.",
+        "brand": { "@type": "Brand", "name": "MyOrbisResults" },
+        "offers": { "@type": "Offer", "price": "4997", "priceCurrency": "USD", "url": "https://products.myorbisresults.com/login" }
       }
     ]
   }
@@ -164,6 +192,31 @@ document.addEventListener('DOMContentLoaded',function(){
     .product-card .price-tag { font-family: var(--font-mono); font-size: 12.5px; color: var(--accent-hi); }
     .product-card .btn { font-size: 14px; padding: 11px 18px; }
     .price-foot { margin-top: 28px; font-family: var(--font-mono); font-size: 13px; color: var(--text-3); text-align: center; letter-spacing: .02em; }
+
+    /* Toggle de facturación mensual / anual */
+    .bill-toggle-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 0 auto 6px; }
+    .bill-toggle { display: inline-flex; padding: 5px; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-pill); }
+    .bill-toggle button {
+      appearance: none; cursor: pointer; border: 0; background: transparent;
+      font-family: var(--font-display); font-weight: 600; font-size: 14px; color: var(--text-2);
+      padding: 9px 22px; border-radius: var(--r-pill); transition: background .15s ease, color .15s ease;
+    }
+    .bill-toggle button[aria-pressed="true"] { background: var(--accent); color: #06141A; }
+    .bill-toggle button:hover[aria-pressed="false"] { color: var(--text); }
+    .bill-hint { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .02em; color: var(--accent-hi); }
+
+    .price-box .annual-note { display: none; margin-top: 4px; font-family: var(--font-mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); }
+    body.yearly .price-box.has-toggle .annual-note { display: block; }
+    .price-save { display: none; position: absolute; top: -12px; right: 16px;
+      font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600;
+      color: var(--tier); background: color-mix(in oklab, var(--tier) 16%, #0e1316);
+      border: 1px solid color-mix(in oklab, var(--tier) 45%, transparent);
+      border-radius: var(--r-pill); padding: 4px 11px; white-space: nowrap; }
+    body.yearly .price-card.has-toggle .price-save { display: inline-block; }
+    @media (max-width: 640px) { .price-save { right: 12px; } }
+
+    .trifecta-wrap { display: flex; justify-content: center; margin-top: 36px; }
+    .price-card.trifecta { max-width: 560px; width: 100%; }
   </style>
 </head>
 <body>
@@ -179,7 +232,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <a href="/es/pricing/" style="color:var(--text)">Precios</a>
         <a href="https://products.myorbisresults.com/login">Iniciar sesión</a>
       </div>
-      <div class="nav-cta"><a href="/pricing/" class="lang-toggle" aria-label="Switch to English" hreflang="en"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>EN</a><a href="/es/contact/" class="btn btn-primary">Agenda una consulta gratis</a></div>
+      <div class="nav-cta"><a href="/pricing/" class="lang-toggle" aria-label="Switch to English" hreflang="en"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>EN</a><a href="/es/#consult" class="btn btn-primary">Agenda una consulta gratis</a></div>
     </div>
   </nav>
 
@@ -187,12 +240,24 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <span class="mor-eyebrow">Precios</span>
       <h1>Precios simples y transparentes para toda la suite.</h1>
-      <p class="sub">Empieza con MyOrbisVoice — elige el plan que se ajusta a tu volumen y escala cuando crezcas. Sin cargos ocultos, sin sorpresas por excedentes. Precios en USD, facturados mensualmente salvo que se indique.</p>
+      <p class="sub">Empieza con MyOrbisVoice — elige el plan que se ajusta a tu volumen y escala cuando crezcas. Sin cargos ocultos, sin sorpresas por excedentes. Precios en USD. Paga mensual o ahorra 16.7% con el plan anual.</p>
       <div class="chips" style="justify-content:center;">
         <span class="chip">Prueba gratis</span><span class="chip">Sin contratos largos</span><span class="chip">Cancela cuando quieras</span><span class="chip">Precios en USD</span>
       </div>
     </div>
   </header>
+
+  <section style="padding-top:0">
+    <div class="container">
+      <div class="bill-toggle-wrap">
+        <div class="bill-toggle" role="group" aria-label="Periodo de facturación">
+          <button type="button" data-bill="monthly" aria-pressed="true">Mensual</button>
+          <button type="button" data-bill="yearly" aria-pressed="false">Anual</button>
+        </div>
+        <span class="bill-hint">Ahorra 16.7% con el plan anual</span>
+      </div>
+    </div>
+  </section>
 
   <section style="padding-top:0">
     <div class="container">
@@ -203,10 +268,11 @@ document.addEventListener('DOMContentLoaded',function(){
       </div>
 
       <div class="price-grid">
-        <div class="price-card" style="--tier:#23c4c4">
+        <div class="price-card has-toggle" style="--tier:#23c4c4">
+          <span class="price-save">Ahorra 16.7%</span>
           <div class="price-head">
             <h3 class="price-name">Free</h3>
-            <div class="price-box"><span class="num">$0</span><span class="per">USD / MES</span></div>
+            <div class="price-box has-toggle"><span class="num" data-monthly="0">$0</span><span class="per">USD / MES</span><span class="annual-note">facturado anual</span></div>
           </div>
           <div class="price-art">
             <svg viewBox="0 0 200 160" fill="none" aria-hidden="true" role="presentation">
@@ -233,10 +299,11 @@ document.addEventListener('DOMContentLoaded',function(){
           <a href="https://products.myorbisresults.com/login" class="price-cta">Empezar</a>
         </div>
 
-        <div class="price-card" style="--tier:#34d399">
+        <div class="price-card has-toggle" style="--tier:#34d399">
+          <span class="price-save">Ahorra 16.7%</span>
           <div class="price-head">
             <h3 class="price-name">Basic</h3>
-            <div class="price-box"><span class="num">$197</span><span class="per">USD / MES</span></div>
+            <div class="price-box has-toggle"><span class="num" data-monthly="197">$197</span><span class="per">USD / MES</span><span class="annual-note">facturado anual</span></div>
           </div>
           <div class="price-art">
             <svg viewBox="0 0 200 160" fill="none" aria-hidden="true" role="presentation">
@@ -263,11 +330,12 @@ document.addEventListener('DOMContentLoaded',function(){
           <a href="https://products.myorbisresults.com/login" class="price-cta">Empezar</a>
         </div>
 
-        <div class="price-card featured" style="--tier:#f5b53d">
+        <div class="price-card featured has-toggle" style="--tier:#f5b53d">
           <span class="price-pop">Más Popular</span>
+          <span class="price-save">Ahorra 16.7%</span>
           <div class="price-head">
             <h3 class="price-name">Pro</h3>
-            <div class="price-box"><span class="num">$497</span><span class="per">USD / MES</span></div>
+            <div class="price-box has-toggle"><span class="num" data-monthly="497">$497</span><span class="per">USD / MES</span><span class="annual-note">facturado anual</span></div>
           </div>
           <div class="price-art">
             <svg viewBox="0 0 200 160" fill="none" aria-hidden="true" role="presentation">
@@ -295,10 +363,11 @@ document.addEventListener('DOMContentLoaded',function(){
           <a href="https://products.myorbisresults.com/login" class="price-cta">Empezar</a>
         </div>
 
-        <div class="price-card" style="--tier:#60a5fa">
+        <div class="price-card has-toggle" style="--tier:#60a5fa">
+          <span class="price-save">Ahorra 16.7%</span>
           <div class="price-head">
             <h3 class="price-name">Premier</h3>
-            <div class="price-box"><span class="num">$997</span><span class="per">USD / MES</span></div>
+            <div class="price-box has-toggle"><span class="num" data-monthly="997">$997</span><span class="per">USD / MES</span><span class="annual-note">facturado anual</span></div>
           </div>
           <div class="price-art">
             <svg viewBox="0 0 200 160" fill="none" aria-hidden="true" role="presentation">
@@ -328,7 +397,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="price-card" style="--tier:#c084fc">
           <div class="price-head">
             <h3 class="price-name">Enter<span>prise</span></h3>
-            <div class="price-box"><span class="num">$1,997</span><span class="per">USD / MES</span></div>
+            <div class="price-box"><span class="num" style="font-size:20px">Hablemos</span><span class="per">A medida</span></div>
           </div>
           <div class="price-art">
             <svg viewBox="0 0 200 160" fill="none" aria-hidden="true" role="presentation">
@@ -352,48 +421,143 @@ document.addEventListener('DOMContentLoaded',function(){
             <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>SLA y soporte dedicado</li>
             <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Asistencia de onboarding e integración</li>
           </ul>
-          <a href="https://products.myorbisresults.com/login" class="price-cta">Empezar</a>
+          <a href="/es/#consult" class="price-cta">Reserva una cita</a>
         </div>
       </div>
-      <p class="price-foot">Todos los precios de MyOrbisVoice están en USD. Todos los planes mensuales se facturan mes a mes.</p>
+      <p class="price-foot">Todos los precios de MyOrbisVoice están en USD. Paga mes a mes o ahorra 16.7% con facturación anual.</p>
     </div>
   </section>
 
   <section style="padding-top:0">
     <div class="container">
       <div class="callout" style="margin-bottom:8px;">
-        <span class="mor-eyebrow">El Resto de la Suite</span>
-        <h2 style="font-size:clamp(24px,3vw,34px); margin:14px 0 14px;">Un solo sistema, con precio a la medida de tu negocio.</h2>
-        <p style="color:var(--text-2); font-size:17px; line-height:1.65; max-width:820px;">MyOrbisVoice es el canal con precios públicos y autoservicio. El resto de la suite se vende mediante una consulta para dimensionarlo según tus sucursales, volumen y metas — sin adivinar, sin relleno. Agenda una llamada gratis y mapeamos exactamente lo que necesitas.</p>
+        <span class="mor-eyebrow">Suma a tu suite</span>
+        <h2 style="font-size:clamp(24px,3vw,34px); margin:14px 0 14px;">El resto del sistema — un solo stack conectado.</h2>
+        <p style="color:var(--text-2); font-size:17px; line-height:1.65; max-width:820px;">Voice es donde la mayoría empieza, pero es una pata del sistema. Suma reseñas, visibilidad local y un sitio web construido para convertir — cada uno conectado al mismo agendamiento y reportes — y todo se potencia.</p>
       </div>
 
-      <div class="product-grid">
-        <div class="product-card">
-          <h3>MyOrbisReviews <span class="footer-soon">lanzando</span></h3>
-          <p>Convierte a tus clientes felices en un flujo constante de reseñas de 5 estrellas — y desvía a los molestos hacia ti primero. Ahora en lanzamiento.</p>
-          <p class="price-tag">Ahora en lanzamiento — contáctanos para el precio</p>
-          <a href="/es/contact/" class="btn btn-ghost">Agenda una consulta gratis</a>
+      <div class="price-grid">
+        <div class="price-card has-toggle" style="--tier:#f5b53d">
+          <span class="price-save">Ahorra 16.7%</span>
+          <div class="price-head">
+            <h3 class="price-name">MyOrbis<span>Reviews</span></h3>
+            <div class="price-box has-toggle"><span class="num" data-monthly="297">$297</span><span class="per">USD / MES</span><span class="annual-note">facturado anual</span></div>
+          </div>
+          <div class="price-art">
+            <svg viewBox="0 0 200 160" fill="none" aria-hidden="true" role="presentation">
+              <ellipse cx="100" cy="80" rx="78" ry="30" stroke="currentColor" stroke-width="1.4" opacity=".35" transform="rotate(-18 100 80)"/>
+              <ellipse cx="100" cy="80" rx="58" ry="58" stroke="currentColor" stroke-width="1.4" opacity=".55"/>
+              <ellipse cx="100" cy="80" rx="32" ry="32" stroke="currentColor" stroke-width="1.6" opacity=".85"/>
+              <circle cx="100" cy="80" r="6" fill="currentColor"/>
+              <circle cx="162" cy="64" r="3.4" fill="currentColor" opacity=".7"/>
+              <circle cx="40" cy="98" r="3" fill="currentColor" opacity=".5"/>
+              <path d="M100 60l5.1 10.3 11.4 1.7-8.2 8 1.9 11.3-10.2-5.3-10.2 5.3 1.9-11.3-8.2-8 11.4-1.7z" fill="currentColor" opacity=".9"/>
+            </svg>
+          </div>
+          <ul class="price-feats">
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Solicitudes de reseña por SMS + correo</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Bandeja unificada de reseñas</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Flujo de resolución para calificaciones bajas</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Sincronización con el Perfil de Empresa en Google</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Campañas de reseñas</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Negocio individual + agencia</li>
+          </ul>
+          <a href="https://reviews.myorbisresults.com" class="price-cta">Empezar</a>
         </div>
 
-        <div class="product-card">
-          <h3>MyOrbisLocal</h3>
-          <p>Aparece en el Google Map Pack donde de verdad buscan los clientes de "[servicio] cerca de mí" — visibilidad y posicionamiento local, hecho por nosotros.</p>
-          <p class="price-tag">Habla con nosotros para el precio</p>
-          <a href="/es/contact/" class="btn btn-ghost">Agenda una consulta gratis</a>
+        <div class="price-card has-toggle" style="--tier:#34d399">
+          <span class="price-save">Ahorra 16.7%</span>
+          <div class="price-head">
+            <h3 class="price-name">MyOrbis<span>Local</span></h3>
+            <div class="price-box has-toggle"><span class="num" data-monthly="497">$497</span><span class="per">USD / MES</span><span class="annual-note">facturado anual</span></div>
+          </div>
+          <div class="price-art">
+            <svg viewBox="0 0 200 160" fill="none" aria-hidden="true" role="presentation">
+              <ellipse cx="100" cy="80" rx="78" ry="30" stroke="currentColor" stroke-width="1.4" opacity=".35" transform="rotate(-18 100 80)"/>
+              <ellipse cx="100" cy="80" rx="58" ry="58" stroke="currentColor" stroke-width="1.4" opacity=".55"/>
+              <ellipse cx="100" cy="80" rx="32" ry="32" stroke="currentColor" stroke-width="1.6" opacity=".85"/>
+              <circle cx="162" cy="64" r="3.4" fill="currentColor" opacity=".7"/>
+              <circle cx="40" cy="98" r="3" fill="currentColor" opacity=".5"/>
+              <path d="M100 56c-9.4 0-17 7.4-17 16.6 0 11.6 17 27.4 17 27.4s17-15.8 17-27.4C117 63.4 109.4 56 100 56z" stroke="currentColor" stroke-width="2.2" fill="none"/>
+              <circle cx="100" cy="72" r="6" fill="currentColor"/>
+            </svg>
+          </div>
+          <ul class="price-feats">
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Optimización del Perfil de Empresa en Google</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>SEO local</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Posicionamiento en el Map Pack</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Visibilidad "cerca de mí"</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Reportes mensuales</li>
+          </ul>
+          <a href="/es/#consult" class="price-cta">Empezar</a>
         </div>
 
-        <div class="product-card">
-          <h3>MyOrbisWeb</h3>
-          <p>Un sitio web rápido y construido para convertir, que transforma el tráfico que ganas en trabajos agendados — parte del sistema conectado.</p>
-          <p class="price-tag">Habla con nosotros para el precio</p>
-          <a href="/es/contact/" class="btn btn-ghost">Agenda una consulta gratis</a>
+        <div class="price-card has-toggle" style="--tier:#60a5fa">
+          <span class="price-save">Ahorra 16.7%</span>
+          <div class="price-head">
+            <h3 class="price-name">MyOrbis<span>Web</span></h3>
+            <div class="price-box has-toggle"><span class="num" data-monthly="997">$997</span><span class="per">USD / MES</span><span class="annual-note">facturado anual</span></div>
+          </div>
+          <div class="price-art">
+            <svg viewBox="0 0 200 160" fill="none" aria-hidden="true" role="presentation">
+              <ellipse cx="100" cy="80" rx="78" ry="30" stroke="currentColor" stroke-width="1.4" opacity=".35" transform="rotate(-18 100 80)"/>
+              <ellipse cx="100" cy="80" rx="58" ry="58" stroke="currentColor" stroke-width="1.4" opacity=".55"/>
+              <rect x="70" y="58" width="60" height="44" rx="5" stroke="currentColor" stroke-width="2.2" fill="none"/>
+              <line x1="70" y1="70" x2="130" y2="70" stroke="currentColor" stroke-width="2.2"/>
+              <circle cx="77" cy="64" r="1.8" fill="currentColor"/>
+              <circle cx="84" cy="64" r="1.8" fill="currentColor"/>
+              <line x1="80" y1="82" x2="120" y2="82" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              <line x1="80" y1="92" x2="108" y2="92" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <ul class="price-feats">
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Sitio web construido para convertir</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Páginas de aterrizaje de alta intención</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Conectado al agendamiento + el widget de Voice</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Hosting + actualizaciones</li>
+          </ul>
+          <a href="/es/#consult" class="price-cta">Empezar</a>
         </div>
+      </div>
+    </div>
+  </section>
 
-        <div class="product-card">
-          <h3>MyOrbisSocial</h3>
-          <p>Mantente presente con una presencia social constante y alineada a tu marca — para que seas el nombre que recuerdan cuando estén listos.</p>
-          <p class="price-tag">Habla con nosotros para el precio</p>
-          <a href="/es/contact/" class="btn btn-ghost">Agenda una consulta gratis</a>
+  <section style="padding-top:0">
+    <div class="container">
+      <div class="callout" style="margin-bottom:8px;">
+        <span class="mor-eyebrow">MyOrbisTrifecta</span>
+        <h2 style="font-size:clamp(24px,3vw,34px); margin:14px 0 14px;">El sistema completo — gestionado para ti.</h2>
+        <p style="color:var(--text-2); font-size:17px; line-height:1.65; max-width:820px;">Cada producto, cada canal, un solo equipo manejándolo. El Trifecta reúne MyOrbisVoice, MyOrbisReviews, MyOrbisLocal y MyOrbisWeb en un solo motor gestionado, con soporte prioritario y un estratega dedicado.</p>
+      </div>
+
+      <div class="trifecta-wrap">
+        <div class="price-card featured trifecta has-toggle" style="--tier:#c084fc">
+          <span class="price-pop">Mejor Valor</span>
+          <span class="price-save">Ahorra 16.7%</span>
+          <div class="price-head">
+            <h3 class="price-name">MyOrbis<span>Trifecta</span></h3>
+            <div class="price-box has-toggle"><span class="num" data-monthly="4997">$4,997</span><span class="per">USD / MES</span><span class="annual-note">facturado anual</span></div>
+          </div>
+          <div class="price-art">
+            <svg viewBox="0 0 200 160" fill="none" aria-hidden="true" role="presentation">
+              <ellipse cx="100" cy="80" rx="78" ry="30" stroke="currentColor" stroke-width="1.4" opacity=".35" transform="rotate(-18 100 80)"/>
+              <ellipse cx="100" cy="80" rx="58" ry="58" stroke="currentColor" stroke-width="1.4" opacity=".55"/>
+              <ellipse cx="100" cy="80" rx="32" ry="32" stroke="currentColor" stroke-width="1.6" opacity=".85"/>
+              <circle cx="100" cy="80" r="6" fill="currentColor"/>
+              <circle cx="100" cy="44" r="5" fill="currentColor" opacity=".9"/>
+              <circle cx="131" cy="98" r="5" fill="currentColor" opacity=".9"/>
+              <circle cx="69" cy="98" r="5" fill="currentColor" opacity=".9"/>
+              <path d="M100 44L131 98M131 98L69 98M69 98L100 44" stroke="currentColor" stroke-width="1.6" opacity=".5"/>
+            </svg>
+          </div>
+          <ul class="price-feats">
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Todo lo de MyOrbisVoice, MyOrbisReviews, MyOrbisLocal y MyOrbisWeb</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Totalmente gestionado para ti</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Soporte prioritario</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Reportes unificados</li>
+            <li><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.6"/><path d="M8 12.4l2.6 2.6L16 9.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Estratega dedicado</li>
+          </ul>
+          <a href="https://products.myorbisresults.com/login" class="price-cta">Empezar</a>
         </div>
       </div>
     </div>
@@ -404,7 +568,11 @@ document.addEventListener('DOMContentLoaded',function(){
       <div class="faq" style="margin:0 auto;">
         <details>
           <summary>¿Los precios están en USD?</summary>
-          <p>Sí. Todos los precios están en dólares estadounidenses ($). Todos los planes mensuales se facturan mes a mes.</p>
+          <p>Sí. Todos los precios están en dólares estadounidenses ($), mostrados como una cifra mensual. Puedes pagar mes a mes o anual.</p>
+        </details>
+        <details>
+          <summary>¿Cómo funciona la facturación mensual vs. anual?</summary>
+          <p>Usa el toggle Mensual / Anual de arriba para cambiar los precios. La facturación anual ahorra 16.7% — pagas el equivalente a 10 meses por un año completo, facturado una vez al año.</p>
         </details>
         <details>
           <summary>¿Qué incluye el plan Free?</summary>
@@ -412,15 +580,19 @@ document.addEventListener('DOMContentLoaded',function(){
         </details>
         <details>
           <summary>¿Con qué plan debería empezar?</summary>
-          <p>La mayoría empieza con Pro — enciende los tres canales (widget, entrante y saliente) más CRM y campañas. Si el teléfono es toda tu recepción, Basic cubre lo entrante; si manejas varias sucursales, Premier o Enterprise escalan contigo.</p>
+          <p>La mayoría empieza con Pro — enciende los tres canales (widget, entrante y saliente) más CRM y campañas. Si el teléfono es toda tu recepción, Basic cubre lo entrante; si manejas varias sucursales o necesitas volumen a medida, Premier escala contigo y Enterprise se dimensiona por cita.</p>
         </details>
         <details>
           <summary>¿Puedo cambiar de plan después?</summary>
           <p>Sí. Sube o baja de plan según cambie tu volumen — los niveles superiores incluyen todo lo de abajo, así que subir solo agrega más minutos, agentes, canales y campañas.</p>
         </details>
         <details>
-          <summary>¿Cómo se cotizan los demás productos?</summary>
-          <p>MyOrbisReviews, MyOrbisLocal, MyOrbisWeb y MyOrbisSocial se dimensionan a tu negocio en una consulta gratis. El precio depende de tus sucursales, volumen y metas — agenda una llamada y te damos un número claro.</p>
+          <summary>¿Cómo se cotizan MyOrbisReviews, MyOrbisLocal y MyOrbisWeb?</summary>
+          <p>Tienen precios mensuales públicos — MyOrbisReviews $297, MyOrbisLocal $497 y MyOrbisWeb $997 — con la misma facturación mensual o anual que Voice. Combínalos todos con Voice en el MyOrbisTrifecta por $4,997/mes, totalmente gestionado.</p>
+        </details>
+        <details>
+          <summary>¿Y Enterprise?</summary>
+          <p>Enterprise se dimensiona a tu negocio — volumen de llamadas y campañas a medida, enrutamiento multi-sucursal, SLAs y soporte dedicado. No tiene precio fijo; reserva una cita y lo dimensionamos contigo.</p>
         </details>
       </div>
     </div>
@@ -430,7 +602,7 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <h2>¿No sabes cuál plan te conviene?</h2>
       <p>Una consulta, y dimensionamos el sistema a tu negocio — y te mostramos exactamente cuánto cuesta tapar las fugas.</p>
-      <a href="/es/contact/" class="btn btn-cta btn-cta-big">Agenda una consulta gratis</a>
+      <a href="/es/#consult" class="btn btn-cta btn-cta-big">Agenda una consulta gratis</a>
     </div>
   </section>
 
@@ -470,7 +642,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
         <div class="footer-col">
           <h5>Empresa</h5>
-          <a href="/es/contact/">Agenda una consulta</a>
+          <a href="/es/#consult">Agenda una consulta</a>
           <a href="/es/partners/apply/">Postúlate como socio</a>
           <a href="https://app.myorbisvoice.com/login" target="_blank" rel="noopener">Acceso de clientes</a>
           <a href="https://app.myorbisvoice.com/partner-portal/login" target="_blank" rel="noopener">Acceso de socios</a>
@@ -496,5 +668,29 @@ document.addEventListener('DOMContentLoaded',function(){
   </footer>
 
   <script src="/assets/js/orby.js" defer></script>
+  <script>
+  /* Monthly / Yearly pricing toggle — dependency-free, language-agnostic.
+     Yearly = round(monthly * 5/6) shown as a per-month figure (16.7% off). */
+  (function(){
+    var nums = Array.prototype.slice.call(document.querySelectorAll('.price-box .num[data-monthly]'));
+    var btns = Array.prototype.slice.call(document.querySelectorAll('.bill-toggle button[data-bill]'));
+    if (!btns.length) return;
+    function fmt(n){ return '$' + n.toLocaleString('en-US'); }
+    function apply(mode){
+      var yearly = mode === 'yearly';
+      document.body.classList.toggle('yearly', yearly);
+      nums.forEach(function(el){
+        var m = parseInt(el.getAttribute('data-monthly'), 10) || 0;
+        var v = (yearly && m > 0) ? Math.round(m * 5 / 6) : m;
+        el.textContent = fmt(v);
+      });
+      btns.forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-bill') === mode)); });
+    }
+    btns.forEach(function(b){
+      b.addEventListener('click', function(){ apply(b.getAttribute('data-bill')); });
+    });
+    apply('monthly'); /* default */
+  })();
+  </script>
 </body>
 </html>
