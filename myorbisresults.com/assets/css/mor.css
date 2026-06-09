@@ -194,3 +194,30 @@ footer.mor-footer { background: var(--bg-2); border-top: 1px solid var(--border)
   color: #ff2ec4 !important;
   text-shadow: 0 0 8px rgba(255,46,196,.95), 0 0 18px rgba(255,46,196,.6), 0 0 30px rgba(255,46,196,.35);
 }
+
+/* ── Pricing-page-inspired card polish (CSS-only — no content/graphics changed) ──
+   Brings the pricing tiers' accent glow + accent top-edge to the site's card grids. */
+.leak-card, .industry-card { position: relative; overflow: hidden; }
+/* accent top-edge */
+.leak-card::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: linear-gradient(90deg, var(--leak), transparent 82%); opacity: .9;
+}
+.industry-card::before {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: linear-gradient(90deg, var(--tier, var(--accent)), transparent 82%); opacity: .9;
+}
+/* glow on hover (matches the pricing cards' shadow) */
+.leak-card:hover { box-shadow: 0 22px 50px -30px color-mix(in oklab, var(--leak) 65%, transparent); }
+/* industry cards: rotating accent variety + glow like the pricing tiers */
+.industry-card:nth-child(6n+1) { --tier: #23c4c4; }
+.industry-card:nth-child(6n+2) { --tier: #34d399; }
+.industry-card:nth-child(6n+3) { --tier: #f5b53d; }
+.industry-card:nth-child(6n+4) { --tier: #60a5fa; }
+.industry-card:nth-child(6n+5) { --tier: #c084fc; }
+.industry-card:nth-child(6n+6) { --tier: #ff2ec4; }
+.industry-card:hover {
+  border-color: color-mix(in oklab, var(--tier, var(--accent)) 50%, var(--border));
+  box-shadow: 0 22px 50px -30px color-mix(in oklab, var(--tier, var(--accent)) 60%, transparent);
+}
+.industry-card .cicon, .industry-card .ind-ico, .industry-card svg:first-of-type { color: var(--tier, var(--accent)); }
