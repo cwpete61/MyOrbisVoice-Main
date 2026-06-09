@@ -191,5 +191,6 @@ footer.mor-footer { background: var(--bg-2); border-top: 1px solid var(--border)
 
 /* Fuchsia glow on the active nav tab — the active link carries inline color:var(--text). */
 .nav-links a[style*="--text"] {
+  color: #ff2ec4 !important;
   text-shadow: 0 0 8px rgba(255,46,196,.95), 0 0 18px rgba(255,46,196,.6), 0 0 30px rgba(255,46,196,.35);
 }
