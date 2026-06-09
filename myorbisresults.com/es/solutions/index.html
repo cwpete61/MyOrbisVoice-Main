@@ -189,6 +189,318 @@ document.addEventListener('DOMContentLoaded',function(){
     </div>
   </section>
 
+  <style>
+  /* prod-deep — secciones ilustradas por producto (se adaptan al tema vía variables CSS, sin hex fijos) */
+  .prod-deep { border-top: 1px solid var(--border); padding: 72px 0; }
+  .prod-deep .pd-row { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+  .prod-deep.pd-flip .pd-art { order: -1; }
+  .prod-deep .pd-copy h2 { font-size: clamp(26px, 3vw, 38px); margin: 12px 0 16px; }
+  .prod-deep .pd-copy p { color: var(--text-2); font-size: 16.5px; line-height: 1.65; margin: 0 0 14px; max-width: 560px; }
+  .prod-deep .pd-copy .chips { margin: 18px 0 6px; }
+  .prod-deep .pd-cta { margin-top: 20px; display: inline-block; }
+  .prod-deep .pd-art { display: flex; flex-direction: column; gap: 20px; }
+  .prod-deep .pd-panel { background: color-mix(in oklab, var(--surface) 55%, transparent); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 24px; }
+  .prod-deep .pd-svg { width: 100%; height: auto; display: block; color: var(--text-2); }
+  .prod-deep .pd-chart { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 18px 20px 16px; }
+  .prod-deep .pd-chart .pd-cap { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); margin: 10px 0 0; }
+  .prod-deep .pd-chart .pd-chart-title { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-hi); margin: 0 0 12px; }
+  .prod-deep .pd-roles { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+  .prod-deep .pd-roles span { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.03em; color: var(--text-3); padding: 4px 10px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); background: color-mix(in oklab, var(--surface) 60%, transparent); }
+  /* helpers de etiquetas svg */
+  .pd-svg .lbl { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.02em; fill: var(--text-2); }
+  .pd-svg .lbl-hi { fill: var(--accent-hi); }
+  .pd-svg .lbl-mut { fill: var(--text-3); }
+  .pd-svg .node { fill: color-mix(in oklab, var(--surface) 70%, transparent); stroke: var(--border-strong); stroke-width: 1; }
+  .pd-svg .node-accent { fill: color-mix(in oklab, var(--accent) 22%, var(--surface)); stroke: var(--accent); stroke-width: 1.4; }
+  .pd-svg .node-hi { fill: color-mix(in oklab, var(--accent-hi) 22%, var(--surface)); stroke: var(--accent-hi); stroke-width: 1.4; }
+  .pd-svg .node-mut { fill: color-mix(in oklab, var(--surface) 40%, transparent); stroke: var(--border); stroke-width: 1; }
+  .pd-svg .conn { stroke: var(--border-strong); stroke-width: 1.3; fill: none; }
+  .pd-svg .conn-accent { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+  .pd-svg .bar-bg { fill: color-mix(in oklab, var(--surface) 50%, transparent); }
+  .pd-svg .bar-mut { fill: var(--border-strong); }
+  .pd-svg .bar-accent { fill: var(--accent); }
+  .pd-svg .bar-hi { fill: var(--accent-hi); }
+  @media (max-width: 860px) {
+    .prod-deep .pd-row { grid-template-columns: 1fr; gap: 32px; }
+    .prod-deep.pd-flip .pd-art { order: 0; }
+    .prod-deep .pd-copy p { max-width: none; }
+  }
+  </style>
+
+  <!-- 1 · MyOrbisVoice — arte a la derecha -->
+  <section class="prod-deep">
+    <div class="container">
+      <div class="pd-row">
+        <div class="pd-copy">
+          <span class="mor-eyebrow">Producto Estrella · Disponible</span>
+          <h2>MyOrbisVoice — un equipo de voz con IA que nunca pierde una llamada.</h2>
+          <p>Tres canales alimentan un solo cerebro. El <strong>widget del sitio</strong> habla con los visitantes, la <strong>recepcionista entrante</strong> contesta el teléfono de día o de noche, y el <strong>marcador saliente</strong> da seguimiento a los prospectos — todo impulsado por tu Business DNA, así el agente habla como tu negocio, conoce tus servicios y sigue tus reglas de reserva.</p>
+          <p>Detrás de escena, agentes especialistas se pasan el trabajo entre sí — un Orchestrator dirige, un agente Appointment agenda en <strong>Google Calendar</strong>, cada llamada queda registrada en tu <strong>CRM</strong> y quien llamó recibe una <strong>confirmación por SMS + email</strong>. Totalmente bilingüe, inglés y español.</p>
+          <div class="chips">
+            <span class="chip">Widget en el sitio</span><span class="chip">Entrante</span><span class="chip">Saliente</span><span class="chip">Agenda en Calendar</span><span class="chip">CRM integrado</span><span class="chip">Inglés + Español</span>
+          </div>
+          <div class="pd-roles">
+            <span>Orchestrator</span><span>Appointment</span><span>Sales</span><span>Customer Service</span><span>Marketing</span><span>Secretary</span>
+          </div>
+          <a href="https://products.myorbisresults.com/login" class="btn btn-cta pd-cta">Empezar →</a>
+        </div>
+        <div class="pd-art">
+          <div class="pd-panel">
+            <svg class="pd-svg" viewBox="0 0 380 220" role="img" aria-labelledby="voice-svg-title">
+              <title id="voice-svg-title">Flujo de MyOrbisVoice: tres canales convergen en el equipo de agentes de voz, que luego agenda, registra y confirma</title>
+              <!-- nodos de origen -->
+              <rect class="node" x="6" y="20" width="92" height="30" rx="8"/><text class="lbl" x="52" y="38" text-anchor="middle">Widget del sitio</text>
+              <rect class="node" x="6" y="95" width="92" height="30" rx="8"/><text class="lbl" x="52" y="113" text-anchor="middle">Llamada entrante</text>
+              <rect class="node" x="6" y="170" width="92" height="30" rx="8"/><text class="lbl" x="52" y="188" text-anchor="middle">Saliente</text>
+              <!-- conectores que convergen -->
+              <path class="conn-accent" d="M98 35 C 130 35, 130 100, 150 105"/>
+              <path class="conn-accent" d="M98 110 H 150"/>
+              <path class="conn-accent" d="M98 185 C 130 185, 130 120, 150 115"/>
+              <!-- nodo central -->
+              <rect class="node-accent" x="150" y="86" width="80" height="48" rx="10"/>
+              <text class="lbl lbl-hi" x="190" y="106" text-anchor="middle">Equipo de</text>
+              <text class="lbl lbl-hi" x="190" y="118" text-anchor="middle">agentes de voz</text>
+              <!-- conectores de salida -->
+              <path class="conn" d="M230 100 C 258 100, 258 35, 282 35"/>
+              <path class="conn" d="M230 110 H 282"/>
+              <path class="conn" d="M230 120 C 258 120, 258 185, 282 185"/>
+              <!-- nodos de resultado -->
+              <rect class="node" x="282" y="20" width="92" height="30" rx="8"/><text class="lbl" x="328" y="38" text-anchor="middle">Agenda Calendar</text>
+              <rect class="node" x="282" y="95" width="92" height="30" rx="8"/><text class="lbl" x="328" y="113" text-anchor="middle">Registra en CRM</text>
+              <rect class="node" x="282" y="170" width="92" height="30" rx="8"/><text class="lbl" x="328" y="188" text-anchor="middle">SMS + Email</text>
+            </svg>
+          </div>
+          <div class="pd-chart">
+            <p class="pd-chart-title">Llamadas capturadas</p>
+            <svg class="pd-svg" viewBox="0 0 380 78" role="img" aria-labelledby="voice-chart-title">
+              <title id="voice-chart-title">Llamadas capturadas: alrededor de la mitad sin cobertura frente a todas capturadas con MyOrbisVoice</title>
+              <text class="lbl lbl-mut" x="0" y="14">Sin cobertura</text>
+              <rect class="bar-bg" x="0" y="20" width="380" height="12" rx="6"/>
+              <rect class="bar-mut" x="0" y="20" width="198" height="12" rx="6"/>
+              <text class="lbl" x="374" y="14" text-anchor="end">52%</text>
+              <text class="lbl lbl-hi" x="0" y="52">Con MyOrbisVoice</text>
+              <rect class="bar-bg" x="0" y="58" width="380" height="12" rx="6"/>
+              <rect class="bar-accent" x="0" y="58" width="380" height="12" rx="6"/>
+              <text class="lbl lbl-hi" x="374" y="52" text-anchor="end">100%</text>
+            </svg>
+            <p class="pd-cap">Ilustrativo.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · MyOrbisReviews — arte a la izquierda -->
+  <section class="prod-deep pd-flip">
+    <div class="container">
+      <div class="pd-row">
+        <div class="pd-copy">
+          <span class="mor-eyebrow">Reputación · Disponible</span>
+          <h2>MyOrbisReviews — más reseñas de 5 estrellas, menos quejas públicas.</h2>
+          <p>Cada cliente feliz recibe una <strong>solicitud de reseña por SMS o email</strong> en el momento justo. Las buenas experiencias se dirigen directo a tu <strong>reseña pública en Google</strong> — donde los nuevos clientes leen antes de llamar.</p>
+          <p>Las calificaciones bajas se desvían a un <strong>buzón privado de resolución</strong>, así arreglas el problema antes de que se haga público. Un solo buzón unificado para cada reseña, sincronización con Google Business Profile y un panel de agencia para gestionar varios clientes.</p>
+          <div class="chips">
+            <span class="chip">Solicitudes de reseña</span><span class="chip">Buzón unificado</span><span class="chip">Flujo de resolución</span><span class="chip">Sync con GBP</span><span class="chip">Panel de agencia</span>
+          </div>
+          <a href="https://reviews.myorbisresults.com" class="btn btn-cta pd-cta">Abrir MyOrbisReviews →</a>
+        </div>
+        <div class="pd-art">
+          <div class="pd-panel">
+            <svg class="pd-svg" viewBox="0 0 380 200" role="img" aria-labelledby="reviews-svg-title">
+              <title id="reviews-svg-title">Embudo de MyOrbisReviews: una solicitud desvía a los clientes felices a reseñas públicas y a los molestos a un buzón privado de resolución</title>
+              <rect class="node" x="6" y="84" width="84" height="32" rx="8"/><text class="lbl" x="48" y="104" text-anchor="middle">Cliente</text>
+              <path class="conn" d="M90 100 H 132"/>
+              <rect class="node-accent" x="132" y="80" width="104" height="40" rx="9"/>
+              <text class="lbl lbl-hi" x="184" y="96" text-anchor="middle">Solicitud de reseña</text>
+              <text class="lbl lbl-hi" x="184" y="108" text-anchor="middle">SMS / Email</text>
+              <!-- rama arriba: pública -->
+              <path class="conn-accent" d="M236 90 C 268 70, 280 50, 300 44"/>
+              <rect class="node-hi" x="300" y="24" width="74" height="42" rx="9"/>
+              <text class="lbl lbl-hi" x="337" y="40" text-anchor="middle">Reseña pública</text>
+              <text class="lbl lbl-hi" x="337" y="54" text-anchor="middle">Google ★★★★★</text>
+              <!-- rama abajo: privada -->
+              <path class="conn" d="M236 110 C 268 130, 280 150, 300 156"/>
+              <rect class="node" x="300" y="136" width="74" height="42" rx="9"/>
+              <text class="lbl" x="337" y="152" text-anchor="middle">Buzón privado</text>
+              <text class="lbl" x="337" y="166" text-anchor="middle">1–3★ resuelto</text>
+            </svg>
+          </div>
+          <div class="pd-chart">
+            <p class="pd-chart-title">Calificación promedio en el tiempo</p>
+            <svg class="pd-svg" viewBox="0 0 380 92" role="img" aria-labelledby="reviews-chart-title">
+              <title id="reviews-chart-title">Calificación promedio subiendo a lo largo de cuatro meses de 3.8 a 4.6 estrellas</title>
+              <rect class="bar-mut" x="14" y="50" width="62" height="30" rx="3"/><text class="lbl" x="45" y="44" text-anchor="middle">3.8</text>
+              <rect class="bar-mut" x="104" y="38" width="62" height="42" rx="3"/><text class="lbl" x="135" y="32" text-anchor="middle">4.1</text>
+              <rect class="bar-mut" x="194" y="26" width="62" height="54" rx="3"/><text class="lbl" x="225" y="20" text-anchor="middle">4.4</text>
+              <rect class="bar-accent" x="284" y="16" width="62" height="64" rx="3"/><text class="lbl lbl-hi" x="315" y="10" text-anchor="middle">4.6</text>
+            </svg>
+            <p class="pd-cap">Ilustrativo.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · MyOrbisLocal — arte a la derecha -->
+  <section class="prod-deep">
+    <div class="container">
+      <div class="pd-row">
+        <div class="pd-copy">
+          <span class="mor-eyebrow">Visibilidad Local · Producto Hermano</span>
+          <h2>MyOrbisLocal — aparece primero cuando clientes cercanos buscan.</h2>
+          <p>Cuando alguien busca "<strong>[servicio] cerca de mí</strong>", llama a uno de los tres primeros negocios del <strong>Map Pack</strong> de Google. MyOrbisLocal optimiza tu Google Business Profile y tu SEO local para que ese negocio seas tú, no el de la otra cuadra.</p>
+          <p>Arregla la parte alta del embudo — más búsquedas, más visibilidad, más llamadas — para que el teléfono de verdad tenga llamadas que MyOrbisVoice pueda contestar.</p>
+          <div class="chips">
+            <span class="chip">Optimización de GBP</span><span class="chip">SEO local</span><span class="chip">Map Pack</span><span class="chip">"Cerca de mí"</span>
+          </div>
+          <a href="/es/contact/" class="btn btn-ghost pd-cta">Reserva una consulta gratis</a>
+        </div>
+        <div class="pd-art">
+          <div class="pd-panel">
+            <svg class="pd-svg" viewBox="0 0 380 210" role="img" aria-labelledby="local-svg-title">
+              <title id="local-svg-title">Map Pack de MyOrbisLocal: tu negocio en el primer lugar sobre dos competidores atenuados</title>
+              <!-- marco del teléfono -->
+              <rect class="node" x="20" y="12" width="340" height="186" rx="14"/>
+              <!-- barra de búsqueda -->
+              <rect class="node-mut" x="36" y="26" width="308" height="22" rx="11"/>
+              <text class="lbl lbl-mut" x="48" y="41">plomero cerca de mí</text>
+              <!-- mapa con pines -->
+              <rect class="node-mut" x="36" y="56" width="308" height="40" rx="8"/>
+              <circle cx="120" cy="76" r="4" class="bar-mut"/><circle cx="190" cy="84" r="4" class="bar-mut"/>
+              <circle cx="250" cy="72" r="6" class="bar-accent"/>
+              <!-- resultados rankeados -->
+              <rect class="node-accent" x="36" y="104" width="308" height="26" rx="7"/>
+              <text class="lbl lbl-hi" x="48" y="121">1.  Tu Negocio  ★★★★★</text>
+              <rect class="node-mut" x="36" y="136" width="308" height="26" rx="7"/>
+              <text class="lbl lbl-mut" x="48" y="153">2.  Competidor  ★★★★</text>
+              <rect class="node-mut" x="36" y="168" width="308" height="26" rx="7"/>
+              <text class="lbl lbl-mut" x="48" y="185">3.  Competidor  ★★★★</text>
+            </svg>
+          </div>
+          <div class="pd-chart">
+            <p class="pd-chart-title">Visibilidad local</p>
+            <svg class="pd-svg" viewBox="0 0 380 92" role="img" aria-labelledby="local-chart-title">
+              <title id="local-chart-title">Visibilidad local subiendo de una barra corta antes a una barra alta después</title>
+              <rect class="bar-mut" x="50" y="52" width="100" height="28" rx="4"/><text class="lbl" x="100" y="46" text-anchor="middle">Antes</text>
+              <rect class="bar-accent" x="230" y="16" width="100" height="64" rx="4"/><text class="lbl lbl-hi" x="280" y="10" text-anchor="middle">Después</text>
+            </svg>
+            <p class="pd-cap">Ilustrativo.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · MyOrbisWeb — arte a la izquierda -->
+  <section class="prod-deep pd-flip">
+    <div class="container">
+      <div class="pd-row">
+        <div class="pd-copy">
+          <span class="mor-eyebrow">Web de Conversión · En expansión</span>
+          <h2>MyOrbisWeb — sitios y páginas hechos para agendar, no solo para verse bien.</h2>
+          <p>Un sitio bonito que no convierte es decoración. MyOrbisWeb construye <strong>sitios y páginas de aterrizaje enfocados en conversión</strong>, diseñados con un solo objetivo: convertir un visitante en una llamada agendada.</p>
+          <p>Cada página está conectada directo a las reservas y al <strong>widget de MyOrbisVoice</strong>, así en el momento en que alguien se interesa, puede hablar con tu agente y caer en tu calendario — sin el callejón sin salida de formulario a buzón de voz.</p>
+          <div class="chips">
+            <span class="chip">Sitios de conversión</span><span class="chip">Páginas de aterrizaje</span><span class="chip">Conectado a reservas</span>
+          </div>
+          <a href="/es/contact/" class="btn btn-ghost pd-cta">Reserva una consulta gratis</a>
+        </div>
+        <div class="pd-art">
+          <div class="pd-panel">
+            <svg class="pd-svg" viewBox="0 0 380 210" role="img" aria-labelledby="web-svg-title">
+              <title id="web-svg-title">Embudo de conversión de MyOrbisWeb que se estrecha de visitantes a una llamada agendada</title>
+              <path class="conn" d="M40 18 H 340 L 286 64 H 94 Z"/><text class="lbl" x="190" y="44" text-anchor="middle">Visitantes</text>
+              <path class="conn" d="M96 70 H 284 L 246 116 H 134 Z"/><text class="lbl" x="190" y="96" text-anchor="middle">Página de aterrizaje</text>
+              <path class="conn" d="M136 122 H 244 L 214 168 H 166 Z"/><text class="lbl" x="190" y="148" text-anchor="middle">Habla con Orby</text>
+              <path class="conn-accent" d="M168 174 H 212 L 200 200 H 180 Z" fill="color-mix(in oklab, var(--accent) 22%, var(--surface))"/><text class="lbl lbl-hi" x="190" y="191" text-anchor="middle">Llamada agendada</text>
+            </svg>
+          </div>
+          <div class="pd-chart">
+            <p class="pd-chart-title">Reservas por 100 visitantes</p>
+            <svg class="pd-svg" viewBox="0 0 380 92" role="img" aria-labelledby="web-chart-title">
+              <title id="web-chart-title">Reservas por cien visitantes mucho más altas en un sitio hecho para convertir que en un sitio genérico</title>
+              <text class="lbl lbl-mut" x="0" y="22">Sitio genérico</text>
+              <rect class="bar-bg" x="0" y="28" width="380" height="12" rx="6"/>
+              <rect class="bar-mut" x="0" y="28" width="84" height="12" rx="6"/>
+              <text class="lbl lbl-hi" x="0" y="62">Hecho para convertir</text>
+              <rect class="bar-bg" x="0" y="68" width="380" height="12" rx="6"/>
+              <rect class="bar-accent" x="0" y="68" width="300" height="12" rx="6"/>
+            </svg>
+            <p class="pd-cap">Ilustrativo.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · MyOrbisSocial — arte a la derecha -->
+  <section class="prod-deep">
+    <div class="container">
+      <div class="pd-row">
+        <div class="pd-copy">
+          <span class="mor-eyebrow">Social · En expansión</span>
+          <h2>MyOrbisSocial — publica con constancia, quédate en su mente.</h2>
+          <p>La mayoría de los negocios locales publican a ráfagas y luego desaparecen por semanas. MyOrbisSocial mantiene una <strong>cadencia constante</strong> en Facebook, Instagram y tu Google Business Profile — programado, planeado y nunca olvidado.</p>
+          <p>Una presencia constante te mantiene frente a la gente antes de que te necesite, y devuelve esa atención al resto del conjunto — a las búsquedas, las llamadas y las reservas.</p>
+          <div class="chips">
+            <span class="chip">Programación</span><span class="chip">Publicación constante</span><span class="chip">Multi-canal</span>
+          </div>
+          <a href="/es/contact/" class="btn btn-ghost pd-cta">Reserva una consulta gratis</a>
+        </div>
+        <div class="pd-art">
+          <div class="pd-panel">
+            <svg class="pd-svg" viewBox="0 0 380 200" role="img" aria-labelledby="social-svg-title">
+              <title id="social-svg-title">Calendario semanal de contenido de MyOrbisSocial con publicaciones programadas en Facebook, Instagram y Google Business Profile</title>
+              <!-- encabezados de días -->
+              <text class="lbl lbl-mut" x="36" y="22" text-anchor="middle">Lun</text>
+              <text class="lbl lbl-mut" x="86" y="22" text-anchor="middle">Mar</text>
+              <text class="lbl lbl-mut" x="136" y="22" text-anchor="middle">Mié</text>
+              <text class="lbl lbl-mut" x="186" y="22" text-anchor="middle">Jue</text>
+              <text class="lbl lbl-mut" x="236" y="22" text-anchor="middle">Vie</text>
+              <text class="lbl lbl-mut" x="286" y="22" text-anchor="middle">Sáb</text>
+              <text class="lbl lbl-mut" x="336" y="22" text-anchor="middle">Dom</text>
+              <!-- 7 celdas de día -->
+              <rect class="node-accent" x="14" y="32" width="44" height="56" rx="8"/><text class="lbl lbl-hi" x="36" y="64" text-anchor="middle">FB</text>
+              <rect class="node" x="64" y="32" width="44" height="56" rx="8"/>
+              <rect class="node-accent" x="114" y="32" width="44" height="56" rx="8"/><text class="lbl lbl-hi" x="136" y="64" text-anchor="middle">IG</text>
+              <rect class="node" x="164" y="32" width="44" height="56" rx="8"/>
+              <rect class="node-accent" x="214" y="32" width="44" height="56" rx="8"/><text class="lbl lbl-hi" x="236" y="64" text-anchor="middle">GBP</text>
+              <rect class="node" x="264" y="32" width="44" height="56" rx="8"/>
+              <rect class="node-accent" x="314" y="32" width="44" height="56" rx="8"/><text class="lbl lbl-hi" x="336" y="64" text-anchor="middle">IG</text>
+              <!-- segunda fila -->
+              <rect class="node" x="14" y="98" width="44" height="56" rx="8"/>
+              <rect class="node-accent" x="64" y="98" width="44" height="56" rx="8"/><text class="lbl lbl-hi" x="86" y="130" text-anchor="middle">FB</text>
+              <rect class="node" x="114" y="98" width="44" height="56" rx="8"/>
+              <rect class="node-accent" x="164" y="98" width="44" height="56" rx="8"/><text class="lbl lbl-hi" x="186" y="130" text-anchor="middle">GBP</text>
+              <rect class="node" x="214" y="98" width="44" height="56" rx="8"/>
+              <rect class="node-accent" x="264" y="98" width="44" height="56" rx="8"/><text class="lbl lbl-hi" x="286" y="130" text-anchor="middle">IG</text>
+              <rect class="node" x="314" y="98" width="44" height="56" rx="8"/>
+              <text class="lbl lbl-mut" x="14" y="180">Publicaciones programadas en cada canal, semana tras semana.</text>
+            </svg>
+          </div>
+          <div class="pd-chart">
+            <p class="pd-chart-title">Constancia al publicar</p>
+            <svg class="pd-svg" viewBox="0 0 380 92" role="img" aria-labelledby="social-chart-title">
+              <title id="social-chart-title">Constancia al publicar: esporádica y despareja frente a programada y estable</title>
+              <text class="lbl lbl-mut" x="0" y="22">Esporádica</text>
+              <rect class="bar-mut" x="80" y="22" width="14" height="12" rx="3"/>
+              <rect class="bar-mut" x="120" y="22" width="14" height="12" rx="3"/>
+              <rect class="bar-mut" x="200" y="22" width="14" height="12" rx="3"/>
+              <text class="lbl lbl-hi" x="0" y="64">Programada</text>
+              <rect class="bar-accent" x="80" y="64" width="14" height="12" rx="3"/>
+              <rect class="bar-accent" x="120" y="64" width="14" height="12" rx="3"/>
+              <rect class="bar-accent" x="160" y="64" width="14" height="12" rx="3"/>
+              <rect class="bar-accent" x="200" y="64" width="14" height="12" rx="3"/>
+              <rect class="bar-accent" x="240" y="64" width="14" height="12" rx="3"/>
+              <rect class="bar-accent" x="280" y="64" width="14" height="12" rx="3"/>
+            </svg>
+            <p class="pd-cap">Ilustrativo.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="cta-band">
     <div class="container">
       <h2>¿No sabes por dónde empezar?</h2>
