@@ -34,12 +34,16 @@ FILES=(
   "problem/index.html"
   "system/index.html"
   "industries/index.html"
+  "solutions/index.html"
+  "pricing/index.html"
   "partners/index.html"
   # Spanish pages
   "es/index.html"
   "es/problem/index.html"
   "es/system/index.html"
   "es/industries/index.html"
+  "es/solutions/index.html"
+  "es/pricing/index.html"
   "es/partners/index.html"
   # Styles + widget loader
   "assets/css/orbis.css"
@@ -114,6 +118,6 @@ echo
 bold "═══ Verify ═══"
 title="$(curl -s "https://$LABEL/" | grep -oiE '<title>[^<]*</title>' | head -1)"
 echo "  homepage title: ${title:-<none>}"
-for p in / /problem/ /system/ /industries/ /partners/ /es/ /es/problem/ /es/system/ /es/industries/ /es/partners/; do
+for p in / /problem/ /system/ /industries/ /solutions/ /pricing/ /partners/ /es/ /es/problem/ /es/system/ /es/industries/ /es/solutions/ /es/pricing/ /es/partners/; do
   printf "  %-22s %s\n" "$p" "$(curl -s -o /dev/null -w '%{http_code}' "https://$LABEL$p")"
 done
