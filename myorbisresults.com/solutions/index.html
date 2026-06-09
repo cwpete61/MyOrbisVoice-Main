@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   <section style="padding-top:0">
     <div class="container">
-      <div class="section-head" style="text-align:center;"><span class="mor-eyebrow">The Suite</span><h2>Five connected products. One system.</h2></div>
+      <div class="callout" style="text-align:center; margin-bottom:8px;"><div class="section-head"><span class="mor-eyebrow">The Suite</span><h2>Five connected products. One system.</h2></div></div>
       <div class="industry-grid">
 
         <div class="industry-card" style="border-color: color-mix(in oklab, var(--accent) 50%, var(--border)); box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 28%, transparent);">
@@ -191,6 +191,37 @@ document.addEventListener('DOMContentLoaded',function(){
   </section>
 
   <style>
+  /* Solutions restyle — match the Pricing reference look:
+     boxed .callout intro panels per section + accent-bordered diagram panels.
+     Adds class/style hooks only; words + SVGs unchanged. */
+
+  /* Intro callout inside each prod-deep copy column — sits like a pricing card panel */
+  .prod-deep .pd-copy .callout { padding: 28px; margin: 0 0 4px; }
+  .prod-deep .pd-copy .callout h2 { margin: 12px 0 16px; }
+  .prod-deep .pd-copy .callout p:last-child { margin-bottom: 0; }
+
+  /* Per-section accent on the prod-deep diagram panels (rotating, like pricing tiers) */
+  .prod-deep { --pd-accent: var(--accent); }
+  .prod-deep:nth-of-type(6n+1) { --pd-accent: #23c4c4; }
+  .prod-deep:nth-of-type(6n+2) { --pd-accent: #34d399; }
+  .prod-deep:nth-of-type(6n+3) { --pd-accent: #f5b53d; }
+  .prod-deep:nth-of-type(6n+4) { --pd-accent: #60a5fa; }
+  .prod-deep:nth-of-type(6n+5) { --pd-accent: #c084fc; }
+  .prod-deep .pd-panel,
+  .prod-deep .pd-chart {
+    border-color: color-mix(in oklab, var(--pd-accent) 38%, var(--border));
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--pd-accent) 12%, transparent),
+                0 22px 50px -32px color-mix(in oklab, var(--pd-accent) 55%, transparent);
+    transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+  .prod-deep .pd-panel:hover,
+  .prod-deep .pd-chart:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in oklab, var(--pd-accent) 60%, var(--border));
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--pd-accent) 18%, transparent),
+                0 26px 60px -28px color-mix(in oklab, var(--pd-accent) 70%, transparent);
+  }
+
   /* prod-deep — illustrated per-product sections (themes via CSS vars, no hardcoded hex) */
   .prod-deep { border-top: 1px solid var(--border); padding: 72px 0; }
   .prod-deep .pd-row { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
@@ -233,10 +264,12 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <div class="pd-row">
         <div class="pd-copy">
+          <div class="callout">
           <span class="mor-eyebrow">Flagship · Live Today</span>
           <h2>MyOrbisVoice — an AI voice team that never misses a call.</h2>
           <p>Three channels feed one brain. The <strong>website widget</strong> talks to visitors, the <strong>inbound receptionist</strong> answers the phone day or night, and the <strong>outbound caller</strong> follows up on leads — all driven by your Business DNA, so the agent speaks like your business, knows your services, and follows your booking rules.</p>
           <p>Behind the scenes, specialist agents hand off to each other — an Orchestrator routes, an Appointment agent books to <strong>Google Calendar</strong>, every call is logged to your <strong>CRM</strong>, and the caller gets an <strong>SMS + email confirmation</strong>. Fully bilingual, English and Spanish.</p>
+          </div>
           <div class="chips">
             <span class="chip">Website widget</span><span class="chip">Inbound</span><span class="chip">Outbound</span><span class="chip">Books to Calendar</span><span class="chip">Built-in CRM</span><span class="chip">English + Spanish</span>
           </div>
@@ -296,10 +329,12 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <div class="pd-row">
         <div class="pd-copy">
+          <div class="callout">
           <span class="mor-eyebrow">Reputation · Live Today</span>
           <h2>MyOrbisReviews — more 5-star reviews, fewer public complaints.</h2>
           <p>Every happy customer gets a <strong>review request by SMS or email</strong> at the right moment. Glowing experiences get routed straight to your <strong>public Google review</strong> — where new customers are reading before they call.</p>
           <p>Low ratings branch into a <strong>private resolution inbox</strong> instead, so you fix the problem before it goes public. One unified inbox for every review, Google Business Profile sync, and an agency dashboard for managing multiple clients.</p>
+          </div>
           <div class="chips">
             <span class="chip">Review requests</span><span class="chip">Unified inbox</span><span class="chip">Resolution flow</span><span class="chip">GBP sync</span><span class="chip">Agency dashboard</span>
           </div>
@@ -347,10 +382,12 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <div class="pd-row">
         <div class="pd-copy">
+          <div class="callout">
           <span class="mor-eyebrow">Local Visibility · Sibling Product</span>
           <h2>MyOrbisLocal — show up first when nearby customers search.</h2>
           <p>When someone searches "<strong>[service] near me</strong>," they call one of the top three businesses in the Google <strong>Map Pack</strong>. MyOrbisLocal optimizes your Google Business Profile and local SEO so that business is you, not the shop down the street.</p>
           <p>It fixes the top of the funnel — more searches, more visibility, more calls — so the phone actually has calls for MyOrbisVoice to answer.</p>
+          </div>
           <div class="chips">
             <span class="chip">GBP optimization</span><span class="chip">Local SEO</span><span class="chip">Map Pack</span><span class="chip">"Near me"</span>
           </div>
@@ -397,10 +434,12 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <div class="pd-row">
         <div class="pd-copy">
+          <div class="callout">
           <span class="mor-eyebrow">Conversion Web · Expanding</span>
           <h2>MyOrbisWeb — sites and pages built to book, not just look good.</h2>
           <p>A pretty website that doesn't convert is decoration. MyOrbisWeb builds <strong>conversion-focused sites and landing pages</strong> designed around one job: turn a visitor into a booked call.</p>
           <p>Every page is wired straight to booking and the <strong>MyOrbisVoice widget</strong>, so the moment someone is interested, they can talk to your agent and land on your calendar — no form-to-voicemail dead end.</p>
+          </div>
           <div class="chips">
             <span class="chip">Conversion sites</span><span class="chip">Landing pages</span><span class="chip">Wired to booking</span>
           </div>
@@ -439,10 +478,12 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <div class="pd-row">
         <div class="pd-copy">
+          <div class="callout">
           <span class="mor-eyebrow">Social · Expanding</span>
           <h2>MyOrbisSocial — show up consistently, stay top of mind.</h2>
           <p>Most local businesses post in bursts, then go quiet for weeks. MyOrbisSocial keeps a <strong>steady cadence</strong> across Facebook, Instagram, and your Google Business Profile — scheduled, planned, and never forgotten.</p>
           <p>Consistent presence keeps you in front of people before they need you, and feeds that attention back into the rest of the suite — into searches, calls, and bookings.</p>
+          </div>
           <div class="chips">
             <span class="chip">Scheduling</span><span class="chip">Consistent posting</span><span class="chip">Multi-channel</span>
           </div>

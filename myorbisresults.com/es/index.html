@@ -109,6 +109,44 @@ document.addEventListener('DOMContentLoaded',function(){
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/orbis.css" />
   <link rel="stylesheet" href="/assets/css/mor.css?v=20260530a" />
+
+  <style>
+    /* Homepage restyle — match the Pricing page look (panels, accent cards, glow).
+       CSS only: no copy or graphics changed. */
+
+    /* Pricing-style boxed section intros: wrap each section's eyebrow + heading +
+       intro in a bordered, rounded, subtly-filled callout panel. Keeps the
+       homepage's centered hierarchy. */
+    .section-head.callout {
+      text-align: center;
+      max-width: 920px;
+      margin: 0 auto 8px;
+    }
+    .section-head.callout .mor-eyebrow { justify-content: center; }
+    .section-head.callout h2 { margin: 14px 0 14px; }
+    .section-head.callout p { margin: 0 auto; max-width: 720px; }
+
+    /* Make the legs (the 4-pillar grid) read like Pricing's accent cards:
+       rounded, accent top-edge, hover lift + glow, per-card accent variety. */
+    .legs .leg {
+      position: relative; overflow: hidden;
+      transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .legs .leg::before {
+      content: ''; position: absolute; inset: 0 0 auto 0; height: 3px;
+      background: linear-gradient(90deg, var(--tier, var(--accent)), transparent 82%); opacity: .9;
+    }
+    .legs .leg:nth-child(1) { --tier: #23c4c4; }
+    .legs .leg:nth-child(2) { --tier: #34d399; }
+    .legs .leg:nth-child(3) { --tier: #f5b53d; }
+    .legs .leg:nth-child(4) { --tier: #60a5fa; }
+    .legs .leg .leg-tag { color: var(--tier, var(--accent-hi)); }
+    .legs .leg:hover {
+      transform: translateY(-4px);
+      border-color: color-mix(in oklab, var(--tier, var(--accent)) 55%, var(--border));
+      box-shadow: 0 22px 50px -30px color-mix(in oklab, var(--tier, var(--accent)) 60%, transparent);
+    }
+  </style>
 </head>
 <body>
 
@@ -167,7 +205,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Sección 2: Cubeta con fugas / 6 problemas ── -->
   <section id="leaks">
     <div class="container">
-      <div class="section-head">
+      <div class="section-head callout">
         <span class="mor-eyebrow">El Problema Real</span>
         <h2>No tienes un problema. Tienes una cubeta con seis hoyos.</h2>
         <p>Cada hoyo drena un poco. Juntos desangran tu negocio — y lo sientes como "estamos ocupados, pero no crecemos."</p>
@@ -233,7 +271,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Sección 3: Brecha de planeación ── -->
   <section style="padding-top:0">
     <div class="container">
-      <div class="card" style="background:color-mix(in oklab, var(--accent) 8%, var(--surface)); border-color:color-mix(in oklab, var(--accent) 25%, var(--border)); padding:48px;">
+      <div class="callout">
         <span class="mor-eyebrow">La Brecha de Planeación</span>
         <h2 style="font-size:clamp(28px,3.6vw,42px); margin:16px 0 14px;">Tapar un hoyo a la vez es planear seguir goteando.</h2>
         <p style="color:var(--text-2); font-size:18px; line-height:1.6; max-width:760px;">La mayoría compra un chatbot aquí, contrata un experto en SEO allá, rehace el sitio el próximo año. Cada arreglo ignora los otros cinco hoyos, así que la cubeta sigue drenando. No planear el sistema <em>completo</em> es planear fracasar. Los negocios que crecen de forma constante no parchan — instalan un sistema donde cada pieza alimenta a la siguiente.</p>
@@ -244,7 +282,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Sección 4: El sistema ── -->
   <section id="system">
     <div class="container">
-      <div class="section-head">
+      <div class="section-head callout">
         <span class="mor-eyebrow">El Sistema</span>
         <h2>Un sistema. Cada fuga sellada. Ingresos que se acumulan.</h2>
         <p>Tres productos — Local, Web, Voice — que arreglan toda la cubeta y se alimentan entre sí, más Staff Training para que perdure.</p>
@@ -357,7 +395,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Sección 6: Mapa pilar → fuga ── -->
   <section style="padding-top:0">
     <div class="container">
-      <div class="section-head"><span class="mor-eyebrow">Ninguna Fuga Sin Dueño</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Cada fuga tiene su responsable.</h2></div>
+      <div class="section-head callout"><span class="mor-eyebrow">Ninguna Fuga Sin Dueño</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Cada fuga tiene su responsable.</h2></div>
       <div class="card" style="padding:8px 28px;">
         <div class="map-row"><span class="map-leak" style="color:#FF8C42">Dinero Muerto</span><span class="map-arrow">→</span><span class="map-fix">Campañas de reactivación por voz reenganchan prospectos fríos</span></div>
         <div class="map-row"><span class="map-leak" style="color:#FFD23F">Invisible en Línea</span><span class="map-arrow">→</span><span class="map-fix">Local sube tu posición en el Map Pack + reseñas</span></div>
@@ -372,7 +410,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Sección 7: Industrias ── -->
   <section id="industries" style="padding-top:0">
     <div class="container">
-      <div class="section-head"><span class="mor-eyebrow">Mejor Encaje</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Hecho para los negocios que el teléfono realmente mueve.</h2></div>
+      <div class="section-head callout"><span class="mor-eyebrow">Mejor Encaje</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Hecho para los negocios que el teléfono realmente mueve.</h2></div>
       <div class="chips">
         <span class="chip">Dental</span><span class="chip">Legal</span><span class="chip">HVAC</span><span class="chip">Plomería</span><span class="chip">Fitness</span><span class="chip">Spas médicos</span><span class="chip">Salones</span><span class="chip">Techado</span><span class="chip">Eléctrico</span><span class="chip">Servicios a domicilio</span><span class="chip">Marcas multi-sucursal</span>
       </div>
@@ -382,7 +420,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Sección 8: Consulta ── -->
   <section id="consult" style="padding-top:0">
     <div class="container">
-      <div class="card" style="background:color-mix(in oklab, var(--accent) 10%, var(--surface)); border-color:color-mix(in oklab, var(--accent) 30%, var(--border)); padding:48px; text-align:center;">
+      <div class="callout" style="text-align:center;">
         <span class="mor-eyebrow" style="justify-content:center;">Empieza Aquí</span>
         <h2 style="font-size:clamp(30px,4vw,52px); margin:16px 0 14px;">Empieza con una Consulta Trifecta gratis.</h2>
         <p style="color:var(--text-2); font-size:18px; line-height:1.6; max-width:680px; margin:0 auto 28px;">Revisamos tu visibilidad en Google, tu sitio, tus llamadas perdidas y seguimiento, tus reseñas y tus competidores — y te mostramos exactamente qué fugas te cuestan más y qué partes del sistema las arreglan. Sin presión, sin compromiso.</p>
@@ -420,7 +458,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Sección 10: Preguntas ── -->
   <section style="padding-top:0">
     <div class="container">
-      <div class="section-head"><span class="mor-eyebrow">Preguntas</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Antes de agendar.</h2></div>
+      <div class="section-head callout"><span class="mor-eyebrow">Preguntas</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Antes de agendar.</h2></div>
       <div class="faq">
         <details><summary>¿Por qué no hay precios en el sitio?</summary><p>Cada negocio se fuga en lugares distintos. Definimos el plan correcto en la consulta en vez de meterte a un paquete que arregla los hoyos equivocados.</p></details>
         <details><summary>¿Esto es solo una recepcionista con IA?</summary><p>No — esa es una pieza. Es un sistema conectado: visibilidad local, un sitio que convierte, voz con IA + CRM, y capacitación del equipo, todo alimentándose entre sí.</p></details>

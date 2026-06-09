@@ -87,6 +87,29 @@ document.addEventListener('DOMContentLoaded',function(){
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/orbis.css" />
   <link rel="stylesheet" href="/assets/css/mor.css?v=v3" />
+
+  <style>
+    /* Industries — reinforce the pricing-page accent-card look on the industry cards:
+       gradient surface, stronger accent top-edge, accent hover border + glow lift,
+       and per-card --tier-tinted leak tag. Restyle only — no copy/graphics change. */
+    .industry-grid { align-items: stretch; }
+    .industry-card {
+      background: linear-gradient(170deg, var(--surface-2), var(--surface));
+      border-radius: var(--r-lg);
+      display: flex; flex-direction: column;
+      transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    /* thicker, more present accent top-edge to match the pricing tiers */
+    .industry-card::before { height: 4px; opacity: 1; }
+    .industry-card p { flex: 1; }
+    .industry-card:hover {
+      transform: translateY(-4px);
+      border-color: color-mix(in oklab, var(--tier, var(--accent)) 55%, var(--border));
+      box-shadow: 0 22px 50px -30px color-mix(in oklab, var(--tier, var(--accent)) 60%, transparent);
+    }
+    /* tint the leak tag with the card's own accent, like pricing's per-tier accents */
+    .industry-card .leak-tag { color: var(--tier, var(--accent-hi)); }
+  </style>
 </head>
 <body>
 

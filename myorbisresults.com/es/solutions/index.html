@@ -117,7 +117,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   <section style="padding-top:0">
     <div class="container">
-      <div class="section-head" style="text-align:center;"><span class="mor-eyebrow">El conjunto</span><h2>Cinco productos conectados. Un solo sistema.</h2></div>
+      <div class="callout" style="text-align:center; margin-bottom:8px;"><div class="section-head"><span class="mor-eyebrow">El conjunto</span><h2>Cinco productos conectados. Un solo sistema.</h2></div></div>
       <div class="industry-grid">
 
         <div class="industry-card" style="border-color: color-mix(in oklab, var(--accent) 50%, var(--border)); box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 28%, transparent);">
@@ -191,6 +191,37 @@ document.addEventListener('DOMContentLoaded',function(){
   </section>
 
   <style>
+  /* Rediseño de Soluciones — para igualar el look de la página de Precios:
+     paneles .callout por sección + paneles de diagrama con borde de acento.
+     Solo agrega hooks de clase/estilo; las palabras y los SVG no cambian. */
+
+  /* Callout de intro dentro de la columna de copy — se ve como un panel de la página de Precios */
+  .prod-deep .pd-copy .callout { padding: 28px; margin: 0 0 4px; }
+  .prod-deep .pd-copy .callout h2 { margin: 12px 0 16px; }
+  .prod-deep .pd-copy .callout p:last-child { margin-bottom: 0; }
+
+  /* Acento por sección en los paneles de diagrama (rotativo, como las tarjetas de Precios) */
+  .prod-deep { --pd-accent: var(--accent); }
+  .prod-deep:nth-of-type(6n+1) { --pd-accent: #23c4c4; }
+  .prod-deep:nth-of-type(6n+2) { --pd-accent: #34d399; }
+  .prod-deep:nth-of-type(6n+3) { --pd-accent: #f5b53d; }
+  .prod-deep:nth-of-type(6n+4) { --pd-accent: #60a5fa; }
+  .prod-deep:nth-of-type(6n+5) { --pd-accent: #c084fc; }
+  .prod-deep .pd-panel,
+  .prod-deep .pd-chart {
+    border-color: color-mix(in oklab, var(--pd-accent) 38%, var(--border));
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--pd-accent) 12%, transparent),
+                0 22px 50px -32px color-mix(in oklab, var(--pd-accent) 55%, transparent);
+    transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+  .prod-deep .pd-panel:hover,
+  .prod-deep .pd-chart:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in oklab, var(--pd-accent) 60%, var(--border));
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--pd-accent) 18%, transparent),
+                0 26px 60px -28px color-mix(in oklab, var(--pd-accent) 70%, transparent);
+  }
+
   /* prod-deep — secciones ilustradas por producto (se adaptan al tema vía variables CSS, sin hex fijos) */
   .prod-deep { border-top: 1px solid var(--border); padding: 72px 0; }
   .prod-deep .pd-row { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
@@ -233,10 +264,12 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <div class="pd-row">
         <div class="pd-copy">
+          <div class="callout">
           <span class="mor-eyebrow">Producto Estrella · Disponible</span>
           <h2>MyOrbisVoice — un equipo de voz con IA que nunca pierde una llamada.</h2>
           <p>Tres canales alimentan un solo cerebro. El <strong>widget del sitio</strong> habla con los visitantes, la <strong>recepcionista entrante</strong> contesta el teléfono de día o de noche, y el <strong>marcador saliente</strong> da seguimiento a los prospectos — todo impulsado por tu Business DNA, así el agente habla como tu negocio, conoce tus servicios y sigue tus reglas de reserva.</p>
           <p>Detrás de escena, agentes especialistas se pasan el trabajo entre sí — un Orchestrator dirige, un agente Appointment agenda en <strong>Google Calendar</strong>, cada llamada queda registrada en tu <strong>CRM</strong> y quien llamó recibe una <strong>confirmación por SMS + email</strong>. Totalmente bilingüe, inglés y español.</p>
+          </div>
           <div class="chips">
             <span class="chip">Widget en el sitio</span><span class="chip">Entrante</span><span class="chip">Saliente</span><span class="chip">Agenda en Calendar</span><span class="chip">CRM integrado</span><span class="chip">Inglés + Español</span>
           </div>
@@ -296,10 +329,12 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <div class="pd-row">
         <div class="pd-copy">
+          <div class="callout">
           <span class="mor-eyebrow">Reputación · Disponible</span>
           <h2>MyOrbisReviews — más reseñas de 5 estrellas, menos quejas públicas.</h2>
           <p>Cada cliente feliz recibe una <strong>solicitud de reseña por SMS o email</strong> en el momento justo. Las buenas experiencias se dirigen directo a tu <strong>reseña pública en Google</strong> — donde los nuevos clientes leen antes de llamar.</p>
           <p>Las calificaciones bajas se desvían a un <strong>buzón privado de resolución</strong>, así arreglas el problema antes de que se haga público. Un solo buzón unificado para cada reseña, sincronización con Google Business Profile y un panel de agencia para gestionar varios clientes.</p>
+          </div>
           <div class="chips">
             <span class="chip">Solicitudes de reseña</span><span class="chip">Buzón unificado</span><span class="chip">Flujo de resolución</span><span class="chip">Sync con GBP</span><span class="chip">Panel de agencia</span>
           </div>
@@ -347,10 +382,12 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <div class="pd-row">
         <div class="pd-copy">
+          <div class="callout">
           <span class="mor-eyebrow">Visibilidad Local · Producto Hermano</span>
           <h2>MyOrbisLocal — aparece primero cuando clientes cercanos buscan.</h2>
           <p>Cuando alguien busca "<strong>[servicio] cerca de mí</strong>", llama a uno de los tres primeros negocios del <strong>Map Pack</strong> de Google. MyOrbisLocal optimiza tu Google Business Profile y tu SEO local para que ese negocio seas tú, no el de la otra cuadra.</p>
           <p>Arregla la parte alta del embudo — más búsquedas, más visibilidad, más llamadas — para que el teléfono de verdad tenga llamadas que MyOrbisVoice pueda contestar.</p>
+          </div>
           <div class="chips">
             <span class="chip">Optimización de GBP</span><span class="chip">SEO local</span><span class="chip">Map Pack</span><span class="chip">"Cerca de mí"</span>
           </div>
@@ -397,10 +434,12 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <div class="pd-row">
         <div class="pd-copy">
+          <div class="callout">
           <span class="mor-eyebrow">Web de Conversión · En expansión</span>
           <h2>MyOrbisWeb — sitios y páginas hechos para agendar, no solo para verse bien.</h2>
           <p>Un sitio bonito que no convierte es decoración. MyOrbisWeb construye <strong>sitios y páginas de aterrizaje enfocados en conversión</strong>, diseñados con un solo objetivo: convertir un visitante en una llamada agendada.</p>
           <p>Cada página está conectada directo a las reservas y al <strong>widget de MyOrbisVoice</strong>, así en el momento en que alguien se interesa, puede hablar con tu agente y caer en tu calendario — sin el callejón sin salida de formulario a buzón de voz.</p>
+          </div>
           <div class="chips">
             <span class="chip">Sitios de conversión</span><span class="chip">Páginas de aterrizaje</span><span class="chip">Conectado a reservas</span>
           </div>
@@ -439,10 +478,12 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="container">
       <div class="pd-row">
         <div class="pd-copy">
+          <div class="callout">
           <span class="mor-eyebrow">Social · En expansión</span>
           <h2>MyOrbisSocial — publica con constancia, quédate en su mente.</h2>
           <p>La mayoría de los negocios locales publican a ráfagas y luego desaparecen por semanas. MyOrbisSocial mantiene una <strong>cadencia constante</strong> en Facebook, Instagram y tu Google Business Profile — programado, planeado y nunca olvidado.</p>
           <p>Una presencia constante te mantiene frente a la gente antes de que te necesite, y devuelve esa atención al resto del conjunto — a las búsquedas, las llamadas y las reservas.</p>
+          </div>
           <div class="chips">
             <span class="chip">Programación</span><span class="chip">Publicación constante</span><span class="chip">Multi-canal</span>
           </div>

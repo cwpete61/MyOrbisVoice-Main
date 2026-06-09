@@ -146,6 +146,44 @@ document.addEventListener('DOMContentLoaded',function(){
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/orbis.css" />
   <link rel="stylesheet" href="assets/css/mor.css?v=20260530a" />
+
+  <style>
+    /* Homepage restyle — match the Pricing page look (panels, accent cards, glow).
+       CSS only: no copy or graphics changed. */
+
+    /* Pricing-style boxed section intros: wrap each section's eyebrow + heading +
+       intro in a bordered, rounded, subtly-filled callout panel. Keeps the
+       homepage's centered hierarchy. */
+    .section-head.callout {
+      text-align: center;
+      max-width: 920px;
+      margin: 0 auto 8px;
+    }
+    .section-head.callout .mor-eyebrow { justify-content: center; }
+    .section-head.callout h2 { margin: 14px 0 14px; }
+    .section-head.callout p { margin: 0 auto; max-width: 720px; }
+
+    /* Make the legs (the 4-pillar grid) read like Pricing's accent cards:
+       rounded, accent top-edge, hover lift + glow, per-card accent variety. */
+    .legs .leg {
+      position: relative; overflow: hidden;
+      transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .legs .leg::before {
+      content: ''; position: absolute; inset: 0 0 auto 0; height: 3px;
+      background: linear-gradient(90deg, var(--tier, var(--accent)), transparent 82%); opacity: .9;
+    }
+    .legs .leg:nth-child(1) { --tier: #23c4c4; }
+    .legs .leg:nth-child(2) { --tier: #34d399; }
+    .legs .leg:nth-child(3) { --tier: #f5b53d; }
+    .legs .leg:nth-child(4) { --tier: #60a5fa; }
+    .legs .leg .leg-tag { color: var(--tier, var(--accent-hi)); }
+    .legs .leg:hover {
+      transform: translateY(-4px);
+      border-color: color-mix(in oklab, var(--tier, var(--accent)) 55%, var(--border));
+      box-shadow: 0 22px 50px -30px color-mix(in oklab, var(--tier, var(--accent)) 60%, transparent);
+    }
+  </style>
 </head>
 <body>
 
@@ -204,7 +242,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Section 2: Leaky bucket / 6 problems ── -->
   <section id="leaks">
     <div class="container">
-      <div class="section-head">
+      <div class="section-head callout">
         <span class="mor-eyebrow">The Real Problem</span>
         <h2>You don't have one problem. You have a bucket with six holes.</h2>
         <p>Each hole drains a little. Together they bleed your business dry — and you feel it as "we're busy, but we're not growing."</p>
@@ -270,7 +308,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Section 3: Planning gap ── -->
   <section style="padding-top:0">
     <div class="container">
-      <div class="card" style="background:color-mix(in oklab, var(--accent) 8%, var(--surface)); border-color:color-mix(in oklab, var(--accent) 25%, var(--border)); padding:48px;">
+      <div class="callout">
         <span class="mor-eyebrow">The Planning Gap</span>
         <h2 style="font-size:clamp(28px,3.6vw,42px); margin:16px 0 14px;">Patching one hole at a time is planning to keep leaking.</h2>
         <p style="color:var(--text-2); font-size:18px; line-height:1.6; max-width:760px;">Most owners buy a chatbot here, hire an SEO guy there, redo the website next year. Each fix ignores the other five holes, so the bucket keeps draining. Failing to plan the <em>whole</em> system is planning to fail. Businesses that grow consistently don't patch — they install a system where every piece feeds the next.</p>
@@ -281,7 +319,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Section 4: System reveal ── -->
   <section id="system">
     <div class="container">
-      <div class="section-head">
+      <div class="section-head callout">
         <span class="mor-eyebrow">The System</span>
         <h2>One system. Every leak sealed. Revenue that compounds.</h2>
         <p>Three products — Local, Web, Voice — that fix the whole bucket and feed each other, plus Staff Training to make it stick.</p>
@@ -394,7 +432,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Section 6: Pillar → leak map ── -->
   <section style="padding-top:0">
     <div class="container">
-      <div class="section-head"><span class="mor-eyebrow">No Leak Left Behind</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Every leak has an owner.</h2></div>
+      <div class="section-head callout"><span class="mor-eyebrow">No Leak Left Behind</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Every leak has an owner.</h2></div>
       <div class="card" style="padding:8px 28px;">
         <div class="map-row"><span class="map-leak" style="color:#FF8C42">Dead Money</span><span class="map-arrow">→</span><span class="map-fix">Voice reactivation campaigns re-engage cold leads</span></div>
         <div class="map-row"><span class="map-leak" style="color:#FFD23F">Invisible Online</span><span class="map-arrow">→</span><span class="map-fix">Local lifts your Map Pack rank + reviews</span></div>
@@ -409,7 +447,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Section 7: Industries ── -->
   <section id="industries" style="padding-top:0">
     <div class="container">
-      <div class="section-head"><span class="mor-eyebrow">Best Fit</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Built for the businesses the phone actually runs.</h2></div>
+      <div class="section-head callout"><span class="mor-eyebrow">Best Fit</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Built for the businesses the phone actually runs.</h2></div>
       <div class="chips">
         <span class="chip">Dental</span><span class="chip">Legal</span><span class="chip">HVAC</span><span class="chip">Plumbing</span><span class="chip">Fitness</span><span class="chip">Med spas</span><span class="chip">Salons</span><span class="chip">Roofing</span><span class="chip">Electrical</span><span class="chip">Home services</span><span class="chip">Multi-location brands</span>
       </div>
@@ -419,7 +457,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Section 8: Consultation ── -->
   <section id="consult" style="padding-top:0">
     <div class="container">
-      <div class="card" style="background:color-mix(in oklab, var(--accent) 10%, var(--surface)); border-color:color-mix(in oklab, var(--accent) 30%, var(--border)); padding:48px; text-align:center;">
+      <div class="callout" style="text-align:center;">
         <span class="mor-eyebrow" style="justify-content:center;">Start Here</span>
         <h2 style="font-size:clamp(30px,4vw,52px); margin:16px 0 14px;">Start with a free Trifecta Consultation.</h2>
         <p style="color:var(--text-2); font-size:18px; line-height:1.6; max-width:680px; margin:0 auto 28px;">We review your Google visibility, your website, your missed calls and follow-up, your reviews, and your competitors — then show you exactly which leaks are costing you the most and which parts of the system fix them. No pressure, no obligation.</p>
@@ -457,7 +495,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- ── Section 10: FAQ ── -->
   <section style="padding-top:0">
     <div class="container">
-      <div class="section-head"><span class="mor-eyebrow">Questions</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Before you book.</h2></div>
+      <div class="section-head callout"><span class="mor-eyebrow">Questions</span><h2 style="font-size:clamp(28px,3.6vw,44px)">Before you book.</h2></div>
       <div class="faq">
         <details><summary>Why is there no pricing on the site?</summary><p>Every business leaks in different places. We scope the right plan in the consultation instead of forcing you into a package that fixes the wrong holes.</p></details>
         <details><summary>Is this just an AI receptionist?</summary><p>No — that's one piece. It's a connected system: local visibility, a conversion website, AI voice + CRM, and staff training, all feeding each other.</p></details>

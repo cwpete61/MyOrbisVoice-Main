@@ -85,6 +85,32 @@ document.addEventListener('DOMContentLoaded',function(){
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/orbis.css" />
   <link rel="stylesheet" href="/assets/css/mor.css?v=v3" />
+
+  <style>
+    /* The Problem — pricing-page-matched polish (RESTYLE ONLY: no copy/graphics changed).
+       Brings the leak cards up to the pricing tiers' look — gradient surface, stronger
+       lift, accent top-edge + hover glow, fully rounded — and gives the callout panels
+       the same depth + accent rail as the pricing sections. */
+    .leak-card {
+      background: linear-gradient(170deg, var(--surface-2), var(--surface));
+      border-radius: var(--r-lg);
+      transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .leak-card:hover {
+      transform: translateY(-4px);
+      border-color: color-mix(in oklab, var(--leak) 55%, var(--border));
+      box-shadow: 0 22px 50px -30px color-mix(in oklab, var(--leak) 60%, transparent);
+    }
+    .leak-card::before { height: 3px; opacity: .9; }
+    .leak-card h3 { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; }
+
+    /* Callout panels — pricing's bordered, rounded, subtly lit section box */
+    .callout {
+      position: relative;
+      background: linear-gradient(170deg, color-mix(in oklab, var(--accent) 11%, var(--surface-2)), var(--surface));
+      box-shadow: 0 28px 70px -44px color-mix(in oklab, var(--accent) 55%, transparent);
+    }
+  </style>
 </head>
 <body>
 
