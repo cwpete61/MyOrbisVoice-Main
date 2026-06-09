@@ -23,6 +23,13 @@ const CLIENT_SECRET = process.env.OIDC_CLIENT_SECRET ?? ''
 const WEB = process.env.WEB_ORIGIN ?? 'https://app.myorbisvoice.com'
 const CALLBACK = 'https://api.myorbisvoice.com/api/auth/oidc/callback'
 const STATE_COOKIE = 'ov_oidc_state'
+const NEXT_COOKIE = 'ov_oidc_next'
+
+// Only allow same-app relative paths as a post-login destination (no open redirect).
+function safeNext(v: unknown): string {
+  const s = typeof v === 'string' ? v : ''
+  return s.startsWith('/') && !s.startsWith('//') ? s : ''
+}
 
 function readCookie(header: string | undefined, name: string): string | null {
   if (!header) return null
@@ -36,11 +43,12 @@ function readCookie(header: string | undefined, name: string): string | null {
 router.get('/login', (req, res) => {
   if (!ENABLED || !ISSUER || !CLIENT_ID) return res.redirect(`${WEB}/login`)
   const state = randomBytes(16).toString('hex')
-  res.cookie?.(STATE_COOKIE, state, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 600_000 })
-  // Fallback if res.cookie isn't available (no cookie-parser): set header directly.
-  if (!res.getHeader('Set-Cookie')) {
-    res.setHeader('Set-Cookie', `${STATE_COOKIE}=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600; Path=/`)
-  }
+  const next = safeNext(req.query.next)
+  const cookies = [
+    `${STATE_COOKIE}=${state}; HttpOnly; Secure; SameSite=Lax; Max-Age=600; Path=/`,
+    `${NEXT_COOKIE}=${encodeURIComponent(next)}; HttpOnly; Secure; SameSite=Lax; Max-Age=600; Path=/`,
+  ]
+  res.setHeader('Set-Cookie', cookies)
   const u = new URL(`${ISSUER}/protocol/openid-connect/auth`)
   u.searchParams.set('client_id', CLIENT_ID)
   u.searchParams.set('redirect_uri', CALLBACK)
@@ -82,7 +90,9 @@ router.get('/callback', async (req, res) => {
 
     const { accessToken, refreshToken } = await issueTokensForUserId(user.id)
     // Hand tokens to the SPA via URL fragment (not query — keeps them out of logs).
-    return res.redirect(`${WEB}/oidc-complete#access_token=${accessToken}&refresh_token=${refreshToken}`)
+    const next = safeNext(decodeURIComponent(readCookie(req.headers.cookie, NEXT_COOKIE) ?? ''))
+    const nextFrag = next ? `&next=${encodeURIComponent(next)}` : ''
+    return res.redirect(`${WEB}/oidc-complete#access_token=${accessToken}&refresh_token=${refreshToken}${nextFrag}`)
   } catch (err) {
     console.warn('[oidc] callback error:', (err as Error).message)
     return res.redirect(`${WEB}/login?error=oidc`)

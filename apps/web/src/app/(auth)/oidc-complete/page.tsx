@@ -26,6 +26,12 @@ export default function OidcCompletePage() {
     setTokens(accessToken, refreshToken)
     window.history.replaceState(null, '', '/oidc-complete')
 
+    // Explicit destination from the launching app (e.g. partner card -> portal).
+    // Same-app relative paths only (no open redirect).
+    const nextRaw = params.get('next') ?? ''
+    const next = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : ''
+    if (next) { router.replace(next); return }
+
     const payload = getTokenPayload()
     if (isPlatformAdmin()) router.replace('/admin')
     else if (payload?.roleKey === 'affiliate') router.replace('/partner-portal/dashboard')
