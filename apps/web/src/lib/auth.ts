@@ -23,6 +23,20 @@ export function clearTokens(): void {
   localStorage.removeItem(REFRESH_TOKEN_KEY)
 }
 
+// Hub SSO logout: end the Keycloak SSO session (RP-initiated) AND the local app
+// session, then land on the dashboard (logged out -> hub login). Clearing only
+// the local token leaves the Keycloak session alive -> silent re-login on the
+// next product click, which is a fake logout. All roles funnel through here.
+const HUB_ISSUER = 'https://auth.myorbisresults.com/realms/myorbis'
+const HUB_LOGOUT_CLIENT = 'myorbis-voice'
+const HUB_DASHBOARD = 'https://products.myorbisresults.com/dashboard'
+
+export function ssoLogout(): void {
+  clearTokens()
+  const p = new URLSearchParams({ client_id: HUB_LOGOUT_CLIENT, post_logout_redirect_uri: HUB_DASHBOARD })
+  window.location.href = `${HUB_ISSUER}/protocol/openid-connect/logout?${p.toString()}`
+}
+
 export function isAuthenticated(): boolean {
   return !!getAccessToken()
 }

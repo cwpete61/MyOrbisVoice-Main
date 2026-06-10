@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { clearTokens } from '@/lib/auth'
+import { ssoLogout } from '@/lib/auth'
 import { useT } from '@/lib/i18n/I18nProvider'
 
 interface Props {
@@ -9,8 +9,8 @@ interface Props {
   idleMs?: number
   /** Grace period in milliseconds after the warning before forced logout. */
   graceMs?: number
-  /** Where to send the user after forced logout. */
-  redirectTo: string
+  /** Deprecated — logout now always SSO-logs-out to the hub dashboard. Kept for API compat. */
+  redirectTo?: string
 }
 
 const ACTIVITY_EVENTS = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'wheel'] as const
@@ -30,7 +30,6 @@ const ACTIVITY_EVENTS = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchst
 export function IdleTimeout({
   idleMs = 10 * 60 * 1000,   // 10 minutes
   graceMs = 60 * 1000,       // 60 seconds
-  redirectTo,
 }: Props) {
   const t = useT()
   const [warning, setWarning] = useState(false)
@@ -50,9 +49,8 @@ export function IdleTimeout({
   const forceLogout = useCallback(() => {
     clearAllTimers()
     setWarning(false)
-    clearTokens()
-    window.location.href = redirectTo
-  }, [redirectTo])
+    ssoLogout()
+  }, [])
 
   const startIdleTimer = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current)

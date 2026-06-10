@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { clearTokens } from '@/lib/auth'
+import { ssoLogout } from '@/lib/auth'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ContactBlock } from '@/components/ContactBlock'
@@ -63,8 +63,7 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
   const initials = (username ?? me?.user?.email ?? '??').slice(0, 2).toUpperCase()
 
   function logout() {
-    clearTokens()
-    window.location.href = 'https://myorbisresults.com'
+    ssoLogout()
   }
 
   // Sidebar inner content — shared by the desktop rail + the mobile drawer.
