@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { apiLogin } from '@/lib/api'
@@ -17,6 +17,12 @@ export default function AffiliateLoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // New model: the hub (products.myorbisresults.com) is the single front door.
+  // Partners log in there, then enter the portal from their dashboard via SSO.
+  useEffect(() => {
+    if (typeof window !== 'undefined') window.location.replace('https://products.myorbisresults.com/dashboard')
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -40,6 +46,7 @@ export default function AffiliateLoginPage() {
     }
   }
 
+  // Funnelling to the hub — don't flash the legacy partner login form.
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 relative" style={{ background: 'var(--surface-app)' }}>
       <div className="absolute top-4 right-4 flex items-center gap-2">

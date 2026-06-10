@@ -17,15 +17,20 @@ export default function LoginPage() {
   const [loginPw, setLoginPw] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
 
-  // Handle Google Sign-In callback redirects. The /api/auth/google/callback
-  // handler sends users back here with one of three URL fragment patterns:
-  //   #google=signin&at=…&rt=…   → existing user — pop tokens, log them in
-  //   ?google=access_denied      → user cancelled at Google's screen
-  //   ?google=error: ...         → callback error, show in the UI
+  // New model: the hub (products.myorbisresults.com) is the single front door for
+  // every role. A plain visit to this page funnels to the hub login; only the
+  // Google sign-in callback (fragment/query) is still processed here.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const hash = window.location.hash.replace(/^#/, '')
+    const isGoogleCallback = hash.startsWith('google=signin&') || new URLSearchParams(window.location.search).has('google')
+    if (!isGoogleCallback) {
+      setRedirecting(true)
+      window.location.replace('https://products.myorbisresults.com/dashboard')
+      return
+    }
     if (hash.startsWith('google=signin&')) {
       const params = new URLSearchParams(hash.slice('google=signin&'.length))
       const at = params.get('at'); const rt = params.get('rt')
@@ -68,6 +73,11 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // While funnelling to the hub, don't flash the legacy login form.
+  if (redirecting) {
+    return <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--surface-app)' }} />
   }
 
   return (
