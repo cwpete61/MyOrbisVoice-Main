@@ -98,8 +98,16 @@ const T = {
     en: 'Score a prospect’s inbound responsiveness from a few test calls — a defensible 0–100 Lead Capture Score across 6 categories. Run Call #1 during their posted open hours; score from notes taken during the call.',
     es: 'Evalúa la capacidad de respuesta de un prospecto con unas llamadas de prueba — un Puntaje de Captura de 0–100 en 6 categorías. Haz la Llamada #1 en su horario de atención; califica con notas tomadas durante la llamada.',
   },
+  leadDetails: { en: 'Lead details', es: 'Datos del lead' },
   business: { en: 'Business name', es: 'Nombre del negocio' },
   businessPh: { en: 'e.g. Allentown HVAC Co.', es: 'ej. Climas Allentown' },
+  contactName: { en: 'Contact name', es: 'Nombre del contacto' },
+  email: { en: 'Email', es: 'Correo' },
+  bizPhone: { en: 'Business phone', es: 'Teléfono del negocio' },
+  personalPhone: { en: 'Personal phone', es: 'Teléfono personal' },
+  address: { en: 'Address', es: 'Dirección' },
+  niche: { en: 'Niche / Industry', es: 'Nicho / Industria' },
+  nichePh: { en: 'e.g. HVAC, Dental, Salon', es: 'ej. Climas, Dental, Salón' },
   score: { en: 'Lead Capture Score', es: 'Puntaje de captura' },
   ofCats: { en: 'of 6 categories scored', es: 'de 6 categorías evaluadas' },
   costTitle: { en: 'Cost of the leak (optional)', es: 'Costo de la fuga (opcional)' },
@@ -123,6 +131,12 @@ export function InboundEvaluation() {
   const tr = (o: { en: string; es: string }) => o[L]
 
   const [biz, setBiz] = useState('')
+  const [contactName, setContactName] = useState('')
+  const [email, setEmail] = useState('')
+  const [bizPhone, setBizPhone] = useState('')
+  const [personalPhone, setPersonalPhone] = useState('')
+  const [address, setAddress] = useState('')
+  const [niche, setNiche] = useState('')
   const [scores, setScores] = useState<Record<string, number>>({})
   const [callsWk, setCallsWk] = useState('')
   const [closeRate, setCloseRate] = useState('')
@@ -155,7 +169,8 @@ export function InboundEvaluation() {
   const money = (v: number) => `$${Math.round(v).toLocaleString(L === 'es' ? 'es-MX' : 'en-US')}`
 
   function reset() {
-    setBiz(''); setScores({}); setCallsWk(''); setCloseRate(''); setAvgVal(''); setNotCapturedOverride('')
+    setBiz(''); setContactName(''); setEmail(''); setBizPhone(''); setPersonalPhone(''); setAddress(''); setNiche('')
+    setScores({}); setCallsWk(''); setCloseRate(''); setAvgVal(''); setNotCapturedOverride('')
   }
 
   return (
@@ -173,12 +188,18 @@ export function InboundEvaluation() {
       {/* Business name + live score */}
       <div className="grid gap-4 md:grid-cols-[1fr_auto] items-stretch">
         <div className="rounded-xl p-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <label className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>{tr(T.business)}</label>
-          <input
-            value={biz} onChange={(e) => setBiz(e.target.value)} placeholder={tr(T.businessPh)}
-            className="mt-1 w-full bg-transparent text-sm outline-none"
-            style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)', padding: '6px 0' }}
-          />
+          <h3 className="text-xs font-semibold mb-3" style={{ color: 'var(--text-tertiary)' }}>{tr(T.leadDetails)}</h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TextField label={tr(T.business)} value={biz} onChange={setBiz} placeholder={tr(T.businessPh)} />
+            <TextField label={tr(T.contactName)} value={contactName} onChange={setContactName} />
+            <TextField label={tr(T.email)} value={email} onChange={setEmail} type="email" />
+            <TextField label={tr(T.bizPhone)} value={bizPhone} onChange={setBizPhone} type="tel" />
+            <TextField label={tr(T.personalPhone)} value={personalPhone} onChange={setPersonalPhone} type="tel" />
+            <TextField label={tr(T.niche)} value={niche} onChange={setNiche} placeholder={tr(T.nichePh)} />
+            <div className="sm:col-span-2">
+              <TextField label={tr(T.address)} value={address} onChange={setAddress} />
+            </div>
+          </div>
           {biggestLeak && (
             <p className="text-xs mt-3" style={{ color: 'var(--text-secondary)' }}>
               <span style={{ color: 'var(--text-tertiary)' }}>{tr(T.biggestLeak)}: </span>
@@ -252,6 +273,20 @@ export function InboundEvaluation() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function TextField({ label, value, onChange, placeholder, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
+  return (
+    <div>
+      <label className="text-[11px] font-medium block" style={{ color: 'var(--text-tertiary)' }}>{label}</label>
+      <input
+        type={type} value={value} placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full bg-transparent text-sm outline-none"
+        style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border-subtle)', padding: '5px 0' }}
+      />
     </div>
   )
 }
