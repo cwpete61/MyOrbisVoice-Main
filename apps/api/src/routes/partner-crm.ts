@@ -122,7 +122,7 @@ router.get('/partner/crm/board', async (req: Request, res: Response, next: NextF
         where: { partnerId: pid, pipelineStageId: { not: null }, deletedAt: null },
         select: {
           id: true, fullName: true, firstName: true, lastName: true,
-          email: true, phoneE164: true, source: true,
+          email: true, phoneE164: true, source: true, metadataJson: true,
           pipelineStageId: true, stageUpdatedAt: true, createdAt: true,
         },
         orderBy: { stageUpdatedAt: 'desc' },

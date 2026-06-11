@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { LeadScoreBadge } from '@/components/LeadScoreBadge'
 
 interface Contact {
   id: string
@@ -18,6 +19,7 @@ interface Contact {
   optedOutVoice: boolean
   optedOutEmail: boolean
   emailStatus: string | null
+  metadataJson: { leadCaptureScore?: number | null; leadCaptureGrade?: string | null } | null
   pipelineStage: { id: string; name: string; color: string | null } | null
 }
 
@@ -107,9 +109,14 @@ export default function PartnerContactsPage() {
               {contacts.map((c, i) => (
                 <tr key={c.id} style={{ borderBottom: i < contacts.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
                   <td className="px-4 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>
-                    <Link href={`/partner-portal/contacts/${c.id}`} className="hover:underline">
-                      {c.fullName ?? ([c.firstName, c.lastName].filter(Boolean).join(' ') || dash)}
-                    </Link>
+                    <span className="inline-flex items-center gap-2">
+                      <Link href={`/partner-portal/contacts/${c.id}`} className="hover:underline">
+                        {c.fullName ?? ([c.firstName, c.lastName].filter(Boolean).join(' ') || dash)}
+                      </Link>
+                      {typeof c.metadataJson?.leadCaptureScore === 'number' && (
+                        <LeadScoreBadge score={c.metadataJson.leadCaptureScore} grade={c.metadataJson.leadCaptureGrade} />
+                      )}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     {c.pipelineStage ? (

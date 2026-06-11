@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { apiFetch, useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
+import { LeadScoreBadge } from '@/components/LeadScoreBadge'
 
 interface BoardStage {
   id: string
@@ -27,6 +28,7 @@ interface BoardContact {
   pipelineStageId: string | null
   stageUpdatedAt: string | null
   createdAt: string
+  metadataJson: { leadCaptureScore?: number | null; leadCaptureGrade?: string | null } | null
 }
 
 interface BoardData {
@@ -192,6 +194,9 @@ export default function PartnerCrmKanbanPage() {
                         <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
                           {fullName(c)}
                         </div>
+                        {typeof c.metadataJson?.leadCaptureScore === 'number' && (
+                          <div className="mt-1"><LeadScoreBadge score={c.metadataJson.leadCaptureScore} grade={c.metadataJson.leadCaptureGrade} /></div>
+                        )}
                         {c.email && (
                           <div className="text-xs truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>
                             {c.email}

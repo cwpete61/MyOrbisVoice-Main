@@ -4,10 +4,17 @@ import { useParams } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useApi, apiFetch } from '@/hooks/useApi'
-import { useT } from '@/lib/i18n/I18nProvider'
+import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { useUserTimezone, formatInTimezone } from '@/lib/timezone'
+import { LeadScoreBadge, LEAD_CATS, gradeFor } from '@/components/LeadScoreBadge'
 
 interface PipelineStageRef { id: string; name: string; color: string | null; sortOrder: number }
+
+interface EvalMeta {
+  leadCaptureScore?: number | null; leadCaptureGrade?: string | null
+  evalScores?: Record<string, number> | null
+  niche?: string | null; contactName?: string | null; businessName?: string | null; personalPhone?: string | null
+}
 
 interface Contact {
   id: string
@@ -18,6 +25,7 @@ interface Contact {
   optedOutVoice: boolean; optedOutVoiceAt: string | null
   optedOutEmail: boolean; optedOutEmailAt: string | null
   createdAt: string
+  metadataJson: EvalMeta | null
   pipelineStageId: string | null
   pipelineStage:   PipelineStageRef | null
   stageUpdatedAt:  string | null
@@ -79,6 +87,9 @@ export default function PartnerContactTimelinePage() {
   const { contactId } = useParams<{ contactId: string }>()
   const { data, loading, error, reload } = useApi<TimelineData>(`/api/partner/crm/contacts/${contactId}/timeline`)
   const [msg, setMsg] = useState('')
+  const { locale } = useLocale()
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   if (loading) return <div className="p-8 text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('partnerContactDetail.loading')}</div>
   if (error)   return <div className="p-8 text-sm" style={{ color: 'var(--error-600)' }}>{error}</div>
@@ -86,6 +97,19 @@ export default function PartnerContactTimelinePage() {
 
   const { contact, items } = data
   const name = contact.fullName ?? ([contact.firstName, contact.lastName].filter(Boolean).join(' ') || t('partnerContactDetail.unknown'))
+
+  const L: 'en' | 'es' = locale === 'es' ? 'es' : 'en'
+  const meta = contact.metadataJson ?? {}
+  const hasEval = typeof meta.leadCaptureScore === 'number'
+  async function makeInvite() {
+    try {
+      const r = await apiFetch<{ url: string }>(`/api/partner/crm/contacts/${contactId}/invite`, { method: 'POST' })
+      setInviteUrl(r.url)
+    } catch { /* surfaced via the button staying available */ }
+  }
+  function copyInvite() {
+    if (inviteUrl) navigator.clipboard?.writeText(inviteUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }).catch(() => {})
+  }
 
   return (
     <div className="space-y-6">
@@ -97,6 +121,40 @@ export default function PartnerContactTimelinePage() {
       {msg && <div className="alert-success p-3 rounded-lg text-sm">{msg}</div>}
 
       <PartnerStageChip contact={contact} onChanged={reload} t={t} />
+
+      {/* Lead Capture Evaluation report — re-openable any time, with the signup link */}
+      {hasEval && (
+        <div className="rounded-xl p-4 space-y-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{L === 'es' ? 'Evaluación de captura de leads' : 'Lead Capture Evaluation'}</h2>
+              <LeadScoreBadge score={meta.leadCaptureScore as number} grade={meta.leadCaptureGrade} />
+            </div>
+            {!inviteUrl ? (
+              <button onClick={makeInvite} className="text-xs px-3 py-1.5 rounded-lg" style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>{L === 'es' ? 'Obtener enlace de registro' : 'Get signup link'}</button>
+            ) : (
+              <div className="flex items-center gap-2 min-w-[240px]">
+                <input readOnly value={inviteUrl} onFocus={(e) => e.currentTarget.select()} className="flex-1 text-xs bg-transparent outline-none rounded-lg px-2 py-1.5" style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }} />
+                <button onClick={copyInvite} className="text-xs px-2.5 py-1.5 rounded-lg shrink-0" style={{ background: 'var(--brand-500, oklch(55% 0.11 193))', color: '#fff' }}>{copied ? (L === 'es' ? 'Copiado' : 'Copied') : (L === 'es' ? 'Copiar' : 'Copy')}</button>
+              </div>
+            )}
+          </div>
+          {meta.evalScores && (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {LEAD_CATS.map((cat) => {
+                const pts = meta.evalScores?.[cat.key]
+                return (
+                  <div key={cat.key} className="flex items-center justify-between text-xs rounded-lg px-3 py-2" style={{ background: 'var(--surface-overlay)' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{L === 'es' ? cat.es : cat.en}</span>
+                    <span className="tabular-nums font-semibold" style={{ color: typeof pts === 'number' ? gradeFor(meta.leadCaptureScore as number).color : 'var(--text-tertiary)' }}>{typeof pts === 'number' ? `${pts} / ${cat.max}` : '—'}</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          {meta.niche && <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{(L === 'es' ? 'Nicho: ' : 'Niche: ') + meta.niche}</p>}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
