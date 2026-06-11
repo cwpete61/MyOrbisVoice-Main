@@ -60,12 +60,15 @@ FILES=(
   "assets/logo.png"
   "assets/og-image.png"
   "assets/hero-bg.jpg"
+  "assets/hero-bg.webp"
   # Hero video + poster (added 2026-05-29)
   "assets/videos/orby-explainer.mp4"
   "assets/videos/orby-poster.jpg"
+  "assets/videos/orby-poster.webp"
   # Spanish hero video + poster (added 2026-05-30)
   "assets/videos/orby-explainer-es.mp4"
   "assets/videos/orby-poster-es.jpg"
+  "assets/videos/orby-poster-es.webp"
   # PWA manifest
   "site.webmanifest"
   "privacy/index.html"
@@ -113,6 +116,25 @@ done
 echo
 bold "═══ Done: $SUCCESS ok, $FAILED failed ═══"
 [[ "$FAILED" -eq 0 ]] || exit 1
+
+# ── Cloudflare edge-cache purge ───────────────────────────────────────────
+# Safe to enable "Cache Everything" on the HTML once this runs after each
+# deploy: it purges the edge so visitors never see a stale page. Credentials
+# come from env (CF_ZONE_ID, CF_API_TOKEN) or ~/.cloudflare-mor (mode 600):
+#   CF_ZONE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#   CF_API_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx   # scope: Zone > Cache Purge
+echo
+bold "═══ Cloudflare cache purge ═══"
+[[ -z "${CF_ZONE_ID:-}" || -z "${CF_API_TOKEN:-}" ]] && [[ -f ~/.cloudflare-mor ]] && source ~/.cloudflare-mor
+if [[ -n "${CF_ZONE_ID:-}" && -n "${CF_API_TOKEN:-}" ]]; then
+  PURGE="$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+    -H "Authorization: Bearer ${CF_API_TOKEN}" -H "Content-Type: application/json" \
+    --data '{"purge_everything":true}')"
+  if echo "$PURGE" | grep -q '"success":true'; then green "  ✓ edge cache purged"; echo
+  else red "  ✗ purge failed:"; echo "  $PURGE"; fi
+else
+  echo "  (skipped — no CF creds; HTML edge-cache not in use, or set CF_ZONE_ID + CF_API_TOKEN / ~/.cloudflare-mor)"
+fi
 
 echo
 bold "═══ Verify ═══"
