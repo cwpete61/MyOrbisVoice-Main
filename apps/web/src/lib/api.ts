@@ -47,6 +47,7 @@ export interface EvalContactInput {
   businessName?: string; contactName?: string; email?: string
   businessPhone?: string; personalPhone?: string; address?: string; niche?: string
   score?: number; grade?: string; scores?: Record<string, number>
+  costPerWeek?: number; closeRate?: number; avgValue?: number; notCaptured?: number
 }
 export function apiSaveEvalContact(body: EvalContactInput, token: string) {
   return apiCall<{ id: string }>('/api/partner/crm/contacts/from-eval', { method: 'POST', body, token })

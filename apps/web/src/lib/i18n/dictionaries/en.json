@@ -231,7 +231,8 @@
     "soonPill": "Soon",
     "profile": "Profile",
     "phoneNumbers": "Phone Numbers",
-    "a2p": "SMS Compliance"
+    "a2p": "SMS Compliance",
+    "reports": "Reports"
   },
   "gmbEval": {
     "title": "GBP Audit",
@@ -4529,5 +4530,17 @@
       "title": "This booking page isn't available.",
       "body": "Double-check the link, or contact whoever sent it to you."
     }
+  },
+  "partnerReports": {
+    "title": "Lead Reports",
+    "subtitle": "Every Lead Capture Evaluation you've saved.",
+    "subtitleTotal": "{n} reports",
+    "empty": "No reports yet. Run a Lead Capture Evaluation and save it to a contact.",
+    "colBusiness": "Business",
+    "colScore": "Score",
+    "colAdded": "Added",
+    "open": "Open report",
+    "copy": "Copy link",
+    "copied": "Copied"
   }
 }

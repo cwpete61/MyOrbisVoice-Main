@@ -72,6 +72,10 @@ const L = {
   subhead: { en: 'How many of your phone leads actually get captured — scored from real test calls.', es: 'Cuántos de tus leads telefónicos realmente se capturan — evaluado con llamadas de prueba reales.' },
   scorecard: { en: 'The 6-point scorecard', es: 'La tarjeta de 6 puntos' },
   biggest: { en: 'Biggest leak', es: 'Mayor fuga' },
+  costH: { en: 'What the leak is costing', es: 'Cuánto te cuesta la fuga' },
+  missed: { en: 'Est. missed leads / month', es: 'Leads perdidos estimados / mes' },
+  lost: { en: 'Est. lost revenue / month', es: 'Ingresos perdidos estimados / mes' },
+  costNote: { en: 'Estimate from your own numbers — not a claimed statistic. Change any input and it updates.', es: 'Estimación con tus propios números — no una estadística. Cambia cualquier dato y se actualiza.' },
   addendumKicker: { en: 'Addendum', es: 'Apéndice' },
   addendumTitle: { en: 'What you can do about it', es: 'Qué puedes hacer al respecto' },
   addendumLead: { en: 'Three honest paths. The score above is the same no matter which you pick — this is just what it takes to close the gap.', es: 'Tres caminos honestos. El puntaje de arriba es el mismo elijas el que elijas — esto es solo lo que toma cerrar la brecha.' },
@@ -113,6 +117,10 @@ export interface LeadReportInput {
   locale: Lang
   signupUrl: string
   reportDate: string
+  costPerWeek?: number | null
+  closeRate?: number | null
+  avgValue?: number | null
+  notCaptured?: number | null
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!))
@@ -142,6 +150,20 @@ export function renderLeadReportHtml(input: LeadReportInput): string {
       ${r.note ? `<div class="note">${esc(r.note)}</div>` : ''}
       <div class="bar"><i style="width:${r.pct}%;background:${r.col}"></i></div>
     </div>`).join('')
+
+  // Cost of the leak — only when the owner provided inputs at eval time.
+  const notCap = input.notCaptured ?? (input.score >= 90 ? 5 : input.score >= 75 ? 15 : input.score >= 60 ? 30 : input.score >= 40 ? 45 : 60)
+  const cpw = input.costPerWeek
+  const missed = (cpw != null && cpw > 0) ? cpw * 4.33 * (notCap / 100) : null
+  const lost = (missed != null && input.closeRate != null && input.avgValue != null) ? missed * (input.closeRate / 100) * input.avgValue : null
+  const money = (v: number) => `$${Math.round(v).toLocaleString(lang === 'es' ? 'es-MX' : 'en-US')}`
+  const costHtml = missed != null ? `
+  <h2 class="sec-h">${esc(t(L.costH))}</h2>
+  <div class="cost">
+    <div class="stat"><div class="k">${esc(t(L.missed))}</div><div class="v">~${Math.round(missed)}</div></div>
+    ${lost != null ? `<div class="stat"><div class="k">${esc(t(L.lost))}</div><div class="v red">~${money(lost)}</div></div>` : ''}
+  </div>
+  <p class="cost-note">${esc(t(L.costNote))}</p>` : ''
 
   const cmpRow = (label: { en: string; es: string }, dn: string, diy: string, orby: string, dnCls = '', diyCls = '', orbyCls = 'yes') => ({ label: t(label), dn, diy, orby, dnCls, diyCls, orbyCls })
   const cmp = [
@@ -195,6 +217,10 @@ h1{font-size:26px;font-weight:700;margin:8px 0 2px}.biz{font-size:15px;color:var
 .row .note{grid-column:1/2;font-size:12.5px;color:var(--ink-3);margin-top:1px}
 .bar{grid-column:1/3;height:6px;border-radius:999px;background:var(--line-2);overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;border-radius:999px}
 .flag{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#D6453A;background:color-mix(in srgb,#D6453A 12%,#fff);padding:2px 7px;border-radius:999px}
+.cost{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow)}
+.stat .k{font-size:12px;color:var(--ink-3)}.stat .v{font-family:Sora;font-weight:800;font-size:26px;margin-top:4px}.stat .v.red{color:#D6453A}
+.cost-note{font-size:11.5px;color:var(--ink-3);margin-top:8px}
 .addendum{break-before:page;page-break-before:always;margin-top:40px}
 .add-lead{font-size:14.5px;color:var(--ink-2);max-width:62ch;margin:6px 0 18px}
 .cmp{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);background:var(--panel)}
@@ -229,6 +255,7 @@ h1{font-size:26px;font-weight:700;margin:8px 0 2px}.biz{font-size:15px;color:var
   </section>
   <h2 class="sec-h">${esc(t(L.scorecard))}</h2>
   <div class="card">${rowHtml}</div>
+  ${costHtml}
   <section class="addendum">
     <div class="doc-kicker">${esc(t(L.addendumKicker))}</div>
     <h2 style="font-size:22px;font-weight:700;margin:8px 0 2px">${esc(t(L.addendumTitle))}</h2>

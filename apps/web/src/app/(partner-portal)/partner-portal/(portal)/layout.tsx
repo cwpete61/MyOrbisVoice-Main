@@ -25,6 +25,7 @@ const NAV = [
   { href: '/partner-portal/conversations', labelKey: 'partnerNav.conversations', icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
   { href: '/partner-portal/crm',         labelKey: 'partnerNav.crm',         icon: 'M3 4h4v6H3zm7 0h4v6h-4zm7 0h4v6h-4zM3 13h4v6H3zm7 0h4v6h-4zm7 0h4v6h-4z' },
   { href: '/partner-portal/contacts',    labelKey: 'partnerNav.contacts',    icon: 'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm10 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM21 21v-2a4 4 0 0 0-3-3.87' },
+  { href: '/partner-portal/reports',     labelKey: 'partnerNav.reports',     icon: 'M3 3v18h18M7 13l3-3 3 3 5-5' },
   { href: '/partner-portal/leads',       labelKey: 'partnerNav.leads',       icon: 'M22 3H2l8 9.46V19l4 2v-8.54L22 3z' },
   { href: '/partner-portal/gmb-evaluation', labelKey: 'partnerNav.gmbEval',   icon: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z' },
   { href: '/partner-portal/campaigns',   labelKey: 'partnerNav.campaigns',   icon: 'M3 12l4-4v8l-4-4zm6-5l8 5-8 5V7zm10 0v10' },

@@ -192,7 +192,14 @@ export function InboundEvaluation() {
     setSaving(true); setSaveErr('')
     try {
       const r = await apiSaveEvalContact(
-        { businessName: biz, contactName, email, businessPhone: bizPhone, personalPhone, address, niche, score: total, grade: grade.letter, scores },
+        {
+          businessName: biz, contactName, email, businessPhone: bizPhone, personalPhone, address, niche,
+          score: total, grade: grade.letter, scores,
+          costPerWeek: callsWk ? Number(callsWk) : undefined,
+          closeRate:   closeRate ? Number(closeRate) : undefined,
+          avgValue:    avgVal ? Number(avgVal) : undefined,
+          notCaptured: callsWk ? notCaptured : undefined,
+        },
         getAccessToken() ?? '',
       )
       setSavedId(r.id)

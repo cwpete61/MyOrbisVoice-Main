@@ -104,9 +104,10 @@ export default function PartnerContactsPage() {
           <button
             onClick={deleteSelected}
             disabled={deleting || selected.size === 0}
-            className="text-sm px-3 py-1.5 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: 'var(--error-600)', color: '#fff' }}
+            className="text-sm font-medium px-3.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: '#DC2626', color: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,.12)' }}
           >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             {deleting ? '…' : selected.size > 0 ? t('partnerContacts.deleteSelected', { n: selected.size }) : t('partnerContacts.deleteLabel')}
           </button>
         </div>

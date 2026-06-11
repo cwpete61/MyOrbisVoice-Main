@@ -146,6 +146,10 @@ const evalContactSchema = z.object({
   score:         z.number().int().min(0).max(100).optional(),
   grade:         z.string().max(4).optional(),
   scores:        z.record(z.number()).optional(),
+  costPerWeek:   z.number().min(0).max(100000).optional(),
+  closeRate:     z.number().min(0).max(100).optional(),
+  avgValue:      z.number().min(0).max(10000000).optional(),
+  notCaptured:   z.number().min(0).max(100).optional(),
 })
 
 router.post('/partner/crm/contacts/from-eval', async (req: Request, res: Response, next: NextFunction) => {
@@ -179,6 +183,10 @@ router.post('/partner/crm/contacts/from-eval', async (req: Request, res: Respons
           leadCaptureScore: b.score ?? null,
           leadCaptureGrade: b.grade ?? null,
           evalScores:       b.scores ?? null,
+          costPerWeek:      b.costPerWeek ?? null,
+          closeRate:        b.closeRate ?? null,
+          avgValue:         b.avgValue ?? null,
+          notCaptured:      b.notCaptured ?? null,
         },
       },
     })
@@ -338,10 +346,11 @@ router.delete('/partner/crm/contacts/:id', async (req: Request, res: Response, n
       select: { id: true },
     })
     if (!contact) throw new AppError('NOT_FOUND', 'Contact not found', 404)
-    await prisma.contact.update({
-      where: { id: contact.id },
-      data:  { deletedAt: new Date(), pipelineStageId: null, stageUpdatedAt: new Date() },
-    })
+    // Hard delete — removes the contact and its related records: ContactNotes
+    // cascade (schema onDelete: Cascade); conversations / appointments / message
+    // logs unlink (onDelete: SetNull), preserving call history without a dangling
+    // contact. The partner asked for associated records to go with the contact.
+    await prisma.contact.delete({ where: { id: contact.id } })
     res.json({ data: { ok: true } })
   } catch (err) { next(err) }
 })

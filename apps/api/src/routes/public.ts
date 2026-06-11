@@ -34,6 +34,10 @@ router.get('/public/lead-report/:token', async (req, res) => {
       locale:       lang,
       signupUrl:    `${REPORT_WEB_ORIGIN}/signup?invite=${encodeURIComponent(token)}`,
       reportDate:   new Date(c.createdAt).toLocaleDateString(lang === 'es' ? 'es-MX' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      costPerWeek:  (meta['costPerWeek'] as number) ?? null,
+      closeRate:    (meta['closeRate'] as number) ?? null,
+      avgValue:     (meta['avgValue'] as number) ?? null,
+      notCaptured:  (meta['notCaptured'] as number) ?? null,
     })
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     res.setHeader('X-Robots-Tag', 'noindex, nofollow')

@@ -231,7 +231,8 @@
     "soonPill": "Pronto",
     "profile": "Perfil",
     "phoneNumbers": "Números de teléfono",
-    "a2p": "Cumplimiento SMS"
+    "a2p": "Cumplimiento SMS",
+    "reports": "Reportes"
   },
   "gmbEval": {
     "title": "Auditoría GBP",
@@ -4529,5 +4530,17 @@
       "title": "Esta página de reserva no está disponible.",
       "body": "Revisa el enlace o contacta a quien te lo envió."
     }
+  },
+  "partnerReports": {
+    "title": "Reportes de leads",
+    "subtitle": "Cada Evaluación de Captura que has guardado.",
+    "subtitleTotal": "{n} reportes",
+    "empty": "Aún no hay reportes. Haz una Evaluación de Captura y guárdala en un contacto.",
+    "colBusiness": "Negocio",
+    "colScore": "Puntaje",
+    "colAdded": "Agregado",
+    "open": "Abrir reporte",
+    "copy": "Copiar enlace",
+    "copied": "Copiado"
   }
 }
