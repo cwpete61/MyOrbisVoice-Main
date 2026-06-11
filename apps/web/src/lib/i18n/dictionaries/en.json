@@ -232,7 +232,7 @@
     "profile": "Profile",
     "phoneNumbers": "Phone Numbers",
     "a2p": "SMS Compliance",
-    "reports": "Reports"
+    "reports": "Inbound Reports"
   },
   "gmbEval": {
     "title": "GBP Audit",
@@ -4532,7 +4532,7 @@
     }
   },
   "partnerReports": {
-    "title": "Lead Reports",
+    "title": "Inbound Reports",
     "subtitle": "Every Lead Capture Evaluation you've saved.",
     "subtitleTotal": "{n} reports",
     "empty": "No reports yet. Run a Lead Capture Evaluation and save it to a contact.",

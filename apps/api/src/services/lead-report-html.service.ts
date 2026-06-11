@@ -241,7 +241,7 @@ h1{font-size:26px;font-weight:700;margin:8px 0 2px}.biz{font-size:15px;color:var
 @media (max-width:640px){.hero{grid-template-columns:1fr;text-align:center;justify-items:center}.cmp{grid-template-columns:1fr}.cmp .col{border-left:0;border-top:1px solid var(--line-2)}.cmp .col:first-child{border-top:0}}
 @media print{body{background:#fff}.wrap{max-width:none;padding:0 8mm}.card,.stat,.hero,.cmp,.cta a{box-shadow:none}.printbtn{display:none}}
 </style></head><body>
-${input.pdfUrl ? `<a class="printbtn" href="${esc(input.pdfUrl)}" target="_blank" rel="noopener">${lang === 'es' ? 'Descargar PDF' : 'Download PDF'}</a>` : ''}
+<button class="printbtn" onclick="window.print()">${lang === 'es' ? 'Descargar PDF' : 'Download PDF'}</button>
 <div class="wrap">
   <header class="top">
     <div class="brand"><div class="logo"></div><div><b>MyOrbisResults</b><span>${esc(t(L.partnerLine))}</span></div></div>

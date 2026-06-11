@@ -232,7 +232,7 @@
     "profile": "Perfil",
     "phoneNumbers": "Números de teléfono",
     "a2p": "Cumplimiento SMS",
-    "reports": "Reportes"
+    "reports": "Reportes de entrada"
   },
   "gmbEval": {
     "title": "Auditoría GBP",
@@ -4532,7 +4532,7 @@
     }
   },
   "partnerReports": {
-    "title": "Reportes de leads",
+    "title": "Reportes de entrada",
     "subtitle": "Cada Evaluación de Captura que has guardado.",
     "subtitleTotal": "{n} reportes",
     "empty": "Aún no hay reportes. Haz una Evaluación de Captura y guárdala en un contacto.",

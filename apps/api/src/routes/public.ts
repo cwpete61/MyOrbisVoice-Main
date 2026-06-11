@@ -51,6 +51,10 @@ router.get('/public/lead-report/:token', async (req, res) => {
     if (!html) { res.status(404).send('No evaluation on file'); return }
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     res.setHeader('X-Robots-Tag', 'noindex, nofollow')
+    // This is a static, server-escaped report page (no user-controlled script).
+    // Override the global CSP so the "Download PDF" (window.print) button works —
+    // the global script-src-attr 'none' blocks the inline onclick otherwise.
+    res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' https: 'unsafe-inline'; font-src 'self' https: data:; script-src 'self' 'unsafe-inline'; base-uri 'self'; frame-ancestors 'none'")
     res.send(html)
   } catch { res.status(400).send('Invalid or expired link') }
 })
