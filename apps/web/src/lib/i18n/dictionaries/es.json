@@ -4425,7 +4425,8 @@
       "bounces": "Rebotes + quejas",
       "created": "Creada"
     },
-    "tabInbound": "Evaluación de entrada"
+    "tabInbound": "Evaluación de entrada",
+    "tabInstructions": "Instrucciones"
   },
   "partnerCampaignNew": {
     "backLink": "← Campañas",

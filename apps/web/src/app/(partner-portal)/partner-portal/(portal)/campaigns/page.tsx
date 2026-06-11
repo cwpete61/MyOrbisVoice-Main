@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useApi } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { InboundEvaluation } from '@/components/InboundEvaluation'
+import { EvaluationInstructions } from '@/components/EvaluationInstructions'
 
 interface Campaign {
   id: string
@@ -54,13 +55,13 @@ export default function PartnerCampaignsListPage() {
 
   const { data, loading, error } = useApi<CampaignList>('/api/partner/campaigns', [])
   const { data: policy } = useApi<PartnerPolicy>('/api/partner/email-policy', [])
-  const [tab, setTab] = useState<'email' | 'inbound'>('email')
+  const [tab, setTab] = useState<'email' | 'inbound' | 'instructions'>('email')
 
   return (
     <div className="space-y-6">
       {/* Tabs — Email campaigns | Inbound Evaluation */}
       <div className="flex items-center gap-1" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        {([['email', t('partnerCampaigns.title')], ['inbound', t('partnerCampaigns.tabInbound')]] as const).map(([key, label]) => (
+        {([['email', t('partnerCampaigns.title')], ['inbound', t('partnerCampaigns.tabInbound')], ['instructions', t('partnerCampaigns.tabInstructions')]] as const).map(([key, label]) => (
           <button
             key={key} onClick={() => setTab(key)}
             className="px-4 py-2.5 text-sm font-medium transition-colors"
@@ -75,7 +76,7 @@ export default function PartnerCampaignsListPage() {
         ))}
       </div>
 
-      {tab === 'inbound' ? <InboundEvaluation /> : <>
+      {tab === 'inbound' ? <InboundEvaluation /> : tab === 'instructions' ? <EvaluationInstructions /> : <>
       <div className="flex items-start justify-between gap-4">
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
           {t('partnerCampaigns.subtitle')}

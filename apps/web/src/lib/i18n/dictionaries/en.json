@@ -4425,7 +4425,8 @@
       "bounces": "Bounces + complaints",
       "created": "Created"
     },
-    "tabInbound": "Inbound Evaluation"
+    "tabInbound": "Inbound Evaluation",
+    "tabInstructions": "Instructions"
   },
   "partnerCampaignNew": {
     "backLink": "← Campaigns",
