@@ -499,7 +499,10 @@
       "phone": "Phone",
       "source": "Source",
       "added": "Added"
-    }
+    },
+    "nSelected": "{n} selected",
+    "deleteSelected": "Delete {n}",
+    "confirmDelete": "Delete {n} contact(s)? This can't be undone."
   },
   "partnerContactDetail": {
     "loading": "Loading…",

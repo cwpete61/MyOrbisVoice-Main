@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useApi } from '@/hooks/useApi'
+import { useApi, apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { LeadScoreBadge } from '@/components/LeadScoreBadge'
 
@@ -39,10 +39,12 @@ export default function PartnerContactsPage() {
 
   const [search, setSearch] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const { data, loading, error } = useApi<ContactList>(
+  const { data, loading, error, reload } = useApi<ContactList>(
     `/api/partner/crm/contacts${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''}`,
     [searchQuery],
   )
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
@@ -51,6 +53,21 @@ export default function PartnerContactsPage() {
 
   const contacts = data?.items ?? []
   const dash = '—'
+
+  function toggle(id: string) {
+    setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function toggleAll() {
+    setSelected((s) => (s.size === contacts.length ? new Set() : new Set(contacts.map((c) => c.id))))
+  }
+  async function deleteSelected() {
+    if (selected.size === 0 || !confirm(t('partnerContacts.confirmDelete', { n: selected.size }))) return
+    setDeleting(true)
+    try {
+      for (const id of selected) await apiFetch(`/api/partner/crm/contacts/${id}`, { method: 'DELETE' })
+      setSelected(new Set()); reload()
+    } finally { setDeleting(false) }
+  }
 
   return (
     <div className="space-y-6">
@@ -79,6 +96,15 @@ export default function PartnerContactsPage() {
         )}
       </form>
 
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3">
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('partnerContacts.nSelected', { n: selected.size })}</span>
+          <button onClick={deleteSelected} disabled={deleting} className="text-sm px-3 py-1.5 rounded-lg disabled:opacity-60" style={{ background: 'var(--error-600)', color: '#fff' }}>
+            {deleting ? '…' : t('partnerContacts.deleteSelected', { n: selected.size })}
+          </button>
+        </div>
+      )}
+
       {loading && <div className="h-4 rounded animate-pulse w-48" style={{ background: 'var(--border-subtle)' }} />}
       {error   && <div className="alert-error">{error}</div>}
 
@@ -93,6 +119,9 @@ export default function PartnerContactsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: 'var(--surface-overlay)', borderBottom: '1px solid var(--border-subtle)' }}>
+                <th className="px-3 py-3 w-9">
+                  <input type="checkbox" aria-label="select all" checked={contacts.length > 0 && selected.size === contacts.length} onChange={toggleAll} />
+                </th>
                 {[
                   { key: 'name',   label: t('partnerContacts.table.name') },
                   { key: 'stage',  label: t('partnerContacts.table.stage') },
@@ -108,6 +137,9 @@ export default function PartnerContactsPage() {
             <tbody>
               {contacts.map((c, i) => (
                 <tr key={c.id} style={{ borderBottom: i < contacts.length - 1 ? '1px solid var(--border-subtle)' : undefined }}>
+                  <td className="px-3 py-3">
+                    <input type="checkbox" aria-label="select" checked={selected.has(c.id)} onChange={() => toggle(c.id)} />
+                  </td>
                   <td className="px-4 py-3 font-medium" style={{ color: 'var(--text-primary)' }}>
                     <span className="inline-flex items-center gap-2">
                       <Link href={`/partner-portal/contacts/${c.id}`} className="hover:underline">

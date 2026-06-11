@@ -499,7 +499,10 @@
       "phone": "Teléfono",
       "source": "Origen",
       "added": "Agregado"
-    }
+    },
+    "nSelected": "{n} seleccionados",
+    "deleteSelected": "Eliminar {n}",
+    "confirmDelete": "¿Eliminar {n} contacto(s)? No se puede deshacer."
   },
   "partnerContactDetail": {
     "loading": "Cargando…",
