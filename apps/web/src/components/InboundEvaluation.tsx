@@ -128,8 +128,8 @@ const T = {
   saveToContacts: { en: 'Save to Contacts', es: 'Guardar en Contactos' },
   saving: { en: 'Saving…', es: 'Guardando…' },
   saved: { en: 'Saved to Contacts', es: 'Guardado en Contactos' },
-  createInvite: { en: 'Create prefilled signup link', es: 'Crear enlace de registro prellenado' },
-  inviteHint: { en: 'Send this to the lead — when they sign up for service it offers to use the info on file.', es: 'Envía esto al lead — al registrarse para el servicio se le ofrece usar la información en archivo.' },
+  createInvite: { en: 'Create report link', es: 'Crear enlace del reporte' },
+  inviteHint: { en: 'Share with the lead — they see their full report (no login); its "Get started" CTA leads to a prefilled signup.', es: 'Comparte con el lead — ve su reporte completo (sin iniciar sesión); su botón "Empezar" lleva a un registro prellenado.' },
   copy: { en: 'Copy', es: 'Copiar' },
   copied: { en: 'Copied', es: 'Copiado' },
 }

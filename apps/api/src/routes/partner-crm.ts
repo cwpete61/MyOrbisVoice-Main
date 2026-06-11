@@ -20,6 +20,7 @@ import { prisma } from '../lib/prisma.js'
 import { signInviteToken } from '../lib/jwt.js'
 
 const SIGNUP_ORIGIN = process.env['WEB_ORIGIN'] ?? 'https://app.myorbisvoice.com'
+const API_PUBLIC_ORIGIN = process.env['API_PUBLIC_ORIGIN'] ?? 'https://api.myorbisvoice.com'
 
 function normPhone(s: string | undefined | null): string | null {
   const d = (s ?? '').replace(/\D/g, '')
@@ -199,7 +200,14 @@ router.post('/partner/crm/contacts/:id/invite', async (req: Request, res: Respon
     const acct = await prisma.affiliateAccount.findFirst({ where: { id: pid }, select: { referralCode: true } })
     const token = signInviteToken(contact.id)
     const ref = acct?.referralCode ? `&ref=${encodeURIComponent(acct.referralCode)}` : ''
-    res.json({ data: { token, url: `${SIGNUP_ORIGIN}/signup?invite=${token}${ref}` } })
+    // The shareable link is the REPORT (no login). Its "Get started" CTA leads to
+    // the prefilled signup — account creation only when the lead is ready.
+    res.json({ data: {
+      token,
+      url:       `${API_PUBLIC_ORIGIN}/api/public/lead-report/${token}`,
+      reportUrl: `${API_PUBLIC_ORIGIN}/api/public/lead-report/${token}`,
+      signupUrl: `${SIGNUP_ORIGIN}/signup?invite=${token}${ref}`,
+    } })
   } catch (err) { next(err) }
 })
 

@@ -131,7 +131,7 @@ export default function PartnerContactTimelinePage() {
               <LeadScoreBadge score={meta.leadCaptureScore as number} grade={meta.leadCaptureGrade} />
             </div>
             {!inviteUrl ? (
-              <button onClick={makeInvite} className="text-xs px-3 py-1.5 rounded-lg" style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>{L === 'es' ? 'Obtener enlace de registro' : 'Get signup link'}</button>
+              <button onClick={makeInvite} className="text-xs px-3 py-1.5 rounded-lg" style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>{L === 'es' ? 'Obtener enlace del reporte' : 'Get report link'}</button>
             ) : (
               <div className="flex items-center gap-2 min-w-[240px]">
                 <input readOnly value={inviteUrl} onFocus={(e) => e.currentTarget.select()} className="flex-1 text-xs bg-transparent outline-none rounded-lg px-2 py-1.5" style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }} />

@@ -5,8 +5,41 @@ import { prisma } from '../lib/prisma.js'
 import { getReportByToken } from '../services/gmb-evaluation.service.js'
 import { renderReportHtml } from '../services/gmb-report-html.service.js'
 import { verifyInviteToken } from '../lib/jwt.js'
+import { renderLeadReportHtml } from '../services/lead-report-html.service.js'
+
+const REPORT_WEB_ORIGIN = process.env['WEB_ORIGIN'] ?? 'https://app.myorbisvoice.com'
 
 const router: IRouter = Router()
+
+// GET /api/public/lead-report/:token — the customer-facing Lead Capture report.
+// No login: the partner-issued token IS the access key (token → that one contact).
+// Branded scorecard + addendum; its "Get started" CTA leads to the prefilled
+// signup. Doubles as a PDF (print-clean CSS).
+router.get('/public/lead-report/:token', async (req, res) => {
+  try {
+    const token = req.params['token'] as string
+    const cid = verifyInviteToken(token)
+    const c = await prisma.contact.findFirst({
+      where:  { id: cid, deletedAt: null },
+      select: { fullName: true, createdAt: true, metadataJson: true },
+    })
+    const meta = (c?.metadataJson ?? {}) as Record<string, unknown>
+    if (!c || typeof meta['leadCaptureScore'] !== 'number') { res.status(404).send('No evaluation on file'); return }
+    const lang = req.query['lang'] === 'es' ? 'es' : 'en'
+    const html = renderLeadReportHtml({
+      businessName: (meta['businessName'] as string) || c.fullName || 'Your business',
+      score:        meta['leadCaptureScore'] as number,
+      grade:        (meta['leadCaptureGrade'] as string) ?? null,
+      scores:       (meta['evalScores'] as Record<string, number>) ?? {},
+      locale:       lang,
+      signupUrl:    `${REPORT_WEB_ORIGIN}/signup?invite=${encodeURIComponent(token)}`,
+      reportDate:   new Date(c.createdAt).toLocaleDateString(lang === 'es' ? 'es-MX' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    })
+    res.setHeader('Content-Type', 'text/html; charset=utf-8')
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow')
+    res.send(html)
+  } catch { res.status(400).send('Invalid or expired link') }
+})
 
 // GET /api/public/signup-invite/:token — prefill for a partner-issued signup
 // invite. No auth: the signed token IS the access key (a partner converted a
