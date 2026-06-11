@@ -96,11 +96,18 @@ export default function PartnerContactsPage() {
         )}
       </form>
 
-      {selected.size > 0 && (
+      {contacts.length > 0 && (
         <div className="flex items-center gap-3">
-          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('partnerContacts.nSelected', { n: selected.size })}</span>
-          <button onClick={deleteSelected} disabled={deleting} className="text-sm px-3 py-1.5 rounded-lg disabled:opacity-60" style={{ background: 'var(--error-600)', color: '#fff' }}>
-            {deleting ? '…' : t('partnerContacts.deleteSelected', { n: selected.size })}
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {selected.size > 0 ? t('partnerContacts.nSelected', { n: selected.size }) : t('partnerContacts.selectHint')}
+          </span>
+          <button
+            onClick={deleteSelected}
+            disabled={deleting || selected.size === 0}
+            className="text-sm px-3 py-1.5 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: 'var(--error-600)', color: '#fff' }}
+          >
+            {deleting ? '…' : selected.size > 0 ? t('partnerContacts.deleteSelected', { n: selected.size }) : t('partnerContacts.deleteLabel')}
           </button>
         </div>
       )}

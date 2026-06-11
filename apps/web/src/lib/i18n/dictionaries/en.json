@@ -502,7 +502,9 @@
     },
     "nSelected": "{n} selected",
     "deleteSelected": "Delete {n}",
-    "confirmDelete": "Delete {n} contact(s)? This can't be undone."
+    "confirmDelete": "Delete {n} contact(s)? This can't be undone.",
+    "selectHint": "Select rows to delete",
+    "deleteLabel": "Delete"
   },
   "partnerContactDetail": {
     "loading": "Loading…",

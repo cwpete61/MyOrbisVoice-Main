@@ -502,7 +502,9 @@
     },
     "nSelected": "{n} seleccionados",
     "deleteSelected": "Eliminar {n}",
-    "confirmDelete": "¿Eliminar {n} contacto(s)? No se puede deshacer."
+    "confirmDelete": "¿Eliminar {n} contacto(s)? No se puede deshacer.",
+    "selectHint": "Selecciona filas para eliminar",
+    "deleteLabel": "Eliminar"
   },
   "partnerContactDetail": {
     "loading": "Cargando…",
