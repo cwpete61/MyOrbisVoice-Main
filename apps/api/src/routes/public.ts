@@ -6,42 +6,70 @@ import { getReportByToken } from '../services/gmb-evaluation.service.js'
 import { renderReportHtml } from '../services/gmb-report-html.service.js'
 import { verifyInviteToken } from '../lib/jwt.js'
 import { renderLeadReportHtml } from '../services/lead-report-html.service.js'
+import { renderPdfFromHtml } from '../services/pdf-render.client.js'
 
 const REPORT_WEB_ORIGIN = process.env['WEB_ORIGIN'] ?? 'https://app.myorbisvoice.com'
+const API_PUBLIC_ORIGIN = process.env['API_PUBLIC_ORIGIN'] ?? 'https://api.myorbisvoice.com'
 
 const router: IRouter = Router()
 
+// Build the Lead Capture report HTML for a token (shared by the HTML + PDF
+// routes). Returns null if the token's contact has no saved evaluation.
+async function leadReportHtmlForToken(token: string, lang: 'en' | 'es', pdfUrl: string): Promise<string | null> {
+  const cid = verifyInviteToken(token)
+  const c = await prisma.contact.findFirst({
+    where:  { id: cid, deletedAt: null },
+    select: { fullName: true, createdAt: true, metadataJson: true },
+  })
+  const meta = (c?.metadataJson ?? {}) as Record<string, unknown>
+  if (!c || typeof meta['leadCaptureScore'] !== 'number') return null
+  return renderLeadReportHtml({
+    businessName: (meta['businessName'] as string) || c.fullName || 'Your business',
+    score:        meta['leadCaptureScore'] as number,
+    grade:        (meta['leadCaptureGrade'] as string) ?? null,
+    scores:       (meta['evalScores'] as Record<string, number>) ?? {},
+    locale:       lang,
+    signupUrl:    `${REPORT_WEB_ORIGIN}/signup?invite=${encodeURIComponent(token)}`,
+    reportDate:   new Date(c.createdAt).toLocaleDateString(lang === 'es' ? 'es-MX' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    costPerWeek:  (meta['costPerWeek'] as number) ?? null,
+    closeRate:    (meta['closeRate'] as number) ?? null,
+    avgValue:     (meta['avgValue'] as number) ?? null,
+    notCaptured:  (meta['notCaptured'] as number) ?? null,
+    pdfUrl,
+  })
+}
+
 // GET /api/public/lead-report/:token — the customer-facing Lead Capture report.
 // No login: the partner-issued token IS the access key (token → that one contact).
-// Branded scorecard + addendum; its "Get started" CTA leads to the prefilled
-// signup. Doubles as a PDF (print-clean CSS).
+// Branded scorecard + addendum; "Get started" CTA leads to the prefilled signup.
 router.get('/public/lead-report/:token', async (req, res) => {
   try {
     const token = req.params['token'] as string
-    const cid = verifyInviteToken(token)
-    const c = await prisma.contact.findFirst({
-      where:  { id: cid, deletedAt: null },
-      select: { fullName: true, createdAt: true, metadataJson: true },
-    })
-    const meta = (c?.metadataJson ?? {}) as Record<string, unknown>
-    if (!c || typeof meta['leadCaptureScore'] !== 'number') { res.status(404).send('No evaluation on file'); return }
     const lang = req.query['lang'] === 'es' ? 'es' : 'en'
-    const html = renderLeadReportHtml({
-      businessName: (meta['businessName'] as string) || c.fullName || 'Your business',
-      score:        meta['leadCaptureScore'] as number,
-      grade:        (meta['leadCaptureGrade'] as string) ?? null,
-      scores:       (meta['evalScores'] as Record<string, number>) ?? {},
-      locale:       lang,
-      signupUrl:    `${REPORT_WEB_ORIGIN}/signup?invite=${encodeURIComponent(token)}`,
-      reportDate:   new Date(c.createdAt).toLocaleDateString(lang === 'es' ? 'es-MX' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-      costPerWeek:  (meta['costPerWeek'] as number) ?? null,
-      closeRate:    (meta['closeRate'] as number) ?? null,
-      avgValue:     (meta['avgValue'] as number) ?? null,
-      notCaptured:  (meta['notCaptured'] as number) ?? null,
-    })
+    const pdfUrl = `${API_PUBLIC_ORIGIN}/api/public/lead-report/${encodeURIComponent(token)}/pdf${lang === 'es' ? '?lang=es' : ''}`
+    const html = await leadReportHtmlForToken(token, lang, pdfUrl)
+    if (!html) { res.status(404).send('No evaluation on file'); return }
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     res.setHeader('X-Robots-Tag', 'noindex, nofollow')
     res.send(html)
+  } catch { res.status(400).send('Invalid or expired link') }
+})
+
+// GET /api/public/lead-report/:token/pdf — same report as a real PDF, served
+// INLINE so it opens in the browser's PDF viewer (where the owner can download
+// or print). Falls back to the HTML if the render service is unreachable.
+router.get('/public/lead-report/:token/pdf', async (req, res) => {
+  try {
+    const token = req.params['token'] as string
+    const lang = req.query['lang'] === 'es' ? 'es' : 'en'
+    const html = await leadReportHtmlForToken(token, lang, '')
+    if (!html) { res.status(404).send('No evaluation on file'); return }
+    const pdf = await renderPdfFromHtml(html)
+    if (!pdf) { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.send(html); return }
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', 'inline; filename="lead-capture-report.pdf"')
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow')
+    res.end(pdf)
   } catch { res.status(400).send('Invalid or expired link') }
 })
 
