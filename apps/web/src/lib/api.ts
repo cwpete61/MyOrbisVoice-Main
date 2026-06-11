@@ -42,6 +42,28 @@ export interface AuthTokens {
   refreshToken: string
 }
 
+// ── Lead Capture Evaluation → CRM contact + prefilled signup invite ──────────
+export interface EvalContactInput {
+  businessName?: string; contactName?: string; email?: string
+  businessPhone?: string; personalPhone?: string; address?: string; niche?: string
+  score?: number; grade?: string; scores?: Record<string, number>
+}
+export function apiSaveEvalContact(body: EvalContactInput, token: string) {
+  return apiCall<{ id: string }>('/api/partner/crm/contacts/from-eval', { method: 'POST', body, token })
+}
+export function apiContactSignupInvite(contactId: string, token: string) {
+  return apiCall<{ token: string; url: string }>(`/api/partner/crm/contacts/${contactId}/invite`, { method: 'POST', token })
+}
+// Public — prefill a signup form from a partner-issued invite token (no auth).
+export async function apiInvitePrefill(token: string): Promise<{ businessName: string; email: string; phone: string } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/public/signup-invite/${encodeURIComponent(token)}`)
+    if (!res.ok) return null
+    const json = (await res.json()) as { data?: { businessName: string; email: string; phone: string } }
+    return json.data ?? null
+  } catch { return null }
+}
+
 export async function apiLogin(login: string, password: string) {
   return apiCall<{ user: unknown; tenantId: string | null } & AuthTokens>('/api/auth/login', {
     method: 'POST',

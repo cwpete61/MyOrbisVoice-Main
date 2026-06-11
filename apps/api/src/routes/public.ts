@@ -4,8 +4,32 @@ import * as systemConfig from '../services/system-config.service.js'
 import { prisma } from '../lib/prisma.js'
 import { getReportByToken } from '../services/gmb-evaluation.service.js'
 import { renderReportHtml } from '../services/gmb-report-html.service.js'
+import { verifyInviteToken } from '../lib/jwt.js'
 
 const router: IRouter = Router()
+
+// GET /api/public/signup-invite/:token — prefill for a partner-issued signup
+// invite. No auth: the signed token IS the access key (a partner converted a
+// saved lead into this exact link), so it returns only that one contact's
+// basics — never an open email lookup that could leak anyone's data.
+router.get('/public/signup-invite/:token', async (req, res) => {
+  try {
+    const cid = verifyInviteToken(req.params['token'] as string)
+    const c = await prisma.contact.findFirst({
+      where:  { id: cid, deletedAt: null },
+      select: { fullName: true, email: true, phoneE164: true, metadataJson: true },
+    })
+    if (!c) { res.status(404).json({ error: 'not_found' }); return }
+    const meta = (c.metadataJson ?? {}) as Record<string, unknown>
+    res.json({ data: {
+      businessName: (meta['businessName'] as string) || c.fullName || '',
+      email:        c.email || '',
+      phone:        c.phoneE164 || '',
+    } })
+  } catch {
+    res.status(400).json({ error: 'invalid_or_expired' })
+  }
+})
 
 // GET /api/public/gmb-report/:token — the customer-facing shareable report.
 // No auth: the unguessable token IS the access key. Returns the full HTML

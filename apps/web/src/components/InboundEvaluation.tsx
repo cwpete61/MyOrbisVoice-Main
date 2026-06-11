@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { useLocale } from '@/lib/i18n/I18nProvider'
+import { apiSaveEvalContact, apiContactSignupInvite } from '@/lib/api'
+import { getAccessToken } from '@/lib/auth'
 
 /**
  * Lead Capture Evaluation — the partner-facing scorecard tool behind the free
@@ -123,6 +125,13 @@ const T = {
   lostRev: { en: 'Est. lost revenue / month', es: 'Ingresos perdidos estimados / mes' },
   reset: { en: 'Reset', es: 'Reiniciar' },
   biggestLeak: { en: 'Biggest leak', es: 'Mayor fuga' },
+  saveToContacts: { en: 'Save to Contacts', es: 'Guardar en Contactos' },
+  saving: { en: 'Saving…', es: 'Guardando…' },
+  saved: { en: 'Saved to Contacts', es: 'Guardado en Contactos' },
+  createInvite: { en: 'Create prefilled signup link', es: 'Crear enlace de registro prellenado' },
+  inviteHint: { en: 'Send this to the lead — when they sign up for service it offers to use the info on file.', es: 'Envía esto al lead — al registrarse para el servicio se le ofrece usar la información en archivo.' },
+  copy: { en: 'Copy', es: 'Copiar' },
+  copied: { en: 'Copied', es: 'Copiado' },
 }
 
 export function InboundEvaluation() {
@@ -142,6 +151,11 @@ export function InboundEvaluation() {
   const [closeRate, setCloseRate] = useState('')
   const [avgVal, setAvgVal] = useState('')
   const [notCapturedOverride, setNotCapturedOverride] = useState<string>('')
+  const [saving, setSaving] = useState(false)
+  const [savedId, setSavedId] = useState<string | null>(null)
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [saveErr, setSaveErr] = useState('')
 
   const answered = Object.keys(scores).length
   const total = useMemo(() => Object.values(scores).reduce((a, b) => a + b, 0), [scores])
@@ -171,6 +185,29 @@ export function InboundEvaluation() {
   function reset() {
     setBiz(''); setContactName(''); setEmail(''); setBizPhone(''); setPersonalPhone(''); setAddress(''); setNiche('')
     setScores({}); setCallsWk(''); setCloseRate(''); setAvgVal(''); setNotCapturedOverride('')
+    setSavedId(null); setInviteUrl(null); setSaveErr(''); setCopied(false)
+  }
+
+  async function save() {
+    setSaving(true); setSaveErr('')
+    try {
+      const r = await apiSaveEvalContact(
+        { businessName: biz, contactName, email, businessPhone: bizPhone, personalPhone, address, niche, score: total, grade: grade.letter, scores },
+        getAccessToken() ?? '',
+      )
+      setSavedId(r.id)
+    } catch (e) { setSaveErr(e instanceof Error ? e.message : 'Error') } finally { setSaving(false) }
+  }
+  async function makeInvite() {
+    if (!savedId) return
+    try {
+      const r = await apiContactSignupInvite(savedId, getAccessToken() ?? '')
+      setInviteUrl(r.url)
+    } catch (e) { setSaveErr(e instanceof Error ? e.message : 'Error') }
+  }
+  function copyInvite() {
+    if (!inviteUrl) return
+    navigator.clipboard?.writeText(inviteUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }).catch(() => {})
   }
 
   return (
@@ -272,6 +309,28 @@ export function InboundEvaluation() {
             )}
           </div>
         )}
+      </div>
+
+      {/* Save to Contacts → prefilled signup invite */}
+      <div className="rounded-xl p-4 flex flex-wrap items-center gap-3" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+        {!savedId ? (
+          <button onClick={save} disabled={saving} className="btn-primary disabled:opacity-60">{saving ? tr(T.saving) : tr(T.saveToContacts)}</button>
+        ) : !inviteUrl ? (
+          <>
+            <span className="text-sm font-medium" style={{ color: 'oklch(72% 0.17 145)' }}>✓ {tr(T.saved)}</span>
+            <button onClick={makeInvite} className="text-sm px-3 py-1.5 rounded-lg" style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>{tr(T.createInvite)}</button>
+          </>
+        ) : (
+          <div className="w-full space-y-1.5">
+            <span className="text-sm font-medium" style={{ color: 'oklch(72% 0.17 145)' }}>✓ {tr(T.saved)}</span>
+            <div className="flex items-center gap-2">
+              <input readOnly value={inviteUrl} onFocus={(e) => e.currentTarget.select()} className="flex-1 text-xs bg-transparent outline-none rounded-lg px-3 py-2" style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }} />
+              <button onClick={copyInvite} className="text-xs px-3 py-2 rounded-lg shrink-0" style={{ background: 'var(--brand-500, oklch(55% 0.11 193))', color: '#fff' }}>{copied ? tr(T.copied) : tr(T.copy)}</button>
+            </div>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{tr(T.inviteHint)}</p>
+          </div>
+        )}
+        {saveErr && <span className="text-xs" style={{ color: 'var(--error-600)' }}>{saveErr}</span>}
       </div>
     </div>
   )

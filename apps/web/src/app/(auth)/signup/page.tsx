@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { apiSignup, apiCreateCheckoutSession } from '@/lib/api'
+import { apiSignup, apiCreateCheckoutSession, apiInvitePrefill } from '@/lib/api'
 import { setTokens } from '@/lib/auth'
 import { PasswordInput } from '@/components/PasswordInput'
 import { PasswordRulesChecklist } from '@/components/PasswordRulesChecklist'
@@ -30,12 +30,13 @@ const PLAN_DISPLAY_NAMES: Record<string, string> = {
   enterprise_monthly: 'Enterprise',
 }
 
-function URLParamsCapture({ onCapture }: { onCapture: (refCode?: string, planCode?: string) => void }) {
+function URLParamsCapture({ onCapture }: { onCapture: (refCode?: string, planCode?: string, invite?: string) => void }) {
   const searchParams = useSearchParams()
   useEffect(() => {
     const refCode  = searchParams.get('ref') ?? getReferralCookie()
     const planCode = searchParams.get('plan') ?? undefined
-    onCapture(refCode, planCode)
+    const invite   = searchParams.get('invite') ?? undefined
+    onCapture(refCode, planCode, invite)
   }, [searchParams, onCapture])
   return null
 }
@@ -54,6 +55,28 @@ function SignupForm() {
   const [loading, setLoading] = useState(false)
   const [refCode, setRefCode] = useState<string | undefined>()
   const [planCode, setPlanCode] = useState<string | undefined>()
+  const [invitePrefill, setInvitePrefill] = useState<{ businessName: string; email: string; phone: string } | null>(null)
+  const [showInvite, setShowInvite] = useState(false)
+  const invitedRef = useRef(false)
+
+  // Partner-issued invite link (?invite=token) → offer to prefill from the
+  // lead's on-file info. The token authorizes the lookup; no open email match.
+  const handleCapture = useCallback((r?: string, p?: string, invite?: string) => {
+    setRefCode(r); setPlanCode(p)
+    if (invite && !invitedRef.current) {
+      invitedRef.current = true
+      apiInvitePrefill(invite).then((d) => {
+        if (d && (d.businessName || d.email || d.phone)) { setInvitePrefill(d); setShowInvite(true) }
+      })
+    }
+  }, [])
+  function applyInvite() {
+    if (!invitePrefill) return
+    if (invitePrefill.businessName) setBusinessName(invitePrefill.businessName)
+    if (invitePrefill.email) setEmail(invitePrefill.email)
+    if (invitePrefill.phone) setPhone(invitePrefill.phone)
+    setShowInvite(false)
+  }
 
   const isPaidPlan = !!planCode && PAID_PLAN_CODES.has(planCode)
   const planDisplayName = planCode ? (PLAN_DISPLAY_NAMES[planCode] ?? planCode) : ''
@@ -99,13 +122,30 @@ function SignupForm() {
       className="min-h-screen flex items-center justify-center px-4 py-12 relative"
       style={{ background: 'var(--surface-app)' }}
     >
+      {showInvite && invitePrefill && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.55)' }}>
+          <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{t('auth.signup.invitePrompt')}</h2>
+            <p className="text-sm mt-1.5" style={{ color: 'var(--text-secondary)' }}>{t('auth.signup.invitePromptBody')}</p>
+            <ul className="text-sm mt-3 space-y-1" style={{ color: 'var(--text-secondary)' }}>
+              {invitePrefill.businessName && <li>• {invitePrefill.businessName}</li>}
+              {invitePrefill.email && <li>• {invitePrefill.email}</li>}
+              {invitePrefill.phone && <li>• {invitePrefill.phone}</li>}
+            </ul>
+            <div className="flex gap-2 mt-5">
+              <button onClick={applyInvite} className="btn-primary flex-1">{t('auth.signup.inviteYes')}</button>
+              <button onClick={() => setShowInvite(false)} className="flex-1 rounded-lg px-3 py-2 text-sm" style={{ border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>{t('auth.signup.inviteNo')}</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <LanguageToggle />
         <ThemeToggle />
       </div>
       <Suspense fallback={null}>
         <URLParamsCapture
-          onCapture={(r, p) => { setRefCode(r); setPlanCode(p) }}
+          onCapture={handleCapture}
         />
       </Suspense>
       <div

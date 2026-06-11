@@ -1034,7 +1034,11 @@
       "ltdBannerBody": "After you create your account, you'll be sent to checkout to complete your $497 one-time payment. (LTD is limited to the first 100 customers.)",
       "paidBannerTitle": "Continuing to {planName} checkout",
       "paidBannerBody": "After you create your account, you'll be sent to Stripe to complete your subscription.",
-      "redirectingToCheckout": "Redirecting to checkout…"
+      "redirectingToCheckout": "Redirecting to checkout…",
+      "invitePrompt": "Use the information on file?",
+      "invitePromptBody": "Your partner already has these details for you. Want to prefill the form?",
+      "inviteYes": "Yes, use it",
+      "inviteNo": "No, start fresh"
     },
     "login": {
       "title": "Welcome back",

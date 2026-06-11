@@ -17,6 +17,17 @@ import { sendEmail } from '../services/email.service.js'
 import { sendSms } from '../services/sms.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { prisma } from '../lib/prisma.js'
+import { signInviteToken } from '../lib/jwt.js'
+
+const SIGNUP_ORIGIN = process.env['WEB_ORIGIN'] ?? 'https://app.myorbisvoice.com'
+
+function normPhone(s: string | undefined | null): string | null {
+  const d = (s ?? '').replace(/\D/g, '')
+  if (!d) return null
+  if (d.length === 10) return '+1' + d
+  if (d.length === 11 && d.startsWith('1')) return '+' + d
+  return (s ?? '').startsWith('+') ? (s as string) : '+' + d
+}
 
 const router: IRouter = Router()
 router.use('/partner', authenticate, requirePartnerContext)
@@ -119,6 +130,76 @@ router.get('/partner/crm/board', async (req: Request, res: Response, next: NextF
       }),
     ])
     res.json({ data: { stages, contacts } })
+  } catch (err) { next(err) }
+})
+
+// ── Save a Lead Capture Evaluation as a CRM contact ─────────────────────────
+const evalContactSchema = z.object({
+  businessName:  z.string().max(200).optional().default(''),
+  contactName:   z.string().max(120).optional().default(''),
+  email:         z.string().max(200).optional().default(''),
+  businessPhone: z.string().max(40).optional().default(''),
+  personalPhone: z.string().max(40).optional().default(''),
+  address:       z.string().max(300).optional().default(''),
+  niche:         z.string().max(120).optional().default(''),
+  score:         z.number().int().min(0).max(100).optional(),
+  grade:         z.string().max(4).optional(),
+  scores:        z.record(z.number()).optional(),
+})
+
+router.post('/partner/crm/contacts/from-eval', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const pid = partnerId(req)
+    const b = evalContactSchema.parse(req.body)
+    if (!b.businessName && !b.contactName && !b.email) {
+      throw new AppError('VALIDATION', 'Provide at least a business name, contact name, or email', 400)
+    }
+    const hostingTenantId = await resolveHostingTenantId(pid)
+    const now = new Date()
+    const contact = await prisma.contact.create({
+      data: {
+        tenantId:     hostingTenantId,
+        partnerId:    pid,
+        fullName:     b.businessName || b.contactName || 'Lead',
+        firstName:    b.contactName || null,
+        email:        b.email || null,
+        phoneE164:    normPhone(b.businessPhone),
+        addressLine1: b.address || null,
+        source:       'LEAD_EVAL',
+        // Cold lead — no consent. Born opted out of voice + SMS (compliance wall).
+        optedOutSms:   true, optedOutSmsAt: now,
+        optedOutVoice: true, optedOutVoiceAt: now,
+        tagsJson:      b.niche ? [b.niche] : undefined,
+        metadataJson: {
+          businessName:     b.businessName || null,
+          contactName:      b.contactName || null,
+          niche:            b.niche || null,
+          personalPhone:    b.personalPhone || null,
+          leadCaptureScore: b.score ?? null,
+          leadCaptureGrade: b.grade ?? null,
+          evalScores:       b.scores ?? null,
+        },
+      },
+    })
+    await crmService.seedDefaultPipelineForPartner({ partnerId: pid, hostingTenantId })
+    await crmService.placeNewContactOnPipeline({ kind: 'partner', partnerId: pid, hostingTenantId }, contact.id)
+    res.json({ data: { id: contact.id } })
+  } catch (err) { next(err) }
+})
+
+// ── Convert a contact → prefilled signup invite link (secure token) ─────────
+router.post('/partner/crm/contacts/:id/invite', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const pid = partnerId(req)
+    const contact = await prisma.contact.findFirst({
+      where:  { id: req.params['id'] as string, partnerId: pid, deletedAt: null },
+      select: { id: true },
+    })
+    if (!contact) throw new AppError('NOT_FOUND', 'Contact not found', 404)
+    const acct = await prisma.affiliateAccount.findFirst({ where: { id: pid }, select: { referralCode: true } })
+    const token = signInviteToken(contact.id)
+    const ref = acct?.referralCode ? `&ref=${encodeURIComponent(acct.referralCode)}` : ''
+    res.json({ data: { token, url: `${SIGNUP_ORIGIN}/signup?invite=${token}${ref}` } })
   } catch (err) { next(err) }
 })
 

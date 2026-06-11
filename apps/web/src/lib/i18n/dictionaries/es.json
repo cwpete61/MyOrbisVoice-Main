@@ -1034,7 +1034,11 @@
       "ltdBannerBody": "Después de crear tu cuenta, te enviaremos al pago para completar tu pago único de $497. (LTD está limitado a los primeros 100 clientes.)",
       "paidBannerTitle": "Continuando al pago de {planName}",
       "paidBannerBody": "Después de crear tu cuenta, te enviaremos a Stripe para completar tu suscripción.",
-      "redirectingToCheckout": "Redirigiendo al pago…"
+      "redirectingToCheckout": "Redirigiendo al pago…",
+      "invitePrompt": "¿Usar la información en archivo?",
+      "invitePromptBody": "Tu socio ya tiene estos datos tuyos. ¿Quieres prellenar el formulario?",
+      "inviteYes": "Sí, usarla",
+      "inviteNo": "No, empezar de cero"
     },
     "login": {
       "title": "Bienvenido de nuevo",
