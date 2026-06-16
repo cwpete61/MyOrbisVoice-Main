@@ -248,3 +248,44 @@ async function propagateAttemptOutcomeToEnrollment(
     data:  { status: 'PENDING', scheduledCallAt: retryAt },
   })
 }
+
+// ── Inbound Evaluation: bridged test call ───────────────────────────────────
+// Rings the partner's phone, then bridges to the business number so the partner
+// hears the business's REAL inbound handling (speed to answer, greeting, lead
+// capture, after-hours) exactly as a customer would — then scores it on the eval
+// scorecard. Caller ID is a platform outbound number. Partner-initiated; the
+// business has consented to the evaluation (see the Instructions tab). Returns
+// the parent (partner-leg) call SID.
+function normalizeEvalE164(s: string): string | null {
+  const d = (s ?? '').replace(/\D/g, '')
+  if (!d) return null
+  if (d.length === 10) return '+1' + d
+  if (d.length === 11 && d.startsWith('1')) return '+' + d
+  return (s ?? '').startsWith('+') ? s : '+' + d
+}
+
+export async function placeEvalTestCall(opts: {
+  partnerId: string; businessPhone: string; callbackPhone: string
+}): Promise<{ callSid: string; from: string; to: string; business: string }> {
+  const env = getEnv()
+  const biz = normalizeEvalE164(opts.businessPhone)
+  const cb  = normalizeEvalE164(opts.callbackPhone)
+  if (!biz) throw new Error('Invalid business phone number')
+  if (!cb)  throw new Error('Invalid callback phone number')
+
+  const fromRecord = await prisma.phoneNumber.findFirst({
+    where:  { isOutboundEnabled: true, twilioSubaccountSid: null },
+    select: { e164Number: true },
+  })
+  if (!fromRecord) throw new Error('No platform outbound number configured for test calls')
+  const from = fromRecord.e164Number
+  const client = await getPlatformTwilioClient()
+
+  const call = await client.calls.create({
+    to:        cb,
+    from,
+    url:       `${env.API_BASE_URL}/api/webhooks/twilio/eval-testcall/twiml?biz=${encodeURIComponent(biz)}`,
+    timeLimit: 600, // 10-minute hard cap
+  })
+  return { callSid: call.sid, from, to: cb, business: biz }
+}

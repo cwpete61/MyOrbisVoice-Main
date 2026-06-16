@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useLocale } from '@/lib/i18n/I18nProvider'
 import { apiSaveEvalContact, apiContactSignupInvite } from '@/lib/api'
+import { apiFetch } from '@/hooks/useApi'
 import { getAccessToken } from '@/lib/auth'
 
 /**
@@ -132,6 +133,14 @@ const T = {
   inviteHint: { en: 'Share with the lead — they see their full report (no login); its "Get started" CTA leads to a prefilled signup.', es: 'Comparte con el lead — ve su reporte completo (sin iniciar sesión); su botón "Empezar" lleva a un registro prellenado.' },
   copy: { en: 'Copy', es: 'Copiar' },
   copied: { en: 'Copied', es: 'Copiado' },
+  testCallTitle: { en: 'Live test call', es: 'Llamada de prueba en vivo' },
+  testCallHint: { en: 'We ring your phone, then connect you to the business number above — listen to how they answer and score it live below. The business has agreed to the evaluation.', es: 'Llamamos a tu teléfono y te conectamos al número del negocio de arriba — escucha cómo contestan y califícalo en vivo abajo. El negocio aceptó la evaluación.' },
+  callbackLabel: { en: 'Your phone (we call you)', es: 'Tu teléfono (te llamamos)' },
+  placeCall: { en: 'Call me + connect', es: 'Llámame + conectar' },
+  calling: { en: 'Calling…', es: 'Llamando…' },
+  callPlaced: { en: 'Calling your phone — answer to be connected to the business.', es: 'Llamando a tu teléfono — contesta para conectarte al negocio.' },
+  callFail: { en: 'Could not place the call. Check the numbers and try again.', es: 'No se pudo llamar. Revisa los números e intenta de nuevo.' },
+  needBizPhone: { en: 'Enter the business phone above first.', es: 'Ingresa primero el teléfono del negocio arriba.' },
 }
 
 export function InboundEvaluation() {
@@ -151,6 +160,8 @@ export function InboundEvaluation() {
   const [closeRate, setCloseRate] = useState('')
   const [avgVal, setAvgVal] = useState('')
   const [notCapturedOverride, setNotCapturedOverride] = useState<string>('')
+  const [callbackPhone, setCallbackPhone] = useState('')
+  const [testState, setTestState] = useState<'idle' | 'calling' | 'placed' | 'err'>('idle')
   const [saving, setSaving] = useState(false)
   const [savedId, setSavedId] = useState<string | null>(null)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
@@ -186,6 +197,18 @@ export function InboundEvaluation() {
     setBiz(''); setContactName(''); setEmail(''); setBizPhone(''); setPersonalPhone(''); setAddress(''); setNiche('')
     setScores({}); setCallsWk(''); setCloseRate(''); setAvgVal(''); setNotCapturedOverride('')
     setSavedId(null); setInviteUrl(null); setSaveErr(''); setCopied(false)
+  }
+
+  async function placeTestCall() {
+    if (!bizPhone.trim()) { setTestState('err'); return }
+    setTestState('calling')
+    try {
+      await apiFetch('/api/partner/eval/test-call', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ businessPhone: bizPhone, callbackPhone: callbackPhone || undefined }),
+      })
+      setTestState('placed')
+    } catch { setTestState('err') }
   }
 
   async function save() {
@@ -250,6 +273,26 @@ export function InboundEvaluation() {
               <span className="font-medium" style={{ color: grade.color }}>{tr(biggestLeak)}</span>
             </p>
           )}
+
+          {/* Live bridged test call — ring the partner, connect to the business */}
+          <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <h4 className="text-xs font-semibold mb-1" style={{ color: 'var(--text-tertiary)' }}>{tr(T.testCallTitle)}</h4>
+            <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>{tr(T.testCallHint)}</p>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="flex-1 min-w-[180px]">
+                <TextField label={tr(T.callbackLabel)} value={callbackPhone} onChange={setCallbackPhone} type="tel" />
+              </div>
+              <button
+                onClick={placeTestCall} disabled={testState === 'calling'}
+                className="px-3 py-2 rounded-lg text-sm font-medium"
+                style={{ background: 'var(--brand-500, oklch(55% 0.11 193))', color: '#fff', opacity: testState === 'calling' ? 0.7 : 1, whiteSpace: 'nowrap' }}
+              >
+                {testState === 'calling' ? tr(T.calling) : tr(T.placeCall)}
+              </button>
+            </div>
+            {testState === 'placed' && <p className="text-xs mt-1.5" style={{ color: 'var(--brand-500, oklch(55% 0.11 193))' }}>{tr(T.callPlaced)}</p>}
+            {testState === 'err' && <p className="text-xs mt-1.5" style={{ color: '#DC2626' }}>{bizPhone.trim() ? tr(T.callFail) : tr(T.needBizPhone)}</p>}
+          </div>
         </div>
         <div className="rounded-xl p-4 flex flex-col items-center justify-center min-w-[150px]" style={{ background: 'var(--surface-raised)', border: `1px solid ${grade.color}` }}>
           <div className="text-4xl font-bold tabular-nums" style={{ color: grade.color }}>{total}</div>

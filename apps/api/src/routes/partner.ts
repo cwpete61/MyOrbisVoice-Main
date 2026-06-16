@@ -10,6 +10,7 @@ import { prisma } from '../lib/prisma.js'
 import * as partnerService from '../services/partner.service.js'
 import * as googleService from '../services/google.service.js'
 import * as marketingKitAi from '../services/marketing-kit-ai.service.js'
+import { placeEvalTestCall } from '../services/outbound.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { writeAuditLog } from '../lib/audit.js'
 
@@ -951,6 +952,29 @@ router.post('/partner/graphics/ai-line', requirePartnerAccount, async (req: Requ
     const b = graphicLineSchema.parse(req.body)
     const text = await marketingKitAi.generateGraphicLine({ idea: b.idea, lang: b.lang, track: b.track })
     res.json({ data: { text } })
+  } catch (err) { next(err) }
+})
+
+// ─── POST /api/partner/eval/test-call ───────────────────────────────────────
+// Bridged Inbound Evaluation test call: rings the partner's callback phone,
+// then connects them to the business so they hear the real inbound handling and
+// score it. callbackPhone defaults to the partner's saved partnerPhone.
+const testCallSchema = z.object({
+  businessPhone: z.string().min(7).max(40),
+  callbackPhone: z.string().min(7).max(40).optional(),
+})
+router.post('/partner/eval/test-call', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const pid = (req as any).partnerAccountId as string
+    const b = testCallSchema.parse(req.body)
+    let callback = b.callbackPhone?.trim()
+    if (!callback) {
+      const partner = await prisma.affiliateAccount.findUnique({ where: { id: pid }, select: { partnerPhone: true } })
+      callback = partner?.partnerPhone ?? undefined
+    }
+    if (!callback) throw new AppError('VALIDATION', 'Provide a callback phone (or set your partner phone in Profile)', 400)
+    const out = await placeEvalTestCall({ partnerId: pid, businessPhone: b.businessPhone, callbackPhone: callback })
+    res.json({ data: out })
   } catch (err) { next(err) }
 })
 

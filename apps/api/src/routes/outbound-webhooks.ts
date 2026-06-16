@@ -8,6 +8,29 @@ import { prisma } from '../lib/prisma.js'
 
 const router: IRouter = Router()
 
+// Inbound Evaluation bridged test call. Twilio hits this when the PARTNER's
+// phone answers; we bridge them to the business so they experience the real
+// inbound handling, then score it. `biz` (E.164) arrives as a query param.
+// answerOnBridge so the partner doesn't hear ringback billed as connected;
+// record dual-channel so the partner can re-listen. Handle GET + POST (Twilio
+// posts by default but we keep GET for manual testing).
+const evalTestCallTwiml = asyncHandler(async (req, res) => {
+  const biz = String((req.query as Record<string, string>)['biz'] ?? '').trim()
+  const VoiceResponse = (await import('twilio')).default.twiml.VoiceResponse
+  const vr = new VoiceResponse()
+  if (!/^\+?\d{8,15}$/.test(biz)) {
+    vr.say({ voice: 'Polly.Joanna' }, 'No business number was provided for this test call. Goodbye.')
+    vr.hangup()
+    res.type('text/xml').send(vr.toString()); return
+  }
+  vr.say({ voice: 'Polly.Joanna' }, 'Connecting your MyOrbisVoice test call. Listen to how the business answers, then score it.')
+  const dial = vr.dial({ answerOnBridge: true, record: 'record-from-answer-dual', timeout: 30, callerId: String((req.body as Record<string, string>)?.['From'] ?? '') || undefined })
+  dial.number(biz.startsWith('+') ? biz : `+${biz}`)
+  res.type('text/xml').send(vr.toString())
+})
+router.post('/webhooks/twilio/eval-testcall/twiml', evalTestCallTwiml)
+router.get('/webhooks/twilio/eval-testcall/twiml', evalTestCallTwiml)
+
 // Twilio calls this when the outbound call connects — return TwiML script
 router.post('/webhooks/twilio/outbound/twiml', asyncHandler(async (req, res) => {
   const { attemptId, tenantId } = req.query as Record<string, string>
