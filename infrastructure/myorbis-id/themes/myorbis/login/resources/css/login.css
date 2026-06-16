@@ -65,3 +65,9 @@ input:focus, .pf-v5-c-form-control:focus { outline: none !important; border-colo
 }
 .mor-theme-toggle:hover { color: var(--mor-teal-bright); border-color: var(--mor-teal); }
 .mor-theme-toggle svg { width: 18px; height: 18px; }
+
+/* Social provider logo (Google etc.): the injected SVG is unsized and otherwise
+   scales with the card width (giant at wide viewports). Constrain it. */
+#social-google svg, #kc-social-providers a svg, .pf-v5-c-button svg.google {
+  width: 20px; height: 20px; flex: 0 0 auto;
+}
