@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { ssoLogout } from '@/lib/auth'
 import { useT } from '@/lib/i18n/I18nProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { ContactBlock } from '@/components/ContactBlock'
 import { SocialLinks } from '@/components/SocialLinks'
 import { IdleTimeout } from '@/components/IdleTimeout'
@@ -226,6 +227,7 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
               readOne={(id) => `/api/affiliate/notifications/${id}/read`}
               readAll="/api/affiliate/notifications/read-all"
             />
+            <ThemeToggle />
             <LanguageToggle />
           </div>
         </header>
@@ -241,6 +243,7 @@ export default function AffiliatePortalLayout({ children }: { children: React.Re
             readOne={(id) => `/api/affiliate/notifications/${id}/read`}
             readAll="/api/affiliate/notifications/read-all"
           />
+          <ThemeToggle />
           <LanguageToggle />
         </div>
 
