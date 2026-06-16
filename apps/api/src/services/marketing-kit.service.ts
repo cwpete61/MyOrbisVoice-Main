@@ -469,6 +469,19 @@ export interface GenerateInput {
   // Optional override of the angle's default composition.
   composition?: CompositionId
   visible?:     boolean
+  // Explicit opt-in to AI photographic background (gpt-image-1 — billed per
+  // image). Defaults to false: image generation is the platform's biggest
+  // single OpenAI cost (~$0.15+/image vs pennies for text), so it must be
+  // requested deliberately and is ALSO gated by the MARKETING_KIT_AI_IMAGES
+  // env kill-switch. Without both, generation runs text-only at $0 image cost.
+  aiBackground?: boolean
+}
+
+// Master kill-switch for paid AI image generation. Default OFF — set
+// MARKETING_KIT_AI_IMAGES=1 in .env.prod to allow it (and the caller must still
+// pass aiBackground:true per request). Stops accidental bulk image spend.
+function aiImagesEnabled(): boolean {
+  return process.env['MARKETING_KIT_AI_IMAGES'] === '1'
 }
 
 export async function generatePostAndRender(input: GenerateInput, userId?: string) {
@@ -495,12 +508,18 @@ export async function generatePostAndRender(input: GenerateInput, userId?: strin
     brief, intent: input.intent, lang: input.lang, imageStyle, freeMode: !input.angleKey,
   })
 
-  // 2. AI background only for compositions that consume one. Saves ~$0.07
-  //    + ~5s per generation when the composition is text-only.
+  // 2. AI background — only when (a) the composition consumes one, (b) the
+  //    caller explicitly opted in (aiBackground), and (c) the env kill-switch
+  //    is on. Any one missing → text-only render at $0 image cost. quality is
+  //    'medium' (was 'high' — ~50-70% cheaper, fine for a backgrounded photo).
   let bgDataUrl: string | undefined
   if (NEEDS_AI_BG.includes(composition)) {
-    const img = await generateAiImage({ prompt: payload.imagePrompt, size: '1024x1536', quality: 'high' })
-    bgDataUrl = `data:${img.mime};base64,${img.bytes.toString('base64')}`
+    if (input.aiBackground && aiImagesEnabled()) {
+      const img = await generateAiImage({ prompt: payload.imagePrompt, size: '1024x1536', quality: 'medium' })
+      bgDataUrl = `data:${img.mime};base64,${img.bytes.toString('base64')}`
+    } else {
+      console.log(`[marketing-kit] AI image skipped for ${composition} (aiBackground=${!!input.aiBackground}, envEnabled=${aiImagesEnabled()}) — rendering text-only, $0 image cost`)
+    }
   }
 
   // 3. Render via the dedicated render service. Video comps render to MP4;
