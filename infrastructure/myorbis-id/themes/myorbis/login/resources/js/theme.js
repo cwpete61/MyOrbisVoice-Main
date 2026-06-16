@@ -26,16 +26,7 @@
       try { localStorage.setItem('mor_theme', n); } catch (e) {}
       paint();
     });
-    // Place beside the Keycloak language selector so theme + language sit
-    // together and it's obviously present (fallback: fixed top-right corner).
-    var sel = document.getElementById('login-select-toggle');
-    var loc = document.getElementById('kc-locale') || (sel && sel.parentElement);
-    if (loc && loc.parentElement) {
-      b.classList.add('mor-theme-inline');
-      loc.parentElement.insertBefore(b, loc.nextSibling);
-    } else {
-      document.body.appendChild(b);
-    }
+    document.body.appendChild(b);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject);
