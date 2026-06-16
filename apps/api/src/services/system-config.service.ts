@@ -31,7 +31,43 @@ export function decrypt(ciphertext: string): string {
   return decipher.update(data) + decipher.final('utf8')
 }
 
+// ── Shared platform keys read from the MyOrbis Hub (master API dashboard) ─────
+// Global app-service keys live once in the Hub; Voice reads them Hub-first with
+// cache + degrade-to-stale + fallback-to-local, so a Hub blip never loses a key.
+// Runtime keys (Gemini, Twilio) are deliberately NOT here — never put the Hub on
+// the voice hot path. Gated by CONFIG_FROM_HUB so the deploy is inert until flipped.
+const HUB_GLOBAL_KEYS: Record<string, string> = {
+  openai_api_key: 'openai',
+  serper_api_key: 'serper',
+  bunny_api_key: 'bunny',
+}
+const hubKeyCache = new Map<string, { at: number; v: string }>()
+const HUB_KEY_TTL_MS = 300_000
+
+async function getFromHub(key: string): Promise<string | null> {
+  const provider = HUB_GLOBAL_KEYS[key]
+  const hub = process.env['HUB_URL']
+  const svc = process.env['HUB_SERVICE_TOKEN']
+  const enabled = process.env['CONFIG_FROM_HUB'] === '1' || process.env['CONFIG_FROM_HUB'] === 'all'
+  if (!provider || !enabled || !hub || !svc) return null
+  const cached = hubKeyCache.get(key)
+  if (cached && Date.now() - cached.at < HUB_KEY_TTL_MS) return cached.v
+  try {
+    const r = await fetch(`${hub}/v1/providers/${provider}/secret`, {
+      headers: { authorization: `Bearer ${svc}` },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (r.ok) {
+      const v = ((await r.json()) as { fields?: { key?: string } })?.fields?.key
+      if (v) { hubKeyCache.set(key, { at: Date.now(), v }); return v }
+    }
+  } catch { /* fall through */ }
+  return cached ? cached.v : null // degrade to stale, else let caller fall back to local
+}
+
 export async function getConfigValue(key: string): Promise<string | null> {
+  const fromHub = await getFromHub(key)
+  if (fromHub) return fromHub
   const row = await prisma.systemConfig.findUnique({ where: { key } })
   if (!row) return null
   try {
