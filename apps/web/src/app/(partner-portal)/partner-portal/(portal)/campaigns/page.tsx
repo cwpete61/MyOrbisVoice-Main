@@ -7,6 +7,7 @@ import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 import { InboundEvaluation } from '@/components/InboundEvaluation'
 import { EvaluationInstructions } from '@/components/EvaluationInstructions'
 import { MarketingStrategy } from '@/components/MarketingStrategy'
+import { GraphicsStudio } from '@/components/GraphicsStudio'
 
 interface Campaign {
   id: string
@@ -57,7 +58,7 @@ export default function PartnerCampaignsListPage() {
   const { data, loading, error } = useApi<CampaignList>('/api/partner/campaigns', [])
   const { data: policy } = useApi<PartnerPolicy>('/api/partner/email-policy', [])
   const [tab, setTab] = useState<'email' | 'inbound'>('email')
-  const [sub, setSub] = useState<'eval' | 'instructions' | 'marketing'>('eval')
+  const [sub, setSub] = useState<'eval' | 'instructions' | 'marketing' | 'graphics'>('eval')
 
   return (
     <div className="space-y-6">
@@ -82,7 +83,7 @@ export default function PartnerCampaignsListPage() {
         <div className="space-y-5">
           {/* Sub-tabs — Lead Capture Evaluation | Instructions | Marketing Strategy */}
           <div className="flex items-center gap-1" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            {([['eval', t('partnerCampaigns.subLeadCapture')], ['instructions', t('partnerCampaigns.tabInstructions')], ['marketing', t('partnerCampaigns.subMarketing')]] as const).map(([key, label]) => (
+            {([['eval', t('partnerCampaigns.subLeadCapture')], ['instructions', t('partnerCampaigns.tabInstructions')], ['marketing', t('partnerCampaigns.subMarketing')], ['graphics', t('partnerCampaigns.subGraphics')]] as const).map(([key, label]) => (
               <button
                 key={key} onClick={() => setSub(key)}
                 className="px-3.5 py-2 text-sm font-medium transition-colors"
@@ -96,7 +97,7 @@ export default function PartnerCampaignsListPage() {
               </button>
             ))}
           </div>
-          {sub === 'eval' ? <InboundEvaluation /> : sub === 'instructions' ? <EvaluationInstructions /> : <MarketingStrategy />}
+          {sub === 'eval' ? <InboundEvaluation /> : sub === 'instructions' ? <EvaluationInstructions /> : sub === 'marketing' ? <MarketingStrategy /> : <GraphicsStudio />}
         </div>
       ) : <>
       <div className="flex items-start justify-between gap-4">

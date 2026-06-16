@@ -4428,7 +4428,8 @@
     "tabInbound": "Inbound Evaluation",
     "tabInstructions": "Instructions",
     "subLeadCapture": "Lead Capture Evaluation",
-    "subMarketing": "Marketing Strategy"
+    "subMarketing": "Marketing Strategy",
+    "subGraphics": "Graphics"
   },
   "partnerCampaignNew": {
     "backLink": "← Campaigns",
