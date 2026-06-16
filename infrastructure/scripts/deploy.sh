@@ -357,6 +357,26 @@ step_web() {
   else
     fail "Web did not become healthy after restart:\n$(ssh "$SERVER" "docker logs myorbisvoice-web --tail=30 2>&1")"
   fi
+  # Verify the RUNNING server serves the freshly-injected build — not a stale
+  # in-memory build. wait_http_healthy only proves the process answers; this
+  # proves it answers with THIS BUILD_ID's assets. The restart can race the
+  # file injection and leave next start serving the previous build, which
+  # surfaces in browsers as ChunkLoadError / "Failed to find Server Action"
+  # (the 2026-06-16 incident — needed a second manual restart to clear).
+  local served_ok=0 try
+  for try in 1 2; do
+    if ssh_t 25 "$SERVER" "docker exec myorbisvoice-web node -e 'fetch(\"http://127.0.0.1:3000/_next/static/$BUILD_ID/_buildManifest.js\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'" >/dev/null 2>&1; then
+      served_ok=1; break
+    fi
+    echo "   ⚠ web serving a stale build (BUILD_ID $BUILD_ID manifest not served) — restarting (attempt $try)"
+    ssh_t 90 "$SERVER" "docker restart myorbisvoice-web"
+    wait_http_healthy myorbisvoice-web 3000 /partner-portal/login || true
+  done
+  if [[ "$served_ok" == "1" ]]; then
+    ok "Web serving current build ($BUILD_ID)"
+  else
+    fail "Web still serving a stale build after restart — investigate (manual: docker restart myorbisvoice-web)"
+  fi
 }
 
 # Lead engine — a Python service, so no TS build / dist-inject. Sync the
@@ -426,6 +446,20 @@ case "$TARGET" in
     exit 1
     ;;
 esac
+
+# ── 4b. Reclaim dangling images + build cache ──────────────────────────────
+# Each commit_image retags <container>:latest, orphaning the previous layer as
+# a dangling (untagged) image. Left unchecked these filled box1 to 100% disk
+# (2026-06-16), which in turn caused the stale-build restart-race above. Prune
+# DANGLING only — running containers (incl. off-limits bps_zf / zerofees)
+# protect their in-use images, so this never removes anything live. Build cache
+# trimmed to 5GB. Belt-and-suspenders with the weekly cron on the box.
+log "Reclaiming dangling images + build cache..."
+if ssh "$SERVER" "docker image prune -f >/dev/null 2>&1; docker builder prune -f --keep-storage 5GB >/dev/null 2>&1; df -h / | awk 'NR==2{print \$5\" used, \"\$4\" free\"}'" 2>/dev/null; then
+  ok "Disk reclaimed (dangling images + build cache)"
+else
+  echo "   ⚠ prune step skipped (non-fatal)"
+fi
 
 # ── 5. Health checks ───────────────────────────────────────────────────────
 log "Health checks..."
