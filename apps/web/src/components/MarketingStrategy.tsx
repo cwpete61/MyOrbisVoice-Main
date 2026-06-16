@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocale } from '@/lib/i18n/I18nProvider'
-import { useApi } from '@/hooks/useApi'
+import { useApi, API_BASE } from '@/hooks/useApi'
 
 /**
  * Marketing Strategy sub-tab of the Inbound Evaluation campaign.
@@ -21,6 +21,13 @@ export function MarketingStrategy() {
   const { data: me } = useApi<{ partner?: { referralCode?: string } }>('/api/partner/me', [])
   const code = me?.partner?.referralCode || ''
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const [founding, setFounding] = useState<{ used: number; cap: number; remaining: number } | null>(null)
+
+  useEffect(() => {
+    if (!code) return
+    fetch(`${API_BASE}/api/public/founding-status/${encodeURIComponent(code)}`)
+      .then((r) => r.json()).then((d) => setFounding(d.data)).catch(() => {})
+  }, [code])
 
   const LINK_TRACKS: { key: string; label: Bi; kw: string }[] = [
     { key: 'beta', label: { en: 'Beta recruitment', es: 'Reclutamiento beta' }, kw: 'BETA' },
@@ -205,6 +212,15 @@ export function MarketingStrategy() {
 
       {/* Opt-in links — partner-attributed, lands in your CRM */}
       <Section title={L === 'es' ? 'Tus enlaces de captación' : 'Your opt-in links'}>
+        {founding && (
+          <div className="rounded-lg p-2.5 mb-1 text-sm" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+            <strong style={{ color: 'var(--text-primary)' }}>{L === 'es' ? 'Fundadores este mes: ' : 'Founding cohort this month: '}</strong>
+            {founding.used}/{founding.cap} {L === 'es' ? `usados · ${founding.remaining} disponibles` : `used · ${founding.remaining} open`}
+            <span className="block text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+              {L === 'es' ? 'El contador en vivo se muestra en tus enlaces. El cupo es real — solo usa "cupos limitados" cuando de verdad lo esté.' : 'The live counter shows on your links. The cap is real — only say "limited spots" when it genuinely is.'}
+            </span>
+          </div>
+        )}
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
           {L === 'es'
             ? 'Cada enlace está marcado contigo — los registros caen en tu CRM (pestaña Contactos), etiquetados por ángulo. Flujo: publica el gráfico, di "comenta la PALABRA y toca mi enlace", pega el enlace en tu bio o en el primer comentario.'

@@ -234,6 +234,32 @@ router.post('/public/lead-optin', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// GET /api/public/founding-status/:code — honest "Founding 25" cohort counter.
+// Counts THIS partner's opt-in leads (source LEAD_OPTIN) created in the current
+// calendar month vs the cap. Drives the live "X of 25 spots left" badge on the
+// /beta + /quiz pages and the partner dashboard. Public, no auth, cached lightly.
+// Honesty: the cap is real + honored — when full we say so (the page still
+// accepts to avoid losing a lead, but the urgency shown is never fabricated).
+const FOUNDING_CAP = 25
+router.get('/public/founding-status/:code', async (req, res, next) => {
+  try {
+    const code = String(req.params['code'] ?? '').trim()
+    const partner = await prisma.affiliateAccount.findFirst({
+      where:  { deletedAt: null, OR: [{ referralCode: code.toUpperCase() }, { slug: code.toLowerCase() }] },
+      select: { id: true },
+    })
+    if (!partner) { res.json({ data: { used: 0, cap: FOUNDING_CAP, remaining: FOUNDING_CAP, full: false } }); return }
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const used = await prisma.contact.count({
+      where: { partnerId: partner.id, source: 'LEAD_OPTIN', createdAt: { gte: monthStart } },
+    })
+    const remaining = Math.max(0, FOUNDING_CAP - used)
+    res.set('Cache-Control', 'public, max-age=60')
+    res.json({ data: { used, cap: FOUNDING_CAP, remaining, full: used >= FOUNDING_CAP } })
+  } catch (err) { next(err) }
+})
+
 // GET /api/public/social-links — returns OrbisVoice's own social media URLs
 // for the marketing site footer + partner portal "Follow us" section.
 // Public, no auth, cached client-side. Empty/null values omitted from response

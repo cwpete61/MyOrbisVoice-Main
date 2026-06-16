@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 
 /**
@@ -82,6 +82,13 @@ export default function QuizPage() {
   const [f, setF] = useState({ businessName: '', contactName: '', email: '', phone: '', niche: '' })
   const [consent, setConsent] = useState(true)
   const [state, setState] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle')
+  const [founding, setFounding] = useState<{ remaining: number; cap: number; full: boolean } | null>(null)
+
+  useEffect(() => {
+    if (!code) return
+    fetch(`${API}/api/public/founding-status/${encodeURIComponent(code)}`)
+      .then((r) => r.json()).then((d) => setFounding(d.data)).catch(() => {})
+  }, [code])
 
   const score = useMemo(() => answers.reduce((s, a, i) => s + (a >= 0 ? QUESTIONS[i]!.opts[a]!.pts : 0), 0), [answers])
   const tier = TIERS.find((x) => score >= x.min)!
@@ -121,7 +128,13 @@ export default function QuizPage() {
       <div style={{ width: '100%', maxWidth: 560, background: '#fff', border: '1px solid #d8e6e5', borderRadius: 18, padding: 28, boxShadow: '0 20px 50px -35px rgba(0,0,0,.3)' }}>
         {step < QUESTIONS.length && (
           <>
-            {step === 0 && <><h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 8px' }}>{t.title}</h1><p style={{ fontSize: 15, color: '#3f615f', lineHeight: 1.5, margin: '0 0 20px' }}>{t.sub}</p></>}
+            {step === 0 && <>
+              {founding && !founding.full && (
+                <div style={{ display: 'inline-block', padding: '5px 12px', borderRadius: 999, fontSize: 13, fontWeight: 700, marginBottom: 12, background: '#e8f6f5', color: '#0c6f6e' }}>
+                  {lang === 'es' ? `🔥 ${founding.remaining} de ${founding.cap} cupos de fundadores este mes` : `🔥 ${founding.remaining} of ${founding.cap} founding spots left this month`}
+                </div>
+              )}
+              <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 8px' }}>{t.title}</h1><p style={{ fontSize: 15, color: '#3f615f', lineHeight: 1.5, margin: '0 0 20px' }}>{t.sub}</p></>}
             <div style={{ height: 6, background: '#e3eeec', borderRadius: 99, marginBottom: 18 }}><div style={{ width: `${pct}%`, height: '100%', background: '#0e8f8f', borderRadius: 99, transition: 'width .2s' }} /></div>
             <p style={{ fontSize: 12, fontWeight: 600, color: '#0e8f8f', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: 0.5 }}>{QUESTIONS[step]![lang === 'es' ? 'cat' : 'cat'][lang]} · {t.q} {step + 1} {t.of} {QUESTIONS.length}</p>
             <h2 style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.3, margin: '0 0 16px' }}>{QUESTIONS[step]!.q[lang]}</h2>

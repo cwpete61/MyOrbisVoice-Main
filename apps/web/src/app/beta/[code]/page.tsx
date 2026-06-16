@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 
 /**
@@ -72,6 +72,13 @@ export default function BetaOptInPage() {
   const [consent, setConsent] = useState(true)
   const [state, setState] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle')
   const [err, setErr] = useState('')
+  const [founding, setFounding] = useState<{ remaining: number; cap: number; full: boolean } | null>(null)
+
+  useEffect(() => {
+    if (!code) return
+    fetch(`${API}/api/public/founding-status/${encodeURIComponent(code)}`)
+      .then((r) => r.json()).then((d) => setFounding(d.data)).catch(() => {})
+  }, [code])
 
   function set(k: keyof typeof f, v: string) { setF((s) => ({ ...s, [k]: v })) }
 
@@ -107,6 +114,13 @@ export default function BetaOptInPage() {
           </div>
         ) : (
           <>
+            {founding && (
+              <div style={{ display: 'inline-block', padding: '5px 12px', borderRadius: 999, fontSize: 13, fontWeight: 700, marginBottom: 12, background: founding.full ? '#fdecea' : '#e8f6f5', color: founding.full ? '#c0392b' : '#0c6f6e' }}>
+                {founding.full
+                  ? (lang === 'es' ? 'Cupo de fundadores lleno este mes — lista de espera' : 'Founding cohort full this month — waitlist')
+                  : (lang === 'es' ? `🔥 ${founding.remaining} de ${founding.cap} cupos de fundadores este mes` : `🔥 ${founding.remaining} of ${founding.cap} founding spots left this month`)}
+              </div>
+            )}
             <h1 style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.2, margin: '0 0 10px' }}>{copy.h}</h1>
             <p style={{ fontSize: 15, color: '#3f615f', lineHeight: 1.55, margin: '0 0 20px' }}>{copy.sub}</p>
             <form onSubmit={submit} style={{ display: 'grid', gap: 12 }}>
