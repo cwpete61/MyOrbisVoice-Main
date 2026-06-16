@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useLocale } from '@/lib/i18n/I18nProvider'
+import { apiFetch } from '@/hooks/useApi'
+
+const SAVED_KEY = 'mov_graphic_saved'
 
 /**
  * Graphics sub-tab of the Inbound Evaluation campaign. Generates text-only post
@@ -81,6 +84,18 @@ export function GraphicsStudio() {
   const [textColor, setTextColor] = useState<'black' | 'white'>('black')
   const [custom, setCustom] = useState('')
   const [copied, setCopied] = useState(false)
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiErr, setAiErr] = useState('')
+  const [saved, setSaved] = useState<string[]>([])
+
+  useEffect(() => {
+    try { const r = localStorage.getItem(SAVED_KEY); if (r) setSaved(JSON.parse(r)) } catch { /* ignore */ }
+  }, [])
+
+  function persistSaved(next: string[]) {
+    setSaved(next)
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+  }
 
   const track = TRACKS.find((t) => t.key === trackKey)!
   const lines = LINES.filter((l) => l.track === trackKey)
@@ -175,6 +190,30 @@ export function GraphicsStudio() {
     try { await navigator.clipboard.writeText(txt); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { /* clipboard blocked */ }
   }
 
+  async function generateAi() {
+    const idea = custom.trim()
+    if (!idea) { setAiErr(L === 'es' ? 'Escribe una idea primero.' : 'Type an idea first.'); return }
+    setAiBusy(true); setAiErr('')
+    try {
+      const d = await apiFetch<{ text?: string }>('/api/partner/graphics/ai-line', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ idea, lang: L, track: trackKey }),
+      })
+      if (d?.text) setCustom(d.text)
+      else setAiErr(L === 'es' ? 'La IA no devolvió texto.' : 'AI returned no text.')
+    } catch {
+      setAiErr(L === 'es' ? 'No se pudo generar. Intenta de nuevo.' : 'Could not generate. Try again.')
+    } finally { setAiBusy(false) }
+  }
+
+  function saveCurrent() {
+    const txt = headline.trim()
+    if (!txt || saved.includes(txt)) return
+    persistSaved([txt, ...saved].slice(0, 50))
+  }
+  function loadSaved(s: string) { setCustom(s) }
+  function removeSaved(i: number) { persistSaved(saved.filter((_, j) => j !== i)) }
+
   return (
     <div className="space-y-5 max-w-4xl">
       <div>
@@ -222,13 +261,45 @@ export function GraphicsStudio() {
             </select>
           </Field>
 
-          <Field label={L === 'es' ? 'Texto propio (opcional)' : 'Custom text (optional)'}>
+          <Field label={L === 'es' ? 'Texto propio / idea para IA (opcional)' : 'Custom text / AI idea (optional)'}>
             <textarea
               value={custom} onChange={(e) => setCustom(e.target.value)} rows={3}
-              placeholder={L === 'es' ? 'Escribe tu propia línea…' : 'Type your own line…'}
+              placeholder={L === 'es' ? 'Escribe una idea y pulsa Generar, o tu propia línea…' : 'Type an idea and hit Generate, or your own line…'}
               style={{ ...selStyle, resize: 'vertical', lineHeight: 1.4 }}
             />
+            <div className="flex gap-2 mt-1.5">
+              <button
+                onClick={generateAi} disabled={aiBusy}
+                className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
+                style={{ background: 'var(--brand-500, oklch(55% 0.11 193))', color: '#fff', opacity: aiBusy ? 0.7 : 1 }}
+              >
+                {aiBusy ? (L === 'es' ? 'Generando…' : 'Generating…') : (L === 'es' ? '✨ Generar con IA' : '✨ Generate with AI')}
+              </button>
+              <button
+                onClick={saveCurrent}
+                className="text-xs px-2.5 py-1.5 rounded-lg font-medium"
+                style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+              >
+                {L === 'es' ? 'Guardar línea' : 'Save line'}
+              </button>
+            </div>
+            {aiErr && <p className="text-xs mt-1" style={{ color: '#c0392b' }}>{aiErr}</p>}
           </Field>
+
+          {saved.length > 0 && (
+            <Field label={L === 'es' ? 'Líneas guardadas' : 'Saved lines'}>
+              <div className="space-y-1">
+                {saved.map((s, i) => (
+                  <div key={i} className="flex items-center gap-1.5 rounded-lg" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+                    <button onClick={() => loadSaved(s)} className="flex-1 text-left text-xs px-2.5 py-1.5 truncate" style={{ color: 'var(--text-secondary)' }} title={s}>
+                      {s.replace(/\n/g, ' ')}
+                    </button>
+                    <button onClick={() => removeSaved(i)} className="px-2 py-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }} title={L === 'es' ? 'Eliminar' : 'Remove'}>✕</button>
+                  </div>
+                ))}
+              </div>
+            </Field>
+          )}
 
           <Field label={L === 'es' ? 'Plataforma' : 'Platform'}>
             <div className="flex flex-wrap gap-1.5">

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useLocale } from '@/lib/i18n/I18nProvider'
+import { useApi } from '@/hooks/useApi'
 
 /**
  * Marketing Strategy sub-tab of the Inbound Evaluation campaign.
@@ -17,6 +18,17 @@ const pick = (b: Bi, L: 'en' | 'es') => (L === 'es' ? b.es : b.en)
 export function MarketingStrategy() {
   const { locale } = useLocale()
   const L: 'en' | 'es' = locale === 'es' ? 'es' : 'en'
+  const { data: me } = useApi<{ partner?: { referralCode?: string } }>('/api/partner/me', [])
+  const code = me?.partner?.referralCode || ''
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+
+  const LINK_TRACKS: { key: string; label: Bi; kw: string }[] = [
+    { key: 'beta', label: { en: 'Beta recruitment', es: 'Reclutamiento beta' }, kw: 'BETA' },
+    { key: 'phantom', label: { en: 'Phantom Customer', es: 'Cliente Fantasma' }, kw: 'TEST' },
+    { key: 'competitor', label: { en: 'Competitor steal', es: 'Robo del competidor' }, kw: 'WHO ANSWERS' },
+    { key: 'math', label: { en: 'Honest math', es: 'Números honestos' }, kw: 'MATH' },
+    { key: 'afterhours', label: { en: 'After-hours self-test', es: 'Prueba fuera de horario' }, kw: 'EVAL' },
+  ]
 
   const TAGLINES: Bi[] = [
     { en: 'See where your customers slip out — before your competitor does.', es: 'Descubre por dónde se te escapan los clientes — antes que tu competencia.' },
@@ -190,6 +202,32 @@ export function MarketingStrategy() {
             : 'Playbook for the "Phantom Customer" beta campaign. Copy-paste the polls and posts, follow the 4-week calendar, and keep the honesty rules. All bilingual EN + ES.'}
         </p>
       </div>
+
+      {/* Opt-in links — partner-attributed, lands in your CRM */}
+      <Section title={L === 'es' ? 'Tus enlaces de captación' : 'Your opt-in links'}>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          {L === 'es'
+            ? 'Cada enlace está marcado contigo — los registros caen en tu CRM (pestaña Contactos), etiquetados por ángulo. Flujo: publica el gráfico, di "comenta la PALABRA y toca mi enlace", pega el enlace en tu bio o en el primer comentario.'
+            : 'Each link is tagged to you — sign-ups land in your CRM (Contacts tab), labeled by angle. Flow: post the graphic, say "comment the KEYWORD, then tap my link," drop the link in your bio or first comment.'}
+        </p>
+        {!code ? (
+          <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
+            {L === 'es' ? 'Cargando tus enlaces…' : 'Loading your links…'}
+          </p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {LINK_TRACKS.map((tr) => (
+              <div key={tr.key} className="rounded-lg p-2.5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{pick(tr.label, L)}</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>{L === 'es' ? 'Palabra: ' : 'Keyword: '}{tr.kw}</span>
+                </div>
+                <CopyRow text={`${origin}/beta/${code}?t=${tr.key}`} L={L} />
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
 
       {/* Big idea */}
       <Section title={L === 'es' ? 'La gran idea' : 'The Big Idea'}>

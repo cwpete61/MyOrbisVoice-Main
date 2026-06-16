@@ -7,6 +7,8 @@ import { renderReportHtml } from '../services/gmb-report-html.service.js'
 import { verifyInviteToken } from '../lib/jwt.js'
 import { renderLeadReportHtml } from '../services/lead-report-html.service.js'
 import { renderPdfFromHtml } from '../services/pdf-render.client.js'
+import * as crmService from '../services/crm.service.js'
+import { AppError } from '@voiceautomation/shared'
 
 const REPORT_WEB_ORIGIN = process.env['WEB_ORIGIN'] ?? 'https://app.myorbisvoice.com'
 const API_PUBLIC_ORIGIN = process.env['API_PUBLIC_ORIGIN'] ?? 'https://api.myorbisvoice.com'
@@ -136,6 +138,94 @@ router.post('/public/sms-optin', async (req, res, next) => {
         sourceUrl:   req.get('referer') ?? null,
       },
     })
+    res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
+
+// ── Inbound Evaluation campaign opt-in (public, partner-attributed) ──────────
+// The beta opt-in page (app/beta/[code]) posts here. The `code` is the partner's
+// referralCode (or custom slug); the lead lands in that partner's CRM tagged
+// with the campaign track + keyword. No platform-DM integration — this is the
+// owned funnel endpoint the social posts point to ("comment KEYWORD, then tap
+// my link"). Cold lead: born opted-out of SMS + voice (TCPA wall) regardless of
+// the eval-consent checkbox; consent is recorded in metadata, not auto-enabled.
+const TRACK_KEYWORDS: Record<string, string> = {
+  beta: 'BETA', phantom: 'TEST', competitor: 'WHO ANSWERS', math: 'MATH', afterhours: 'EVAL',
+}
+
+function normPhoneE164(s: string | undefined | null): string | null {
+  const d = (s ?? '').replace(/\D/g, '')
+  if (!d) return null
+  if (d.length === 10) return '+1' + d
+  if (d.length === 11 && d.startsWith('1')) return '+' + d
+  return (s ?? '').startsWith('+') ? (s as string) : '+' + d
+}
+
+async function hostingTenantFor(partnerId: string): Promise<string> {
+  const recent = await prisma.conversation.findFirst({
+    where: { partnerId }, orderBy: { startedAt: 'desc' }, select: { tenantId: true },
+  })
+  if (recent?.tenantId) return recent.tenantId
+  const platform = await prisma.tenant.findFirst({ where: { slug: 'orbis-platform' }, select: { id: true } })
+  if (platform) return platform.id
+  const any = await prisma.tenant.findFirst({ select: { id: true } })
+  if (!any) throw new AppError('SERVER_ERROR', 'No hosting tenant available', 500)
+  return any.id
+}
+
+const leadOptInSchema = z.object({
+  code:         z.string().min(1).max(64),
+  track:        z.string().max(32).optional().default('beta'),
+  businessName: z.string().max(200).optional().default(''),
+  contactName:  z.string().max(120).optional().default(''),
+  email:        z.string().max(200).optional().default(''),
+  phone:        z.string().max(40).optional().default(''),
+  niche:        z.string().max(120).optional().default(''),
+  locale:       z.string().max(5).optional().default('en'),
+  consent:      z.boolean().optional().default(false),
+})
+
+router.post('/public/lead-optin', async (req, res, next) => {
+  try {
+    const b = leadOptInSchema.parse(req.body)
+    if (!b.businessName && !b.contactName && !b.email && !b.phone) {
+      throw new AppError('VALIDATION', 'Provide a business, name, email, or phone', 400)
+    }
+    const code = b.code.trim()
+    const partner = await prisma.affiliateAccount.findFirst({
+      where:  { deletedAt: null, OR: [{ referralCode: code.toUpperCase() }, { slug: code.toLowerCase() }] },
+      select: { id: true },
+    })
+    if (!partner) throw new AppError('NOT_FOUND', 'Unknown partner link', 404)
+
+    const tenantId = await hostingTenantFor(partner.id)
+    const now = new Date()
+    const contact = await prisma.contact.create({
+      data: {
+        tenantId, partnerId: partner.id,
+        fullName:  b.businessName || b.contactName || 'Lead',
+        firstName: b.contactName || null,
+        email:     b.email || null,
+        phoneE164: normPhoneE164(b.phone),
+        source:    'LEAD_OPTIN',
+        optedOutSms:   true, optedOutSmsAt: now,
+        optedOutVoice: true, optedOutVoiceAt: now,
+        tagsJson:  b.niche ? [b.niche] : undefined,
+        metadataJson: {
+          businessName:    b.businessName || null,
+          contactName:     b.contactName || null,
+          niche:           b.niche || null,
+          campaignTrack:   b.track,
+          campaignKeyword: TRACK_KEYWORDS[b.track] ?? null,
+          optinConsent:    b.consent,
+          optinLocale:     b.locale,
+          sourceUrl:       req.get('referer') ?? null,
+          source:          'beta-optin',
+        },
+      },
+    })
+    await crmService.seedDefaultPipelineForPartner({ partnerId: partner.id, hostingTenantId: tenantId })
+    await crmService.placeNewContactOnPipeline({ kind: 'partner', partnerId: partner.id, hostingTenantId: tenantId }, contact.id)
     res.json({ data: { ok: true } })
   } catch (err) { next(err) }
 })

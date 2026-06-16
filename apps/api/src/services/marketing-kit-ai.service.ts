@@ -223,3 +223,39 @@ export async function generateMarketingDescription(opts: {
   const user = `Video title: ${title}`
   return (await callOpenAi(system, user, model, apiKey)).replace(/^["']|["']$/g, '').trim()
 }
+
+// ── Inbound Evaluation: neon graphic line generator ─────────────────────────
+// Turns a partner's rough idea into ONE ultra-short, text-only graphic headline
+// for the Graphics studio (neon background, big black/white type). Output uses
+// real line breaks so it drops straight into the canvas. Honesty rule enforced:
+// no invented stats or dollar figures — loss is a question or owner estimate.
+export async function generateGraphicLine(opts: {
+  idea: string; lang: 'en' | 'es'; track?: string
+}): Promise<string> {
+  const idea = opts.idea.trim()
+  if (!idea) throw new AppError('VALIDATION_ERROR', 'idea is required', 422)
+  const { apiKey, model } = await getKeyAndModel()
+  const language = opts.lang === 'es' ? 'Latin American Spanish (informal "tú")' : 'English'
+  const angle = GRAPHIC_TRACK_HINT[opts.track ?? ''] ?? 'a missed-call / lost-lead pain point for a local business'
+  const system = [
+    'You write ONE ultra-short social GRAPHIC headline for MyOrbisVoice (AI phone answering for local businesses).',
+    `Write in ${language}.`,
+    `Campaign angle: ${angle}.`,
+    'The graphic is text-only on a bright neon background, so it must be SHORT and high-impact: 2 to 5 short lines, a few words each.',
+    'Use real line breaks between lines (actual newlines, not the characters backslash-n).',
+    'Punchy, direct-response, pattern-interrupt. No emoji, no hashtags, no quotes, no preamble, no explanation.',
+    `Keep these brand and product terms in English: ${BRAND_TERMS}.`,
+    'HONESTY RULE (mandatory): never invent statistics or dollar figures. Frame any loss as a question or the owner\'s own estimate, never a made-up stat.',
+    'Return ONLY the headline text with line breaks.',
+  ].join(' ')
+  const out = await callOpenAi(system, `Idea: ${idea}`, model, apiKey)
+  return out.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').trim()
+}
+
+const GRAPHIC_TRACK_HINT: Record<string, string> = {
+  beta: 'honest beta-tester recruitment — "we need businesses to test our software, free report"',
+  phantom: 'the Phantom Customer — the buyer who called and silently left through a gap',
+  competitor: 'loss aversion — the job went to whoever picked up first',
+  math: 'anti-hype honesty — no fake stats, the owner\'s own numbers',
+  afterhours: 'after-hours leak — call your own line tonight and hear what a customer hears',
+}

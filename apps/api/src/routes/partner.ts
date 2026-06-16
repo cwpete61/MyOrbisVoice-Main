@@ -9,6 +9,7 @@ import { requirePartnerContext, requirePartnerAccount } from '../middleware/rbac
 import { prisma } from '../lib/prisma.js'
 import * as partnerService from '../services/partner.service.js'
 import * as googleService from '../services/google.service.js'
+import * as marketingKitAi from '../services/marketing-kit-ai.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { writeAuditLog } from '../lib/audit.js'
 
@@ -934,6 +935,22 @@ router.get('/partner/conversations/:id', async (req: Request, res: Response, nex
         })),
       },
     })
+  } catch (err) { next(err) }
+})
+
+// ─── POST /api/partner/graphics/ai-line ─────────────────────────────────────
+// Turns a partner's rough idea into one short, text-only neon graphic headline
+// for the Graphics studio. Returns plain text (with line breaks).
+const graphicLineSchema = z.object({
+  idea:  z.string().min(2).max(400),
+  lang:  z.enum(['en', 'es']).optional().default('en'),
+  track: z.string().max(32).optional(),
+})
+router.post('/partner/graphics/ai-line', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const b = graphicLineSchema.parse(req.body)
+    const text = await marketingKitAi.generateGraphicLine({ idea: b.idea, lang: b.lang, track: b.track })
+    res.json({ data: { text } })
   } catch (err) { next(err) }
 })
 

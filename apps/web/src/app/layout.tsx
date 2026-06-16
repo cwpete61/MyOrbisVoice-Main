@@ -9,7 +9,14 @@ export const metadata: Metadata = {
   description: 'AI voice automation for your business',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'MyOrbisVoice', statusBarStyle: 'default' },
-  icons: { icon: '/icon-192.png', apple: '/icon-192.png' },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/favicon-16x16.png', type: 'image/png', sizes: '16x16' },
+    ],
+    apple: '/icon-192.png',
+  },
 }
 
 export const viewport: Viewport = {
@@ -66,6 +73,33 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     })();
   `
 
+  // Auto-heal stale-chunk crashes after a deploy. Every web deploy rebuilds
+  // _next chunks with new content hashes and wipes the old ones; a tab opened
+  // before the deploy still holds the old webpack runtime and throws
+  // ChunkLoadError when it lazy-loads a hash that no longer exists. We catch
+  // that and force ONE full reload to pull the current bundle. sessionStorage
+  // guard prevents a reload loop if the fresh load also fails.
+  const chunkReloader = `
+    (function() {
+      function isChunkErr(m) {
+        return typeof m === 'string' && /ChunkLoadError|Loading chunk [^ ]+ failed|Loading CSS chunk/i.test(m);
+      }
+      function heal(m) {
+        if (!isChunkErr(m)) return;
+        try {
+          var k = 'mov_chunk_reload', last = +sessionStorage.getItem(k) || 0;
+          if (Date.now() - last < 15000) return;
+          sessionStorage.setItem(k, String(Date.now()));
+        } catch (e) {}
+        location.reload();
+      }
+      window.addEventListener('error', function(e) { heal(e && e.message); });
+      window.addEventListener('unhandledrejection', function(e) {
+        heal(e && e.reason && (e.reason.message || String(e.reason)));
+      });
+    })();
+  `
+
   return (
     // className left off — themeBootstrap script populates it before paint.
     // lang attribute mirrors the server-side Accept-Language detection; client
@@ -73,6 +107,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang={initialLocale} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+        <script dangerouslySetInnerHTML={{ __html: chunkReloader }} />
         <script dangerouslySetInnerHTML={{ __html: swRegister }} />
       </head>
       <body style={{ background: 'var(--surface-app)', color: 'var(--text-primary)' }} className="antialiased">
