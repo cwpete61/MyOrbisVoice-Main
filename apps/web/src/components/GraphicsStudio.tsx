@@ -201,8 +201,15 @@ export function GraphicsStudio() {
       })
       if (d?.text) setCustom(d.text)
       else setAiErr(L === 'es' ? 'La IA no devolvió texto.' : 'AI returned no text.')
-    } catch {
-      setAiErr(L === 'es' ? 'No se pudo generar. Intenta de nuevo.' : 'Could not generate. Try again.')
+    } catch (e) {
+      const msg = (e instanceof Error ? e.message : '').toLowerCase()
+      if (msg.includes('quota') || msg.includes('billing') || msg.includes('credit') || msg.includes('not_configured') || msg.includes('429')) {
+        setAiErr(L === 'es'
+          ? 'IA no disponible (créditos de OpenAI agotados). Escribe tu propia línea por ahora.'
+          : 'AI unavailable (OpenAI credits exhausted). Type your own line for now.')
+      } else {
+        setAiErr(L === 'es' ? 'No se pudo generar. Intenta de nuevo.' : 'Could not generate. Try again.')
+      }
     } finally { setAiBusy(false) }
   }
 

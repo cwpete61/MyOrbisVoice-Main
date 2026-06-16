@@ -225,6 +225,13 @@ export function MarketingStrategy() {
                 <CopyRow text={`${origin}/beta/${code}?t=${tr.key}`} L={L} />
               </div>
             ))}
+            <div className="rounded-lg p-2.5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{L === 'es' ? 'Quiz: ¿Qué tan fugado está tu teléfono?' : 'Quiz: How leaky is your phone?'}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>{L === 'es' ? 'Interactivo' : 'Interactive'}</span>
+              </div>
+              <CopyRow text={`${origin}/quiz/${code}`} L={L} />
+            </div>
           </div>
         )}
       </Section>

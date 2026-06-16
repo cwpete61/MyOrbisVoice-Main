@@ -150,7 +150,7 @@ router.post('/public/sms-optin', async (req, res, next) => {
 // my link"). Cold lead: born opted-out of SMS + voice (TCPA wall) regardless of
 // the eval-consent checkbox; consent is recorded in metadata, not auto-enabled.
 const TRACK_KEYWORDS: Record<string, string> = {
-  beta: 'BETA', phantom: 'TEST', competitor: 'WHO ANSWERS', math: 'MATH', afterhours: 'EVAL',
+  beta: 'BETA', phantom: 'TEST', competitor: 'WHO ANSWERS', math: 'MATH', afterhours: 'EVAL', quiz: 'QUIZ',
 }
 
 function normPhoneE164(s: string | undefined | null): string | null {
@@ -183,6 +183,8 @@ const leadOptInSchema = z.object({
   niche:        z.string().max(120).optional().default(''),
   locale:       z.string().max(5).optional().default('en'),
   consent:      z.boolean().optional().default(false),
+  quizScore:    z.number().int().min(0).max(100).optional(),
+  quizTier:     z.string().max(40).optional(),
 })
 
 router.post('/public/lead-optin', async (req, res, next) => {
@@ -219,8 +221,10 @@ router.post('/public/lead-optin', async (req, res, next) => {
           campaignKeyword: TRACK_KEYWORDS[b.track] ?? null,
           optinConsent:    b.consent,
           optinLocale:     b.locale,
+          quizScore:       b.quizScore ?? null,
+          quizTier:        b.quizTier ?? null,
           sourceUrl:       req.get('referer') ?? null,
-          source:          'beta-optin',
+          source:          b.track === 'quiz' ? 'quiz-optin' : 'beta-optin',
         },
       },
     })
