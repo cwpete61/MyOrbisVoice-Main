@@ -232,6 +232,11 @@ step_api() {
   log "API — build → sync → inject → commit-to-image → restart..."
   pnpm --filter @voiceautomation/api build 2>&1 | grep -E "error TS|^>" || true
   ensure_deps myorbisvoice-api apps/api
+  # Stamp the freshly-built dist so we can verify post-restart that the running
+  # process actually loaded THIS deploy's code (see /version + deploy-stamp.ts).
+  # Written before rsync so it rides along; dist/ is gitignored so it never commits.
+  API_STAMP="api-$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)-$(date +%s)"
+  echo "$API_STAMP" > "$REPO_ROOT/apps/api/dist/deploy-stamp.txt"
   rsync -az --delete "$REPO_ROOT/apps/api/dist/" "$SERVER:$REMOTE/apps/api/dist/"
   # schema.prisma already synced + db pushed in the global Prisma section above
   ssh "$SERVER" "docker cp $REMOTE/apps/api/dist/. myorbisvoice-api:/app/apps/api/dist/"
@@ -258,6 +263,21 @@ step_api() {
     ok "API healthy"
   else
     fail "API did not become healthy after restart:\n$(ssh "$SERVER" "docker logs myorbisvoice-api --tail=30 2>&1")"
+  fi
+  # Verify the RUNNING process serves THIS deploy's stamp — proves the restart
+  # picked up new code, not stale dist (mirrors the web BUILD_ID check).
+  local api_served api_try
+  for api_try in 1 2; do
+    api_served=$(ssh_t 25 "$SERVER" "docker exec myorbisvoice-api node -e 'fetch(\"http://127.0.0.1:4000/version\").then(r=>r.json()).then(j=>process.stdout.write(j.stamp||\"\")).catch(()=>process.exit(1))'" 2>/dev/null)
+    [[ "$api_served" == "$API_STAMP" ]] && break
+    echo "   ⚠ API serving stale code (got '$api_served', want '$API_STAMP') — restarting (attempt $api_try)"
+    ssh_t 90 "$SERVER" "docker restart myorbisvoice-api"
+    wait_http_healthy myorbisvoice-api 4000 /health || true
+  done
+  if [[ "$api_served" == "$API_STAMP" ]]; then
+    ok "API serving current build ($API_STAMP)"
+  else
+    fail "API still serving stale code after restart — investigate (manual: docker restart myorbisvoice-api)"
   fi
   # Check for stale-Prisma signatures only — NOT any "undefined" error, which
   # also matches ordinary application bugs (a PDF render throwing on a missing

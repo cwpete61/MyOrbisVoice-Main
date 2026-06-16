@@ -1,8 +1,16 @@
 import { Router, type IRouter } from 'express'
 import { prisma } from '../lib/prisma.js'
 import { getRedis } from '../lib/redis.js'
+import { DEPLOY_STAMP } from '../lib/deploy-stamp.js'
 
 const router: IRouter = Router()
+
+// Always-200 build marker. The deploy verifies the running process serves the
+// stamp it just injected (proves the restart picked up new code). No DB/Redis
+// gate so a degraded dependency can't mask a stale-code deploy.
+router.get('/version', (_req, res) => {
+  res.json({ stamp: DEPLOY_STAMP })
+})
 
 router.get('/health', async (_req, res) => {
   const checks: Record<string, 'ok' | 'error'> = {}
