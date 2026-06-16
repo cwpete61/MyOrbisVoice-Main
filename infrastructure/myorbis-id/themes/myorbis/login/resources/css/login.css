@@ -71,3 +71,12 @@ input:focus, .pf-v5-c-form-control:focus { outline: none !important; border-colo
 #social-google svg, #kc-social-providers a svg, .pf-v5-c-button svg.google {
   width: 20px; height: 20px; flex: 0 0 auto;
 }
+
+/* Brand title ("MyOrbisResults") centered ABOVE a centered card. */
+.pf-v5-c-login__container { display: flex !important; flex-direction: column !important; align-items: center !important; }
+#kc-header {
+  order: -1; width: 100%; text-align: center !important;
+  margin: 0 0 18px !important; font-size: 1.7rem; font-weight: 800;
+  color: var(--mor-text); position: static !important; left: auto !important;
+}
+.pf-v5-c-login__main, .card-pf { margin: 0 auto !important; }
