@@ -65,3 +65,10 @@ input:focus, .pf-v5-c-form-control:focus { outline: none !important; border-colo
 }
 .mor-theme-toggle:hover { color: var(--mor-teal-bright); border-color: var(--mor-teal); }
 .mor-theme-toggle svg { width: 18px; height: 18px; }
+
+/* Theme toggle placed inline next to the language selector (discoverable). */
+.mor-theme-toggle.mor-theme-inline {
+  position: static; top: auto; right: auto;
+  margin-left: 8px; vertical-align: middle; width: 36px; height: 36px;
+}
+#kc-locale, .pf-v5-c-login__main-header { display: inline-flex; align-items: center; }
