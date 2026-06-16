@@ -4426,7 +4426,9 @@
       "created": "Created"
     },
     "tabInbound": "Inbound Evaluation",
-    "tabInstructions": "Instructions"
+    "tabInstructions": "Instructions",
+    "subLeadCapture": "Lead Capture Evaluation",
+    "subMarketing": "Marketing Strategy"
   },
   "partnerCampaignNew": {
     "backLink": "← Campaigns",
