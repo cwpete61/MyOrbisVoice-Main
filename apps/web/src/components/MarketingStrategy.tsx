@@ -252,6 +252,57 @@ export function MarketingStrategy() {
         )}
       </Section>
 
+      {/* ManyChat auto-DM — optional, partner-owned */}
+      <Section title={L === 'es' ? 'Auto-DM con ManyChat (opcional)' : 'Auto-DM with ManyChat (optional)'}>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          {L === 'es'
+            ? 'No lo necesitas para captar leads — tus enlaces de arriba ya los mandan a tu CRM. ManyChat solo automatiza "comenta una palabra → te escribo por DM". Conecta TU cuenta de ManyChat y TU página de Facebook/Instagram. Es tuyo y lo pagas tú (el nivel gratis arranca; la automatización por palabra clave es de pago, ~$15/mes).'
+            : 'You don’t need it to capture leads — your links above already route to your CRM. ManyChat only automates "comment a keyword → I DM you." Connect YOUR ManyChat account and YOUR Facebook/Instagram page. You own it and pay for it (free tier to start; keyword automation is paid, ~$15/mo).'}
+        </p>
+        <ol className="mt-3 space-y-1 text-sm list-decimal pl-5" style={{ color: 'var(--text-secondary)' }}>
+          {(L === 'es'
+            ? ['Crea una cuenta en manychat.com y conecta tu página de Facebook/Instagram.',
+               'Nueva automatización → disparador "Comentario en una publicación" (o palabra clave en DM). Usa la palabra de tu campaña: BETA / TEST / QUIÉN CONTESTA / MATH / EVAL / QUIZ.',
+               'Arma el flujo de DM: saluda → pide negocio, nombre, teléfono → confirma consentimiento.',
+               'Agrega una acción "External Request" como último paso con la config de abajo.',
+               'Prueba con tu propio comentario y confirma que el lead aparece en Contactos.']
+            : ['Create a ManyChat account at manychat.com and connect your Facebook/Instagram page.',
+               'New Automation → trigger "Comment on a post" (or a DM keyword). Use your campaign keyword: BETA / TEST / WHO ANSWERS / MATH / EVAL / QUIZ.',
+               'Build the DM flow: greet → collect business, name, phone → confirm consent.',
+               'Add an "External Request" action as the LAST step with the config below.',
+               'Test with your own comment, confirm the lead lands in Contacts.']
+          ).map((s, i) => <li key={i}>{s}</li>)}
+        </ol>
+        {code && (
+          <div className="mt-3 space-y-2">
+            <Label L={L} en="External Request — URL (POST)" es="External Request — URL (POST)" />
+            <CopyRow text={`${API_BASE}/api/public/lead-optin`} L={L} />
+            <Label L={L} en="External Request — JSON body (your code is baked in; map the {{tags}})" es="External Request — cuerpo JSON (tu código ya está; mapea los {{tags}})" />
+            <CopyRow multiline text={`{
+  "code": "${code}",
+  "track": "beta",
+  "businessName": "{{business_name}}",
+  "contactName": "{{first_name}} {{last_name}}",
+  "email": "{{email}}",
+  "phone": "{{phone}}",
+  "niche": "{{niche}}",
+  "locale": "${L}",
+  "consent": true
+}`} L={L} />
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              {L === 'es'
+                ? 'Cambia "track" según el ángulo del post (beta/phantom/competitor/math/afterhours/quiz). Marca consent:true solo después de que el lead acepte en el chat. Respuesta 200 = guardado; 404 = el code está mal.'
+                : 'Set "track" to the post angle (beta/phantom/competitor/math/afterhours/quiz). Mark consent:true only after the lead agrees in chat. 200 = saved; 404 = wrong code.'}
+            </p>
+          </div>
+        )}
+        <p className="text-xs mt-3" style={{ color: 'var(--text-tertiary)' }}>
+          {L === 'es'
+            ? 'Solo dispara el webhook tras el consentimiento. El lead nace sin permiso de SMS/voz — sigue por el canal que usó (DM/email) hasta permiso explícito. Nunca hagas DM en frío ni scrapeo.'
+            : 'Only fire the webhook after consent. The lead is born without SMS/voice permission — follow up in the channel they used (DM/email) until explicit consent. Never cold-DM or scrape.'}
+        </p>
+      </Section>
+
       {/* Big idea */}
       <Section title={L === 'es' ? 'La gran idea' : 'The Big Idea'}>
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
