@@ -146,6 +146,7 @@ export async function getSystemSettings(): Promise<{
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
   serper: { apiKey: boolean }
+  content: { provider: string; model: string | null; groqApiKey: boolean }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
   gemini: { apiKey: boolean; model: string }
@@ -174,6 +175,7 @@ export async function getSystemSettings(): Promise<{
           'storage_default_quota_gb', 'storage_warning_threshold_pct', 'storage_retention_days',
           'openai_api_key', 'openai_model',
           'serper_api_key',
+          'content_provider', 'content_model', 'groq_api_key',
           'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from',
           'overage_markup_percent',
           'gemini_api_key', 'gemini_model',
@@ -233,6 +235,11 @@ export async function getSystemSettings(): Promise<{
     },
     serper: {
       apiKey: !!(get('serper_api_key') || process.env['SERPER_API_KEY']),
+    },
+    content: {
+      provider:   get('content_provider')?.value ?? process.env['CONTENT_PROVIDER'] ?? 'openai',
+      model:      get('content_model')?.value ?? null,
+      groqApiKey: !!(get('groq_api_key') || process.env['GROQ_API_KEY']),
     },
     smtp: {
       host:     get('smtp_host')?.value     ?? (process.env['SMTP_HOST']     || null),

@@ -16,6 +16,7 @@ interface SystemSettings {
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
   serper: { apiKey: boolean }
+  content: { provider: string; model: string | null; groqApiKey: boolean }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
   gemini: { apiKey: boolean; model: string }
@@ -356,6 +357,24 @@ export default function SystemSettingsPage() {
     setSerperSaving(false)
   }
 
+  // Content provider — which OpenAI-compatible LLM powers text generation
+  // (social posts, translations, graphic lines). Default openai; gemini/groq
+  // free-tier cut the bill to ~$0. Images stay OpenAI.
+  const [content, setContent] = useState({ provider: 'openai', model: '', groqApiKey: '' })
+  const [contentSaving, setContentSaving] = useState(false)
+  async function saveContent(e: React.FormEvent) {
+    e.preventDefault()
+    setContentSaving(true)
+    const body: Record<string, string> = { provider: content.provider, model: content.model }
+    if (content.groqApiKey) body['groqApiKey'] = content.groqApiKey
+    const ok = await saveSection('content', body, 'Content provider')
+    if (ok) setContent(c => ({ ...c, groqApiKey: '' }))
+    setContentSaving(false)
+  }
+  useEffect(() => {
+    if (data?.content) setContent(c => ({ ...c, provider: data.content.provider || 'openai', model: data.content.model || '' }))
+  }, [data?.content?.provider, data?.content?.model])
+
   // Cloudflare form state — the platform's master account, used to register
   // and DNS-configure each partner's cold-email sending domain.
   const [cf, setCf] = useState({ apiToken: '', accountId: '' })
@@ -674,6 +693,58 @@ export default function SystemSettingsPage() {
               </div>
               <button type="submit" disabled={serperSaving} className="btn-primary">
                 {serperSaving ? 'Saving…' : 'Save Serper.dev key'}
+              </button>
+            </form>
+          </div>
+
+          {/* ── Content Provider (text generation) ── */}
+          <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <CardHeader
+              title="Content Provider (AI text)"
+              subtitle="Which OpenAI-compatible LLM powers text generation — social posts, translations, graphic lines, marketing copy. Switch to Gemini or Groq (free tiers) to cut the OpenAI bill to ~$0. Image generation stays on OpenAI."
+              configured={(data?.content?.provider ?? 'openai') !== 'openai'}
+            />
+            <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <StatusRow label="Active provider" value={data?.content?.provider ?? 'openai'} />
+              <StatusRow label="Groq key" value={!!data?.content?.groqApiKey} isSecret />
+              <div className="rounded-lg px-4 py-3 text-xs space-y-1" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>
+                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Keys used per provider</p>
+                <ul className="space-y-0.5 list-disc list-inside" style={{ color: 'var(--text-tertiary)' }}>
+                  <li>openai → OpenAI key (above) · gemini → Gemini key (below, free tier)</li>
+                  <li>groq → Groq key (this card, free tier) · ollama → local, no key</li>
+                </ul>
+              </div>
+            </div>
+            <form onSubmit={saveContent} className="px-6 py-5 space-y-4">
+              <div>
+                <label className={labelCls}>Provider</label>
+                <select className={inputCls} value={content.provider}
+                  onChange={e => setContent(c => ({ ...c, provider: e.target.value }))}>
+                  <option value="openai">OpenAI (gpt-4o-mini) — paid</option>
+                  <option value="gemini">Gemini (gemini-2.0-flash) — free tier</option>
+                  <option value="groq">Groq (llama-3.3-70b) — free tier</option>
+                  <option value="ollama">Ollama (local) — $0, must be co-located</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Model override <span style={{ color: 'var(--text-tertiary)' }}>(optional — blank uses the provider default)</span></label>
+                <input type="text" className={inputCls} value={content.model}
+                  onChange={e => setContent(c => ({ ...c, model: e.target.value }))}
+                  placeholder="e.g. gemini-2.0-flash / llama-3.3-70b-versatile" />
+              </div>
+              {content.provider === 'groq' && (
+                <div>
+                  <label className={labelCls}>Groq API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                  <input type="password" className={inputCls} value={content.groqApiKey}
+                    onChange={e => setContent(c => ({ ...c, groqApiKey: e.target.value }))}
+                    placeholder="groq key…" autoComplete="new-password" />
+                </div>
+              )}
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                Gemini reuses the key in the Gemini card below. Groq key stored encrypted. Ollama only works when the API container can reach an Ollama server (set OLLAMA_URL).
+              </p>
+              <button type="submit" disabled={contentSaving} className="btn-primary">
+                {contentSaving ? 'Saving…' : 'Save content provider'}
               </button>
             </form>
           </div>
