@@ -33,6 +33,7 @@
 | 18 | WhatsApp dispatch | 🔵 DEFERRED — pending Meta Business verification |
 | 19 | Outbound voice carrier reputation | 🔵 DEFERRED — pending A2P 10DLC + STIR/SHAKEN attestation |
 | 20 | Self-service A2P 10DLC registration wizard (tenants AND admin) | 🟡 PARTIAL — data-capture form already shipped (schema + 3 API routes + tenant UI page at `/a2p`). Remaining: Twilio Trust Hub integration, multi-step wizard polish with gap-handling UX, admin dashboard mount, status webhook receiver, auto-link to phone numbers. ~5-7 days from current state |
+| 21 | Durable transactional event/outbox (PgQue) | 🔵 DEFERRED — candidate solution captured, not built. Adopt only when reliable "DB write → downstream action" delivery is needed (Stripe/Twilio webhook → action, booking → follow-up) or the outbound dispatch loop bloats. See detailed entry below. |
 
 **Open work — incremental, not blocking launch:**
 - **#3 Agent latency tuning** — telemetry now captures real distributions; tune VAD / prompt-size only after baseline data exists across real production calls
@@ -708,3 +709,44 @@ For specifically the "this URL/email/page doesn't exist yet" case (e.g., privacy
 The wizard never silently submits with stub data — every gap is either filled by the tenant, flagged as deferrable (and submission blocks until resolved), or auto-generated from a documented platform template.
 
 **When to build:** AFTER the soft-launch period (first 5-20 customers). That window will surface which wizard fields trip people up most often, what use cases dominate, whether tenants want full self-service or prefer admin-assisted, and how often the pause-and-resume path actually gets used. Building now without that signal risks designing the wizard around assumptions instead of real friction.
+
+---
+
+### 21. Durable transactional event / outbox (PgQue) — 🔵 DEFERRED (candidate captured)
+
+**What:** A durable, transactional event queue living inside the existing Postgres
+— [PgQue](https://github.com/NikolayS/PgQue), a pure SQL/PL-pgSQL revival of
+Skype's PgQ. Kafka-style shared log + independent per-consumer cursors. No C
+extension, no `shared_preload_libraries`, no sidecar daemon — runs on the
+`myorbisvoice-postgres` we already back up + replicate. Client libs for
+TypeScript / Python / Go.
+
+**Why it's on the radar (the gap it fills):** today the platform uses Redis
+(non-durable queue support) + n8n (orchestration) + Postgres (system of record).
+Nothing gives a *transactional* "DB write → guaranteed downstream action." PgQue
+does, via an outbox pattern: enqueue the event in the SAME transaction as the
+write, so the trigger can't be lost or double-fired on crash/retry.
+
+**Concrete use cases here:**
+1. **Transactional outbox** (strongest fit) — Stripe webhook → entitlement sync,
+   Twilio status → CRM update, booking → confirmation email. Enqueue with the DB
+   write; a consumer drains reliably with at-least-once + cursor tracking.
+2. **Outbound dispatch without bloat** — `dispatchPendingCalls`
+   (`apps/api/src/services/outbound.service.ts`) is the classic poll + UPDATE
+   pattern PgQue replaces; snapshot-batching + TRUNCATE rotation avoids the dead-
+   tuple / VACUUM decay that hits SKIP-LOCKED queues under sustained campaign load.
+3. **Avoids ever adding Kafka/RabbitMQ** — reuses Postgres.
+
+**Costs / caveats:**
+- Architecture change, not a drop-in — competes with the working Redis + n8n
+  path. Only worth it under observed reliability pain (lost/duplicate events,
+  queue bloat), not speculatively.
+- Needs a "tick" scheduler. `pg_cron` is an extension NOT installed in
+  `myorbisvoice-postgres` (would need `shared_preload_libraries` + restart).
+  Tick from **n8n or an app cron** instead — no extension required.
+- Adds PL/pgSQL surface to operate + a new mental model for the team.
+
+**When to build:** the day we want bulletproof Stripe/Twilio **webhook → action**
+delivery, or the outbound queue starts bloating under load. Until then, the
+Redis + n8n path is adequate. Captured here so it's the ready answer when that
+need hits rather than a from-scratch evaluation under pressure.
