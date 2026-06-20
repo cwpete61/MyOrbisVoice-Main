@@ -14,17 +14,27 @@
 import { AppError } from '@voiceautomation/shared'
 import { getOpenAiApiKey, getConfigValue } from './system-config.service.js'
 
-const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
+// Text content runs through any OpenAI-compatible chat-completions endpoint.
+// Switch provider via the `content_provider` config (Hub-first): openai (default),
+// gemini (free tier), groq (free tier), or ollama (local, $0 — only when the API
+// runs co-located with Ollama). Keeps the OpenAI bill near $0. Image generation
+// (gpt-image-1) is OpenAI-only and stays pinned in generateAiImage.
+const CONTENT_PROVIDERS: Record<string, { url: string; keyName: string; defaultModel: string }> = {
+  openai: { url: 'https://api.openai.com/v1/chat/completions', keyName: 'openai_api_key', defaultModel: 'gpt-4o-mini' },
+  gemini: { url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', keyName: 'gemini_api_key', defaultModel: 'gemini-2.0-flash' },
+  groq:   { url: 'https://api.groq.com/openai/v1/chat/completions', keyName: 'groq_api_key', defaultModel: 'llama-3.3-70b-versatile' },
+  ollama: { url: (process.env['OLLAMA_URL'] ?? 'http://localhost:11434') + '/v1/chat/completions', keyName: '', defaultModel: 'qwen2.5' },
+}
 const REQUEST_TIMEOUT_MS = 25_000
 
 const BRAND_TERMS = 'MyOrbisVoice, MyOrbisLocal, MyOrbisWeb, MyOrbisResults, Orby, Map Pack, GBP, Google Business Profile'
 
-async function callOpenAi(system: string, user: string, model: string, apiKey: string): Promise<string> {
+async function callOpenAi(url: string, system: string, user: string, model: string, apiKey: string): Promise<string> {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS)
   let res: Response
   try {
-    res = await fetch(OPENAI_URL, {
+    res = await fetch(url, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body:    JSON.stringify({
@@ -53,11 +63,17 @@ async function callOpenAi(system: string, user: string, model: string, apiKey: s
   return out
 }
 
-async function getKeyAndModel() {
-  const apiKey = await getOpenAiApiKey()
-  if (!apiKey) throw new AppError('NOT_CONFIGURED', 'OpenAI API key is not set in system config.', 502)
-  const model = (await getConfigValue('openai_model')) || 'gpt-4o-mini'
-  return { apiKey, model }
+// Resolve the active text-content provider → { url, apiKey, model }. Used by
+// every text generator below. Image gen bypasses this (OpenAI-only).
+async function getKeyAndModel(): Promise<{ url: string; apiKey: string; model: string }> {
+  const name = ((await getConfigValue('content_provider')) || 'openai').toLowerCase()
+  const p = CONTENT_PROVIDERS[name] ?? CONTENT_PROVIDERS['openai']!
+  const apiKey = p.keyName ? ((await getConfigValue(p.keyName)) ?? '') : 'local'
+  if (p.keyName && !apiKey) {
+    throw new AppError('NOT_CONFIGURED', `Content provider '${name}' key (${p.keyName}) is not set in system config.`, 502)
+  }
+  const model = (await getConfigValue('content_model')) || p.defaultModel
+  return { url: p.url, apiKey, model }
 }
 
 // Translates a single piece of marketing copy from `from` into the OTHER
@@ -65,7 +81,7 @@ async function getKeyAndModel() {
 export async function translateText(text: string, from: 'en' | 'es'): Promise<string> {
   const trimmed = text.trim()
   if (!trimmed) return ''
-  const { apiKey, model } = await getKeyAndModel()
+  const { url, apiKey, model } = await getKeyAndModel()
   const toLang = from === 'en' ? 'Spanish (Latin American, informal "tú")' : 'English'
   const fromLang = from === 'en' ? 'English' : 'Spanish'
   const system = [
@@ -75,7 +91,7 @@ export async function translateText(text: string, from: 'en' | 'es'): Promise<st
     'Match the tone of the source (energetic, direct-response). Do not pad or summarize.',
     'Return ONLY the translation. No quotes, no preamble, no notes.',
   ].join(' ')
-  return (await callOpenAi(system, trimmed, model, apiKey)).replace(/^["']|["']$/g, '').trim()
+  return (await callOpenAi(url, system, trimmed, model, apiKey)).replace(/^["']|["']$/g, '').trim()
 }
 
 // ── Full social-post generator ─────────────────────────────────────────────
@@ -104,7 +120,7 @@ export async function generateSocialPost(opts: {
   imageStyle?:  string                    // optional photo-style hint from the angle
   freeMode?:    boolean                   // true when admin typed a free prompt
 }): Promise<SocialPostPayload> {
-  const { apiKey, model } = await getKeyAndModel()
+  const { url, apiKey, model } = await getKeyAndModel()
   const language = opts.lang === 'es' ? 'Latin American Spanish (informal "tú")' : 'English'
 
   const system = [
@@ -133,7 +149,7 @@ export async function generateSocialPost(opts: {
     opts.freeMode ? 'This is a free-form admin prompt — follow it closely; use the brief as the message.' : 'This is from the curated angle library — keep the framework intact.',
   ].filter(Boolean).join('\n')
 
-  const out = await callOpenAi(system, user, model, apiKey)
+  const out = await callOpenAi(url, system, user, model, apiKey)
   // Strip accidental ```json fences if the model returns them.
   const clean = out.replace(/^```(?:json)?\s*|\s*```$/g, '').trim()
   let parsed: SocialPostPayload
@@ -164,7 +180,8 @@ const NO_TEXT_GUARDRAIL = [
 ].join(' ')
 
 export async function generateAiImage(opts: { prompt: string; size?: '1024x1024' | '1024x1536' | '1536x1024'; quality?: 'low' | 'medium' | 'high' }): Promise<{ bytes: Buffer; mime: string }> {
-  const { apiKey } = await getKeyAndModel()
+  const apiKey = await getOpenAiApiKey()
+  if (!apiKey) throw new AppError('NOT_CONFIGURED', 'OpenAI API key required for image generation.', 502)
   const fullPrompt = `${NO_TEXT_GUARDRAIL}\n\n${opts.prompt.trim()}`
   // One retry on transient 5xx — gpt-image-1 occasionally 502s under load.
   const attempt = async () => {
@@ -208,7 +225,7 @@ export async function generateMarketingDescription(opts: {
 }): Promise<string> {
   const title = opts.title.trim()
   if (!title) throw new AppError('VALIDATION_ERROR', 'title is required', 422)
-  const { apiKey, model } = await getKeyAndModel()
+  const { url, apiKey, model } = await getKeyAndModel()
   const purpose = INTENT_PURPOSE[opts.intent] ?? 'partner-facing marketing video'
   const language = opts.lang === 'es' ? 'Latin American Spanish (informal "tú")' : 'English'
   const system = [
@@ -221,7 +238,7 @@ export async function generateMarketingDescription(opts: {
     'Return ONLY the description. No quotes, no preamble, no markdown.',
   ].join(' ')
   const user = `Video title: ${title}`
-  return (await callOpenAi(system, user, model, apiKey)).replace(/^["']|["']$/g, '').trim()
+  return (await callOpenAi(url, system, user, model, apiKey)).replace(/^["']|["']$/g, '').trim()
 }
 
 // ── Inbound Evaluation: neon graphic line generator ─────────────────────────
@@ -234,7 +251,7 @@ export async function generateGraphicLine(opts: {
 }): Promise<string> {
   const idea = opts.idea.trim()
   if (!idea) throw new AppError('VALIDATION_ERROR', 'idea is required', 422)
-  const { apiKey, model } = await getKeyAndModel()
+  const { url, apiKey, model } = await getKeyAndModel()
   const language = opts.lang === 'es' ? 'Latin American Spanish (informal "tú")' : 'English'
   const angle = GRAPHIC_TRACK_HINT[opts.track ?? ''] ?? 'a missed-call / lost-lead pain point for a local business'
   const system = [
@@ -248,7 +265,7 @@ export async function generateGraphicLine(opts: {
     'HONESTY RULE (mandatory): never invent statistics or dollar figures. Frame any loss as a question or the owner\'s own estimate, never a made-up stat.',
     'Return ONLY the headline text with line breaks.',
   ].join(' ')
-  const out = await callOpenAi(system, `Idea: ${idea}`, model, apiKey)
+  const out = await callOpenAi(url, system, `Idea: ${idea}`, model, apiKey)
   return out.replace(/\\n/g, '\n').replace(/^["']|["']$/g, '').trim()
 }
 
