@@ -1,7 +1,9 @@
-import { Router, type IRouter } from 'express'
+import { Router, type IRouter, type Request, type Response } from 'express'
 import { randomBytes } from 'crypto'
 import { prisma } from '../lib/prisma.js'
 import { issueTokensForUserId } from '../services/auth.service.js'
+import { authenticate } from '../middleware/authenticate.js'
+import { logoutUserFromKeycloak } from '../services/keycloak-sync.service.js'
 
 /**
  * Phase 2.4 — "Sign in with MyOrbis" (Keycloak OIDC), server-side auth-code flow.
@@ -97,6 +99,17 @@ router.get('/callback', async (req, res) => {
     console.warn('[oidc] callback error:', (err as Error).message)
     return res.redirect(`${WEB}/login?error=oidc`)
   }
+})
+
+// Back-channel SSO logout — revoke the Keycloak session server-side so the SPA
+// never has to hit KC's browser /logout endpoint (which 500s on an expired
+// confirm code without an id_token_hint). Best-effort; the SPA clears local
+// tokens + redirects regardless.
+router.post('/logout', authenticate, async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id as string | undefined
+  let revoked = false
+  if (userId) revoked = await logoutUserFromKeycloak(userId)
+  res.json({ data: { ok: true, revoked } })
 })
 
 export default router

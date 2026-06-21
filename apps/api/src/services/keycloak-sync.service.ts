@@ -62,3 +62,29 @@ export async function syncUserToKeycloak(userId: string): Promise<void> {
     console.warn('[kc-sync] user provision failed (non-fatal):', userId, (err as Error).message)
   }
 }
+
+/**
+ * Back-channel SSO logout: revoke the user's Keycloak sessions via the admin API.
+ * Used instead of a browser redirect to KC's /logout endpoint — that endpoint,
+ * without an id_token_hint, shows a confirm screen that NPEs (500) on an expired
+ * code (KC bug, hit 2026-06-21). Killing the session server-side gives a true
+ * cross-product SSO logout with no browser round-trip. Best-effort, non-fatal.
+ */
+export async function logoutUserFromKeycloak(userId: string): Promise<boolean> {
+  if (!CLIENT_ID || !SECRET || !BASE || !REALM) return false
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user?.email) return false
+    const token = await adminToken()
+    const auth = { authorization: `Bearer ${token}` }
+    const q = await fetch(`${BASE}/admin/realms/${REALM}/users?email=${encodeURIComponent(user.email)}&exact=true`, { headers: auth })
+    const found = q.ok ? ((await q.json()) as { id: string }[]) : []
+    const kcId = found[0]?.id
+    if (!kcId) return false
+    const res = await fetch(`${BASE}/admin/realms/${REALM}/users/${kcId}/logout`, { method: 'POST', headers: auth })
+    return res.ok
+  } catch (err) {
+    console.warn('[kc-sync] user logout failed (non-fatal):', userId, (err as Error).message)
+    return false
+  }
+}

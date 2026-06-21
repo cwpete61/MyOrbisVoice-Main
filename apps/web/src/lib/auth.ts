@@ -23,18 +23,27 @@ export function clearTokens(): void {
   localStorage.removeItem(REFRESH_TOKEN_KEY)
 }
 
-// Hub SSO logout: end the Keycloak SSO session (RP-initiated) AND the local app
-// session, then land on the dashboard (logged out -> hub login). Clearing only
-// the local token leaves the Keycloak session alive -> silent re-login on the
-// next product click, which is a fake logout. All roles funnel through here.
-const HUB_ISSUER = 'https://auth.myorbisresults.com/realms/myorbis'
-const HUB_LOGOUT_CLIENT = 'myorbis-voice'
+// Hub SSO logout: revoke the Keycloak SSO session server-side (back-channel),
+// clear the local app session, then land on the hub dashboard (logged out).
+// We do NOT redirect to Keycloak's browser /logout endpoint — without an
+// id_token_hint it shows a confirm screen that 500s (NPE) on an expired code
+// (KC bug, 2026-06-21). The API's admin client kills the KC session instead,
+// giving a true cross-product logout. Best-effort: clear + redirect even if the
+// revoke call fails (clearing only local would otherwise allow silent re-login).
 const HUB_DASHBOARD = 'https://products.myorbisresults.com/dashboard'
+const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'https://api.myorbisvoice.com'
 
-export function ssoLogout(): void {
+export async function ssoLogout(): Promise<void> {
+  try {
+    const token = getAccessToken()
+    await fetch(`${API_BASE}/api/auth/oidc/logout`, {
+      method: 'POST',
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+      keepalive: true,
+    })
+  } catch { /* best-effort — proceed to clear + redirect regardless */ }
   clearTokens()
-  const p = new URLSearchParams({ client_id: HUB_LOGOUT_CLIENT, post_logout_redirect_uri: HUB_DASHBOARD })
-  window.location.href = `${HUB_ISSUER}/protocol/openid-connect/logout?${p.toString()}`
+  window.location.href = HUB_DASHBOARD
 }
 
 export function isAuthenticated(): boolean {
