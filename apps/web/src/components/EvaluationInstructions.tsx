@@ -70,8 +70,34 @@ const SAFEGUARDS: TR[] = [
   { en: 'Re-run the exact same six categories every time.', es: 'Repite exactamente las mismas seis categorías cada vez.' },
 ]
 
+// Full start-to-finish partner protocol, ManyChat-first. The whole loop in order.
+const PLAYBOOK: { title: TR; desc: TR }[] = [
+  { title: { en: 'Connect ManyChat (one-time)', es: 'Conecta ManyChat (una vez)' },
+    desc: { en: 'Marketing Strategy tab → "Auto-DM with ManyChat": create a ManyChat account, connect YOUR Facebook Page / Instagram, build the keyword flow (greet → ask business/name/phone → consent), and add the External Request action with the URL + JSON body shown (your referral code is pre-filled). Test by commenting your keyword on your own Page post → a lead should appear in Contacts. ManyChat auto-DMs on your Page/IG only — never on group comments.', es: 'Pestaña Estrategia de marketing → "Auto-DM con ManyChat": crea una cuenta de ManyChat, conecta TU página de Facebook / Instagram, arma el flujo por palabra clave (saluda → pide negocio/nombre/teléfono → consentimiento), y agrega la acción External Request con la URL + cuerpo JSON que se muestran (tu código ya está). Prueba comentando tu palabra clave en una publicación de tu propia página → debe aparecer un lead en Contactos. ManyChat solo escribe DM en tu página/IG — nunca en comentarios de grupos.' } },
+  { title: { en: 'Build your content', es: 'Crea tu contenido' },
+    desc: { en: 'Graphics tab → pick a campaign angle → pick a line or type an idea + Generate with AI → platform + neon color → Download PNG (make 2–3, Save the good lines). Then Marketing Strategy → copy the matching post text (EN or ES) and note the keyword (BETA / TEST / WHO ANSWERS / MATH / EVAL / QUIZ).', es: 'Pestaña Gráficos → elige un ángulo de campaña → elige una línea o escribe una idea + Generar con IA → plataforma + color neón → Descargar PNG (haz 2–3, Guarda las buenas líneas). Luego Estrategia de marketing → copia el texto de la publicación (EN o ES) y anota la palabra clave (BETA / TEST / QUIÉN CONTESTA / MATH / EVAL / QUIZ).' } },
+  { title: { en: 'Find + add your groups', es: 'Encuentra + agrega tus grupos' },
+    desc: { en: 'Join niche + local Facebook groups (target high-value niches: HVAC, roofing, plumbing, electrical, remodeling, legal, dental, med spas, etc.). Then My Groups tab → Add group for each one (name, URL, niche, members, promo rule).', es: 'Únete a grupos de Facebook por nicho y locales (apunta a nichos de alto valor: HVAC, techos, plomería, electricidad, remodelación, legal, dental, med spas, etc.). Luego pestaña Mis Grupos → Agregar grupo para cada uno (nombre, URL, nicho, miembros, regla de promoción).' } },
+  { title: { en: 'Post + paced distribution', es: 'Publica + distribución a ritmo' },
+    desc: { en: 'Post the graphic + text to your Page/IG (keyword comments → auto-DM). In My Groups: warm up first (like/comment 2–3 posts in the group), then Log post → the system paces you (per-group cooldown + hourly throttle) and returns your attributed opt-in link — paste it in the group. Space groups ~90 min apart; vary the angle/graphic per group.', es: 'Publica el gráfico + texto en tu página/IG (comentarios con palabra clave → auto-DM). En Mis Grupos: primero calienta (dale like/comenta 2–3 publicaciones del grupo), luego Registrar publicación → el sistema marca tu ritmo (enfriamiento por grupo + límite por hora) y devuelve tu enlace de captación atribuido — pégalo en el grupo. Espacia los grupos ~90 min; varía el ángulo/gráfico por grupo.' } },
+  { title: { en: 'Leads land in your CRM', es: 'Los leads llegan a tu CRM' },
+    desc: { en: 'Opt-ins arrive in Contacts / CRM tagged by track + keyword + group, two ways: Page comment → ManyChat, or the group opt-in link (/beta, /quiz). Watch the Founding-25 counter + per-group opt-in counts to see which groups convert.', es: 'Los opt-ins llegan a Contactos / CRM etiquetados por ángulo + palabra clave + grupo, de dos formas: comentario en la página → ManyChat, o el enlace de captación del grupo (/beta, /quiz). Mira el contador Fundadores-25 + los opt-ins por grupo para ver qué grupos convierten.' } },
+  { title: { en: 'Run the free evaluation', es: 'Haz la evaluación gratis' },
+    desc: { en: 'Open the lead in Contacts → Lead Capture Evaluation → Live test call (it rings your phone, then connects you to the business) → score the 6 categories live as you hear how they answer. (Full call process is below.)', es: 'Abre el lead en Contactos → Evaluación de Captura → Llamada de prueba en vivo (suena tu teléfono y te conecta al negocio) → califica las 6 categorías en vivo mientras escuchas cómo contestan. (El proceso completo está abajo.)' } },
+  { title: { en: 'Send the report', es: 'Envía el reporte' },
+    desc: { en: 'Save to Contacts → Create report link → send the lead their branded scorecard: their score, biggest leak, top fixes, and (optional) a dollar estimate built from their own numbers. No hard pitch in the report.', es: 'Guardar en Contactos → Crear enlace del reporte → envía al lead su reporte con marca: su puntaje, mayor fuga, mejores arreglos, y (opcional) un estimado en dólares con sus propios números. Sin venta dura en el reporte.' } },
+  { title: { en: 'Convert (only if invited)', es: 'Convierte (solo si lo piden)' },
+    desc: { en: 'The honest report does the selling. If they want help closing the gaps, onboard them — the signup is prefilled from the report. Soft, on their timeline.', es: 'El reporte honesto hace la venta. Si quieren ayuda para cerrar las fugas, regístralos — el alta viene prellenada desde el reporte. Suave, a su ritmo.' } },
+  { title: { en: 'Follow-up email (the last email)', es: 'Correo de seguimiento (el último correo)' },
+    desc: { en: 'Campaigns → Email campaigns → pick the CRM segment (evals delivered, not yet converted) → send the sequence in their language: (1) here is your report again, (2) the #1 fix, (3) the close. The last email is a soft final CTA: "ready when you are — here is how to start." Email only until they consent to calls/texts.', es: 'Campañas → Campañas de correo → elige el segmento del CRM (evaluaciones entregadas, aún no convertidas) → envía la secuencia en su idioma: (1) aquí está tu reporte otra vez, (2) el arreglo #1, (3) el cierre. El último correo es un CTA final suave: "cuando quieras — así empiezas." Solo correo hasta que consientan llamadas/SMS.' } },
+  { title: { en: 'Measure + repeat', es: 'Mide + repite' },
+    desc: { en: 'Inbound Reports → which tracks, groups, and niches convert. Drop dead groups, double down on winners, re-run steps 4–9 weekly with the best angle.', es: 'Reportes de entrada → qué ángulos, grupos y nichos convierten. Descarta grupos muertos, redobla en los ganadores, repite los pasos 4–9 cada semana con el mejor ángulo.' } },
+]
+
 const T = {
   heading: { en: 'How to run the evaluation', es: 'Cómo hacer la evaluación' },
+  playbookTitle: { en: 'Full campaign protocol — start to finish', es: 'Protocolo completo de campaña — de principio a fin' },
+  playbookHint: { en: 'The whole loop, in order. Set up ManyChat once (step 1), then repeat steps 4–9 weekly. Details on the evaluation call itself are further down.', es: 'Todo el ciclo, en orden. Configura ManyChat una vez (paso 1), luego repite los pasos 4–9 cada semana. Los detalles de la llamada de evaluación están más abajo.' },
   whyTitle: { en: 'Why it has to be rigorous', es: 'Por qué debe ser riguroso' },
   processTitle: { en: 'The 15-minute process', es: 'El proceso de 15 minutos' },
   scriptsTitle: { en: 'Test-call scripts', es: 'Guiones de llamada' },
@@ -92,6 +118,23 @@ export function EvaluationInstructions() {
         <h2 className="text-lg font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>{tr(T.heading)}</h2>
         <p className="text-sm mt-1.5" style={{ color: 'var(--text-secondary)' }}>{tr(intro)}</p>
       </div>
+
+      {/* Full campaign protocol — ManyChat-first, start to finish */}
+      <section>
+        <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{tr(T.playbookTitle)}</h3>
+        <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>{tr(T.playbookHint)}</p>
+        <ol className="space-y-3">
+          {PLAYBOOK.map((s, i) => (
+            <li key={i} className="flex gap-3.5">
+              <span className="shrink-0 w-8 h-8 rounded-full grid place-items-center text-xs font-bold tabular-nums" style={{ background: 'var(--brand-500, oklch(55% 0.11 193))', color: '#fff' }}>{i + 1}</span>
+              <div className="rounded-xl p-3.5 flex-1" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{tr(s.title)}</div>
+                <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{tr(s.desc)}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       {/* Why rigorous */}
       <div className="rounded-xl p-4" style={{ background: 'color-mix(in oklab, var(--brand-500, oklch(55% 0.11 193)) 7%, transparent)', border: '1px solid var(--border-subtle)' }}>
