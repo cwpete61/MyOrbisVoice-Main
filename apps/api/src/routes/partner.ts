@@ -978,4 +978,123 @@ router.post('/partner/eval/test-call', requirePartnerAccount, async (req: Reques
   } catch (err) { next(err) }
 })
 
+// ─── My Groups — tracker + compliant cadence coach ──────────────────────────
+// The platform NEVER auto-joins/posts/engages. These endpoints track the groups
+// a partner manually joined + the posts they manually made, enforce anti-spam
+// pacing (per-group cooldown + hourly throttle), and roll up per-group opt-ins.
+const GROUP_COOLDOWN_DAYS = 7   // don't re-post the same group within a week
+const GROUP_HOURLY_MAX    = 3   // max logged posts/hour across all groups
+
+const groupCreateSchema = z.object({
+  name:        z.string().min(1).max(160),
+  url:         z.string().max(400).optional(),
+  niche:       z.string().max(60).optional(),
+  memberCount: z.number().int().min(0).max(100_000_000).optional(),
+  promoRule:   z.string().max(120).optional(),
+  joinedAt:    z.string().datetime().optional(),
+})
+const groupUpdateSchema = groupCreateSchema.partial().extend({
+  status: z.enum(['active', 'left', 'banned']).optional(),
+})
+
+// GET — partner's groups + per-group opt-in rollup + post-now / cooling-down status.
+router.get('/partner/groups', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const pid = (req as any).partnerAccountId as string
+    const groups = await prisma.partnerGroup.findMany({ where: { partnerId: pid }, orderBy: { createdAt: 'desc' } })
+    const posts = await prisma.partnerGroupPost.findMany({ where: { partnerId: pid }, orderBy: { postedAt: 'desc' } })
+    const now = Date.now()
+    const cooldownMs = GROUP_COOLDOWN_DAYS * 86400_000
+    const data = groups.map((g) => {
+      const gp = posts.filter((p) => p.groupId === g.id)
+      const last = gp[0]?.postedAt ? new Date(gp[0]!.postedAt).getTime() : 0
+      const nextAllowedAt = last ? new Date(last + cooldownMs).toISOString() : null
+      return {
+        ...g,
+        optins:        gp.reduce((s, p) => s + p.optinCount, 0),
+        postCount:     gp.length,
+        lastPostedAt:  gp[0]?.postedAt ?? null,
+        coolingDown:   last ? now - last < cooldownMs : false,
+        nextAllowedAt,
+      }
+    })
+    res.json({ data })
+  } catch (err) { next(err) }
+})
+
+router.post('/partner/groups', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const pid = (req as any).partnerAccountId as string
+    const b = groupCreateSchema.parse(req.body)
+    const g = await prisma.partnerGroup.create({
+      data: { partnerId: pid, name: b.name, url: b.url ?? null, niche: b.niche ?? null,
+        memberCount: b.memberCount ?? null, promoRule: b.promoRule ?? null,
+        joinedAt: b.joinedAt ? new Date(b.joinedAt) : null },
+    })
+    res.json({ data: g })
+  } catch (err) { next(err) }
+})
+
+router.patch('/partner/groups/:id', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const pid = (req as any).partnerAccountId as string
+    const b = groupUpdateSchema.parse(req.body)
+    const owned = await prisma.partnerGroup.findFirst({ where: { id: req.params['id']!, partnerId: pid }, select: { id: true } })
+    if (!owned) throw new AppError('NOT_FOUND', 'Group not found', 404)
+    const g = await prisma.partnerGroup.update({
+      where: { id: owned.id },
+      data: { ...b, joinedAt: b.joinedAt ? new Date(b.joinedAt) : undefined },
+    })
+    res.json({ data: g })
+  } catch (err) { next(err) }
+})
+
+router.delete('/partner/groups/:id', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const pid = (req as any).partnerAccountId as string
+    const owned = await prisma.partnerGroup.findFirst({ where: { id: req.params['id']!, partnerId: pid }, select: { id: true } })
+    if (!owned) throw new AppError('NOT_FOUND', 'Group not found', 404)
+    await prisma.partnerGroupPost.deleteMany({ where: { partnerId: pid, groupId: owned.id } })
+    await prisma.partnerGroup.delete({ where: { id: owned.id } })
+    res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
+
+// Log a manual post → enforce cooldown + hourly throttle. Returns the opt-in
+// link to use (carries &g=groupId for attribution) or a 429 with nextAllowedAt.
+const logPostSchema = z.object({
+  track:   z.string().max(32).default('beta'),
+  keyword: z.string().max(40).optional(),
+})
+router.post('/partner/groups/:id/log-post', requirePartnerAccount, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const pid = (req as any).partnerAccountId as string
+    const b = logPostSchema.parse(req.body)
+    const group = await prisma.partnerGroup.findFirst({ where: { id: req.params['id']!, partnerId: pid } })
+    if (!group) throw new AppError('NOT_FOUND', 'Group not found', 404)
+    const now = Date.now()
+
+    // hourly throttle (across all groups)
+    const lastHour = await prisma.partnerGroupPost.count({
+      where: { partnerId: pid, postedAt: { gte: new Date(now - 3600_000) } },
+    })
+    if (lastHour >= GROUP_HOURLY_MAX) {
+      throw new AppError('RATE_LIMITED', `Pacing: max ${GROUP_HOURLY_MAX} posts/hour. Space them out to stay under FB's spam radar.`, 429)
+    }
+    // per-group cooldown
+    const recent = await prisma.partnerGroupPost.findFirst({
+      where: { partnerId: pid, groupId: group.id }, orderBy: { postedAt: 'desc' },
+    })
+    if (recent && now - new Date(recent.postedAt).getTime() < GROUP_COOLDOWN_DAYS * 86400_000) {
+      const nextAllowedAt = new Date(new Date(recent.postedAt).getTime() + GROUP_COOLDOWN_DAYS * 86400_000).toISOString()
+      throw new AppError('RATE_LIMITED', `This group was posted recently. Next allowed: ${nextAllowedAt}. Don't repeat-post the same group within ${GROUP_COOLDOWN_DAYS} days.`, 429)
+    }
+
+    const post = await prisma.partnerGroupPost.create({
+      data: { partnerId: pid, groupId: group.id, track: b.track, keyword: b.keyword ?? null },
+    })
+    res.json({ data: { ok: true, postId: post.id, groupId: group.id } })
+  } catch (err) { next(err) }
+})
+
 export default router

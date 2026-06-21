@@ -3201,3 +3201,37 @@ model PartnerDailyActivityProgress {
   @@index([partnerId, dayKey])
   @@index([dayKey])
 }
+
+// ── My Groups — partner FB-group tracker + compliant cadence coach ──────────
+// Tracks groups a partner has MANUALLY joined + each post they MANUALLY made,
+// for attribution (which group converts) and anti-spam pacing (throttle +
+// cooldown + content rotation). The platform never auto-joins, auto-posts, or
+// auto-engages — it paces the human. See docs/campaigns/campaign-automation-roadmap.md.
+model PartnerGroup {
+  id          String    @id @default(uuid())
+  partnerId   String
+  name        String
+  url         String?
+  niche       String?
+  memberCount Int?
+  promoRule   String?   // "open" | "fridays" | "none" | freeform note
+  status      String    @default("active") // active | left | banned
+  joinedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([partnerId, status])
+}
+
+model PartnerGroupPost {
+  id         String   @id @default(uuid())
+  partnerId  String
+  groupId    String
+  track      String   // beta | phantom | competitor | math | afterhours | quiz
+  keyword    String?
+  optinCount Int      @default(0)
+  postedAt   DateTime @default(now())
+
+  @@index([partnerId, groupId])
+  @@index([partnerId, postedAt])
+}

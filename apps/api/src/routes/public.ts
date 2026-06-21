@@ -185,6 +185,7 @@ const leadOptInSchema = z.object({
   consent:      z.boolean().optional().default(false),
   quizScore:    z.number().int().min(0).max(100).optional(),
   quizTier:     z.string().max(40).optional(),
+  g:            z.string().max(64).optional(), // PartnerGroup id (My Groups attribution)
 })
 
 router.post('/public/lead-optin', async (req, res, next) => {
@@ -223,6 +224,7 @@ router.post('/public/lead-optin', async (req, res, next) => {
           optinLocale:     b.locale,
           quizScore:       b.quizScore ?? null,
           quizTier:        b.quizTier ?? null,
+          groupId:         b.g ?? null,
           sourceUrl:       req.get('referer') ?? null,
           source:          b.track === 'quiz' ? 'quiz-optin' : 'beta-optin',
         },
@@ -230,6 +232,14 @@ router.post('/public/lead-optin', async (req, res, next) => {
     })
     await crmService.seedDefaultPipelineForPartner({ partnerId: partner.id, hostingTenantId: tenantId })
     await crmService.placeNewContactOnPipeline({ kind: 'partner', partnerId: partner.id, hostingTenantId: tenantId }, contact.id)
+
+    // My Groups attribution — bump the most recent matching group post's optin count.
+    if (b.g) {
+      const gp = await prisma.partnerGroupPost.findFirst({
+        where: { partnerId: partner.id, groupId: b.g, track: b.track }, orderBy: { postedAt: 'desc' },
+      })
+      if (gp) await prisma.partnerGroupPost.update({ where: { id: gp.id }, data: { optinCount: { increment: 1 } } })
+    }
     res.json({ data: { ok: true } })
   } catch (err) { next(err) }
 })
