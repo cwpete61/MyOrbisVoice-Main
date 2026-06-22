@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocale } from '@/lib/i18n/I18nProvider'
 import { apiSaveEvalContact, apiContactSignupInvite } from '@/lib/api'
 import { apiFetch } from '@/hooks/useApi'
@@ -182,6 +182,17 @@ export function InboundEvaluation() {
     }
     return worst?.cat ?? null
   }, [scores])
+
+  // Hand off the worst category + lead to the Cold Call tab so the partner
+  // scores once and the call script pre-loads (read by ColdCallConsole on mount).
+  useEffect(() => {
+    if (!biggestLeak || (!biz && !contactName)) return
+    try {
+      localStorage.setItem('mov_coldcall_handoff', JSON.stringify({
+        business: biz, contact: contactName, leakKey: biggestLeak.key, ts: Date.now(),
+      }))
+    } catch { /* ignore */ }
+  }, [biggestLeak, biz, contactName])
 
   // Suggested "% not captured" from the grade (owner can override).
   const suggestedNotCaptured = total >= 90 ? 5 : total >= 75 ? 15 : total >= 60 ? 30 : total >= 40 ? 45 : 60

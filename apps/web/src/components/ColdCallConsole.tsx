@@ -1,7 +1,13 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocale } from '@/lib/i18n/I18nProvider'
+
+// Eval category -> closest call-experience finding (for the eval handoff).
+const LEAK_TO_FINDING: Record<string, string> = {
+  speed: 'noanswer', greeting: 'nobooking', capture: 'nobooking',
+  conversion: 'nobooking', afterhours: 'afterhours', followup: 'nocallback',
+}
 
 /**
  * Cold Call console — research-first MANUAL calling script. The partner dials;
@@ -44,6 +50,20 @@ export function ColdCallConsole() {
   const [findingKey, setFindingKey] = useState('noanswer')
   const [openerStyle, setOpenerStyle] = useState<'specific' | 'generic'>('specific')
   const [copied, setCopied] = useState('')
+  const [fromEval, setFromEval] = useState<string | null>(null)
+
+  // Pre-load from the Lead Capture Evaluation handoff: business + contact + the
+  // worst category mapped to a finding. Scored once, dialed here — no re-entry.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('mov_coldcall_handoff')
+      if (!raw) return
+      const h = JSON.parse(raw) as { business?: string; contact?: string; leakKey?: string }
+      if (h.business || h.contact) setF({ contact: h.contact || '', business: h.business || '' })
+      if (h.leakKey && LEAK_TO_FINDING[h.leakKey]) setFindingKey(LEAK_TO_FINDING[h.leakKey]!)
+      if (h.business) setFromEval(h.business)
+    } catch { /* ignore */ }
+  }, [])
 
   // Generic opener — for when you can't name a finding yet (gatekeeper, no
   // test-call done). Weaker than the specific one (no proof), but low-friction.
@@ -99,6 +119,13 @@ export function ColdCallConsole() {
           ? 'Solo llamadas manuales, B2B (al número público del negocio). Respeta el registro No-Llamar y si piden que no llames, detente. La llamada de prueba (pestaña Evaluación de Captura → Llamada en vivo) ES tu investigación — lo que escuches ahí es lo que mencionas en la apertura.'
           : 'Manual calls only, B2B (the business’s public number). Respect Do-Not-Call and stop if asked. The test-call (Lead Capture Evaluation tab → Live test call) IS your research — what you hear there is exactly what you open with.'}
       </div>
+
+      {fromEval && (
+        <div className="rounded-lg p-2.5 text-xs flex items-center justify-between gap-2" style={{ background: 'color-mix(in oklab, var(--brand-500, oklch(55% 0.11 193)) 8%, transparent)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+          <span>{L === 'es' ? `Precargado desde tu evaluación de ${fromEval} — el hallazgo es la mayor fuga.` : `Pre-loaded from your evaluation of ${fromEval} — the finding is its biggest leak.`}</span>
+          <button onClick={() => { setFromEval(null); setF({ contact: '', business: '' }) }} className="shrink-0" style={{ color: 'var(--text-tertiary)' }}>{L === 'es' ? 'Limpiar' : 'Clear'}</button>
+        </div>
+      )}
 
       {/* Prospect inputs */}
       <div className="rounded-xl p-4 grid gap-2 sm:grid-cols-2" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
