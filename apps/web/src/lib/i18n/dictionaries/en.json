@@ -4430,7 +4430,8 @@
     "subLeadCapture": "Lead Capture Evaluation",
     "subMarketing": "Marketing Strategy",
     "subGraphics": "Graphics",
-    "subGroups": "My Groups"
+    "subGroups": "My Groups",
+    "subColdCall": "Cold Call"
   },
   "partnerCampaignNew": {
     "backLink": "← Campaigns",
