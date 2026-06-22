@@ -42,7 +42,15 @@ export function ColdCallConsole() {
 
   const [f, setF] = useState({ contact: '', business: '' })
   const [findingKey, setFindingKey] = useState('noanswer')
+  const [openerStyle, setOpenerStyle] = useState<'specific' | 'generic'>('specific')
   const [copied, setCopied] = useState('')
+
+  // Generic opener — for when you can't name a finding yet (gatekeeper, no
+  // test-call done). Weaker than the specific one (no proof), but low-friction.
+  const OPENER_GENERIC: Bi = {
+    en: 'Hi {contact}, my name’s [you] — I do free breakdowns for local businesses on what might be quietly costing them customers. Happy to put one together for {business} — no charge, no strings. Want me to send it over?',
+    es: 'Hola {contact}, soy [tú] — hago resúmenes gratis para negocios locales sobre lo que podría estarles costando clientes sin que se enteren. Con gusto armo uno para {business} — gratis, sin compromiso. ¿Te lo envío?',
+  }
 
   const finding = FINDINGS.find((x) => x.key === findingKey)!
   const v = useMemo(() => ({
@@ -104,10 +112,31 @@ export function ColdCallConsole() {
         </label>
       </div>
 
+      {/* Opener style toggle */}
+      <div>
+        <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+          {L === 'es' ? 'Estilo de apertura' : 'Opener style'}
+        </label>
+        <div className="flex gap-1.5">
+          {([['specific', L === 'es' ? 'Específica (recomendada)' : 'Specific (recommended)'], ['generic', L === 'es' ? 'Genérica (sin hallazgo aún)' : 'Generic (no finding yet)']] as const).map(([k, lbl]) => (
+            <button key={k} onClick={() => setOpenerStyle(k)} className="text-xs px-2.5 py-1.5 rounded-lg transition-colors"
+              style={{ background: openerStyle === k ? 'var(--brand-500, oklch(55% 0.11 193))' : 'var(--surface-raised)', color: openerStyle === k ? '#fff' : 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
+              {lbl}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+          {openerStyle === 'specific'
+            ? (L === 'es' ? 'Abre con lo que pasó en tu llamada de prueba — prueba que hiciste el trabajo (mayor respuesta).' : 'Opens with what happened on your test-call — proof you did the work (higher response).')
+            : (L === 'es' ? 'Sin nombrar un hallazgo todavía (portero / aún no llamaste). Más débil — sin prueba. Cambia a Específica en cuanto tengas la llamada.' : 'No specific finding yet (gatekeeper / no test-call done). Weaker — no proof. Switch to Specific once you’ve made the call.')}
+        </p>
+      </div>
+
       {/* Script */}
       <div className="space-y-2.5">
         {SCRIPT.map((s, i) => {
-          const text = fill(pick(s.body, L), v)
+          const body = i === 0 && openerStyle === 'generic' ? OPENER_GENERIC : s.body
+          const text = fill(pick(body, L), v)
           return (
             <div key={i} className="rounded-xl p-3.5" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
               <div className="flex items-center justify-between gap-2 mb-1">
