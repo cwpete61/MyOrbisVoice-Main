@@ -442,7 +442,9 @@ async function planForPrice(priceId: string | null | undefined) {
  * self-serve via forgot-password (their account now exists).
  */
 export async function provisionFromPaymentLink(session: StripeCheckoutSession): Promise<void> {
-  if (session.payment_status && session.payment_status !== 'paid') {
+  // 'paid' = charged; 'no_payment_required' = $0 (100% comp / fully-discounted) — both
+  // are completed checkouts that should provision. Only a genuinely unpaid session skips.
+  if (session.payment_status && session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
     console.warn(`[paymentlink] session ${session.id} not paid (${session.payment_status}) — skip`); return
   }
   const email = session.customer_details?.email || session.customer_email || null
