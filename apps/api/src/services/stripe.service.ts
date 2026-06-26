@@ -464,7 +464,7 @@ export async function provisionFromPaymentLink(session: StripeCheckoutSession): 
   if (!plan) { console.warn(`[paymentlink] no active plan for price ${priceId} (session ${session.id}) — skip`); return }
 
   const name = session.customer_details?.name || email.split('@')[0] || 'Workspace'
-  const { provisionTenantFromPaymentLink, startPasswordReset } = await import('./auth.service.js')
+  const { provisionTenantFromPaymentLink } = await import('./auth.service.js')
   const { userId, tenantId, isNew } = await provisionTenantFromPaymentLink({ email, businessName: name })
 
   // Link the existing Stripe customer to the tenant (so future sub events resolve).
@@ -482,18 +482,12 @@ export async function provisionFromPaymentLink(session: StripeCheckoutSession): 
     catch (e) { console.warn('[paymentlink] subscription record failed:', (e as Error).message) }
   }
 
-  // Set-password invite (15-min link; forgot-password is the fallback).
+  // Set-password invite — Keycloak (the web logs in via the SSO hub, NOT local
+  // password). 7-day link. The KC user was just created by syncUserToKeycloak.
   try {
-    const result = await startPasswordReset(email)
-    if (result) {
-      const { sendPasswordResetEmail } = await import('./email.service.js')
-      const appBase = getEnv().APP_BASE_URL
-      await sendPasswordResetEmail({
-        to: result.email, firstName: result.firstName,
-        resetUrl: `${appBase}/reset-password?token=${encodeURIComponent(result.rawToken)}`, expiresInMinutes: 15,
-      }).catch(() => null)
-    }
-  } catch (e) { console.warn('[paymentlink] invite email failed:', (e as Error).message) }
+    const { sendKeycloakSetPasswordEmail } = await import('./keycloak-sync.service.js')
+    await sendKeycloakSetPasswordEmail(userId)
+  } catch (e) { console.warn('[paymentlink] KC set-password email failed:', (e as Error).message) }
 
   writeAuditLog({
     actorType: 'SYSTEM', action: 'billing.payment_link_provisioned', tenantId,

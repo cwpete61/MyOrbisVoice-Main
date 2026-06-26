@@ -64,6 +64,38 @@ export async function syncUserToKeycloak(userId: string): Promise<void> {
 }
 
 /**
+ * Send a Keycloak "set your password" email (execute-actions-email with
+ * UPDATE_PASSWORD). The CORRECT invite for SSO-gated logins: the web funnels to the
+ * MyOrbisResults hub (Keycloak), so a local password-reset link is useless — the
+ * user must set their password in Keycloak. Used by payment-link onboarding. Default
+ * link lifespan: 7 days. Best-effort, non-fatal.
+ */
+export async function sendKeycloakSetPasswordEmail(userId: string, lifespanSeconds = 7 * 24 * 3600): Promise<boolean> {
+  if (!CLIENT_ID || !SECRET || !BASE || !REALM) return false
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } })
+    if (!user?.email) return false
+    if (/(@orbisvoice\.test$)|(\.test$)|(^e2e-)/i.test(user.email)) return false
+    const token = await adminToken()
+    const auth = { authorization: `Bearer ${token}` }
+    const q = await fetch(`${BASE}/admin/realms/${REALM}/users?email=${encodeURIComponent(user.email)}&exact=true`, { headers: auth })
+    const found = q.ok ? ((await q.json()) as { id: string }[]) : []
+    const kcId = found[0]?.id
+    if (!kcId) return false
+    const res = await fetch(`${BASE}/admin/realms/${REALM}/users/${kcId}/execute-actions-email?lifespan=${lifespanSeconds}`, {
+      method: 'PUT',
+      headers: { ...auth, 'content-type': 'application/json' },
+      body: JSON.stringify(['UPDATE_PASSWORD']),
+    })
+    if (!res.ok) throw new Error(`kc execute-actions-email ${res.status}`)
+    return true
+  } catch (err) {
+    console.warn('[kc-sync] set-password email failed (non-fatal):', userId, (err as Error).message)
+    return false
+  }
+}
+
+/**
  * Back-channel SSO logout: revoke the user's Keycloak sessions via the admin API.
  * Used instead of a browser redirect to KC's /logout endpoint — that endpoint,
  * without an id_token_hint, shows a confirm screen that NPEs (500) on an expired
