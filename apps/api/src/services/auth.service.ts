@@ -208,6 +208,66 @@ export async function signupUserFromGoogle(data: {
   return { user: sanitizeUser(user), tenant: sanitizeTenant(tenant), ...tokens }
 }
 
+/** Pick a unique username from a seed (email local-part), case-insensitive. */
+async function uniqueUsername(seed: string): Promise<string> {
+  const root = (seed.toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user').slice(0, 24)
+  for (let i = 0; i < 50; i++) {
+    const candidate = i === 0 ? root : `${root}${i}`
+    const taken = await prisma.user.findFirst({ where: { username: { equals: candidate, mode: 'insensitive' } } })
+    if (!taken) return candidate
+  }
+  return `${root}-${Date.now().toString(36)}`
+}
+
+/**
+ * Provision a tenant from a Stripe Payment Link purchase — the buyer never went
+ * through app /signup (they clicked a buy.stripe.com link with a prefilled comp
+ * code), so no account exists. Creates a PASSWORDLESS owner (like the Google path);
+ * the caller links the Stripe customer + grants paid entitlements + sends a
+ * set-password invite. Idempotent on email: if the user already owns a tenant, we
+ * return it instead of creating a duplicate. Tenant is ACTIVE (they have a live sub).
+ */
+export async function provisionTenantFromPaymentLink(data: {
+  email: string
+  businessName: string
+  preferredLocale?: string
+}): Promise<{ userId: string; email: string; tenantId: string; isNew: boolean }> {
+  const existing = await prisma.user.findFirst({ where: { email: { equals: data.email, mode: 'insensitive' } } })
+  if (existing) {
+    const owner = await prisma.tenantMember.findFirst({ where: { userId: existing.id, isOwner: true }, select: { tenantId: true } })
+    if (owner) return { userId: existing.id, email: existing.email, tenantId: owner.tenantId, isNew: false }
+  }
+
+  const tenantOwnerRole = await prisma.roleDefinition.findUnique({ where: { key: 'tenant_owner' } })
+  if (!tenantOwnerRole) throw new AppError('INTERNAL_ERROR', 'Role configuration missing — run db:seed', 500)
+
+  const username = await uniqueUsername(data.email.split('@')[0] || 'user')
+  const baseSlug = toSlug(data.businessName) || 'workspace'
+  const slug = `${baseSlug}-${Date.now().toString(36)}`
+  const locale = (data.preferredLocale === 'en' || data.preferredLocale === 'es') ? data.preferredLocale : 'en'
+
+  const { userId, tenantId } = await prisma.$transaction(async (tx) => {
+    const user = existing ?? await tx.user.create({
+      data: { email: data.email, username, passwordHash: null, preferredLocale: locale },
+    })
+    const tenant = await tx.tenant.create({
+      data: { slug, displayName: data.businessName, registrationEmail: data.email, status: 'ACTIVE' },
+    })
+    await tx.tenantMember.create({
+      data: { userId: user.id, tenantId: tenant.id, roleDefinitionId: tenantOwnerRole.id, isOwner: true },
+    })
+    await tx.businessProfile.create({ data: { tenantId: tenant.id, brandName: data.businessName } })
+    return { userId: user.id, tenantId: tenant.id }
+  })
+
+  try { const { seedDefaultPipeline } = await import('./crm.service.js'); await seedDefaultPipeline({ kind: 'tenant', tenantId }) }
+  catch (e) { console.warn('[paymentlink-provision] pipeline seed failed (non-fatal):', (e as Error).message) }
+  try { await syncUserToKeycloak(userId) }
+  catch (e) { console.warn('[paymentlink-provision] keycloak sync failed (non-fatal):', (e as Error).message) }
+
+  return { userId, email: data.email, tenantId, isNew: true }
+}
+
 export async function affiliateSignupUser(data: {
   username: string
   email: string

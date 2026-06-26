@@ -11,9 +11,10 @@ interface StripeSub {
   id: string
   status: string
   metadata?: Record<string, string> | null
+  customer?: string | { id: string } | null
   canceled_at: number | null
   cancel_at_period_end: boolean
-  items: { data: Array<{ current_period_start: number; current_period_end: number }> }
+  items: { data: Array<{ current_period_start: number; current_period_end: number; price?: { id: string } }> }
 }
 
 interface StripeInvoice {
@@ -27,10 +28,15 @@ interface StripeInvoice {
 interface StripeCheckoutSession {
   id?: string
   mode?: 'subscription' | 'payment' | 'setup'
+  status?: string | null
+  payment_status?: string | null
   metadata?: Record<string, string> | null
   subscription?: string | { id: string } | null
   payment_intent?: string | { id: string } | null
   amount_total?: number | null
+  customer?: string | { id: string } | null
+  customer_email?: string | null
+  customer_details?: { email?: string | null; name?: string | null } | null
 }
 
 interface StripeCharge {
@@ -407,6 +413,95 @@ async function handleConnectAccountUpdated(account: StripeConnectAccount) {
   }).catch(() => null)
 }
 
+// ── Payment Link onboarding ──────────────────────────────────────────────────
+// Comp codes are handed out as raw buy.stripe.com Payment Links (prefilled email +
+// promo code). Those checkouts carry NO metadata.tenantId, so the normal handlers
+// can't find an account. These helpers provision one from the buyer's email and
+// resolve the tenant by Stripe customer for follow-on subscription events.
+
+const idOf = (v: string | { id: string } | null | undefined): string | null =>
+  typeof v === 'string' ? v : v?.id ?? null
+
+async function tenantIdForCustomer(customer: string | { id: string } | null | undefined): Promise<string | null> {
+  const cid = idOf(customer)
+  if (!cid) return null
+  const ref = await prisma.stripeCustomerRef.findUnique({ where: { stripeCustomerId: cid } })
+  return ref?.tenantId ?? null
+}
+
+async function planForPrice(priceId: string | null | undefined) {
+  if (!priceId) return null
+  return prisma.plan.findFirst({ where: { isActive: true, OR: [{ stripePriceId: priceId }, { stripeRecurringPriceId: priceId }] } })
+}
+
+/**
+ * Provision an account from a Payment Link checkout (no app signup happened).
+ * Idempotent: bails if the Stripe customer is already linked to a tenant. Creates
+ * a passwordless owner, links the customer, grants the paid plan's entitlements,
+ * records the subscription, and emails a set-password invite. The user can also
+ * self-serve via forgot-password (their account now exists).
+ */
+export async function provisionFromPaymentLink(session: StripeCheckoutSession): Promise<void> {
+  if (session.payment_status && session.payment_status !== 'paid') {
+    console.warn(`[paymentlink] session ${session.id} not paid (${session.payment_status}) — skip`); return
+  }
+  const email = session.customer_details?.email || session.customer_email || null
+  if (!email) { console.warn(`[paymentlink] session ${session.id} has no email — skip`); return }
+
+  const customerId = idOf(session.customer)
+  if (customerId && (await tenantIdForCustomer(customerId))) {
+    console.log(`[paymentlink] customer ${customerId} already linked — skip`); return
+  }
+
+  // Resolve the plan from the purchased price (line item).
+  const stripe = getStripe()
+  let priceId: string | null = null
+  try {
+    const items = await stripe.checkout.sessions.listLineItems(session.id!, { limit: 1 })
+    priceId = (items.data[0] as { price?: { id: string } } | undefined)?.price?.id ?? null
+  } catch (e) { console.warn('[paymentlink] listLineItems failed:', (e as Error).message) }
+  const plan = await planForPrice(priceId)
+  if (!plan) { console.warn(`[paymentlink] no active plan for price ${priceId} (session ${session.id}) — skip`); return }
+
+  const name = session.customer_details?.name || email.split('@')[0] || 'Workspace'
+  const { provisionTenantFromPaymentLink, startPasswordReset } = await import('./auth.service.js')
+  const { userId, tenantId, isNew } = await provisionTenantFromPaymentLink({ email, businessName: name })
+
+  // Link the existing Stripe customer to the tenant (so future sub events resolve).
+  if (customerId) {
+    await prisma.stripeCustomerRef.upsert({
+      where: { tenantId }, update: { stripeCustomerId: customerId }, create: { tenantId, stripeCustomerId: customerId },
+    }).catch((e) => console.warn('[paymentlink] customer link failed:', (e as Error).message))
+  }
+
+  // Grant the paid plan's entitlements + record the subscription.
+  await syncEntitlementsFromPlan(tenantId, plan.id)
+  const subId = idOf(session.subscription)
+  if (subId) {
+    try { const sub = await stripe.subscriptions.retrieve(subId); await upsertSubscription(tenantId, plan.code, sub as unknown as StripeSub) }
+    catch (e) { console.warn('[paymentlink] subscription record failed:', (e as Error).message) }
+  }
+
+  // Set-password invite (15-min link; forgot-password is the fallback).
+  try {
+    const result = await startPasswordReset(email)
+    if (result) {
+      const { sendPasswordResetEmail } = await import('./email.service.js')
+      const appBase = getEnv().APP_BASE_URL
+      await sendPasswordResetEmail({
+        to: result.email, firstName: result.firstName,
+        resetUrl: `${appBase}/reset-password?token=${encodeURIComponent(result.rawToken)}`, expiresInMinutes: 15,
+      }).catch(() => null)
+    }
+  } catch (e) { console.warn('[paymentlink] invite email failed:', (e as Error).message) }
+
+  writeAuditLog({
+    actorType: 'SYSTEM', action: 'billing.payment_link_provisioned', tenantId,
+    metadataJson: { email, planCode: plan.code, sessionId: session.id, customerId, isNew },
+  }).catch(() => null)
+  console.log(`[paymentlink] provisioned tenant ${tenantId} for ${email} (plan ${plan.code}, new=${isNew})`)
+}
+
 async function handleCheckoutCompleted(session: StripeCheckoutSession) {
   // Phase G.2 — Partner SMS credit pack purchase. Mode=payment with the
   // partner_sms_pack scope. Grants credits + writes ledger row idempotently.
@@ -440,7 +535,9 @@ async function handleCheckoutCompleted(session: StripeCheckoutSession) {
 
   const tenantId = session.metadata?.tenantId
   const planCode = session.metadata?.planCode
-  if (!tenantId || !planCode) return
+  // No app-originated metadata = a raw Payment Link checkout (comp-code buy link).
+  // Provision an account from the buyer's email instead of silently dropping it.
+  if (!tenantId || !planCode) { await provisionFromPaymentLink(session); return }
 
   // One-time payment (LTD) — no subscription, sync entitlements directly from plan
   if (session.mode === 'payment') {
@@ -578,8 +675,14 @@ async function handleInvoicePaid(invoice: StripeInvoice) {
 }
 
 async function handleSubscriptionUpdated(stripeSub: StripeSub) {
-  const tenantId = stripeSub.metadata?.tenantId
-  const planCode = stripeSub.metadata?.planCode
+  // Prefer app-set metadata; fall back to the customer link + price→plan for
+  // Payment Link subscriptions (which carry no tenantId/planCode metadata).
+  const tenantId = stripeSub.metadata?.tenantId ?? (await tenantIdForCustomer(stripeSub.customer))
+  let planCode = stripeSub.metadata?.planCode
+  if (!planCode) {
+    const plan = await planForPrice(stripeSub.items?.data?.[0]?.price?.id)
+    planCode = plan?.code
+  }
   if (!tenantId || !planCode) return
   await upsertSubscription(tenantId, planCode, stripeSub)
   writeAuditLog({ actorType: 'SYSTEM', action: 'billing.subscription_updated', tenantId, metadataJson: { stripeSubscriptionId: stripeSub.id, status: stripeSub.status, planCode } }).catch(() => null)
@@ -597,7 +700,7 @@ async function handleSubscriptionDeleted(stripeSub: StripeSub) {
     return
   }
 
-  const tenantId = stripeSub.metadata?.tenantId
+  const tenantId = stripeSub.metadata?.tenantId ?? (await tenantIdForCustomer(stripeSub.customer))
   const planCode = stripeSub.metadata?.planCode
   if (!tenantId) return
 
