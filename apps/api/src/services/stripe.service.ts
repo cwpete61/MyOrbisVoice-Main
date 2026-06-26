@@ -475,12 +475,15 @@ export async function provisionFromPaymentLink(session: StripeCheckoutSession): 
   }
 
   // Grant the paid plan's entitlements + record the subscription.
-  await syncEntitlementsFromPlan(tenantId, plan.id)
+  // Record the subscription FIRST so the Hub sync (fired inside
+  // syncEntitlementsFromPlan → syncTenantToHub) derives the paid plan from it.
+  // Otherwise the Hub gets VOICE=FREE and shows the product as "Not active".
   const subId = idOf(session.subscription)
   if (subId) {
     try { const sub = await stripe.subscriptions.retrieve(subId); await upsertSubscription(tenantId, plan.code, sub as unknown as StripeSub) }
     catch (e) { console.warn('[paymentlink] subscription record failed:', (e as Error).message) }
   }
+  await syncEntitlementsFromPlan(tenantId, plan.id)
 
   // Set-password invite — Keycloak (the web logs in via the SSO hub, NOT local
   // password). 7-day link. The KC user was just created by syncUserToKeycloak.
