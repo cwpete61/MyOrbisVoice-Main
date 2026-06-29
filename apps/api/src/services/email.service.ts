@@ -88,9 +88,15 @@ function pickProvider(opts: EmailOptions): EmailProvider {
   // Explicit override wins. Used by the Bulk Email engine to force cold
   // outreach through Brevo regardless of the From-domain pattern.
   if (opts.provider) return opts.provider
-  if (opts.kind === 'transactional' || opts.kind == null) return 'postmark'
   const fromAddr = (opts.from ?? '').toLowerCase()
+  // Route by verified From-domain FIRST — even for transactional. @myorbisresults.com
+  // is verified on Brevo, NOT Postmark. If a partner's <slug>@myorbisresults.com send
+  // went to Postmark it would be rejected (unverified From) and fall back to SMTP /
+  // Spacemail, which greylists = a multi-minute delay. Partners send these while on
+  // the phone and need the recipient to confirm receipt instantly, so keep it on the
+  // instant hosted provider that actually owns the domain.
   if (fromAddr.includes('@myorbisresults.com')) return 'brevo'
+  if (opts.kind === 'transactional' || opts.kind == null) return 'postmark'
   if (fromAddr.includes('@myorbisvoice.com'))   return 'resend'
   return 'smtp'  // default for unknown marketing domains
 }
