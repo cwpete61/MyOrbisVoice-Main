@@ -57,15 +57,19 @@ function buildPartnerEmailHtml(body: string, claimLink: string, fromName: string
 // Primary-optimized (inbox) HTML — plain, personal, no button/images/banner. A text
 // link instead of a button; a plain text signature. Far more likely to land in
 // Gmail's Primary tab. The default for partner sends.
-function buildPartnerEmailPlain(body: string, claimLink: string, fromName: string, tel: string, email: string): string {
+function buildPartnerEmailPlain(body: string, claimLink: string, fromName: string, tel: string, email: string, avatarUrl: string): string {
   const link = claimLink
     ? `<p style="margin:16px 0;font-size:15px"><a href="${esc(claimLink)}" style="color:#0a66c2">Claim your listing here</a></p>`
     : ''
   const sigLines = [fromName, 'MyOrbisBiz', tel, email].filter(Boolean).map(esc).join('<br/>')
+  // Small avatar + logo, then the text lines. (Images add a slight Promotions
+  // signal, but the rest stays plain text so it still favors Primary.)
+  const avatar = avatarUrl ? `<img src="${esc(avatarUrl)}" width="44" height="44" alt="${esc(fromName)}" style="border-radius:50%;display:block;margin-bottom:6px" />` : ''
+  const logo = `<img src="${MOB_LOGO}" width="32" height="32" alt="MyOrbisBiz" style="border-radius:7px;display:block;margin-bottom:6px" />`
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#222222;line-height:1.55;font-size:15px">` +
     `<div style="white-space:pre-wrap">${esc(body)}</div>` +
     link +
-    `<p style="margin:18px 0 0;color:#444;font-size:14px">${sigLines}</p>` +
+    `<div style="margin:18px 0 0">${avatar}${logo}<div style="color:#444;font-size:14px">${sigLines}</div></div>` +
     `</div>`
 }
 
@@ -598,7 +602,7 @@ router.post('/partner/crm/contacts/:id/email', async (req: Request, res: Respons
     const meta = (contact.metadataJson as Record<string, unknown> | null) ?? {}
     const claimLink = typeof meta['claimLink'] === 'string' ? (meta['claimLink'] as string) : ''
     const html = plain
-      ? buildPartnerEmailPlain(body, claimLink, fromName, sigTel, sigEmail)
+      ? buildPartnerEmailPlain(body, claimLink, fromName, sigTel, sigEmail, sigAvatar)
       : buildPartnerEmailHtml(body, claimLink, fromName, sigTel, sigEmail, sigAvatar)
 
     // F.4 — sendEmail now routes via the right provider (Postmark/Resend/Brevo/SMTP)
