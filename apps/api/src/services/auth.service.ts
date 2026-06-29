@@ -409,8 +409,19 @@ export async function issueTokensForUserId(userId: string) {
   }
   const membership      = user.tenantMemberships[0]
   const tenantId        = membership?.tenantId ?? null
-  const roleKey         = (membership?.roleDefinition?.key ?? 'tenant_staff') as RoleKey
+  let   roleKey         = (membership?.roleDefinition?.key ?? 'tenant_staff') as RoleKey
   const isPlatformRole  = membership?.roleDefinition?.isPlatformRole ?? false
+
+  // Precedence: platform-admin > affiliate > tenant. An active AffiliateAccount makes
+  // this an affiliate, so EVERY login path routes to the partner portal. (Google
+  // login only read tenant membership, so affiliate-only users fell to tenant_staff
+  // and landed in the tenant app.) Platform-admin memberships keep their role.
+  if (!isPlatformRole) {
+    const affiliate = await prisma.affiliateAccount.findFirst({
+      where: { userId, status: 'ACTIVE' }, select: { id: true },
+    })
+    if (affiliate) roleKey = 'affiliate' as RoleKey
+  }
 
   const tokens = await issueTokens(user.id, user.email, tenantId, roleKey, isPlatformRole)
   return { user: sanitizeUser(user), ...tokens }
