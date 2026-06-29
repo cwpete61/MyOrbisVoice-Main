@@ -31,20 +31,22 @@ const MOB_LOGO = 'https://myorbisbiz.com/icon-192.png'
 function buildPartnerEmailHtml(body: string, claimLink: string, fromName: string, tel: string, email: string): string {
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const cta = claimLink
-    ? `<div style="text-align:center;margin:26px 0"><a href="${esc(claimLink)}" style="display:inline-block;background:#15a8a8;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">Claim your free listing →</a></div>`
+    ? `<div style="text-align:center;margin:26px 0">` +
+        `<div style="font-weight:700;letter-spacing:.06em;color:#222222;margin-bottom:10px">CLAIM HERE</div>` +
+        `<a href="${esc(claimLink)}" style="display:inline-block;background:#15a8a8;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">Claim your free listing →</a>` +
+      `</div>`
     : ''
   const line = (s: string) => `<div style="font-size:13px;color:#667085;margin-top:2px">${esc(s)}</div>`
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#222222;line-height:1.55">` +
     `<div style="white-space:pre-wrap;font-size:15px">${esc(body)}</div>` +
     cta +
     `<hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0" />` +
-    `<div style="text-align:center">` +
-      `<img src="${MOB_LOGO}" width="48" height="48" alt="MyOrbisBiz" style="border-radius:10px;display:inline-block" />` +
+    `<div style="text-align:left">` +
+      `<img src="${MOB_LOGO}" width="48" height="48" alt="MyOrbisBiz" style="border-radius:10px;display:block" />` +
       `<div style="font-weight:700;color:#15a8a8;margin-top:6px;font-size:15px">MyOrbisBiz</div>` +
       (fromName ? line(fromName) : '') +
-      (tel ? line(`Tel: ${tel}`) : '') +
-      (email ? `<div style="font-size:13px;margin-top:2px"><a href="mailto:${esc(email)}" style="color:#15a8a8;text-decoration:none">Email: ${esc(email)}</a></div>` : '') +
-      `<div style="font-size:12px;color:#98a2b3;margin-top:8px">A MyOrbisResults company</div>` +
+      (tel ? line(tel) : '') +
+      (email ? `<div style="font-size:13px;margin-top:2px"><a href="mailto:${esc(email)}" style="color:#15a8a8;text-decoration:none">${esc(email)}</a></div>` : '') +
     `</div></div>`
 }
 
@@ -253,9 +255,15 @@ router.post('/partner/crm/contacts/from-directory-lead', async (req: Request, re
     // Dedup: one CRM contact per (partner, directory business slug).
     const existing = await prisma.contact.findFirst({
       where: { partnerId: pid, deletedAt: null, metadataJson: { path: ['directoryBusinessSlug'], equals: b.businessSlug } },
-      select: { id: true },
+      select: { id: true, phoneE164: true },
     })
-    if (existing) { res.json({ data: { id: existing.id, alreadyExisted: true } }); return }
+    if (existing) {
+      // Backfill the directory phone if the contact doesn't have one yet (don't
+      // overwrite a number the partner already set).
+      const ph = normPhone(b.phone)
+      if (ph && !existing.phoneE164) await prisma.contact.update({ where: { id: existing.id }, data: { phoneE164: ph } }).catch(() => {})
+      res.json({ data: { id: existing.id, alreadyExisted: true } }); return
+    }
 
     const now = new Date()
     const contact = await prisma.contact.create({

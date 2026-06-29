@@ -263,7 +263,7 @@
     "copyText": "Copy text",
     "emailSubjectLabel": "Subject",
     "emailSubject": "Claim your free MyOrbisBiz listing for {business}",
-    "emailBody": "Hi {name},\n\n{business} has a free listing on MyOrbisBiz — it's just not claimed yet. Claiming it is free and takes about 2 minutes. You can confirm your info, add photos, list your hours and services, and respond to reviews.\n\nClaim it here: {link}\n\nNo cost, no catch — it's your listing.\n\nThanks!",
+    "emailBody": "Hi {name},\n\n{business} has a free listing on MyOrbisBiz — it's just not claimed yet. Claiming it is free and takes about 2 minutes. You can confirm your info, add photos, list your hours and services, and respond to reviews.\n\nNo cost, no catch — it's your listing.\n\nThanks!",
     "smsBody": "Hi — {business} has a free, unclaimed listing on MyOrbisBiz. Claim it free in 2 min (add photos, hours, info): {link}"
   },
   "gmbEval": {

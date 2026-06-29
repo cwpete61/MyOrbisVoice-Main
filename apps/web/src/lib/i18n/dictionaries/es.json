@@ -263,7 +263,7 @@
     "copyText": "Copiar mensaje",
     "emailSubjectLabel": "Asunto",
     "emailSubject": "Reclama tu ficha gratis de MyOrbisBiz para {business}",
-    "emailBody": "Hola {name},\n\n{business} tiene una ficha gratis en MyOrbisBiz — solo falta reclamarla. Reclamarla es gratis y toma unos 2 minutos. Puedes confirmar tu información, agregar fotos, poner tu horario y servicios, y responder reseñas.\n\nReclámala aquí: {link}\n\nSin costo, sin compromiso — es tu ficha.\n\n¡Gracias!",
+    "emailBody": "Hola {name},\n\n{business} tiene una ficha gratis en MyOrbisBiz — solo falta reclamarla. Reclamarla es gratis y toma unos 2 minutos. Puedes confirmar tu información, agregar fotos, poner tu horario y servicios, y responder reseñas.\n\nSin costo, sin compromiso — es tu ficha.\n\n¡Gracias!",
     "smsBody": "Hola — {business} tiene una ficha gratis sin reclamar en MyOrbisBiz. Reclámala gratis en 2 min (fotos, horario, info): {link}"
   },
   "gmbEval": {

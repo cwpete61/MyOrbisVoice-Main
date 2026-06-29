@@ -422,16 +422,17 @@ function PartnerComposeButtons({
     const meta = (contact.metadataJson as unknown as Record<string, unknown>) ?? {}
     const business = (typeof meta['businessName'] === 'string' && meta['businessName']) || contact.fullName || ''
     const link = typeof meta['claimLink'] === 'string' ? (meta['claimLink'] as string) : ''
-    // Greeting name: contact's first name, else default to the business name. {name}
-    // is left literal at staging so it reflects the latest name when opened.
+    // Greeting name: the contact's person name (first name), else default to the
+    // business name. Always rebuild from the current template so the greeting picks
+    // up the latest name and the removed "claim it here" URL line never lingers on
+    // older staged bodies. The button carries the link.
     const metaName = typeof meta['contactName'] === 'string' ? (meta['contactName'] as string) : ''
     const name = (contact.firstName?.trim() || metaName.trim() || business)
     const fill = (tpl: string) => tpl.replaceAll('{business}', business).replaceAll('{link}', link).replaceAll('{name}', name)
-    const nameOnly = (s: string) => s.replaceAll('{name}', name)
-    const stagedSubject = typeof meta['claimEmailSubject'] === 'string' ? (meta['claimEmailSubject'] as string) : ''
-    const stagedBody    = typeof meta['claimEmailBody'] === 'string' ? (meta['claimEmailBody'] as string) : ''
-    if (stagedSubject || link) setSubject(nameOnly(stagedSubject) || fill(t('partnerDirectory.emailSubject')))
-    if (stagedBody || link)    setBody(nameOnly(stagedBody) || fill(t('partnerDirectory.emailBody')))
+    if (link) {
+      setSubject(fill(t('partnerDirectory.emailSubject')))
+      setBody(fill(t('partnerDirectory.emailBody')))
+    }
     setMode('email')
   }
 
