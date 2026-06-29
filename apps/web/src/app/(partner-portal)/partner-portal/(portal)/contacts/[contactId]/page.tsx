@@ -377,6 +377,7 @@ function ContactInfoCard({ contact, t, tz, onSaved }: {
       ) : (
         <>
           {[
+            [t('partnerContactDetail.contactName'), contact.firstName ?? '—'],
             [t('partnerContactDetail.email'),  contact.email ?? '—'],
             [t('partnerContactDetail.phone'),  contact.phoneE164 ?? '—'],
             [t('partnerContactDetail.source'), contact.source],
