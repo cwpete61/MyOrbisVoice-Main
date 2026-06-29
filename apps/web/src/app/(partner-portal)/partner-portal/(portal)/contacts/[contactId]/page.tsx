@@ -406,6 +406,7 @@ function PartnerComposeButtons({
   const [mode, setMode] = useState<null | 'email' | 'sms'>(null)
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
+  const [inboxMode, setInboxMode] = useState(true)  // plain = lands in Primary; off = branded (logo+avatar+button)
   const [sending, setSending] = useState(false)
   const [err, setErr] = useState('')
   // Add-email (directory leads start with no email; partner adds the owner's
@@ -455,7 +456,7 @@ function PartnerComposeButtons({
       if (mode === 'email') {
         await apiFetch(`/api/partner/crm/contacts/${contactId}/email`, {
           method: 'POST',
-          body:   JSON.stringify({ subject, body }),
+          body:   JSON.stringify({ subject, body, plain: inboxMode }),
         })
         onSent(t('partnerContactDetail.emailSentConfirm'))
       } else if (mode === 'sms') {
@@ -525,6 +526,12 @@ function PartnerComposeButtons({
             rows={mode === 'email' ? 6 : 3}
             maxLength={mode === 'email' ? 50000 : 1600}
           />
+          {mode === 'email' && (
+            <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+              <input type="checkbox" checked={inboxMode} onChange={(e) => setInboxMode(e.target.checked)} />
+              {t('partnerContactDetail.inboxMode')}
+            </label>
+          )}
           <div className="flex items-center gap-2">
             <button onClick={send} disabled={sending || !body.trim() || (mode === 'email' && !subject.trim())} className="btn-primary text-xs">
               {sending ? t('partnerContactDetail.sending') : t('partnerContactDetail.send')}

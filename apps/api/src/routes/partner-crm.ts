@@ -28,8 +28,11 @@ const MOB_LOGO = 'https://myorbisbiz.com/icon-192.png'
 // Branded HTML for partner outbound emails: the message body (text preserved), an
 // optional "Claim your listing" button when a directory claim link is present, and
 // a logo + MyOrbisBiz signature block. Plain `body` is sent as the text/plain part.
-function buildPartnerEmailHtml(body: string, claimLink: string, fromName: string, tel: string, email: string): string {
-  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+// Branded HTML — logo, claim button, partner avatar + signature. Looks good; tends
+// to land in Gmail's Promotions tab (button + images). No <hr> (it split on mobile).
+function buildPartnerEmailHtml(body: string, claimLink: string, fromName: string, tel: string, email: string, avatarUrl: string): string {
   const cta = claimLink
     ? `<div style="text-align:center;margin:26px 0">` +
         `<div style="font-weight:700;letter-spacing:.06em;color:#222222;margin-bottom:10px">CLAIM HERE</div>` +
@@ -40,14 +43,30 @@ function buildPartnerEmailHtml(body: string, claimLink: string, fromName: string
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#222222;line-height:1.55">` +
     `<div style="white-space:pre-wrap;font-size:15px">${esc(body)}</div>` +
     cta +
-    `<hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0" />` +
+    `<div style="height:28px"></div>` +
     `<div style="text-align:left">` +
-      `<img src="${MOB_LOGO}" width="48" height="48" alt="MyOrbisBiz" style="border-radius:10px;display:block" />` +
+      (avatarUrl ? `<img src="${esc(avatarUrl)}" width="56" height="56" alt="${esc(fromName)}" style="border-radius:50%;display:block;margin-bottom:10px" />` : '') +
+      `<img src="${MOB_LOGO}" width="40" height="40" alt="MyOrbisBiz" style="border-radius:9px;display:block" />` +
       `<div style="font-weight:700;color:#15a8a8;margin-top:6px;font-size:15px">MyOrbisBiz</div>` +
       (fromName ? line(fromName) : '') +
       (tel ? line(tel) : '') +
       (email ? `<div style="font-size:13px;margin-top:2px"><a href="mailto:${esc(email)}" style="color:#15a8a8;text-decoration:none">${esc(email)}</a></div>` : '') +
     `</div></div>`
+}
+
+// Primary-optimized (inbox) HTML — plain, personal, no button/images/banner. A text
+// link instead of a button; a plain text signature. Far more likely to land in
+// Gmail's Primary tab. The default for partner sends.
+function buildPartnerEmailPlain(body: string, claimLink: string, fromName: string, tel: string, email: string): string {
+  const link = claimLink
+    ? `<p style="margin:16px 0;font-size:15px"><a href="${esc(claimLink)}" style="color:#0a66c2">Claim your listing here</a></p>`
+    : ''
+  const sigLines = [fromName, 'MyOrbisBiz', tel, email].filter(Boolean).map(esc).join('<br/>')
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#222222;line-height:1.55;font-size:15px">` +
+    `<div style="white-space:pre-wrap">${esc(body)}</div>` +
+    link +
+    `<p style="margin:18px 0 0;color:#444;font-size:14px">${sigLines}</p>` +
+    `</div>`
 }
 
 function normPhone(s: string | undefined | null): string | null {
@@ -548,9 +567,10 @@ router.post('/partner/crm/contacts/:id/email', async (req: Request, res: Respons
   try {
     const pid       = partnerId(req)
     const contactId = req.params.id!
-    const { subject, body } = z.object({
+    const { subject, body, plain } = z.object({
       subject: z.string().min(1).max(200),
       body:    z.string().min(1).max(50_000),
+      plain:   z.boolean().optional().default(true),  // default = inbox/Primary-optimized
     }).parse(req.body)
 
     const contact = await prisma.contact.findFirst({ where: { id: contactId, partnerId: pid } })
@@ -561,7 +581,7 @@ router.post('/partner/crm/contacts/:id/email', async (req: Request, res: Respons
     // back to the system from. Lets the contact see a recognizable sender.
     const partner = await prisma.affiliateAccount.findFirst({
       where:  { id: pid },
-      select: { slug: true, displayName: true, partnerPhone: true, user: { select: { firstName: true, lastName: true, email: true } } },
+      select: { slug: true, displayName: true, partnerPhone: true, avatarUrl: true, user: { select: { firstName: true, lastName: true, email: true } } },
     })
     const fromName = partner?.displayName
       ?? [partner?.user?.firstName, partner?.user?.lastName].filter(Boolean).join(' ')
@@ -570,13 +590,16 @@ router.post('/partner/crm/contacts/:id/email', async (req: Request, res: Respons
     // Signature contact lines — partner's public phone + their sending alias email.
     const sigTel = partner?.partnerPhone ?? ''
     const sigEmail = partner?.slug ? `${partner.slug}@myorbisresults.com` : (partner?.user?.email ?? '')
+    const sigAvatar = partner?.avatarUrl ?? ''
 
     // Branded HTML: body, a real "Claim your listing" button (when this contact has
     // a directory claim link), and a logo signature block. Plain `body` stays the
     // text/plain alt. claimLink comes from the directory-lead staging metadata.
     const meta = (contact.metadataJson as Record<string, unknown> | null) ?? {}
     const claimLink = typeof meta['claimLink'] === 'string' ? (meta['claimLink'] as string) : ''
-    const html = buildPartnerEmailHtml(body, claimLink, fromName, sigTel, sigEmail)
+    const html = plain
+      ? buildPartnerEmailPlain(body, claimLink, fromName, sigTel, sigEmail)
+      : buildPartnerEmailHtml(body, claimLink, fromName, sigTel, sigEmail, sigAvatar)
 
     // F.4 — sendEmail now routes via the right provider (Postmark/Resend/Brevo/SMTP)
     // and returns the providerMessageId so we can persist it on MessageLog. The
