@@ -449,6 +449,8 @@ export async function approveAffiliate(id: string) {
   ensurePartnerOrbyAgent(id).catch((e) =>
     console.error(`[approveAffiliate] partner Orby provisioning failed for ${id}: ${(e as Error).message}`),
   )
+  // Mirror to the Hub Partner table so the storefront recognizes them. Best-effort.
+  import('./hub-sync.service.js').then((m) => m.syncPartnerToHub(account.userId)).catch(() => {})
   return account
 }
 

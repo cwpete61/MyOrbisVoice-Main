@@ -98,3 +98,26 @@ export async function syncTenantToHub(tenantId: string): Promise<void> {
     console.warn('[hub-sync] tenant sync failed (non-fatal):', tenantId, (err as Error).message)
   }
 }
+
+/** Mirror a Voice affiliate into the Hub Partner table so the parent storefront
+ *  (which checks the Hub, not the Voice AffiliateAccount) recognizes them as a
+ *  partner. Without this a new affiliate lands in the tenant dashboard. Best-effort:
+ *  no-ops when the Hub is unconfigured; never throws into the signup path. */
+export async function syncPartnerToHub(userId: string): Promise<void> {
+  if (!HUB_URL || !HUB_TOKEN) return
+  try {
+    const acct = await prisma.affiliateAccount.findFirst({
+      where: { userId },
+      select: { id: true, slug: true, status: true, user: { select: { email: true } } },
+    })
+    if (!acct?.user?.email) return
+    await hubPut('/v1/partners', {
+      email: acct.user.email.toLowerCase(),
+      voiceAffiliateId: acct.id,
+      ...(acct.slug ? { slug: acct.slug } : {}),
+      status: acct.status,
+    })
+  } catch (e) {
+    console.warn('[hub-sync] partner sync failed (non-fatal):', (e as Error).message)
+  }
+}

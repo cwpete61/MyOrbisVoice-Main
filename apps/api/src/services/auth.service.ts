@@ -294,6 +294,10 @@ export async function affiliateSignupUser(data: {
 
   // Create the affiliate account in PENDING state
   await applyForAffiliate(user.id)
+  // Mirror into the Hub Partner table so the parent storefront recognizes them as a
+  // partner (else they land in the tenant dashboard). Best-effort.
+  const { syncPartnerToHub } = await import('./hub-sync.service.js')
+  await syncPartnerToHub(user.id).catch(() => {})
 
   const tokens = await issueTokens(user.id, user.email, null, 'affiliate', false)
   return { user: sanitizeUser(user), ...tokens }
