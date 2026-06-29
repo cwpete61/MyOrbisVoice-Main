@@ -22,6 +22,29 @@ import { signInviteToken } from '../lib/jwt.js'
 const SIGNUP_ORIGIN = process.env['WEB_ORIGIN'] ?? 'https://app.myorbisvoice.com'
 const API_PUBLIC_ORIGIN = process.env['API_PUBLIC_ORIGIN'] ?? 'https://api.myorbisvoice.com'
 
+// MyOrbisBiz logo (hosted absolute URL — email needs that). Used in the signature.
+const MOB_LOGO = 'https://myorbisbiz.com/icon-192.png'
+
+// Branded HTML for partner outbound emails: the message body (text preserved), an
+// optional "Claim your listing" button when a directory claim link is present, and
+// a logo + MyOrbisBiz signature block. Plain `body` is sent as the text/plain part.
+function buildPartnerEmailHtml(body: string, claimLink: string, fromName: string): string {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const cta = claimLink
+    ? `<div style="text-align:center;margin:26px 0"><a href="${esc(claimLink)}" style="display:inline-block;background:#15a8a8;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">Claim your free listing →</a></div>`
+    : ''
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#222222;line-height:1.55">` +
+    `<div style="white-space:pre-wrap;font-size:15px">${esc(body)}</div>` +
+    cta +
+    `<hr style="border:none;border-top:1px solid #e5e7eb;margin:28px 0" />` +
+    `<div style="text-align:center">` +
+      `<img src="${MOB_LOGO}" width="48" height="48" alt="MyOrbisBiz" style="border-radius:10px;display:inline-block" />` +
+      `<div style="font-weight:700;color:#15a8a8;margin-top:6px;font-size:15px">MyOrbisBiz</div>` +
+      (fromName ? `<div style="font-size:13px;color:#667085;margin-top:2px">${esc(fromName)}</div>` : '') +
+      `<div style="font-size:12px;color:#98a2b3;margin-top:8px">A MyOrbisResults company</div>` +
+    `</div></div>`
+}
+
 function normPhone(s: string | undefined | null): string | null {
   const d = (s ?? '').replace(/\D/g, '')
   if (!d) return null
@@ -193,6 +216,103 @@ router.post('/partner/crm/contacts/from-eval', async (req: Request, res: Respons
     await crmService.seedDefaultPipelineForPartner({ partnerId: pid, hostingTenantId })
     await crmService.placeNewContactOnPipeline({ kind: 'partner', partnerId: pid, hostingTenantId }, contact.id)
     res.json({ data: { id: contact.id } })
+  } catch (err) { next(err) }
+})
+
+// ── Save a MyOrbisBiz directory lead into the partner CRM ───────────────────
+// Called when the partner clicks "Get my claim link" in Directory Leads. Born a
+// cold lead (opted out of SMS/voice — the partner cold-CALLS for permission
+// first, then sends the claim link). Deduped one-per-(partner, directory
+// business) so re-clicking reopens the same lead instead of duplicating.
+const directoryLeadSchema = z.object({
+  businessSlug: z.string().min(1).max(200),
+  businessName: z.string().max(200).optional().default(''),
+  city:         z.string().max(120).optional().default(''),
+  niche:        z.string().max(120).optional().default(''),
+  phone:        z.string().max(40).optional().default(''),
+  listingHref:  z.string().max(400).optional().default(''),
+  claimLink:    z.string().max(600).optional().default(''),
+  gaps:         z.array(z.string()).max(20).optional(),
+  auditScore:   z.number().int().min(0).max(100).optional(),
+  // Pre-rendered claim email (built client-side from the bilingual template +
+  // business + tagged link) — staged so the contact page can one-click pre-fill
+  // the compose. The partner sends it from the contact page after the call.
+  claimEmailSubject: z.string().max(300).optional(),
+  claimEmailBody:    z.string().max(8000).optional(),
+})
+
+router.post('/partner/crm/contacts/from-directory-lead', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const pid = partnerId(req)
+    const b = directoryLeadSchema.parse(req.body)
+    const hostingTenantId = await resolveHostingTenantId(pid)
+
+    // Dedup: one CRM contact per (partner, directory business slug).
+    const existing = await prisma.contact.findFirst({
+      where: { partnerId: pid, deletedAt: null, metadataJson: { path: ['directoryBusinessSlug'], equals: b.businessSlug } },
+      select: { id: true },
+    })
+    if (existing) { res.json({ data: { id: existing.id, alreadyExisted: true } }); return }
+
+    const now = new Date()
+    const contact = await prisma.contact.create({
+      data: {
+        tenantId:   hostingTenantId,
+        partnerId:  pid,
+        fullName:   b.businessName || 'Directory lead',
+        phoneE164:  normPhone(b.phone),
+        city:       b.city || null,
+        source:     'DIRECTORY_LEAD',
+        // Cold lead — no consent yet. Opted out of SMS + voice (compliance wall).
+        optedOutSms:   true, optedOutSmsAt: now,
+        optedOutVoice: true, optedOutVoiceAt: now,
+        tagsJson:   b.niche ? [b.niche] : undefined,
+        metadataJson: {
+          directoryBusinessSlug: b.businessSlug,
+          businessName: b.businessName || null,
+          niche:        b.niche || null,
+          city:         b.city || null,
+          listingHref:  b.listingHref || null,
+          claimLink:    b.claimLink || null,
+          auditGaps:    b.gaps ?? null,
+          auditScore:   b.auditScore ?? null,
+          claimEmailSubject: b.claimEmailSubject || null,
+          claimEmailBody:    b.claimEmailBody || null,
+        },
+      },
+    })
+    await crmService.seedDefaultPipelineForPartner({ partnerId: pid, hostingTenantId })
+    await crmService.placeNewContactOnPipeline({ kind: 'partner', partnerId: pid, hostingTenantId }, contact.id)
+    res.json({ data: { id: contact.id, alreadyExisted: false } })
+  } catch (err) { next(err) }
+})
+
+// ── Update editable contact fields (email) ──────────────────────────────────
+// A directory lead is born with no email (cold). The partner adds the owner's
+// email after the call, which un-grays the Email compose so they can send the
+// staged claim invite.
+router.patch('/partner/crm/contacts/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const pid = partnerId(req)
+    const id  = req.params['id'] as string
+    const b = z.object({
+      fullName:  z.string().max(200).nullable().optional(),
+      firstName: z.string().max(120).nullable().optional(),  // person name (email greeting)
+      email:     z.string().email().max(200).nullable().optional(),
+      phoneE164: z.string().max(40).nullable().optional(),
+    }).parse(req.body)
+    const contact = await prisma.contact.findFirst({ where: { id, partnerId: pid, deletedAt: null }, select: { id: true } })
+    if (!contact) throw new AppError('NOT_FOUND', 'Contact not found', 404)
+    const data: Record<string, unknown> = {}
+    if (b.fullName  !== undefined) data['fullName']  = b.fullName?.trim() || null
+    if (b.firstName !== undefined) data['firstName'] = b.firstName?.trim() || null
+    if (b.email     !== undefined) data['email']     = b.email || null
+    if (b.phoneE164 !== undefined) data['phoneE164'] = normPhone(b.phoneE164)
+    const updated = await prisma.contact.update({
+      where: { id }, data,
+      select: { id: true, fullName: true, firstName: true, email: true, phoneE164: true },
+    })
+    res.json({ data: updated })
   } catch (err) { next(err) }
 })
 
@@ -426,10 +546,6 @@ router.post('/partner/crm/contacts/:id/email', async (req: Request, res: Respons
     if (!contact) throw new AppError('NOT_FOUND', 'Contact not found', 404)
     if (!contact.email) throw new AppError('VALIDATION_ERROR', 'Contact has no email address', 422)
 
-    const html = `<div style="font-family:sans-serif;max-width:640px;color:#222;line-height:1.55;white-space:pre-wrap">${
-      body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    }</div>`
-
     // Partner-from header — use their slug-based alias when available, else fall
     // back to the system from. Lets the contact see a recognizable sender.
     const partner = await prisma.affiliateAccount.findFirst({
@@ -440,6 +556,13 @@ router.post('/partner/crm/contacts/:id/email', async (req: Request, res: Respons
       ?? [partner?.user?.firstName, partner?.user?.lastName].filter(Boolean).join(' ')
       ?? 'MyOrbisResults Partner'
     const fromHeader = partner?.slug ? `${fromName} <${partner.slug}@myorbisresults.com>` : undefined
+
+    // Branded HTML: body, a real "Claim your listing" button (when this contact has
+    // a directory claim link), and a logo signature block. Plain `body` stays the
+    // text/plain alt. claimLink comes from the directory-lead staging metadata.
+    const meta = (contact.metadataJson as Record<string, unknown> | null) ?? {}
+    const claimLink = typeof meta['claimLink'] === 'string' ? (meta['claimLink'] as string) : ''
+    const html = buildPartnerEmailHtml(body, claimLink, fromName)
 
     // F.4 — sendEmail now routes via the right provider (Postmark/Resend/Brevo/SMTP)
     // and returns the providerMessageId so we can persist it on MessageLog. The
@@ -454,6 +577,9 @@ router.post('/partner/crm/contacts/:id/email', async (req: Request, res: Respons
       kind: 'transactional',  // partner ad-hoc compose is conceptually transactional
       tenantId: contact.tenantId,
       partnerId: pid,
+      // Gmail/Yahoo bulk-sender requirement + deliverability: every send carries an
+      // unsubscribe header. (DNS-side SPF+DMARC for myorbisresults.com is the rest.)
+      headers: [{ name: 'List-Unsubscribe', value: '<mailto:unsubscribe@myorbisresults.com?subject=unsubscribe>' }],
     })
     if (!sendResult.sent) {
       throw new AppError(

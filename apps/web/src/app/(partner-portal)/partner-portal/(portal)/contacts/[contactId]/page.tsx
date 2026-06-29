@@ -157,29 +157,7 @@ export default function PartnerContactTimelinePage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
-          <h2 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('partnerContactDetail.contactInfo')}</h2>
-          {[
-            [t('partnerContactDetail.email'),  contact.email ?? '—'],
-            [t('partnerContactDetail.phone'),  contact.phoneE164 ?? '—'],
-            [t('partnerContactDetail.source'), contact.source],
-            [t('partnerContactDetail.added'),  formatInTimezone(contact.createdAt, { tz, dateStyle: 'medium' })],
-          ].map(([k, v]) => (
-            <div key={k} className="flex justify-between text-sm">
-              <span style={{ color: 'var(--text-secondary)' }}>{k}</span>
-              <span style={{ color: 'var(--text-primary)' }}>{v}</span>
-            </div>
-          ))}
-          {contact.emailStatus && (
-            <div className="flex justify-between text-sm">
-              <span style={{ color: 'var(--text-secondary)' }}>{t('partnerContactDetail.emailStatus')}</span>
-              <StatusBadge
-                label={contact.emailStatus}
-                color={contact.emailStatus === 'valid' ? 'green' : contact.emailStatus === 'invalid' ? 'red' : 'yellow'}
-              />
-            </div>
-          )}
-        </div>
+        <ContactInfoCard contact={contact} t={t} tz={tz} onSaved={reload} />
 
         <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
           <h2 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('partnerContactDetail.commsPrefs')}</h2>
@@ -352,6 +330,75 @@ function PartnerStageChip({
   )
 }
 
+// Contact info card with inline edit (name / email / phone). Partners can fix
+// or fill in details — directory leads start sparse (no email/phone).
+function ContactInfoCard({ contact, t, tz, onSaved }: {
+  contact: Contact; t: (k: string) => string; tz: string; onSaved: () => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [fullName, setFullName] = useState(contact.fullName ?? '')
+  const [contactName, setContactName] = useState(contact.firstName ?? '')
+  const [email, setEmail] = useState(contact.email ?? '')
+  const [phone, setPhone] = useState(contact.phoneE164 ?? '')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function save() {
+    setSaving(true); setErr('')
+    try {
+      await apiFetch(`/api/partner/crm/contacts/${contact.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ fullName: fullName || null, firstName: contactName || null, email: email || null, phoneE164: phone || null }),
+      })
+      setEditing(false); onSaved()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t('partnerContactDetail.sendFailed'))
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="rounded-xl p-5 space-y-3" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('partnerContactDetail.contactInfo')}</h2>
+        {!editing && <button onClick={() => setEditing(true)} className="text-xs btn-ghost">{t('partnerContactDetail.edit')}</button>}
+      </div>
+      {editing ? (
+        <div className="space-y-2">
+          <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t('partnerContactDetail.namePlaceholder')} className="input w-full text-sm" maxLength={200} />
+          <input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder={t('partnerContactDetail.contactNamePlaceholder')} className="input w-full text-sm" maxLength={120} />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('partnerContactDetail.addEmailPlaceholder')} className="input w-full text-sm" maxLength={200} />
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('partnerContactDetail.phonePlaceholder')} className="input w-full text-sm" maxLength={40} />
+          <div className="flex items-center gap-2">
+            <button onClick={save} disabled={saving} className="btn-primary text-xs">{saving ? t('partnerContactDetail.sending') : t('partnerContactDetail.save')}</button>
+            <button onClick={() => { setEditing(false); setFullName(contact.fullName ?? ''); setContactName(contact.firstName ?? ''); setEmail(contact.email ?? ''); setPhone(contact.phoneE164 ?? '') }} className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('partnerContactDetail.cancel')}</button>
+            {err && <span className="text-xs" style={{ color: 'var(--error-600)' }}>{err}</span>}
+          </div>
+        </div>
+      ) : (
+        <>
+          {[
+            [t('partnerContactDetail.email'),  contact.email ?? '—'],
+            [t('partnerContactDetail.phone'),  contact.phoneE164 ?? '—'],
+            [t('partnerContactDetail.source'), contact.source],
+            [t('partnerContactDetail.added'),  formatInTimezone(contact.createdAt, { tz, dateStyle: 'medium' })],
+          ].map(([k, v]) => (
+            <div key={k} className="flex justify-between text-sm">
+              <span style={{ color: 'var(--text-secondary)' }}>{k}</span>
+              <span style={{ color: 'var(--text-primary)' }}>{v}</span>
+            </div>
+          ))}
+          {contact.emailStatus && (
+            <div className="flex justify-between text-sm">
+              <span style={{ color: 'var(--text-secondary)' }}>{t('partnerContactDetail.emailStatus')}</span>
+              <StatusBadge label={contact.emailStatus} color={contact.emailStatus === 'valid' ? 'green' : contact.emailStatus === 'invalid' ? 'red' : 'yellow'} />
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function PartnerComposeButtons({
   contact, contactId, onSent, t,
 }: { contact: Contact; contactId: string; onSent: (msg: string) => void; t: (k: string) => string }) {
@@ -360,6 +407,45 @@ function PartnerComposeButtons({
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
   const [err, setErr] = useState('')
+  // Add-email (directory leads start with no email; partner adds the owner's
+  // after the call, which un-grays the Email compose).
+  const [emailInput, setEmailInput] = useState('')
+  const [savingEmail, setSavingEmail] = useState(false)
+
+  // Open the email composer pre-filled with the claim invite. Uses the staged
+  // subject/body if present, else builds it from the business name + tagged
+  // claim link in metadata (so it works for directory leads created before
+  // staging existed too). Non-directory contacts (no claimLink) open blank.
+  function openEmail() {
+    setErr('')
+    const meta = (contact.metadataJson as unknown as Record<string, unknown>) ?? {}
+    const business = (typeof meta['businessName'] === 'string' && meta['businessName']) || contact.fullName || ''
+    const link = typeof meta['claimLink'] === 'string' ? (meta['claimLink'] as string) : ''
+    // Greeting name: contact's first name, else default to the business name. {name}
+    // is left literal at staging so it reflects the latest name when opened.
+    const metaName = typeof meta['contactName'] === 'string' ? (meta['contactName'] as string) : ''
+    const name = (contact.firstName?.trim() || metaName.trim() || business)
+    const fill = (tpl: string) => tpl.replaceAll('{business}', business).replaceAll('{link}', link).replaceAll('{name}', name)
+    const nameOnly = (s: string) => s.replaceAll('{name}', name)
+    const stagedSubject = typeof meta['claimEmailSubject'] === 'string' ? (meta['claimEmailSubject'] as string) : ''
+    const stagedBody    = typeof meta['claimEmailBody'] === 'string' ? (meta['claimEmailBody'] as string) : ''
+    if (stagedSubject || link) setSubject(nameOnly(stagedSubject) || fill(t('partnerDirectory.emailSubject')))
+    if (stagedBody || link)    setBody(nameOnly(stagedBody) || fill(t('partnerDirectory.emailBody')))
+    setMode('email')
+  }
+
+  async function saveEmail() {
+    if (!emailInput.trim()) return
+    setSavingEmail(true); setErr('')
+    try {
+      await apiFetch(`/api/partner/crm/contacts/${contactId}`, {
+        method: 'PATCH', body: JSON.stringify({ email: emailInput.trim() }),
+      })
+      onSent(t('partnerContactDetail.emailAdded'))
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t('partnerContactDetail.sendFailed'))
+    } finally { setSavingEmail(false) }
+  }
 
   async function send() {
     setSending(true); setErr('')
@@ -385,9 +471,24 @@ function PartnerComposeButtons({
 
   return (
     <div className="rounded-xl p-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+      {/* No email yet — let the partner add the owner's address (post-call). */}
+      {!contact.email && (
+        <div className="flex items-center gap-2 mb-3">
+          <input
+            type="email"
+            value={emailInput}
+            onChange={(e) => setEmailInput(e.target.value)}
+            placeholder={t('partnerContactDetail.addEmailPlaceholder')}
+            className="input flex-1 text-sm"
+          />
+          <button onClick={saveEmail} disabled={savingEmail || !emailInput.trim()} className="btn-primary text-xs">
+            {savingEmail ? t('partnerContactDetail.sending') : t('partnerContactDetail.addEmail')}
+          </button>
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <button
-          onClick={() => { setMode('email'); setErr('') }}
+          onClick={openEmail}
           disabled={!contact.email || contact.optedOutEmail}
           className="text-xs btn-ghost disabled:opacity-40"
         >
