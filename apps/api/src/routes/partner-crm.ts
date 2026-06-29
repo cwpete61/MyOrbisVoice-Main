@@ -28,11 +28,12 @@ const MOB_LOGO = 'https://myorbisbiz.com/icon-192.png'
 // Branded HTML for partner outbound emails: the message body (text preserved), an
 // optional "Claim your listing" button when a directory claim link is present, and
 // a logo + MyOrbisBiz signature block. Plain `body` is sent as the text/plain part.
-function buildPartnerEmailHtml(body: string, claimLink: string, fromName: string): string {
+function buildPartnerEmailHtml(body: string, claimLink: string, fromName: string, tel: string, email: string): string {
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const cta = claimLink
     ? `<div style="text-align:center;margin:26px 0"><a href="${esc(claimLink)}" style="display:inline-block;background:#15a8a8;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">Claim your free listing →</a></div>`
     : ''
+  const line = (s: string) => `<div style="font-size:13px;color:#667085;margin-top:2px">${esc(s)}</div>`
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#222222;line-height:1.55">` +
     `<div style="white-space:pre-wrap;font-size:15px">${esc(body)}</div>` +
     cta +
@@ -40,7 +41,9 @@ function buildPartnerEmailHtml(body: string, claimLink: string, fromName: string
     `<div style="text-align:center">` +
       `<img src="${MOB_LOGO}" width="48" height="48" alt="MyOrbisBiz" style="border-radius:10px;display:inline-block" />` +
       `<div style="font-weight:700;color:#15a8a8;margin-top:6px;font-size:15px">MyOrbisBiz</div>` +
-      (fromName ? `<div style="font-size:13px;color:#667085;margin-top:2px">${esc(fromName)}</div>` : '') +
+      (fromName ? line(fromName) : '') +
+      (tel ? line(`Tel: ${tel}`) : '') +
+      (email ? `<div style="font-size:13px;margin-top:2px"><a href="mailto:${esc(email)}" style="color:#15a8a8;text-decoration:none">Email: ${esc(email)}</a></div>` : '') +
       `<div style="font-size:12px;color:#98a2b3;margin-top:8px">A MyOrbisResults company</div>` +
     `</div></div>`
 }
@@ -550,19 +553,22 @@ router.post('/partner/crm/contacts/:id/email', async (req: Request, res: Respons
     // back to the system from. Lets the contact see a recognizable sender.
     const partner = await prisma.affiliateAccount.findFirst({
       where:  { id: pid },
-      select: { slug: true, displayName: true, user: { select: { firstName: true, lastName: true } } },
+      select: { slug: true, displayName: true, partnerPhone: true, user: { select: { firstName: true, lastName: true, email: true } } },
     })
     const fromName = partner?.displayName
       ?? [partner?.user?.firstName, partner?.user?.lastName].filter(Boolean).join(' ')
       ?? 'MyOrbisResults Partner'
     const fromHeader = partner?.slug ? `${fromName} <${partner.slug}@myorbisresults.com>` : undefined
+    // Signature contact lines — partner's public phone + their sending alias email.
+    const sigTel = partner?.partnerPhone ?? ''
+    const sigEmail = partner?.slug ? `${partner.slug}@myorbisresults.com` : (partner?.user?.email ?? '')
 
     // Branded HTML: body, a real "Claim your listing" button (when this contact has
     // a directory claim link), and a logo signature block. Plain `body` stays the
     // text/plain alt. claimLink comes from the directory-lead staging metadata.
     const meta = (contact.metadataJson as Record<string, unknown> | null) ?? {}
     const claimLink = typeof meta['claimLink'] === 'string' ? (meta['claimLink'] as string) : ''
-    const html = buildPartnerEmailHtml(body, claimLink, fromName)
+    const html = buildPartnerEmailHtml(body, claimLink, fromName, sigTel, sigEmail)
 
     // F.4 — sendEmail now routes via the right provider (Postmark/Resend/Brevo/SMTP)
     // and returns the providerMessageId so we can persist it on MessageLog. The
