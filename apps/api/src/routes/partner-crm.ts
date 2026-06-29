@@ -22,54 +22,44 @@ import { signInviteToken } from '../lib/jwt.js'
 const SIGNUP_ORIGIN = process.env['WEB_ORIGIN'] ?? 'https://app.myorbisvoice.com'
 const API_PUBLIC_ORIGIN = process.env['API_PUBLIC_ORIGIN'] ?? 'https://api.myorbisvoice.com'
 
-// MyOrbisBiz logo (hosted absolute URL — email needs that). Used in the signature.
-const MOB_LOGO = 'https://myorbisbiz.com/icon-192.png'
-
-// Branded HTML for partner outbound emails: the message body (text preserved), an
-// optional "Claim your listing" button when a directory claim link is present, and
-// a logo + MyOrbisBiz signature block. Plain `body` is sent as the text/plain part.
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-// Branded HTML — logo, claim button, partner avatar + signature. Looks good; tends
-// to land in Gmail's Promotions tab (button + images). No <hr> (it split on mobile).
-function buildPartnerEmailHtml(body: string, claimLink: string, fromName: string, tel: string, email: string, avatarUrl: string): string {
-  const cta = claimLink
-    ? `<div style="text-align:center;margin:26px 0">` +
-        `<div style="font-weight:700;letter-spacing:.06em;color:#222222;margin-bottom:10px">CLAIM HERE</div>` +
-        `<a href="${esc(claimLink)}" style="display:inline-block;background:#15a8a8;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">Claim your free listing →</a>` +
-      `</div>`
-    : ''
-  const line = (s: string) => `<div style="font-size:13px;color:#667085;margin-top:2px">${esc(s)}</div>`
-  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#222222;line-height:1.55">` +
-    `<div style="white-space:pre-wrap;font-size:15px">${esc(body)}</div>` +
-    cta +
-    `<div style="height:28px"></div>` +
-    `<div style="text-align:left">` +
-      (avatarUrl ? `<img src="${esc(avatarUrl)}" width="56" height="56" alt="${esc(fromName)}" style="border-radius:50%;display:block;margin-bottom:10px" />` : '') +
-      `<img src="${MOB_LOGO}" width="40" height="40" alt="MyOrbisBiz" style="border-radius:9px;display:block" />` +
-      `<div style="font-weight:700;color:#15a8a8;margin-top:6px;font-size:15px">MyOrbisBiz</div>` +
-      (fromName ? line(fromName) : '') +
-      (tel ? line(tel) : '') +
-      (email ? `<div style="font-size:13px;margin-top:2px"><a href="mailto:${esc(email)}" style="color:#15a8a8;text-decoration:none">${esc(email)}</a></div>` : '') +
-    `</div></div>`
+// Signature = the partner's marketing-profile avatar + plain text lines (name,
+// MyOrbisBiz, phone, email). No MyOrbisBiz logo image. Minimal markup — no spacer
+// or wrapper <div>s (those rendered as a split line on mobile).
+function signature(fromName: string, tel: string, email: string, avatarUrl: string, avatarPx: number): string {
+  const avatar = avatarUrl ? `<img src="${esc(avatarUrl)}" width="${avatarPx}" height="${avatarPx}" alt="${esc(fromName)}" style="border-radius:50%;display:block;margin:18px 0 8px" />` : ''
+  const lines = [fromName, 'MyOrbisBiz', tel].filter(Boolean).map(esc).join('<br/>')
+  const mail = email ? `<br/><a href="mailto:${esc(email)}" style="color:#15a8a8;text-decoration:none">${esc(email)}</a>` : ''
+  return avatar + `<p style="margin:0;color:#444;font-size:14px;line-height:1.5">${lines}${mail}</p>`
 }
 
-// Primary-optimized (inbox) HTML — plain, personal, no button/images/banner. A text
-// link instead of a button; a plain text signature. Far more likely to land in
-// Gmail's Primary tab. The default for partner sends.
+// Branded HTML — claim button + signature (avatar, no logo). Plain `body` is the
+// text/plain part.
+function buildPartnerEmailHtml(body: string, claimLink: string, fromName: string, tel: string, email: string, avatarUrl: string): string {
+  const cta = claimLink
+    ? `<p style="text-align:center;margin:26px 0">` +
+        `<span style="display:block;font-weight:700;letter-spacing:.06em;color:#222222;margin-bottom:10px">CLAIM HERE</span>` +
+        `<a href="${esc(claimLink)}" style="display:inline-block;background:#15a8a8;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:15px">Claim your free listing →</a>` +
+      `</p>`
+    : ''
+  return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#222222;line-height:1.55;font-size:15px">` +
+    `<div style="white-space:pre-wrap">${esc(body)}</div>` +
+    cta +
+    signature(fromName, tel, email, avatarUrl, 56) +
+    `</div>`
+}
+
+// Primary-optimized (inbox) HTML — plain text + a text link + the signature. No
+// button. The default for partner sends.
 function buildPartnerEmailPlain(body: string, claimLink: string, fromName: string, tel: string, email: string, avatarUrl: string): string {
   const link = claimLink
     ? `<p style="margin:16px 0;font-size:15px"><a href="${esc(claimLink)}" style="color:#0a66c2">Claim your listing here</a></p>`
     : ''
-  const sigLines = [fromName, 'MyOrbisBiz', tel, email].filter(Boolean).map(esc).join('<br/>')
-  // Small avatar + logo, then the text lines. (Images add a slight Promotions
-  // signal, but the rest stays plain text so it still favors Primary.)
-  const avatar = avatarUrl ? `<img src="${esc(avatarUrl)}" width="44" height="44" alt="${esc(fromName)}" style="border-radius:50%;display:block;margin-bottom:6px" />` : ''
-  const logo = `<img src="${MOB_LOGO}" width="32" height="32" alt="MyOrbisBiz" style="border-radius:7px;display:block;margin-bottom:6px" />`
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#222222;line-height:1.55;font-size:15px">` +
     `<div style="white-space:pre-wrap">${esc(body)}</div>` +
     link +
-    `<div style="margin:18px 0 0">${avatar}${logo}<div style="color:#444;font-size:14px">${sigLines}</div></div>` +
+    signature(fromName, tel, email, avatarUrl, 48) +
     `</div>`
 }
 
