@@ -454,6 +454,23 @@ model Tenant {
   referredByCode            String?
   attributedAt              DateTime?
   industryVertical          IndustryVertical        @default(GENERAL)
+  /// Stripe Connect (Express) — lets the tenant collect payments from THEIR
+  /// own customers. Pass-through model: DIRECT charges on this connected
+  /// account, no platform application fee (tenant keeps 100%). Distinct from
+  /// `stripeCustomerRef` (which is how the PLATFORM bills the tenant).
+  stripeConnectAccountId    String?                 @unique
+  stripeChargesEnabled      Boolean                 @default(false)
+  /// Mirror of the latest Connect account.updated status (detailsSubmitted,
+  /// payoutsEnabled, disabledReason, refreshedAt). Write-only status cache.
+  stripeConnectStatusJson   Json?
+  stripeConnectOnboardedAt  DateTime?
+  /// Phase 2 — lets the Orby voice agent offer + collect payment on a call
+  /// (texts a Stripe link to the caller). OFF by default; only fires when this
+  /// is true AND stripeChargesEnabled. orbyDepositCents = default deposit Orby
+  /// offers after a booking (null = Orby asks/uses caller-stated amount).
+  orbyPaymentsEnabled       Boolean                 @default(false)
+  orbyDepositCents          Int?
+  tenantPayments            TenantPayment[]
   members                   TenantMember[]
   businessProfile           BusinessProfile?
   businessDNARecords        BusinessDNA[]
@@ -829,6 +846,34 @@ model StripeCustomerRef {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+/// A payment the tenant collects from one of THEIR OWN customers via Stripe
+/// Connect — a pass-through DIRECT charge on the tenant's connected account
+/// (no platform fee). Created PENDING when a Checkout/payment link is generated,
+/// flipped PAID by the Connect webhook (checkout.session.completed /
+/// payment_intent.succeeded, matched on stripeCheckoutId / stripePaymentIntentId).
+/// contactId is a soft reference (no FK) to keep the blast radius small.
+model TenantPayment {
+  id                    String    @id @default(uuid())
+  tenantId              String
+  tenant                Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contactId             String?   // soft ref to Contact
+  appointmentId         String?   // soft ref to Appointment (booking deposit)
+  amountCents           Int
+  currency              String    @default("usd")
+  description           String?
+  status                String    @default("PENDING") // PENDING | PAID | CANCELED | FAILED
+  stripeCheckoutId      String?   @unique
+  stripePaymentIntentId String?   @unique
+  checkoutUrl           String?   @db.Text
+  source                String    @default("manual") // manual | booking | voice
+  paidAt                DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
 }
 
 // Phase G.1.B-2 — Partner-side Stripe Customer mapping. Mirrors the tenant
@@ -1872,6 +1917,9 @@ model AffiliateAccount {
   webinarSuppressions      WebinarSuppression[]           @relation("PartnerWebinarSuppressions")
   // Daily Activity playbook tracker (Market Vault → Daily Activity tab)
   dailyActivities          PartnerDailyActivityProgress[] @relation("PartnerDailyActivities")
+  // Partner script library (Directory Leads → Scripts tab). Per-partner scripts;
+  // admin defaults live as ownerless rows (affiliateAccountId null, isDefault true).
+  partnerScripts           PartnerScript[]                @relation("PartnerScripts")
 
   // ── Commission structure (locked at signup, admin-overridable) ───────────
   // A new partner snapshots Tier 1's recurringPct onto commissionRatePct at
@@ -1887,6 +1935,28 @@ model AffiliateAccount {
   commissionRatePct  Float?
   commissionLockedAt DateTime?
   commissionTier     CommissionTier? @relation(fields: [commissionTierId], references: [id], onDelete: SetNull)
+}
+
+// Partner script library (Directory Leads → Scripts tab). A script is either:
+//   • a partner's OWN script  (affiliateAccountId set, isDefault false) — full CRUD by that partner
+//   • an admin DEFAULT template (affiliateAccountId null, isDefault true) — global, read-only to
+//     partners, managed in the admin dashboard. Partners COPY a default into a new own script.
+// bodyHtml is rich text, sanitized server-side on write (allowlist) before storage.
+model PartnerScript {
+  id                 String            @id @default(uuid())
+  affiliateAccountId String?
+  affiliateAccount   AffiliateAccount? @relation("PartnerScripts", fields: [affiliateAccountId], references: [id], onDelete: Cascade)
+  isDefault          Boolean           @default(false)
+  title              String
+  channel            String            @default("call") // call | email | sms
+  bodyHtml           String            // sanitized rich-text HTML
+  sourceDefaultId    String? // if copied from an admin default, which one (provenance)
+  createdByUserId    String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([affiliateAccountId])
+  @@index([isDefault])
 }
 
 // Admin-customizable commission tiers. Exactly three rows in practice

@@ -495,3 +495,68 @@ export async function generateCampaignEmail(
     422,
   )
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Partner script generator (Directory Leads → Scripts tab)
+ *
+ * Channel-aware draft for a partner's outreach script. The partner picks a
+ * channel (call / email / sms) and gives a short instruction; we return a
+ * title + rich-text (HTML) body tuned to that channel. The body may use the
+ * template tokens {business}, {name}, {link} so the script can be reused as a
+ * claim message later. Output HTML is sanitized by the service before storage.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export type ScriptChannel = 'call' | 'email' | 'sms'
+
+export interface ScriptDraftSeed {
+  channel: ScriptChannel
+  instructions: string // "warm intro for a roofer with no website"
+  businessContext?: string // optional extra context
+}
+
+export interface ScriptDraft {
+  title: string
+  bodyHtml: string
+}
+
+function scriptSystemPrompt(channel: ScriptChannel): string {
+  const shared =
+    'You write outreach scripts for a MyOrbisResults partner who helps local ' +
+    'businesses claim a free directory listing and adopt MyOrbisResults services. ' +
+    'You may use the tokens {business}, {name}, and {link} as placeholders. ' +
+    'Return STRICT JSON: { "title": string, "bodyHtml": string }. ' +
+    'bodyHtml must be safe rich text using only <p>, <br>, <strong>, <em>, <u>, ' +
+    '<ul>, <ol>, <li>, <h2>, <h3>, <blockquote>, <a> tags — no scripts, styles, or images.'
+  const perChannel: Record<ScriptChannel, string> = {
+    call: 'Write a SPOKEN phone script: a natural opener, 2-3 talking points, a simple ask. Conversational, not salesy. Keep it short enough to say on a quick call.',
+    email: 'Write a short EMAIL body (no subject line in the body). Skimmable, friendly, one clear call to action. Land-in-inbox tone, not spammy.',
+    sms: 'Write a SHORT SMS (1-3 sentences, under ~320 characters). Plain, friendly, one clear ask. Minimal formatting.',
+  }
+  return `${shared}\n\n${perChannel[channel]}`
+}
+
+export async function generateScriptDraft(seed: ScriptDraftSeed): Promise<ScriptDraft> {
+  const apiKey = await getOpenAiApiKey()
+  if (!apiKey) {
+    throw new AppError('NOT_CONFIGURED', 'OpenAI API key is not set in system config.', 502)
+  }
+  const model = (await getConfigValue('openai_model')) || 'gpt-4o-mini'
+  const system = scriptSystemPrompt(seed.channel)
+  const user =
+    `Channel: ${seed.channel}\nInstruction: ${seed.instructions.trim()}` +
+    (seed.businessContext?.trim() ? `\nContext: ${seed.businessContext.trim()}` : '')
+
+  const isDraft = (v: unknown): v is ScriptDraft =>
+    !!v && typeof (v as ScriptDraft).title === 'string' && typeof (v as ScriptDraft).bodyHtml === 'string'
+
+  const first = await callOpenAi(apiKey, model, system, user)
+  let parsed: unknown
+  try { parsed = JSON.parse(first) } catch { parsed = null }
+  if (isDraft(parsed)) return { title: parsed.title.trim(), bodyHtml: parsed.bodyHtml }
+
+  const second = await callOpenAi(apiKey, model, system, user + '\n\nIMPORTANT: your last response was malformed. Return strictly { "title": string, "bodyHtml": string }.')
+  try { parsed = JSON.parse(second) } catch { parsed = null }
+  if (isDraft(parsed)) return { title: parsed.title.trim(), bodyHtml: parsed.bodyHtml }
+
+  throw new AppError('AI_INVALID_RESPONSE', "AI couldn't generate a valid script — try again or write it manually.", 422)
+}

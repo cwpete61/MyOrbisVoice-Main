@@ -223,6 +223,10 @@ router.post('/tenants/:tenantId/grant-plan', requirePlatformAdmin, async (req, r
     const { syncEntitlementsFromPlan } = await import('../services/entitlement.service.js')
     await syncEntitlementsFromPlan(tenantId, plan.id)
 
+    // The tenant now has an active plan — reflect it in the lifecycle status badge
+    // (was staying TRIAL because the grant only touched the subscription before).
+    await prisma.tenant.update({ where: { id: tenantId }, data: { status: 'ACTIVE' } }).catch(() => {})
+
     writeAuditLogFromRequest(req, {
       actorType: 'USER',
       actorUserId: req.user!.id,
@@ -255,6 +259,13 @@ router.post('/tenants/:tenantId/revoke-plan', requirePlatformAdmin, async (req, 
       const { syncEntitlementsFromPlan } = await import('../services/entitlement.service.js')
       await syncEntitlementsFromPlan(tenantId, freePlan.id)
     }
+
+    // Reset the status badge: back to TRIAL unless a REAL (Stripe) active subscription
+    // still backs this tenant — never downgrade a genuine paying customer.
+    const realSub = await prisma.subscription.findFirst({
+      where: { tenantId, stripeSubscriptionId: { not: null }, status: 'ACTIVE' },
+    })
+    await prisma.tenant.update({ where: { id: tenantId }, data: { status: realSub ? 'ACTIVE' : 'TRIAL' } }).catch(() => {})
 
     writeAuditLogFromRequest(req, {
       actorType: 'USER',
@@ -2449,6 +2460,41 @@ router.post('/twilio/reconcile', requirePlatformAdmin, async (req, res, next) =>
     const limit = typeof req.body?.limit === 'number' ? req.body.limit : undefined
     const data = await reconcileTwilioNumbers({ limit })
     res.json({ data })
+  } catch (err) { next(err) }
+})
+
+// ── Partner script default templates ─────────────────────────────────────────
+// Global default scripts that partners can copy in Directory Leads → Scripts.
+// Read = support tier (router-level guard); writes = platform admin.
+router.get('/scripts', async (_req, res, next) => {
+  try {
+    const scriptsSvc = await import('../services/scripts.service.js')
+    res.json({ data: await scriptsSvc.listDefaults() })
+  } catch (err) { next(err) }
+})
+
+router.post('/scripts', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const scriptsSvc = await import('../services/scripts.service.js')
+    const b = req.body as { title?: string; channel?: string; bodyHtml?: string }
+    res.json({ data: await scriptsSvc.createDefault(req.user!.id, {
+      title: b.title ?? '', channel: b.channel ?? 'call', bodyHtml: b.bodyHtml ?? '',
+    }) })
+  } catch (err) { next(err) }
+})
+
+router.put('/scripts/:id', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const scriptsSvc = await import('../services/scripts.service.js')
+    const b = req.body as { title?: string; channel?: string; bodyHtml?: string }
+    res.json({ data: await scriptsSvc.updateDefault(req.params.id!, b) })
+  } catch (err) { next(err) }
+})
+
+router.delete('/scripts/:id', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const scriptsSvc = await import('../services/scripts.service.js')
+    res.json({ data: await scriptsSvc.deleteDefault(req.params.id!) })
   } catch (err) { next(err) }
 })
 

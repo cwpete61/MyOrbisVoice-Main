@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 import { useT } from '@/lib/i18n/I18nProvider'
+import ScriptsPanel from '@/components/partner/ScriptsPanel'
 
 const TEAL = 'oklch(55% 0.11 193)'
 
@@ -37,7 +38,7 @@ function fill(tpl: string, business: string, link: string) {
 
 export default function DirectoryLeadsPage() {
   const t = useT()
-  const [tab, setTab] = useState<'leads' | 'claimed'>('leads')
+  const [tab, setTab] = useState<'leads' | 'claimed' | 'scripts'>('leads')
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -132,8 +133,8 @@ export default function DirectoryLeadsPage() {
 
       {/* Tabs — Directory Leads | Claimed */}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border-subtle)', marginBottom: 16 }}>
-        {([['leads', t('partnerDirectory.tabLeads')], ['claimed', t('partnerDirectory.tabClaimed')]] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setTab(k as 'leads' | 'claimed')}
+        {([['leads', t('partnerDirectory.tabLeads')], ['claimed', t('partnerDirectory.tabClaimed')], ['scripts', t('partnerDirectory.tabScripts')]] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setTab(k as 'leads' | 'claimed' | 'scripts')}
             style={{
               background: 'none', border: 'none', cursor: 'pointer', padding: '8px 14px', fontSize: 14,
               fontWeight: 600, color: tab === k ? TEAL : 'var(--text-tertiary)',
@@ -275,6 +276,8 @@ export default function DirectoryLeadsPage() {
           </div>
         )
       )}
+
+      {tab === 'scripts' && <ScriptsPanel />}
     </div>
   )
 }

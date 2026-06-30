@@ -6,6 +6,7 @@ import businessDNARouter from './business-dna.js'
 import promptsRouter from './prompts.js'
 import agentsRouter from './agents.js'
 import channelsRouter from './channels.js'
+import { paymentsRouter } from './payments.js'
 import adminRouter from './admin.js'
 import { billingRouter } from './billing.js'
 import integrationsRouter from './integrations.js'
@@ -34,6 +35,7 @@ import internalGatewayRouter from './internal-gateway.js'
 import internalMailRouter from './internal-mail.js'
 import partnerRouter from './partner.js'
 import partnerCrmRouter from './partner-crm.js'
+import partnerScriptsRouter from './partner-scripts.js'
 import partnerCampaignsRouter from './partner-campaigns.js'
 import partnerMailboxRouter from './partner-mailbox.js'
 import partnerGmbRouter from './partner-gmb.js'
@@ -95,6 +97,7 @@ router.use('/', affiliateRouter)        // contains public /api/public/track/cli
 router.use('/api', partnerRouter)
 router.use('/api', partnerA2pRouter)
 router.use('/api', partnerCrmRouter)
+router.use('/api', partnerScriptsRouter)
 router.use('/api', partnerCampaignsRouter)
 router.use('/api', partnerMailboxRouter)
 router.use('/api', partnerGmbRouter)
@@ -109,6 +112,7 @@ router.use('/api', businessDNARouter)
 router.use('/api', promptsRouter)
 router.use('/api', agentsRouter)
 router.use('/api', channelsRouter)
+router.use('/api', paymentsRouter)
 router.use('/api/admin', adminRouter)
 router.use('/api', appointmentsRouter)
 router.use('/api', phoneNumbersRouter)

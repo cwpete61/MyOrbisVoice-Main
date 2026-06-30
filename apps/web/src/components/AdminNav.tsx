@@ -54,6 +54,7 @@ export function AdminNav() {
         { href: '/admin/pricing',     label: 'Pricing',          icon: <PricingIcon />,     minTier: 'admin' },
         { href: '/admin/comp-codes',  label: 'Comp Codes',       icon: <CompCodesIcon />,   minTier: 'admin' },
         { href: '/admin/partners',    label: 'Partners',         icon: <AffiliatesIcon />,  minTier: 'admin' },
+        { href: '/admin/scripts',     label: 'Partner Scripts',  icon: <AffiliatesIcon />,  minTier: 'admin' },
         { href: '/admin/email-policy', label: 'Email Policy',     icon: <SettingsIcon />,    minTier: 'admin' },
         // Phone Numbers / A2P have read paths Support uses; the write actions
         // inside those pages are individually role-gated
