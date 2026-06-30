@@ -172,6 +172,46 @@ consent, AI disclosure
 **Not in $497 (lives in Brokerage tier):** multiple seats, round-robin routing,
 white-label branding, pooled numbers, manager analytics.
 
+### $297/mo — "Solo: Capture" — full package (canonical)
+
+1 seat, solo agent. The engine baseline + core capture/book. Strips out the
+$497 convert/manage automation layer.
+
+**Engine baseline (same as $497 — it's how the product works):**
+- Full call transcripts + recordings; AI call summaries
+- Caller/contact capture → CRM record; conversation history across channels
+- Call outcomes/dispositions + sentiment/intent tagging
+- Lead capture + consent/opt-in records; notifications; reporting/analytics
+- Audit logs; voice selection; Business DNA + prompt stack
+
+**Core capture / book:**
+- **All 4 channels** — voice, SMS, email, web widget (channels aren't the gate)
+- **1 main phone number** — inbound + outbound + warm transfer
+- Voice agent: answer, book, confirm, remind, follow-up, objection handling, secretary mode
+- **Up to 20 listings**, added by MLS# pull — **single MLS connection** (their own book)
+- **Missed-call text-back** (baseline, both tiers)
+- **EN + ES** conversational + UI
+- Compliance enforced — Fair Housing, DNC/TCPA, A2P, recording consent, AI
+  disclosure (legal, not optional → in both tiers)
+- Self-serve onboarding
+
+**Confirmed scope lines (2026-06-30):**
+- **Languages:** EN + ES only. The ~6–10 conversational language set is a $497 upsell.
+- **Outbound:** confirmations / reminders / follow-ups only. Automated *prospecting
+  campaigns* (database reactivation / circle prospecting) are $497.
+- **Numbers:** 1 main number only. Per-listing tracking-number pool is $497.
+
+**Not in $297 (the $497 convert/manage layer):** unlimited listings, per-listing
+tracking-number pool, full Connections hub, full nurture drips, database
+reactivation / circle prospecting, valuation seller magnet, automated weekly seller
+reports + per-listing call attribution, Transaction-Coordinator mode, CRM sync,
+languages beyond EN+ES, done-for-you setup.
+
+**Usage allowances — TBD (cost model):** ~500 voice min / ~750 SMS / 1 number proposed.
+
+**The line:** $297 = *capture, track, book* (every lead answered, recorded,
+contacted, booked — 20 listings, EN+ES). $497 = *convert & manage*.
+
 ## 5. Features & Benefits
 
 ### Confirmed (from the brief)
@@ -474,15 +514,17 @@ the demo that closes agents.
 - ✅ Languages: EN+ES UI; conversational multi-language (~6–10 per agent). §15.
 - ✅ Engine baseline (transcripts/recordings/summaries/caller details/etc.) is in
   BOTH tiers. §8.
+- ✅ $497 full spec locked (§4). $297 full spec locked (§4): EN+ES only, outbound =
+  confirmations/reminders/follow-ups (not prospecting), 1 main number only.
 
 **Still open:**
-- $497 usage allowances: included minutes/SMS + tracking-number count — set after a
-  Twilio/Gemini cost model. (Proposed: ~1,500 min / ~2,000 SMS / 10 numbers.)
+- Usage allowances (both tiers): minutes/SMS + tracking-number count — set after a
+  Twilio/Gemini cost model. (Proposed: $497 ~1,500min/2,000SMS/10 numbers; $297
+  ~500min/750SMS/1 number.)
 - Brokerage tier pricing + seat pricing.
 - Onboarding fee — yes/no, and amount?
 - First MLS aggregator to integrate: MLS Grid vs Trestle vs SimplyRETS (sandbox). §6.
 - First RE CRM for sync (recommend Follow Up Boss).
-- $297 plan full spec — define next (strip down from the $497 canonical list).
 - Domain/brand: MyOrbisAgents.com confirmed; reuse the MyOrbisResults shell?
 
 ## 13. Value-add backlog (prioritized)
