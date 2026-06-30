@@ -347,6 +347,40 @@
   .rich-editor-area p {
     margin: 0 0 0.5rem 0;
   }
+  .rich-editor-area {
+    line-height: 1.6;
+  }
+  .rich-editor-area h2 {
+    font-size: 1.18rem;
+    font-weight: 700;
+    margin: 0.7rem 0 0.35rem;
+    line-height: 1.3;
+  }
+  .rich-editor-area h3 {
+    font-size: 1.03rem;
+    font-weight: 700;
+    margin: 0.55rem 0 0.3rem;
+    line-height: 1.3;
+  }
+  .rich-editor-area li {
+    margin: 0.15rem 0;
+  }
+  .rich-editor-area blockquote {
+    margin: 0.4rem 0;
+    padding-left: 0.75rem;
+    border-left: 3px solid var(--border-subtle);
+    color: var(--text-secondary);
+  }
+  /* Neutralize stray positioning / floats / huge widths pasted from Word, Google
+     Docs, or web pages so blocks can never overlap or run off the editor. The
+     paste sanitizer already strips inline styles on new pastes; this also rescues
+     any content saved before the sanitizer existed. */
+  .rich-editor-area * {
+    position: static !important;
+    float: none !important;
+    max-width: 100% !important;
+    line-height: inherit;
+  }
 
   /* Sidebar nav scroll affordance.
    *
@@ -375,6 +409,14 @@
   }
   .nav-scroll::-webkit-scrollbar-thumb:hover {
     background: var(--text-tertiary);
+  }
+}
+
+/* Hide toolbars / controls when printing (e.g. the script popup window prints
+   only the script, not its buttons). */
+@media print {
+  .no-print {
+    display: none !important;
   }
 }
 

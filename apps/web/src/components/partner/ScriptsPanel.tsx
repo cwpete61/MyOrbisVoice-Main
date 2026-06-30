@@ -157,7 +157,7 @@ export default function ScriptsPanel() {
               {own.map((s) => <ScriptRow key={s.id} s={s} channelLabel={channelLabel} t={t}
                 actions={<>
                   <RowBtn label={t('partnerScripts.edit')} onClick={() => startEdit(s)} />
-                  <RowLink label={t('partnerScripts.openWindow')} href={`/partner-portal/scripts/${s.id}/view`} />
+                  <RowPopup label={t('partnerScripts.openWindow')} id={s.id} />
                   <RowBtn label={t('partnerScripts.delete')} onClick={() => remove(s.id)} danger />
                 </>} />)}
             </div>
@@ -171,7 +171,7 @@ export default function ScriptsPanel() {
             <div style={{ display: 'grid', gap: 8 }}>
               {defaults.map((s) => <ScriptRow key={s.id} s={s} channelLabel={channelLabel} t={t}
                 actions={<>
-                  <RowLink label={t('partnerScripts.openWindow')} href={`/partner-portal/scripts/${s.id}/view`} />
+                  <RowPopup label={t('partnerScripts.openWindow')} id={s.id} />
                   <RowBtn label={t('partnerScripts.copy')} onClick={() => copy(s.id)} />
                 </>} />)}
             </div>
@@ -203,11 +203,19 @@ function RowBtn({ label, onClick, danger }: { label: string; onClick: () => void
   )
 }
 
-function RowLink({ label, href }: { label: string; href: string }) {
+// "Open" — opens the script in a separate browser popup window. A real window
+// (not an in-page modal) so it stays open while the partner switches tabs or
+// navigates the app. Named per-script so re-clicking focuses the same window.
+function RowPopup({ label, id }: { label: string; id: string }) {
+  const open = () => window.open(
+    `/partner-portal/script-popup/${id}`,
+    `script_${id}`,
+    'popup=yes,width=600,height=760,scrollbars=yes,resizable=yes',
+  )
   return (
-    <a href={href} target="_blank" rel="noreferrer"
-      style={{ background: 'var(--surface-overlay)', color: TEAL, border: '1px solid var(--border-subtle)', borderRadius: 7, padding: '6px 12px', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+    <button onClick={open}
+      style={{ background: 'var(--surface-overlay)', color: TEAL, border: '1px solid var(--border-subtle)', borderRadius: 7, padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
       {label} ↗
-    </a>
+    </button>
   )
 }
