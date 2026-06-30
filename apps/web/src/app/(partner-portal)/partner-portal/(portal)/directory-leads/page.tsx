@@ -64,7 +64,9 @@ export default function DirectoryLeadsPage() {
     setLoading(true); setError('')
     try {
       const qs = new URLSearchParams()
-      if (city.trim()) qs.set('city', city.trim())
+      // Free-text search across business name + city (so any listing is findable,
+      // not just low-score "leads"). Sent as `q`; forwarded through to the directory.
+      if (city.trim()) qs.set('q', city.trim())
       if (gap) qs.set('gap', gap)
       qs.set('limit', '40')
       const data = await apiFetch<{ items: Lead[]; total: number }>(`/api/partner/directory/leads?${qs.toString()}`)
