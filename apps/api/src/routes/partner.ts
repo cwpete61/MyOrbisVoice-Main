@@ -1097,4 +1097,111 @@ router.post('/partner/groups/:id/log-post', requirePartnerAccount, async (req: R
   } catch (err) { next(err) }
 })
 
+// ── Partner Cockpit — directory leads ────────────────────────────────────────
+// The Voice partner-portal is the cockpit UI. These proxy to the Hub partner
+// endpoints (which proxy to the MyOrbisBiz directory) using the Hub service
+// token + the affiliate's slug. The partner browses unclaimed listings and
+// mints tagged claim links so any MyOrbisResults service the business later buys
+// is attributed to them (directory ad sales excluded — house revenue).
+const HUB_URL_P   = process.env['HUB_URL']
+const HUB_TOKEN_P = process.env['HUB_SERVICE_TOKEN']
+
+async function hubPartnerFetch(pathAndQuery: string, slug: string, init?: { method?: string; body?: unknown }) {
+  if (!HUB_URL_P || !HUB_TOKEN_P) throw new AppError('SERVICE_UNAVAILABLE', 'Hub not configured', 503)
+  const res = await fetch(`${HUB_URL_P}${pathAndQuery}`, {
+    method:  init?.method ?? 'GET',
+    headers: {
+      'authorization':  `Bearer ${HUB_TOKEN_P}`,
+      'x-partner-slug': slug,
+      'content-type':   'application/json',
+    },
+    body: init?.body ? JSON.stringify(init.body) : undefined,
+  })
+  const data = await res.json().catch(() => ({}))
+  return { ok: res.ok, status: res.status, data }
+}
+
+async function partnerSlugForUser(userId: string): Promise<string> {
+  const partner = await prisma.affiliateAccount.findUnique({ where: { userId }, select: { slug: true } })
+  if (!partner?.slug) throw new AppError('FORBIDDEN', 'An active partner slug is required', 403)
+  return partner.slug
+}
+
+// GET /partner/directory/leads — unclaimed directory businesses + audit gaps.
+router.get('/partner/directory/leads', requirePartnerContext, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const slug = await partnerSlugForUser(req.user!.id)
+    const qs = new URLSearchParams(req.query as Record<string, string>).toString()
+    const r = await hubPartnerFetch(`/v1/partner/leads${qs ? `?${qs}` : ''}`, slug)
+    res.status(r.ok ? 200 : r.status).json(r.ok ? r.data : { error: (r.data as { error?: string })?.error ?? 'hub_error' })
+  } catch (err) { next(err) }
+})
+
+// POST /partner/directory/mint-link — tagged claim link for one listing.
+router.post('/partner/directory/mint-link', requirePartnerContext, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const slug = await partnerSlugForUser(req.user!.id)
+    const b = req.body as { businessId?: string; slug?: string }
+    const r = await hubPartnerFetch('/v1/partner/mint-link', slug, { method: 'POST', body: { businessId: b.businessId, slug: b.slug } })
+    res.status(r.ok ? 200 : r.status).json(r.ok ? r.data : { error: (r.data as { error?: string })?.error ?? 'hub_error' })
+  } catch (err) { next(err) }
+})
+
+// GET /partner/directory/claimed — directory listings that activated THIS partner's
+// claim link (assignment happens only on claim). Proxied to the Hub, which injects
+// the partner's email and reads the directory's claimed-listing index. We then
+// enrich each row with the partner's Voice commissions, matched by claim email →
+// the tenant that signed up with that email (registrationEmail/publicEmail) — so
+// the partner sees which claimed businesses turned into paying tenants + how much.
+interface ClaimedItem { claimEmail?: string | null; [k: string]: unknown }
+router.get('/partner/directory/claimed', requirePartnerContext, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const account = await prisma.affiliateAccount.findUnique({
+      where: { userId: req.user!.id }, select: { id: true, slug: true },
+    })
+    if (!account?.slug) throw new AppError('FORBIDDEN', 'An active partner slug is required', 403)
+
+    const qs = new URLSearchParams(req.query as Record<string, string>).toString()
+    const r = await hubPartnerFetch(`/v1/partner/claimed${qs ? `?${qs}` : ''}`, account.slug)
+    if (!r.ok) {
+      res.status(r.status).json({ error: (r.data as { error?: string })?.error ?? 'hub_error' })
+      return
+    }
+    const items = ((r.data as { data?: { items?: ClaimedItem[] } }).data?.items) ?? []
+    const claimEmails = new Set(items.map((i) => (i.claimEmail ?? '').toLowerCase()).filter(Boolean))
+
+    // email → rolled-up commission for this partner's tenants that match a claim.
+    const byEmail = new Map<string, { commissionCents: number; count: number; paidCents: number }>()
+    if (claimEmails.size) {
+      const commissions = await prisma.affiliateCommission.findMany({
+        where: { affiliateAccountId: account.id },
+        select: { amountMinor: true, status: true, tenant: { select: { registrationEmail: true, publicEmail: true } } },
+      })
+      for (const c of commissions) {
+        const keys = [c.tenant.registrationEmail, c.tenant.publicEmail]
+          .map((e) => (e ?? '').toLowerCase()).filter((e) => claimEmails.has(e))
+        for (const k of new Set(keys)) {
+          const agg = byEmail.get(k) ?? { commissionCents: 0, count: 0, paidCents: 0 }
+          agg.commissionCents += c.amountMinor
+          agg.count += 1
+          if (c.status === 'PAID') agg.paidCents += c.amountMinor
+          byEmail.set(k, agg)
+        }
+      }
+    }
+
+    const enriched = items.map((i) => {
+      const agg = byEmail.get((i.claimEmail ?? '').toLowerCase())
+      return {
+        ...i,
+        commissionCents: agg?.commissionCents ?? 0,
+        paidCents:       agg?.paidCents ?? 0,
+        purchaseCount:   agg?.count ?? 0,
+        hasVoiceSub:     (agg?.count ?? 0) > 0,
+      }
+    })
+    res.json({ data: { items: enriched, total: enriched.length } })
+  } catch (err) { next(err) }
+})
+
 export default router
