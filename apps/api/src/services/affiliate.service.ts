@@ -244,6 +244,19 @@ export async function refreshConnectStatus(userId: string): Promise<ConnectStatu
   const account = await prisma.affiliateAccount.findUnique({ where: { userId } })
   if (!account || !account.stripeConnectAccountId) return NOT_CONNECTED
 
+  // House account: shown as Stripe-connected without a real Connect account.
+  // It's the platform's own house referral — it never receives payouts (its
+  // commission rate is 0), so there is nothing to onboard. The sentinel id
+  // (`house:...`) would 404 on a live accounts.retrieve, so short-circuit to
+  // a connected status. Keyed on the id so it travels with the row.
+  if (account.stripeConnectAccountId.startsWith('house:')) {
+    return {
+      connected: true, detailsSubmitted: true, payoutsEnabled: true,
+      chargesEnabled: true, accountId: account.stripeConnectAccountId,
+      disabledReason: null,
+    }
+  }
+
   const stripe = getStripe()
   const stripeAccount = await stripe.accounts.retrieve(account.stripeConnectAccountId)
   const status = summarizeAccount(stripeAccount as unknown as Parameters<typeof summarizeAccount>[0])
