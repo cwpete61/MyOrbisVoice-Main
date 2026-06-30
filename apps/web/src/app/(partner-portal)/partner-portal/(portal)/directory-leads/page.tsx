@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 import { useT } from '@/lib/i18n/I18nProvider'
 
@@ -43,6 +43,7 @@ export default function DirectoryLeadsPage() {
   const [error, setError] = useState('')
   const [city, setCity] = useState('')
   const [gap, setGap] = useState('')
+  const [sort, setSort] = useState<'score' | 'az' | 'za'>('score')
   const [links, setLinks] = useState<Record<string, string>>({})
   const [contactIds, setContactIds] = useState<Record<string, string>>({})
   const [minting, setMinting] = useState<string | null>(null)
@@ -87,6 +88,14 @@ export default function DirectoryLeadsPage() {
 
   // Lazy-load the Claimed tab the first time it's opened.
   useEffect(() => { if (tab === 'claimed' && !claimedLoaded) loadClaimed() }, [tab, claimedLoaded, loadClaimed])
+
+  // Client-side sort over the loaded leads. 'score' keeps the server's
+  // worst-score-first order (best pitch); az/za sort by business name.
+  const sortedLeads = useMemo(() => {
+    if (sort === 'score') return leads
+    const arr = [...leads].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+    return sort === 'za' ? arr.reverse() : arr
+  }, [leads, sort])
 
   async function getLink(lead: Lead) {
     setMinting(lead.id); setError('')
@@ -147,6 +156,12 @@ export default function DirectoryLeadsPage() {
           style={{ flex: '1 1 160px', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--surface-raised)', color: 'var(--text-primary)', fontSize: 14 }}>
           {GAP_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
         </select>
+        <select value={sort} onChange={(e) => setSort(e.target.value as 'score' | 'az' | 'za')} aria-label={t('partnerDirectory.sortLabel')}
+          style={{ flex: '1 1 140px', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--surface-raised)', color: 'var(--text-primary)', fontSize: 14 }}>
+          <option value="score">{t('partnerDirectory.sortScore')}</option>
+          <option value="az">{t('partnerDirectory.sortAz')}</option>
+          <option value="za">{t('partnerDirectory.sortZa')}</option>
+        </select>
         <button onClick={load} style={{ background: TEAL, color: 'white', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
           {t('partnerDirectory.search')}
         </button>
@@ -158,7 +173,7 @@ export default function DirectoryLeadsPage() {
         <p style={{ color: 'var(--text-tertiary)', fontSize: 14, textAlign: 'center', padding: 24 }}>{t('partnerDirectory.empty')}</p>
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
-          {leads.map((lead) => (
+          {sortedLeads.map((lead) => (
             <div key={lead.id} style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                 <div style={{ minWidth: 0 }}>
