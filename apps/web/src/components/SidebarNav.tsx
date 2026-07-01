@@ -29,6 +29,7 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: 'nav.groups.getStarted',
     items: [
       { href: '/dashboard',  labelKey: 'nav.items.dashboard',  icon: <Icon d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z" /> },
+      { href: '/agents/cockpit', labelKey: 'nav.items.agentCockpit', icon: <Icon d="M8 1l6 3v4c0 3.5-2.5 6-6 7-3.5-1-6-3.5-6-7V4z" /> },
       { href: '/onboarding', labelKey: 'nav.items.getStarted', icon: <Icon d="M8 1.5l1.8 4 4.4.4-3.3 3 1 4.3L8 11l-3.9 2.2 1-4.3-3.3-3 4.4-.4z" /> },
     ],
   },
@@ -38,8 +39,10 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/business-dna', labelKey: 'nav.items.businessDna', icon: <Icon d="M8 2a6 6 0 1 1 0 12A6 6 0 0 1 8 2zm0 0v2m0 8v2M2 8h2m8 0h2" /> },
       { href: '/prompts',      labelKey: 'nav.items.prompts',      icon: <Icon d="M4 6h8M4 10h5M2 3h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /> },
       { href: '/agents',       labelKey: 'nav.items.agents',       icon: <Icon d="M8 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5 6a5 5 0 0 1 10 0" /> },
+      { href: '/agents/listings', labelKey: 'nav.items.agentListings', icon: <Icon d="M2 6l6-4 6 4v7a1 1 0 0 1-1 1h-3v-4H6v4H3a1 1 0 0 1-1-1z" /> },
       { href: '/agent-studio', labelKey: 'nav.items.agentStudio',  icon: <Icon d="M8 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm4.5-7.5l1.5 1.5M3.5 11.5l1.5 1.5M12 8h2M2 8H0M8 2V0M8 14v2" /> },
       { href: '/channels',     labelKey: 'nav.items.channels',     icon: <Icon d="M2 8a6 6 0 1 0 12 0A6 6 0 0 0 2 8zm6-2v4m-2-2h4" /> },
+      { href: '/widget-test',  labelKey: 'nav.items.widgetEmbed',  icon: <Icon d="M2 4h12a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm2 3l2 2-2 2m4 1h3" /> },
     ],
   },
   {
@@ -57,6 +60,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/crm',           labelKey: 'nav.items.crm',            icon: <Icon d="M2 3h3v4H2zm5 0h3v4H7zm5 0h3v4h-3zM2 9h3v4H2zm5 0h3v4H7zm5 0h3v4h-3z" /> },
       { href: '/conversations', labelKey: 'nav.items.conversations',  icon: <Icon d="M2 4h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5l-3 2V5a1 1 0 0 1 1-1zm3 3h6M5 9h4" /> },
       { href: '/appointments',  labelKey: 'nav.items.appointments',   icon: <Icon d="M4 3h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm3 4h2M7 10h2M4 6h8" /> },
+      { href: '/payments',      labelKey: 'nav.items.payments',       icon: <Icon d="M1 5h14v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5zm0-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2M4 9h3" /> },
       { href: '/campaigns',     labelKey: 'nav.items.campaigns',      icon: <Icon d="M3 5h10M3 8h7M3 11h4m6-4v6m0 0-2-2m2 2 2-2" /> },
       { href: '/outbound',      labelKey: 'nav.items.outbound',       icon: <Icon d="M15 3l-4 4M3 13l4-4M11 7l2 2-6 6-2-2zm-3 7l-3 2 1-3" /> },
     ],

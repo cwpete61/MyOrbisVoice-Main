@@ -46,7 +46,9 @@
       "systemSettings": "Ajustes del sistema",
       "platformStatus": "Estado de la plataforma",
       "apps": "Apps",
-      "marketingResources": "Recursos de marketing"
+      "marketingResources": "Recursos de marketing",
+      "agentCockpit": "Cabina de Orby",
+      "agentListings": "Propiedades"
     },
     "soonPill": "Pronto"
   },
@@ -4771,5 +4773,25 @@
     "statusSold": "Vendida",
     "statusPocket": "Privada",
     "statusOffMarket": "Fuera del mercado"
+  },
+  "tenantAgentCockpit": {
+    "title": "Cabina de Orby",
+    "subtitle": "Tus prospectos, visitas y el estado de Orby de un vistazo.",
+    "statusTitle": "Estado de Orby",
+    "statusReady": "Orby está activo",
+    "statusIncomplete": "{done} de {total} pasos de configuración completos",
+    "fix": "Terminar configuración",
+    "quickTitle": "Acciones rápidas",
+    "qSetup": "Configurar a Orby",
+    "qListings": "Propiedades",
+    "qCalendar": "Conectar calendario",
+    "qLeads": "Prospectos",
+    "qShowings": "Visitas",
+    "leadsTitle": "Prospectos recientes",
+    "leadsEmpty": "Aún no hay prospectos. Comparte tu widget o número de Orby para empezar a captar.",
+    "showingsTitle": "Próximas visitas",
+    "showingsEmpty": "No hay visitas agendadas.",
+    "viewAll": "Ver todo",
+    "unknownContact": "Llamante desconocido"
   }
 }

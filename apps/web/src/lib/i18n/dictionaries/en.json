@@ -46,7 +46,9 @@
       "systemSettings": "System Settings",
       "platformStatus": "Platform Status",
       "apps": "Apps",
-      "marketingResources": "Marketing Resources"
+      "marketingResources": "Marketing Resources",
+      "agentCockpit": "Orby cockpit",
+      "agentListings": "Listings"
     },
     "soonPill": "Soon"
   },
@@ -4771,5 +4773,25 @@
     "statusSold": "Sold",
     "statusPocket": "Pocket/private",
     "statusOffMarket": "Off market"
+  },
+  "tenantAgentCockpit": {
+    "title": "Orby cockpit",
+    "subtitle": "Your leads, showings, and Orby's status at a glance.",
+    "statusTitle": "Orby status",
+    "statusReady": "Orby is live",
+    "statusIncomplete": "{done} of {total} setup steps done",
+    "fix": "Finish setup",
+    "quickTitle": "Quick actions",
+    "qSetup": "Set up Orby",
+    "qListings": "Listings",
+    "qCalendar": "Connect calendar",
+    "qLeads": "All leads",
+    "qShowings": "Showings",
+    "leadsTitle": "Recent leads",
+    "leadsEmpty": "No leads yet. Share your Orby widget or number to start capturing.",
+    "showingsTitle": "Upcoming showings",
+    "showingsEmpty": "No upcoming showings booked.",
+    "viewAll": "View all",
+    "unknownContact": "Unknown caller"
   }
 }
