@@ -26,6 +26,18 @@
   .navlinks{font-family:Arial,Helvetica,sans-serif;font-size:14px;display:flex;gap:18px;align-items:center}
   .navlinks a{color:var(--muted);text-decoration:none}
   .lang{font-family:Arial,Helvetica,sans-serif;font-size:13px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--muted);text-decoration:none}
+  .menu-toggle{position:absolute;opacity:0;pointer-events:none}
+  .hamburger{display:none;cursor:pointer;padding:8px;margin:-8px;color:var(--ink)}
+  .hamburger svg{display:block}
+  @media(max-width:640px){
+    .bar{position:relative}
+    .hamburger{display:block}
+    .navlinks{position:absolute;top:60px;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 8px 20px rgba(18,35,44,.06);padding:6px 20px 12px;display:none;z-index:20}
+    .navlinks a{padding:13px 2px;border-bottom:1px solid var(--line)}
+    .navlinks a:last-child{border-bottom:none}
+    .navlinks .lang{border:1px solid var(--line);width:max-content;margin-top:8px}
+    .menu-toggle:checked ~ .navlinks{display:flex}
+  }
   .hero{padding:64px 0 40px}
   .kicker{font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);font-weight:700;margin:0 0 14px}
   h1{font-size:40px;line-height:1.14;margin:0 0 16px;max-width:20ch}
@@ -72,6 +84,10 @@
 <header>
   <div class="wrap bar">
     <a class="brand" href="/es/">MYORBIS<span>AGENTS</span></a>
+    <input type="checkbox" id="mnav" class="menu-toggle" aria-hidden="true">
+    <label for="mnav" class="hamburger" aria-label="Menú">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </label>
     <nav class="navlinks">
       <a href="#how">Cómo funciona</a>
       <a href="#pricing">Precios</a>
