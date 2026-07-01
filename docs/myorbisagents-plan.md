@@ -763,15 +763,33 @@ Score prospect → format their listing (AI) → build personal demo page (live 
 - **Save → Prospects DB** with a pipeline: **Target → Contacted → Sent video →
   Replied → Demo → Won / Lost / Skip.** Ranked list (A-tier first) = the call sheet.
 
-### 17b. Personalized demo page + live widget (the closer)
-- Per-agent `/demo/[slug]` on the Voice app (widget needs the gateway session):
-  their **name + market + a live RE-ISA widget + the founding offer + CTA.**
+### 17b. Personalized demo — one shared number + a widget (the closer)
+Two channels, **one personalized demo record** (their name / market / sample
+listing / RE-ISA DNA) drives both:
+
+**Phone demo — ONE shared Twilio number (not one per agent).** The AI identifies
+the caller, loads their demo, and role-plays *their* ISA. Identify in this order:
+1. **Caller-ID match** (primary) — the agent's phone is on the prospect record; on
+   inbound, match the calling number → load instantly: *"Hi Chase, this is your AI ISA."*
+2. **Ask name + confirm** (fallback) — *"Which agent am I speaking with?"* → fuzzy
+   match → **confirm** (*"Chase Horner with Sotheby's?"*) before running (voice
+   name-recognition is the weak link).
+3. **Demo code** (bulletproof) — a code in the video email (*"call X, enter 4827"*).
+- Then: *"Ask me about the property at [their listing] like a buyer would"* →
+  grounded answers + books a showing → pivot to CTA. **Meta-proof:** the line
+  identifying + routing the caller is itself the product working on them.
+- Keep the opener fast + warm — one question, one confirm, go. No IVR.
+- **Build win:** removes per-agent number provisioning from the critical path —
+  one number + a caller-ID/name lookup against the prospect DB.
+
+**Web demo — the widget.** Per-agent `/demo/[slug]` on the Voice app (widget needs
+the gateway session): name + market + live RE-ISA widget + founding offer + CTA.
 - **Templated/dynamic** — auto-minted from the prospect record; no per-agent design.
 - **Bilingual** default for Spanish-speaking agents. **Matched sample listing**
   (luxury vs starter) so the demo feels like their world.
-- **Engagement tracking** — did they open / talk to the widget? → auto-advance
-  pipeline to "Demo" + flags a hot follow-up.
-- The page is the *interactive* demo (talking > watching); the video is the hook.
+- **Engagement tracking** — opened / talked to the widget? → auto-advance pipeline
+  to "Demo" + flag a hot follow-up.
+- The page/phone are the *interactive* demo (talking > watching); the video is the hook.
 
 ### 17c. Property-data → voice formatter (also the product's listing-ingestion core)
 - Paste raw listing data (MLS sheet / description / notes — no scraping) → AI
@@ -915,7 +933,8 @@ In-house now, partner-enabled later — wire the cheap seams, defer the features
 |---|---|---|
 | **Prospect scorer** (paste→extract→rubric→tier→save→pipeline) | M | yes (ranks the list) |
 | **Founding-offer Stripe links** ($297/$497 monthly + annual-50 + $500 setup) | S | yes (collect cash) |
-| **Personalized demo page** `/demo/[slug]` + live RE-ISA widget (default DNA) | M | yes (the closer) |
+| **Shared demo phone line** (1 Twilio number + caller-ID/name/code lookup → load personalized demo) | S–M | yes (the closer, phone) |
+| **Personalized demo page** `/demo/[slug]` + live RE-ISA widget (default DNA) | M | yes (the closer, web) |
 | **Property→voice formatter** (paste→facts+summary+FAQ, guardrails) | M | yes (magic demo + product core) |
 | **Default RE-ISA DNA template** (qualify/book/Fair-Housing-safe) | S–M | yes (demo runs on it) |
 | **Personalized video** (base + intro/thumbnail; Remotion auto-render) | S sprint / L full | partial (base now, auto v2) |
@@ -932,7 +951,8 @@ In-house now, partner-enabled later — wire the cheap seams, defer the features
 1. Founding-offer **Stripe links** (S).
 2. **Prospect scorer + pipeline** to rank the copy-paste list (M).
 3. One **default RE-ISA DNA** + **property formatter** (M) so the demo answers about a real listing.
-4. **Personalized demo page + widget** (M) — the thing that closes.
+4. **The demo — one shared phone line** (caller-ID/name lookup → personalized) **+
+   the `/demo/[slug]` widget** (M) — the thing that closes. One number, not per-agent.
 5. **Landing/offer page** + a **base personalized video/thumbnail** (S).
 6. Manual onboarding (you set up each closed agent by hand — no onboarding UI needed yet).
 
