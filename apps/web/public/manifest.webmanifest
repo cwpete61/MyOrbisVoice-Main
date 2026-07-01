@@ -10,6 +10,11 @@
   "theme_color": "#1a9898",
   "lang": "en",
   "categories": ["business", "productivity"],
+  "shortcuts": [
+    { "name": "Orby cockpit", "short_name": "Cockpit", "url": "/agents/cockpit", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Listings", "short_name": "Listings", "url": "/agents/listings", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Conversations", "short_name": "Leads", "url": "/conversations", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ],
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
