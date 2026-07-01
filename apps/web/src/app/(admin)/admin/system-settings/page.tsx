@@ -17,6 +17,7 @@ interface SystemSettings {
   openai: { apiKey: boolean; model: string }
   serper: { apiKey: boolean }
   enrichment: { rentcast: boolean; dataGov: boolean }
+  inboundMail: { host: string | null; port: number; user: string | null; password: boolean }
   content: { provider: string; model: string | null; groqApiKey: boolean }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
@@ -359,6 +360,23 @@ export default function SystemSettingsPage() {
     const ok = await saveSection('enrichment', body, 'Listing Enrichment')
     if (ok) setEnr({ rentcast: '', dataGov: '' })
     setEnrSaving(false)
+  }
+
+  // Inbound mail — IMAP poller reads the Spacemail catch-all for partner replies.
+  const [inm, setInm] = useState({ host: '', port: '', user: '', password: '' })
+  const [inmSaving, setInmSaving] = useState(false)
+  async function saveInboundMail(e: React.FormEvent) {
+    e.preventDefault()
+    const body: Record<string, string> = {}
+    if (inm.host) body['host'] = inm.host
+    if (inm.port) body['port'] = inm.port
+    if (inm.user) body['user'] = inm.user
+    if (inm.password) body['password'] = inm.password
+    if (!Object.keys(body).length) { showToast('error', 'Enter at least one field.'); return }
+    setInmSaving(true)
+    const ok = await saveSection('inbound-mail', body, 'Inbound Mail')
+    if (ok) setInm({ host: '', port: '', user: '', password: '' })
+    setInmSaving(false)
   }
 
   // Serper.dev — powers the partner GMB Evaluation tool (Maps/Places + map-pack).
@@ -751,6 +769,47 @@ export default function SystemSettingsPage() {
               </div>
               <button type="submit" disabled={enrSaving} className="btn-primary">
                 {enrSaving ? 'Saving…' : 'Save enrichment keys'}
+              </button>
+            </form>
+          </div>
+
+          {/* ── Inbound Mail (IMAP poller for partner replies) ── */}
+          <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <CardHeader
+              title="Inbound Mail (partner replies)"
+              subtitle="The IMAP poller reads the Spacemail catch-all inbox (admin@myorbisresults.com) every 2 min and routes each prospect reply into the matching partner's in-app mailbox. Enter the catch-all mailbox's IMAP login. See docs/email-setup.md."
+              configured={!!data?.inboundMail?.user && !!data?.inboundMail?.password}
+            />
+            <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <StatusRow label="IMAP host" value={data?.inboundMail?.host ?? 'imap.spacemail.com'} />
+              <StatusRow label="IMAP port" value={String(data?.inboundMail?.port ?? 993)} />
+              <StatusRow label="Mailbox (user)" value={data?.inboundMail?.user ?? '—'} />
+              <StatusRow label="Password" value={!!data?.inboundMail?.password} isSecret />
+            </div>
+            <form onSubmit={saveInboundMail} className="px-6 py-5 space-y-4">
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                Password stored encrypted. Leave blank to keep current. Point this at the mailbox that holds the catch-all (usually <code>admin@myorbisresults.com</code>).
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>IMAP host</label>
+                  <input className={inputCls} value={inm.host} onChange={e => setInm({ ...inm, host: e.target.value })} placeholder="imap.spacemail.com" />
+                </div>
+                <div>
+                  <label className={labelCls}>Port</label>
+                  <input className={inputCls} value={inm.port} onChange={e => setInm({ ...inm, port: e.target.value })} placeholder="993" />
+                </div>
+              </div>
+              <div>
+                <label className={labelCls}>Mailbox (user)</label>
+                <input className={inputCls} value={inm.user} onChange={e => setInm({ ...inm, user: e.target.value })} placeholder="admin@myorbisresults.com" autoComplete="off" />
+              </div>
+              <div>
+                <label className={labelCls}>Password <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                <input type="password" className={inputCls} value={inm.password} onChange={e => setInm({ ...inm, password: e.target.value })} placeholder="mailbox password…" autoComplete="new-password" />
+              </div>
+              <button type="submit" disabled={inmSaving} className="btn-primary">
+                {inmSaving ? 'Saving…' : 'Save inbound mail'}
               </button>
             </form>
           </div>

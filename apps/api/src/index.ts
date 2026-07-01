@@ -14,6 +14,7 @@ import { startOnboardingEmailsJob } from './jobs/onboarding-emails.js'
 import { startReminderRunner } from './jobs/reminder-runner.js'
 import { startSendingDomainRunner } from './jobs/sending-domain-runner.js'
 import { startColdEmailSequencer } from './jobs/cold-email-sequencer.js'
+import { startImapPollerJob } from './jobs/imap-poller.js'
 import { bootStripeFromConfig } from './lib/stripe.js'
 import { recoverStuckExtractions } from './services/knowledge-base.service.js'
 import { ensureSeed as seedMarketingKit } from './services/marketing-kit.service.js'
@@ -49,13 +50,26 @@ const allowedOrigins = [
   'http://localhost:8765',
   'http://127.0.0.1:8765',
 ].filter(Boolean)
+// Per-request CORS. Two classes of route:
+//   • /api/public/* — the embedded widget (and partner pages) run on ARBITRARY
+//     tenant origins (each tenant pastes the embed on their own domain, e.g.
+//     capturedbypeterson.com). These endpoints are publicKey-gated, not
+//     origin-gated, so they reflect ANY origin. credentials:false because the
+//     widget sends no cookies (just the publicKey in the body) — and
+//     `Access-Control-Allow-Origin: *`/reflected is invalid with credentials.
+//   • everything else — the credentialed app/marketing allowlist.
 app.use(
-  cors({
-    origin: (origin, cb) => {
-      if (!origin || allowedOrigins.includes(origin)) return cb(null, true)
-      cb(new Error(`CORS: origin ${origin} not allowed`))
-    },
-    credentials: true,
+  cors((req, cb) => {
+    if (req.path.startsWith('/api/public')) {
+      cb(null, { origin: true, credentials: false })
+      return
+    }
+    const origin = req.headers.origin
+    if (!origin || allowedOrigins.includes(origin)) {
+      cb(null, { origin: true, credentials: true })
+      return
+    }
+    cb(null, { origin: false }) // not allowed — omit ACAO so the browser blocks it
   }),
 )
 
@@ -163,6 +177,7 @@ async function start() {
     startReminderRunner()
     startSendingDomainRunner()
     startColdEmailSequencer()
+    startImapPollerJob()
     // Reset any KB extraction jobs left in PROCESSING from a prior crash —
     // we can't resume the original buffer, so they get FAILED with a clear
     // message and the user can re-upload.

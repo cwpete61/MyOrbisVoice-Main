@@ -352,6 +352,32 @@ router.patch('/system-settings/enrichment', requirePlatformSuperAdmin, async (re
   } catch (err) { next(err) }
 })
 
+// Inbound mail (IMAP poller) — reads the Spacemail catch-all so partner replies
+// land in each partner's in-app mailbox. Platform-level. See docs/email-setup.md.
+const inboundMailSettingsSchema = z.object({
+  host:     z.string().trim().optional(),
+  port:     z.coerce.number().int().min(1).max(65535).optional(),
+  user:     z.string().trim().optional(),
+  password: z.string().optional(),
+})
+router.patch('/system-settings/inbound-mail', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const parsed = inboundMailSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const userId = req.user!.id
+    if (parsed.data.host) await systemConfig.setConfigValue('imap_host', parsed.data.host, false, userId)
+    if (parsed.data.port) await systemConfig.setConfigValue('imap_port', String(parsed.data.port), false, userId)
+    if (parsed.data.user) await systemConfig.setConfigValue('imap_user', parsed.data.user, false, userId)
+    if (parsed.data.password) await systemConfig.setConfigValue('imap_password', parsed.data.password, true, userId)
+    await writeAuditLogFromRequest(req, {
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.inbound_mail.updated',
+      targetType: 'SystemConfig', metadataJson: { fields: Object.keys(parsed.data).filter(k => k !== 'password') },
+    })
+    res.json({ data: await systemConfig.getSystemSettings() })
+  } catch (err) { next(err) }
+})
+
 // Format-aware validators — catch paste-target mismatches at the API gate
 // instead of silently corrupting SystemConfig (which we hit twice during the
 // 2026-05-05 launch hardening session — pasting a whsec_… into secretKey

@@ -147,6 +147,7 @@ export async function getSystemSettings(): Promise<{
   openai: { apiKey: boolean; model: string }
   serper: { apiKey: boolean }
   enrichment: { rentcast: boolean; dataGov: boolean }
+  inboundMail: { host: string | null; port: number; user: string | null; password: boolean }
   content: { provider: string; model: string | null; groqApiKey: boolean }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
@@ -177,6 +178,7 @@ export async function getSystemSettings(): Promise<{
           'openai_api_key', 'openai_model',
           'serper_api_key',
           'rentcast_api_key', 'data_gov_api_key',
+          'imap_host', 'imap_port', 'imap_user', 'imap_password',
           'content_provider', 'content_model', 'groq_api_key',
           'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from',
           'overage_markup_percent',
@@ -241,6 +243,12 @@ export async function getSystemSettings(): Promise<{
     enrichment: {
       rentcast: !!(get('rentcast_api_key') || process.env['RENTCAST_API_KEY']),
       dataGov:  !!(get('data_gov_api_key') || process.env['DATA_GOV_API_KEY']),
+    },
+    inboundMail: {
+      host:     get('imap_host')?.value ?? (process.env['IMAP_HOST'] || 'imap.spacemail.com'),
+      port:     parseInt(get('imap_port')?.value ?? process.env['IMAP_PORT'] ?? '993', 10),
+      user:     get('imap_user')?.value ?? (process.env['IMAP_USER'] || null),
+      password: !!(get('imap_password') || process.env['IMAP_PASSWORD']),
     },
     content: {
       provider:   get('content_provider')?.value ?? process.env['CONTENT_PROVIDER'] ?? 'openai',
