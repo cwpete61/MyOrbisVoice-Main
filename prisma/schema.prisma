@@ -3305,3 +3305,40 @@ model PartnerGroupPost {
   @@index([partnerId, groupId])
   @@index([partnerId, postedAt])
 }
+
+// MyOrbisAgents — real-estate AGENT PROSPECT (operator outreach tooling, moved from
+// MyOrbisBiz into the Voice app per plan §25 Option A). Paste a Zillow blob → AI
+// extract → deterministic fit rubric → ranked target with a light pipeline.
+// ownerId is the partner-ready seam (§22): null = house/us.
+model AgentProspect {
+  id              String   @id @default(uuid())
+  ownerId         String?
+  name            String
+  brokerage       String?
+  market          String?
+  email           String?
+  phone           String?
+  salesLast12     Int?
+  totalSales      Int?
+  isTeam          Boolean  @default(false)
+  teamSize        String?
+  avgPriceUsd     Int?
+  priceRange      String?
+  yearsExp        Int?
+  reviews         Int?
+  premierAgent    Boolean  @default(false)
+  language        String?
+  score           Int      @default(0)
+  tier            String   @default("C")
+  recommendedTier String?
+  pitchAngle      String?
+  redFlags        String?
+  rawText         String?
+  status          String   @default("TARGET")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([score])
+}

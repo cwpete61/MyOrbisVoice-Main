@@ -36,6 +36,7 @@ import internalMailRouter from './internal-mail.js'
 import partnerRouter from './partner.js'
 import partnerCrmRouter from './partner-crm.js'
 import partnerScriptsRouter from './partner-scripts.js'
+import agentProspectsRouter from './agent-prospects.js'
 import partnerCampaignsRouter from './partner-campaigns.js'
 import partnerMailboxRouter from './partner-mailbox.js'
 import partnerGmbRouter from './partner-gmb.js'
@@ -114,6 +115,7 @@ router.use('/api', agentsRouter)
 router.use('/api', channelsRouter)
 router.use('/api', paymentsRouter)
 router.use('/api/admin', adminRouter)
+router.use('/api/admin', agentProspectsRouter)
 router.use('/api', appointmentsRouter)
 router.use('/api', phoneNumbersRouter)
 router.use('/api', contactsRouter)
