@@ -693,5 +693,254 @@ bilingual/multilingual is already a stated differentiator vs. competitors (§11)
 
 ---
 
-*Captured from an idea session. Next step when ready: `/office-hours` or
-`/plan-ceo-review` to pressure-test positioning + scope before any build.*
+# Part II — Go-to-market + the outreach machine (added 2026-06-30)
+
+Status: **in-house product for now.** Everything below is architected to be
+partner-enabled later (see §22) but built for our own use first. Near-term goal:
+prove the offer converts + delivers, and hit a **$2,000-in-14-days** cash target.
+
+## 16. Go-to-market — the Founding Sprint
+
+The fastest cash is **done-for-you setup + annual prepay**, not slow-drip MRR.
+Sell an outcome delivered this week on the existing Voice engine (a real-estate
+ISA), branded MyOrbisAgents; the customer doesn't care it's MyOrbisVoice under
+the hood.
+
+**The Summer Founding offer** (both tiers; first 10 agents; hard deadline):
+- **$500 setup** (full price — immediate cash, signals real work) **+ 50% off the
+  FIRST YEAR** (renews at standard — NOT a permanent discount).
+- Monthly fallback at full price ($500 setup + $297/$497) so the annual-averse
+  don't walk; the gap nudges to annual.
+- **30-day money-back on setup** (risk reversal for a new product to a skeptical buyer).
+
+**Cash math (annual list = 12× monthly; 50% off yr 1):**
+
+| Tier | Annual (50% off yr 1) | + $500 setup = per close |
+|---|---|---|
+| Solo Capture $297 | $1,782 | **~$2,282** |
+| Solo Power $497 (lead with this) | $2,982 | **~$3,482** |
+
+**One annual close ≈ the $2k goal.** Or 2 monthly at $497 / 3 at $297. Lead with
+**$497** for agents (they want the full ISA; higher cash/close; one extra deal
+pays for it a decade over).
+
+**Target the right agent — the sweet spot (see §17 rubric):** solo or 2–3 person,
+**10–40 sales/yr**, actively working leads, ideally a **Zillow Premier Agent**
+(pays for leads → bleeds on slow response → sharpest pain), bonus **bilingual**.
+Two failure modes to skip: **too big** (mega-team = already has an ISA op) and
+**too small** (near-inactive = no lead volume = no pain).
+
+**Data sourcing = manual, not scraping.** A human reads public Zillow profiles and
+copies the facts; the tools process the pasted text. Never fetch/scrape Zillow
+programmatically. Cold outreach = **email/video only** (CAN-SPAM: unsubscribe +
+address); no cold SMS/calls to their mobiles (TCPA). Protect the sending-domain
+reputation — low volume, personalized, warmed.
+
+## 17. Prospect Evaluation + Outreach Engine (the outbound machine)
+
+The unifying insight: **the outreach machine and the product run on the same data
+model.** A scored prospect with a demo built is 80% of an onboarded customer.
+
+**The loop:**
+```
+Score prospect → format their listing (AI) → build personal demo page (live widget)
+   → render personalized video → send via video-email → agent talks to "their" AI ISA
+   → CTA: Stripe founding offer → onboard (their data is already collected)
+```
+
+### 17a. Prospect scorer ("evaluation agent")
+- **Input:** paste the raw Zillow agent blob (messy is fine). AI (gpt-4o-mini)
+  **extracts** structured fields: name, brokerage, market, sales/12mo, team vs
+  solo, avg price, price range, years, reviews, Premier Agent, language, contact.
+- **Score = deterministic rubric** (consistent, explainable — like the audit); AI
+  only writes the qualitative notes. Rubric:
+  - Premier Agent **+30** · 10–40 sales **+20** · solo/small team **+15** · active
+    listings **+10** · producer/reviews **+10** · bilingual **+10** · tech-polished **+5**
+  - Penalties: 0–2 sales **−20** · mega-team **−15**
+  - Tier: **A ≥ 70 · B 50–69 · C < 50** (loud red flag on mega-team / inactive).
+- **Output:** score + tier + **recommended tier ($297 vs $497)** + **pitch angle**
+  (luxury → protect-high-value; solo-volume → missed-call) + red flags.
+- **Save → Prospects DB** with a pipeline: **Target → Contacted → Sent video →
+  Replied → Demo → Won / Lost / Skip.** Ranked list (A-tier first) = the call sheet.
+
+### 17b. Personalized demo page + live widget (the closer)
+- Per-agent `/demo/[slug]` on the Voice app (widget needs the gateway session):
+  their **name + market + a live RE-ISA widget + the founding offer + CTA.**
+- **Templated/dynamic** — auto-minted from the prospect record; no per-agent design.
+- **Bilingual** default for Spanish-speaking agents. **Matched sample listing**
+  (luxury vs starter) so the demo feels like their world.
+- **Engagement tracking** — did they open / talk to the widget? → auto-advance
+  pipeline to "Demo" + flags a hot follow-up.
+- The page is the *interactive* demo (talking > watching); the video is the hook.
+
+### 17c. Property-data → voice formatter (also the product's listing-ingestion core)
+- Paste raw listing data (MLS sheet / description / notes — no scraping) → AI
+  **rewrites into three things the voice AI needs:** (1) structured facts, (2) a
+  spoken summary, (3) grounded buyer Q&A.
+- **Guardrails (non-negotiable):** grounded — invent nothing; **Fair-Housing-safe**
+  — no steering in the rewrite or the Q&A; **reviewable** — agent confirms before
+  live (they're the licensed party). Never auto-publish listing facts.
+- This is exactly the §6 "paste-and-confirm" ingestion — build once, use for demo
+  *and* product.
+
+### 17d. Personalized video generator
+- **Remotion** (data-driven video: props → MP4 per agent), fed from the prospect
+  record. Short (30–60s): personalized intro card → a demo beat (subtitled AI-ISA
+  handling a buyer for *their* listing, from 17c) → offer + CTA to the demo page.
+- **Strategic split:** the **page** is the demo; the **video** is the hook to get
+  the click. Don't over-render.
+- **Cheap high-ROI win:** personalized video **thumbnail with their name**.
+- Bilingual for Spanish agents. **Sprint scope:** strong base video + personalized
+  intro/thumbnail + link to the personal page; full auto-render is a v2.
+
+### 17e. AI-assist editors (UX pattern, used everywhere data is pasted)
+- Pattern on every paste window: **paste raw → "✨ Rewrite/Format" → human edits → save.**
+- **Match the editor to the content — don't put rich text everywhere:**
+  - **Structured facts** → editable **form fields** (AI fills from paste).
+  - **Voice / DNA prose** → **plain / light editor** (the voice model wants plain
+    text; HTML is noise).
+  - **Marketing copy / scripts / emails** → **rich text** (reuse the Voice app's
+    `RichTextEditor` — already built, with paste-sanitize + toolbar).
+- Build **one reusable "AI-assist field" component** + reuse the rich editor;
+  reuse `ai-assist.service` (`generateDnaSection`, `generateScriptDraft`).
+
+## 18. Agent DNA (the RE-shaped Business DNA)
+
+The DNA is what makes the ISA *be that agent* vs a generic bot. It's the tenant
+layer of the existing prompt stack, real-estate-shaped. Captures:
+- **Identity / brand / voice** (tone matches a Sotheby's luxury agent vs a starter hustler)
+- **Market** (areas, price points, specialties: luxury / first-time / relocation / investment)
+- **Listings** (via 17c paste→format)
+- **Booking rules** (showing hours, calendar/lockbox/ShowingTime, what to collect)
+- **Lead qualification** (budget, pre-approval, timeline, cash vs finance, agency)
+- **Scripts / objection handling** (their scripts — reuse the Scripts feature)
+- **Escalation / handoff** (when to warm-transfer, after-hours behavior)
+- **Language** · **Prohibited language / brand guardrails**
+
+**Demo vs customer DNA — the key split:**
+- **Cold demo** runs on a strong **default RE-ISA DNA template** + light
+  personalization (name / listing / market). **Zero agent effort** → the cold demo
+  just works before signup.
+- **Customer** gets a **full Agent DNA** built at onboarding — AI-assisted (reuse
+  `generateDnaSection`): answer a few questions + paste scripts/listings → AI drafts
+  each section → agent confirms.
+- **Compliance lives in the PLATFORM layer** (Fair Housing, TCPA, AI disclosure),
+  inherited by every agent — no one can turn it off, and we don't rebuild it 50×.
+
+## 19. Orchestrator responsibilities (the lifecycle spec)
+
+The Orchestrator is the **dispatcher** — routes each moment to the right sub-role
+(Appointment / Sales / Secretary / Customer-Service) + tool-call (calendar, SMS,
+transfer, listing-lookup), holds context across channels + sessions, enforces
+compliance, logs everything. What it must handle:
+
+- **Explain a listing** — factual answers grounded in listing DNA (no invention);
+  refuse Fair-Housing steering; every answer points at booking a showing.
+- **Qualify** — budget, pre-approval, timeline, cash vs finance, agency; capture
+  contact + consent; route hot vs nurture.
+- **Book** — offer real slots, create the appointment, collect who's coming +
+  meeting/lockbox instructions, enforce agent rules (e.g. proof-of-funds for luxury).
+- **Confirm** — pre-confirm, chase non-responders, release no-shows.
+- **Remind** — buyer (24h + 1h) with address/time/directions; agent's daily showings.
+- **Reschedule / cancel** — offer new slots, update, re-confirm, notify the agent.
+- **Running-late updates** — buyer late → ping agent to hold; agent late →
+  proactively text the buyer. Real-time two-sided coordination (where human ISAs fail).
+- **Post-showing follow-up** — collect feedback, gauge interest, push next step;
+  long-horizon nurture.
+- **Escalation / handoff** — warm-transfer on hot/ready/complex/asks-for-human;
+  after-hours capture; **always discloses it's an AI.**
+- **Proactive / outbound** — database reactivation, new-listing + price-drop
+  alerts, open-house follow-up (DNC/TCPA-gated).
+- **Seller side** — seller inquiries, "what's my home worth" capture, listing
+  appointments, seller-update reports.
+
+## 20. White-label / custom domains
+
+- **Default: free `*.myorbisagents.com` subdomain** per customer (zero DNS effort).
+- **Upgrade: their own subdomain** (`ai.theirsite.com`) via **CNAME → us**, served
+  by **Caddy on-demand TLS** (auto per-hostname certs + an `ask` validator so only
+  real customers get one) + hostname→owner routing in the app. Your Caddy stack
+  already supports this pattern.
+- Tier it: free subdomain = everyone; **custom domain = $497 Pro / Brokerage** perk.
+- **Not sprint work** — a post-signup build. But *mention it in the pitch* ("run it
+  on your own domain") — closes the white-label-minded agent at zero build cost.
+- DNS friction is real for non-technical agents → make custom-domain concierge.
+
+## 21. Architecture — where each piece lives
+
+Two buckets:
+- **Product (build on the Voice engine, reuse everything):** Agent DNA, listing
+  formatter, demo page + widget, AI-assist editors, the ISA/orchestrator. The
+  Voice app already has the prompt engine, Business DNA, `ai-assist.service`,
+  `RichTextEditor`, gateway/widget, entitlements, billing, partner rails — MyOrbisAgents
+  is a **vertical skin**, not a rebuild. Do NOT re-port this into MyOrbisBiz.
+- **Sales tooling (lighter, could live standalone / admin):** the prospect scorer +
+  outreach (video, send). Pure cold-outreach, not customer-facing product.
+
+## 22. Partner-ready seams (design for partners, build for in-house)
+
+In-house now, partner-enabled later — wire the cheap seams, defer the features.
+- **Wire now:** an **`ownerId`/`partnerId` on every record** (prospect, DNA,
+  listing, demo — default = house/you); **scoped queries** from row #1; **reuse the
+  existing Hub commission ledger + affiliate/referral rails** (same rails as the
+  directory-claim→commission flow already built); per-owner branding; owner-scoped
+  entitlements. Retrofitting a tenancy key later is the expensive migration — adding
+  it now is free.
+- **Defer:** partner signup for this vertical, partner dashboards, payout UI,
+  white-label UI, partner access to the prospect tool.
+- **Why it matters:** the **partner channel is the scalable answer to the reach
+  problem.** A RE coach / brokerage / marketing agency already owns **50–500
+  agents** + the trust — one partner = a whole book of prospects. Prove the offer
+  in-house, then hand the machine to partners on rails that already exist.
+
+## 23. Build inventory — what we HAVE vs. what we NEED
+
+**Reuse from the MyOrbisVoice engine (already built — zero/low build):**
+| Capability | Status |
+|---|---|
+| Real-time voice/widget gateway (Gemini Live, Twilio, tool-calls) | ✅ have |
+| Layered prompt engine + Business DNA (versioned) | ✅ have — reshape to Agent DNA |
+| `ai-assist.service` (`generateDnaSection`, `generateScriptDraft`, gpt-4o-mini) | ✅ have |
+| `RichTextEditor` (paste-sanitize + toolbar) | ✅ have — reuse for marketing copy |
+| Scripts feature (call/email/sms, AI assist) | ✅ have — feeds Agent DNA scripts |
+| Booking → Google Calendar, reminders (offsets), confirmations | ✅ have |
+| Transcripts / recordings / summaries / dispositions / CRM / audit | ✅ have (engine baseline) |
+| Stripe billing, plans, entitlements/quotas | ✅ have — add founding SKUs |
+| Partner program: Hub ledger, affiliate/referral, commissions | ✅ have — reuse for §22 |
+| Directory + audit scoring pattern (MyOrbisBiz) | ✅ have — model for the prospect scorer |
+| Caddy edge (on-demand TLS pattern for custom domains) | ✅ have |
+
+**Need to build (net-new for MyOrbisAgents):**
+| Piece | Effort | For the sprint? |
+|---|---|---|
+| **Prospect scorer** (paste→extract→rubric→tier→save→pipeline) | M | yes (ranks the list) |
+| **Founding-offer Stripe links** ($297/$497 monthly + annual-50 + $500 setup) | S | yes (collect cash) |
+| **Personalized demo page** `/demo/[slug]` + live RE-ISA widget (default DNA) | M | yes (the closer) |
+| **Property→voice formatter** (paste→facts+summary+FAQ, guardrails) | M | yes (magic demo + product core) |
+| **Default RE-ISA DNA template** (qualify/book/Fair-Housing-safe) | S–M | yes (demo runs on it) |
+| **Personalized video** (base + intro/thumbnail; Remotion auto-render) | S sprint / L full | partial (base now, auto v2) |
+| **AI-assist field component** (reusable paste→rewrite→edit) | S | yes (used across windows) |
+| **Prospect pipeline / call-sheet UI** | S | yes |
+| **Landing/offer page** (founding rate + guarantee + deadline) | S | yes |
+| **Full Agent DNA onboarding** (AI-assisted intake) | M | no — post-sale |
+| **Listing ingestion at scale (MLS/IDX, BYO connections §6)** | L | no — post-PMF |
+| **Custom-domain white-label** (Caddy on-demand + routing) | M | no — Pro/Brokerage later |
+| **`ownerId` seams on new tables** (§22) | S | yes (cheap now, do it from row 1) |
+| **Brokerage tier + partner-facing features** | L | no — after in-house proof |
+
+**Critical path for the $2,000 / 14 days** (thinnest line to cash):
+1. Founding-offer **Stripe links** (S).
+2. **Prospect scorer + pipeline** to rank the copy-paste list (M).
+3. One **default RE-ISA DNA** + **property formatter** (M) so the demo answers about a real listing.
+4. **Personalized demo page + widget** (M) — the thing that closes.
+5. **Landing/offer page** + a **base personalized video/thumbnail** (S).
+6. Manual onboarding (you set up each closed agent by hand — no onboarding UI needed yet).
+
+Everything else (full Agent DNA UI, MLS ingestion, white-label, partner features)
+is post-sale / post-PMF. Ship the closing loop, collect the cash, then deepen.
+
+---
+
+*Idea doc — Part I (product concept) locked 2026-06-30; Part II (GTM + outreach
+machine) added same day from the working session. In-house first, partner-ready by
+design. Next: build the §23 critical path for the Founding Sprint.*
