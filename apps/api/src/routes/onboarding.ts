@@ -24,6 +24,7 @@ import { requireTenantContext } from '../middleware/rbac.js'
 import { asyncHandler } from '../lib/async-handler.js'
 import { prisma } from '../lib/prisma.js'
 import { AppError } from '@voiceautomation/shared'
+import { provisionAgentOrby } from '../services/agent-onboarding.service.js'
 
 const router: IRouter = Router()
 router.use(authenticate, requireTenantContext)
@@ -187,6 +188,37 @@ router.post('/onboarding/mark-step-done', asyncHandler(async (req, res) => {
   })
 
   res.json({ data: { ok: true, markedDone: next } })
+}))
+
+// MyOrbisAgents — RE agent self-serve provisioning. One call builds RE-shaped
+// Agent DNA ("Orby" persona + Fair-Housing guardrail), publishes it, and enables
+// the widget channel (minting a publicKey). Returns the embed + widget URL.
+const provisionOrbySchema = z.object({
+  agentName:    z.string().trim().min(2).max(120),
+  brokerage:    z.string().trim().max(160).optional(),
+  market:       z.string().trim().min(2).max(160),
+  specialties:  z.string().trim().max(400).optional(),
+  listingsBrief: z.string().trim().max(4000).optional(),
+  bookingHours: z.string().trim().max(200).optional(),
+  bookingUrl:   z.string().trim().url().max(500).optional().or(z.literal('')),
+  language:     z.enum(['en', 'es', 'bilingual']).optional(),
+})
+
+router.post('/onboarding/provision-orby', asyncHandler(async (req, res) => {
+  const tenantId = req.user!.currentTenantId!
+  const userId = req.user!.id
+  const parsed = provisionOrbySchema.safeParse(req.body)
+  if (!parsed.success) {
+    const fields: Record<string, string[]> = {}
+    for (const issue of parsed.error.issues) {
+      const key = issue.path.join('.') || 'root'
+      fields[key] = [...(fields[key] ?? []), issue.message]
+    }
+    throw new AppError('VALIDATION_ERROR', 'Invalid intake', 422, fields)
+  }
+  const intake = { ...parsed.data, bookingUrl: parsed.data.bookingUrl || undefined }
+  const result = await provisionAgentOrby(tenantId, userId, intake)
+  res.json({ data: result })
 }))
 
 export default router
