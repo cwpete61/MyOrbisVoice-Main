@@ -10,6 +10,7 @@
 import { prisma } from '../lib/prisma.js'
 import { AppError } from '@voiceautomation/shared'
 import { getOpenAiApiKey, getConfigValue } from './system-config.service.js'
+import { checkEntitlement } from './entitlement.service.js'
 import type { Prisma, ListingStatus } from '@prisma/client'
 
 const OPENAI = 'https://api.openai.com/v1/chat/completions'
@@ -95,6 +96,15 @@ function coerceStatus(s?: string): ListingStatus {
 }
 
 export async function createListing(tenantId: string, data: ListingInput) {
+  // Tier gate — listing_limit entitlement. -1 (or absent → treated as unlimited
+  // for legacy tenants without the key) means no cap; Solo Capture = 20.
+  const limit = await checkEntitlement(tenantId, 'listing_limit')
+  if (typeof limit === 'number' && limit >= 0) {
+    const count = await prisma.listing.count({ where: { tenantId } })
+    if (count >= limit) {
+      throw new AppError('FORBIDDEN', `Your plan includes up to ${limit} listings. Upgrade to Solo Power for unlimited.`, 403)
+    }
+  }
   return prisma.listing.create({
     data: {
       tenantId,
