@@ -986,6 +986,17 @@ is post-sale / post-PMF. Ship the closing loop, collect the cash, then deepen.
   enable inbound.** No new build. The shared-number-for-all-agents caller-ID lookup
   (§17b) is an enhancement layered on top afterwards.
 
+### Live founding Stripe links (2026-07-01) — collectible now
+Each bundles the **$500 setup** + the plan. One annual close ≈ the $2k goal.
+- **Solo Power — Founding Annual** ($500 + $2,982/yr ≈ **$3,482**): https://buy.stripe.com/6oUaEZ1NNfgp2TZ33o0Ny05
+- **Solo Power — Monthly** ($500 + $497/mo): https://buy.stripe.com/8x27sN8cbb09527cDY0Ny06
+- **Solo Capture — Founding Annual** ($500 + $1,782/yr ≈ **$2,282**): https://buy.stripe.com/28E28tcsrd8h0LR47s0Ny07
+- **Solo Capture — Monthly** ($500 + $297/mo): https://buy.stripe.com/4gMeVfgIH3xHdyDbzU0Ny08
+
+(Lead with Solo Power. "50% off yr 1" is baked into the annual price; renews at
+standard next year — set the year-2 renewal price when you productize. Live
+account, real charges.)
+
 ### First demo built (2026-07-01)
 Chase Horner RE-ISA demo is **live**: tenant on the Voice engine, published Agent
 DNA (Orby persona, Fair-Housing guardrail, sample $2.45M listing, calendar-aware
