@@ -997,6 +997,20 @@ Each bundles the **$500 setup** + the plan. One annual close ≈ the $2k goal.
 standard next year — set the year-2 renewal price when you productize. Live
 account, real charges.)
 
+### Dashboards — current split + the unify roadmap
+Today the surfaces are split by product-vs-outreach:
+- **Agent (customer) dashboard = the Voice web app** (`app.myorbisvoice.com`, tenant
+  login) — Business DNA editor, Channels, Conversations, Appointments, Integrations,
+  billing. This IS the agent cockpit (unbranded for now).
+- **Operator admin = two places:** prospecting → MyOrbisBiz `/admin` → Prospects;
+  agent/tenant management → Voice platform `/admin` (platform-admin account).
+
+**Roadmap (post-PMF, NOT sprint):** unify into a **MyOrbisAgents-branded agent
+dashboard** (the Voice tenant dashboard reskinned + installable **PWA**, mobile-
+first per §24) + a single operator console. Deliberately deferred — rebranding is
+polish; first customers get a working Orby + manual white-glove onboarding, which
+doesn't need a branded shell to close or deliver.
+
 ### First demo built (2026-07-01)
 Chase Horner RE-ISA demo is **live**: tenant on the Voice engine, published Agent
 DNA (Orby persona, Fair-Housing guardrail, sample $2.45M listing, calendar-aware
