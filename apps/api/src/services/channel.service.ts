@@ -57,9 +57,12 @@ export async function updateChannel(
     select: { publicKey: true },
   })
   const needsPublicKey = channelType === 'WIDGET' && data.isEnabled && !existing?.publicKey
+  // Mint once and reuse in both upsert branches — otherwise a first-time enable
+  // that hits the CREATE path gets no publicKey (the embed comes back empty).
+  const newPublicKey = needsPublicKey ? randomBytes(24).toString('hex') : null
 
   const update: Prisma.ChannelConfigUpdateInput = {
-    ...(needsPublicKey && { publicKey: randomBytes(24).toString('hex') }),
+    ...(newPublicKey && { publicKey: newPublicKey }),
     ...(data.isEnabled !== undefined && { isEnabled: data.isEnabled }),
     ...(data.greetingMode !== undefined && { greetingMode: data.greetingMode }),
     ...(data.afterHoursMode !== undefined && { afterHoursMode: data.afterHoursMode }),
@@ -80,6 +83,7 @@ export async function updateChannel(
     create: {
       tenantId,
       channelType: channelType as (typeof CHANNEL_TYPES)[number],
+      ...(newPublicKey && { publicKey: newPublicKey }),
       isEnabled: data.isEnabled ?? false,
       greetingMode: data.greetingMode ?? null,
       afterHoursMode: data.afterHoursMode ?? null,
