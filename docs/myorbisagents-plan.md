@@ -972,6 +972,28 @@ is post-sale / post-PMF. Ship the closing loop, collect the cash, then deepen.
 
 ---
 
+## 24. Platform directives (2026-07-01)
+
+- **Mobile-first design.** Agents live on their phones; buyers hit the demo/widget
+  on mobile. Every surface (demo pages, landing, dashboard) designed mobile-first —
+  big tap targets, single-column, fast, thumb-reachable. Desktop is the enhancement.
+- **Mobile app (roadmap).** An agent-facing mobile app = the cockpit (leads,
+  showings, transcripts, notifications, tune Orby). **PWA-first** (installable Voice
+  web dashboard) → native later. Not sprint work.
+- **Phone demo line = reuse MyOrbisVoice inbound.** The engine's inbound channel
+  already does number → tenant → Orby config → gateway (`resolveInboundCall`). To
+  give an agent's demo a phone line: **assign a Twilio number to the demo tenant +
+  enable inbound.** No new build. The shared-number-for-all-agents caller-ID lookup
+  (§17b) is an enhancement layered on top afterwards.
+
+### First demo built (2026-07-01)
+Chase Horner RE-ISA demo is **live**: tenant on the Voice engine, published Agent
+DNA (Orby persona, Fair-Housing guardrail, sample $2.45M listing, calendar-aware
+booking Mon–Sat 9–6), widget enabled + embedded on a hosted personalized page
+(`myorbisagents.com/demo/chase-horner/`). Proves the "skin on the engine" thesis.
+
+---
+
 *Idea doc — Part I (product concept) locked 2026-06-30; Part II (GTM + outreach
-machine) added same day from the working session. In-house first, partner-ready by
-design. Next: build the §23 critical path for the Founding Sprint.*
+machine) 2026-06-30; platform directives + first live demo 2026-07-01. In-house
+first, partner-ready by design.*
