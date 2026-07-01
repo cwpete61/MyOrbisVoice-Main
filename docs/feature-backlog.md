@@ -856,3 +856,21 @@ enrichment prompt + tool layer, not optional.
 OSM POIs (high buyer value, zero FH risk) → economics/growth → sensitive
 categories LAST behind the source-link guardrail. Gate the richer set to Solo
 Power (tier differentiator).
+
+**Architecture split (locked 2026-07-01, per owner):**
+- **Platform-shared data APIs live in System Admin → System Settings** (one
+  account, all tenants use it): RentCast (AVM/comps), api.data.gov (Census/FEMA/
+  etc.), + the free keyless providers (Nominatim, FEMA NFHL, OSM, FCC). Shipped:
+  "Listing Enrichment (data APIs)" card, write-only, `listing-enrichment.service`
+  reads `getConfigValue('rentcast_api_key')`.
+- **Agents' OWN MLS / Zillow / CRM logins live in the tenant Integrations page**
+  (per-tenant OAuth/subscription, the agent's own accounts) — NOT platform config.
+  ❌ TODO: tenant "Connect your MLS (RESO) / Follow Up Boss / kvCORE" integration
+  cards. Enrichment prefers the tenant's own MLS feed when connected, falls back
+  to the platform-shared RentCast otherwise.
+
+**Phase 1 shipped (2026-07-01):** `Listing.lat/lng/enrichmentJson/enrichedAt`,
+geocode (Nominatim) + RentCast AVM/comps behind `listing_enrichment` entitlement
+(Solo Power), `POST /api/listings/:id/enrich` (cached, TTL 14d), estimate + comps
+count surfaced on the listings UI, platform keys in System Settings. Free/keyless
+providers (FEMA/OSM/FCC/EPA) + Orby tools + seller magnet = Phase 2+.

@@ -3385,6 +3385,12 @@ model Listing {
   description String?
   highlights  String[]
   rawText     String?
+  // Enrichment (§backlog 24) — geocoded once, then a cached neighborhood/property
+  // data blob (AVM, comps, flood, POIs…) refreshed on a TTL. Never on the hot path.
+  lat            Float?
+  lng            Float?
+  enrichmentJson Json?
+  enrichedAt     DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 

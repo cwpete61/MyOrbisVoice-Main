@@ -329,6 +329,29 @@ router.patch('/system-settings/google', requirePlatformSuperAdmin, async (req, r
   } catch (err) { next(err) }
 })
 
+// MyOrbisAgents listing enrichment — platform-shared data-provider keys (backlog
+// #24). These are OURS (one key, all tenants use it) — distinct from a tenant's
+// own MLS/Zillow/CRM connections, which live in the tenant Integrations page.
+const enrichmentSettingsSchema = z.object({
+  rentcastApiKey: z.string().trim().optional(),
+  dataGovApiKey:  z.string().trim().optional(),
+})
+router.patch('/system-settings/enrichment', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const parsed = enrichmentSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const userId = req.user!.id
+    if (parsed.data.rentcastApiKey) await systemConfig.setConfigValue('rentcast_api_key', parsed.data.rentcastApiKey, true, userId)
+    if (parsed.data.dataGovApiKey)  await systemConfig.setConfigValue('data_gov_api_key', parsed.data.dataGovApiKey, true, userId)
+    await writeAuditLogFromRequest(req, {
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.enrichment.updated',
+      targetType: 'SystemConfig', metadataJson: { fields: Object.keys(parsed.data) },
+    })
+    res.json({ data: await systemConfig.getSystemSettings() })
+  } catch (err) { next(err) }
+})
+
 // Format-aware validators — catch paste-target mismatches at the API gate
 // instead of silently corrupting SystemConfig (which we hit twice during the
 // 2026-05-05 launch hardening session — pasting a whsec_… into secretKey

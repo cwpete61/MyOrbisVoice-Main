@@ -146,6 +146,7 @@ export async function getSystemSettings(): Promise<{
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
   serper: { apiKey: boolean }
+  enrichment: { rentcast: boolean; dataGov: boolean }
   content: { provider: string; model: string | null; groqApiKey: boolean }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
@@ -175,6 +176,7 @@ export async function getSystemSettings(): Promise<{
           'storage_default_quota_gb', 'storage_warning_threshold_pct', 'storage_retention_days',
           'openai_api_key', 'openai_model',
           'serper_api_key',
+          'rentcast_api_key', 'data_gov_api_key',
           'content_provider', 'content_model', 'groq_api_key',
           'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from',
           'overage_markup_percent',
@@ -235,6 +237,10 @@ export async function getSystemSettings(): Promise<{
     },
     serper: {
       apiKey: !!(get('serper_api_key') || process.env['SERPER_API_KEY']),
+    },
+    enrichment: {
+      rentcast: !!(get('rentcast_api_key') || process.env['RENTCAST_API_KEY']),
+      dataGov:  !!(get('data_gov_api_key') || process.env['DATA_GOV_API_KEY']),
     },
     content: {
       provider:   get('content_provider')?.value ?? process.env['CONTENT_PROVIDER'] ?? 'openai',

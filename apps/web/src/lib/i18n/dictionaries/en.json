@@ -4782,7 +4782,12 @@
     "removeTracking": "Remove number",
     "trackingLocked": "Tracking numbers are a Solo Power feature.",
     "assign": "Assign",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "enrichBtn": "Get estimate",
+    "enriching": "Estimating…",
+    "estValue": "Est. value",
+    "compsN": "comps",
+    "enrichLocked": "Estimates are a Solo Power feature."
   },
   "tenantAgentCockpit": {
     "title": "Orby cockpit",

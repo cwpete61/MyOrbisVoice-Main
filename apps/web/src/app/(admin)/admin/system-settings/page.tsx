@@ -16,6 +16,7 @@ interface SystemSettings {
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
   serper: { apiKey: boolean }
+  enrichment: { rentcast: boolean; dataGov: boolean }
   content: { provider: string; model: string | null; groqApiKey: boolean }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
   pricing: { overageMarkupPct: number }
@@ -343,6 +344,21 @@ export default function SystemSettingsPage() {
     const ok = await saveSection('openai', body, 'OpenAI')
     if (ok) setOa({ apiKey: '', model: '' })
     setOaSaving(false)
+  }
+
+  // MyOrbisAgents listing enrichment — platform-shared data-provider keys.
+  const [enr, setEnr] = useState({ rentcast: '', dataGov: '' })
+  const [enrSaving, setEnrSaving] = useState(false)
+  async function saveEnrichment(e: React.FormEvent) {
+    e.preventDefault()
+    const body: Record<string, string> = {}
+    if (enr.rentcast) body['rentcastApiKey'] = enr.rentcast
+    if (enr.dataGov)  body['dataGovApiKey']  = enr.dataGov
+    if (!Object.keys(body).length) { showToast('error', 'Enter at least one key.'); return }
+    setEnrSaving(true)
+    const ok = await saveSection('enrichment', body, 'Listing Enrichment')
+    if (ok) setEnr({ rentcast: '', dataGov: '' })
+    setEnrSaving(false)
   }
 
   // Serper.dev — powers the partner GMB Evaluation tool (Maps/Places + map-pack).
@@ -693,6 +709,48 @@ export default function SystemSettingsPage() {
               </div>
               <button type="submit" disabled={serperSaving} className="btn-primary">
                 {serperSaving ? 'Saving…' : 'Save Serper.dev key'}
+              </button>
+            </form>
+          </div>
+
+          {/* ── MyOrbisAgents Listing Enrichment (platform-shared data APIs) ── */}
+          <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <CardHeader
+              title="Listing Enrichment (data APIs)"
+              subtitle="Platform-shared keys that enrich every MyOrbisAgents listing — one account, all tenants use it. RentCast = AVM + comparable sales; api.data.gov = one key fronting Census/FEMA/etc. Agents' own MLS/Zillow/CRM logins live in the tenant Integrations page, not here."
+              configured={!!data?.enrichment?.rentcast}
+            />
+            <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <StatusRow label="RentCast API Key" value={!!data?.enrichment?.rentcast} isSecret />
+              <StatusRow label="api.data.gov Key" value={!!data?.enrichment?.dataGov} isSecret />
+              <div className="rounded-lg px-4 py-3 text-xs space-y-1" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>
+                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Used for</p>
+                <ul className="space-y-0.5 list-disc list-inside" style={{ color: 'var(--text-tertiary)' }}>
+                  <li>Listing estimated value + comparable sales (RentCast)</li>
+                  <li>Seller-valuation magnet</li>
+                  <li>Free gov datasets via api.data.gov (Census, FEMA flood, etc.)</li>
+                </ul>
+                <p className="pt-1" style={{ color: 'var(--text-tertiary)' }}>Geocoding (Nominatim), FEMA flood, OSM POIs and FCC broadband are free and need no key.</p>
+              </div>
+            </div>
+            <form onSubmit={saveEnrichment} className="px-6 py-5 space-y-4">
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                Keys are stored encrypted. Leave blank to keep the current value.
+              </p>
+              <div>
+                <label className={labelCls}>RentCast API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                <input type="password" className={inputCls} value={enr.rentcast}
+                  onChange={e => setEnr({ ...enr, rentcast: e.target.value })}
+                  placeholder="rentcast key…" autoComplete="new-password" />
+              </div>
+              <div>
+                <label className={labelCls}>api.data.gov API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                <input type="password" className={inputCls} value={enr.dataGov}
+                  onChange={e => setEnr({ ...enr, dataGov: e.target.value })}
+                  placeholder="data.gov key…" autoComplete="new-password" />
+              </div>
+              <button type="submit" disabled={enrSaving} className="btn-primary">
+                {enrSaving ? 'Saving…' : 'Save enrichment keys'}
               </button>
             </form>
           </div>

@@ -133,12 +133,18 @@ export async function listListings(tenantId: string) {
       _count: { select: { conversations: true } },
     },
   })
-  // Flatten: expose the first tracking number + a callCount for the UI.
-  return rows.map(({ phoneNumbers, _count, ...l }) => ({
-    ...l,
-    trackingNumber: phoneNumbers[0] ?? null,
-    callCount: _count.conversations,
-  }))
+  // Flatten: expose the first tracking number, callCount, and a compact
+  // enrichment summary (AVM) for the UI. Full enrichment via the enrich endpoint.
+  return rows.map(({ phoneNumbers, _count, enrichmentJson, ...l }) => {
+    const enr = (enrichmentJson ?? null) as { avmUsd?: number | null; comps?: unknown[] } | null
+    return {
+      ...l,
+      trackingNumber: phoneNumbers[0] ?? null,
+      callCount: _count.conversations,
+      avmUsd: enr?.avmUsd ?? null,
+      compsCount: Array.isArray(enr?.comps) ? enr!.comps!.length : 0,
+    }
+  })
 }
 
 /** PURCHASED, inbound-capable numbers not yet tied to a listing — the pick list. */

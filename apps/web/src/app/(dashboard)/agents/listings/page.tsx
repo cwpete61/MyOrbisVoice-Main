@@ -21,6 +21,7 @@ interface TrackingNumber { id: string; e164Number: string; displayLabel: string 
 interface Listing extends Draft {
   id: string; status: Status; isActive: boolean
   trackingNumber: TrackingNumber | null; callCount: number
+  avmUsd: number | null; compsCount: number
 }
 interface AvailNumber { id: string; e164Number: string; displayLabel: string | null; isInboundEnabled: boolean }
 
@@ -37,6 +38,7 @@ export default function ListingsPage() {
   const [avail, setAvail] = useState<AvailNumber[]>([])
   const [entitled, setEntitled] = useState(false)
   const [assignFor, setAssignFor] = useState<string | null>(null) // listingId being assigned
+  const [enriching, setEnriching] = useState<string | null>(null) // listingId being enriched
 
   const statusLabel = (s: Status) => t(`tenantAgentListings.status${s.split('_').map((w) => w[0] + w.slice(1).toLowerCase()).join('')}` as string)
 
@@ -60,6 +62,13 @@ export default function ListingsPage() {
   const removeNumber = async (listingId: string, phoneNumberId: string) => {
     setRows((rs) => rs.map((r) => (r.id === listingId ? { ...r, trackingNumber: null } : r)))
     try { await apiFetch(`/api/listings/${listingId}/tracking-number`, { method: 'DELETE', body: JSON.stringify({ phoneNumberId }) }); await loadNumbers() } catch { /* */ }
+  }
+  const enrich = async (id: string) => {
+    setEnriching(id); setErr('')
+    try {
+      const e = await apiFetch<{ avmUsd: number | null; comps: unknown[] }>(`/api/listings/${id}/enrich`, { method: 'POST', body: JSON.stringify({}) })
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, avmUsd: e.avmUsd, compsCount: Array.isArray(e.comps) ? e.comps.length : 0 } : r)))
+    } catch (er) { setErr(er instanceof Error ? er.message : t('tenantAgentListings.enrichLocked')) } finally { setEnriching(null) }
   }
 
   const openDraft = (d: Draft) => setDraft({ ...emptyDraft, ...d, status: 'ACTIVE' })
@@ -225,6 +234,20 @@ export default function ListingsPage() {
                   ) : (
                     <span className="text-xs" style={{ color: 'var(--text-tertiary)' }} title={t('tenantAgentListings.trackingLocked')}>🔒 {t('tenantAgentListings.trackingLabel')}</span>
                   )}
+
+                  {/* Enrichment — estimated value + comps */}
+                  <span style={{ marginLeft: 'auto' }} className="inline-flex items-center gap-2">
+                    {l.avmUsd != null ? (
+                      <span style={{ color: 'var(--text-secondary)' }}>
+                        {t('tenantAgentListings.estValue')} <b style={{ color: 'var(--text-primary)' }}>${l.avmUsd.toLocaleString('en-US')}</b>
+                        {l.compsCount > 0 && <span style={{ color: 'var(--text-tertiary)' }}> · {l.compsCount} {t('tenantAgentListings.compsN')}</span>}
+                      </span>
+                    ) : entitled ? (
+                      <button onClick={() => enrich(l.id)} disabled={enriching === l.id} className="text-xs font-semibold" style={{ color: 'var(--accent, #0d9488)', opacity: enriching === l.id ? 0.6 : 1 }}>
+                        {enriching === l.id ? t('tenantAgentListings.enriching') : t('tenantAgentListings.enrichBtn')}
+                      </button>
+                    ) : null}
+                  </span>
                 </div>
               </div>
             ))}

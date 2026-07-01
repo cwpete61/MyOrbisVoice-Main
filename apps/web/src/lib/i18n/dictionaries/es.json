@@ -4782,7 +4782,12 @@
     "removeTracking": "Quitar número",
     "trackingLocked": "Los números de rastreo son una función de Solo Power.",
     "assign": "Asignar",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "enrichBtn": "Obtener estimación",
+    "enriching": "Estimando…",
+    "estValue": "Valor est.",
+    "compsN": "comparables",
+    "enrichLocked": "Las estimaciones son una función de Solo Power."
   },
   "tenantAgentCockpit": {
     "title": "Cabina de Orby",

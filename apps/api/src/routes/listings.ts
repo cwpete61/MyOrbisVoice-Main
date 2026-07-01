@@ -11,6 +11,7 @@ import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import { AppError } from '@voiceautomation/shared'
 import * as svc from '../services/listing.service.js'
+import { enrichListing } from '../services/listing-enrichment.service.js'
 import { checkEntitlement } from '../services/entitlement.service.js'
 
 const router: IRouter = Router()
@@ -131,6 +132,21 @@ router.delete('/listings/:id/tracking-number', async (req, res, next) => {
     const { phoneNumberId } = validate(z.object({ phoneNumberId: z.string().min(1) }), req.body)
     await svc.unassignTrackingNumber(tenantId, phoneNumberId)
     res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
+
+// ── Listing enrichment (backlog #24) — geocode + AVM/comps, gated on the
+// listing_enrichment entitlement (Solo Power). Cached on the listing; `force`
+// bypasses the TTL.
+router.post('/listings/:id/enrich', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    if ((await checkEntitlement(tenantId, 'listing_enrichment')) !== true) {
+      throw new AppError('FORBIDDEN', 'Listing enrichment is a Solo Power feature — upgrade to enable.', 403)
+    }
+    const force = (req.body as { force?: boolean } | undefined)?.force === true
+    const data = await enrichListing(tenantId, req.params['id']!, force)
+    res.json({ data })
   } catch (err) { next(err) }
 })
 
