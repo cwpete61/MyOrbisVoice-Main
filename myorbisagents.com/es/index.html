@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MyOrbisAgents — Orby, tu agente de ventas con IA para bienes raíces</title>
+<meta name="description" content="Orby contesta cada llamada, texto y mensaje web al instante, conoce tus propiedades y agenda visitas en tu calendario 24/7. No pierdas otro prospecto por una llamada perdida.">
+<link rel="canonical" href="https://myorbisagents.com/es/">
+<link rel="alternate" hreflang="en" href="https://myorbisagents.com/">
+<link rel="alternate" hreflang="es" href="https://myorbisagents.com/es/">
+<meta property="og:title" content="MyOrbisAgents — Orby, tu agente de ventas con IA">
+<meta property="og:description" content="Contesta cada prospecto, agenda cada visita, 24/7. Un agente de ventas con IA para agentes de bienes raíces.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://myorbisagents.com/es/">
+<style>
+  :root{--ink:#12232c;--muted:#5b6b73;--line:#e6ebe9;--teal:#0f8a8a;--teal-d:#0b6d6d;--bg:#f5f8f7;--soft:#eef6f5;--soft-b:#d6e8e6}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Georgia,'Times New Roman',serif;color:var(--ink);background:var(--bg);line-height:1.55}
+  .sans{font-family:Arial,Helvetica,sans-serif}
+  a{color:var(--teal)}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+  header{border-bottom:1px solid var(--line);background:#fff}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .brand{font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);font-weight:700;text-decoration:none}
+  .brand span{color:var(--teal)}
+  .navlinks{font-family:Arial,Helvetica,sans-serif;font-size:14px;display:flex;gap:18px;align-items:center}
+  .navlinks a{color:var(--muted);text-decoration:none}
+  .lang{font-family:Arial,Helvetica,sans-serif;font-size:13px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--muted);text-decoration:none}
+  .hero{padding:64px 0 40px}
+  .kicker{font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);font-weight:700;margin:0 0 14px}
+  h1{font-size:40px;line-height:1.14;margin:0 0 16px;max-width:20ch}
+  .sub{font-size:19px;color:var(--muted);margin:0 0 28px;max-width:56ch}
+  .cta{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:13px 22px;display:inline-block}
+  .btn.primary{background:var(--teal);color:#fff}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  section{padding:44px 0}
+  .lead{font-size:15px;font-family:Arial,Helvetica,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  h2{font-size:28px;margin:0 0 14px}
+  .math{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px 26px}
+  .math p{margin:0 0 10px;font-size:18px}
+  .math .big{font-size:22px;color:var(--teal);font-family:Arial,Helvetica,sans-serif;font-weight:700}
+  .grid{display:grid;grid-template-columns:1fr;gap:16px}
+  @media(min-width:680px){.grid{grid-template-columns:1fr 1fr}}
+  .feature{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+  .feature h3{font-family:Arial,Helvetica,sans-serif;font-size:17px;margin:0 0 6px}
+  .feature p{margin:0;color:var(--muted);font-size:16px}
+  .demo{background:var(--soft);border:1px solid var(--soft-b);border-radius:16px;padding:26px;text-align:center}
+  .demo .num{font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:700;color:var(--ink);margin:6px 0}
+  .prices{display:grid;grid-template-columns:1fr;gap:18px}
+  @media(min-width:680px){.prices{grid-template-columns:1fr 1fr}}
+  .plan{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px}
+  .plan.featured{border:2px solid var(--teal)}
+  .plan .tag{font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);font-weight:700}
+  .plan .price{font-family:Arial,Helvetica,sans-serif;font-size:34px;font-weight:700;margin:6px 0 2px}
+  .plan .price small{font-size:16px;color:var(--muted);font-weight:400}
+  .plan .theme{color:var(--muted);margin:0 0 14px}
+  .plan ul{margin:0 0 18px;padding-left:18px;color:var(--ink);font-size:16px}
+  .plan ul li{margin:6px 0}
+  .plan .buy{display:flex;gap:10px;flex-wrap:wrap}
+  .plan .buy a{font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;padding:10px 16px}
+  .buy .yr{background:var(--teal);color:#fff}
+  .buy .mo{background:var(--soft);color:var(--teal-d);border:1px solid var(--soft-b)}
+  .founding{font-family:Arial,Helvetica,sans-serif;font-size:14px;background:var(--soft);border:1px solid var(--soft-b);border-radius:12px;padding:14px 18px;margin:0 0 22px;color:var(--ink)}
+  .brokerage{font-family:Arial,Helvetica,sans-serif;font-size:15px;color:var(--muted);margin-top:16px;text-align:center}
+  footer{border-top:1px solid var(--line);background:#fff;padding:26px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:var(--muted)}
+  footer a{color:var(--muted)}
+  .fine{font-size:12px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap bar">
+    <a class="brand" href="/es/">MYORBIS<span>AGENTS</span></a>
+    <nav class="navlinks">
+      <a href="#how">Cómo funciona</a>
+      <a href="#pricing">Precios</a>
+      <a class="lang" href="/">EN</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div class="hero">
+      <p class="kicker">Agente de ventas con IA para bienes raíces</p>
+      <h1>Te presentamos a Orby. Contesta cada prospecto y agenda cada visita — 24/7.</h1>
+      <p class="sub">La llamada que no contestas es la comisión que pierdes. Orby contesta cada llamada, texto y mensaje web en el instante que llega, responde preguntas sobre tus propiedades, califica al comprador y agenda la visita directo en tu calendario. De día, de noche, y mientras ya estás con otro cliente.</p>
+      <div class="cta">
+        <a class="btn primary" href="/demo/chase-horner/">Escucha a Orby</a>
+        <a class="btn ghost" href="#pricing">Ver precios fundadores</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section>
+      <p class="lead">La cuenta</p>
+      <div class="math">
+        <p class="big">Una llamada perdida de un comprador es una comisión perdida — no solo un prospecto.</p>
+        <p>La mayoría de los compradores se quedan con el primer agente que contesta. Si pierdes la llamada, ya agendaron con otro para cuando devuelves la llamada. Orby contesta al primer timbre, siempre, para que el prospecto sea tuyo antes de que un competidor se entere.</p>
+      </div>
+    </section>
+
+    <section id="how">
+      <p class="lead">Qué hace Orby</p>
+      <h2>Un agente de ventas completo, sin la nómina.</h2>
+      <div class="grid">
+        <div class="feature"><h3>Contesta al instante, 24/7</h3><p>Cada llamada, texto y chat del sitio web — contestado en segundos, en inglés o español.</p></div>
+        <div class="feature"><h3>Conoce tus propiedades</h3><p>Pega tus propiedades activas, próximas y privadas. Orby responde a los compradores desde tu inventario real.</p></div>
+        <div class="feature"><h3>Califica y agenda</h3><p>Plazos, preaprobación, rango de precio — y luego agenda la visita directo en tu calendario.</p></div>
+        <div class="feature"><h3>Transfiere sin fricción</h3><p>¿Prospecto caliente o algo que Orby no debe responder? Toma el mensaje y te avisa para dar seguimiento.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="demo">
+        <p class="lead" style="margin-bottom:4px">Pruébalo tú mismo</p>
+        <p style="margin:0 0 6px">Llama a la línea de demostración de Orby y pregunta por una propiedad:</p>
+        <div class="num"><a href="tel:+14705173441">+1 (470) 517-3441</a></div>
+        <p style="margin:8px 0 0" class="sans">O <a href="/demo/chase-horner/">abre una página de demostración en vivo →</a></p>
+      </div>
+    </section>
+
+    <section id="pricing">
+      <p class="lead">Precios fundadores</p>
+      <h2>Dos planes individuales. Ambos captan cada prospecto.</h2>
+      <div class="founding"><b>Oferta fundadora:</b> $500 de configuración única + tu plan. Los planes anuales incluyen <b>50% de descuento el primer año</b>. Disponible ahora — configuramos y activamos a Orby por ti.</div>
+      <div class="prices">
+        <div class="plan">
+          <span class="tag">Solo Capture</span>
+          <div class="price">$297<small>/mes</small></div>
+          <p class="theme">Contesta, rastrea y agenda cada prospecto.</p>
+          <ul>
+            <li>Orby por voz y texto, 24/7</li>
+            <li>Hasta 20 propiedades</li>
+            <li>Número principal del negocio</li>
+            <li>Seguimiento de llamadas, transcripciones, resúmenes</li>
+            <li>Respuesta por texto a llamadas perdidas</li>
+          </ul>
+          <div class="buy">
+            <a class="yr" href="https://buy.stripe.com/28E28tcsrd8h0LR47s0Ny07">Anual fundador · $2,282</a>
+            <a class="mo" href="https://buy.stripe.com/4gMeVfgIH3xHdyDbzU0Ny08">Mensual</a>
+          </div>
+        </div>
+        <div class="plan featured">
+          <span class="tag">Solo Power</span>
+          <div class="price">$497<small>/mes</small></div>
+          <p class="theme">Conviértelos y admíni­stralos también.</p>
+          <ul>
+            <li>Todo lo de Solo Capture</li>
+            <li>Propiedades ilimitadas + números de rastreo por propiedad</li>
+            <li>Nutrición completa de compradores/vendedores + reactivación de base de datos</li>
+            <li>Imán de valuación para vendedores + reportes semanales</li>
+            <li>Sincronización con CRM + configuración hecha por nosotros</li>
+          </ul>
+          <div class="buy">
+            <a class="yr" href="https://buy.stripe.com/6oUaEZ1NNfgp2TZ33o0Ny05">Anual fundador · $3,482</a>
+            <a class="mo" href="https://buy.stripe.com/8x27sN8cbb09527cDY0Ny06">Mensual</a>
+          </div>
+        </div>
+      </div>
+      <p class="brokerage">¿Tienes un equipo? Un plan <b>Brokerage</b> multiusuario con enrutamiento y marca propia viene en camino — <a href="mailto:hello@myorbisresults.com">habla con nosotros</a>.</p>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    MyOrbisAgents es un producto de MyOrbisResults. Orby es un asistente de IA, no un agente de bienes raíces con licencia.
+    <div class="fine">Cumplimos con la Ley de Vivienda Justa (Fair Housing Act) — Orby describe las propiedades solo con datos objetivos. · <a href="/">English</a></div>
+  </div>
+</footer>
+</body>
+</html>
