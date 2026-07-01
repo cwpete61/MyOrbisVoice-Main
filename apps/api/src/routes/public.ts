@@ -186,6 +186,7 @@ const leadOptInSchema = z.object({
   quizScore:    z.number().int().min(0).max(100).optional(),
   quizTier:     z.string().max(40).optional(),
   g:            z.string().max(64).optional(), // PartnerGroup id (My Groups attribution)
+  slug:         z.string().max(200).optional(), // directory business slug (track=directory claim)
 })
 
 router.post('/public/lead-optin', async (req, res, next) => {
@@ -203,6 +204,38 @@ router.post('/public/lead-optin', async (req, res, next) => {
 
     const tenantId = await hostingTenantFor(partner.id)
     const now = new Date()
+
+    // Directory CLAIM loop-closer: if this business is already a saved directory
+    // lead for this partner (from "Get my claim link"), flip THAT lead to the
+    // won/"Customer" stage + stamp claimedAt + notify — instead of creating a
+    // duplicate contact. This is how the partner sees the claim land (the card
+    // moves to Customer on their CRM board).
+    if (b.track === 'directory' && b.slug) {
+      const existing = await prisma.contact.findFirst({
+        where:  { partnerId: partner.id, deletedAt: null, metadataJson: { path: ['directoryBusinessSlug'], equals: b.slug } },
+        select: { id: true, metadataJson: true },
+      })
+      if (existing) {
+        await crmService.seedDefaultPipelineForPartner({ partnerId: partner.id, hostingTenantId: tenantId })
+        const wonStage = await prisma.pipelineStage.findFirst({ where: { partnerId: partner.id, isWon: true }, select: { id: true } })
+        if (wonStage) await crmService.setContactStage({ contactId: existing.id, stageId: wonStage.id })
+        await prisma.contact.update({
+          where: { id: existing.id },
+          data:  { metadataJson: { ...((existing.metadataJson as Record<string, unknown>) ?? {}), claimedAt: now.toISOString() } },
+        })
+        await prisma.notification.create({
+          data: {
+            tenantId, type: 'directory_claim', priority: 'info',
+            title: 'Listing claimed',
+            body:  `${b.businessName || 'A business'} claimed their MyOrbisBiz listing.`,
+            linkPath: '/partner-portal/crm',
+          },
+        }).catch(() => { /* non-fatal */ })
+        res.json({ data: { ok: true, claimed: true } })
+        return
+      }
+    }
+
     const contact = await prisma.contact.create({
       data: {
         tenantId, partnerId: partner.id,
@@ -283,6 +316,33 @@ router.get('/public/social-links', async (_req, res, next) => {
     }
     res.set('Cache-Control', 'public, max-age=300')
     res.json({ data: out })
+  } catch (err) { next(err) }
+})
+
+// GET /api/public/demo/:slug — MyOrbisAgents personalized demo page data (§17b).
+// One shared demo widget (default RE-ISA DNA, publicKey from system config), the
+// page is personalized per prospect. No auth. 404 when the slug isn't claimed.
+router.get('/public/demo/:slug', async (req, res, next) => {
+  try {
+    const slug = String(req.params['slug'] ?? '').trim().toLowerCase()
+    const prospect = await prisma.agentProspect.findUnique({
+      where:  { demoSlug: slug },
+      select: { name: true, brokerage: true, market: true, pitchAngle: true, recommendedTier: true },
+    })
+    if (!prospect) { res.status(404).json({ error: 'demo_not_found' }); return }
+    // Shared demo widget. Configurable; defaults to the live RE-ISA demo Orby.
+    const demoPublicKey =
+      (await systemConfig.getConfigValue('agents_demo_public_key'))
+      || '0e64e62f11af86c72ca55d969d555646a2553197b09b4dee'
+    res.set('Cache-Control', 'public, max-age=120')
+    res.json({ data: {
+      name:            prospect.name,
+      brokerage:       prospect.brokerage,
+      market:          prospect.market,
+      pitchAngle:      prospect.pitchAngle,
+      recommendedTier: prospect.recommendedTier,
+      demoPublicKey,
+    } })
   } catch (err) { next(err) }
 })
 

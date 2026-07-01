@@ -3336,6 +3336,7 @@ model AgentProspect {
   redFlags        String?
   rawText         String?
   status          String   @default("TARGET")
+  demoSlug        String?  @unique
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

@@ -22,7 +22,10 @@ interface Evald { fields: Fields; score: number; tier: string; recommendedTier: 
 interface Prospect {
   id: string; name: string; market: string | null; salesLast12: number | null; premierAgent: boolean
   score: number; tier: string; recommendedTier: string | null; pitchAngle: string | null; redFlags: string | null; status: string
+  demoSlug: string | null
 }
+
+const DEMO_BASE = 'https://app.myorbisvoice.com'
 
 const STATUSES = ['TARGET', 'CONTACTED', 'DEMO', 'WON', 'LOST', 'SKIP']
 const tierStyle = (t: string) => t === 'A' ? { color: 'oklch(55% 0.15 150)', border: 'oklch(55% 0.15 150)' }
@@ -62,6 +65,16 @@ export default function ProspectsPage() {
     if (!window.confirm('Delete this prospect?')) return
     setRows((rs) => rs.filter((r) => r.id !== id))
     try { await apiFetch(`/api/admin/agent-prospects/${id}`, { method: 'DELETE' }) } catch { /* */ }
+  }
+  const genDemo = async (id: string) => {
+    try {
+      const d = await apiFetch<{ slug: string; url: string }>(`/api/admin/agent-prospects/${id}/generate-demo`, { method: 'POST' })
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, demoSlug: d.slug } : r)))
+      try { await navigator.clipboard.writeText(d.url) } catch { /* clipboard blocked */ }
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Failed to generate demo') }
+  }
+  const copyDemo = async (slug: string) => {
+    try { await navigator.clipboard.writeText(`${DEMO_BASE}/demo/${slug}`) } catch { /* */ }
   }
 
   const input = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--surface-raised)', color: 'var(--text-primary)', fontSize: 14 } as const
@@ -127,6 +140,9 @@ export default function ProspectsPage() {
                   <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{[r.market, r.salesLast12 != null ? `${r.salesLast12} sales/yr` : null, r.premierAgent ? 'Premier' : null, `$${r.recommendedTier}`].filter(Boolean).join(' · ')}{r.redFlags ? ` · ⚠ ${r.redFlags}` : ''}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                  {r.demoSlug
+                    ? <button onClick={() => copyDemo(r.demoSlug!)} title={`${DEMO_BASE}/demo/${r.demoSlug}`} style={{ ...mini, color: TEAL }}>Copy demo</button>
+                    : <button onClick={() => genDemo(r.id)} style={{ ...mini, color: TEAL }}>Generate demo</button>}
                   <select value={r.status} onChange={(e) => setStatus(r.id, e.target.value)} style={{ ...input, padding: '5px 8px', fontSize: 13 }}>
                     {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>

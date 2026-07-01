@@ -4793,5 +4793,22 @@
     "showingsEmpty": "No hay visitas agendadas.",
     "viewAll": "Ver todo",
     "unknownContact": "Llamante desconocido"
+  },
+  "publicDemo": {
+    "notFoundTitle": "Demostración no encontrada",
+    "notFoundBody": "Este enlace de demostración no está activo. Pide uno nuevo.",
+    "loading": "Cargando…",
+    "kicker": "Tu agente de ventas con IA",
+    "headline": "{name}, te presentamos a Orby.",
+    "sub": "Esta es una vista previa en vivo del asistente de IA que contestaría tus llamadas, textos y prospectos del sitio web — 24/7, en inglés y español. Pruébalo como lo haría un comprador.",
+    "tryTitle": "Pruébalo ahora",
+    "tryHint": "Toca el botón del asistente (abajo a la derecha) y pregunta:",
+    "q1": "“¿La propiedad sigue disponible?”",
+    "q2": "“¿Cuántas recámaras, y cuál es el precio?”",
+    "q3": "“¿Puedo verla este fin de semana?”",
+    "tryNote": "Contesta, califica al comprador, agenda la visita — y rechaza con cortesía cualquier cosa que cruce Fair Housing.",
+    "offerTitle": "Tarifa fundadora",
+    "offer": "$500 de configuración + 50% de descuento el primer año. Responde y activo tu Orby esta semana.",
+    "poweredBy": "Con la tecnología de MyOrbisAgents"
   }
 }

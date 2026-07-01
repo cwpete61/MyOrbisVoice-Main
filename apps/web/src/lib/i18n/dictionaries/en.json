@@ -4793,5 +4793,22 @@
     "showingsEmpty": "No upcoming showings booked.",
     "viewAll": "View all",
     "unknownContact": "Unknown caller"
+  },
+  "publicDemo": {
+    "notFoundTitle": "Demo not found",
+    "notFoundBody": "This demo link isn't active. Ask for a fresh one.",
+    "loading": "Loading…",
+    "kicker": "Your AI inside sales agent",
+    "headline": "{name}, meet Orby.",
+    "sub": "This is a live preview of the AI assistant that would answer your calls, texts, and website leads — 24/7, in English and Spanish. Try it like a buyer would.",
+    "tryTitle": "Try it now",
+    "tryHint": "Tap the assistant button (bottom-right) and ask:",
+    "q1": "“Is the listing still available?”",
+    "q2": "“How many bedrooms, and what's the price?”",
+    "q3": "“Can I see it this weekend?”",
+    "tryNote": "It answers, qualifies the buyer, books the showing — and politely refuses anything that crosses Fair Housing.",
+    "offerTitle": "Founding rate",
+    "offer": "$500 setup + 50% off your first year. Reply and I'll have your Orby live this week.",
+    "poweredBy": "Powered by MyOrbisAgents"
   }
 }
