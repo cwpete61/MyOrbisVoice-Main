@@ -835,6 +835,17 @@ layer of the existing prompt stack, real-estate-shaped. Captures:
 - **Escalation / handoff** (when to warm-transfer, after-hours behavior)
 - **Language** · **Prohibited language / brand guardrails**
 
+**Assistant identity — the agent is "Orby."** Every agent's ISA introduces itself
+as **"Orby, [Agent]'s personal digital assistant"** (never claims to be the agent
+or a human — AI disclosure). Consistent Orby brand across the MyOrbis ecosystem.
+
+**Calendar integrations for booking:**
+- **Google Calendar — available now** (engine has OAuth + appointment sync). Agent
+  connects via Integrations → Connect Google; Orby books real events.
+- **Calendly · Outlook/Office365 · ShowingTime (RE-specific) — net-new builds**
+  (roadmap; each is its own OAuth/API integration service). Until connected, Orby
+  captures + confirms the showing against the agent's stated hours.
+
 **Demo vs customer DNA — the key split:**
 - **Cold demo** runs on a strong **default RE-ISA DNA template** + light
   personalization (name / listing / market). **Zero agent effort** → the cold demo
