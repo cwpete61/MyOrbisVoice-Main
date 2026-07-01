@@ -516,6 +516,7 @@ model Tenant {
   optOutLogs                OptOutLog[]
   notifications             Notification[]
   knowledgeBaseFiles        KnowledgeBaseFile[]
+  listings                  Listing[]
   /// Cumulative bytes used by knowledge-base files. Maintained by the
   /// upload/delete service. Capped by the `kb_storage_mb` entitlement
   /// (separate pool from voice-recording storageUsedBytes).
@@ -3341,4 +3342,42 @@ model AgentProspect {
   @@index([ownerId])
   @@index([status])
   @@index([score])
+}
+
+// MyOrbisAgents — the agent's property book. Each Listing is a working unit Orby
+// answers from (§17c). Descriptions are AI-formatted Fair-Housing-safe.
+// ownerId is the partner-ready seam (§22): null = house/us.
+enum ListingStatus {
+  ACTIVE
+  COMING_SOON
+  PENDING
+  SOLD
+  POCKET
+  OFF_MARKET
+}
+
+model Listing {
+  id          String        @id @default(uuid())
+  tenantId    String
+  ownerId     String?
+  status      ListingStatus @default(ACTIVE)
+  isActive    Boolean       @default(true)
+  address     String
+  headline    String?
+  priceUsd    Int?
+  beds        Float?
+  baths       Float?
+  sqft        Int?
+  propertyType String?
+  description String?
+  highlights  String[]
+  rawText     String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive])
+  @@index([tenantId, status])
+  @@index([ownerId])
 }

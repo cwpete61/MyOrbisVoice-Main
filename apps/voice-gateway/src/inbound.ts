@@ -3,6 +3,7 @@ import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt, type PartnerContext } from './lib/prompt-resolver.js'
 import { loadPartnerContext } from './lib/partner-context.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
+import { fetchListingsForPrompt } from './lib/listings.js'
 import { findContactIdByPhone, getContactHistory, formatContactHistoryForPrompt } from './lib/contact-history.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { analyzeConversation, cleanTranscript } from './services/summary.service.js'
@@ -217,8 +218,9 @@ export async function handleInboundCall(ws: WebSocket) {
       return
     }
 
-    // Load active DNA, published prompts, and channel config for this tenant
-    const [dna, prompts, channelCfgRow] = await Promise.all([
+    // Load active DNA, published prompts, channel config, and the tenant's
+    // Orby-payment config for this tenant.
+    const [dna, prompts, channelCfgRow, payCfg] = await Promise.all([
       prisma.businessDNA.findFirst({ where: { tenantId, isActive: true } }),
       prisma.promptVersion.findMany({
         where: { tenantId, status: 'PUBLISHED', scope: { in: ['TENANT', 'CHANNEL', 'ROLE'] } },
@@ -227,6 +229,10 @@ export async function handleInboundCall(ws: WebSocket) {
       channelConfigId
         ? prisma.channelConfig.findUnique({ where: { id: channelConfigId }, select: { configJson: true } })
         : Promise.resolve(null),
+      prisma.tenant.findUnique({
+        where:  { id: tenantId },
+        select: { orbyPaymentsEnabled: true, stripeChargesEnabled: true, orbyDepositCents: true },
+      }),
     ])
 
     const channelCfgJson  = (channelCfgRow?.configJson as Record<string, unknown> | null) ?? {}
@@ -245,10 +251,17 @@ export async function handleInboundCall(ws: WebSocket) {
       complianceJson:  dna.complianceJson,
     } : null
 
-    const kbText = await fetchKbForPrompt(tenantId).catch(e => {
-      console.error('[inbound] kb fetch failed (non-fatal):', e?.message ?? e)
-      return null
-    })
+    const [kbBase, listingsText] = await Promise.all([
+      fetchKbForPrompt(tenantId).catch(e => {
+        console.error('[inbound] kb fetch failed (non-fatal):', e?.message ?? e)
+        return null
+      }),
+      fetchListingsForPrompt(tenantId).catch(e => {
+        console.error('[inbound] listings fetch failed (non-fatal):', e?.message ?? e)
+        return null
+      }),
+    ])
+    const kbText = [kbBase, listingsText].filter(Boolean).join('\n\n') || null
     // Phase E.7 — cross-session memory. If the caller ID matches a known
     // contact, fetch their prior conversations + CRM facts and inject as a
     // Caller Context layer in the system prompt. No-op when caller ID is
@@ -281,7 +294,7 @@ export async function handleInboundCall(ws: WebSocket) {
       }
     }
 
-    const systemPrompt = resolveSystemPrompt(
+    let systemPrompt = resolveSystemPrompt(
       prompts as any[],
       dnaSnap,
       'INBOUND',
@@ -290,6 +303,22 @@ export async function handleInboundCall(ws: WebSocket) {
       partnerContext,        // partner — set for partner-owned inbound numbers
       callerHistoryBlock,    // E.7 — Caller Context layer
     )
+
+    // Phase 2 — on-call payments. Only instruct Orby to offer/take payment when
+    // the tenant has BOTH turned it on AND finished Stripe onboarding. Without
+    // this block in the prompt, Orby never raises payment (the tool guidance
+    // says to use collect_payment only when instructed or asked).
+    if (payCfg?.orbyPaymentsEnabled && payCfg.stripeChargesEnabled) {
+      const dep = payCfg.orbyDepositCents ? `$${(payCfg.orbyDepositCents / 100).toFixed(2)}` : null
+      systemPrompt += '\n\n--- Payments enabled ---\n' +
+        'This business accepts payments on calls via a texted Stripe link. ' +
+        (dep
+          ? `After you successfully book an appointment, offer to secure it with a ${dep} deposit. `
+          : 'When a deposit or payment is appropriate after booking, offer it. ') +
+        'If the caller agrees, or asks to pay at any point, call collect_payment to text them a secure link. ' +
+        'Confirm the amount aloud before charging anything other than the default deposit. ' +
+        'After it succeeds, tell the caller you have texted them the link.'
+    }
 
     // Look up tenant's Gemini API key; fall back to platform env key
     const geminiConn = await prisma.integrationConnection.findFirst({

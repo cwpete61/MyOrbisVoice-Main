@@ -3,6 +3,7 @@ import healthRouter from './health.js'
 import authRouter from './auth.js'
 import tenantRouter from './tenant.js'
 import businessDNARouter from './business-dna.js'
+import listingsRouter from './listings.js'
 import promptsRouter from './prompts.js'
 import agentsRouter from './agents.js'
 import channelsRouter from './channels.js'
@@ -110,6 +111,7 @@ router.use('/api', sendingDomainRouter)
 router.use('/api', coldEmailRouter)
 router.use('/api', tenantRouter)
 router.use('/api', businessDNARouter)
+router.use('/api', listingsRouter)
 router.use('/api', promptsRouter)
 router.use('/api', agentsRouter)
 router.use('/api', channelsRouter)

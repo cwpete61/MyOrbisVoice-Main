@@ -2,6 +2,7 @@ import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
+import { fetchListingsForPrompt } from './lib/listings.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { analyzeConversation } from './services/summary.service.js'
 import { persistConversation, markSessionFailed, startWidgetConversation, type TranscriptEntry } from './services/conversation.service.js'
@@ -69,10 +70,17 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     ? (session.promptSnapshotJson as any[])
     : []
   const dna = session.businessDNASnapshotJson as Record<string, any> | null
-  const kbText = await fetchKbForPrompt(session.tenantId).catch(e => {
-    console.error('[session] kb fetch failed (non-fatal):', e?.message ?? e)
-    return null
-  })
+  const [kbBase, listingsText] = await Promise.all([
+    fetchKbForPrompt(session.tenantId).catch(e => {
+      console.error('[session] kb fetch failed (non-fatal):', e?.message ?? e)
+      return null
+    }),
+    fetchListingsForPrompt(session.tenantId).catch(e => {
+      console.error('[session] listings fetch failed (non-fatal):', e?.message ?? e)
+      return null
+    }),
+  ])
+  const kbText = [kbBase, listingsText].filter(Boolean).join('\n\n') || null
   // Partner context — set by widget session creation when the widget loaded on
   // a partner's published page (/p/<slug>/). The resolver prepends a block
   // telling the agent who they're demoing for.
@@ -162,13 +170,29 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     || (identityJson?.['name'] as string | undefined)
     || 'this business'
 
+  // When the widget is on a partner's page, the opening greeting must name
+  // BOTH the agent and the partner advisor (e.g. "Hi, I'm Orby, Alex's AI
+  // assistant"). The system prompt's Partner Context layer already requires
+  // this, but the runtime greeting nudge below is what the model acts on for
+  // the very first turn — so reinforce the partner name here too.
+  const partnerName: string | null =
+    partner && typeof partner.displayName === 'string' ? partner.displayName
+    : partner && typeof partner.firstName === 'string' ? partner.firstName
+    : null
+  const partnerFirst: string | null =
+    partner && typeof partner.firstName === 'string' && partner.firstName ? partner.firstName : partnerName
   const gemini = openGeminiLiveSession(systemPrompt, {
     onReady() {
-      gemini.sendText(
-        `A visitor just opened the voice chat widget for ${businessName}. ` +
-        `You must speak immediately — do not wait for the visitor. ` +
-        `Open with your professional greeting now.`
-      )
+      const greetNudge = partnerName
+        ? `A visitor just opened the voice chat widget on ${partnerName}'s page. ` +
+          `You must speak immediately — do not wait for the visitor. ` +
+          `Open NOW with a greeting that states BOTH your own name AND ${partnerFirst} ` +
+          `(the advisor you represent) — for example "Hi, I'm <your name>, ${partnerFirst}'s AI assistant — how can I help?". ` +
+          `Never open without naming both.`
+        : `A visitor just opened the voice chat widget for ${businessName}. ` +
+          `You must speak immediately — do not wait for the visitor. ` +
+          `Open with your professional greeting now, stating your name.`
+      gemini.sendText(greetNudge)
     },
     onAudioChunk(chunk) {
       send(ws, { type: 'audio', data: chunk.toString('base64') })
