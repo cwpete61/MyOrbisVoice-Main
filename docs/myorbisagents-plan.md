@@ -972,6 +972,43 @@ is post-sale / post-PMF. Ship the closing loop, collect the cash, then deepen.
 
 ---
 
+## 25. The app build — Option A (locked 2026-07-01)
+
+**Decision: MyOrbisAgents is a branded vertical of the Voice web app (`apps/web`).**
+Reuse the engine AND the dashboard (auth, tenant dashboard, DNA editor, channels,
+conversations, appointments, billing, API, gateway). Add only RE-specific pages +
+a MyOrbisAgents theme; serve on `myorbisagents.com`. No new runtime, no rebuilt
+dashboard. (Rejected: B standalone frontend = duplicates solved UI; C thin
+front-door = split UX.)
+
+**Build order (each a focused chunk — best one-per-session):**
+1. **Shell + brand + move the scorer.** MyOrbisAgents theme/routes in `apps/web`
+   (e.g. `/agents/*` or a brand switch on `myorbisagents.com`). **Move the prospect
+   scorer OUT of MyOrbisBiz** (`AgentProspect` model, `prospect-scorer.ts`,
+   evaluate/save/list actions, Prospects UI) into the Voice app as the operator
+   console. Retire the MyOrbisBiz Prospects tab.
+2. **RE agent onboarding (self-serve).** Signup → RE-shaped DNA intake (reuse
+   `generateDnaSection`) → auto-provision Orby (widget + phone). Automates the
+   manual Chase provisioning (signup → DNA → publish → enable channels → number).
+   Persona = "Orby, [Agent]'s personal digital assistant"; compliance in platform layer.
+3. **Listings.** paste→AI-format→confirm (grounded, Fair-Housing-safe) → stored as
+   the tenant's listing knowledge Orby answers from. §17c.
+4. **Agent dashboard (RE-skinned cockpit).** Leads, showings, transcripts, Orby
+   status, connect Google Calendar — reuse conversations/appointments/DNA/channels.
+5. **Operator console.** Scorer + pipeline + **auto-generate `/demo/[slug]` per
+   prospect** (widget page currently hand-built for Chase) + the shared demo phone
+   line's caller-ID/name lookup (one number → many agents).
+6. **Mobile-first pass + PWA** (installable agent cockpit, §24).
+
+**Reuse map (don't rebuild):** auth/JWT, tenant + BusinessDNA models, prompt
+engine, `ai-assist.service` (`generateDnaSection`/`generateScriptDraft`),
+`RichTextEditor`, widget + inbound channels, `createWidgetSession`, phone
+provisioning, Stripe billing + entitlements, partner rails. Net-new = RE pages +
+theme + the scorer (moved) + demo auto-gen + listing formatter.
+
+**Partner-ready seams from row 1 (§22):** stamp `ownerId` on any new MyOrbisAgents
+tables; scope queries; reuse Hub/affiliate rails.
+
 ## 24. Platform directives (2026-07-01)
 
 - **Mobile-first design.** Agents live on their phones; buyers hit the demo/widget
