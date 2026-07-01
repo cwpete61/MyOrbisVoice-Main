@@ -54,24 +54,28 @@ Optional: add `legal@`/`affiliates@`/`unsubscribe@` as **aliases** on `admin@`
 - **User account:** `orby-system@` (a `User` row).
 - **Partners:** `<slug>@myorbisresults.com`, one per partner (dynamic, ~15+).
 
-## ⚠️ Partner-reply ingestion is BROKEN by the Spacemail move
+## Partner-reply ingestion — IMAP poller (BUILT 2026-07-01, commit `5a7294b`)
 
-**Design:** partners have an in-app mailbox (`partner-portal/mailbox`). It was fed
-by Contabo **Postfix** receiving `*@myorbisresults.com` → catch-all pipe
-(`orbis-mail-ingest.sh`) → `POST /api/internal-mail` → matches `<slug>` → inserts
-an `Email` row → shows in the partner's mailbox (+ optional forward to their Gmail
-when `forwardPlatformEmails`). See `apps/api/src/routes/internal-mail.ts`.
+**Design:** partners have an in-app mailbox (`partner-portal/mailbox`), fed by a
+parse → match `<slug>` → insert `Email` row (+ optional Gmail forward when
+`forwardPlatformEmails`) pipeline. That logic now lives in
+`apps/api/src/services/mail-ingest.service.ts` (`ingestRawMessage`), shared by
+both the legacy `POST /api/internal/mail/ingest` route and the poller.
 
-**Now:** mail routes to **Spacemail**, not Contabo Postfix → that pipe never
-fires. Prospect replies land in the `admin@` catch-all inbox but do **not** reach
-the individual partner or their in-app mailbox.
+**The poller** (`apps/api/src/jobs/imap-poller.ts`, `startImapPollerJob` at boot):
+every 2 min it logs into the Spacemail **catch-all** mailbox over IMAP, fetches
+UNSEEN messages, runs each through `ingestRawMessage` (idempotent by messageId),
+and marks them Seen. Replaces the dead Contabo Postfix pipe. Per-address Spacemail
+forwarding was rejected — partners are created dynamically, so catch-all + IMAP is
+the only scalable path.
 
-**Fix (TODO, moderate build):** add an **IMAP poller** that reads the `admin@`
-catch-all → parse `To: <slug>@myorbisresults.com` → reuse the existing
-`internal-mail` slug-match + Email-insert logic → partner sees the reply in-app
-(+ optional Gmail forward). Reuses existing code; only the source changes
-(Spacemail IMAP instead of Postfix). Per-address Spacemail forwarding does NOT
-scale (partners are created dynamically).
+**To ACTIVATE (config, not code):**
+1. Spacemail: set **catch-all → `admin@`** (so partner `<slug>@` mail lands there).
+2. Admin → System Settings → **"Inbound Mail (partner replies)"** card: enter
+   `imap.spacemail.com` / `993` / `admin@myorbisresults.com` / the mailbox password.
+   Keys: `imap_host`/`imap_port`/`imap_user`/`imap_password` (password encrypted).
+3. Within 2 min the poller ingests; a prospect reply to `<slug>@` appears in that
+   partner's in-app mailbox. Unconfigured → the job idles (logs once, no crash).
 
 ## Verify
 
