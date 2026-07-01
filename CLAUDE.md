@@ -240,6 +240,8 @@ The Contabo server (`147.93.183.4`) hosts multiple unrelated app stacks. **Only 
 ### Transactional email
 - use a separate sending subdomain such as `notify.myorbisvoice.com`
 - keep transactional mail separate from human-operated mailboxes
+- **Full email setup (sending + receiving, DNS, Spacemail mailboxes, the
+  partner-reply ingestion gap): see [docs/email-setup.md](docs/email-setup.md).**
 
 ## Core product modules
 
@@ -937,6 +939,10 @@ See [docs/product-overview.md](docs/product-overview.md) — canonical living de
 ## Marketing Style Guide
 
 See [docs/marketing-style-guide.md](docs/marketing-style-guide.md) — canonical persuasion + copywriting reference. Master copywriters (Caples, Halbert, Wiebe, Kennedy, Furey, Schwartz, Sugarman, Miller), frameworks (AIDA, PAS, BAB, 4Ps, StoryBrand, 5 Stages of Awareness), Cialdini's 7 principles, headline formulas, email patterns, per-vertical worked examples, anti-patterns, the **Aggression Spectrum** (4-tier tenant/partner setting). **Read this before writing any user-facing copy.** Generated content must follow the active tier's voice rules.
+
+## Marketing Plan
+
+See [docs/marketing-plan.md](docs/marketing-plan.md) — the MyOrbisVoice GTM plan (v1 locked 2026-06-15). Partner-led primary (Lead Capture Eval is the wedge), bilingual "missed call = lost money" positioning, the eval→report→signup growth loop, channels, metrics, 90-day goal (prove the loop: 5–10 active partners, first 10–20 paying tenants), organic + partner-first (no paid yet). Read before planning marketing campaigns or spend.
 
 ## Launch Blockers
 
