@@ -17,7 +17,12 @@ interface Draft {
   beds: number | null; baths: number | null; sqft: number | null
   propertyType: string | null; description: string | null; highlights: string[]
 }
-interface Listing extends Draft { id: string; status: Status; isActive: boolean }
+interface TrackingNumber { id: string; e164Number: string; displayLabel: string | null }
+interface Listing extends Draft {
+  id: string; status: Status; isActive: boolean
+  trackingNumber: TrackingNumber | null; callCount: number
+}
+interface AvailNumber { id: string; e164Number: string; displayLabel: string | null; isInboundEnabled: boolean }
 
 const STATUSES: Status[] = ['ACTIVE', 'COMING_SOON', 'PENDING', 'SOLD', 'POCKET', 'OFF_MARKET']
 const emptyDraft: Draft = { address: '', headline: '', priceUsd: null, beds: null, baths: null, sqft: null, propertyType: '', description: '', highlights: [] }
@@ -29,6 +34,9 @@ export default function ListingsPage() {
   const [rows, setRows] = useState<Listing[]>([])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [avail, setAvail] = useState<AvailNumber[]>([])
+  const [entitled, setEntitled] = useState(false)
+  const [assignFor, setAssignFor] = useState<string | null>(null) // listingId being assigned
 
   const statusLabel = (s: Status) => t(`tenantAgentListings.status${s.split('_').map((w) => w[0] + w.slice(1).toLowerCase()).join('')}` as string)
 
@@ -36,7 +44,23 @@ export default function ListingsPage() {
     try { const d = await apiFetch<{ items: Listing[] }>('/api/listings'); setRows(d.items ?? []) }
     catch (e) { setErr(e instanceof Error ? e.message : 'Failed to load') }
   }, [])
-  useEffect(() => { load() }, [load])
+  const loadNumbers = useCallback(async () => {
+    try { const d = await apiFetch<{ numbers: AvailNumber[]; entitled: boolean }>('/api/listings/available-numbers'); setAvail(d.numbers ?? []); setEntitled(!!d.entitled) }
+    catch { /* non-fatal */ }
+  }, [])
+  useEffect(() => { load(); loadNumbers() }, [load, loadNumbers])
+
+  const assignNumber = async (listingId: string, phoneNumberId: string) => {
+    try {
+      const tn = await apiFetch<TrackingNumber>(`/api/listings/${listingId}/tracking-number`, { method: 'POST', body: JSON.stringify({ phoneNumberId }) })
+      setRows((rs) => rs.map((r) => (r.id === listingId ? { ...r, trackingNumber: tn } : r)))
+      setAssignFor(null); await loadNumbers()
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Failed to assign') }
+  }
+  const removeNumber = async (listingId: string, phoneNumberId: string) => {
+    setRows((rs) => rs.map((r) => (r.id === listingId ? { ...r, trackingNumber: null } : r)))
+    try { await apiFetch(`/api/listings/${listingId}/tracking-number`, { method: 'DELETE', body: JSON.stringify({ phoneNumberId }) }); await loadNumbers() } catch { /* */ }
+  }
 
   const openDraft = (d: Draft) => setDraft({ ...emptyDraft, ...d, status: 'ACTIVE' })
 
@@ -172,6 +196,36 @@ export default function ListingsPage() {
                   </div>
                 </div>
                 {l.description && <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>{l.description}</p>}
+
+                {/* Tracking number + call attribution */}
+                <div className="mt-3 pt-3 flex items-center gap-3 flex-wrap text-sm" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                  <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: l.callCount > 0 ? 'var(--accent, #0d9488)' : 'var(--text-tertiary)' }}>
+                    📞 {l.callCount} {l.callCount === 1 ? t('tenantAgentListings.callsOne') : t('tenantAgentListings.calls')}
+                  </span>
+                  {l.trackingNumber ? (
+                    <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+                      <span style={{ color: 'var(--text-tertiary)' }}>{t('tenantAgentListings.trackingLabel')}:</span>
+                      <b style={{ color: 'var(--text-primary)' }}>{l.trackingNumber.e164Number}</b>
+                      <button onClick={() => removeNumber(l.id, l.trackingNumber!.id)} className="text-xs underline" style={{ color: 'var(--text-tertiary)' }}>{t('tenantAgentListings.removeTracking')}</button>
+                    </span>
+                  ) : assignFor === l.id ? (
+                    avail.length === 0 ? (
+                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantAgentListings.noSpareNumbers')}</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-2">
+                        <select className="rounded-lg px-2 py-1 text-xs" style={fieldStyle} defaultValue="" onChange={(e) => e.target.value && assignNumber(l.id, e.target.value)}>
+                          <option value="" disabled>{t('tenantAgentListings.assignTitle')}</option>
+                          {avail.map((n) => <option key={n.id} value={n.id}>{n.e164Number}{n.displayLabel ? ` (${n.displayLabel})` : ''}</option>)}
+                        </select>
+                        <button onClick={() => setAssignFor(null)} className="text-xs underline" style={{ color: 'var(--text-tertiary)' }}>{t('tenantAgentListings.cancel')}</button>
+                      </span>
+                    )
+                  ) : entitled ? (
+                    <button onClick={() => setAssignFor(l.id)} className="text-xs font-semibold" style={{ color: 'var(--accent, #0d9488)' }}>+ {t('tenantAgentListings.addTracking')}</button>
+                  ) : (
+                    <span className="text-xs" style={{ color: 'var(--text-tertiary)' }} title={t('tenantAgentListings.trackingLocked')}>🔒 {t('tenantAgentListings.trackingLabel')}</span>
+                  )}
+                </div>
               </div>
             ))}
           </div>

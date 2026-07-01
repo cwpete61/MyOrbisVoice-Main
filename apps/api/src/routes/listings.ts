@@ -11,6 +11,7 @@ import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import { AppError } from '@voiceautomation/shared'
 import * as svc from '../services/listing.service.js'
+import { checkEntitlement } from '../services/entitlement.service.js'
 
 const router: IRouter = Router()
 router.use(authenticate, requireTenantContext)
@@ -89,6 +90,46 @@ router.patch('/listings/:id', async (req, res, next) => {
 router.delete('/listings/:id', async (req, res, next) => {
   try {
     await svc.deleteListing(req.user!.currentTenantId!, req.params['id']!)
+    res.json({ data: { ok: true } })
+  } catch (err) { next(err) }
+})
+
+// ── Per-listing tracking numbers (Solo Power feature) ──────────────────────
+// Gated on the `listing_tracking_numbers` entitlement so it's a real tier
+// differentiator. GET the assignable pool stays open so the UI can show the
+// locked/upgrade state.
+async function requireTrackingEntitlement(tenantId: string): Promise<boolean> {
+  return (await checkEntitlement(tenantId, 'listing_tracking_numbers')) === true
+}
+
+router.get('/listings/available-numbers', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    const [numbers, entitled] = await Promise.all([
+      svc.listAvailableNumbers(tenantId),
+      requireTrackingEntitlement(tenantId),
+    ])
+    res.json({ data: { numbers, entitled } })
+  } catch (err) { next(err) }
+})
+
+router.post('/listings/:id/tracking-number', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    if (!(await requireTrackingEntitlement(tenantId))) {
+      throw new AppError('FORBIDDEN', 'Per-listing tracking numbers are a Solo Power feature — upgrade to enable.', 403)
+    }
+    const { phoneNumberId } = validate(z.object({ phoneNumberId: z.string().min(1) }), req.body)
+    const number = await svc.assignTrackingNumber(tenantId, req.params['id']!, phoneNumberId)
+    res.json({ data: number })
+  } catch (err) { next(err) }
+})
+
+router.delete('/listings/:id/tracking-number', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    const { phoneNumberId } = validate(z.object({ phoneNumberId: z.string().min(1) }), req.body)
+    await svc.unassignTrackingNumber(tenantId, phoneNumberId)
     res.json({ data: { ok: true } })
   } catch (err) { next(err) }
 })

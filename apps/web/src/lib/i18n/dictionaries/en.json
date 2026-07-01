@@ -4772,7 +4772,17 @@
     "statusPending": "Pending",
     "statusSold": "Sold",
     "statusPocket": "Pocket/private",
-    "statusOffMarket": "Off market"
+    "statusOffMarket": "Off market",
+    "calls": "calls",
+    "callsOne": "call",
+    "trackingLabel": "Tracking #",
+    "addTracking": "Add tracking #",
+    "assignTitle": "Assign a tracking number",
+    "noSpareNumbers": "No spare numbers. Buy one under Phone Numbers first.",
+    "removeTracking": "Remove number",
+    "trackingLocked": "Tracking numbers are a Solo Power feature.",
+    "assign": "Assign",
+    "cancel": "Cancel"
   },
   "tenantAgentCockpit": {
     "title": "Orby cockpit",

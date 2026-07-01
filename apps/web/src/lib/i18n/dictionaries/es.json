@@ -4772,7 +4772,17 @@
     "statusPending": "En proceso",
     "statusSold": "Vendida",
     "statusPocket": "Privada",
-    "statusOffMarket": "Fuera del mercado"
+    "statusOffMarket": "Fuera del mercado",
+    "calls": "llamadas",
+    "callsOne": "llamada",
+    "trackingLabel": "Núm. de rastreo",
+    "addTracking": "Agregar núm. de rastreo",
+    "assignTitle": "Asignar un número de rastreo",
+    "noSpareNumbers": "No hay números disponibles. Compra uno en Números de teléfono primero.",
+    "removeTracking": "Quitar número",
+    "trackingLocked": "Los números de rastreo son una función de Solo Power.",
+    "assign": "Asignar",
+    "cancel": "Cancelar"
   },
   "tenantAgentCockpit": {
     "title": "Cabina de Orby",

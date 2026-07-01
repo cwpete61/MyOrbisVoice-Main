@@ -115,10 +115,55 @@ export async function createListing(tenantId: string, data: ListingInput) {
 }
 
 export async function listListings(tenantId: string) {
-  return prisma.listing.findMany({
+  const rows = await prisma.listing.findMany({
     where: { tenantId },
     orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }],
+    include: {
+      phoneNumbers: { select: { id: true, e164Number: true, displayLabel: true } },
+      _count: { select: { conversations: true } },
+    },
   })
+  // Flatten: expose the first tracking number + a callCount for the UI.
+  return rows.map(({ phoneNumbers, _count, ...l }) => ({
+    ...l,
+    trackingNumber: phoneNumbers[0] ?? null,
+    callCount: _count.conversations,
+  }))
+}
+
+/** PURCHASED, inbound-capable numbers not yet tied to a listing — the pick list. */
+export async function listAvailableNumbers(tenantId: string) {
+  return prisma.phoneNumber.findMany({
+    where: { tenantId, purchaseStatus: 'PURCHASED', listingId: null },
+    select: { id: true, e164Number: true, displayLabel: true, isInboundEnabled: true },
+    orderBy: { createdAt: 'desc' },
+  })
+}
+
+export async function assignTrackingNumber(tenantId: string, listingId: string, phoneNumberId: string) {
+  const listing = await prisma.listing.findFirst({ where: { id: listingId, tenantId }, select: { id: true } })
+  if (!listing) throw new AppError('NOT_FOUND', 'Listing not found', 404)
+  const number = await prisma.phoneNumber.findFirst({
+    where: { id: phoneNumberId, tenantId, purchaseStatus: 'PURCHASED' },
+    select: { id: true, listingId: true },
+  })
+  if (!number) throw new AppError('NOT_FOUND', 'Number not found or not purchased', 404)
+  if (number.listingId && number.listingId !== listingId) {
+    throw new AppError('CONFLICT', 'That number is already assigned to another listing', 409)
+  }
+  // A listing tracks with one number: clear any prior number on this listing first.
+  await prisma.phoneNumber.updateMany({ where: { tenantId, listingId }, data: { listingId: null } })
+  return prisma.phoneNumber.update({
+    where: { id: phoneNumberId },
+    data: { listingId, isInboundEnabled: true },
+    select: { id: true, e164Number: true, displayLabel: true },
+  })
+}
+
+export async function unassignTrackingNumber(tenantId: string, phoneNumberId: string) {
+  const number = await prisma.phoneNumber.findFirst({ where: { id: phoneNumberId, tenantId }, select: { id: true } })
+  if (!number) throw new AppError('NOT_FOUND', 'Number not found', 404)
+  await prisma.phoneNumber.update({ where: { id: phoneNumberId }, data: { listingId: null } })
 }
 
 export async function updateListing(tenantId: string, id: string, data: Partial<ListingInput> & { isActive?: boolean }) {

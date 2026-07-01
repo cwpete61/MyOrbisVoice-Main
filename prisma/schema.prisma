@@ -1079,13 +1079,19 @@ model PhoneNumber {
   // numbers and historic rows. Cancellation = number gets released to Twilio.
   stripeSubscriptionId  String?
 
+  // MyOrbisAgents — when set, this number is a per-listing tracking number:
+  // inbound calls attribute to the listing and Orby focuses on it (§17c/§17b).
+  listingId    String?
+
   tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   partner      AffiliateAccount? @relation("PartnerPhoneNumbers", fields: [partnerId], references: [id], onDelete: Cascade)
   agentProfile AgentProfile?     @relation(fields: [agentProfileId], references: [id], onDelete: SetNull)
+  listing      Listing?          @relation("ListingTrackingNumber", fields: [listingId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([partnerId])
   @@index([purchaseStatus])
+  @@index([listingId])
 }
 
 // Lifecycle for a PhoneNumber row. Existing tenant numbers default to
@@ -1496,10 +1502,15 @@ model Conversation {
 
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
+  /// MyOrbisAgents — set when the call came in on a listing's tracking number.
+  /// Drives per-listing call attribution ("your listing got 14 calls").
+  listingId            String?
+
   tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact              Contact?              @relation(fields: [contactId], references: [id], onDelete: SetNull)
   featuredBy           User?                 @relation("DemoFeaturedBy", fields: [featuredById], references: [id], onDelete: SetNull)
   partner              AffiliateAccount?     @relation("PartnerConversations", fields: [partnerId], references: [id], onDelete: SetNull)
+  listing              Listing?              @relation("ListingConversation", fields: [listingId], references: [id], onDelete: SetNull)
   appointments         Appointment[]
   messageLogs          MessageLog[]
   callLogs             CallLog[]
@@ -1510,6 +1521,7 @@ model Conversation {
   @@index([externalCallId])
   @@index([isFeaturedDemo, featuredCategory, featuredSortOrder])
   @@index([partnerId])
+  @@index([listingId])
 }
 
 model StaffMember {
@@ -3376,7 +3388,9 @@ model Listing {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  phoneNumbers  PhoneNumber[]  @relation("ListingTrackingNumber")
+  conversations Conversation[] @relation("ListingConversation")
 
   @@index([tenantId, isActive])
   @@index([tenantId, status])

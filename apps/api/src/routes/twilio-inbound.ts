@@ -48,7 +48,7 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
       } as never).catch(e => console.error('[twilio] partner logTwilioEvent failed:', e))
     }
 
-    logCallStart({ tenantId: phone.tenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To, partnerId: phone.partnerId }).catch(e => console.error('[twilio] logCallStart failed:', e))
+    logCallStart({ tenantId: phone.tenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To, partnerId: phone.partnerId, listingId: phone.listingId }).catch(e => console.error('[twilio] logCallStart failed:', e))
     startCallRecording(CallSid, phone.tenantId, To).catch(e => console.error('[twilio] startCallRecording failed:', e))
     logTwilioEvent({ tenantId: phone.tenantId, callSid: CallSid, direction: 'INBOUND', eventType: 'inbound_received', fromNumber: From, toNumber: To, callStatus: 'ringing' }).catch(e => console.error('[twilio] logTwilioEvent failed:', e))
 
@@ -61,6 +61,7 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
       escalationMode:  channel?.escalationMode ?? null,
       forwardingTarget: cfg['forwardingNumber'] ?? null,
       hoursJson:       cfg['businessHours'] ?? profile?.businessHoursJson ?? null,
+      timezone:        (phone as any).tenant?.timezone ?? null,
       callSid:         CallSid,
       fromNumber:      From || undefined,
       partnerId:       phone.partnerId,

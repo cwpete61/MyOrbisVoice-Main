@@ -24,12 +24,22 @@ export async function resolveInboundCall(toNumber: string) {
   return phone
 }
 
-function isWithinBusinessHours(hoursJson: any): boolean {
+function isWithinBusinessHours(hoursJson: any, timezone?: string): boolean {
   if (!hoursJson) return true  // no hours configured → always open
 
+  // Evaluate "now" in the TENANT's timezone, not the server's (containers run
+  // UTC). Without this, a business open until 22:00 Eastern reads as "closed"
+  // after ~18:00 local once UTC rolls past 22:00 — and after midnight UTC the
+  // whole evening reads closed. Hours labels ("09:00") are local wall-clock.
+  const tz      = timezone || 'America/New_York'
   const now     = new Date()
-  const dayFull = now.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase() // mon, tue …
-  const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+  const dayFull = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' })
+    .format(now).toLowerCase() // mon, tue …
+  let timeStr   = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(now)
+  // V8 quirk: hour12:false can render midnight as "24:NN" — normalize to "00".
+  if (timeStr.startsWith('24')) timeStr = '00' + timeStr.slice(2)
 
   const schedule = hoursJson as Record<string, { open: string; close: string; closed?: boolean }>
   const entry    = schedule[dayFull]
@@ -45,6 +55,7 @@ export function buildInboundTwiml(opts: {
   escalationMode:  string | null
   forwardingTarget: string | null
   hoursJson:       any
+  timezone?:       string | null  // tenant IANA tz for business-hours evaluation
   callSid:         string
   fromNumber?:     string  // caller-ID E.164 — read back to caller instead of asking them to recite
   /** Set when the dialed number is partner-owned. Threaded to the gateway so
@@ -54,7 +65,7 @@ export function buildInboundTwiml(opts: {
   const VoiceResponse = twilio.twiml.VoiceResponse
   const response      = new VoiceResponse()
 
-  const open = isWithinBusinessHours(opts.hoursJson)
+  const open = isWithinBusinessHours(opts.hoursJson, opts.timezone ?? undefined)
 
   if (!open && opts.afterHoursMode) {
     if (opts.afterHoursMode === 'voicemail') {
@@ -162,6 +173,9 @@ export async function logCallStart(opts: {
    *  to the partner so it surfaces on the partner portal, and scopes the
    *  caller→contact match to the partner's contacts. */
   partnerId?:  string | null
+  /** MyOrbisAgents — set when the dialed number is a listing's tracking number.
+   *  Attributes the call to that listing for per-listing call counts. */
+  listingId?:  string | null
 }) {
   // Match caller to a contact. Partner-owned numbers scope to the partner's
   // contacts; tenant numbers scope to the tenant's.
@@ -179,6 +193,7 @@ export async function logCallStart(opts: {
     data: {
       tenantId:       opts.tenantId,
       partnerId:      opts.partnerId ?? null,
+      listingId:      opts.listingId ?? null,
       contactId:      contact?.id ?? null,
       channelType:    'INBOUND',
       direction:      'INBOUND',
