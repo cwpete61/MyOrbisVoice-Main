@@ -750,3 +750,109 @@ write, so the trigger can't be lost or double-fired on crash/retry.
 delivery, or the outbound queue starts bloating under load. Until then, the
 Redis + n8n path is adequate. Captured here so it's the ready answer when that
 need hits rather than a from-scratch evaluation under pressure.
+
+---
+
+### 22. Bilingual help center (Spanish `helpContent`) — ❌ TODO
+
+**What:** The in-app help center (`apps/web/src/lib/helpContent.ts`,
+`adminHelpContent.ts`, `partnerHelpContent.ts`) is **English-only**. The
+`/help`, `/admin/help`, and `/partner-portal/help` pages import the English
+content directly — no locale switch, no `es` variant. This violates the
+bilingual rule in CLAUDE.md (help articles are listed user-facing content).
+
+**Why it's a whole-system build, not a per-article fix:** every existing article
+is English; adding one Spanish article in isolation doesn't help. Needs: (1) an
+`es` content tree (or a `t()`-keyed restructure of the article bodies), (2) a
+locale switch in the three help page components keyed off `User.preferredLocale`,
+(3) a translation pass over ~40 articles. The screenshot specs are
+language-neutral (the UI itself swaps via i18n once captured in each locale, or
+stays English for code/labels that don't translate).
+
+**Effort:** medium-large (translation volume + the locale-switch plumbing). Each
+new article shipped English-only (e.g. the 2026-06-27 Payments section) widens
+the gap, so the longer this waits the bigger the catch-up.
+
+**When to build:** before any Spanish-speaking-tenant onboarding push, or bundle
+it with the next dashboard i18n expansion.
+
+---
+
+### 23. Capture Payments help screenshots — ❌ TODO (content shipped 2026-06-27)
+
+**What:** The Payments help section (`helpContent.ts` → `payments` section,
+articles `payments-setup` + `payments-collect`) ships with screenshot **slots +
+capture specs** but no PNGs yet — they render as labeled placeholder boxes.
+Filenames: `payments-nav.png`, `payments-connect.png`, `payments-orby-config.png`,
+`payments-request.png`, `payments-history.png` (all `authAs:'tenant'`, url
+`/payments`).
+
+**Blocker (why deferred):** `pnpm capture-screenshots --tenant` needs
+`E2E_TENANT_LOGIN_EMAIL/PASSWORD` set AND that tenant must be **Pro+ (entitled)
+with Stripe Connect actually connected** — otherwise `/payments` renders the
+upgrade-lock card or the pre-connection state, not the Active UI the captions
+describe (request form enabled, history populated, Orby card).
+
+**To do:** point E2E creds at a Pro+ tenant that has completed Stripe onboarding
+(ideally with ≥1 sample payment so the history list isn't empty), run
+`pnpm capture-screenshots --tenant`, review the light-mode PNGs in
+`apps/web/public/help-screenshots/`, redeploy web. Light mode is auto-enforced by
+the script (screenshot rule).
+
+**Effort:** small once a connected Pro test tenant exists.
+
+---
+
+### 24. Listing enrichment — neighborhood/property data layer — ❌ TODO (spec'd 2026-07-01)
+
+**What:** Complement each MyOrbisAgents `Listing` with objective, third-party
+data so listing pages/demos are richer and Orby can answer buyer questions
+("what's the flood risk / commute / nearby hospitals / zoning?") with facts.
+Feeds the promised **seller-valuation magnet** (§17c) and neighborhood pages.
+Stored per-listing (cached), refreshed on a TTL, surfaced (a) on the listing UI
+and (b) as Orby tools with hard Fair-Housing guardrails.
+
+**⚠️ Fair Housing gate (non-negotiable):** **Crime stats** and **school
+quality/ratings** are steering signals. NAR guidance: agents must not
+characterize neighborhoods by safety or school quality. Orby must give
+**objective facts + a link to the authoritative source, never conclusions**
+("safe", "good schools", "great for families", "who lives here"). Sensitive
+categories (crime, schools, demographics/race) change from "Orby answers" to
+"Orby points to the official source." This is a product rule enforced in the
+enrichment prompt + tool layer, not optional.
+
+**Enrichment categories + Fair-Housing grade:**
+- ✅ Answer freely (objective): flood zone (FEMA NFHL), POIs/hospitals/parks/
+  grocery/transit (OSM Overpass), broadband (FCC), air/environmental (EPA),
+  natural hazards (USGS), comps/AVM/property facts (RentCast), area economics/
+  jobs/growth (BLS, Census permits), solar (NREL), zoning/future land use
+  (per-city ArcGIS open-data).
+- ⚠️ Facts + source link only, no editorializing: Census income/housing (NEVER
+  race/ethnicity), Dept of Education school **names/enrollment** (no ratings).
+- ❌ Do NOT let Orby quote as a listing attribute: crime (FBI Crime Data API) —
+  coarse + steering risk; GreatSchools ratings — steering + paid.
+
+**Free API stack (provider-abstracted `comps`/`enrichment` services):**
+- **api.data.gov** — one API key fronting Census, FBI, Dept of Ed, NREL, etc.
+- **RentCast** — comps/AVM/property (freemium; also powers valuation magnet).
+- **FEMA NFHL**, **OSM Overpass**, **FCC Broadband Map**, **EPA AirNow/Envirofacts**,
+  **USGS**, **BLS API**, **Census API**, **NREL**, **Nominatim** (geocode → lat/lng
+  that everything hangs off), **Walk Score** (freemium walk/transit/bike),
+  **Transitland/GTFS**.
+- Source directory: https://github.com/public-apis/public-apis
+- Cutoff caveat: verify current free-tier limits before wiring (assistant
+  knowledge ~early 2026).
+
+**Architecture:**
+1. `listing-enrichment.service.ts` — provider-abstracted (one function per data
+   category, swappable provider), keyed off the listing's geocoded lat/lng.
+2. Cache on the `Listing` (JSON column `enrichmentJson` + `enrichedAt`) or a
+   `ListingEnrichment` table; TTL refresh; never block the voice hot path.
+3. Orby tools (`listing_flood_risk`, `listing_nearby`, `listing_market`, …) with
+   the Fair-Housing guardrail baked into each tool's response formatter.
+4. Provider keys in System Settings (write-only), per the secrets policy.
+
+**Effort:** Large. Sequence: geocode + RentCast (valuation magnet) first → FEMA +
+OSM POIs (high buyer value, zero FH risk) → economics/growth → sensitive
+categories LAST behind the source-link guardrail. Gate the richer set to Solo
+Power (tier differentiator).
