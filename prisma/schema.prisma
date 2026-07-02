@@ -3360,6 +3360,27 @@ model AgentProspect {
   @@index([score])
 }
 
+// Durable marketing capture of people who try the public DEMO. The demo tenant
+// is wiped every 15 min (demo-reset job), which erases its Contact rows — so
+// when Orby captures a caller's name/email/phone during a demo (save_contact),
+// we ALSO mirror it here. DemoLead is never wiped: it's the marketing lead list
+// of prospects who tried the product. Tenant-agnostic on purpose.
+model DemoLead {
+  id             String   @id @default(uuid())
+  fullName       String?
+  email          String?
+  phoneE164      String?
+  notes          String?
+  source         String   @default("demo_widget")
+  capturedTenantId String?
+  conversationId String?
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([email])
+  @@index([phoneE164])
+}
+
 // MyOrbisAgents — the agent's property book. Each Listing is a working unit Orby
 // answers from (§17c). Descriptions are AI-formatted Fair-Housing-safe.
 // ownerId is the partner-ready seam (§22): null = house/us.

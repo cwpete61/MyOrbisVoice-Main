@@ -324,6 +324,47 @@ router.post('/internal/gateway/tools/save-contact', async (req, res, next) => {
       },
     })
 
+    // Marketing capture: when a caller tries the public DEMO and gives their
+    // details, mirror them to the durable DemoLead list so they survive the
+    // 15-min demo reset (which wipes the demo tenant's Contact rows). Only for
+    // demo tenants, tenant-side (partner captures already persist to the
+    // partner's real CRM). Deduped per conversation. Non-fatal.
+    if (!partnerId && (contact.email || contact.phoneE164)) {
+      const demoTenant = await prisma.tenant.findUnique({
+        where: { id: tenantId }, select: { isDemo: true },
+      })
+      if (demoTenant?.isDemo) {
+        try {
+          const existingLead = data.conversationId
+            ? await prisma.demoLead.findFirst({ where: { conversationId: data.conversationId } })
+            : null
+          if (existingLead) {
+            await prisma.demoLead.update({
+              where: { id: existingLead.id },
+              data: {
+                fullName:  contact.fullName ?? existingLead.fullName,
+                email:     contact.email    ?? existingLead.email,
+                phoneE164: contact.phoneE164 ?? existingLead.phoneE164,
+                notes:     data.notes        ?? existingLead.notes,
+              },
+            })
+          } else {
+            await prisma.demoLead.create({
+              data: {
+                fullName:         contact.fullName,
+                email:            contact.email,
+                phoneE164:        contact.phoneE164,
+                notes:            data.notes ?? null,
+                source:           'demo_widget',
+                capturedTenantId: tenantId,
+                conversationId:   data.conversationId ?? null,
+              },
+            })
+          }
+        } catch { /* non-fatal — demo lead capture is best-effort */ }
+      }
+    }
+
     res.json({
       data: {
         ok:        true,
@@ -649,6 +690,68 @@ router.post('/internal/gateway/tools/record-disposition', async (req, res, next)
     })
 
     res.json({ data: { ok: true, conversationId: conv.id, autoTag: tagToApply ?? null, enrolledCampaign: autoTaggedCampaign } })
+  } catch (err) { next(err) }
+})
+
+// collect_payment — Orby texts a Stripe payment link to the caller mid-call.
+// Pass-through: the link is a Checkout Session on the tenant's connected
+// account (no platform fee). Gated: the tenant must have orbyPaymentsEnabled
+// AND stripeChargesEnabled — off by default, so this is a no-op for any tenant
+// that hasn't deliberately turned it on. The caller's number + the tenant's
+// own number are resolved from the CallLog (by callSid), so the gateway never
+// has to thread phone numbers around.
+const collectPaymentSchema = z.object({
+  callSid:     z.string().min(1),
+  amountCents: z.number().int().positive().optional(),
+  description: z.string().max(200).optional(),
+})
+
+router.post('/internal/gateway/tools/collect-payment', async (req, res, next) => {
+  try {
+    const tenantId = (req as any).internalTenantId as string
+    const data = collectPaymentSchema.parse(req.body)
+
+    const tenant = await prisma.tenant.findUnique({
+      where:  { id: tenantId },
+      select: { orbyPaymentsEnabled: true, stripeChargesEnabled: true, orbyDepositCents: true, displayName: true },
+    })
+    if (!tenant?.orbyPaymentsEnabled || !tenant.stripeChargesEnabled) {
+      res.json({ data: { ok: false, error: 'payments_not_enabled' } }); return
+    }
+
+    const amountCents = data.amountCents ?? tenant.orbyDepositCents ?? 0
+    if (amountCents < 50) {
+      res.json({ data: { ok: false, error: 'no_amount' } }); return
+    }
+
+    // Resolve caller (sourceNumber) + the tenant's own number (destinationNumber)
+    // + the matched contact from the live call record.
+    const call = await prisma.callLog.findFirst({
+      where:  { providerCallId: data.callSid, tenantId },
+      select: { sourceNumber: true, destinationNumber: true, contactId: true },
+    })
+    if (!call?.sourceNumber || !call.destinationNumber) {
+      res.json({ data: { ok: false, error: 'no_caller_number' } }); return
+    }
+
+    const description = data.description?.trim() || `Payment to ${tenant.displayName}`
+    const { createPaymentLink } = await import('../services/tenant-payments.service.js')
+    const { sendMessage } = await import('../services/sms.service.js')
+
+    const link = await createPaymentLink(tenantId, {
+      amountCents, description, source: 'voice',
+      contactId: call.contactId ?? undefined,
+    })
+
+    const sms = await sendMessage({
+      tenantId,
+      from:      call.destinationNumber,
+      to:        call.sourceNumber,
+      body:      `${description}: ${link.url}`,
+      contactId: call.contactId ?? undefined,
+    })
+
+    res.json({ data: { ok: sms.success, sent: sms.success, amountCents, error: sms.success ? undefined : (sms.error ?? 'sms_failed') } })
   } catch (err) { next(err) }
 })
 

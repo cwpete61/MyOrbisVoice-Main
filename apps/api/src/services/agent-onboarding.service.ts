@@ -99,6 +99,11 @@ function templateDNA(intake: AgentIntake) {
       ],
       callToAction: `Book a showing or a quick call with ${agentName}.`,
       objectionResponses: [],
+      // Lead capture is the core job of an ISA ("captures every lead"). This
+      // survives enrich() (which only replaces discoveryQuestions +
+      // qualificationCriteria) and is JSON-stringified into the prompt's
+      // "Sales rules" block, so Orby always asks for contact details.
+      leadCapture: `Early in every conversation, naturally collect the caller's full name, email address, and phone number, then save the contact. Get all three before the call ends even if they are not ready to book — explain you'd like to send them details and have ${agentName} follow up. Never end without at least a name and one of email or phone.`,
     },
     appointmentJson: {
       appointmentTypes: [
