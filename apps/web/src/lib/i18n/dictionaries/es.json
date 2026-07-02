@@ -3360,7 +3360,10 @@
         "remove": "Quitar"
       },
       "placeholderApiKey": "AIza…",
-      "footer": "La clave de API se cifra en reposo y nunca se muestra. Cada cuenta necesita su propia clave de Gemini Live API con acceso a BidiGenerateContent habilitado."
+      "footer": "La clave de API se cifra en reposo y nunca se muestra. Cada cuenta necesita su propia clave de Gemini Live API con acceso a BidiGenerateContent habilitado.",
+      "subtitleManaged": "IA de voz en tiempo real · gestionado por MyOrbisVoice",
+      "managedIntro": "No necesitas una clave de Gemini. La IA de voz en tiempo real viene incluida en tu plan: MyOrbisVoice ejecuta cada sesión de voz en nuestra conexión gestionada de Gemini Live.",
+      "managedFooter": "La IA de voz viene incluida en tu suscripción de MyOrbisVoice. No necesitas una cuenta de Gemini aparte."
     },
     "calendars": {
       "outlook": {
@@ -4826,5 +4829,13 @@
     "offerTitle": "Tarifa fundadora",
     "offer": "$500 de configuración + 50% de descuento el primer año. Responde y activo tu Orby esta semana.",
     "poweredBy": "Con la tecnología de MyOrbisAgents"
+  },
+  "demoBanner": {
+    "text": "🧪 Cuenta de demostración: explora con libertad. No se guarda nada y se reinicia periódicamente.",
+    "payCta": "Regístrate: ver precios"
+  },
+  "bookingBar": {
+    "prompt": "¿Preguntas sobre MyOrbisAgents?",
+    "cta": "Agenda una llamada con nuestro equipo →"
   }
 }

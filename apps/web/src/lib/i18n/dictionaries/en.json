@@ -3360,7 +3360,10 @@
         "remove": "Remove"
       },
       "placeholderApiKey": "AIza…",
-      "footer": "API key is encrypted at rest and never displayed. Each account requires its own Gemini Live API key with BidiGenerateContent access enabled."
+      "footer": "API key is encrypted at rest and never displayed. Each account requires its own Gemini Live API key with BidiGenerateContent access enabled.",
+      "subtitleManaged": "Real-time voice AI · managed by MyOrbisVoice",
+      "managedIntro": "You don't need a Gemini key. Real-time voice AI is included in your plan — MyOrbisVoice runs every voice session on our managed Gemini Live connection.",
+      "managedFooter": "Voice AI is included in your MyOrbisVoice subscription. No separate Gemini account required."
     },
     "calendars": {
       "outlook": {
@@ -4826,5 +4829,13 @@
     "offerTitle": "Founding rate",
     "offer": "$500 setup + 50% off your first year. Reply and I'll have your Orby live this week.",
     "poweredBy": "Powered by MyOrbisAgents"
+  },
+  "demoBanner": {
+    "text": "🧪 Demo account — explore freely. Nothing is saved, and this resets on a schedule.",
+    "payCta": "Sign up — see pricing"
+  },
+  "bookingBar": {
+    "prompt": "Questions about MyOrbisAgents?",
+    "cta": "Book a call with our team →"
   }
 }

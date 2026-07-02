@@ -51,11 +51,7 @@ export default function IntegrationsPage() {
   const [connecting, setConnecting] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  // (Twilio is platform-managed in the new model — no per-tenant form needed)
-
-  // Gemini form state
-  const [geminiKey, setGeminiKey] = useState('')
-  const [geminiSaving, setGeminiSaving] = useState(false)
+  // (Twilio + Gemini are platform-managed in the new model — no per-tenant form needed)
 
   // Gmail test send — defaults are translated, but user-edited values are kept
   const [gmailTest, setGmailTest] = useState({
@@ -117,21 +113,6 @@ export default function IntegrationsPage() {
   // saveTwilio / disconnectTwilio removed — Twilio is platform-managed in the new model.
   // Numbers are requested via the Phone Numbers page; admins provision them.
 
-  async function saveGemini() {
-    if (!geminiKey.trim()) return
-    setGeminiSaving(true)
-    try {
-      await apiFetch('/api/integrations/gemini', {
-        method: 'POST',
-        body: JSON.stringify({ apiKey: geminiKey }),
-      })
-      setGeminiKey('')
-      showToast('success', t('tenantIntegrations.toasts.geminiSaved'))
-      reload()
-    } catch (err) { showToast('error', err instanceof Error ? err.message : t('tenantIntegrations.toasts.failed')) }
-    finally { setGeminiSaving(false) }
-  }
-
   async function sendTestEmail() {
     if (!gmailTest.to || !gmailTest.subject || !gmailTest.body) return
     setGmailSending(true)
@@ -145,23 +126,11 @@ export default function IntegrationsPage() {
     finally { setGmailSending(false) }
   }
 
-  async function disconnectGemini() {
-    if (!confirm(t('tenantIntegrations.confirms.removeGemini'))) return
-    try {
-      await apiFetch('/api/integrations/gemini', { method: 'DELETE' })
-      showToast('success', t('tenantIntegrations.toasts.geminiRemoved'))
-      reload()
-    } catch { showToast('error', t('tenantIntegrations.toasts.failedRemoveGemini')) }
-  }
-
   const google      = data?.google
   const twilio      = data?.twilio
-  const gemini      = data?.gemini
   const googleStyle = STATUS_STYLES[google?.status ?? 'NOT_CONNECTED']!
   const twilioStyle = STATUS_STYLES[twilio?.status ?? 'NOT_CONNECTED']!
-  const geminiStyle = STATUS_STYLES[gemini?.status ?? 'NOT_CONNECTED']!
   const googleLabel = t(STATUS_LABEL_KEY[google?.status ?? 'NOT_CONNECTED']!)
-  const geminiLabel = t(STATUS_LABEL_KEY[gemini?.status ?? 'NOT_CONNECTED']!)
   // Reference twilioStyle to keep parity with status-driven styling without
   // breaking the linter when the variable isn't yet read in JSX.
   void twilioStyle
@@ -339,8 +308,8 @@ export default function IntegrationsPage() {
         </div>
       )}
 
-      {/* ── Gemini Live ────────────────────────────────────────────────── */}
-      {!loading && gemini && (
+      {/* ── Gemini Live (managed by OrbisVoice — included in plan) ────────── */}
+      {!loading && (
         <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
           <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             <div className="flex items-center gap-3">
@@ -351,74 +320,21 @@ export default function IntegrationsPage() {
               </div>
               <div>
                 <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('tenantIntegrations.gemini.title')}</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.gemini.subtitle')}</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.gemini.subtitleManaged')}</p>
               </div>
             </div>
-            <span className="badge" style={{ background: geminiStyle.bg, color: geminiStyle.text }}>{geminiLabel}</span>
+            <span className="badge" style={{ background: 'oklch(95% 0.07 145 / 0.6)', color: 'oklch(40% 0.15 145)' }}>{t('tenantIntegrations.statusPill.managed')}</span>
           </div>
 
-          <div className="px-6 py-5 space-y-4">
-            {gemini.status === 'CONNECTED' && gemini.lastVerifiedAt && (
-              <dl className="space-y-2">
-                <div className="flex items-center gap-6">
-                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.gemini.labels.apiKey')}</dt>
-                  <dd className="text-sm" style={{ color: 'var(--text-tertiary)' }}>••••••••••••••••••••••••••••••••</dd>
-                </div>
-                <div className="flex items-center gap-6">
-                  <dt className="text-xs w-28 flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>{t('tenantIntegrations.gemini.labels.saved')}</dt>
-                  <dd className="text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(gemini.lastVerifiedAt).toLocaleString(dateLocale)}</dd>
-                </div>
-              </dl>
-            )}
-
-            {gemini.status === 'NOT_CONNECTED' && (
-              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {t('tenantIntegrations.gemini.notConnectedDescPrefix')}
-                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer"
-                  className="underline" style={{ color: 'oklch(60% 0.18 264)' }}>
-                  {t('tenantIntegrations.gemini.googleAiStudio')}
-                </a>
-                {t('tenantIntegrations.gemini.notConnectedDescSuffix')}
-                <strong>{t('tenantIntegrations.gemini.liveApiName')}</strong>
-                {t('tenantIntegrations.gemini.notConnectedDescAccessSuffix')}
-              </p>
-            )}
-
-            <div className="space-y-3">
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                {gemini.status === 'CONNECTED'
-                  ? t('tenantIntegrations.gemini.rotateHeading')
-                  : t('tenantIntegrations.gemini.addHeading')}
-              </p>
-              <div>
-                <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{t('tenantIntegrations.gemini.labels.apiKey')}</label>
-                <input
-                  type="password"
-                  value={geminiKey}
-                  onChange={(e) => setGeminiKey(e.target.value)}
-                  className={inp}
-                  placeholder={t('tenantIntegrations.gemini.placeholderApiKey')}
-                  autoComplete="new-password"
-                />
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button onClick={saveGemini} disabled={geminiSaving || !geminiKey.trim()} className="btn-primary">
-                  {geminiSaving
-                    ? t('tenantIntegrations.gemini.actions.saving')
-                    : gemini.status === 'CONNECTED'
-                      ? t('tenantIntegrations.gemini.actions.rotate')
-                      : t('tenantIntegrations.gemini.actions.save')}
-                </button>
-                {gemini.status === 'CONNECTED' && (
-                  <button onClick={disconnectGemini} className="btn-danger">{t('tenantIntegrations.gemini.actions.remove')}</button>
-                )}
-              </div>
-            </div>
+          <div className="px-6 py-5">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {t('tenantIntegrations.gemini.managedIntro')}
+            </p>
           </div>
 
           <div className="px-6 py-3.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              {t('tenantIntegrations.gemini.footer')}
+              {t('tenantIntegrations.gemini.managedFooter')}
             </p>
           </div>
         </div>

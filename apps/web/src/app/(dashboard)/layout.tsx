@@ -16,11 +16,17 @@ import { IdleTimeout } from '@/components/IdleTimeout'
 import { getImpersonationInfo, endImpersonation } from '@/lib/auth'
 import { apiFetch } from '@/hooks/useApi'
 import { useTenantContext } from '@/hooks/useTenantContext'
+import { useT } from '@/lib/i18n/I18nProvider'
 
 // MyOrbisAgents is a branded vertical of the Voice app: real-estate tenants see
 // "MyOrbisAgents" in the dashboard chrome; everyone else stays "MyOrbisVoice".
 const AGENTS_VERTICALS = ['REAL_ESTATE', 'REALTOR']
 const AGENTS_HOME = 'https://myorbisagents.com'
+const AGENTS_PRICING = 'https://myorbisagents.com/#pricing'
+// House-account booking link (myorbisresults@gmail.com Google Calendar
+// appointment page). Empty = the booking bar renders nothing, so we never
+// ship a dead link. Set this to the real scheduling URL to turn the bar on.
+const HOUSE_BOOKING_URL = ''
 function useIsAgents(): boolean {
   const ctx = useTenantContext()
   return !!ctx && AGENTS_VERTICALS.includes(ctx.industryCode)
@@ -31,10 +37,49 @@ function useBrandName(): string {
 
 function DemoBanner() {
   const ctx = useTenantContext()
+  const t = useT()
   if (!ctx?.isDemo) return null
   return (
-    <div className="px-4 py-2 text-center text-sm font-medium" style={{ background: 'oklch(60% 0.14 75)', color: '#fff' }}>
-      🧪 Demo account — explore freely. Nothing is saved, and this resets on a schedule. Sign up to make it real.
+    <div
+      className="px-4 py-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-center text-sm font-medium"
+      style={{ background: 'oklch(60% 0.14 75)', color: '#fff' }}
+    >
+      <span>{t('demoBanner.text')}</span>
+      <a
+        href={AGENTS_PRICING}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex items-center rounded-md px-3 py-1 text-xs font-semibold whitespace-nowrap"
+        style={{ background: '#fff', color: 'oklch(45% 0.14 75)' }}
+      >
+        {t('demoBanner.payCta')}
+      </a>
+    </div>
+  )
+}
+
+// Thin bar above the demo banner: lets an agent book a call with the MyOrbis
+// team on the house account calendar. Only renders for MyOrbisAgents tenants
+// and only when HOUSE_BOOKING_URL is set (no dead link otherwise).
+function BookingBar() {
+  const isAgents = useIsAgents()
+  const t = useT()
+  if (!isAgents || !HOUSE_BOOKING_URL) return null
+  return (
+    <div
+      className="px-4 py-1.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs"
+      style={{ background: 'var(--surface-sidebar)', borderBottom: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
+    >
+      <span>{t('bookingBar.prompt')}</span>
+      <a
+        href={HOUSE_BOOKING_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="font-semibold whitespace-nowrap"
+        style={{ color: 'oklch(55% 0.11 193)' }}
+      >
+        {t('bookingBar.cta')}
+      </a>
     </div>
   )
 }
@@ -186,7 +231,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{brandName}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <TierBadge />
+              {!isAgents && <TierBadge />}
               <NotificationBell />
               <LanguageToggle />
               <ThemeToggle />
@@ -199,7 +244,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--surface-sidebar)' }}
           >
             <div className="flex items-center gap-2">
-              <TierBadge />
+              {!isAgents && <TierBadge />}
               <TenantIdBadge />
               <NotificationBell />
               <LanguageToggle />
@@ -209,6 +254,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Page content — mobile padding up to lg (iPad portrait uses drawer). */}
           <main className="flex-1 overflow-auto">
+            <BookingBar />
             <DemoBanner />
             <div className="w-full px-4 py-6 lg:px-8 lg:py-8">
               {children}
