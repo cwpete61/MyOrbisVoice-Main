@@ -86,11 +86,11 @@ router.get('/demo/phone-session', async (req, res, next) => {
         numberDisplay: '+1 (470) 517-3441',
         pin:           s.pin,
         expiresAt:     s.expiresAt,
-        // Two commas ≈ 4s of post-dial pause before the PIN DTMF fires. Long
-        // enough to outlast ring+connect (so Twilio hears the digits), short
-        // enough to bind soon after Orby answers. Tune here if calls drop the
-        // PIN (too short) or Orby talks too long before binding (too long).
-        telHref:       `tel:${DEMO_PHONE_E164},,${s.pin}`,
+        // One comma ≈ 2s post-dial pause (minimum — at least one separator is
+        // required or the PIN merges into the dialed number). The pause must
+        // outlast call-connect so Twilio's media stream is live to hear the
+        // DTMF; if the PIN gets dropped on real calls, bump back to two commas.
+        telHref:       `tel:${DEMO_PHONE_E164},${s.pin}`,
       },
     })
   } catch (err) { next(err) }
