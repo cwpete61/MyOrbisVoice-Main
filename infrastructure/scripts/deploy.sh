@@ -63,20 +63,32 @@ ssh_t() { timeout "${1}" ssh -o ServerAliveInterval=15 -o ServerAliveCountMax=4 
 # Commit a container to :latest. If the ssh wedges/times out, verify the image
 # was actually committed in the last few minutes before failing — the commit
 # itself usually finishes even when the ssh transport hangs afterward.
-commit_image() {  # $1=container  $2..=extra `docker commit` args
+commit_image() {  # $1=container  $2..=extra `docker commit` args. Returns 1 on failure — caller decides fatality.
   local container="$1"; shift
-  if ssh_t 600 "$SERVER" "docker commit $* $container ${container}:latest" >/dev/null 2>&1; then
+  # --no-pause: NEVER freeze the container while snapshotting. By default
+  # `docker commit` pauses the container; on web's multi-GB writable layer that
+  # snapshot can exceed the ssh timeout AND leave the container stuck paused —
+  # the 2026-06-27 incident (a paused 3.9GB commit hung, left web paused, and
+  # the deploy exited before the restart, so old code kept serving). A Next
+  # static-serve / node API has no in-flight FS mutation that needs a paused
+  # snapshot, so a live commit is safe. NOTE: this Docker deprecated the
+  # `--pause=false` form (it still pauses); `--no-pause` is the working flag.
+  # Timeout 1200s: web's ~3.9GB writable layer can take 8-12 min to snapshot
+  # under deploy-time IO load. 600s was too short and silently left :latest
+  # stale (2026-06-27 Phase-2 deploy). Real fix is a clean `docker build` so the
+  # layer doesn't balloon — until then, give the commit room.
+  if ssh_t 1200 "$SERVER" "docker commit --no-pause $* $container ${container}:latest" >/dev/null 2>&1; then
     return 0
   fi
   local created epoch now
   created=$(ssh_t 30 "$SERVER" "docker inspect -f '{{.Created}}' ${container}:latest" 2>/dev/null || true)
   epoch=$(date -d "$created" +%s 2>/dev/null || echo 0)
   now=$(date +%s)
-  if [[ "$epoch" -gt 0 && $((now - epoch)) -lt 600 ]]; then
+  if [[ "$epoch" -gt 0 && $((now - epoch)) -lt 1200 ]]; then
     ok "commit ssh hung but image ${container}:latest was committed ($((now - epoch))s ago) — continuing"
     return 0
   fi
-  fail "docker commit of $container failed and image is not fresh — investigate the box"
+  return 1
 }
 
 # Poll a container's HTTP health endpoint until it answers, instead of grepping
@@ -253,10 +265,13 @@ step_api() {
     --exclude='*' \
     "$REPO_ROOT/myorbisresults.com/" "$SERVER:$REMOTE/myorbisresults.com/"
   ssh "$SERVER" "docker exec myorbisvoice-api mkdir -p /app/myorbisresults.com/p/sample /app/myorbisresults.com/es/p/sample && docker cp $REMOTE/myorbisresults.com/p/sample/. myorbisvoice-api:/app/myorbisresults.com/p/sample/ && docker cp $REMOTE/myorbisresults.com/es/p/sample/. myorbisvoice-api:/app/myorbisresults.com/es/p/sample/" || true
-  # CRITICAL: commit the running container back into the image so force-recreate doesn't revert code.
-  # Without this, any subsequent `docker compose up --force-recreate` (e.g. after env changes) reverts
-  # to the original image and loses everything we just injected via docker cp.
-  commit_image myorbisvoice-api && ok "Image updated"
+  # Restart FIRST so the freshly-injected dist goes live, THEN persist via commit
+  # (same ordering as step_web). The OLD order (commit before restart) meant a
+  # slow/hung commit — the 1200s-timeout `commit_image` can stall on a bloated
+  # writable layer — delayed or skipped the restart, leaving the OLD process
+  # serving stale code for hours (2026-07-01 incident: all 3 containers "Up 7h"
+  # with fresh dist on disk but old code running). Runtime correctness first,
+  # image persistence second.
   ssh_t 90 "$SERVER" "docker restart myorbisvoice-api"
   # Verify API is actually serving (health endpoint, not a log-tail grep).
   if wait_http_healthy myorbisvoice-api 4000 /health; then
@@ -286,6 +301,18 @@ step_api() {
   if echo "$RESULT" | grep -qE "PrismaClient|clientModules|Cannot read properties of undefined \(reading '(findMany|findUnique|findFirst|create|update|delete|upsert|count)'\)"; then
     fail "Prisma client stale in API container — re-run deploy or push Prisma client manually"
   fi
+  # Persist the injected state into the image so a future `compose up
+  # --force-recreate` keeps it. NON-FATAL: the running container already serves
+  # the correct build (verified above), so a failed/slow commit has no user
+  # impact now — it only risks a revert on force-recreate, warned loudly below.
+  if commit_image myorbisvoice-api; then
+    ok "Image persisted"
+  else
+    echo "   ⚠ WARNING: docker commit of myorbisvoice-api failed."
+    echo "   ⚠ The RUNNING container is correct + live ($API_STAMP) — no user impact now."
+    echo "   ⚠ But myorbisvoice-api:latest is stale: a 'compose up --force-recreate' would REVERT it."
+    echo "   ⚠ Investigate the box: writable layer size via 'docker ps -s'; consider a clean image rebuild."
+  fi
 }
 
 step_gateway() {
@@ -301,15 +328,28 @@ step_gateway() {
   # cached copy. Sync the widget folder alongside dist/ so widget edits actually ship.
   rsync -az --delete "$REPO_ROOT/apps/voice-gateway/widget/" "$SERVER:$REMOTE/apps/voice-gateway/widget/"
   ssh "$SERVER" "docker cp $REMOTE/apps/voice-gateway/widget/. myorbisvoice-gateway:/app/apps/voice-gateway/widget/"
-  commit_image myorbisvoice-gateway && ok "Image updated"
+  # Restart FIRST (see step_api / step_web rationale): a slow/hung commit must
+  # never delay or skip the restart and leave the old process serving.
   ssh_t 90 "$SERVER" "docker restart myorbisvoice-gateway"
   if wait_http_healthy myorbisvoice-gateway 5000 /health; then
     ok "Gateway healthy"
   else
     fail "Gateway did not become healthy after restart:\n$(ssh "$SERVER" "docker logs myorbisvoice-gateway --tail=30 2>&1")"
   fi
-  if echo "$RESULT" | grep -q "Cannot find module"; then
+  # Read GATEWAY logs (was previously grepping step_api's $RESULT — a stale
+  # cross-service check that never inspected the gateway container).
+  GW_RESULT=$(ssh "$SERVER" "docker logs myorbisvoice-gateway --tail=40 2>&1")
+  if echo "$GW_RESULT" | grep -q "Cannot find module"; then
     fail "Missing module in gateway — check container has all dist files"
+  fi
+  # Persist to image — NON-FATAL (running container already correct + live).
+  if commit_image myorbisvoice-gateway; then
+    ok "Image persisted"
+  else
+    echo "   ⚠ WARNING: docker commit of myorbisvoice-gateway failed."
+    echo "   ⚠ The RUNNING container is correct + live — no user impact now."
+    echo "   ⚠ But myorbisvoice-gateway:latest is stale: 'compose up --force-recreate' would REVERT it."
+    echo "   ⚠ Investigate the box: writable layer size via 'docker ps -s'."
   fi
 }
 
@@ -367,10 +407,12 @@ step_web() {
       || fail "post-sync sanity: required file missing on web container: $required"
   done
   ok "Web .next/ + public/ injected (full wipe + tar-pipe + post-sync sanity)"
-  # Commit the cp'd state AND fix the image's CMD (the original myorbisvoice-web:latest had `tail -f /dev/null` baked in
-  # as a placeholder — we override via compose's `command:` directive but if anyone removes that override,
-  # web silently won't start. Bake the correct CMD into the image so it's self-sufficient).
-  commit_image myorbisvoice-web "--change='CMD [\"pnpm\", \"--filter\", \"@voiceautomation/web\", \"start\"]'" && ok "Image updated (incl. CMD fix)"
+  # Restart FIRST so the freshly-injected build goes live, THEN persist via
+  # commit. Commit is slow + failure-prone on web's multi-GB writable layer;
+  # the OLD order (commit before restart) meant a failed/paused commit exited
+  # the deploy BEFORE the restart ran — leaving the OLD code serving and the
+  # container stuck paused (2026-06-27 incident). Runtime correctness first,
+  # image persistence second.
   ssh_t 90 "$SERVER" "docker restart myorbisvoice-web"
   if wait_http_healthy myorbisvoice-web 3000 /partner-portal/login; then
     ok "Web ready"
@@ -396,6 +438,23 @@ step_web() {
     ok "Web serving current build ($BUILD_ID)"
   else
     fail "Web still serving a stale build after restart — investigate (manual: docker restart myorbisvoice-web)"
+  fi
+  # Persist the injected state into the image so a future `compose up
+  # --force-recreate` keeps it. We deliberately do NOT pass `--change=CMD ...`:
+  # the nested-quote arg gets mangled through ssh + the remote shell and
+  # silently breaks the commit (2026-06-27: it left :latest stale while the
+  # running container was correct). The start CMD is already provided by
+  # compose's `command:` directive (docker-compose.prod.yml web service), so the
+  # image's own CMD is irrelevant at runtime. NON-FATAL: the running container
+  # already serves the correct build, so a failed commit has no user impact now
+  # — it only risks a revert on force-recreate, warned loudly below.
+  if commit_image myorbisvoice-web; then
+    ok "Image persisted"
+  else
+    echo "   ⚠ WARNING: docker commit of myorbisvoice-web failed."
+    echo "   ⚠ The RUNNING container is correct + live ($BUILD_ID) — no user impact now."
+    echo "   ⚠ But myorbisvoice-web:latest is stale: a 'compose up --force-recreate' would REVERT it."
+    echo "   ⚠ Investigate the box: writable layer size via 'docker ps -s'; consider a clean image rebuild."
   fi
 }
 
