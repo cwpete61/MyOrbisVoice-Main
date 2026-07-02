@@ -98,6 +98,9 @@ function ImpersonationBanner() {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const brandName = useBrandName()
+  // Per-tenant tab title: the root metadata is a static "MyOrbisVoice"; override
+  // it client-side so RE tenants see "MyOrbisAgents" in the browser tab.
+  useEffect(() => { document.title = brandName }, [brandName])
 
   return (
     <AuthGuard>
