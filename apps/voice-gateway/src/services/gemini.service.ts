@@ -145,11 +145,12 @@ export function openGeminiLiveSession(
             // and stays.
             end_of_speech_sensitivity:   'END_SENSITIVITY_LOW',
             prefix_padding_ms:           20,
-            // 800ms — production telephony sweet spot is 600-1000ms.
-            // Long enough that natural breath pauses don't trigger
-            // end-of-turn; short enough that the agent doesn't feel
-            // laggy.
-            silence_duration_ms:         800,
+            // 600ms — bottom of the 600-1000ms telephony band. Dropped from
+            // 800ms (2026-07-02) because Orby felt slow to reply after the
+            // caller stopped. End-sensitivity stays LOW so natural breath
+            // pauses still don't cut people off. Go no lower than ~500ms or
+            // mid-thought pauses start triggering early end-of-turn.
+            silence_duration_ms:         600,
           },
         },
         // Transcription enabled (auto-detect language). Tried locking to
