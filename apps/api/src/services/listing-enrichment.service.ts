@@ -170,11 +170,19 @@ async function fetchOsmPois(lat: number, lng: number): Promise<{ hospitals: Plac
       `);out center 60;`
     // GET with ?data= AND a User-Agent. Overpass's Apache returns 406 to
     // Node/undici's default (no UA) — a UA header is what actually fixes it
-    // (verified: UA→200, no UA→406). POST text/plain also 406s.
-    const r = await fetch(`${OVERPASS}?data=${encodeURIComponent(q)}`, {
-      headers: { accept: 'application/json', 'user-agent': 'MyOrbisAgents/1.0 (listings enrichment)' },
-    })
-    if (!r.ok) return null
+    // (verified: UA→200, no UA→406). POST text/plain also 406s. Overpass also
+    // rate-limits (429/504) under back-to-back calls, so retry a couple times
+    // with backoff — enriching several listings in a row would otherwise drop
+    // all but the first.
+    const url = `${OVERPASS}?data=${encodeURIComponent(q)}`
+    const headers = { accept: 'application/json', 'user-agent': 'MyOrbisAgents/1.0 (listings enrichment)' }
+    let r: Response | null = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await new Promise(res => setTimeout(res, 1500 * attempt))
+      r = await fetch(url, { headers })
+      if (r.ok) break
+    }
+    if (!r || !r.ok) return null
     const d = (await r.json()) as { elements?: Array<{ type: string; tags?: Record<string, string>; lat?: number; lon?: number; center?: { lat: number; lon: number } }> }
     const hospitals: Place[] = [], schools: Place[] = []
     for (const el of d.elements ?? []) {
