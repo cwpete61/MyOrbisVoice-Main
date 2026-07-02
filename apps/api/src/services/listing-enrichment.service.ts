@@ -168,9 +168,12 @@ async function fetchOsmPois(lat: number, lng: number): Promise<{ hospitals: Plac
       `node["amenity"="hospital"](around:8000,${lat},${lng});way["amenity"="hospital"](around:8000,${lat},${lng});` +
       `node["amenity"="school"](around:3000,${lat},${lng});way["amenity"="school"](around:3000,${lat},${lng});` +
       `);out center 60;`
-    // GET with ?data= + Accept:json. POST text/plain is rejected (406) by the
-    // main endpoint; GET works and is cacheable.
-    const r = await fetch(`${OVERPASS}?data=${encodeURIComponent(q)}`, { headers: { accept: 'application/json' } })
+    // GET with ?data= AND a User-Agent. Overpass's Apache returns 406 to
+    // Node/undici's default (no UA) — a UA header is what actually fixes it
+    // (verified: UA→200, no UA→406). POST text/plain also 406s.
+    const r = await fetch(`${OVERPASS}?data=${encodeURIComponent(q)}`, {
+      headers: { accept: 'application/json', 'user-agent': 'MyOrbisAgents/1.0 (listings enrichment)' },
+    })
     if (!r.ok) return null
     const d = (await r.json()) as { elements?: Array<{ type: string; tags?: Record<string, string>; lat?: number; lon?: number; center?: { lat: number; lon: number } }> }
     const hospitals: Place[] = [], schools: Place[] = []
