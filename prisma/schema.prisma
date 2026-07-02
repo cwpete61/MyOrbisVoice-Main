@@ -454,6 +454,9 @@ model Tenant {
   referredByCode            String?
   attributedAt              DateTime?
   industryVertical          IndustryVertical        @default(GENERAL)
+  /// Public "DEMO" sandbox tenant. Money/irreversible actions are blocked and the
+  /// tenant is periodically reset to its seed (see demo.service + demo-reset job).
+  isDemo                    Boolean                 @default(false)
   /// Stripe Connect (Express) — lets the tenant collect payments from THEIR
   /// own customers. Pass-through model: DIRECT charges on this connected
   /// account, no platform application fee (tenant keeps 100%). Distinct from

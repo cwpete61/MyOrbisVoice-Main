@@ -29,6 +29,16 @@ function useBrandName(): string {
   return useIsAgents() ? 'MyOrbisAgents' : 'MyOrbisVoice'
 }
 
+function DemoBanner() {
+  const ctx = useTenantContext()
+  if (!ctx?.isDemo) return null
+  return (
+    <div className="px-4 py-2 text-center text-sm font-medium" style={{ background: 'oklch(60% 0.14 75)', color: '#fff' }}>
+      🧪 Demo account — explore freely. Nothing is saved, and this resets on a schedule. Sign up to make it real.
+    </div>
+  )
+}
+
 function SidebarContents({ onNav }: { onNav?: () => void }) {
   const brandName = useBrandName()
   const isAgents = useIsAgents()
@@ -199,6 +209,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Page content — mobile padding up to lg (iPad portrait uses drawer). */}
           <main className="flex-1 overflow-auto">
+            <DemoBanner />
             <div className="w-full px-4 py-6 lg:px-8 lg:py-8">
               {children}
             </div>

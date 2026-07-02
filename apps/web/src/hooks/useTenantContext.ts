@@ -22,6 +22,7 @@ interface TenantRow {
   publicPhone:      string | null
   website:          string | null
   industryVertical: string
+  isDemo?:          boolean
 }
 
 interface BusinessProfileRow {
@@ -44,6 +45,7 @@ export interface TenantContext {
   publicPhone:  string
   website:      string
   industryCode: string
+  isDemo:       boolean
 
   // Address
   addressLine1: string
@@ -66,6 +68,7 @@ export function useTenantContext(): TenantContext | null {
     publicPhone:  tenant.publicPhone ?? '',
     website:      tenant.website ?? '',
     industryCode: tenant.industryVertical ?? 'GENERAL',
+    isDemo:       tenant.isDemo ?? false,
     addressLine1: profile.addressLine1 ?? '',
     city:         profile.city ?? '',
     region:       profile.region ?? '',

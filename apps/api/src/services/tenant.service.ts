@@ -36,7 +36,7 @@ export async function getTenant(tenantId: string) {
       id: true, slug: true, displayName: true, legalName: true,
       status: true, timezone: true, registrationEmail: true,
       publicEmail: true, publicPhone: true, website: true,
-      industryVertical: true, createdAt: true, updatedAt: true,
+      industryVertical: true, isDemo: true, createdAt: true, updatedAt: true,
     },
   })
   if (!tenant) throw new AppError('NOT_FOUND', 'Tenant not found', 404)

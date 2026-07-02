@@ -57,8 +57,13 @@ import { publicBookingRouter } from './public-booking.js'
 import authGoogleRouter from './auth-google.js'
 import authOidcRouter from './auth-oidc.js'
 import { validateTwilioWebhook } from '../middleware/twilio-signature.js'
+import { demoGuard } from '../middleware/demo-guard.js'
 
 const router: IRouter = Router()
+
+// Block money/irreversible actions for the public DEMO sandbox tenant. Cheap —
+// only inspects non-GET requests to blocked prefixes. Must run before the routers.
+router.use(demoGuard)
 
 router.use('/', healthRouter)
 router.use('/api/auth', authRouter)

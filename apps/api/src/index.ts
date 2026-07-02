@@ -15,6 +15,7 @@ import { startReminderRunner } from './jobs/reminder-runner.js'
 import { startSendingDomainRunner } from './jobs/sending-domain-runner.js'
 import { startColdEmailSequencer } from './jobs/cold-email-sequencer.js'
 import { startImapPollerJob } from './jobs/imap-poller.js'
+import { startDemoResetJob } from './jobs/demo-reset.js'
 import { bootStripeFromConfig } from './lib/stripe.js'
 import { recoverStuckExtractions } from './services/knowledge-base.service.js'
 import { ensureSeed as seedMarketingKit } from './services/marketing-kit.service.js'
@@ -178,6 +179,7 @@ async function start() {
     startSendingDomainRunner()
     startColdEmailSequencer()
     startImapPollerJob()
+    startDemoResetJob()
     // Reset any KB extraction jobs left in PROCESSING from a prior crash —
     // we can't resume the original buffer, so they get FAILED with a clear
     // message and the user can re-upload.
