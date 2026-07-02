@@ -4811,7 +4811,13 @@
     "showingsTitle": "Upcoming showings",
     "showingsEmpty": "No upcoming showings booked.",
     "viewAll": "View all",
-    "unknownContact": "Unknown caller"
+    "unknownContact": "Unknown caller",
+    "phoneTitle": "Call Orby by phone",
+    "phoneDesc": "Try Orby live on a real phone call. Dial the number and enter your demo PIN when asked — the call shows up here in your demo session.",
+    "phoneNumberLabel": "Demo line",
+    "phonePinLabel": "Your PIN",
+    "phoneCallCta": "Tap to call — PIN auto-fills",
+    "phoneFallbackHint": "If the PIN doesn't enter automatically, key in {pin} when Orby asks for your demo code."
   },
   "publicDemo": {
     "notFoundTitle": "Demo not found",

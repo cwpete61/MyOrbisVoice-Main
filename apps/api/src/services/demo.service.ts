@@ -10,6 +10,7 @@
  */
 import { prisma } from '../lib/prisma.js'
 import { provisionAgentOrby } from './agent-onboarding.service.js'
+import { updateChannel } from './channel.service.js'
 
 // Entitlements the demo tenant gets. Safe/explorable ON; anything that costs
 // money or has real-world effect OFF (so existing gates block it).
@@ -47,14 +48,29 @@ async function applyDemoEntitlements(tenantId: string): Promise<void> {
 
 /** Delete the mutable tenant-scoped data so a reset starts clean. */
 async function wipeTenantData(tenantId: string): Promise<void> {
+  // Reset-exemption: keep conversations bound to an ACTIVE demo phone session so
+  // a caller mid-demo (or who just hung up) still sees their call in the session
+  // view. Everything else is wiped. Expired sessions + their calls get cleaned.
+  const activeSessions = await prisma.demoSession.findMany({
+    where:  { tenantId, expiresAt: { gt: new Date() } },
+    select: { id: true },
+  })
+  const keep = activeSessions.map(s => s.id)
+
   // Order matters only where FKs restrict; most are onDelete cascade/setNull.
   await prisma.appointment.deleteMany({ where: { tenantId } })
-  await prisma.conversation.deleteMany({ where: { tenantId } })
+  await prisma.conversation.deleteMany({
+    where: keep.length
+      ? { tenantId, OR: [{ demoSessionId: null }, { demoSessionId: { notIn: keep } }] }
+      : { tenantId },
+  })
   await prisma.listing.deleteMany({ where: { tenantId } })
   await prisma.contact.deleteMany({ where: { tenantId } })
   await prisma.channelConfig.deleteMany({ where: { tenantId } })
   await prisma.promptVersion.deleteMany({ where: { tenantId } })
   await prisma.businessDNA.deleteMany({ where: { tenantId } })
+  // Clean up expired demo phone sessions (their calls were deleted above).
+  await prisma.demoSession.deleteMany({ where: { tenantId, expiresAt: { lt: new Date() } } })
 }
 
 export async function seedDemoTenant(tenantId: string, userId: string): Promise<void> {
@@ -67,6 +83,10 @@ export async function seedDemoTenant(tenantId: string, userId: string): Promise<
     specialties: 'first-time buyers, luxury, relocation', bookingHours: 'Mon–Sat 9am–6pm', language: 'bilingual',
     listingsBrief: 'Renovated South Austin bungalow at $685k; a coming-soon 4BR; a downtown condo.',
   })
+
+  // Enable the INBOUND channel so PIN-bound demo phone calls (+1 470 517 3441)
+  // can connect to the sandbox Orby. See demo-session.service.
+  await updateChannel(tenantId, 'INBOUND', { isEnabled: true }).catch(() => {})
 
   // Sample listings.
   for (const l of SAMPLE_LISTINGS) {

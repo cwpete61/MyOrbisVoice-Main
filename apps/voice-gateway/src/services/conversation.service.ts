@@ -80,8 +80,12 @@ export async function persistConversation(opts: {
    *  set partnerId on the row (create + update). Never nulls an existing
    *  partnerId. */
   partnerSlug?: string | null
+  /** DEMO phone sessions — set when a PIN-bound inbound call connected. Tags the
+   *  conversation so the demo cockpit can filter to that browser session. */
+  demoSessionId?: string | null
 }): Promise<string> {
-  const { tenantId, sessionId, transcript, summary, channelType = 'WIDGET', turnLatenciesMs, attentionLevel, attentionReason, partnerSlug } = opts
+  const { tenantId, sessionId, transcript, summary, channelType = 'WIDGET', turnLatenciesMs, attentionLevel, attentionReason, partnerSlug, demoSessionId } = opts
+  const demoPatch = demoSessionId ? { demoSessionId } : {}
 
   // Resolve partner slug → id (outbound partner attribution). Only set when a
   // slug was supplied + matches; otherwise leave undefined so we never wipe a
@@ -136,6 +140,7 @@ export async function persistConversation(opts: {
         ...(Object.keys(metadataPatch).length > 0 ? { metadataJson: metadataPatch as any } : {}),
         ...attentionData,
         ...partnerPatch,
+        ...demoPatch,
       },
     })
 
@@ -154,6 +159,7 @@ export async function persistConversation(opts: {
           externalCallId: sessionId,
           ...attentionData,
           ...partnerPatch,
+          ...demoPatch,
         },
       })
       return conv.id

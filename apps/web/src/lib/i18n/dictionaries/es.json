@@ -4811,7 +4811,13 @@
     "showingsTitle": "Próximas visitas",
     "showingsEmpty": "No hay visitas agendadas.",
     "viewAll": "Ver todo",
-    "unknownContact": "Llamante desconocido"
+    "unknownContact": "Llamante desconocido",
+    "phoneTitle": "Llama a Orby por teléfono",
+    "phoneDesc": "Prueba a Orby en una llamada real. Marca el número e ingresa tu PIN de demostración cuando se te pida; la llamada aparece aquí en tu sesión de demostración.",
+    "phoneNumberLabel": "Línea de demostración",
+    "phonePinLabel": "Tu PIN",
+    "phoneCallCta": "Toca para llamar — el PIN se completa solo",
+    "phoneFallbackHint": "Si el PIN no se ingresa automáticamente, marca {pin} cuando Orby pida tu código de demostración."
   },
   "publicDemo": {
     "notFoundTitle": "Demostración no encontrada",

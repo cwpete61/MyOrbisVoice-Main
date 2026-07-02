@@ -19,6 +19,7 @@ interface Lead {
   contact: { firstName: string | null; lastName: string | null; phoneE164: string | null } | null
 }
 interface Showing { id: string; appointmentType: string | null; status: string; startAt: string; location: string | null }
+interface PhoneSession { number: string; numberDisplay: string; pin: string; expiresAt: string; telHref: string }
 
 function fmtWhen(iso: string | null): string {
   if (!iso) return ''
@@ -31,12 +32,21 @@ export default function CockpitPage() {
   const [onb, setOnb] = useState<OnbStatus | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
   const [showings, setShowings] = useState<Showing[]>([])
+  const [phone, setPhone] = useState<PhoneSession | null>(null)
 
   useEffect(() => {
     apiFetch<OnbStatus>('/api/onboarding/status').then(setOnb).catch(() => {})
     apiFetch<{ items: Lead[] }>('/api/conversations?limit=6&sortBy=startedAt&sortDir=desc').then((d) => setLeads(d.items ?? [])).catch(() => {})
     const from = new Date().toISOString()
     apiFetch<Showing[]>(`/api/appointments?from=${encodeURIComponent(from)}&limit=6`).then((d) => setShowings(Array.isArray(d) ? d : [])).catch(() => {})
+    // Demo phone session — a per-browser token keeps each demo tab's PIN stable.
+    // Returns null for non-demo tenants, so the card just doesn't render.
+    let ref = ''
+    try {
+      ref = localStorage.getItem('moa_demo_ref') || ''
+      if (!ref) { ref = Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('moa_demo_ref', ref) }
+    } catch { /* private mode — fall back to a volatile ref */ }
+    apiFetch<PhoneSession | null>(`/api/demo/phone-session?ref=${encodeURIComponent(ref || 'default')}`).then(setPhone).catch(() => {})
   }, [])
 
   const card = { background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' } as const
@@ -81,6 +91,37 @@ export default function CockpitPage() {
           </div>
         )}
       </div>
+
+      {/* Call Orby by phone — demo only (endpoint returns null otherwise) */}
+      {phone && (
+        <div className="mt-6 rounded-xl p-4" style={{ background: 'oklch(97% 0.03 193)', border: '1px solid oklch(85% 0.06 193)' }}>
+          <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t('tenantAgentCockpit.phoneTitle')}</div>
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>{t('tenantAgentCockpit.phoneDesc')}</p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>{t('tenantAgentCockpit.phoneNumberLabel')}</div>
+              <a href={`tel:${phone.number}`} className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{phone.numberDisplay}</a>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>{t('tenantAgentCockpit.phonePinLabel')}</div>
+              <div className="text-lg font-bold tracking-widest" style={{ color: 'oklch(45% 0.13 193)' }}>{phone.pin}</div>
+            </div>
+          </div>
+
+          {/* Mobile: one tap dials + auto-sends the PIN as DTMF */}
+          <a
+            href={phone.telHref}
+            className="sm:hidden mt-4 block text-center rounded-lg px-4 py-3 text-sm font-semibold text-white"
+            style={{ background: 'oklch(55% 0.11 193)' }}
+          >
+            {t('tenantAgentCockpit.phoneCallCta')}
+          </a>
+          <p className="mt-2 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+            {t('tenantAgentCockpit.phoneFallbackHint').replace('{pin}', phone.pin)}
+          </p>
+        </div>
+      )}
 
       {/* Quick actions */}
       <div className="mt-6">

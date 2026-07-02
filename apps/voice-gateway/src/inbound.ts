@@ -68,6 +68,7 @@ export async function handleInboundCall(ws: WebSocket) {
   let callSid    = ''
   let tenantId   = ''
   let channelConfigId = ''
+  let demoSessionId: string | null = null
   let ownerAccountSid: string | null = null
 
   // ── Raw audio capture (diagnostic) ─────────────────────────────────────────
@@ -198,8 +199,9 @@ export async function handleInboundCall(ws: WebSocket) {
     callSid         = params['callSid']         ?? callSid
     const fromNumber = params['fromNumber'] ?? ''
     const partnerId  = params['partnerId']  ?? ''
+    demoSessionId    = params['demoSessionId'] || null
 
-    console.log(`[inbound] init session tenantId=${tenantId} callSid=${callSid} from=${fromNumber || '(blocked)'}${partnerId ? ` partner=${partnerId}` : ''}`)
+    console.log(`[inbound] init session tenantId=${tenantId} callSid=${callSid} from=${fromNumber || '(blocked)'}${partnerId ? ` partner=${partnerId}` : ''}${demoSessionId ? ` demoSession=${demoSessionId}` : ''}`)
 
     if (!tenantId) {
       console.error('[inbound] missing tenantId in stream params')
@@ -556,6 +558,7 @@ export async function handleInboundCall(ws: WebSocket) {
           attentionReason: analysis.attentionReason,
           channelType: 'INBOUND',
           turnLatenciesMs,
+          demoSessionId,
         })
         if (turnLatenciesMs.length > 0) {
           const sorted = [...turnLatenciesMs].sort((a, b) => a - b)

@@ -5,6 +5,8 @@ import { requireTenantContext } from '../middleware/rbac.js'
 import * as agentService from '../services/agent.service.js'
 import * as roleTemplateService from '../services/role-template.service.js'
 import { AppError } from '@voiceautomation/shared'
+import { prisma } from '../lib/prisma.js'
+import { DEMO_PHONE_E164, getOrCreateDemoSession } from '../services/demo-session.service.js'
 
 const router: IRouter = Router()
 
@@ -63,6 +65,30 @@ router.post('/agents/seed-from-template', async (req, res, next) => {
       req.user!.id,
     )
     res.json({ data: result })
+  } catch (err) { next(err) }
+})
+
+// GET /api/demo/phone-session?ref=<browserToken> — mint/refresh this browser's
+// demo phone session (PIN + number). Only demo tenants get a session; everyone
+// else gets null so the cockpit card simply doesn't render. The tel: href
+// pre-loads the PIN as post-dial DTMF (commas = ~2s pauses) for mobile
+// tap-to-dial; the PIN is also shown as a visible fallback.
+router.get('/demo/phone-session', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.currentTenantId!
+    const t = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { isDemo: true } })
+    if (!t?.isDemo) { res.json({ data: null }); return }
+    const ref = ((req.query['ref'] as string) || 'default').slice(0, 80)
+    const s = await getOrCreateDemoSession(tenantId, ref)
+    res.json({
+      data: {
+        number:        DEMO_PHONE_E164,
+        numberDisplay: '+1 (470) 517-3441',
+        pin:           s.pin,
+        expiresAt:     s.expiresAt,
+        telHref:       `tel:${DEMO_PHONE_E164},,,${s.pin}`,
+      },
+    })
   } catch (err) { next(err) }
 })
 

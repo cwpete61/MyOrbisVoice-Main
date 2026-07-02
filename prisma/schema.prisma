@@ -1508,6 +1508,10 @@ model Conversation {
   /// MyOrbisAgents — set when the call came in on a listing's tracking number.
   /// Drives per-listing call attribution ("your listing got 14 calls").
   listingId            String?
+  /// DEMO phone sessions — set when an inbound call to the shared demo number
+  /// entered a valid session PIN. Scopes the conversation to that caller's
+  /// browser demo session so the cockpit can filter to just their calls.
+  demoSessionId        String?
 
   tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact              Contact?              @relation(fields: [contactId], references: [id], onDelete: SetNull)
@@ -1525,6 +1529,7 @@ model Conversation {
   @@index([isFeaturedDemo, featuredCategory, featuredSortOrder])
   @@index([partnerId])
   @@index([listingId])
+  @@index([demoSessionId])
 }
 
 model StaffMember {
@@ -3379,6 +3384,27 @@ model DemoLead {
   @@index([createdAt])
   @@index([email])
   @@index([phoneE164])
+}
+
+// DEMO phone sessions. The public demo number (+1 470 517 3441) is shared, so a
+// caller enters a short PIN via IVR to bind their call to their own browser demo
+// session. Conversations tagged with this session's id show only in that
+// session's cockpit view. PINs expire; the row + its bound conversations are
+// exempt from the 15-min demo reset while active so a live call isn't wiped.
+model DemoSession {
+  id           String   @id @default(uuid())
+  tenantId     String   // the shared demo tenant this session belongs to
+  browserRef   String   // per-browser token (localStorage) so each demo tab gets its own PIN
+  pin          String   @unique // numeric IVR code, unique among active sessions
+  label        String?  // optional display label
+  callCount    Int      @default(0)
+  lastCallAt   DateTime?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@unique([tenantId, browserRef])
+  @@index([tenantId])
+  @@index([expiresAt])
 }
 
 // MyOrbisAgents — the agent's property book. Each Listing is a working unit Orby
