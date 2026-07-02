@@ -3,7 +3,7 @@
 import { getRefreshToken, ssoLogout } from '@/lib/auth'
 import { useT } from '@/lib/i18n/I18nProvider'
 
-export function SignOutButton() {
+export function SignOutButton({ redirectTo }: { redirectTo?: string } = {}) {
   const t = useT()
 
   async function handleSignOut() {
@@ -16,8 +16,9 @@ export function SignOutButton() {
         body: JSON.stringify({ refreshToken: rt }),
       }).catch(() => {})
     }
-    // End the Keycloak SSO session too, then land on the hub dashboard.
-    ssoLogout()
+    // End the Keycloak SSO session, then land on the brand homepage
+    // (MyOrbisAgents for RE tenants) or the hub dashboard by default.
+    ssoLogout(redirectTo)
   }
 
   return (

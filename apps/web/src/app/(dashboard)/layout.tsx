@@ -20,13 +20,18 @@ import { useTenantContext } from '@/hooks/useTenantContext'
 // MyOrbisAgents is a branded vertical of the Voice app: real-estate tenants see
 // "MyOrbisAgents" in the dashboard chrome; everyone else stays "MyOrbisVoice".
 const AGENTS_VERTICALS = ['REAL_ESTATE', 'REALTOR']
-function useBrandName(): string {
+const AGENTS_HOME = 'https://myorbisagents.com'
+function useIsAgents(): boolean {
   const ctx = useTenantContext()
-  return ctx && AGENTS_VERTICALS.includes(ctx.industryCode) ? 'MyOrbisAgents' : 'MyOrbisVoice'
+  return !!ctx && AGENTS_VERTICALS.includes(ctx.industryCode)
+}
+function useBrandName(): string {
+  return useIsAgents() ? 'MyOrbisAgents' : 'MyOrbisVoice'
 }
 
 function SidebarContents({ onNav }: { onNav?: () => void }) {
   const brandName = useBrandName()
+  const isAgents = useIsAgents()
   return (
     <>
       {/* Brand */}
@@ -50,7 +55,7 @@ function SidebarContents({ onNav }: { onNav?: () => void }) {
       {/* Footer */}
       <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
         <SidebarUserBadge profileHref="/profile" />
-        <SignOutButton />
+        <SignOutButton redirectTo={isAgents ? AGENTS_HOME : undefined} />
       </div>
     </>
   )
@@ -98,13 +103,14 @@ function ImpersonationBanner() {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const brandName = useBrandName()
+  const isAgents = useIsAgents()
   // Per-tenant tab title: the root metadata is a static "MyOrbisVoice"; override
   // it client-side so RE tenants see "MyOrbisAgents" in the browser tab.
   useEffect(() => { document.title = brandName }, [brandName])
 
   return (
     <AuthGuard>
-      <IdleTimeout redirectTo="https://myorbisresults.com" />
+      <IdleTimeout redirectTo={isAgents ? AGENTS_HOME : 'https://myorbisresults.com'} />
       {/* h-[100dvh] not h-screen — iOS Safari's 100vh includes chrome that's
          actually hiding part of the layout. Desktop sidebar at lg: (≥1024px)
          so iPad portrait (768px) gets the full-height drawer instead of a

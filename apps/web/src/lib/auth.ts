@@ -33,7 +33,11 @@ export function clearTokens(): void {
 const HUB_DASHBOARD = 'https://products.myorbisresults.com/dashboard'
 const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'https://api.myorbisvoice.com'
 
-export async function ssoLogout(): Promise<void> {
+// Redirect target after logout. Defaults to the hub dashboard; RE/MyOrbisAgents
+// tenants pass their brand homepage. The URL is a plain client-side redirect
+// (the KC session is killed back-channel above), so any URL works — no KC
+// post-logout-URI registration needed.
+export async function ssoLogout(redirectTo: string = HUB_DASHBOARD): Promise<void> {
   try {
     const token = getAccessToken()
     await fetch(`${API_BASE}/api/auth/oidc/logout`, {
@@ -43,7 +47,7 @@ export async function ssoLogout(): Promise<void> {
     })
   } catch { /* best-effort — proceed to clear + redirect regardless */ }
   clearTokens()
-  window.location.href = HUB_DASHBOARD
+  window.location.href = redirectTo
 }
 
 export function isAuthenticated(): boolean {

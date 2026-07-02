@@ -30,6 +30,7 @@ const ACTIVITY_EVENTS = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchst
 export function IdleTimeout({
   idleMs = 10 * 60 * 1000,   // 10 minutes
   graceMs = 60 * 1000,       // 60 seconds
+  redirectTo,
 }: Props) {
   const t = useT()
   const [warning, setWarning] = useState(false)
@@ -49,8 +50,8 @@ export function IdleTimeout({
   const forceLogout = useCallback(() => {
     clearAllTimers()
     setWarning(false)
-    ssoLogout()
-  }, [])
+    ssoLogout(redirectTo)
+  }, [redirectTo])
 
   const startIdleTimer = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
