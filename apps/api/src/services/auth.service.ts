@@ -103,7 +103,9 @@ export async function signupUser(data: {
   }
 
   // Phase 2: provision the new user into Keycloak for SSO (best-effort, non-fatal).
-  await syncUserToKeycloak(user.id)
+  // Pass the plaintext password so the KC login works immediately with the same
+  // password — no set-password email round-trip (that was the self-serve gap).
+  await syncUserToKeycloak(user.id, data.password)
 
   const tokens = await issueTokens(user.id, user.email, tenant.id, 'tenant_owner', false)
   return { user: sanitizeUser(user), tenant: sanitizeTenant(tenant), ...tokens }

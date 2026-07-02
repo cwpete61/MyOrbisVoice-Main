@@ -27,7 +27,15 @@ async function adminToken(): Promise<string> {
   return (await res.json() as { access_token: string }).access_token
 }
 
-export async function syncUserToKeycloak(userId: string): Promise<void> {
+/**
+ * Provision a Voice user into Keycloak for SSO.
+ * When `plaintextPassword` is given (self-serve signup, where we have it in hand),
+ * we set it as the KC credential and DROP the UPDATE_PASSWORD action — so the agent
+ * logs in immediately with the same password, no set-password email round-trip.
+ * Without it (payment-link/Google), the user is created password-less with
+ * UPDATE_PASSWORD and gets a set-password email from the caller.
+ */
+export async function syncUserToKeycloak(userId: string, plaintextPassword?: string): Promise<void> {
   if (!CLIENT_ID || !SECRET || !BASE || !REALM) return // not configured — skip
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } })
@@ -54,7 +62,11 @@ export async function syncUserToKeycloak(userId: string): Promise<void> {
         lastName: user.lastName ?? undefined,
         // Carry the user's language so Keycloak sends localized (en/es) emails + UI.
         attributes: { locale: [user.preferredLocale || 'en'] },
-        requiredActions: ['UPDATE_PASSWORD'],
+        // With a known password → set it and skip UPDATE_PASSWORD so login works
+        // immediately. Otherwise require the set-password email flow.
+        ...(plaintextPassword
+          ? { credentials: [{ type: 'password', value: plaintextPassword, temporary: false }] }
+          : { requiredActions: ['UPDATE_PASSWORD'] }),
       }),
     })
     if (res.status !== 201) throw new Error(`kc create user ${res.status}`)
