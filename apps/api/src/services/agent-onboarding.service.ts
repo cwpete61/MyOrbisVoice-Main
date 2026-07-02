@@ -10,6 +10,7 @@
  * is configured we best-effort enrich the narrative sections (identity pitch,
  * sales discovery) via `generateDnaSection`; failures degrade to the template.
  */
+import { prisma } from '../lib/prisma.js'
 import { createDNADraft, publishDNA } from './business-dna.service.js'
 import { updateChannel } from './channel.service.js'
 import { generateDnaSection } from './ai-assist.service.js'
@@ -173,6 +174,10 @@ export async function provisionAgentOrby(
   userId: string,
   intake: AgentIntake,
 ): Promise<OnboardResult> {
+  // Mark the tenant as a real-estate vertical so the dashboard chrome reskins to
+  // "MyOrbisAgents" (see (dashboard)/layout useBrandName). Non-fatal.
+  await prisma.tenant.update({ where: { id: tenantId }, data: { industryVertical: 'REAL_ESTATE' } }).catch(() => {})
+
   const dnaData = templateDNA(intake)
   const aiEnriched = await enrich(tenantId, intake, dnaData)
 

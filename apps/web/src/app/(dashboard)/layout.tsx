@@ -15,8 +15,18 @@ import { TierBadge } from '@/components/TierBadge'
 import { IdleTimeout } from '@/components/IdleTimeout'
 import { getImpersonationInfo, endImpersonation } from '@/lib/auth'
 import { apiFetch } from '@/hooks/useApi'
+import { useTenantContext } from '@/hooks/useTenantContext'
+
+// MyOrbisAgents is a branded vertical of the Voice app: real-estate tenants see
+// "MyOrbisAgents" in the dashboard chrome; everyone else stays "MyOrbisVoice".
+const AGENTS_VERTICALS = ['REAL_ESTATE', 'REALTOR']
+function useBrandName(): string {
+  const ctx = useTenantContext()
+  return ctx && AGENTS_VERTICALS.includes(ctx.industryCode) ? 'MyOrbisAgents' : 'MyOrbisVoice'
+}
 
 function SidebarContents({ onNav }: { onNav?: () => void }) {
+  const brandName = useBrandName()
   return (
     <>
       {/* Brand */}
@@ -24,7 +34,7 @@ function SidebarContents({ onNav }: { onNav?: () => void }) {
         <div className="flex items-center gap-2.5">
           <TenantLogo />
           <span className="text-sm font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-            MyOrbisVoice
+            {brandName}
           </span>
         </div>
         <ThemeToggle />
@@ -87,6 +97,7 @@ function ImpersonationBanner() {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const brandName = useBrandName()
 
   return (
     <AuthGuard>
@@ -153,7 +164,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <circle cx="7" cy="7" r="6" stroke="oklch(10% 0.01 193)" strokeOpacity="0.4" strokeWidth="1.5" />
                 </svg>
               </div>
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>MyOrbisVoice</span>
+              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{brandName}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <TierBadge />
