@@ -116,68 +116,32 @@ type AgentStreamParams = {
   callSid: string
   fromNumber?: string
   demoSessionId?: string
+  /** When '1', the gateway listens for keypad DTMF and binds the call to the
+   *  matching demo session live (Orby answers first — no robotic pre-gather). */
+  demoPinCapture?: boolean
 }
 
-/** Append a <Connect><Stream> to an existing VoiceResponse (shared by the demo
- *  gather-fallback and the PIN-bound connect). */
+/** Append a <Connect><Stream> to an existing VoiceResponse. */
 function appendAgentStream(response: InstanceType<typeof twilio.twiml.VoiceResponse>, p: AgentStreamParams): void {
   const stream = response.connect().stream({ url: `${GW_WS_BASE}/ws/inbound` })
   stream.parameter({ name: 'tenantId',        value: p.tenantId })
   stream.parameter({ name: 'channelConfigId', value: p.channelConfigId })
   stream.parameter({ name: 'callSid',         value: p.callSid })
-  if (p.fromNumber)    stream.parameter({ name: 'fromNumber',    value: p.fromNumber })
-  if (p.demoSessionId) stream.parameter({ name: 'demoSessionId', value: p.demoSessionId })
+  if (p.fromNumber)     stream.parameter({ name: 'fromNumber',     value: p.fromNumber })
+  if (p.demoSessionId)  stream.parameter({ name: 'demoSessionId',  value: p.demoSessionId })
+  if (p.demoPinCapture) stream.parameter({ name: 'demoPinCapture', value: '1' })
 }
 
-/** Inbound TwiML for the shared demo number: gather an optional PIN, then fall
- *  through to the default sample agent (Chase) if none is entered. Bilingual
- *  prompt. `actionUrl` receives the DTMF digits. `fallback` is the sample-agent
- *  stream used on no-input. */
-export function buildDemoGatherTwiml(opts: {
-  actionUrl: string
-  fallback:  AgentStreamParams
-}): string {
+/** DEMO line (option C): Orby answers immediately (her own voice) and the
+ *  gateway captures any keypad PIN via DTMF to bind the session — no robotic
+ *  pre-gather. */
+export function buildDemoDirectConnectTwiml(p: AgentStreamParams): string {
   const VoiceResponse = twilio.twiml.VoiceResponse
   const response      = new VoiceResponse()
-
-  const gather = response.gather({
-    input:     ['dtmf'],
-    numDigits: 6,
-    timeout:   5,
-    action:    opts.actionUrl,
-    method:    'POST',
-  })
-  // This is an AI demo. Bilingual, short — the auto-DTMF from tap-to-dial fires
-  // during/after this prompt so the gather catches it.
-  gather.say({ voice: 'alice', language: 'en-US' },
-    'Welcome to the MyOrbisAgents demo. This call is answered by an A I assistant. If you have a demo code, enter it now. Otherwise, just stay on the line.')
-  gather.say({ voice: 'alice', language: 'es-MX' },
-    'Bienvenido a la demostración de MyOrbisAgents. Esta llamada es atendida por un asistente de inteligencia artificial. Si tienes un código de demostración, ingrésalo ahora. Si no, permanece en la línea.')
-
-  // No input within the timeout → the default sample agent (Chase).
-  appendAgentStream(response, opts.fallback)
+  appendAgentStream(response, { ...p, demoPinCapture: true })
   return response.toString()
 }
 
-/** TwiML that connects a PIN-bound demo call to the sandbox demo agent, tagging
- *  the stream with demoSessionId so the conversation binds to that session. */
-export function buildDemoSessionConnectTwiml(p: AgentStreamParams): string {
-  const VoiceResponse = twilio.twiml.VoiceResponse
-  const response      = new VoiceResponse()
-  appendAgentStream(response, p)
-  return response.toString()
-}
-
-/** Spoken "demo lines are busy" fallback, then connect to the sample agent so
- *  the caller still hears Orby. */
-export function buildDemoBusyTwiml(fallback: AgentStreamParams): string {
-  const VoiceResponse = twilio.twiml.VoiceResponse
-  const response      = new VoiceResponse()
-  response.say({ voice: 'alice', language: 'en-US' },
-    'All demo sessions are busy right now, so I will connect you to our sample agent instead.')
-  appendAgentStream(response, fallback)
-  return response.toString()
-}
 
 // Managed Twilio: the call lives on whichever account owns the inbound
 // number. For tenants with a provisioned subaccount, that's the subaccount;

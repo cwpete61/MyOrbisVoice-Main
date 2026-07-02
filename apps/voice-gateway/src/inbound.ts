@@ -60,6 +60,7 @@ type TwilioMsg =
   | { event: 'start';     start: { streamSid: string; callSid: string; accountSid?: string; customParameters: Record<string, string> } }
   | { event: 'media';     media: { track: string; chunk: string; timestamp: string; payload: string } }
   | { event: 'stop';      stop: { accountSid: string; callSid: string } }
+  | { event: 'dtmf';      dtmf: { track?: string; digit: string }; streamSid?: string }
 
 export async function handleInboundCall(ws: WebSocket) {
   console.log('[inbound] Twilio Media Stream connected')
@@ -69,6 +70,11 @@ export async function handleInboundCall(ws: WebSocket) {
   let tenantId   = ''
   let channelConfigId = ''
   let demoSessionId: string | null = null
+  // DEMO line (option C): Orby answers first; we capture keypad digits here and
+  // bind the call to the matching demo session live — no robotic pre-gather.
+  let demoPinCapture = false
+  let dtmfBuffer     = ''
+  let dtmfTimer: ReturnType<typeof setTimeout> | null = null
   let ownerAccountSid: string | null = null
 
   // ── Raw audio capture (diagnostic) ─────────────────────────────────────────
@@ -193,6 +199,38 @@ export async function handleInboundCall(ws: WebSocket) {
     if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null }
   }
 
+  // DEMO line (option C): accumulate keypad digits and bind the call to the
+  // matching demo session once 6 digits arrive. Runs only when demoPinCapture
+  // is set and no session is bound yet. Never interrupts Orby — the audio path
+  // is untouched; this just tags the conversation for the cockpit session view.
+  async function handleDtmfDigit(digit: string) {
+    if (!demoPinCapture || demoSessionId) return
+    if (digit === '#' || digit === '*') { dtmfBuffer = ''; return }
+    if (!/^[0-9]$/.test(digit)) return
+    dtmfBuffer += digit
+    if (dtmfTimer) clearTimeout(dtmfTimer)
+    dtmfTimer = setTimeout(() => { dtmfBuffer = '' }, 8000) // drop stale partial entries
+    if (dtmfBuffer.length < 6) return
+    const pin  = dtmfBuffer.slice(-6)
+    dtmfBuffer = ''
+    if (dtmfTimer) { clearTimeout(dtmfTimer); dtmfTimer = null }
+    try {
+      const session = await prisma.demoSession.findFirst({ where: { pin, expiresAt: { gt: new Date() } } })
+      if (session) {
+        demoSessionId = session.id
+        await prisma.demoSession.update({
+          where: { id: session.id },
+          data:  { callCount: { increment: 1 }, lastCallAt: new Date() },
+        }).catch(() => {})
+        console.log(`[inbound] demo PIN matched → session ${session.id} bound callSid=${callSid}`)
+      } else {
+        console.log('[inbound] demo PIN entered but no active session matched')
+      }
+    } catch (e) {
+      console.warn('[inbound] demo PIN lookup failed:', (e as Error).message)
+    }
+  }
+
   async function initSession(params: Record<string, string>) {
     tenantId        = params['tenantId']        ?? ''
     channelConfigId = params['channelConfigId'] ?? ''
@@ -200,6 +238,7 @@ export async function handleInboundCall(ws: WebSocket) {
     const fromNumber = params['fromNumber'] ?? ''
     const partnerId  = params['partnerId']  ?? ''
     demoSessionId    = params['demoSessionId'] || null
+    demoPinCapture   = params['demoPinCapture'] === '1'
 
     console.log(`[inbound] init session tenantId=${tenantId} callSid=${callSid} from=${fromNumber || '(blocked)'}${partnerId ? ` partner=${partnerId}` : ''}${demoSessionId ? ` demoSession=${demoSessionId}` : ''}`)
 
@@ -613,6 +652,11 @@ export async function handleInboundCall(ws: WebSocket) {
           gemini.sendAudio(pcm16k)
           lastUserAudioAt = Date.now()
         }
+        return
+      }
+
+      if (msg.event === 'dtmf') {
+        await handleDtmfDigit(msg.dtmf?.digit ?? '')
         return
       }
 

@@ -3,18 +3,13 @@ import { asyncHandler } from '../lib/async-handler.js'
 import {
   resolveInboundCall,
   buildInboundTwiml,
-  buildDemoGatherTwiml,
-  buildDemoSessionConnectTwiml,
-  buildDemoBusyTwiml,
+  buildDemoDirectConnectTwiml,
   logCallStart,
   logCallEnd,
   startCallRecording,
 } from '../services/twilio-inbound.service.js'
 import {
   DEMO_PHONE_E164,
-  MAX_CONCURRENT_DEMO_CALLS,
-  bindCallToDemoSession,
-  activeDemoCallCount,
   resolveSandboxInboundTarget,
 } from '../services/demo-session.service.js'
 import { logTwilioEvent } from '../lib/twilio-log.js'
@@ -39,17 +34,19 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
     const channel = (phone as any).tenant?.channelConfigs?.[0] ?? null
     const profile = (phone as any).tenant?.businessProfile ?? null
 
-    // DEMO line: gather an optional PIN first. Digits → the demo-pin endpoint
-    // binds to that sandbox session; no input → falls through to the default
-    // sample agent (the `phone` tenant, i.e. Chase). Log call start against the
-    // resolved tenant either way for usage tracking.
+    // DEMO line (option C): Orby answers EVERY call in her own voice — never a
+    // robotic pre-gather. Connect straight to the sandbox Orby; the gateway
+    // listens for keypad DTMF and binds the call to the matching demo session
+    // live (demoPinCapture). Falls back to the resolved tenant only if the
+    // sandbox somehow isn't provisioned.
     if (To === DEMO_PHONE_E164) {
       logCallStart({ tenantId: phone.tenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To, partnerId: phone.partnerId, listingId: phone.listingId }).catch(e => console.error('[twilio] logCallStart failed:', e))
-      const params = new URLSearchParams({ callSid: CallSid, from: From ?? '' })
-      twiml = buildDemoGatherTwiml({
-        actionUrl: `${process.env['API_BASE_URL'] ?? 'https://api.myorbisvoice.com'}/api/webhooks/twilio/voice/demo-pin?${params.toString()}`,
-        fallback:  { tenantId: phone.tenantId, channelConfigId: channel?.id ?? '', callSid: CallSid, fromNumber: From || undefined },
-      })
+      const sandbox = await resolveSandboxInboundTarget()
+      twiml = buildDemoDirectConnectTwiml(
+        sandbox
+          ? { tenantId: sandbox.tenantId, channelConfigId: sandbox.channelConfigId, callSid: CallSid, fromNumber: From || undefined }
+          : { tenantId: phone.tenantId, channelConfigId: channel?.id ?? '', callSid: CallSid, fromNumber: From || undefined },
+      )
       res.type('text/xml').send(twiml)
       return
     }
@@ -102,54 +99,6 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
     } catch { /* non-fatal */ }
   }
 
-  res.type('text/xml').send(twiml)
-}))
-
-// POST /api/webhooks/twilio/voice/demo-pin — DEMO line PIN gather result.
-// Digits present + valid session → connect the sandbox demo agent tagged with
-// demoSessionId. Invalid/expired/no digits → the default sample agent (Chase).
-// Over the concurrency cap → a "busy" message, then the sample agent.
-router.post('/webhooks/twilio/voice/demo-pin', asyncHandler(async (req, res) => {
-  const { Digits } = req.body as Record<string, string>
-  const callSid = (req.query['callSid'] as string) || (req.body['CallSid'] as string) || ''
-  const from    = (req.query['from'] as string) || ''
-
-  const chase = await resolveInboundCall(DEMO_PHONE_E164).catch(() => null)
-  const fallback = chase
-    ? {
-        tenantId:        chase.tenantId,
-        channelConfigId: (chase as any).tenant?.channelConfigs?.[0]?.id ?? '',
-        callSid,
-        fromNumber:      from || undefined,
-      }
-    : null
-
-  let twiml: string
-  if (!fallback) {
-    twiml = '<Response><Say voice="alice">We are unable to take your call right now. Please try again later.</Say><Hangup/></Response>'
-  } else if (Digits) {
-    const session = await bindCallToDemoSession(Digits)
-    if (!session) {
-      // Unknown / expired PIN — still let them hear Orby via the sample agent.
-      twiml = buildDemoSessionConnectTwiml(fallback)
-    } else if ((await activeDemoCallCount()) >= MAX_CONCURRENT_DEMO_CALLS) {
-      twiml = buildDemoBusyTwiml(fallback)
-    } else {
-      const sandbox = await resolveSandboxInboundTarget()
-      twiml = sandbox
-        ? buildDemoSessionConnectTwiml({
-            tenantId:        sandbox.tenantId,
-            channelConfigId: sandbox.channelConfigId,
-            callSid,
-            fromNumber:      from || undefined,
-            demoSessionId:   session.id,
-          })
-        : buildDemoSessionConnectTwiml(fallback)
-    }
-  } else {
-    // No digits (edge — Gather usually falls through on timeout) → sample agent.
-    twiml = buildDemoSessionConnectTwiml(fallback)
-  }
   res.type('text/xml').send(twiml)
 }))
 

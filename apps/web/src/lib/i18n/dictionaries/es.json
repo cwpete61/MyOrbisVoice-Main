@@ -4813,11 +4813,11 @@
     "viewAll": "Ver todo",
     "unknownContact": "Llamante desconocido",
     "phoneTitle": "Llama a Orby por teléfono",
-    "phoneDesc": "Prueba a Orby en una llamada real. Marca el número e ingresa tu PIN de demostración cuando se te pida; la llamada aparece aquí en tu sesión de demostración.",
+    "phoneDesc": "Prueba a Orby en una llamada real. Orby contesta de inmediato: ingresa tu PIN de demostración en el teclado durante la llamada para vincularla a tu sesión de demostración aquí.",
     "phoneNumberLabel": "Línea de demostración",
     "phonePinLabel": "Tu PIN",
     "phoneCallCta": "Toca para llamar — el PIN se completa solo",
-    "phoneFallbackHint": "Si el PIN no se ingresa automáticamente, marca {pin} cuando Orby pida tu código de demostración."
+    "phoneFallbackHint": "En el móvil, el PIN {pin} se envía automáticamente cuando Orby contesta. En computadora, marca {pin} en tu teléfono durante la llamada."
   },
   "publicDemo": {
     "notFoundTitle": "Demostración no encontrada",
