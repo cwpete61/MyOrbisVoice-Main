@@ -332,21 +332,37 @@ router.patch('/system-settings/google', requirePlatformSuperAdmin, async (req, r
 // MyOrbisAgents listing enrichment — platform-shared data-provider keys (backlog
 // #24). These are OURS (one key, all tenants use it) — distinct from a tenant's
 // own MLS/Zillow/CRM connections, which live in the tenant Integrations page.
-const enrichmentSettingsSchema = z.object({
-  rentcastApiKey: z.string().trim().optional(),
-  dataGovApiKey:  z.string().trim().optional(),
-})
+// Platform data-provider keys. Each maps a body field → a write-only config key.
+const ENRICHMENT_KEY_MAP: Record<string, string> = {
+  rentcastApiKey:     'rentcast_api_key',
+  dataGovApiKey:      'data_gov_api_key',
+  attomApiKey:        'attom_api_key',
+  houseCanaryApiKey:  'housecanary_api_key',
+  estatedApiKey:      'estated_api_key',
+  walkScoreApiKey:    'walkscore_api_key',
+  googleMapsApiKey:   'google_maps_api_key',
+  mapboxApiKey:       'mapbox_api_key',
+  blsApiKey:          'bls_api_key',
+  censusApiKey:       'census_api_key',
+  greatSchoolsApiKey: 'greatschools_api_key',
+}
+const enrichmentSettingsSchema = z.object(
+  Object.fromEntries(Object.keys(ENRICHMENT_KEY_MAP).map((k) => [k, z.string().trim().optional()])),
+)
 router.patch('/system-settings/enrichment', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const parsed = enrichmentSettingsSchema.safeParse(req.body)
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
     const userId = req.user!.id
-    if (parsed.data.rentcastApiKey) await systemConfig.setConfigValue('rentcast_api_key', parsed.data.rentcastApiKey, true, userId)
-    if (parsed.data.dataGovApiKey)  await systemConfig.setConfigValue('data_gov_api_key', parsed.data.dataGovApiKey, true, userId)
+    const saved: string[] = []
+    for (const [field, configKey] of Object.entries(ENRICHMENT_KEY_MAP)) {
+      const val = (parsed.data as Record<string, string | undefined>)[field]
+      if (val) { await systemConfig.setConfigValue(configKey, val, true, userId); saved.push(field) }
+    }
     await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.enrichment.updated',
-      targetType: 'SystemConfig', metadataJson: { fields: Object.keys(parsed.data) },
+      targetType: 'SystemConfig', metadataJson: { fields: saved },
     })
     res.json({ data: await systemConfig.getSystemSettings() })
   } catch (err) { next(err) }

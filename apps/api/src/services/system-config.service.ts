@@ -146,7 +146,11 @@ export async function getSystemSettings(): Promise<{
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
   serper: { apiKey: boolean }
-  enrichment: { rentcast: boolean; dataGov: boolean }
+  enrichment: {
+    rentcast: boolean; dataGov: boolean; attom: boolean; houseCanary: boolean
+    estated: boolean; walkScore: boolean; googleMaps: boolean; mapbox: boolean
+    bls: boolean; census: boolean; greatSchools: boolean
+  }
   inboundMail: { host: string | null; port: number; user: string | null; password: boolean }
   content: { provider: string; model: string | null; groqApiKey: boolean }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
@@ -178,6 +182,9 @@ export async function getSystemSettings(): Promise<{
           'openai_api_key', 'openai_model',
           'serper_api_key',
           'rentcast_api_key', 'data_gov_api_key',
+          'attom_api_key', 'housecanary_api_key', 'estated_api_key',
+          'walkscore_api_key', 'google_maps_api_key', 'mapbox_api_key',
+          'bls_api_key', 'census_api_key', 'greatschools_api_key',
           'imap_host', 'imap_port', 'imap_user', 'imap_password',
           'content_provider', 'content_model', 'groq_api_key',
           'smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from',
@@ -241,8 +248,17 @@ export async function getSystemSettings(): Promise<{
       apiKey: !!(get('serper_api_key') || process.env['SERPER_API_KEY']),
     },
     enrichment: {
-      rentcast: !!(get('rentcast_api_key') || process.env['RENTCAST_API_KEY']),
-      dataGov:  !!(get('data_gov_api_key') || process.env['DATA_GOV_API_KEY']),
+      rentcast:    !!(get('rentcast_api_key')     || process.env['RENTCAST_API_KEY']),
+      dataGov:     !!(get('data_gov_api_key')     || process.env['DATA_GOV_API_KEY']),
+      attom:       !!(get('attom_api_key')        || process.env['ATTOM_API_KEY']),
+      houseCanary: !!(get('housecanary_api_key')  || process.env['HOUSECANARY_API_KEY']),
+      estated:     !!(get('estated_api_key')      || process.env['ESTATED_API_KEY']),
+      walkScore:   !!(get('walkscore_api_key')    || process.env['WALKSCORE_API_KEY']),
+      googleMaps:  !!(get('google_maps_api_key')  || process.env['GOOGLE_MAPS_API_KEY']),
+      mapbox:      !!(get('mapbox_api_key')       || process.env['MAPBOX_API_KEY']),
+      bls:         !!(get('bls_api_key')          || process.env['BLS_API_KEY']),
+      census:      !!(get('census_api_key')       || process.env['CENSUS_API_KEY']),
+      greatSchools:!!(get('greatschools_api_key') || process.env['GREATSCHOOLS_API_KEY']),
     },
     inboundMail: {
       host:     get('imap_host')?.value ?? (process.env['IMAP_HOST'] || 'imap.spacemail.com'),

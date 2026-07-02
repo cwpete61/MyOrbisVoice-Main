@@ -16,7 +16,11 @@ interface SystemSettings {
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
   serper: { apiKey: boolean }
-  enrichment: { rentcast: boolean; dataGov: boolean }
+  enrichment: {
+    rentcast: boolean; dataGov: boolean; attom: boolean; houseCanary: boolean
+    estated: boolean; walkScore: boolean; googleMaps: boolean; mapbox: boolean
+    bls: boolean; census: boolean; greatSchools: boolean
+  }
   inboundMail: { host: string | null; port: number; user: string | null; password: boolean }
   content: { provider: string; model: string | null; groqApiKey: boolean }
   smtp: { host: string | null; port: number; user: string | null; password: boolean; from: string | null }
@@ -348,17 +352,31 @@ export default function SystemSettingsPage() {
   }
 
   // MyOrbisAgents listing enrichment — platform-shared data-provider keys.
-  const [enr, setEnr] = useState({ rentcast: '', dataGov: '' })
+  // Data-driven so new providers are one row. `flag` = the getSystemSettings
+  // boolean; `field` = the PATCH body key; `free` = no key needed (informational).
+  const ENRICHMENT_PROVIDERS: { field: string; flag: keyof NonNullable<SystemSettings['enrichment']>; label: string; help: string }[] = [
+    { field: 'rentcastApiKey',     flag: 'rentcast',     label: 'RentCast',        help: 'AVM + sale/rent comparables (buyers & sellers). rentcast.io' },
+    { field: 'dataGovApiKey',      flag: 'dataGov',      label: 'api.data.gov',    help: 'One key fronting Census, FEMA, Dept of Ed, NREL, etc. api.data.gov' },
+    { field: 'attomApiKey',        flag: 'attom',        label: 'ATTOM Data',      help: 'Richer property + AVM + comps (paid). Upgrade over RentCast.' },
+    { field: 'houseCanaryApiKey',  flag: 'houseCanary',  label: 'HouseCanary',     help: 'Valuation + market analytics (paid).' },
+    { field: 'estatedApiKey',      flag: 'estated',      label: 'Estated',         help: 'Property records / owner + parcel data.' },
+    { field: 'walkScoreApiKey',    flag: 'walkScore',    label: 'Walk Score',      help: 'Walk / transit / bike scores (freemium).' },
+    { field: 'googleMapsApiKey',   flag: 'googleMaps',   label: 'Google Maps / Places', help: 'Precise geocoding + POIs (hospitals, schools, amenities).' },
+    { field: 'mapboxApiKey',       flag: 'mapbox',       label: 'Mapbox',          help: 'Alternative geocoder / maps.' },
+    { field: 'blsApiKey',          flag: 'bls',          label: 'BLS',             help: 'Bureau of Labor Statistics — jobs / wages / economic growth (free, key raises limits).' },
+    { field: 'censusApiKey',       flag: 'census',       label: 'Census',          help: 'US Census — income/housing area stats (or via api.data.gov).' },
+    { field: 'greatSchoolsApiKey', flag: 'greatSchools', label: 'GreatSchools',    help: 'School ratings (paid). ⚠ Fair-Housing: source-link only, never let Orby editorialize.' },
+  ]
+  const [enr, setEnr] = useState<Record<string, string>>({})
   const [enrSaving, setEnrSaving] = useState(false)
   async function saveEnrichment(e: React.FormEvent) {
     e.preventDefault()
     const body: Record<string, string> = {}
-    if (enr.rentcast) body['rentcastApiKey'] = enr.rentcast
-    if (enr.dataGov)  body['dataGovApiKey']  = enr.dataGov
+    for (const p of ENRICHMENT_PROVIDERS) { const v = enr[p.field]; if (v) body[p.field] = v }
     if (!Object.keys(body).length) { showToast('error', 'Enter at least one key.'); return }
     setEnrSaving(true)
     const ok = await saveSection('enrichment', body, 'Listing Enrichment')
-    if (ok) setEnr({ rentcast: '', dataGov: '' })
+    if (ok) setEnr({})
     setEnrSaving(false)
   }
 
@@ -738,37 +756,32 @@ export default function SystemSettingsPage() {
               subtitle="Platform-shared keys that enrich every MyOrbisAgents listing — one account, all tenants use it. RentCast = AVM + comparable sales; api.data.gov = one key fronting Census/FEMA/etc. Agents' own MLS/Zillow/CRM logins live in the tenant Integrations page, not here."
               configured={!!data?.enrichment?.rentcast}
             />
-            <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-              <StatusRow label="RentCast API Key" value={!!data?.enrichment?.rentcast} isSecret />
-              <StatusRow label="api.data.gov Key" value={!!data?.enrichment?.dataGov} isSecret />
-              <div className="rounded-lg px-4 py-3 text-xs space-y-1" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>
-                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Used for</p>
-                <ul className="space-y-0.5 list-disc list-inside" style={{ color: 'var(--text-tertiary)' }}>
-                  <li>Listing estimated value + comparable sales (RentCast)</li>
-                  <li>Seller-valuation magnet</li>
-                  <li>Free gov datasets via api.data.gov (Census, FEMA flood, etc.)</li>
-                </ul>
-                <p className="pt-1" style={{ color: 'var(--text-tertiary)' }}>Geocoding (Nominatim), FEMA flood, OSM POIs and FCC broadband are free and need no key.</p>
+            <div className="px-6 py-5 space-y-2" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              {ENRICHMENT_PROVIDERS.map(p => (
+                <StatusRow key={p.flag} label={p.label} value={!!data?.enrichment?.[p.flag]} isSecret />
+              ))}
+              <div className="rounded-lg px-4 py-3 text-xs space-y-1 mt-1" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>
+                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Free / keyless (no field needed)</p>
+                <p style={{ color: 'var(--text-tertiary)' }}>Nominatim (geocoding), FEMA flood (NFHL), OSM Overpass (POIs), FCC Broadband, EPA, USGS — used automatically, no key required.</p>
+                <p className="pt-1 font-medium" style={{ color: 'var(--text-primary)' }}>Fair Housing</p>
+                <p style={{ color: 'var(--text-tertiary)' }}>Crime + school data are steering-sensitive: surface as facts + a source link only; never let Orby editorialize.</p>
               </div>
             </div>
             <form onSubmit={saveEnrichment} className="px-6 py-5 space-y-4">
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                Keys are stored encrypted. Leave blank to keep the current value.
+                All keys are stored encrypted (write-only). Leave a field blank to keep its current value. Enter only the ones you have — providers you skip stay off.
               </p>
-              <div>
-                <label className={labelCls}>RentCast API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
-                <input type="password" className={inputCls} value={enr.rentcast}
-                  onChange={e => setEnr({ ...enr, rentcast: e.target.value })}
-                  placeholder="rentcast key…" autoComplete="new-password" />
-              </div>
-              <div>
-                <label className={labelCls}>api.data.gov API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
-                <input type="password" className={inputCls} value={enr.dataGov}
-                  onChange={e => setEnr({ ...enr, dataGov: e.target.value })}
-                  placeholder="data.gov key…" autoComplete="new-password" />
-              </div>
+              {ENRICHMENT_PROVIDERS.map(p => (
+                <div key={p.field}>
+                  <label className={labelCls}>{p.label} <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                  <input type="password" className={inputCls} value={enr[p.field] ?? ''}
+                    onChange={e => setEnr({ ...enr, [p.field]: e.target.value })}
+                    placeholder={`${p.label} key…`} autoComplete="new-password" />
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{p.help}</p>
+                </div>
+              ))}
               <button type="submit" disabled={enrSaving} className="btn-primary">
-                {enrSaving ? 'Saving…' : 'Save enrichment keys'}
+                {enrSaving ? 'Saving…' : 'Save data-API keys'}
               </button>
             </form>
           </div>
