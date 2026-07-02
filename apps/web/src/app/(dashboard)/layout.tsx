@@ -23,10 +23,13 @@ import { useT } from '@/lib/i18n/I18nProvider'
 const AGENTS_VERTICALS = ['REAL_ESTATE', 'REALTOR']
 const AGENTS_HOME = 'https://myorbisagents.com'
 const AGENTS_PRICING = 'https://myorbisagents.com/#pricing'
-// House-account booking link (myorbisresults@gmail.com Google Calendar
-// appointment page). Empty = the booking bar renders nothing, so we never
-// ship a dead link. Set this to the real scheduling URL to turn the bar on.
-const HOUSE_BOOKING_URL = ''
+// House-account booking link. Routes through the product's OWN public booking
+// page (/book/<affiliate-slug>), which writes straight onto that account's
+// connected Google Calendar — no external Google appointment-schedule link
+// needed. crawford.peterson2 = the "My Orbis Results" house affiliate, with
+// myorbisresults@gmail.com connected (GOOGLE/CONNECTED, calendarReady=true).
+// Empty = bar hidden (no dead link).
+const HOUSE_BOOKING_URL = 'https://app.myorbisvoice.com/book/crawford.peterson2'
 function useIsAgents(): boolean {
   const ctx = useTenantContext()
   return !!ctx && AGENTS_VERTICALS.includes(ctx.industryCode)
