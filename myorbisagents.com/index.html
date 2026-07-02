@@ -189,5 +189,22 @@
     <div class="fine">We follow the Fair Housing Act — Orby describes properties by objective facts only. · <a href="/es/">Español</a></div>
   </div>
 </footer>
+
+<!-- Orby voice widget — floating bottom-right. Visitors talk to the live
+     MyOrbisAgents demo agent. publicKey = demo (isDemo) RE tenant's WIDGET key. -->
+<script>
+(function () {
+  var KEY = 'd9fc8d95afd58d58a8f2e500a960d10cc81a6f75a12db97e';
+  var SRC = 'https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js';
+  function init() {
+    if (window.OrbisVoice && typeof window.OrbisVoice.init === 'function') {
+      try { window.OrbisVoice.init({ publicKey: KEY, agentName: 'Orby', businessName: 'MyOrbisAgents' }); } catch (e) {}
+    }
+  }
+  var s = document.createElement('script');
+  s.src = SRC; s.async = true; s.onload = init;
+  document.body.appendChild(s);
+})();
+</script>
 </body>
 </html>

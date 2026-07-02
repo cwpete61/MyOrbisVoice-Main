@@ -189,5 +189,22 @@
     <div class="fine">Cumplimos con la Ley de Vivienda Justa (Fair Housing Act) — Orby describe las propiedades solo con datos objetivos. · <a href="/">English</a></div>
   </div>
 </footer>
+
+<!-- Widget de voz Orby — flotante abajo a la derecha. Los visitantes hablan
+     con el agente demo de MyOrbisAgents. publicKey = clave WIDGET del tenant demo. -->
+<script>
+(function () {
+  var KEY = 'd9fc8d95afd58d58a8f2e500a960d10cc81a6f75a12db97e';
+  var SRC = 'https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js';
+  function init() {
+    if (window.OrbisVoice && typeof window.OrbisVoice.init === 'function') {
+      try { window.OrbisVoice.init({ publicKey: KEY, agentName: 'Orby', businessName: 'MyOrbisAgents' }); } catch (e) {}
+    }
+  }
+  var s = document.createElement('script');
+  s.src = SRC; s.async = true; s.onload = init;
+  document.body.appendChild(s);
+})();
+</script>
 </body>
 </html>
