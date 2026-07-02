@@ -35,6 +35,7 @@ interface SystemSettings {
     instagram: string | null
     pinterest: string | null
     x:         string | null
+    facebook:  string | null
   }
   /** Per-integration account emails. Only present when the requester is
    *  Super Admin — the API redacts this field for lesser admins. Each
@@ -323,20 +324,20 @@ export default function SystemSettingsPage() {
   const [gemSaving, setGemSaving] = useState(false)
   // Social media URLs — public values, no encryption. Empty string clears.
   const [social, setSocial] = useState<Record<string, string>>({
-    youtube: '', linkedin: '', tiktok: '', instagram: '', pinterest: '', x: '',
+    youtube: '', linkedin: '', tiktok: '', instagram: '', pinterest: '', x: '', facebook: '',
   })
   const [socialSaving, setSocialSaving] = useState(false)
   async function saveSocial(e: React.FormEvent) {
     e.preventDefault()
     const body: Record<string, string> = {}
-    for (const k of ['youtube', 'linkedin', 'tiktok', 'instagram', 'pinterest', 'x']) {
+    for (const k of ['youtube', 'linkedin', 'tiktok', 'instagram', 'pinterest', 'x', 'facebook']) {
       const v = social[k]
       if (v !== undefined && v.trim().length > 0) body[k] = v.trim()
     }
     if (!Object.keys(body).length) { showToast('error', 'Enter at least one URL.'); return }
     setSocialSaving(true)
     const ok = await saveSection('social', body, 'Social Media')
-    if (ok) setSocial({ youtube: '', linkedin: '', tiktok: '', instagram: '', pinterest: '', x: '' })
+    if (ok) setSocial({ youtube: '', linkedin: '', tiktok: '', instagram: '', pinterest: '', x: '', facebook: '' })
     setSocialSaving(false)
   }
   async function saveOpenAi(e: React.FormEvent) {
@@ -1621,7 +1622,7 @@ export default function SystemSettingsPage() {
         <CardHeader
           title={tr('adminSocial.title')}
           subtitle={tr('adminSocial.subtitle')}
-          configured={!!(data?.social?.youtube || data?.social?.linkedin || data?.social?.tiktok || data?.social?.instagram || data?.social?.pinterest || data?.social?.x)}
+          configured={!!(data?.social?.youtube || data?.social?.linkedin || data?.social?.tiktok || data?.social?.instagram || data?.social?.pinterest || data?.social?.x || data?.social?.facebook)}
         />
         <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
           <StatusRow label="YouTube"   value={data?.social?.youtube ?? null} />
@@ -1630,6 +1631,7 @@ export default function SystemSettingsPage() {
           <StatusRow label="Instagram" value={data?.social?.instagram ?? null} />
           <StatusRow label="Pinterest" value={data?.social?.pinterest ?? null} />
           <StatusRow label="X"         value={data?.social?.x ?? null} />
+          <StatusRow label="Facebook"  value={data?.social?.facebook ?? null} />
         </div>
         <form onSubmit={saveSocial} className="px-6 py-5 space-y-4">
           {[
@@ -1639,6 +1641,7 @@ export default function SystemSettingsPage() {
             { key: 'instagram', label: tr('adminSocial.instagramUrl'), ph: 'https://www.instagram.com/myorbisvoice' },
             { key: 'pinterest', label: tr('adminSocial.pinterestUrl'), ph: 'https://www.pinterest.com/myorbisvoice' },
             { key: 'x',         label: tr('adminSocial.xUrl'),         ph: 'https://x.com/myorbisvoice' },
+            { key: 'facebook',  label: tr('adminSocial.facebookUrl'),  ph: 'https://www.facebook.com/myorbisvoice' },
           ].map(f => (
             <div key={f.key}>
               <label className={labelCls}>{f.label}</label>

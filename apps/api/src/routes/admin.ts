@@ -520,6 +520,7 @@ const socialSettingsSchema = z.object({
   instagram: socialUrl.optional(),
   pinterest: socialUrl.optional(),
   x:         socialUrl.optional(),
+  facebook:  socialUrl.optional(),
 })
 
 router.patch('/system-settings/social', requirePlatformSuperAdmin, async (req, res, next) => {
@@ -541,6 +542,7 @@ router.patch('/system-settings/social', requirePlatformSuperAdmin, async (req, r
       instagram: 'social_instagram_url',
       pinterest: 'social_pinterest_url',
       x:         'social_x_url',
+      facebook:  'social_facebook_url',
     }
     for (const [key, value] of Object.entries(parsed.data)) {
       if (value === undefined) continue

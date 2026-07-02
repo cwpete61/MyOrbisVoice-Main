@@ -165,6 +165,7 @@ export async function getSystemSettings(): Promise<{
     instagram: string | null
     pinterest: string | null
     x:         string | null
+    facebook:  string | null
   }
 }> {
   const rows = await prisma.systemConfig.findMany({
@@ -193,7 +194,7 @@ export async function getSystemSettings(): Promise<{
           'cloudflare_api_token', 'cloudflare_account_id',
           'aws_ses_access_key_id', 'aws_ses_secret_access_key', 'aws_ses_region',
           'social_youtube_url', 'social_linkedin_url', 'social_tiktok_url',
-          'social_instagram_url', 'social_pinterest_url', 'social_x_url',
+          'social_instagram_url', 'social_pinterest_url', 'social_x_url', 'social_facebook_url',
         ],
       },
     },
@@ -301,6 +302,7 @@ export async function getSystemSettings(): Promise<{
       instagram: get('social_instagram_url')?.value ?? null,
       pinterest: get('social_pinterest_url')?.value ?? null,
       x:         get('social_x_url')?.value         ?? null,
+      facebook:  get('social_facebook_url')?.value  ?? null,
     },
   }
 }

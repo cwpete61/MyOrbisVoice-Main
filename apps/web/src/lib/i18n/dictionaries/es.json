@@ -4459,7 +4459,8 @@
     "pinterestUrl": "URL de Pinterest",
     "xUrl": "URL de X",
     "save": "Guardar URLs de redes sociales",
-    "saving": "Guardando…"
+    "saving": "Guardando…",
+    "facebookUrl": "URL de Facebook"
   },
   "partnerSocial": {
     "followUs": "Sigue a OrbisVoice"
