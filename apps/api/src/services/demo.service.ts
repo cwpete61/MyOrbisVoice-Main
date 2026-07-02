@@ -11,6 +11,7 @@
 import { prisma } from '../lib/prisma.js'
 import { provisionAgentOrby } from './agent-onboarding.service.js'
 import { updateChannel } from './channel.service.js'
+import { enrichListing } from './listing-enrichment.service.js'
 
 // Entitlements the demo tenant gets. Safe/explorable ON; anything that costs
 // money or has real-world effect OFF (so existing gates block it).
@@ -30,9 +31,12 @@ const DEMO_ENTITLEMENTS: Array<{ key: string; bool?: boolean; int?: number }> = 
 ]
 
 const SAMPLE_LISTINGS = [
-  { address: '128 Maple Grove Ln, Austin, TX 78704', headline: 'Renovated bungalow in South Austin', priceUsd: 685000, beds: 3, baths: 2, sqft: 1740, propertyType: 'Single-family', status: 'ACTIVE' as const, description: 'Updated kitchen, large backyard, walkable to shops and parks.', highlights: ['New roof (2024)', 'Quartz counters', 'Detached studio'] },
-  { address: '4402 Oakhaven Dr, Austin, TX 78745', headline: 'Coming soon — modern 4BR', priceUsd: 815000, beds: 4, baths: 3, sqft: 2410, propertyType: 'Single-family', status: 'COMING_SOON' as const, description: 'Open-concept layout, energy-efficient build, oversized garage.', highlights: ['Solar-ready', 'Smart-home wired', 'Cul-de-sac'] },
-  { address: '2210 Riverbend Condos #310, Austin, TX 78746', headline: 'Downtown-adjacent condo', priceUsd: 449000, beds: 2, baths: 2, sqft: 1120, propertyType: 'Condo', status: 'ACTIVE' as const, description: 'Corner unit with skyline views, covered parking, community pool.', highlights: ['HOA covers water', 'Gated', 'Top floor'] },
+  // Real, geocodable Austin addresses so free enrichment (population, hospitals,
+  // schools, flood) resolves for the demo. Fictional addresses don't geocode →
+  // no neighborhood data.
+  { address: '2200 S Lamar Blvd, Austin, TX 78704', headline: 'Renovated bungalow in South Austin', priceUsd: 685000, beds: 3, baths: 2, sqft: 1740, propertyType: 'Single-family', status: 'ACTIVE' as const, description: 'Updated kitchen, large backyard, walkable to shops and parks.', highlights: ['New roof (2024)', 'Quartz counters', 'Detached studio'] },
+  { address: '4200 Avenue B, Austin, TX 78751', headline: 'Coming soon — modern 4BR', priceUsd: 815000, beds: 4, baths: 3, sqft: 2410, propertyType: 'Single-family', status: 'COMING_SOON' as const, description: 'Open-concept layout, energy-efficient build, oversized garage.', highlights: ['Solar-ready', 'Smart-home wired', 'Cul-de-sac'] },
+  { address: '3300 Duval St, Austin, TX 78705', headline: 'Downtown-adjacent condo', priceUsd: 449000, beds: 2, baths: 2, sqft: 1120, propertyType: 'Condo', status: 'ACTIVE' as const, description: 'Corner unit with skyline views, covered parking, community pool.', highlights: ['HOA covers water', 'Gated', 'Top floor'] },
 ]
 
 async function applyDemoEntitlements(tenantId: string): Promise<void> {
@@ -89,9 +93,21 @@ export async function seedDemoTenant(tenantId: string, userId: string): Promise<
   await updateChannel(tenantId, 'INBOUND', { isEnabled: true }).catch(() => {})
 
   // Sample listings.
+  const listingIds: string[] = []
   for (const l of SAMPLE_LISTINGS) {
-    await prisma.listing.create({ data: { tenantId, ...l } })
+    const row = await prisma.listing.create({ data: { tenantId, ...l } })
+    listingIds.push(row.id)
   }
+
+  // Enrich them with FREE neighborhood context (Census population, OSM
+  // hospitals/schools, FEMA flood, colleges) so demo Orby can answer
+  // area questions. includePaid:false = no RentCast quota burn. Async +
+  // best-effort so it never blocks the reset; each reseed refreshes.
+  void (async () => {
+    for (const id of listingIds) {
+      await enrichListing(tenantId, id, true, { includePaid: false }).catch(() => {})
+    }
+  })()
 
   // A couple of leads + a showing so the cockpit looks alive.
   const now = new Date()
@@ -99,7 +115,7 @@ export async function seedDemoTenant(tenantId: string, userId: string): Promise<
   const c2 = await prisma.contact.create({ data: { tenantId, source: 'DEMO_SEED', firstName: 'Derek', lastName: 'Osei', phoneE164: '+15125550188' } })
   await prisma.conversation.create({ data: { tenantId, contactId: c1.id, channelType: 'WIDGET', direction: 'INBOUND', status: 'COMPLETED', startedAt: new Date(now.getTime() - 36e5 * 5), endedAt: new Date(now.getTime() - 36e5 * 5 + 18e4), summaryText: 'Buyer asked about the South Austin bungalow; wants a weekend showing.' } })
   await prisma.conversation.create({ data: { tenantId, contactId: c2.id, channelType: 'INBOUND', direction: 'INBOUND', status: 'COMPLETED', startedAt: new Date(now.getTime() - 36e5 * 26), endedAt: new Date(now.getTime() - 36e5 * 26 + 24e4), summaryText: 'Seller lead — considering listing a 3BR near Zilker.' } })
-  await prisma.appointment.create({ data: { tenantId, contactId: c1.id, status: 'CONFIRMED', appointmentType: 'Showing — 128 Maple Grove Ln', startAt: new Date(now.getTime() + 36e5 * 30), endAt: new Date(now.getTime() + 36e5 * 30 + 27e5), timezone: 'America/Chicago', location: '128 Maple Grove Ln, Austin, TX' } })
+  await prisma.appointment.create({ data: { tenantId, contactId: c1.id, status: 'CONFIRMED', appointmentType: 'Showing — 2200 S Lamar Blvd', startAt: new Date(now.getTime() + 36e5 * 30), endAt: new Date(now.getTime() + 36e5 * 30 + 27e5), timezone: 'America/Chicago', location: '2200 S Lamar Blvd, Austin, TX' } })
 }
 
 export async function resetDemoTenant(tenantId: string, userId: string): Promise<void> {

@@ -16,6 +16,28 @@ function money(n: number | null): string {
   return n == null ? '' : `$${n.toLocaleString('en-US')}`
 }
 
+// Render the free neighborhood enrichment (Census/OSM/FEMA/colleges) as neutral
+// facts Orby can cite. Fair-Housing: facts + implicit source only, never a
+// judgment about the area or who belongs there.
+function renderNeighborhood(enrichmentJson: unknown): string {
+  const nb = (enrichmentJson as { neighborhood?: {
+    populationTract?: number | null; medianHouseholdIncomeUsd?: number | null
+    floodZoneLabel?: string | null
+    hospitals?: { name: string; km: number }[]; schools?: { name: string; km: number }[]
+    colleges?: { name: string; city: string | null }[]
+  } } | null)?.neighborhood
+  if (!nb) return ''
+  const bits: string[] = []
+  if (nb.populationTract != null) bits.push(`census-tract population ~${nb.populationTract.toLocaleString('en-US')}`)
+  if (nb.medianHouseholdIncomeUsd != null) bits.push(`median household income ${money(nb.medianHouseholdIncomeUsd)}`)
+  if (nb.floodZoneLabel) bits.push(`FEMA: ${nb.floodZoneLabel}`)
+  if (nb.hospitals?.length) bits.push(`nearby hospitals: ${nb.hospitals.map(h => `${h.name} (${h.km}km)`).join(', ')}`)
+  if (nb.schools?.length) bits.push(`nearby schools: ${nb.schools.map(s => `${s.name} (${s.km}km)`).join(', ')}`)
+  if (nb.colleges?.length) bits.push(`colleges within ~15mi: ${nb.colleges.map(c => c.name).join(', ')}`)
+  if (!bits.length) return ''
+  return `\n  Area facts (state neutrally, cite as public data — never characterize the area or who should live there): ${bits.join('; ')}.`
+}
+
 export async function fetchListingsForPrompt(
   tenantId: string,
   maxChars = 40_000,
@@ -41,7 +63,8 @@ export async function fetchListingsForPrompt(
       `\n\n• ${l.headline || l.address} [${STATUS_LABEL[l.status]}]\n` +
       `  ${l.address}${facts ? `\n  ${facts}` : ''}` +
       (l.description ? `\n  ${l.description}` : '') +
-      (l.highlights.length ? `\n  Highlights: ${l.highlights.join('; ')}` : '')
+      (l.highlights.length ? `\n  Highlights: ${l.highlights.join('; ')}` : '') +
+      renderNeighborhood(l.enrichmentJson)
     if (used + block.length > maxChars) { parts.push('\n\n(Additional listings omitted for length — ask the caller which property.)'); break }
     parts.push(block)
     used += block.length
