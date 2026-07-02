@@ -43,9 +43,13 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
       const sandbox = await resolveSandboxInboundTarget()
       const demoTenantId = sandbox?.tenantId ?? phone.tenantId
       logCallStart({ tenantId: demoTenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To, partnerId: phone.partnerId, listingId: phone.listingId }).catch(e => console.error('[twilio] logCallStart failed:', e))
-      // Auto-record demo calls (attributed to the sandbox tenant that hosts the
-      // conversation). Orby announces recording in her greeting (see gateway).
-      startCallRecording(CallSid, demoTenantId, To).catch(e => console.error('[twilio] demo startCallRecording failed:', e))
+      // Auto-record demo calls. IMPORTANT: pass the NUMBER-OWNER tenant
+      // (phone.tenantId), not the sandbox — startCallRecording uses tenantId to
+      // pick the Twilio (sub)account client, and only the number's owning
+      // account can record the call (sandbox creds → Twilio 20001 "Invalid
+      // parameter"). The recording attaches to the sandbox conversation by
+      // callSid regardless. Orby announces recording in her greeting.
+      startCallRecording(CallSid, phone.tenantId, To).catch(e => console.error('[twilio] demo startCallRecording failed:', e))
       twiml = buildDemoDirectConnectTwiml(
         sandbox
           ? { tenantId: sandbox.tenantId, channelConfigId: sandbox.channelConfigId, callSid: CallSid, fromNumber: From || undefined }

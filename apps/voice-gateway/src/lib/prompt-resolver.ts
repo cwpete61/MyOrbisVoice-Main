@@ -126,7 +126,12 @@ export function resolveSystemPrompt(
     'Action ownership — when you call a tool that completes a real-world action (booking, saving a contact, sending an email, recording a disposition), narrate the result EXACTLY ONCE, in the same turn the action completed. ' +
     'Do not pre-announce the tool call ("Let me go ahead and book that for you...") and then re-narrate the same outcome after the result returns — pick one. The natural flow is: gather info → call tool silently → confirm the result in plain language ("You\'re booked for Tuesday at 3pm — I\'ll send the confirmation to your email"). ' +
     'Never describe internal mechanics — no "I\'ve saved your contact to our database," no "I\'ve recorded that disposition," no "the tool returned." Callers care about the outcome (booked, confirmed, follow-up coming), not the plumbing. ' +
-    'If a tool fails, own the failure in the same turn ("I\'m having trouble pulling up the calendar — let me try once more, or would you prefer I have someone follow up?") — do not pretend the action succeeded and do not re-explain the failure in a later turn.'
+    'If a tool fails, own the failure in the same turn ("I\'m having trouble pulling up the calendar — let me try once more, or would you prefer I have someone follow up?") — do not pretend the action succeeded and do not re-explain the failure in a later turn. ' +
+    // Greet-once rule. The single most jarring failure on live calls is the
+    // agent re-introducing itself every turn ("Hi, this is Orby from ...")
+    // when the caller gives a short or unclear reply. Say identity + any
+    // disclaimer exactly once, then never again.
+    'Greet and introduce yourself only ONCE, at the very start of the call. After that first greeting, NEVER repeat your name, your business name, your opening greeting, or any disclaimer (such as a recording notice) again — the caller has already heard them. On every later turn, simply continue the conversation and respond to what the caller actually said. Even if the caller only says "hello", is silent, gives a short reply, or is unclear, do NOT restart or re-greet — briefly acknowledge ("I\'m here — how can I help?") and move the conversation forward. Never say your greeting twice in one call.'
   )
 
   // Layer 1.1 — agent identity. Every agent has a name; "Orby" is the platform
