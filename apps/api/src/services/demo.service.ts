@@ -106,6 +106,9 @@ export async function seedDemoTenant(tenantId: string, userId: string): Promise<
   void (async () => {
     for (const id of listingIds) {
       await enrichListing(tenantId, id, true, { includePaid: false }).catch(() => {})
+      // Space out the calls — Overpass (OSM) throttles back-to-back queries, so
+      // without this only the first listing reliably gets hospitals/schools.
+      await new Promise(res => setTimeout(res, 2500))
     }
   })()
 
