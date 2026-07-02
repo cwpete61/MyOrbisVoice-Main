@@ -262,8 +262,14 @@
         this._close()
       })
       // End call — the only in-panel control. Disconnects Orby immediately,
-      // then auto-closes the panel via the 'ended' message handler.
-      this.endBtn.addEventListener('click', () => this._endNow())
+      // then collapses the panel back to the icon. _endNow() closes the WS
+      // locally, so no server 'ended' message arrives to auto-close for us;
+      // we schedule the collapse here (short delay so "Session ended." is
+      // briefly visible). Closing the widget after every conversation.
+      this.endBtn.addEventListener('click', () => {
+        this._endNow()
+        setTimeout(() => this._close(), 1500)
+      })
     }
 
     async _open() {
