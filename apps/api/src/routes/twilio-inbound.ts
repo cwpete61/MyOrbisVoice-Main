@@ -40,8 +40,12 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
     // live (demoPinCapture). Falls back to the resolved tenant only if the
     // sandbox somehow isn't provisioned.
     if (To === DEMO_PHONE_E164) {
-      logCallStart({ tenantId: phone.tenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To, partnerId: phone.partnerId, listingId: phone.listingId }).catch(e => console.error('[twilio] logCallStart failed:', e))
       const sandbox = await resolveSandboxInboundTarget()
+      const demoTenantId = sandbox?.tenantId ?? phone.tenantId
+      logCallStart({ tenantId: demoTenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To, partnerId: phone.partnerId, listingId: phone.listingId }).catch(e => console.error('[twilio] logCallStart failed:', e))
+      // Auto-record demo calls (attributed to the sandbox tenant that hosts the
+      // conversation). Orby announces recording in her greeting (see gateway).
+      startCallRecording(CallSid, demoTenantId, To).catch(e => console.error('[twilio] demo startCallRecording failed:', e))
       twiml = buildDemoDirectConnectTwiml(
         sandbox
           ? { tenantId: sandbox.tenantId, channelConfigId: sandbox.channelConfigId, callSid: CallSid, fromNumber: From || undefined }

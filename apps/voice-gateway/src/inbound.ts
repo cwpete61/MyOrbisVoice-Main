@@ -436,12 +436,15 @@ export async function handleInboundCall(ws: WebSocket) {
     gemini = openGeminiLiveSession(systemPrompt, {
       onReady() {
         if (agentSpeaksFirst) {
+          const demoRecordingLine = demoPinCapture
+            ? `This is a recorded demo call — as part of your opening, in one short clause let the caller know the call may be recorded (e.g. "just so you know, this demo call may be recorded"). `
+            : ''
           gemini?.sendText(
             `A call has just connected to ${businessName}. ` +
             `Today is ${todayLabel}. ` +
             `${callerIdLine} ` +
             `You must speak immediately — do not wait for the caller. ` +
-            `Open with your professional greeting now. In one short sentence after the greeting, briefly tell the caller what you can help them with — pull from the business's primaryServices, appointmentTypes, or services in your context (e.g. "I can help you book a demo or answer tech support questions"). Keep it to 1-2 things max — list more and the caller can't track them on a phone call. Then ask "What can I help you with today?" or similar.`
+            `Open with your professional greeting now. ${demoRecordingLine}In one short sentence after the greeting, briefly tell the caller what you can help them with — pull from the business's primaryServices, appointmentTypes, or services in your context (e.g. "I can help you book a demo or answer tech support questions"). Keep it to 1-2 things max — list more and the caller can't track them on a phone call. Then ask "What can I help you with today?" or similar.`
           )
           console.log(`[inbound] agent speaks first — greeting sent for "${businessName}"`)
         }
