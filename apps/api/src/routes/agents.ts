@@ -86,7 +86,11 @@ router.get('/demo/phone-session', async (req, res, next) => {
         numberDisplay: '+1 (470) 517-3441',
         pin:           s.pin,
         expiresAt:     s.expiresAt,
-        telHref:       `tel:${DEMO_PHONE_E164},,,${s.pin}`,
+        // Two commas ≈ 4s of post-dial pause before the PIN DTMF fires. Long
+        // enough to outlast ring+connect (so Twilio hears the digits), short
+        // enough to bind soon after Orby answers. Tune here if calls drop the
+        // PIN (too short) or Orby talks too long before binding (too long).
+        telHref:       `tel:${DEMO_PHONE_E164},,${s.pin}`,
       },
     })
   } catch (err) { next(err) }

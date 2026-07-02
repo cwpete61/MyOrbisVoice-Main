@@ -70,11 +70,22 @@ export async function handleInboundCall(ws: WebSocket) {
   let tenantId   = ''
   let channelConfigId = ''
   let demoSessionId: string | null = null
-  // DEMO line (option C): Orby answers first; we capture keypad digits here and
-  // bind the call to the matching demo session live — no robotic pre-gather.
+  // DEMO line (option A): Orby is held silent at answer until the caller's PIN
+  // arrives (or a short timeout), so the whole call binds to the demo session
+  // from the first word. Non-demo calls never hold.
   let demoPinCapture = false
   let dtmfBuffer     = ''
   let dtmfTimer: ReturnType<typeof setTimeout> | null = null
+  let pinHoldResolve: (() => void) | null = null
+  function releasePinHold() {
+    if (pinHoldResolve) { const r = pinHoldResolve; pinHoldResolve = null; r() }
+  }
+  function waitForPinOrTimeout(ms: number): Promise<void> {
+    return new Promise(resolve => {
+      pinHoldResolve = resolve
+      setTimeout(() => releasePinHold(), ms)
+    })
+  }
   let ownerAccountSid: string | null = null
 
   // ── Raw audio capture (diagnostic) ─────────────────────────────────────────
@@ -224,11 +235,14 @@ export async function handleInboundCall(ws: WebSocket) {
         }).catch(() => {})
         console.log(`[inbound] demo PIN matched → session ${session.id} bound callSid=${callSid}`)
       } else {
-        console.log('[inbound] demo PIN entered but no active session matched')
+        console.log('[inbound] demo PIN entered but no active session matched — starting Orby unbound')
       }
     } catch (e) {
       console.warn('[inbound] demo PIN lookup failed:', (e as Error).message)
     }
+    // Release the answer-time hold so Orby starts now (bound if the PIN matched,
+    // unbound otherwise — a mistyped digit never leaves the caller in silence).
+    releasePinHold()
   }
 
   async function initSession(params: Record<string, string>) {
@@ -407,6 +421,17 @@ export async function handleInboundCall(ws: WebSocket) {
     const callerIdLine = fromNumber
       ? `Caller ID for this call: ${fromNumber}. Read this number back to the caller when confirming contact info — do not ask them to recite their phone number unless caller ID is missing.`
       : `Caller ID is blocked or unavailable for this call — you will need to ask the caller for their phone number.`
+
+    // DEMO line (option A): hold Orby silent until the PIN lands (or ~10s), so
+    // the whole conversation binds to the caller's demo session from word one.
+    // Incoming DTMF events are still processed while this awaits (each ws
+    // message is its own handler call), so the PIN releases the hold. Audio is
+    // dropped during the hold (gemini is null), keeping it silent — no robot.
+    if (demoPinCapture) {
+      console.log('[inbound] demo: holding Orby until PIN or timeout')
+      await waitForPinOrTimeout(10_000)
+      console.log(`[inbound] demo hold released — session=${demoSessionId ?? '(unbound)'}`)
+    }
 
     gemini = openGeminiLiveSession(systemPrompt, {
       onReady() {
