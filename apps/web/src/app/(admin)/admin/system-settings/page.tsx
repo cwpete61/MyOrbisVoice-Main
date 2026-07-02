@@ -804,7 +804,7 @@ export default function SystemSettingsPage() {
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                 Password stored encrypted. Leave blank to keep current. Point this at the mailbox that holds the catch-all (usually <code>admin@myorbisresults.com</code>).
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>IMAP host</label>
                   <input className={inputCls} value={inm.host} onChange={e => setInm({ ...inm, host: e.target.value })} placeholder="imap.spacemail.com" />
