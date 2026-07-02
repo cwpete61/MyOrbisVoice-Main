@@ -441,10 +441,23 @@ export async function createAppointment(tenantId: string, userId: string | null,
   // use the partner's calendar; otherwise the tenant's. Both fall back to
   // PENDING DB-only on Google-unavailable errors — the agent's caller still
   // gets a confirmation email via platform SMTP and a human reconciles.
+  // Demo simulation. The demo Orby widget lets a sandbox visitor "book"
+  // during a session; we create the DB row + send a confirmation email so
+  // Orby can say "check your email for confirmation", but we NEVER touch a
+  // real calendar. Gate on isDemo AND no partnerId: partner-page bookings
+  // (/book/<slug>) run under the demo tenant too but MUST hit the partner's
+  // real calendar, so they are excluded from simulation.
+  const tenantDemo = await prisma.tenant.findUnique({
+    where: { id: tenantId }, select: { isDemo: true },
+  })
+  const demoSim = !!tenantDemo?.isDemo && !data.partnerId
+
   let providerEventId: string | undefined
   let status: 'PENDING' | 'CONFIRMED' = 'CONFIRMED'
 
-  try {
+  // Demo bookings skip the entire Google path (no real calendar hit) and
+  // stay CONFIRMED so the sandbox feels real.
+  if (!demoSim) try {
     // Resolve which Google client + target calendar to use. Partner-scoped
     // booking wins when partnerId is provided.
     let client
@@ -544,6 +557,7 @@ export async function createAppointment(tenantId: string, userId: string | null,
       location:         data.location,
       notes:            data.notes,
       partnerId:        data.partnerId ?? null,
+      demo:             demoSim,
     }).catch(err => console.warn('[appointment] confirmation email failed:', (err as Error).message))
   }
 
@@ -552,7 +566,9 @@ export async function createAppointment(tenantId: string, userId: string | null,
   // new booking. Critical for the demo tenant (where Crawford is the owner and
   // needs to know when Orby books a demo on a partner page) and useful for any
   // production tenant that wants a backstop besides the calendar invite.
-  sendTenantOwnerBookingNotification(tenantId, {
+  // Skipped for demo bookings — the real owner (Crawford) shouldn't be pinged
+  // for every sandbox play-booking.
+  if (!demoSim) sendTenantOwnerBookingNotification(tenantId, {
     appointmentId:    appointment.id,
     appointmentType:  data.appointmentType,
     startAt:          data.startAt,
@@ -570,7 +586,7 @@ export async function createAppointment(tenantId: string, userId: string | null,
   // Phase F.1 + F.3 — auto-transition the contact to "Booked Appointment".
   // Scope follows the appointment: partner-routed bookings move the partner
   // CRM stage; tenant-side bookings move the tenant CRM stage.
-  if (data.contactId) {
+  if (data.contactId && !demoSim) {
     const contactIdResolved = data.contactId
     const scope = data.partnerId
       ? { kind: 'partner' as const, partnerId: data.partnerId, hostingTenantId: tenantId }
@@ -598,7 +614,8 @@ export async function createAppointment(tenantId: string, userId: string | null,
   // channels. Falls back to the legacy campaign-driven path below ONLY if
   // the tenant has an active appointment-scheduled campaign — keeps any
   // existing custom workflows working.
-  if (data.contactId) {
+  // Demo bookings schedule no real reminder jobs — the sandbox resets anyway.
+  if (data.contactId && !demoSim) {
     const contact = await prisma.contact.findUnique({
       where:  { id: data.contactId },
       select: { email: true, phoneE164: true },
@@ -692,6 +709,9 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
   /** Set for partner-routed bookings — switches the email to the partner's
    *  identity (their name, their Orby agent, MyOrbisVoice brand). */
   partnerId?:      string | null
+  /** Demo-sandbox booking — label the email as a simulation and send via
+   *  platform SMTP (the demo tenant has no Gmail). */
+  demo?:           boolean
 }) {
   const identity     = await resolveBookingIdentity(tenantId, opts.partnerId ?? null)
   const businessName = identity.bookingWithName
@@ -699,7 +719,7 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
   const start        = new Date(opts.startAt)
   const dateStr      = start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: opts.timezone })
   const timeStr      = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone, timeZoneName: 'short' })
-  const subject      = `${apptLabel} confirmed — ${dateStr}`
+  const subject      = `${opts.demo ? '[Demo] ' : ''}${apptLabel} confirmed — ${dateStr}`
 
   // Footer names the host. Partner bookings additionally credit the partner's
   // Orby agent and the MyOrbisVoice platform so the recipient knows exactly
@@ -715,8 +735,17 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
        <p style="color:#aaa;font-size:12px;margin:8px 0 0">Powered by ${BOOKING_BRAND}</p>`
     : `<p style="color:#888;font-size:13px;margin:24px 0 0">${contactLine}</p>`
 
+  const demoBanner = opts.demo
+    ? `<div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-size:13px;border-radius:8px;padding:10px 12px;margin:0 0 20px">
+         🧪 <strong>Demo confirmation.</strong> This is a simulated booking from a MyOrbisAgents demo — no real appointment was scheduled and nothing was added to a calendar.
+       </div>`
+    : ''
+  const calendarLine = opts.demo
+    ? `<p style="color:#666;font-size:14px;margin:0 0 8px">In a live account, this would also land on your Google Calendar automatically.</p>`
+    : `<p style="color:#666;font-size:14px;margin:0 0 8px">You'll also see this on your calendar — Google has added it automatically.</p>`
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#222">
+      ${demoBanner}
       <h2 style="color:#1a9898;margin:0 0 8px">${apptLabel} confirmed</h2>
       <p style="color:#555;margin:0 0 20px">Thanks for booking with ${businessName}. Here are the details:</p>
       <table style="width:100%;border-collapse:collapse;margin:0 0 20px">
@@ -724,10 +753,36 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
         ${opts.location ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Where</td><td style="color:#222">${opts.location}</td></tr>` : ''}
         ${opts.notes    ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Notes</td><td style="color:#222">${opts.notes}</td></tr>`       : ''}
       </table>
-      <p style="color:#666;font-size:14px;margin:0 0 8px">You'll also see this on your calendar — Google has added it automatically.</p>
+      ${calendarLine}
       ${footer}
     </div>
   `.trim()
+
+  // Demo bookings send straight via platform SMTP (the demo tenant has no
+  // Gmail) with a MyOrbisAgents-branded From, so the sandbox visitor reliably
+  // gets the "check your email" confirmation.
+  if (opts.demo) {
+    await sendEmail({
+      to:      opts.to,
+      subject,
+      html,
+      from:    `"MyOrbisAgents (Demo)" <notify@myorbisvoice.com>`,
+    })
+    await prisma.messageLog.create({
+      data: {
+        tenantId,
+        channel:        'EMAIL',
+        direction:      'OUTBOUND',
+        sender:         'platform-smtp',
+        recipient:      opts.to,
+        subject,
+        bodyText:       html.replace(/<[^>]+>/g, ''),
+        deliveryStatus: 'sent',
+        sentAt:         new Date(),
+      },
+    }).catch(() => { /* non-fatal */ })
+    return
+  }
 
   // Partner-routed bookings send straight via platform SMTP with a partner-
   // branded From display name — the tenant Gmail belongs to the platform demo
@@ -777,6 +832,42 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
       },
     }).catch(() => { /* non-fatal */ })
   }
+}
+
+// Demo-only change notice (cancel / reschedule) — a simulated email so the
+// sandbox visitor sees a real confirmation land in their inbox. Always via
+// platform SMTP with a MyOrbisAgents (Demo) From. Never used in production.
+async function sendAppointmentChangeEmailDemo(tenantId: string, opts: {
+  to:               string
+  appointmentType?: string
+  startAt:          string
+  timezone:         string
+  change:           'canceled' | 'updated'
+}) {
+  const apptLabel = opts.appointmentType || 'Appointment'
+  const start     = new Date(opts.startAt)
+  const dateStr   = start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: opts.timezone })
+  const timeStr   = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone, timeZoneName: 'short' })
+  const verb      = opts.change === 'canceled' ? 'canceled' : 'updated'
+  const subject   = `[Demo] ${apptLabel} ${verb} — ${dateStr}`
+  const html = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#222">
+      <div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-size:13px;border-radius:8px;padding:10px 12px;margin:0 0 20px">
+        🧪 <strong>Demo notice.</strong> Simulated change from a MyOrbisAgents demo — no real appointment or calendar was affected.
+      </div>
+      <h2 style="color:#1a9898;margin:0 0 8px">${apptLabel} ${verb}</h2>
+      <p style="color:#555;margin:0 0 20px">Your ${apptLabel.toLowerCase()} for <strong>${dateStr}</strong> at ${timeStr} has been ${verb}.</p>
+      <p style="color:#aaa;font-size:12px;margin:8px 0 0">Powered by ${BOOKING_BRAND}</p>
+    </div>
+  `.trim()
+  await sendEmail({ to: opts.to, subject, html, from: `"MyOrbisAgents (Demo)" <notify@myorbisvoice.com>` })
+  await prisma.messageLog.create({
+    data: {
+      tenantId, channel: 'EMAIL', direction: 'OUTBOUND', sender: 'platform-smtp',
+      recipient: opts.to, subject, bodyText: html.replace(/<[^>]+>/g, ''),
+      deliveryStatus: 'sent', sentAt: new Date(),
+    },
+  }).catch(() => { /* non-fatal */ })
 }
 
 async function sendTenantOwnerBookingNotification(tenantId: string, opts: {
@@ -1016,6 +1107,26 @@ export async function cancelAppointment(tenantId: string, userId: string | null,
     where: { id: appointmentId },
     data: { status: 'CANCELED' },
   })
+
+  // Demo simulation — send a labeled "cancellation confirmed" email so a
+  // sandbox visitor who cancels during the demo can be told "check your email".
+  // No calendar was ever touched (demo rows have no providerEventId).
+  const tenantDemo = await prisma.tenant.findUnique({
+    where: { id: tenantId }, select: { isDemo: true },
+  })
+  if (tenantDemo?.isDemo && appt.contactId) {
+    prisma.contact.findUnique({ where: { id: appt.contactId }, select: { email: true } })
+      .then(c => {
+        if (c?.email) return sendAppointmentChangeEmailDemo(tenantId, {
+          to:              c.email,
+          appointmentType: appt.appointmentType ?? undefined,
+          startAt:         appt.startAt.toISOString(),
+          timezone:        appt.timezone,
+          change:          'canceled',
+        })
+      })
+      .catch(err => console.warn('[appointment] demo cancel email failed:', (err as Error).message))
+  }
 
   // Phase E.6 — cancel any pending reminders so we don't text the customer
   // "your appointment is tomorrow!" after they already cancelled. Best-effort:
