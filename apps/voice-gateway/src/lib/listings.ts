@@ -27,15 +27,16 @@ function renderNeighborhood(enrichmentJson: unknown): string {
     colleges?: { name: string; city: string | null }[]
   } } | null)?.neighborhood
   if (!nb) return ''
+  const mi = (km: number) => `${(km * 0.621371).toFixed(1)} mi` // US market: report miles, not km
   const bits: string[] = []
   if (nb.populationTract != null) bits.push(`census-tract population ~${nb.populationTract.toLocaleString('en-US')}`)
   if (nb.medianHouseholdIncomeUsd != null) bits.push(`median household income ${money(nb.medianHouseholdIncomeUsd)}`)
-  if (nb.floodZoneLabel) bits.push(`FEMA: ${nb.floodZoneLabel}`)
-  if (nb.hospitals?.length) bits.push(`nearby hospitals: ${nb.hospitals.map(h => `${h.name} (${h.km}km)`).join(', ')}`)
-  if (nb.schools?.length) bits.push(`nearby schools: ${nb.schools.map(s => `${s.name} (${s.km}km)`).join(', ')}`)
-  if (nb.colleges?.length) bits.push(`colleges within ~15mi: ${nb.colleges.map(c => c.name).join(', ')}`)
+  if (nb.floodZoneLabel) bits.push(`FEMA flood: ${nb.floodZoneLabel}`)
+  if (nb.hospitals?.length) bits.push(`nearby hospitals: ${nb.hospitals.map(h => `${h.name} (${mi(h.km)})`).join(', ')}`)
+  if (nb.schools?.length) bits.push(`schools mapped nearby — these come from map data and may include private/specialty schools, so do NOT present them as the home's assigned public K-12 school or district; if asked which public school/district serves the home, say you'd confirm with the district: ${nb.schools.map(s => `${s.name} (${mi(s.km)})`).join(', ')}`)
+  if (nb.colleges?.length) bits.push(`colleges/universities within ~15 miles (higher education — NOT K-12 school districts; do not call these "school districts"): ${nb.colleges.map(c => c.name).join(', ')}`)
   if (!bits.length) return ''
-  return `\n  Area facts (state neutrally, cite as public data — never characterize the area or who should live there): ${bits.join('; ')}.`
+  return `\n  Area facts (state neutrally in MILES, cite as public data — never characterize the area or who should live there): ${bits.join('; ')}.`
 }
 
 export async function fetchListingsForPrompt(
