@@ -6,7 +6,15 @@ import { getAccessToken, getRefreshToken, setTokens, clearTokens } from '@/lib/a
 // Exported so callers that build their own fetch (multipart uploads, EventSource,
 // websockets) can prefix the same base URL apiFetch uses — keeps prod / local
 // switching consistent across every call site.
-export const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000'
+//
+// Host-aware: the SAME build serves both app.myorbisvoice.com and the isolated
+// app.myorbisagents.com. Agents must call their OWN API host so auth (OIDC
+// login/callback, logout) stays scoped to myorbisagents.com and never touches
+// the Voice/Hub session. Runtime check — the client knows its own host.
+export const API_BASE =
+  (typeof window !== 'undefined' && window.location.host === 'app.myorbisagents.com')
+    ? 'https://api.myorbisagents.com'
+    : (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000')
 
 function buildHeaders(token: string | null, extra: Record<string, string> = {}): Record<string, string> {
   const h: Record<string, string> = { 'Content-Type': 'application/json', ...extra }

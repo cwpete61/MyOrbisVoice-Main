@@ -31,7 +31,13 @@ export function clearTokens(): void {
 // giving a true cross-product logout. Best-effort: clear + redirect even if the
 // revoke call fails (clearing only local would otherwise allow silent re-login).
 const HUB_DASHBOARD = 'https://products.myorbisresults.com/dashboard'
-const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'https://api.myorbisvoice.com'
+// Host-aware (see useApi.ts): agents hit api.myorbisagents.com so the logout
+// POST lands on the agents API, which does an APP-SESSION-ONLY logout (does not
+// revoke the shared Keycloak session). Voice/Hub keep the full cross-product logout.
+const API_BASE =
+  (typeof window !== 'undefined' && window.location.host === 'app.myorbisagents.com')
+    ? 'https://api.myorbisagents.com'
+    : (process.env['NEXT_PUBLIC_API_URL'] ?? 'https://api.myorbisvoice.com')
 
 // Redirect target after logout. Defaults to the hub dashboard; RE/MyOrbisAgents
 // tenants pass their brand homepage. The URL is a plain client-side redirect

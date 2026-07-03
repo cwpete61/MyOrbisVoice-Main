@@ -32,6 +32,10 @@ const AGENTS_PRICING = 'https://myorbisagents.com/#pricing'
 const HOUSE_BOOKING_URL = 'https://app.myorbisvoice.com/book/crawford.peterson2'
 function useIsAgents(): boolean {
   const ctx = useTenantContext()
+  // Host-based first: anyone on the isolated app.myorbisagents.com door is an
+  // agent surface regardless of tenant vertical. Falls back to vertical for the
+  // reskin on the shared Voice host.
+  if (typeof window !== 'undefined' && window.location.host === 'app.myorbisagents.com') return true
   return !!ctx && AGENTS_VERTICALS.includes(ctx.industryCode)
 }
 function useBrandName(): string {
