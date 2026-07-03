@@ -22,6 +22,7 @@ function money(n: number | null): string {
 function renderNeighborhood(enrichmentJson: unknown): string {
   const nb = (enrichmentJson as { neighborhood?: {
     populationTract?: number | null; medianHouseholdIncomeUsd?: number | null
+    medianRealEstateTaxUsd?: number | null
     floodZoneLabel?: string | null
     schoolDistrict?: string | null
     k12Schools?: { name: string; km: number; grades: string }[]
@@ -33,6 +34,7 @@ function renderNeighborhood(enrichmentJson: unknown): string {
   const bits: string[] = []
   if (nb.populationTract != null) bits.push(`census-tract population ~${nb.populationTract.toLocaleString('en-US')}`)
   if (nb.medianHouseholdIncomeUsd != null) bits.push(`median household income ${money(nb.medianHouseholdIncomeUsd)}`)
+  if (nb.medianRealEstateTaxUsd != null) bits.push(`median property tax in this area ~${money(nb.medianRealEstateTaxUsd)}/yr (area median, not this exact home)`)
   if (nb.floodZoneLabel) bits.push(`FEMA flood: ${nb.floodZoneLabel}`)
   // Real K-12 (NCES): the assigned public district + nearest public schools with
   // grade ranges. THIS is the correct answer to "what schools / K-12 / district".

@@ -377,7 +377,11 @@ step_web() {
   # regress to partial-wipe + dot-glob cp without re-reading the postmortem
   # in CLAUDE.md "Known Deploy Pitfalls".
   ssh "$SERVER" "docker exec myorbisvoice-web rm -rf /app/apps/web/.next" || fail "wipe of .next/ on web container failed"
-  tar -czf - -C "$REPO_ROOT/apps/web" .next | ssh "$SERVER" "docker exec -i myorbisvoice-web tar -xzf - -C /app/apps/web" \
+  # EXCLUDE .next/cache — it's the build-time webpack/babel cache (can be
+  # multiple GB) and is NOT needed by `next start` at runtime. Including it made
+  # the tar-pipe take 30+ min and stall mid-inject, leaving a half-populated
+  # .next (empty BUILD_ID → every chunk 400s, site down). 2026-07-03 incident.
+  tar --exclude='./.next/cache' -czf - -C "$REPO_ROOT/apps/web" .next | ssh "$SERVER" "docker exec -i myorbisvoice-web tar -xzf - -C /app/apps/web" \
     || fail "tar-pipe of .next/ to web container failed"
   ssh "$SERVER" "docker exec myorbisvoice-web mkdir -p /app/apps/web/public && docker cp $REMOTE/apps/web/public/. myorbisvoice-web:/app/apps/web/public/" \
     || fail "public/ sync to web container failed"

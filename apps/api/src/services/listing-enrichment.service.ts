@@ -61,6 +61,7 @@ export interface K12School { name: string; km: number; grades: string }
 export interface Neighborhood {
   populationTract: number | null       // residents in the listing's census tract
   medianHouseholdIncomeUsd: number | null
+  medianRealEstateTaxUsd: number | null // area median annual property tax (Census B25103, free)
   floodZone: string | null             // FEMA zone code (raw)
   floodZoneLabel: string | null        // neutral plain-language label
   schoolDistrict: string | null        // assigned public district (Census)
@@ -147,7 +148,7 @@ async function fetchRentcast(
 
 /** Census: coords → tract FIPS → ACS5 population + median household income.
  *  Keyless (census_api_key appended when set, higher rate limits). Free. */
-async function fetchCensus(lat: number, lng: number): Promise<{ population: number | null; medianIncome: number | null } | null> {
+async function fetchCensus(lat: number, lng: number): Promise<{ population: number | null; medianIncome: number | null; medianRealEstateTax: number | null } | null> {
   try {
     // The ACS data API now REQUIRES a key ("Missing Key" otherwise). Free from
     // census.gov/data/key-signup.html → save as census_api_key in System
@@ -162,17 +163,20 @@ async function fetchCensus(lat: number, lng: number): Promise<{ population: numb
     if (!tractRow) return null
     const state = tractRow['STATE'], county = tractRow['COUNTY'], tract = tractRow['TRACT']
     if (!state || !county || !tract) return null
-    const acsUrl = `${CENSUS_ACS}?get=B01003_001E,B19013_001E&for=tract:${tract}&in=state:${state}%20county:${county}&key=${key}`
+    // B01003_001E = total population, B19013_001E = median household income,
+    // B25103_001E = median real estate taxes paid (FREE property-tax proxy — the
+    // area's typical annual property tax, not the exact parcel bill).
+    const acsUrl = `${CENSUS_ACS}?get=B01003_001E,B19013_001E,B25103_001E&for=tract:${tract}&in=state:${state}%20county:${county}&key=${key}`
     const a = await fetch(acsUrl)
     if (!a.ok) return null
     const aj = (await a.json()) as string[][]
     const row = aj?.[1]
     if (!row) return null
-    const pop = parseInt(row[0]!, 10)
-    const inc = parseInt(row[1]!, 10)
+    const num = (v: string | undefined) => { const n = parseInt(v ?? '', 10); return Number.isFinite(n) && n >= 0 ? n : null } // Census uses negatives for null
     return {
-      population:  Number.isFinite(pop) && pop >= 0 ? pop : null,
-      medianIncome: Number.isFinite(inc) && inc >= 0 ? inc : null, // Census uses negatives for null
+      population:          num(row[0]),
+      medianIncome:        num(row[1]),
+      medianRealEstateTax: num(row[2]),
     }
   } catch { return null }
 }
@@ -305,6 +309,7 @@ async function fetchNeighborhood(lat: number, lng: number, address: string): Pro
   return {
     populationTract:          census?.population ?? null,
     medianHouseholdIncomeUsd: census?.medianIncome ?? null,
+    medianRealEstateTaxUsd:   census?.medianRealEstateTax ?? null,
     floodZone:                flood?.zone ?? null,
     floodZoneLabel:           flood?.label ?? null,
     schoolDistrict:           district?.name ?? null,
