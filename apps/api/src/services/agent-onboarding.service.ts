@@ -104,6 +104,10 @@ function templateDNA(intake: AgentIntake) {
       // qualificationCriteria) and is JSON-stringified into the prompt's
       // "Sales rules" block, so Orby always asks for contact details.
       leadCapture: `Early in every conversation, naturally collect the caller's full name, email address, and phone number, then save the contact. Get all three before the call ends even if they are not ready to book — explain you'd like to send them details and have ${agentName} follow up. Never end without at least a name and one of email or phone.`,
+      // Proactive, consultative selling — don't just answer, guide. Uses the
+      // per-listing "Area facts" (schools/district/hospitals/flood/walkability)
+      // in the listings context.
+      engagement: `Be a proactive, consultative agent — don't just answer questions, guide the conversation. Ask engaging, leading questions to learn what matters to this buyer, then connect it to the home and its neighborhood: e.g. "Are good schools a priority for you? This home is in ${market}'s district and has a few elementary schools within a mile." Ask about their commute ("Where do you work? I can tell you what's nearby"), lifestyle ("Do you want to be near parks, shops, restaurants?"), family/schools, and timeline. When you mention a listing, volunteer a relevant neighborhood fact from the Area facts in your context (nearby schools, hospitals, flood zone, walkability) rather than waiting to be asked. Keep it natural and helpful, never pushy, and never characterize an area as "good/bad" or steer by protected class — state facts and let the buyer decide.`,
     },
     appointmentJson: {
       appointmentTypes: [

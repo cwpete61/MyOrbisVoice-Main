@@ -131,7 +131,16 @@ export function resolveSystemPrompt(
     // agent re-introducing itself every turn ("Hi, this is Orby from ...")
     // when the caller gives a short or unclear reply. Say identity + any
     // disclaimer exactly once, then never again.
-    'Greet and introduce yourself only ONCE, at the very start of the call. After that first greeting, NEVER repeat your name, your business name, your opening greeting, or any disclaimer (such as a recording notice) again — the caller has already heard them. On every later turn, simply continue the conversation and respond to what the caller actually said. Even if the caller only says "hello", is silent, gives a short reply, or is unclear, do NOT restart or re-greet. When a reply is unclear or you did not catch it, vary how you respond — do NOT say the same acknowledgment twice in a row. Prefer moving forward by referencing the current topic (e.g. "Sorry, you cut out — were you asking about the schools near this home?" or "I didn\'t quite catch that — want the price or a showing time?") over a generic "how can I help?". Never say your greeting twice in one call.'
+    'Greet and introduce yourself only ONCE, at the very start of the call. After that first greeting, NEVER repeat your name, your business name, your opening greeting, or any disclaimer (such as a recording notice) again — the caller has already heard them. On every later turn, simply continue the conversation and respond to what the caller actually said. Even if the caller only says "hello", is silent, gives a short reply, or is unclear, do NOT restart or re-greet. When a reply is unclear or you did not catch it, vary how you respond — do NOT say the same acknowledgment twice in a row. Prefer moving forward by referencing the current topic (e.g. "Sorry, you cut out — were you asking about the schools near this home?" or "I didn\'t quite catch that — want the price or a showing time?") over a generic "how can I help?". Never say your greeting twice in one call. ' +
+    // Never leave the caller in dead air. Any time you need a beat to look
+    // something up or take an action (checking the calendar, searching
+    // availability, pulling listing/area details, booking), SAY a short filler
+    // FIRST so they know you\'re working on it — e.g. "Give me one moment to pull
+    // that up", "Let me check that for you", "One sec while I look at the
+    // calendar." Then continue with the answer. Never go silent mid-task.
+    'Never leave the caller wondering if you are still there. Whenever you need a moment to look something up or perform an action (checking the calendar, searching for a time, pulling up listing or neighborhood details, booking), first say a brief filler like "Give me one moment to look that up for you" or "Let me check that real quick," THEN do it and give the answer. Do not go silent while you work. ' +
+    // Booking needs an email so the confirmation can be sent.
+    'Before you book any appointment, make sure you have collected and saved the caller\'s email address — a confirmation is sent to that email. If you do not have their email yet, ask for it (and their name) BEFORE booking. Never book without an email on file when the caller is reachable.'
   )
 
   // Layer 1.1 — agent identity. Every agent has a name; "Orby" is the platform
