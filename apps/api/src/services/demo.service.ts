@@ -13,6 +13,10 @@ import { provisionAgentOrby } from './agent-onboarding.service.js'
 import { updateChannel } from './channel.service.js'
 import { enrichListing } from './listing-enrichment.service.js'
 
+// Stable widget publicKey embedded in the myorbisagents.com widget script.
+// Re-pinned on every reseed so the marketing widget never 404s.
+const DEMO_WIDGET_PUBLIC_KEY = 'd9fc8d95afd58d58a8f2e500a960d10cc81a6f75a12db97e'
+
 // Entitlements the demo tenant gets. Safe/explorable ON; anything that costs
 // money or has real-world effect OFF (so existing gates block it).
 const DEMO_ENTITLEMENTS: Array<{ key: string; bool?: boolean; int?: number }> = [
@@ -91,6 +95,15 @@ export async function seedDemoTenant(tenantId: string, userId: string): Promise<
   // Enable the INBOUND channel so PIN-bound demo phone calls (+1 470 517 3441)
   // can connect to the sandbox Orby. See demo-session.service.
   await updateChannel(tenantId, 'INBOUND', { isEnabled: true }).catch(() => {})
+
+  // Pin a STABLE widget publicKey. provisionAgentOrby mints a fresh random key
+  // each reseed, which invalidated the key hard-coded in the myorbisagents.com
+  // widget embed (→ 404 "Failed to start session"). Force it back to the
+  // embedded key every reseed so the marketing widget always connects.
+  await prisma.channelConfig.updateMany({
+    where: { tenantId, channelType: 'WIDGET' },
+    data:  { publicKey: DEMO_WIDGET_PUBLIC_KEY },
+  }).catch(() => {})
 
   // Sample listings.
   const listingIds: string[] = []

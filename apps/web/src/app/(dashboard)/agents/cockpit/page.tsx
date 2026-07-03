@@ -118,7 +118,7 @@ export default function CockpitPage() {
             {t('tenantAgentCockpit.phoneCallCta')}
           </a>
           <p className="mt-2 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-            {t('tenantAgentCockpit.phoneFallbackHint').replace('{pin}', phone.pin)}
+            {t('tenantAgentCockpit.phoneFallbackHint').replaceAll('{pin}', phone.pin)}
           </p>
         </div>
       )}
