@@ -381,7 +381,12 @@ step_web() {
   # multiple GB) and is NOT needed by `next start` at runtime. Including it made
   # the tar-pipe take 30+ min and stall mid-inject, leaving a half-populated
   # .next (empty BUILD_ID → every chunk 400s, site down). 2026-07-03 incident.
-  tar --exclude='./.next/cache' -czf - -C "$REPO_ROOT/apps/web" .next | ssh "$SERVER" "docker exec -i myorbisvoice-web tar -xzf - -C /app/apps/web" \
+  # Exclude patterns match the ARCHIVE member path, which is `.next/cache` (no
+  # leading ./) because of `-C "$REPO_ROOT/apps/web" .next`. A `./` prefix does
+  # NOT match and silently ships the multi-GB cache (2026-07-03: two stalled
+  # deploys / one outage before this was right).
+  tar --exclude='.next/cache' --exclude='.next/cache/*' -czf - -C "$REPO_ROOT/apps/web" .next \
+    | ssh "$SERVER" "docker exec -i myorbisvoice-web tar -xzf - -C /app/apps/web" \
     || fail "tar-pipe of .next/ to web container failed"
   ssh "$SERVER" "docker exec myorbisvoice-web mkdir -p /app/apps/web/public && docker cp $REMOTE/apps/web/public/. myorbisvoice-web:/app/apps/web/public/" \
     || fail "public/ sync to web container failed"
