@@ -27,7 +27,12 @@ const EDU_DATA   = 'https://educationdata.urban.org/api/v1/schools/ccd/directory
 const NCES_YEAR  = 2022 // latest CCD directory vintage in the Urban Institute API
 
 function gradeLabel(lo: unknown, hi: unknown): string {
-  const g = (n: unknown) => { const s = String(n); return s === '-1' ? 'PK' : s === '0' ? 'K' : s }
+  const g = (n: unknown): string => {
+    if (n == null) return ''
+    const s = String(n)
+    if (s === 'null' || s === 'undefined' || s === 'NaN' || s === '') return ''
+    return s === '-1' ? 'PK' : s === '0' ? 'K' : s
+  }
   const l = g(lo), h = g(hi)
   return l && h ? (l === h ? l : `${l}-${h}`) : ''
 }
