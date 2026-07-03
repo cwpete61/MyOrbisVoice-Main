@@ -23,6 +23,14 @@ const CENSUS_ACS = 'https://api.census.gov/data/2022/acs/acs5'
 const OVERPASS   = 'https://overpass-api.de/api/interpreter'
 const FEMA_NFHL  = 'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query'
 const SCORECARD  = 'https://api.data.gov/ed/collegescorecard/v1/schools'
+const EDU_DATA   = 'https://educationdata.urban.org/api/v1/schools/ccd/directory'
+const NCES_YEAR  = 2022 // latest CCD directory vintage in the Urban Institute API
+
+function gradeLabel(lo: unknown, hi: unknown): string {
+  const g = (n: unknown) => { const s = String(n); return s === '-1' ? 'PK' : s === '0' ? 'K' : s }
+  const l = g(lo), h = g(hi)
+  return l && h ? (l === h ? l : `${l}-${h}`) : ''
+}
 
 // FEMA flood-zone code → plain, NEUTRAL description. Facts only — never
 // "safe"/"dangerous" (Fair-Housing steering).
@@ -44,13 +52,16 @@ export interface Comp {
   distanceMi: number | null
 }
 export interface Place { name: string; km: number }
+export interface K12School { name: string; km: number; grades: string }
 export interface Neighborhood {
   populationTract: number | null       // residents in the listing's census tract
   medianHouseholdIncomeUsd: number | null
   floodZone: string | null             // FEMA zone code (raw)
   floodZoneLabel: string | null        // neutral plain-language label
+  schoolDistrict: string | null        // assigned public district (Census)
+  k12Schools: K12School[]              // nearest public K-12 in the district (NCES)
   hospitals: Place[]                   // nearest named hospitals (OSM)
-  schools: Place[]                     // nearest named schools (OSM)
+  schools: Place[]                     // nearest mapped schools (OSM — may be private/specialty)
   colleges: { name: string; city: string | null }[]  // College Scorecard (data.gov)
   providers: string[]                  // which sources actually returned data
 }
@@ -232,21 +243,67 @@ async function fetchColleges(address: string): Promise<{ name: string; city: str
   } catch { return [] }
 }
 
+/** Census geocoder → the assigned public UNIFIED school district (name + LEAID).
+ *  Keyless. Layer 14 = Unified School Districts. */
+async function fetchSchoolDistrict(lat: number, lng: number): Promise<{ name: string; leaid: string } | null> {
+  try {
+    const url = `${CENSUS_GEO}?x=${lng}&y=${lat}&benchmark=Public_AR_Current&vintage=Current_Current&layers=14&format=json`
+    const r = await fetch(url)
+    if (!r.ok) return null
+    const d = (await r.json()) as any
+    const row = d?.result?.geographies?.['Unified School Districts']?.[0]
+    if (!row?.GEOID) return null
+    return { name: row['NAME'] ?? 'the local district', leaid: String(row['GEOID']) }
+  } catch { return null }
+}
+
+/** Urban Institute (NCES CCD) → nearest PUBLIC K-12 in the assigned district.
+ *  Free, no key. Real neighborhood schools + grade ranges (unlike OSM's mixed
+ *  private/specialty tags). Sorted by distance from the listing. */
+async function fetchK12(lat: number, lng: number, leaid: string): Promise<K12School[]> {
+  try {
+    const r = await fetch(`${EDU_DATA}/${NCES_YEAR}/?leaid=${leaid}`, {
+      headers: { 'user-agent': 'MyOrbisAgents/1.0 (listings enrichment)' },
+    })
+    if (!r.ok) return []
+    const d = (await r.json()) as { results?: Array<Record<string, unknown>> }
+    const schools: K12School[] = []
+    for (const s of d.results ?? []) {
+      const slat = Number(s['latitude']), slng = Number(s['longitude'])
+      const name = String(s['school_name'] ?? '').trim()
+      if (!name || !Number.isFinite(slat) || !Number.isFinite(slng)) continue
+      schools.push({
+        name: name.replace(/\b\w+/g, w => w[0]! + w.slice(1).toLowerCase()), // NCES names are ALL CAPS
+        km: haversineKm(lat, lng, slat, slng),
+        grades: gradeLabel(s['lowest_grade_offered'], s['highest_grade_offered']),
+      })
+    }
+    return schools.sort((a, b) => a.km - b.km).slice(0, 4)
+  } catch { return [] }
+}
+
 /** All free neighborhood providers in parallel. Best-effort — any can be null. */
 async function fetchNeighborhood(lat: number, lng: number, address: string): Promise<Neighborhood> {
-  const [census, pois, flood, colleges] = await Promise.all([
+  const [census, pois, flood, colleges, district] = await Promise.all([
     fetchCensus(lat, lng), fetchOsmPois(lat, lng), fetchFemaFlood(lat, lng), fetchColleges(address),
+    fetchSchoolDistrict(lat, lng),
   ])
+  // K-12 depends on the district lookup, so it runs after.
+  const k12 = district ? await fetchK12(lat, lng, district.leaid) : []
   const providers: string[] = []
   if (census)   providers.push('census')
   if (pois)     providers.push('osm')
   if (flood)    providers.push('fema')
   if (colleges.length) providers.push('collegescorecard')
+  if (district) providers.push('census-district')
+  if (k12.length) providers.push('nces')
   return {
     populationTract:          census?.population ?? null,
     medianHouseholdIncomeUsd: census?.medianIncome ?? null,
     floodZone:                flood?.zone ?? null,
     floodZoneLabel:           flood?.label ?? null,
+    schoolDistrict:           district?.name ?? null,
+    k12Schools:               k12,
     hospitals:                pois?.hospitals ?? [],
     schools:                  pois?.schools ?? [],
     colleges,

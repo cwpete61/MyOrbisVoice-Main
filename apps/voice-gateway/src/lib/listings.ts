@@ -23,6 +23,8 @@ function renderNeighborhood(enrichmentJson: unknown): string {
   const nb = (enrichmentJson as { neighborhood?: {
     populationTract?: number | null; medianHouseholdIncomeUsd?: number | null
     floodZoneLabel?: string | null
+    schoolDistrict?: string | null
+    k12Schools?: { name: string; km: number; grades: string }[]
     hospitals?: { name: string; km: number }[]; schools?: { name: string; km: number }[]
     colleges?: { name: string; city: string | null }[]
   } } | null)?.neighborhood
@@ -32,8 +34,13 @@ function renderNeighborhood(enrichmentJson: unknown): string {
   if (nb.populationTract != null) bits.push(`census-tract population ~${nb.populationTract.toLocaleString('en-US')}`)
   if (nb.medianHouseholdIncomeUsd != null) bits.push(`median household income ${money(nb.medianHouseholdIncomeUsd)}`)
   if (nb.floodZoneLabel) bits.push(`FEMA flood: ${nb.floodZoneLabel}`)
+  // Real K-12 (NCES): the assigned public district + nearest public schools with
+  // grade ranges. THIS is the correct answer to "what schools / K-12 / district".
+  if (nb.schoolDistrict) bits.push(`assigned public school district: ${nb.schoolDistrict}`)
+  if (nb.k12Schools?.length) bits.push(`nearest public K-12 schools in that district: ${nb.k12Schools.map(s => `${s.name}${s.grades ? ` (grades ${s.grades}, ${mi(s.km)})` : ` (${mi(s.km)})`}`).join(', ')} — still tell the caller to verify current attendance zones with the district`)
   if (nb.hospitals?.length) bits.push(`nearby hospitals: ${nb.hospitals.map(h => `${h.name} (${mi(h.km)})`).join(', ')}`)
-  if (nb.schools?.length) bits.push(`schools mapped nearby — these come from map data and may include private/specialty schools, so do NOT present them as the home's assigned public K-12 school or district; if asked which public school/district serves the home, say you'd confirm with the district: ${nb.schools.map(s => `${s.name} (${mi(s.km)})`).join(', ')}`)
+  // OSM schools are secondary — only mention if asked about non-public/specialty.
+  if (nb.schools?.length) bits.push(`other schools on the map (may include private/specialty — NOT the assigned public school): ${nb.schools.map(s => `${s.name} (${mi(s.km)})`).join(', ')}`)
   if (nb.colleges?.length) bits.push(`colleges/universities within ~15 miles (higher education — NOT K-12 school districts; do not call these "school districts"): ${nb.colleges.map(c => c.name).join(', ')}`)
   if (!bits.length) return ''
   return `\n  Area facts (state neutrally in MILES, cite as public data — never characterize the area or who should live there): ${bits.join('; ')}.`
