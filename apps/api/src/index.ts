@@ -46,6 +46,11 @@ const allowedOrigins = [
   'https://www.myorbisvoice.com',
   'https://myorbisresults.com',
   'https://www.myorbisresults.com',
+  // MyOrbisAgents isolated surface — the dashboard runs on app.myorbisagents.com
+  // and calls api.myorbisagents.com (same backend), so its origin must be allowed.
+  'https://app.myorbisagents.com',
+  'https://myorbisagents.com',
+  'https://www.myorbisagents.com',
   // Local development — Python http.server preview at :8765 (preview PWA
   // + partner pages) needs to be able to mint widget sessions against prod.
   'http://localhost:8765',
