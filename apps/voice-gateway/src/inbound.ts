@@ -436,9 +436,9 @@ export async function handleInboundCall(ws: WebSocket) {
     gemini = openGeminiLiveSession(systemPrompt, {
       onReady() {
         if (agentSpeaksFirst) {
-          const demoRecordingLine = demoPinCapture
-            ? `This is a recorded demo call — as part of your opening, in one short clause let the caller know the call may be recorded (e.g. "just so you know, this demo call may be recorded"). `
-            : ''
+          // Demo calls are not audio-recorded (Twilio call-recording breaks the
+          // media stream), so no recording notice in the greeting.
+          const demoRecordingLine = ''
           gemini?.sendText(
             `A call has just connected to ${businessName}. ` +
             `Today is ${todayLabel}. ` +
