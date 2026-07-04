@@ -72,3 +72,27 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
   else setup();
 })();
+
+/* homepage conversion pass: audio player + ROI calculator (no-op off home) */
+(function(){
+  function init(){
+    var player=document.querySelector('[data-player]');
+    if(player){
+      var audio=player.querySelector('[data-audio]'),btn=player.querySelector('[data-play]'),cur=player.querySelector('[data-cur]');
+      btn.addEventListener('click',function(){
+        if(audio.paused){audio.play().then(function(){player.classList.add('playing');btn.textContent='❚❚';}).catch(function(){window.location.href='tel:+14705173441';});}
+        else{audio.pause();player.classList.remove('playing');btn.textContent='▶';}
+      });
+      audio.addEventListener('timeupdate',function(){var s=Math.floor(audio.currentTime||0);if(cur)cur.textContent=Math.floor(s/60)+':'+('0'+(s%60)).slice(-2);});
+      audio.addEventListener('ended',function(){player.classList.remove('playing');btn.textContent='▶';if(cur)cur.textContent='0:00';});
+    }
+    var calc=document.querySelector('[data-calc]');
+    if(calc){
+      var ci=calc.querySelector('[data-calc-calls]'),mi=calc.querySelector('[data-calc-comm]'),cv=calc.querySelector('[data-calc-calls-v]'),mv=calc.querySelector('[data-calc-comm-v]'),out=calc.querySelector('[data-calc-out]');
+      function fmt(n){return '$'+Math.round(n).toLocaleString('en-US');}
+      function upd(){var c=+ci.value,m=+mi.value;cv.textContent=c;mv.textContent=fmt(m);out.textContent=fmt(Math.round(c*52*0.04)*m);}
+      ci.addEventListener('input',upd);mi.addEventListener('input',upd);upd();
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();

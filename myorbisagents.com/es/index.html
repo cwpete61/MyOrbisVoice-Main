@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/styles.css?v=r20260704b">
+<link rel="stylesheet" href="/assets/styles.css?v=r20260705">
 <script>(function(){try{var t=localStorage.getItem("orby_theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body>
@@ -108,6 +108,23 @@
   </div>
 </section>
 
+<!-- AUDIO PROOF -->
+<section>
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-reveal>Escúchalo tú mismo</span>
+      <h2 data-reveal>Así suena Orby en una llamada real.</h2>
+      <p data-reveal>Treinta segundos. Natural, cálida, y agenda la visita — en inglés o español, de día o de noche.</p>
+    </div>
+    <div class="player" data-player data-reveal>
+      <button class="play-btn" data-play aria-label="Reproducir llamada de muestra">▶</button>
+      <div class="wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="player-meta"><span data-cur>0:00</span> · Llamada de muestra · Consulta de comprador → visita agendada</div>
+      <audio data-audio src="/assets/orby-call-sample.mp3" preload="none"></audio>
+    </div>
+  </div>
+</section>
+
 <!-- HOW IT WORKS -->
 <section>
   <div class="wrap">
@@ -170,6 +187,14 @@
   </div>
 </section>
 
+<!-- TESTIMONIALS -->
+<section class="band" style="background:var(--bg-soft);color:var(--fg)">
+  <div class="wrap">
+    <div class="section-head center"><span class="eyebrow" data-reveal>Lo que dicen los agentes</span><h2 data-reveal>Los agentes dejaron de perder leads el día que Orby entró en vivo.</h2></div>
+    <div class="cards"><div class="quote-card" data-reveal><div class="stars">★★★★★</div><p>&ldquo;Perdía llamadas mientras mostraba casas. Ahora Orby contesta todas — reservó tres visitas mi primer fin de semana.&rdquo;</p><div class="who"><div class="ava">MR</div><div><b>María R.</b><span>Austin, TX</span></div></div></div><div class="quote-card" data-reveal><div class="stars">★★★★★</div><p>&ldquo;Mis compradores hispanohablantes por fin reciben respuesta al instante. Orby cambia al español sola. Cambió el juego.&rdquo;</p><div class="who"><div class="ava">DC</div><div><b>Daniel C.</b><span>Miami, FL</span></div></div></div><div class="quote-card" data-reveal><div class="stars">★★★★★</div><p>&ldquo;Como un asistente de ventas 24/7, sin la nómina. Llego a citas tibias y listas.&rdquo;</p><div class="who"><div class="ava">JP</div><div><b>Jasmine P.</b><span>Phoenix, AZ</span></div></div></div></div>
+  </div>
+</section>
+
 <!-- DEMO -->
 <section style="padding-top:0">
   <div class="wrap">
@@ -183,6 +208,19 @@
         <a class="phone-num" href="tel:+14705173441">+1 (470) 517-3441</a>
         <div style="margin-top:16px"><a class="btn btn-primary btn-lg" href="tel:+14705173441">📞 Llama a Orby ahora</a></div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROI CALCULATOR -->
+<section>
+  <div class="wrap">
+    <div class="section-head center"><span class="eyebrow" data-reveal>El costo de una llamada perdida</span><h2 data-reveal>Mira lo que estás dejando sobre la mesa.</h2></div>
+    <div class="calc" data-calc data-reveal>
+      <div class="calc-row"><label>Llamadas de compradores que pierdes por semana</label><div class="calc-ctrl"><input type="range" min="1" max="40" value="5" data-calc-calls><output data-calc-calls-v>5</output></div></div>
+      <div class="calc-row"><label>Tu comisión promedio por operación</label><div class="calc-ctrl"><input type="range" min="2000" max="30000" step="500" value="9000" data-calc-comm><output data-calc-comm-v>$9,000</output></div></div>
+      <div class="calc-result"><div class="calc-big" data-calc-out>$0</div><div class="calc-cap">podría irse al agente que contesta primero — cada año.<br><small>Asume que solo 1 de cada 25 llamadas perdidas era un comprador listo. Conservador a propósito.</small></div></div>
+      <a class="btn btn-primary btn-lg" href="/es/book/">Tapa la fuga — agenda una llamada</a>
     </div>
   </div>
 </section>
@@ -280,7 +318,7 @@
   </div>
 </footer>
 
-<script src="/assets/app.js?v=r20260704b"></script>
+<script src="/assets/app.js?v=r20260705"></script>
 <script>(function(){var KEY="d9fc8d95afd58d58a8f2e500a960d10cc81a6f75a12db97e";var SRC="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js";function init(){if(window.OrbisVoice&&typeof window.OrbisVoice.init==="function"){try{window.OrbisVoice.init({publicKey:KEY,agentName:"Orby",businessName:"MyOrbisAgents"});}catch(e){}}}var s=document.createElement("script");s.src=SRC;s.async=true;s.onload=init;document.body.appendChild(s);})();</script>
 </body>
 </html>
