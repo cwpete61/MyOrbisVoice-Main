@@ -163,6 +163,7 @@ section { padding-block: clamp(56px, 8vw, 104px); position: relative; }
 .nav-cta { display: inline-flex; }
 .burger { display: none; }
 .mobile-only { display: none; }
+.mobile-menu { display: none; }
 
 @media (max-width: 940px) {
   .nav-links, .nav-cta.desk { display: none; }
