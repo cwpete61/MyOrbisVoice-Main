@@ -13,6 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://myorbisagents.com/benefits/">
 <link rel="stylesheet" href="/assets/site.css">
+<script>(function(){try{var t=localStorage.getItem("ma_theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}window.__toggleTheme=function(){var c=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";document.documentElement.setAttribute("data-theme",c);try{localStorage.setItem("ma_theme",c);}catch(e){}};})();</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -28,6 +29,7 @@
       <a href="/pricing/">Pricing</a>
       <a href="/book/">Book a call</a>
       <a class="navcta" href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a>
+      <button class="theme-toggle" type="button" aria-label="Toggle light/dark theme" onclick="window.__toggleTheme()">🌓</button>
       <a class="lang" href="/es/benefits/">ES</a>
     </nav>
   </div>
