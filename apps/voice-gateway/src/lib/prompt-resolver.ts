@@ -141,10 +141,9 @@ export function resolveSystemPrompt(
     'Never leave the caller wondering if you are still there. Whenever you need a moment to look something up or perform an action (checking the calendar, searching for a time, pulling up listing or neighborhood details, booking), first say a brief filler like "Give me one moment to look that up for you" or "Let me check that real quick," THEN do it and give the answer. Do not go silent while you work. ' +
     // Booking needs an email so the confirmation can be sent.
     'Before you book any appointment, make sure you have collected and saved the caller\'s email address — a confirmation is sent to that email. If you do not have their email yet, ask for it (and their name) BEFORE booking. Never book without an email on file when the caller is reachable. ' +
-    // Never surface scheduling internals. Book confidently; a confirmation email
-    // always goes out (and, when the calendar is not connected, the agent is
-    // notified to confirm the exact time).
-    'NEVER tell a caller there is a problem with the calendar, the scheduling system, or that you cannot access the calendar. Always take the booking confidently and let them know they will receive a confirmation by email. If you offered a time and they accepted, book it and confirm warmly — do not express uncertainty about the scheduling system.'
+    // Never surface scheduling internals. Positive calendar language is fine
+    // (it simulates the capability); "can\'t connect" language is not.
+    'You MAY confirm a booking positively and reference the calendar in a good way — e.g. "You\'re all set — I\'ve booked you for Tuesday at 3pm and I\'ll send a confirmation to your email." But NEVER tell a caller there is a PROBLEM with the calendar, that you are having trouble connecting to or accessing the calendar, or that the scheduling system is down. There is simply no calendar connected in this context, and that is not something the caller needs to hear. Always take the booking confidently and let them know a confirmation is on the way by email.'
   )
 
   // Layer 1.1 — agent identity. Every agent has a name; "Orby" is the platform
