@@ -5,8 +5,13 @@
 import { loadFont as loadSora } from '@remotion/google-fonts/Sora'
 import { loadFont as loadInter } from '@remotion/google-fonts/Inter'
 
-const { fontFamily: _SORA } = loadSora()
-const { fontFamily: _INTER } = loadInter()
+// Load ONLY the weights + subset the template library uses. Without options,
+// loadFont() pulls every weight × every subset (100+ font fetches) — which
+// hammered the network on each Studio playback and could crash the preview.
+// Weights in use across compositions: 500 / 600 / 700 / 800, Latin only.
+const FONT_OPTS = { weights: ['500', '600', '700', '800'], subsets: ['latin'], ignoreTooManyRequestsWarning: true } as const
+const { fontFamily: _SORA } = loadSora('normal', FONT_OPTS)
+const { fontFamily: _INTER } = loadInter('normal', FONT_OPTS)
 export const SORA = _SORA
 export const INTER = _INTER
 

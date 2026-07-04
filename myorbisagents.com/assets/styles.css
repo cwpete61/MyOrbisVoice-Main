@@ -451,3 +451,7 @@ section { padding-block: clamp(56px, 8vw, 104px); position: relative; }
 .calc-big{font-size:clamp(2.2rem,6vw,3.2rem);font-weight:900;line-height:1;background:var(--grad-hot);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:var(--brand)}
 .calc-cap{color:var(--fg-soft);font-size:.95rem;margin-top:10px;line-height:1.5}
 .calc-cap small{color:var(--fg-mute);font-size:.8rem}
+
+/* ---------- video explainer ---------- */
+.video-wrap{max-width:960px;margin:0 auto;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-lg);background:#000}
+.video-wrap video{display:block;width:100%;height:auto}
