@@ -12,188 +12,274 @@
 <meta property="og:description" content="Answer every lead, book every showing, 24/7. An AI ISA for real estate agents.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://myorbisagents.com/">
-<style>
-  :root{--ink:#12232c;--muted:#5b6b73;--line:#e6ebe9;--teal:#0f8a8a;--teal-d:#0b6d6d;--bg:#f5f8f7;--soft:#eef6f5;--soft-b:#d6e8e6}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Georgia,'Times New Roman',serif;color:var(--ink);background:var(--bg);line-height:1.55}
-  .sans{font-family:Arial,Helvetica,sans-serif}
-  a{color:var(--teal)}
-  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
-  header{border-bottom:1px solid var(--line);background:#fff}
-  .bar{display:flex;align-items:center;justify-content:space-between;height:60px}
-  .brand{font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);font-weight:700;text-decoration:none}
-  .brand span{color:var(--teal)}
-  .navlinks{font-family:Arial,Helvetica,sans-serif;font-size:14px;display:flex;gap:18px;align-items:center}
-  .navlinks a{color:var(--muted);text-decoration:none}
-  .lang{font-family:Arial,Helvetica,sans-serif;font-size:13px;border:1px solid var(--line);border-radius:999px;padding:4px 10px;color:var(--muted);text-decoration:none}
-  .menu-toggle{position:absolute;opacity:0;pointer-events:none}
-  .hamburger{display:none;cursor:pointer;padding:8px;margin:-8px;color:var(--ink)}
-  .hamburger svg{display:block}
-  @media(max-width:640px){
-    .bar{position:relative}
-    .hamburger{display:block}
-    .navlinks{position:absolute;top:60px;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 8px 20px rgba(18,35,44,.06);padding:6px 20px 12px;display:none;z-index:20}
-    .navlinks a{padding:13px 2px;border-bottom:1px solid var(--line)}
-    .navlinks a:last-child{border-bottom:none}
-    .navlinks .lang{border:1px solid var(--line);width:max-content;margin-top:8px}
-    .menu-toggle:checked ~ .navlinks{display:flex}
-  }
-  .hero{padding:64px 0 40px}
-  .kicker{font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);font-weight:700;margin:0 0 14px}
-  h1{font-size:40px;line-height:1.14;margin:0 0 16px;max-width:20ch}
-  .sub{font-size:19px;color:var(--muted);margin:0 0 28px;max-width:56ch}
-  .cta{display:flex;gap:12px;flex-wrap:wrap}
-  .btn{font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:700;text-decoration:none;border-radius:12px;padding:13px 22px;display:inline-block}
-  .btn.primary{background:var(--teal);color:#fff}
-  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
-  section{padding:44px 0}
-  .lead{font-size:15px;font-family:Arial,Helvetica,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
-  h2{font-size:28px;margin:0 0 14px}
-  .math{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px 26px}
-  .math p{margin:0 0 10px;font-size:18px}
-  .math .big{font-size:22px;color:var(--teal);font-family:Arial,Helvetica,sans-serif;font-weight:700}
-  .grid{display:grid;grid-template-columns:1fr;gap:16px}
-  @media(min-width:680px){.grid{grid-template-columns:1fr 1fr}}
-  .feature{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px}
-  .feature h3{font-family:Arial,Helvetica,sans-serif;font-size:17px;margin:0 0 6px}
-  .feature p{margin:0;color:var(--muted);font-size:16px}
-  .demo{background:var(--soft);border:1px solid var(--soft-b);border-radius:16px;padding:26px;text-align:center}
-  .demo .num{font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:700;color:var(--ink);margin:6px 0}
-  .prices{display:grid;grid-template-columns:1fr;gap:18px}
-  @media(min-width:680px){.prices{grid-template-columns:1fr 1fr}}
-  .plan{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px}
-  .plan.featured{border:2px solid var(--teal)}
-  .plan .tag{font-family:Arial,Helvetica,sans-serif;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);font-weight:700}
-  .plan .price{font-family:Arial,Helvetica,sans-serif;font-size:34px;font-weight:700;margin:6px 0 2px}
-  .plan .price small{font-size:16px;color:var(--muted);font-weight:400}
-  .plan .theme{color:var(--muted);margin:0 0 14px}
-  .plan ul{margin:0 0 18px;padding-left:18px;color:var(--ink);font-size:16px}
-  .plan ul li{margin:6px 0}
-  .plan .buy{display:flex;gap:10px;flex-wrap:wrap}
-  .plan .buy a{font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;padding:10px 16px}
-  .buy .yr{background:var(--teal);color:#fff}
-  .buy .mo{background:var(--soft);color:var(--teal-d);border:1px solid var(--soft-b)}
-  .founding{font-family:Arial,Helvetica,sans-serif;font-size:14px;background:var(--soft);border:1px solid var(--soft-b);border-radius:12px;padding:14px 18px;margin:0 0 22px;color:var(--ink)}
-  .brokerage{font-family:Arial,Helvetica,sans-serif;font-size:15px;color:var(--muted);margin-top:16px;text-align:center}
-  footer{border-top:1px solid var(--line);background:#fff;padding:26px 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:var(--muted)}
-  footer a{color:var(--muted)}
-  .fine{font-size:12px;color:var(--muted);margin-top:8px}
-</style>
+<link rel="stylesheet" href="/assets/site.css">
 </head>
 <body>
-<header>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-head">
   <div class="wrap bar">
     <a class="brand" href="/">MYORBIS<span>AGENTS</span></a>
     <input type="checkbox" id="mnav" class="menu-toggle" aria-hidden="true">
     <label for="mnav" class="hamburger" aria-label="Menu">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </label>
-    <nav class="navlinks">
-      <a href="#how">How it works</a>
-      <a href="#pricing">Pricing</a>
-      <a href="https://app.myorbisvoice.com/book/crawford.peterson2">Book a call</a>
-      <a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a>
+    <nav class="navlinks" aria-label="Main">
+      <a href="/how-it-works/">How it works</a>
+      <a href="/benefits/">Benefits</a>
+      <a href="/pricing/">Pricing</a>
+      <a href="/book/">Book a call</a>
+      <a class="navcta" href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a>
       <a class="lang" href="/es/">ES</a>
     </nav>
   </div>
 </header>
 
-<main>
-  <div class="wrap">
-    <div class="hero">
-      <p class="kicker">AI inside sales agent for real estate</p>
-      <h1>Meet Orby. She answers every lead and books every showing — 24/7.</h1>
-      <p class="sub">The call you miss is the commission you lose. Orby picks up every call, text, and web lead the second it comes in, answers questions about your listings, qualifies the buyer, and books the showing straight to your calendar. Day, night, and while you're already with a client.</p>
-      <div class="cta">
-        <a class="btn primary" href="/demo/chase-horner/">Hear Orby now</a>
-        <a class="btn ghost" href="https://app.myorbisvoice.com/book/crawford.peterson2">Book a call</a>
-        <a class="btn ghost" href="#pricing">See founding pricing</a>
+<main id="main">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="kicker">AI inside sales agent for real estate</p>
+        <h1>Meet Orby. She answers every lead and books every showing — 24/7.</h1>
+        <p class="sub">The call you miss is the commission you lose. Orby picks up every call, text, and web lead the second it comes in, answers questions about your listings, qualifies the buyer, and books the showing straight to your calendar — day, night, and while you're already with a client.</p>
+        <div class="cta">
+          <a class="btn primary" href="tel:+14705173441">Hear Orby now →</a>
+          <a class="btn ghost" href="/book/">Book a call</a>
+        </div>
+        <p class="micro">Already a client? <a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login →</a></p>
       </div>
-      <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:var(--muted)">Already a client? <a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit" style="color:var(--teal);font-weight:700">Agent login →</a></p>
+      <div class="hero-art" aria-hidden="true">
+        <!-- Orby answering: phone + soundwave, language-neutral -->
+        <svg viewBox="0 0 360 320" role="img" width="100%" height="auto">
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#0f8a8a"/><stop offset="1" stop-color="#0b6d6d"/>
+            </linearGradient>
+          </defs>
+          <rect x="8" y="8" width="344" height="304" rx="24" fill="#eef6f5" stroke="#d6e8e6"/>
+          <!-- phone -->
+          <rect x="120" y="46" width="120" height="228" rx="20" fill="#fff" stroke="#d6e8e6" stroke-width="2"/>
+          <rect x="132" y="70" width="96" height="150" rx="10" fill="#f5f8f7"/>
+          <!-- Orby orb -->
+          <circle cx="180" cy="128" r="34" fill="url(#g1)"/>
+          <circle cx="169" cy="122" r="6" fill="#fff"/><circle cx="191" cy="122" r="6" fill="#fff"/>
+          <path d="M167 142 q13 12 26 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <!-- soundwave -->
+          <g stroke="#0f8a8a" stroke-width="5" stroke-linecap="round">
+            <line x1="150" y1="196" x2="150" y2="204"/><line x1="164" y1="188" x2="164" y2="212"/>
+            <line x1="178" y1="180" x2="178" y2="220"/><line x1="192" y1="188" x2="192" y2="212"/>
+            <line x1="206" y1="196" x2="206" y2="204"/>
+          </g>
+          <!-- incoming pings -->
+          <circle cx="58" cy="96" r="26" fill="#fff" stroke="#d6e8e6"/>
+          <path d="M48 90h20v12H60l-4 5v-5h-8z" fill="#0f8a8a"/>
+          <circle cx="58" cy="224" r="26" fill="#fff" stroke="#d6e8e6"/>
+          <path d="M47 218c0-4 4-6 11-6s11 2 11 6-4 7-11 7a17 17 0 0 1-5-1l-6 3 2-5c-1-1-2-2-2-4z" fill="#0f8a8a"/>
+          <circle cx="302" cy="160" r="26" fill="#fff" stroke="#d6e8e6"/>
+          <path d="M292 150h20v18h-20zM292 156h20" stroke="#0f8a8a" stroke-width="2" fill="none"/>
+          <path d="M84 100 108 118 M84 214 108 150 M276 160 214 132" stroke="#bcd8d5" stroke-width="2" fill="none" stroke-dasharray="3 4"/>
+        </svg>
+        <div class="hero-badges">
+          <span>📞 Calls</span><span>💬 Texts</span><span>🌐 Web leads</span>
+        </div>
+      </div>
     </div>
-  </div>
+    <div class="wrap trust-row">
+      <span>Answers in seconds</span><span>English &amp; Spanish</span><span>Books to your calendar</span><span>Never sleeps</span>
+    </div>
+  </section>
 
-  <div class="wrap">
-    <section>
+  <!-- THE MATH / PROBLEM -->
+  <section class="band">
+    <div class="wrap">
       <p class="lead">The math</p>
       <div class="math">
         <p class="big">A missed call from a buyer is a lost commission — not a lost lead.</p>
-        <p>Most buyer inquiries go to the first agent who answers. Miss the call and they've already booked with someone else by the time you call back. Orby answers on the first ring, every time, so the lead is yours before a competitor ever hears about it.</p>
+        <p>Most buyer inquiries go to the first agent who answers. Miss the call and they've booked with someone else by the time you call back. Orby answers on the first ring, every time, so the lead is yours before a competitor ever hears about it.</p>
+        <div class="statline">
+          <div class="stat"><b>78%</b><span>of buyers work with the first agent who responds</span></div>
+          <div class="stat"><b>&lt;5 min</b><span>response window before a lead goes cold</span></div>
+          <div class="stat"><b>24/7</b><span>Orby answers — nights, weekends, showings</span></div>
+        </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section id="how">
-      <p class="lead">What Orby does</p>
-      <h2>A full inside sales agent, without the payroll.</h2>
-      <div class="grid">
-        <div class="feature"><h3>Answers instantly, 24/7</h3><p>Every call, text, and website chat — picked up in seconds, in English or Spanish.</p></div>
-        <div class="feature"><h3>Knows your listings</h3><p>Paste your active, coming-soon, and pocket listings. Orby answers buyer questions from your real book.</p></div>
-        <div class="feature"><h3>Qualifies and books</h3><p>Timeline, pre-approval, price range — then books the showing straight onto your calendar.</p></div>
-        <div class="feature"><h3>Hands off cleanly</h3><p>Hot lead or a question Orby shouldn't answer? It takes a message and pings you to follow up.</p></div>
+  <!-- HOW IT WORKS -->
+  <section class="wrap">
+    <p class="lead">How it works</p>
+    <h2>From missed call to booked showing — automatically.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="stepnum">1</div>
+        <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#eef6f5"/><path d="M17 16c1 0 6 1 6 4s-3 4-3 6 4 5 6 5 3-4 5-3 4 5 4 6-3 4-6 4c-9 0-18-9-18-18 0-3 2-4 3-4z" fill="none" stroke="#0f8a8a" stroke-width="2.5" stroke-linejoin="round"/></svg>
+        <h3>The lead comes in</h3>
+        <p>A call, a text, or a chat on your website. Orby picks up instantly — no voicemail, no "call you back."</p>
       </div>
-    </section>
+      <div class="step">
+        <div class="stepnum">2</div>
+        <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#eef6f5"/><path d="M16 18h16v11H24l-5 4v-4h-3z" fill="none" stroke="#0f8a8a" stroke-width="2.5" stroke-linejoin="round"/><circle cx="21" cy="23" r="1.6" fill="#0f8a8a"/><circle cx="27" cy="23" r="1.6" fill="#0f8a8a"/></svg>
+        <h3>Orby answers &amp; qualifies</h3>
+        <p>Answers questions from your real listings, then asks the right things — timeline, budget, pre-approval — in English or Spanish.</p>
+      </div>
+      <div class="step">
+        <div class="stepnum">3</div>
+        <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#eef6f5"/><rect x="15" y="16" width="18" height="17" rx="2" fill="none" stroke="#0f8a8a" stroke-width="2.5"/><path d="M15 21h18M20 14v5M28 14v5" stroke="#0f8a8a" stroke-width="2.5" stroke-linecap="round"/><path d="M20 27l3 3 5-6" fill="none" stroke="#0f8a8a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h3>The showing is booked</h3>
+        <p>Orby drops the appointment onto your calendar, texts the buyer a confirmation, and logs everything for you.</p>
+      </div>
+      <div class="step">
+        <div class="stepnum">4</div>
+        <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="22" fill="#eef6f5"/><path d="M24 15a6 6 0 0 1 6 6c0 5-6 12-6 12s-6-7-6-12a6 6 0 0 1 6-6z" fill="none" stroke="#0f8a8a" stroke-width="2.5"/><circle cx="24" cy="21" r="2.3" fill="#0f8a8a"/></svg>
+        <h3>You show up &amp; close</h3>
+        <p>You walk into a warm, qualified appointment. Orby handled the busywork; you handle the relationship.</p>
+      </div>
+    </div>
+    <p class="center-cta"><a class="btn ghost" href="/how-it-works/">See the full walkthrough →</a></p>
+  </section>
 
-    <section>
+  <!-- CHANNELS DIAGRAM -->
+  <section class="band">
+    <div class="wrap">
+      <p class="lead">One agent, every channel</p>
+      <h2>Every way a buyer reaches out — Orby is already there.</h2>
+      <div class="flow" aria-hidden="true">
+        <div class="flow-col">
+          <div class="chip">📞 Phone calls</div>
+          <div class="chip">💬 Text messages</div>
+          <div class="chip">🌐 Website chat</div>
+        </div>
+        <svg class="flow-arrow" viewBox="0 0 60 24"><path d="M2 12h50m-8-7 8 7-8 7" fill="none" stroke="#0f8a8a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="orbnode">
+          <div class="orbdot"></div>
+          <b>Orby</b><span>answers · qualifies · books</span>
+        </div>
+        <svg class="flow-arrow" viewBox="0 0 60 24"><path d="M2 12h50m-8-7 8 7-8 7" fill="none" stroke="#0f8a8a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="flow-col">
+          <div class="chip">📅 Your calendar</div>
+          <div class="chip">🗂️ Your CRM</div>
+          <div class="chip">🔔 You, notified</div>
+        </div>
+      </div>
+      <p class="flow-note">Calls and texts run on your dedicated business number. The website chat is a copy-paste widget. Bookings and summaries land where you already work.</p>
+    </div>
+  </section>
+
+  <!-- BENEFITS -->
+  <section class="wrap">
+    <p class="lead">Why agents run Orby</p>
+    <h2>A full inside sales agent, without the payroll.</h2>
+    <div class="grid">
+      <div class="feature"><div class="fico">⚡</div><h3>Answers instantly, 24/7</h3><p>Every call, text, and website chat — picked up in seconds, in English or Spanish.</p></div>
+      <div class="feature"><div class="fico">🏠</div><h3>Knows your listings</h3><p>Paste your active, coming-soon, and pocket listings. Orby answers buyer questions from your real book.</p></div>
+      <div class="feature"><div class="fico">✅</div><h3>Qualifies and books</h3><p>Timeline, pre-approval, price range — then books the showing straight onto your calendar.</p></div>
+      <div class="feature"><div class="fico">🤝</div><h3>Hands off cleanly</h3><p>Hot lead or a question Orby shouldn't answer? It takes a message and pings you to follow up.</p></div>
+      <div class="feature"><div class="fico">🌎</div><h3>Fully bilingual</h3><p>Orby switches to Spanish the moment a caller does — you never lose a lead to a language barrier.</p></div>
+      <div class="feature"><div class="fico">📈</div><h3>Nothing slips</h3><p>Every call transcribed, summarized, and logged. Follow-ups and reminders go out on their own.</p></div>
+    </div>
+    <p class="center-cta"><a class="btn ghost" href="/benefits/">See all the benefits →</a></p>
+  </section>
+
+  <!-- DEMO -->
+  <section class="band">
+    <div class="wrap">
       <div class="demo">
-        <p class="lead" style="margin-bottom:4px">Try it yourself</p>
-        <p style="margin:0 0 6px">Call Orby's demo line and ask about a listing:</p>
+        <p class="lead" style="margin-bottom:6px">Try it yourself</p>
+        <p class="demo-lead">Call Orby's demo line and ask about a listing:</p>
         <div class="num"><a href="tel:+14705173441">+1 (470) 517-3441</a></div>
-        <p style="margin:8px 0 0" class="sans">Or <a href="/demo/chase-horner/">open a live agent demo page →</a></p>
+        <p class="demo-or">Or talk to Orby right here — tap the button in the corner. →</p>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section id="pricing">
-      <p class="lead">Founding pricing</p>
-      <h2>Two solo plans. Both capture every lead.</h2>
-      <div class="founding"><b>Founding offer:</b> $500 one-time setup + your plan. Annual plans include <b>50% off year one</b>. Live now — we set up and launch Orby for you.</div>
-      <div class="prices">
-        <div class="plan">
-          <span class="tag">Solo Capture</span>
-          <div class="price">$297<small>/mo</small></div>
-          <p class="theme">Answer, track, and book every lead.</p>
-          <ul>
-            <li>Orby voice + text agent, 24/7</li>
-            <li>Up to 20 listings</li>
-            <li>Main business number</li>
-            <li>Call tracking, transcripts, summaries</li>
-            <li>Missed-call text-back</li>
-          </ul>
-          <div class="buy">
-            <a class="yr" href="https://buy.stripe.com/28E28tcsrd8h0LR47s0Ny07">Founding annual · $2,282</a>
-            <a class="mo" href="https://buy.stripe.com/4gMeVfgIH3xHdyDbzU0Ny08">Monthly</a>
-          </div>
-        </div>
-        <div class="plan featured">
-          <span class="tag">Solo Power</span>
-          <div class="price">$497<small>/mo</small></div>
-          <p class="theme">Convert and manage them, too.</p>
-          <ul>
-            <li>Everything in Solo Capture</li>
-            <li>Unlimited listings + per-listing tracking numbers</li>
-            <li>Full buyer/seller nurture + database reactivation</li>
-            <li>Seller valuation magnet + weekly reports</li>
-            <li>CRM sync + done-for-you setup</li>
-          </ul>
-          <div class="buy">
-            <a class="yr" href="https://buy.stripe.com/6oUaEZ1NNfgp2TZ33o0Ny05">Founding annual · $3,482</a>
-            <a class="mo" href="https://buy.stripe.com/8x27sN8cbb09527cDY0Ny06">Monthly</a>
-          </div>
-        </div>
+  <!-- PRICING TEASER -->
+  <section class="wrap">
+    <p class="lead">Founding pricing</p>
+    <h2>Two solo plans. Both capture every lead.</h2>
+    <div class="founding"><b>Founding offer:</b> $500 one-time setup + your plan. Annual plans include <b>50% off year one</b>. We set up and launch Orby for you.</div>
+    <div class="prices">
+      <div class="plan">
+        <span class="tag">Solo Capture</span>
+        <div class="price">$297<small>/mo</small></div>
+        <p class="theme">Answer, track, and book every lead.</p>
+        <ul>
+          <li>Orby voice + text agent, 24/7</li>
+          <li>Up to 20 listings</li>
+          <li>Main business number</li>
+          <li>Call tracking, transcripts, summaries</li>
+          <li>Missed-call text-back</li>
+        </ul>
+        <a class="btn ghost full" href="/pricing/">See plan details →</a>
       </div>
-      <p class="brokerage">Running a team? A multi-seat <b>Brokerage</b> plan with routing and white-label is coming — <a href="mailto:hello@myorbisresults.com">talk to us</a>.</p>
-    </section>
-  </div>
+      <div class="plan featured">
+        <span class="tag">Solo Power</span>
+        <div class="price">$497<small>/mo</small></div>
+        <p class="theme">Convert and manage them, too.</p>
+        <ul>
+          <li>Everything in Solo Capture</li>
+          <li>Unlimited listings + per-listing tracking numbers</li>
+          <li>Full buyer/seller nurture + database reactivation</li>
+          <li>Seller valuation magnet + weekly reports</li>
+          <li>CRM sync + done-for-you setup</li>
+        </ul>
+        <a class="btn primary full" href="/pricing/">See plan details →</a>
+      </div>
+    </div>
+    <p class="brokerage">Running a team? A multi-seat <b>Brokerage</b> plan with routing and white-label is coming — <a href="mailto:hello@myorbisresults.com">talk to us</a>.</p>
+  </section>
+
+  <!-- FINAL CTA -->
+  <section class="cta-band">
+    <div class="wrap">
+      <h2>Stop losing commissions to voicemail.</h2>
+      <p>Orby answers the next lead while you're reading this. Hear her, or get set up today.</p>
+      <div class="cta center">
+        <a class="btn primary" href="tel:+14705173441">Hear Orby now</a>
+        <a class="btn light" href="/book/">Book a call</a>
+      </div>
+    </div>
+  </section>
 </main>
 
-<footer>
-  <div class="wrap">
-    MyOrbisAgents is a product of MyOrbisResults. Orby is an AI assistant, not a licensed real-estate agent.
-    <div class="fine">We follow the Fair Housing Act — Orby describes properties by objective facts only. · <a href="/es/">Español</a></div>
+<footer class="site-foot">
+  <div class="wrap foot-grid">
+    <div class="foot-brand">
+      <a class="brand light" href="/">MYORBIS<span>AGENTS</span></a>
+      <p>Orby is your AI inside sales agent — answering every call, text, and web lead, and booking every showing, 24/7.</p>
+      <p class="parent">A product of <a href="https://myorbisresults.com">MyOrbisResults</a>.</p>
+    </div>
+    <div class="foot-col">
+      <h4>Product</h4>
+      <a href="/how-it-works/">How it works</a>
+      <a href="/benefits/">Benefits</a>
+      <a href="/pricing/">Pricing</a>
+      <a href="/book/">Book a call</a>
+      <a href="tel:+14705173441">Live demo line</a>
+      <a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a>
+    </div>
+    <div class="foot-col">
+      <h4>Company</h4>
+      <a href="https://myorbisresults.com">About MyOrbisResults</a>
+      <a href="mailto:hello@myorbisresults.com">Contact us</a>
+      <a href="/book/">Talk to sales</a>
+      <a href="/es/">Español</a>
+    </div>
+    <div class="foot-col">
+      <h4>Legal</h4>
+      <a href="/legal/terms/">Terms of Service</a>
+      <a href="/legal/privacy/">Privacy Policy</a>
+      <a href="/legal/cookies/">Cookie Policy</a>
+      <a href="/legal/fair-housing/">Fair Housing</a>
+    </div>
+  </div>
+  <div class="wrap foot-fine">
+    <span>© 2026 MyOrbisResults. All rights reserved.</span>
+    <span>Orby is an AI assistant, not a licensed real-estate agent. Orby describes properties by objective facts only, in keeping with the Fair Housing Act.</span>
   </div>
 </footer>
 
-<!-- Orby voice widget — floating bottom-right. Visitors talk to the live
-     MyOrbisAgents demo agent. publicKey = demo (isDemo) RE tenant's WIDGET key. -->
+<!-- Orby voice widget — floating bottom-right. Live MyOrbisAgents demo agent. -->
 <script>
 (function () {
   var KEY = 'd9fc8d95afd58d58a8f2e500a960d10cc81a6f75a12db97e';
