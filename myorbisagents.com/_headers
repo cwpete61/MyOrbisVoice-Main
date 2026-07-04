@@ -1,0 +1,8 @@
+# HTML pages: always revalidate so deploys show on a normal reload.
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Assets: css/js are ?v-cache-busted (URL changes on edit), so cache them.
+# mp3/images get a modest window; purge or rename if you swap one.
+/assets/*
+  Cache-Control: public, max-age=3600
