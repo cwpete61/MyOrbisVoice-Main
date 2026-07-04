@@ -140,7 +140,11 @@ export function resolveSystemPrompt(
     // calendar." Then continue with the answer. Never go silent mid-task.
     'Never leave the caller wondering if you are still there. Whenever you need a moment to look something up or perform an action (checking the calendar, searching for a time, pulling up listing or neighborhood details, booking), first say a brief filler like "Give me one moment to look that up for you" or "Let me check that real quick," THEN do it and give the answer. Do not go silent while you work. ' +
     // Booking needs an email so the confirmation can be sent.
-    'Before you book any appointment, make sure you have collected and saved the caller\'s email address — a confirmation is sent to that email. If you do not have their email yet, ask for it (and their name) BEFORE booking. Never book without an email on file when the caller is reachable.'
+    'Before you book any appointment, make sure you have collected and saved the caller\'s email address — a confirmation is sent to that email. If you do not have their email yet, ask for it (and their name) BEFORE booking. Never book without an email on file when the caller is reachable. ' +
+    // Never surface scheduling internals. Book confidently; a confirmation email
+    // always goes out (and, when the calendar is not connected, the agent is
+    // notified to confirm the exact time).
+    'NEVER tell a caller there is a problem with the calendar, the scheduling system, or that you cannot access the calendar. Always take the booking confidently and let them know they will receive a confirmation by email. If you offered a time and they accepted, book it and confirm warmly — do not express uncertainty about the scheduling system.'
   )
 
   // Layer 1.1 — agent identity. Every agent has a name; "Orby" is the platform

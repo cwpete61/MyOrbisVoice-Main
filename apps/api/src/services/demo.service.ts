@@ -56,22 +56,13 @@ async function applyDemoEntitlements(tenantId: string): Promise<void> {
 
 /** Delete the mutable tenant-scoped data so a reset starts clean. */
 async function wipeTenantData(tenantId: string): Promise<void> {
-  // Reset-exemption: keep conversations bound to an ACTIVE demo phone session so
-  // a caller mid-demo (or who just hung up) still sees their call in the session
-  // view. Everything else is wiped. Expired sessions + their calls get cleaned.
-  const activeSessions = await prisma.demoSession.findMany({
-    where:  { tenantId, expiresAt: { gt: new Date() } },
-    select: { id: true },
-  })
-  const keep = activeSessions.map(s => s.id)
-
+  // FULL wipe — every reset is a clean slate (no leftover leads/conversations/
+  // appointments from a previous demo user, and no sample seed data). A caller's
+  // own call still shows for the ~15 min until the next reset. The durable
+  // DemoLead marketing table is separate and NOT wiped.
   // Order matters only where FKs restrict; most are onDelete cascade/setNull.
   await prisma.appointment.deleteMany({ where: { tenantId } })
-  await prisma.conversation.deleteMany({
-    where: keep.length
-      ? { tenantId, OR: [{ demoSessionId: null }, { demoSessionId: { notIn: keep } }] }
-      : { tenantId },
-  })
+  await prisma.conversation.deleteMany({ where: { tenantId } })
   await prisma.listing.deleteMany({ where: { tenantId } })
   await prisma.contact.deleteMany({ where: { tenantId } })
   await prisma.channelConfig.deleteMany({ where: { tenantId } })
@@ -125,13 +116,10 @@ export async function seedDemoTenant(tenantId: string, userId: string): Promise<
     }
   })()
 
-  // A couple of leads + a showing so the cockpit looks alive.
-  const now = new Date()
-  const c1 = await prisma.contact.create({ data: { tenantId, source: 'DEMO_SEED', firstName: 'Maria', lastName: 'Nguyen', phoneE164: '+15125550142' } })
-  const c2 = await prisma.contact.create({ data: { tenantId, source: 'DEMO_SEED', firstName: 'Derek', lastName: 'Osei', phoneE164: '+15125550188' } })
-  await prisma.conversation.create({ data: { tenantId, contactId: c1.id, channelType: 'WIDGET', direction: 'INBOUND', status: 'COMPLETED', startedAt: new Date(now.getTime() - 36e5 * 5), endedAt: new Date(now.getTime() - 36e5 * 5 + 18e4), summaryText: 'Buyer asked about the South Austin bungalow; wants a weekend showing.' } })
-  await prisma.conversation.create({ data: { tenantId, contactId: c2.id, channelType: 'INBOUND', direction: 'INBOUND', status: 'COMPLETED', startedAt: new Date(now.getTime() - 36e5 * 26), endedAt: new Date(now.getTime() - 36e5 * 26 + 24e4), summaryText: 'Seller lead — considering listing a 3BR near Zilker.' } })
-  await prisma.appointment.create({ data: { tenantId, contactId: c1.id, status: 'CONFIRMED', appointmentType: 'Showing — 2200 S Lamar Blvd', startAt: new Date(now.getTime() + 36e5 * 30), endAt: new Date(now.getTime() + 36e5 * 30 + 27e5), timezone: 'America/Chicago', location: '2200 S Lamar Blvd, Austin, TX' } })
+  // NO sample leads / conversations / appointments. The demo starts EMPTY
+  // (only Orby + listings) so a demo user sees THEIR own actions populate the
+  // cockpit — clean "simulate your own usage." Their calls/bookings appear as
+  // they make them; the durable DemoLead marketing table is untouched.
 }
 
 export async function resetDemoTenant(tenantId: string, userId: string): Promise<void> {

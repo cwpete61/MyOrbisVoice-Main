@@ -301,10 +301,7 @@ export async function searchAvailability(
     bufferAfterMs  = (partner?.bookingBufferAfterMin  ?? 0)  * 60 * 1000
     if (partner?.bookingTimezone) effectiveTimezone = partner.bookingTimezone
   } else {
-    client = await getAuthenticatedGoogleClient(tenantId)
-    // Phase E.5 — pull both working hours and the tenant's booking prefs so
-    // the agent honors min-notice / max-advance / buffers / default slot
-    // length the same way partner-routed bookings do (E.3).
+    // Phase E.5 — pull working hours + booking prefs first (no calendar needed).
     const profile = await prisma.businessProfile.findUnique({
       where:  { tenantId },
       select: {
@@ -324,9 +321,18 @@ export async function searchAvailability(
     maxAdvanceMs   = (profile?.bookingMaxAdvanceDays  ?? 60) * 24 * 60 * 60 * 1000
     bufferBeforeMs = (profile?.bookingBufferBeforeMin ?? 0)  * 60 * 1000
     bufferAfterMs  = (profile?.bookingBufferAfterMin  ?? 0)  * 60 * 1000
+    // Calendar is BEST-EFFORT. Demo tenants (never connect Google) and real
+    // agents who haven't connected yet get SIMULATED availability — every
+    // business-hours slot is offered as free — instead of a hard failure. This
+    // is why Orby no longer says "there's a problem with the calendar": with no
+    // calendar we just don't have busy blocks to subtract.
+    const demoT = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { isDemo: true } })
+    if (!demoT?.isDemo) {
+      try { client = await getAuthenticatedGoogleClient(tenantId) } catch { client = null }
+    }
   }
 
-  const calendar = google.calendar({ version: 'v3', auth: client })
+  const calendar = client ? google.calendar({ version: 'v3', auth: client }) : null
 
   // Clamp the caller's requested window with min-notice and max-advance so
   // the partner's "no same-minute" / "max 60 days out" rules win even if the
@@ -344,23 +350,26 @@ export async function searchAvailability(
     return { slots: [], alternateSlots: [] }
   }
 
-  const eventsResp = await calendar.events.list({
-    calendarId: calendarTarget,
-    timeMin: timeMin.toISOString(),
-    timeMax: timeMax.toISOString(),
-    singleEvents: true,
-    orderBy: 'startTime',
-  })
-
-  const busyBlocks = (eventsResp.data.items ?? [])
-    .filter(e => e.status !== 'cancelled')
-    .map(e => ({
-      // Buffers extend each busy block on both sides so the partner gets
-      // breathing room between back-to-back appointments.
-      start: new Date(e.start?.dateTime ?? e.start?.date ?? '').getTime() - bufferBeforeMs,
-      end:   new Date(e.end?.dateTime   ?? e.end?.date   ?? '').getTime() + bufferAfterMs,
-    }))
-    .filter(b => !Number.isNaN(b.start) && !Number.isNaN(b.end))
+  // No calendar → no busy blocks → every in-hours slot is offered as free.
+  let busyBlocks: { start: number; end: number }[] = []
+  if (calendar) {
+    const eventsResp = await calendar.events.list({
+      calendarId: calendarTarget,
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime',
+    })
+    busyBlocks = (eventsResp.data.items ?? [])
+      .filter(e => e.status !== 'cancelled')
+      .map(e => ({
+        // Buffers extend each busy block on both sides so the partner gets
+        // breathing room between back-to-back appointments.
+        start: new Date(e.start?.dateTime ?? e.start?.date ?? '').getTime() - bufferBeforeMs,
+        end:   new Date(e.end?.dateTime   ?? e.end?.date   ?? '').getTime() + bufferAfterMs,
+      }))
+      .filter(b => !Number.isNaN(b.start) && !Number.isNaN(b.end))
+  }
 
   const durationMs  = effectiveDurationMin * 60 * 1000
   const incrementMs = DEFAULT_SLOT_INCREMENT_MINUTES * 60 * 1000
@@ -577,6 +586,7 @@ export async function createAppointment(tenantId: string, userId: string | null,
     attendeeEmail:    data.attendeeEmail,
     contactId:        data.contactId,
     notes:            data.notes,
+    status,  // PENDING (no calendar) → "call back to confirm"; CONFIRMED → on calendar
   }).catch(err => console.warn('[appointment] owner notification failed:', (err as Error).message))
 
   // Phase E.10 — partner-routed bookings also notify the partner directly
@@ -879,6 +889,9 @@ async function sendTenantOwnerBookingNotification(tenantId: string, opts: {
   attendeeEmail?:   string
   contactId?:       string
   notes?:           string
+  /** PENDING = calendar not connected, so the time is tentative and the agent
+   *  must call the prospect back to confirm. CONFIRMED = it's on the calendar. */
+  status?:          'PENDING' | 'CONFIRMED'
 }) {
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
@@ -906,10 +919,19 @@ async function sendTenantOwnerBookingNotification(tenantId: string, opts: {
   const timeStr = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone, timeZoneName: 'short' })
   const apptLabel = opts.appointmentType || 'Appointment'
 
+  // When there's no connected calendar the booking is PENDING — Orby captured
+  // the request but it is NOT on a calendar, so the agent must confirm.
+  const needsConfirm = opts.status === 'PENDING'
+  const confirmBanner = needsConfirm
+    ? `<div style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-size:14px;border-radius:8px;padding:12px 14px;margin:0 0 20px">
+         ⚠ <strong>Action needed — call the prospect back to confirm.</strong> Your Google Calendar isn't connected, so this time is a request, not a locked slot. Reach out${attendeePhone ? ` at ${attendeePhone}` : ''}${opts.attendeeEmail ? ` or ${opts.attendeeEmail}` : ''} to confirm, then add it to your calendar. (Connect your calendar in Integrations to book these automatically.)
+       </div>`
+    : ''
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#222">
-      <h2 style="color:#1a9898;margin:0 0 8px">New booking on ${tenant.displayName ?? 'your account'}</h2>
-      <p style="color:#555;margin:0 0 20px">An appointment was just booked through the agent.</p>
+      <h2 style="color:#1a9898;margin:0 0 8px">${needsConfirm ? 'Showing requested' : 'New booking'} on ${tenant.displayName ?? 'your account'}</h2>
+      ${confirmBanner}
+      <p style="color:#555;margin:0 0 20px">${needsConfirm ? 'Orby collected a showing request through the agent.' : 'An appointment was just booked through the agent.'}</p>
       <table style="width:100%;border-collapse:collapse;margin:0 0 20px">
         <tr><td style="padding:8px 0;color:#888;width:120px;vertical-align:top">Type</td><td style="color:#222"><strong>${apptLabel}</strong></td></tr>
         <tr><td style="padding:8px 0;color:#888;vertical-align:top">When</td><td style="color:#222"><strong>${dateStr}</strong><br>${timeStr}</td></tr>
