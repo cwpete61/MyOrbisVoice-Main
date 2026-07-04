@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,34 +9,44 @@
 <link rel="alternate" hreflang="en" href="https://myorbisagents.com/legal/fair-housing/">
 <link rel="alternate" hreflang="es" href="https://myorbisagents.com/es/legal/fair-housing/">
 <meta name="robots" content="index,follow">
-<link rel="stylesheet" href="/assets/site.css?v=20260704d">
-<script>(function(){try{var t=localStorage.getItem("ma_theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}window.__toggleTheme=function(){var c=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";document.documentElement.setAttribute("data-theme",c);try{localStorage.setItem("ma_theme",c);}catch(e){}};})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css?v=r20260704">
+<script>(function(){try{var t=localStorage.getItem("orby_theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body>
-<a class="skip" href="#main">Saltar al contenido</a>
-
-<header class="site-head">
-  <div class="wrap bar">
-    <a class="brand" href="/es/">MYORBIS<span>AGENTS</span></a>
-    <input type="checkbox" id="mnav" class="menu-toggle" aria-hidden="true">
-    <label for="mnav" class="hamburger" aria-label="Menú"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></label>
-    <nav class="navlinks" aria-label="Principal">
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="/es/"><span class="dot"></span>MYORBIS<b>AGENTS</b></a>
+    <nav class="nav-links">
       <a href="/es/how-it-works/">Cómo funciona</a>
       <a href="/es/benefits/">Beneficios</a>
       <a href="/es/pricing/">Precios</a>
       <a href="/es/book/">Agenda una llamada</a>
-      <a class="navcta" href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Ingresar</a>
-      <button class="theme-toggle" type="button" aria-label="Toggle light/dark theme" onclick="window.__toggleTheme()">🌓</button>
-      <a class="lang" href="/legal/fair-housing/">EN</a>
     </nav>
+    <div class="nav-right">
+      <a class="lang-pill" href="/legal/fair-housing/" aria-label="View in English">EN</a>
+      <button class="icon-btn" data-theme-toggle aria-label="Toggle dark mode">🌓</button>
+      <a class="btn btn-primary nav-cta desk" href="tel:+14705173441">Escucha a Orby →</a>
+      <button class="icon-btn burger" data-burger aria-label="Menu" aria-expanded="false">☰</button>
+    </div>
+  </div>
+  <div class="mobile-menu" data-mobile-menu>
+    <a href="/es/how-it-works/">Cómo funciona</a>
+    <a href="/es/benefits/">Beneficios</a>
+    <a href="/es/pricing/">Precios</a>
+    <a href="/es/book/">Agenda una llamada</a>
+    <a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Ingreso de agentes</a>
+    <a class="btn btn-primary" href="tel:+14705173441">Escucha a Orby →</a>
   </div>
 </header>
-
 <main id="main">
-  <section class="wrap prose" style="padding:70px 20px 50px">
-    <h1>Compromiso con la Vivienda Justa</h1>
-    <p class="legal-meta">Última actualización: 4 de julio de 2026</p>
-    <p class="legal-note">La versión en inglés es la versión oficial y prevalece en caso de conflicto.</p>
+<section><div class="wrap">
+<div class="prose"><h1>Compromiso con la Vivienda Justa</h1>
+    <p class="meta">Última actualización: 4 de julio de 2026</p>
+    <p class="note-box">La versión en inglés es la versión oficial y prevalece en caso de conflicto.</p>
 
     <p>MyOrbisAgents está comprometido con la letra y el espíritu de la Ley de Vivienda Justa de los Estados Unidos y con todas las leyes de vivienda justa federales, estatales y locales aplicables. Todos merecen un trato igual y digno en su búsqueda de una vivienda.</p>
 
@@ -57,25 +67,25 @@
     <h2>Reportar una inquietud</h2>
     <p>Si crees que una interacción no cumplió con estos estándares, dinos en <a href="mailto:hello@myorbisresults.com">hello@myorbisresults.com</a> para que podamos revisar y mejorar. Las quejas por discriminación en la vivienda también pueden presentarse ante el Departamento de Vivienda y Desarrollo Urbano de EE. UU. (HUD) en <a href="https://www.hud.gov/fairhousing">hud.gov/fairhousing</a>.</p>
 
-    <p class="legal-note">Consulta también nuestros <a href="/es/legal/terms/">Términos del Servicio</a>, <a href="/es/legal/privacy/">Política de Privacidad</a> y <a href="/es/legal/cookies/">Política de Cookies</a>.</p>
-  </section>
+    <p class="note-box">Consulta también nuestros <a href="/es/legal/terms/">Términos del Servicio</a>, <a href="/es/legal/privacy/">Política de Privacidad</a> y <a href="/es/legal/cookies/">Política de Cookies</a>.</p></div>
+</div></section>
 </main>
-
-<footer class="site-foot">
-  <div class="wrap foot-grid">
-    <div class="foot-brand">
-      <a class="brand light" href="/es/">MYORBIS<span>AGENTS</span></a>
-      <p>Orby es tu agente de ventas con IA — contesta cada llamada, mensaje y consulta web, y agenda cada visita, 24/7.</p>
-      <p class="parent">Un producto de <a href="https://myorbisresults.com">MyOrbisResults</a>.</p>
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-about">
+        <a class="brand" href="/es/"><span class="dot"></span>MYORBIS<b>AGENTS</b></a>
+        <p>Orby es tu agente de ventas con IA — contesta cada llamada, mensaje y consulta web, y agenda cada visita, 24/7.</p>
+        <p style="margin-top:10px">Un producto de <a class="textlink" href="https://myorbisresults.com">MyOrbisResults</a>.</p>
+      </div>
+      <div class="foot-col"><h4>Producto</h4><a href="/es/how-it-works/">Cómo funciona</a><a href="/es/benefits/">Beneficios</a><a href="/es/pricing/">Precios</a><a href="/es/book/">Agenda una llamada</a><a href="tel:+14705173441">Línea de demostración</a><a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Ingreso de agentes</a></div>
+      <div class="foot-col"><h4>Empresa</h4><a href="https://myorbisresults.com">Sobre MyOrbisResults</a><a href="/es/book/">Habla con ventas</a><a href="/">English</a></div>
+      <div class="foot-col"><h4>Legal</h4><a href="/es/legal/terms/">Términos del servicio</a><a href="/es/legal/privacy/">Política de privacidad</a><a href="/es/legal/cookies/">Política de cookies</a><a href="/es/legal/fair-housing/">Vivienda Justa</a><a href="/es/sms/">Términos SMS</a></div>
     </div>
-    <div class="foot-col"><h4>Producto</h4><a href="/es/how-it-works/">Cómo funciona</a><a href="/es/benefits/">Beneficios</a><a href="/es/pricing/">Precios</a><a href="/es/book/">Agenda una llamada</a><a href="tel:+14705173441">Línea de demostración</a><a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Ingresar</a></div>
-    <div class="foot-col"><h4>Empresa</h4><a href="https://myorbisresults.com">Sobre MyOrbisResults</a><a href="mailto:hello@myorbisresults.com">Contáctanos</a><a href="/es/book/">Habla con ventas</a><a href="/legal/fair-housing/">English</a></div>
-    <div class="foot-col"><h4>Legal</h4><a href="/es/legal/terms/">Términos del Servicio</a><a href="/es/legal/privacy/">Política de Privacidad</a><a href="/es/legal/cookies/">Política de Cookies</a><a href="/es/legal/fair-housing/">Vivienda Justa</a><a href="/es/sms/">Términos SMS</a></div>
-  </div>
-  <div class="wrap foot-fine">
-    <span>© 2026 MyOrbisResults. Todos los derechos reservados.</span>
-    <span>Orby es un asistente de IA, no un agente de bienes raíces con licencia. Orby describe las propiedades solo por hechos objetivos, conforme a la Ley de Vivienda Justa.</span>
+    <div class="foot-bottom">© 2026 MyOrbisResults. Todos los derechos reservados. Orby es un asistente de IA, no un agente de bienes raíces con licencia. Orby describe las propiedades solo por hechos objetivos, conforme a la Ley de Vivienda Justa.</div>
   </div>
 </footer>
+<script src="/assets/app.js?v=r20260704"></script>
+<script>(function(){var KEY="d9fc8d95afd58d58a8f2e500a960d10cc81a6f75a12db97e";var SRC="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js";function init(){if(window.OrbisVoice&&typeof window.OrbisVoice.init==="function"){try{window.OrbisVoice.init({publicKey:KEY,agentName:"Orby",businessName:"MyOrbisAgents"});}catch(e){}}}var s=document.createElement("script");s.src=SRC;s.async=true;s.onload=init;document.body.appendChild(s);})();</script>
 </body>
 </html>

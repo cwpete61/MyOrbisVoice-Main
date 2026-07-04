@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,33 +9,43 @@
 <link rel="alternate" hreflang="en" href="https://myorbisagents.com/legal/fair-housing/">
 <link rel="alternate" hreflang="es" href="https://myorbisagents.com/es/legal/fair-housing/">
 <meta name="robots" content="index,follow">
-<link rel="stylesheet" href="/assets/site.css?v=20260704d">
-<script>(function(){try{var t=localStorage.getItem("ma_theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}window.__toggleTheme=function(){var c=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";document.documentElement.setAttribute("data-theme",c);try{localStorage.setItem("ma_theme",c);}catch(e){}};})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css?v=r20260704">
+<script>(function(){try{var t=localStorage.getItem("orby_theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-
-<header class="site-head">
-  <div class="wrap bar">
-    <a class="brand" href="/">MYORBIS<span>AGENTS</span></a>
-    <input type="checkbox" id="mnav" class="menu-toggle" aria-hidden="true">
-    <label for="mnav" class="hamburger" aria-label="Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></label>
-    <nav class="navlinks" aria-label="Main">
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="/"><span class="dot"></span>MYORBIS<b>AGENTS</b></a>
+    <nav class="nav-links">
       <a href="/how-it-works/">How it works</a>
       <a href="/benefits/">Benefits</a>
       <a href="/pricing/">Pricing</a>
       <a href="/book/">Book a call</a>
-      <a class="navcta" href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a>
-      <button class="theme-toggle" type="button" aria-label="Toggle light/dark theme" onclick="window.__toggleTheme()">🌓</button>
-      <a class="lang" href="/es/legal/fair-housing/">ES</a>
     </nav>
+    <div class="nav-right">
+      <a class="lang-pill" href="/es/legal/fair-housing/" aria-label="Ver en español">ES</a>
+      <button class="icon-btn" data-theme-toggle aria-label="Toggle dark mode">🌓</button>
+      <a class="btn btn-primary nav-cta desk" href="tel:+14705173441">Hear Orby →</a>
+      <button class="icon-btn burger" data-burger aria-label="Menu" aria-expanded="false">☰</button>
+    </div>
+  </div>
+  <div class="mobile-menu" data-mobile-menu>
+    <a href="/how-it-works/">How it works</a>
+    <a href="/benefits/">Benefits</a>
+    <a href="/pricing/">Pricing</a>
+    <a href="/book/">Book a call</a>
+    <a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a>
+    <a class="btn btn-primary" href="tel:+14705173441">Hear Orby now →</a>
   </div>
 </header>
-
 <main id="main">
-  <section class="wrap prose" style="padding:70px 20px 50px">
-    <h1>Fair Housing commitment</h1>
-    <p class="legal-meta">Last updated: July 4, 2026</p>
+<section><div class="wrap">
+<div class="prose"><h1>Fair Housing commitment</h1>
+    <p class="meta">Last updated: July 4, 2026</p>
 
     <p>MyOrbisAgents is committed to the letter and the spirit of the U.S. Fair Housing Act and all applicable federal, state, and local fair-housing laws. Everyone deserves equal, dignified treatment in their search for a home.</p>
 
@@ -56,25 +66,25 @@
     <h2>Reporting a concern</h2>
     <p>If you believe an interaction fell short of these standards, tell us at <a href="mailto:hello@myorbisresults.com">hello@myorbisresults.com</a> so we can review and improve. Housing-discrimination complaints may also be filed with the U.S. Department of Housing and Urban Development (HUD) at <a href="https://www.hud.gov/fairhousing">hud.gov/fairhousing</a>.</p>
 
-    <p class="legal-note">See also our <a href="/legal/terms/">Terms of Service</a>, <a href="/legal/privacy/">Privacy Policy</a>, and <a href="/legal/cookies/">Cookie Policy</a>.</p>
-  </section>
+    <p class="note-box">See also our <a href="/legal/terms/">Terms of Service</a>, <a href="/legal/privacy/">Privacy Policy</a>, and <a href="/legal/cookies/">Cookie Policy</a>.</p></div>
+</div></section>
 </main>
-
-<footer class="site-foot">
-  <div class="wrap foot-grid">
-    <div class="foot-brand">
-      <a class="brand light" href="/">MYORBIS<span>AGENTS</span></a>
-      <p>Orby is your AI inside sales agent — answering every call, text, and web lead, and booking every showing, 24/7.</p>
-      <p class="parent">A product of <a href="https://myorbisresults.com">MyOrbisResults</a>.</p>
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-about">
+        <a class="brand" href="/"><span class="dot"></span>MYORBIS<b>AGENTS</b></a>
+        <p>Orby is your AI inside sales agent — answering every call, text, and web lead, and booking every showing, 24/7.</p>
+        <p style="margin-top:10px">A product of <a class="textlink" href="https://myorbisresults.com">MyOrbisResults</a>.</p>
+      </div>
+      <div class="foot-col"><h4>Product</h4><a href="/how-it-works/">How it works</a><a href="/benefits/">Benefits</a><a href="/pricing/">Pricing</a><a href="/book/">Book a call</a><a href="tel:+14705173441">Live demo line</a><a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a></div>
+      <div class="foot-col"><h4>Company</h4><a href="https://myorbisresults.com">About MyOrbisResults</a><a href="/book/">Talk to sales</a><a href="/es/">Español</a></div>
+      <div class="foot-col"><h4>Legal</h4><a href="/legal/terms/">Terms of Service</a><a href="/legal/privacy/">Privacy Policy</a><a href="/legal/cookies/">Cookie Policy</a><a href="/legal/fair-housing/">Fair Housing</a><a href="/sms/">SMS Terms</a></div>
     </div>
-    <div class="foot-col"><h4>Product</h4><a href="/how-it-works/">How it works</a><a href="/benefits/">Benefits</a><a href="/pricing/">Pricing</a><a href="/book/">Book a call</a><a href="tel:+14705173441">Live demo line</a><a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a></div>
-    <div class="foot-col"><h4>Company</h4><a href="https://myorbisresults.com">About MyOrbisResults</a><a href="mailto:hello@myorbisresults.com">Contact us</a><a href="/book/">Talk to sales</a><a href="/es/legal/fair-housing/">Español</a></div>
-    <div class="foot-col"><h4>Legal</h4><a href="/legal/terms/">Terms of Service</a><a href="/legal/privacy/">Privacy Policy</a><a href="/legal/cookies/">Cookie Policy</a><a href="/legal/fair-housing/">Fair Housing</a><a href="/sms/">SMS Terms</a></div>
-  </div>
-  <div class="wrap foot-fine">
-    <span>© 2026 MyOrbisResults. All rights reserved.</span>
-    <span>Orby is an AI assistant, not a licensed real-estate agent. Orby describes properties by objective facts only, in keeping with the Fair Housing Act.</span>
+    <div class="foot-bottom">© 2026 MyOrbisResults. All rights reserved. Orby is an AI assistant, not a licensed real-estate agent. Orby describes properties by objective facts only, in keeping with the Fair Housing Act.</div>
   </div>
 </footer>
+<script src="/assets/app.js?v=r20260704"></script>
+<script>(function(){var KEY="d9fc8d95afd58d58a8f2e500a960d10cc81a6f75a12db97e";var SRC="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js";function init(){if(window.OrbisVoice&&typeof window.OrbisVoice.init==="function"){try{window.OrbisVoice.init({publicKey:KEY,agentName:"Orby",businessName:"MyOrbisAgents"});}catch(e){}}}var s=document.createElement("script");s.src=SRC;s.async=true;s.onload=init;document.body.appendChild(s);})();</script>
 </body>
 </html>

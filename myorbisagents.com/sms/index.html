@@ -1,147 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Text updates &amp; SMS Terms — MyOrbisAgents</title>
-<meta name="description" content="Opt in to text updates from MyOrbisAgents — appointment confirmations, showing reminders, and follow-ups. Explicit consent, opt out anytime with STOP. SMS terms and messaging policy.">
+<title>Text updates & SMS Terms — MyOrbisAgents</title>
+<meta name="description" content="Opt in to text updates from MyOrbisAgents. Explicit consent, opt out with STOP.">
 <link rel="canonical" href="https://myorbisagents.com/sms/">
 <link rel="alternate" hreflang="en" href="https://myorbisagents.com/sms/">
 <link rel="alternate" hreflang="es" href="https://myorbisagents.com/es/sms/">
 <meta name="robots" content="index,follow">
-<link rel="stylesheet" href="/assets/site.css?v=20260704d">
-<script>(function(){try{var t=localStorage.getItem("ma_theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}window.__toggleTheme=function(){var c=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";document.documentElement.setAttribute("data-theme",c);try{localStorage.setItem("ma_theme",c);}catch(e){}};})();</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css?v=r20260704">
+<script>(function(){try{var t=localStorage.getItem("orby_theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-
-<header class="site-head">
-  <div class="wrap bar">
-    <a class="brand" href="/">MYORBIS<span>AGENTS</span></a>
-    <input type="checkbox" id="mnav" class="menu-toggle" aria-hidden="true">
-    <label for="mnav" class="hamburger" aria-label="Menu"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></label>
-    <nav class="navlinks" aria-label="Main">
-      <a href="/how-it-works/">How it works</a>
-      <a href="/benefits/">Benefits</a>
-      <a href="/pricing/">Pricing</a>
-      <a href="/book/">Book a call</a>
-      <a class="navcta" href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a>
-      <button class="theme-toggle" type="button" aria-label="Toggle light/dark theme" onclick="window.__toggleTheme()">🌓</button>
-      <a class="lang" href="/es/sms/">ES</a>
-    </nav>
-  </div>
-</header>
-
-<main id="main">
-  <section class="wrap page-hero">
-    <p class="kicker">Text updates</p>
-    <h1>Get text updates from MyOrbisAgents</h1>
-    <p class="sub">Opt in to receive appointment confirmations, showing reminders, and follow-ups by text. Your consent is explicit, and you can opt out anytime by replying STOP.</p>
-  </section>
-
-  <section class="wrap" style="padding-top:38px">
-    <form class="sms-form" id="sms-form" novalidate>
-      <label class="field-label" for="sms-name">Name <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-      <input type="text" id="sms-name" name="name" autocomplete="name" placeholder="Jane Smith">
-
-      <label class="field-label" for="sms-phone">Mobile phone number</label>
-      <input type="tel" id="sms-phone" name="phone" autocomplete="tel" placeholder="+1 555 123 4567" required>
-
-      <label class="sms-consent">
-        <input type="checkbox" id="sms-consent" name="consent">
-        <span id="sms-consent-text">I agree to receive recurring automated text messages from MyOrbisAgents about appointment scheduling, showing confirmations and reminders, and follow-up communications, at the mobile number provided. Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to opt out, HELP for help. See our <a href="/legal/privacy/" target="_blank" rel="noopener">Privacy Policy</a> and <a href="/legal/terms/" target="_blank" rel="noopener">Terms of Service</a>.</span>
-      </label>
-
-      <button type="submit" id="sms-submit" class="btn primary full">Sign up for text updates</button>
-      <div class="sms-result" id="sms-result"></div>
-
-      <p class="sms-note">By submitting this form you confirm the phone number is yours and you authorize MyOrbisAgents to send you the text messages described above. You can withdraw consent at any time by replying STOP to any message. Reply HELP for help. Message and data rates may apply. Carriers are not liable for delayed or undelivered messages.</p>
-    </form>
-  </section>
-
-  <!-- SMS PROGRAM TERMS -->
-  <section class="band">
-    <div class="wrap prose">
-      <h2>SMS Terms &amp; messaging policy</h2>
-      <p class="legal-meta">Last updated: July 4, 2026</p>
-
-      <h3>Program description</h3>
-      <p>When you provide your mobile number and opt in, MyOrbisAgents (and the licensed real-estate agent you are working with) may send you text messages related to appointment scheduling, showing confirmations and reminders, service updates, customer support, and follow-up communications.</p>
-
-      <h3>Message frequency &amp; cost</h3>
-      <p>Message frequency varies based on your interaction with the business. <b>Message and data rates may apply.</b> Consent to receive SMS messages is not a condition of purchasing any goods or services.</p>
-
-      <h3>How to opt out (STOP) and get help (HELP)</h3>
-      <p>You may opt out at any time by replying <b>STOP</b> to any message. After you reply STOP, we may send one final message to confirm you have been unsubscribed. Reply <b>HELP</b> for assistance, or contact us at <a href="mailto:hello@myorbisresults.com">hello@myorbisresults.com</a>.</p>
-
-      <h3>Your privacy</h3>
-      <p><b>No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.</b> All text-messaging originator opt-in data and consent information will not be shared with any third parties. Information is used solely to deliver the messages you requested and to operate the Service. See our <a href="/legal/privacy/">Privacy Policy</a>.</p>
-
-      <h3>Carrier disclaimer</h3>
-      <p>Wireless carriers are not liable for delayed or undelivered messages. Supported carriers may change without notice.</p>
-
-      <p class="legal-note">See also our <a href="/legal/terms/">Terms of Service</a>, <a href="/legal/privacy/">Privacy Policy</a>, and <a href="/legal/cookies/">Cookie Policy</a>.</p>
-    </div>
-  </section>
-</main>
-
-<footer class="site-foot">
-  <div class="wrap foot-grid">
-    <div class="foot-brand">
-      <a class="brand light" href="/">MYORBIS<span>AGENTS</span></a>
-      <p>Orby is your AI inside sales agent — answering every call, text, and web lead, and booking every showing, 24/7.</p>
-      <p class="parent">A product of <a href="https://myorbisresults.com">MyOrbisResults</a>.</p>
-    </div>
-    <div class="foot-col"><h4>Product</h4><a href="/how-it-works/">How it works</a><a href="/benefits/">Benefits</a><a href="/pricing/">Pricing</a><a href="/book/">Book a call</a><a href="tel:+14705173441">Live demo line</a><a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a></div>
-    <div class="foot-col"><h4>Company</h4><a href="https://myorbisresults.com">About MyOrbisResults</a><a href="mailto:hello@myorbisresults.com">Contact us</a><a href="/book/">Talk to sales</a><a href="/es/sms/">Español</a></div>
-    <div class="foot-col"><h4>Legal</h4><a href="/legal/terms/">Terms of Service</a><a href="/legal/privacy/">Privacy Policy</a><a href="/legal/cookies/">Cookie Policy</a><a href="/legal/fair-housing/">Fair Housing</a><a href="/sms/">SMS Terms</a></div>
-  </div>
-  <div class="wrap foot-fine">
-    <span>© 2026 MyOrbisResults. All rights reserved.</span>
-    <span>Orby is an AI assistant, not a licensed real-estate agent. Orby describes properties by objective facts only, in keeping with the Fair Housing Act.</span>
-  </div>
-</footer>
-
-<script>
-(function () {
-  var API = 'https://api.myorbisagents.com';
-  var form = document.getElementById('sms-form');
-  var result = document.getElementById('sms-result');
-  var submit = document.getElementById('sms-submit');
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    result.className = 'sms-result';
-    var phone = document.getElementById('sms-phone').value.trim();
-    var name = document.getElementById('sms-name').value.trim();
-    var consent = document.getElementById('sms-consent').checked;
-    var consentText = document.getElementById('sms-consent-text').textContent.trim();
-    if (!phone) { result.className = 'sms-result err'; result.textContent = 'Please enter your mobile phone number.'; return; }
-    if (!consent) { result.className = 'sms-result err'; result.textContent = 'Please check the consent box to receive text messages.'; return; }
-    submit.disabled = true; submit.textContent = 'Signing up…';
-    fetch(API + '/api/public/sms-optin', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: phone, name: name || undefined, consent: true, consentText: consentText, locale: 'en' })
-    }).then(function (res) {
-      if (!res.ok) throw new Error('request failed');
-      result.className = 'sms-result ok';
-      result.textContent = 'You are signed up. Watch for a confirmation text — reply STOP anytime to opt out.';
-      form.querySelectorAll('input').forEach(function (i) { i.disabled = true; });
-      submit.textContent = 'Signed up ✓';
-    }).catch(function () {
-      result.className = 'sms-result err';
-      result.textContent = 'Something went wrong. Please try again, or email hello@myorbisresults.com.';
-      submit.disabled = false; submit.textContent = 'Sign up for text updates';
-    });
-  });
-})();
-</script>
-<script>
-(function () {
-  var KEY = 'd9fc8d95afd58d58a8f2e500a960d10cc81a6f75a12db97e';
-  var SRC = 'https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js';
-  function init(){ if (window.OrbisVoice && typeof window.OrbisVoice.init === 'function'){ try{ window.OrbisVoice.init({ publicKey: KEY, agentName:'Orby', businessName:'MyOrbisAgents' }); }catch(e){} } }
-  var s=document.createElement('script'); s.src=SRC; s.async=true; s.onload=init; document.body.appendChild(s);
-})();
-</script>
+<header class="nav"><div class="wrap nav-inner"><a class="brand" href="/"><span class="dot"></span>MYORBIS<b>AGENTS</b></a><nav class="nav-links"><a href="/how-it-works/">How it works</a><a href="/benefits/">Benefits</a><a href="/pricing/">Pricing</a><a href="/book/">Book a call</a></nav><div class="nav-right"><a class="lang-pill" href="/es/sms/" aria-label="Ver en español">ES</a><button class="icon-btn" data-theme-toggle aria-label="Toggle dark mode">🌓</button><a class="btn btn-primary nav-cta desk" href="tel:+14705173441">Hear Orby →</a><button class="icon-btn burger" data-burger aria-label="Menu" aria-expanded="false">☰</button></div></div><div class="mobile-menu" data-mobile-menu><a href="/how-it-works/">How it works</a><a href="/benefits/">Benefits</a><a href="/pricing/">Pricing</a><a href="/book/">Book a call</a><a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a><a class="btn btn-primary" href="tel:+14705173441">Hear Orby now →</a></div></header>
+<main id="main"><section><div class="wrap">
+<div class="prose" style="text-align:center;max-width:640px">
+  <span class="eyebrow">Text updates</span>
+  <h1 style="margin-top:12px">Get text updates from MyOrbisAgents</h1>
+  <p class="meta" style="font-size:1rem;color:var(--fg-soft)">Opt in to receive appointment confirmations, showing reminders, and follow-ups by text. Your consent is explicit, and you can opt out anytime by replying STOP.</p>
+</div>
+<form class="sms-form" id="sms-form" novalidate style="margin-top:26px">
+  <label class="fl" for="sms-name">Name <span style="font-weight:400;color:var(--fg-mute)">(optional)</span></label>
+  <input type="text" id="sms-name" placeholder="Jane Smith">
+  <label class="fl" for="sms-phone">Mobile phone number</label>
+  <input type="tel" id="sms-phone" placeholder="+1 555 123 4567" required>
+  <label class="sms-consent"><input type="checkbox" id="sms-consent"><span id="sms-consent-text">I agree to receive recurring automated text messages from MyOrbisAgents about appointment scheduling, showing confirmations and reminders, and follow-up communications, at the mobile number provided. Consent is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to opt out, HELP for help. See our <a href="/legal/privacy/">Privacy Policy</a> and <a href="/legal/terms/">Terms of Service</a>.</span></label>
+  <button type="submit" id="sms-submit" class="btn btn-primary btn-block btn-lg">Sign up for text updates</button>
+  <div class="sms-result" id="sms-result"></div>
+  <p class="sms-fine">By submitting this form you confirm the phone number is yours and you authorize MyOrbisAgents to send you the text messages described above. You can withdraw consent at any time by replying STOP. Reply HELP for help. Message and data rates may apply. Carriers are not liable for delayed or undelivered messages.</p>
+</form>
+<div class="prose" style="margin-top:44px">
+  <h2>SMS Terms &amp; messaging policy</h2>
+  <p class="meta">Last updated: July 4, 2026</p>
+  <h3>Program description</h3><p>When you provide your mobile number and opt in, MyOrbisAgents (and the licensed real-estate agent you are working with) may send you text messages related to appointment scheduling, showing confirmations and reminders, service updates, customer support, and follow-up communications.</p>
+  <h3>Message frequency &amp; cost</h3><p>Message frequency varies based on your interaction with the business. <b>Message and data rates may apply.</b> Consent to receive SMS messages is not a condition of purchasing any goods or services.</p>
+  <h3>Opt out (STOP) and help (HELP)</h3><p>You may opt out at any time by replying <b>STOP</b> to any message. After you reply STOP, we may send one final message to confirm you have been unsubscribed. Reply <b>HELP</b> for assistance, or contact us at <a href="mailto:hello@myorbisresults.com">hello@myorbisresults.com</a>.</p>
+  <h3>Your privacy</h3><p><b>No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.</b> All text-messaging originator opt-in data and consent information will not be shared with any third parties. It is used solely to deliver the messages you requested and to operate the Service. See our <a href="/legal/privacy/">Privacy Policy</a>.</p>
+  <h3>Carrier disclaimer</h3><p>Wireless carriers are not liable for delayed or undelivered messages. Supported carriers may change without notice.</p>
+</div>
+</div></section></main>
+<footer class="footer"><div class="wrap"><div class="foot-grid"><div class="foot-about"><a class="brand" href="/"><span class="dot"></span>MYORBIS<b>AGENTS</b></a><p>Orby is your AI inside sales agent — answering every call, text, and web lead, and booking every showing, 24/7.</p><p style="margin-top:10px">A product of <a class="textlink" href="https://myorbisresults.com">MyOrbisResults</a>.</p></div><div class="foot-col"><h4>Product</h4><a href="/how-it-works/">How it works</a><a href="/benefits/">Benefits</a><a href="/pricing/">Pricing</a><a href="/book/">Book a call</a><a href="tel:+14705173441">Live demo line</a><a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a></div><div class="foot-col"><h4>Company</h4><a href="https://myorbisresults.com">About MyOrbisResults</a><a href="/book/">Talk to sales</a><a href="/es/">Español</a></div><div class="foot-col"><h4>Legal</h4><a href="/legal/terms/">Terms of Service</a><a href="/legal/privacy/">Privacy Policy</a><a href="/legal/cookies/">Cookie Policy</a><a href="/legal/fair-housing/">Fair Housing</a><a href="/sms/">SMS Terms</a></div></div><div class="foot-bottom">© 2026 MyOrbisResults. All rights reserved. Orby is an AI assistant, not a licensed real-estate agent. Orby describes properties by objective facts only, in keeping with the Fair Housing Act.</div></div></footer>
+<script src="/assets/app.js?v=r20260704"></script>
+<script>(function(){var KEY="d9fc8d95afd58d58a8f2e500a960d10cc81a6f75a12db97e";var SRC="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js";function init(){if(window.OrbisVoice&&typeof window.OrbisVoice.init==="function"){try{window.OrbisVoice.init({publicKey:KEY,agentName:"Orby",businessName:"MyOrbisAgents"});}catch(e){}}}var s=document.createElement("script");s.src=SRC;s.async=true;s.onload=init;document.body.appendChild(s);})();</script>
+<script>(function(){var API="https://api.myorbisagents.com";var f=document.getElementById("sms-form"),r=document.getElementById("sms-result"),b=document.getElementById("sms-submit");if(!f)return;f.addEventListener("submit",function(e){e.preventDefault();r.className="sms-result";var phone=document.getElementById("sms-phone").value.trim(),name=document.getElementById("sms-name").value.trim(),c=document.getElementById("sms-consent").checked,ct=document.getElementById("sms-consent-text").textContent.trim();if(!phone){r.className="sms-result err";r.textContent="Please enter your mobile phone number.";return;}if(!c){r.className="sms-result err";r.textContent="Please check the consent box to receive text messages.";return;}b.disabled=true;b.textContent="Signing up…";fetch(API+"/api/public/sms-optin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:phone,name:name||undefined,consent:true,consentText:ct,locale:"en"})}).then(function(res){if(!res.ok)throw 0;r.className="sms-result ok";r.textContent="You are signed up. Watch for a confirmation text — reply STOP anytime to opt out.";f.querySelectorAll("input").forEach(function(i){i.disabled=true;});b.textContent="Signed up ✓";}).catch(function(){r.className="sms-result err";r.textContent="Something went wrong. Please try again, or email hello@myorbisresults.com.";b.disabled=false;b.textContent="Sign up for text updates";});});})();</script>
 </body>
 </html>

@@ -13,33 +13,32 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/styles.css?v=r20260704">
-<script>(function(){try{var t=localStorage.getItem("orby_theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 
 <header class="nav">
   <div class="wrap nav-inner">
-    <a class="brand" href="/"><span class="dot"></span>MYORBIS<b>AGENTS</b></a>
+    <a class="brand" href="index.html"><span class="dot"></span>MYORBIS<b>AGENTS</b></a>
     <nav class="nav-links">
-      <a href="/how-it-works/">How it works</a>
-      <a href="/benefits/">Benefits</a>
-      <a href="/pricing/">Pricing</a>
-      <a href="/book/">Book a call</a>
+      <a href="how-it-works.html">How it works</a>
+      <a href="benefits.html">Benefits</a>
+      <a href="pricing.html">Pricing</a>
+      <a href="book.html">Book a call</a>
     </nav>
     <div class="nav-right">
-      <a class="lang-pill" href="/es/book/" aria-label="Ver en español">ES</a>
+      <a class="lang-pill" href="es/book.html" aria-label="Ver en español">ES</a>
       <button class="icon-btn" data-theme-toggle aria-label="Toggle dark mode">🌓</button>
       <a class="btn btn-primary nav-cta desk" href="tel:+14705173441">Hear Orby →</a>
       <button class="icon-btn burger" data-burger aria-label="Menu" aria-expanded="false">☰</button>
     </div>
   </div>
   <div class="mobile-menu" data-mobile-menu>
-    <a href="/how-it-works/">How it works</a>
-    <a href="/benefits/">Benefits</a>
-    <a href="/pricing/">Pricing</a>
-    <a href="/book/">Book a call</a>
+    <a href="how-it-works.html">How it works</a>
+    <a href="benefits.html">Benefits</a>
+    <a href="pricing.html">Pricing</a>
+    <a href="book.html">Book a call</a>
     <a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a>
     <a class="btn btn-primary" href="tel:+14705173441">Hear Orby now →</a>
   </div>
@@ -48,29 +47,37 @@
 <main id="main">
 
 <section class="hero">
-  <div class="wrap">
-    <div style="max-width:720px">
+  <div class="wrap hero-grid">
+    <div>
       <span class="eyebrow" data-reveal>Book a call</span>
       <h1 data-reveal>15 minutes to <span class="hl">never miss a lead</span> again.</h1>
       <p class="hero-lede" data-reveal>Tell us about your market and listings. We'll set Orby up for you — calendar, number, and website widget — and have you live in days. No tech skills, no long-term contract to try it.</p>
-      <ul style="list-style:none;padding:0;margin:26px 0 0;display:grid;gap:12px" data-reveal>
+      <div class="hero-cta" data-reveal>
+        <a class="btn btn-primary btn-lg" href="tel:+14705173441">📞 Hear Orby first</a>
+        <a class="btn btn-ghost btn-lg" href="pricing.html">See pricing</a>
+      </div>
+      <ul style="list-style:none;padding:0;margin:30px 0 0;display:grid;gap:12px" data-reveal>
         <li style="display:flex;gap:11px"><span style="color:var(--green);font-weight:900">✓</span> We build Orby on your real listings</li>
         <li style="display:flex;gap:11px"><span style="color:var(--green);font-weight:900">✓</span> Connect your Google Calendar &amp; dedicated number</li>
         <li style="display:flex;gap:11px"><span style="color:var(--green);font-weight:900">✓</span> Hear her on your own listings before you go live</li>
       </ul>
     </div>
-  </div>
-</section>
-
-<!-- BOOKING -->
-<section style="padding-top:0">
-  <div class="wrap">
-    <iframe class="bookframe" src="https://app.myorbisvoice.com/book/crawford.peterson2" title="Book a call with MyOrbisAgents" loading="lazy" data-reveal></iframe>
-    <div class="alt-cards" data-reveal>
-      <div class="alt-card"><b>Prefer to hear Orby first?</b><a class="textlink" href="tel:+14705173441">Call the demo line · +1 (470) 517-3441</a></div>
-      <div class="alt-card"><b>Rather email us?</b><a class="textlink" href="mailto:hello@myorbisresults.com">hello@myorbisresults.com</a></div>
+    <div data-reveal>
+      <div class="orb-card">
+        <div class="orb-glow"></div>
+        <h3 style="font-size:1.3rem;margin-bottom:6px">Request your setup call</h3>
+        <p style="color:var(--fg-soft);font-size:.95rem;margin-bottom:20px">We'll reach out within one business day.</p>
+        <form onsubmit="event.preventDefault(); this.querySelector('.form-done').style.display='block'; this.querySelector('button').textContent='Sent ✓';" style="display:grid;gap:14px">
+          <input required placeholder="Your name" style="padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font:inherit">
+          <input required type="email" placeholder="Email address" style="padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font:inherit">
+          <input placeholder="Phone (optional)" style="padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font:inherit">
+          <input placeholder="Your market / city" style="padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font:inherit">
+          <button class="btn btn-primary btn-block btn-lg" type="submit">Request my call</button>
+          <p class="form-done" style="display:none;color:var(--green);font-weight:600;text-align:center">Thanks! We'll be in touch within one business day.</p>
+        </form>
+        <p style="font-size:.8rem;color:var(--fg-mute);margin-top:14px;text-align:center">Prefer to talk now? Call <a class="textlink" href="tel:+14705173441">+1 (470) 517-3441</a>.</p>
+      </div>
     </div>
-    <p class="consent-note" data-reveal>By providing a phone number, you agree that MyOrbisAgents may contact you about your request by call or text. If you opt in to text updates, message frequency varies and message and data rates may apply; reply STOP to opt out, HELP for help. We never share your mobile information with third parties for marketing. See our <a href="/sms/">SMS Terms</a> and <a href="/legal/privacy/">Privacy Policy</a>.</p>
   </div>
 </section>
 
@@ -81,7 +88,7 @@
     <p data-reveal>Hear Orby now, or request your setup call above.</p>
     <div class="hero-cta" data-reveal>
       <a class="btn btn-primary btn-lg" href="tel:+14705173441">📞 Hear Orby now</a>
-      <a class="btn btn-light btn-lg" href="/how-it-works/">See how it works</a>
+      <a class="btn btn-light btn-lg" href="how-it-works.html">See how it works</a>
     </div>
   </div>
 </section>
@@ -92,24 +99,24 @@
   <div class="wrap">
     <div class="foot-grid">
       <div class="foot-about">
-        <a class="brand" href="/"><span class="dot"></span>MYORBIS<b>AGENTS</b></a>
+        <a class="brand" href="index.html"><span class="dot"></span>MYORBIS<b>AGENTS</b></a>
         <p>Orby is your AI inside sales agent — answering every call, text, and web lead, and booking every showing, 24/7.</p>
         <p style="margin-top:10px">A product of <a class="textlink" href="https://myorbisresults.com">MyOrbisResults</a>.</p>
       </div>
       <div class="foot-col">
         <h4>Product</h4>
-        <a href="/how-it-works/">How it works</a>
-        <a href="/benefits/">Benefits</a>
-        <a href="/pricing/">Pricing</a>
-        <a href="/book/">Book a call</a>
+        <a href="how-it-works.html">How it works</a>
+        <a href="benefits.html">Benefits</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="book.html">Book a call</a>
         <a href="tel:+14705173441">Live demo line</a>
         <a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Agent login</a>
       </div>
       <div class="foot-col">
         <h4>Company</h4>
         <a href="https://myorbisresults.com">About MyOrbisResults</a>
-        <a href="/book/">Talk to sales</a>
-        <a href="/es/book/">Español</a>
+        <a href="book.html">Talk to sales</a>
+        <a href="es/book.html">Español</a>
       </div>
       <div class="foot-col">
         <h4>Legal</h4>
@@ -126,7 +133,6 @@
   </div>
 </footer>
 
-<script src="/assets/app.js?v=r20260704"></script>
-<script>(function(){var KEY="d9fc8d95afd58d58a8f2e500a960d10cc81a6f75a12db97e";var SRC="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js";function init(){if(window.OrbisVoice&&typeof window.OrbisVoice.init==="function"){try{window.OrbisVoice.init({publicKey:KEY,agentName:"Orby",businessName:"MyOrbisAgents"});}catch(e){}}}var s=document.createElement("script");s.src=SRC;s.async=true;s.onload=init;document.body.appendChild(s);})();</script>
+<script src="assets/app.js"></script>
 </body>
 </html>
