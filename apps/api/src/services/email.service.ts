@@ -620,3 +620,93 @@ export async function sendPasswordResetEmail(opts: {
     `,
   })
 }
+
+// ── MyOrbisAgents custom-demo delivery email (bilingual EN + ES) ──────────────
+// Sent to a prospected real-estate agent with a live Orby demo loaded with their
+// own 3 listings + the launch promo. From @myorbisresults.com so it routes to
+// Brevo (the inboxing path). Agent-facing → both languages ship in one email.
+const TEAL_EMAIL = '#15A8A8'
+
+export async function sendAgentDemoEmail(opts: {
+  to: string
+  agentName: string
+  micrositeUrl: string
+  claimUrl: string
+  demoPhone: string   // E.164
+  pin: string
+  planName: string    // 'Solo Capture' | 'Solo Power' (English, allow-listed)
+  listings: Array<{ address: string; headline: string | null; priceUsd: number | null; highlights: string[] }>
+}): Promise<SendResult> {
+  const phoneDigits = opts.demoPhone.replace(/\D/g, '')
+  const phoneDisplay = phoneDigits.length === 11
+    ? `(${phoneDigits.slice(1, 4)}) ${phoneDigits.slice(4, 7)}-${phoneDigits.slice(7)}`
+    : opts.demoPhone
+  const first = opts.agentName.split(/\s+/)[0] || opts.agentName
+  const money = (n: number | null) => (n == null ? '' : ` — $${n.toLocaleString('en-US')}`)
+
+  const listingRows = opts.listings.map(l => `
+    <tr><td style="padding:8px 0;border-bottom:1px solid #eee">
+      <strong style="color:#0f1720">${l.headline || l.address}</strong>${money(l.priceUsd)}
+      ${l.highlights.length ? `<div style="color:#516170;font-size:12px;margin-top:2px">${l.highlights.slice(0, 4).join(' · ')}</div>` : ''}
+    </td></tr>`).join('')
+
+  const btn = (href: string, label: string) =>
+    `<a href="${href}" style="display:inline-block;background:${TEAL_EMAIL};color:#fff;padding:11px 22px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;margin:6px 8px 6px 0">${label}</a>`
+
+  const block = (L: {
+    hi: string; lede: string; listingsH: string; tryH: string; tryBtn: string;
+    callH: string; callBody: string; pinLabel: string; promo: string; claimBtn: string
+  }) => `
+    <p style="font-size:15px;color:#0f1720">${L.hi}</p>
+    <p style="font-size:15px;color:#516170">${L.lede}</p>
+    <div style="margin:18px 0">${btn(opts.micrositeUrl, L.tryBtn)}</div>
+    <h3 style="font-size:14px;color:#0f1720;margin:22px 0 6px">${L.listingsH}</h3>
+    <table style="width:100%;border-collapse:collapse">${listingRows}</table>
+    <h3 style="font-size:14px;color:#0f1720;margin:22px 0 6px">📞 ${L.callH}</h3>
+    <p style="font-size:14px;color:#516170;margin:0 0 4px">${L.callBody}</p>
+    <p style="font-size:16px;margin:0"><a href="tel:${opts.demoPhone}" style="color:${TEAL_EMAIL};font-weight:700;text-decoration:none">${phoneDisplay}</a> · ${L.pinLabel} <strong style="letter-spacing:.1em">${opts.pin}</strong></p>
+    <div style="background:#f4fbfb;border:1px solid #cceceb;border-radius:10px;padding:14px 16px;margin:22px 0">
+      <p style="font-size:14px;color:#0f1720;margin:0 0 10px">${L.promo}</p>
+      ${btn(opts.claimUrl, L.claimBtn)}
+    </div>`
+
+  const en = block({
+    hi: `Hi ${first},`,
+    lede: `I built you a live demo of Orby — an AI assistant that answers your buyers 24/7, already loaded with your listings below. Try it, then keep it for your business.`,
+    listingsH: `Listings Orby already knows:`,
+    tryH: '', tryBtn: 'Try your live demo →',
+    callH: `Call Orby`,
+    callBody: `Call from your own phone and Orby answers as your assistant. From any other phone, enter the PIN:`,
+    pinLabel: 'PIN',
+    promo: `<strong>Launch offer:</strong> 50% off your monthly ${opts.planName} plan for a full year + $250 setup — this promotion only.`,
+    claimBtn: 'Get Orby for your business →',
+  })
+  const es = block({
+    hi: `Hola ${first}:`,
+    lede: `Te preparé una demo en vivo de Orby — un asistente de IA que responde a tus compradores 24/7, ya cargado con tus propiedades abajo. Pruébalo y consérvalo para tu negocio.`,
+    listingsH: `Propiedades que Orby ya conoce:`,
+    tryH: '', tryBtn: 'Prueba tu demo en vivo →',
+    callH: `Llama a Orby`,
+    callBody: `Llama desde tu propio teléfono y Orby contesta como tu asistente. Desde cualquier otro teléfono, ingresa el PIN:`,
+    pinLabel: 'PIN',
+    promo: `<strong>Oferta de lanzamiento:</strong> 50% de descuento en tu plan mensual ${opts.planName} por un año completo + $250 de instalación — solo esta promoción.`,
+    claimBtn: 'Consigue Orby para tu negocio →',
+  })
+
+  return sendEmail({
+    to: opts.to,
+    from: `"MyOrbisAgents" <notify@myorbisresults.com>`,
+    subject: `${first}, meet Orby — your AI assistant, live on your listings`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#0f1720;line-height:1.5">
+        <div style="border-bottom:2px solid ${TEAL_EMAIL};padding-bottom:10px;margin-bottom:18px">
+          <span style="font-size:18px;font-weight:800;color:${TEAL_EMAIL}">MyOrbisAgents</span>
+        </div>
+        ${en}
+        <div style="border-top:1px dashed #cbd5e1;margin:30px 0 22px;text-align:center;color:#94a3b8;font-size:12px">— Español —</div>
+        ${es}
+        <p style="color:#94a3b8;font-size:11px;margin-top:26px;border-top:1px solid #eee;padding-top:14px">MyOrbisAgents · a product of MyOrbisResults</p>
+      </div>
+    `,
+  })
+}

@@ -532,6 +532,16 @@ async function handleCheckoutCompleted(session: StripeCheckoutSession) {
     return
   }
 
+  // Agent-demo promo claim — convert the demo tenant to a paid account (create
+  // the owner login, flip isDemo/demoKind off, sync entitlements) BEFORE the
+  // standard subscription upsert below, which needs an ACTIVE tenant + owner.
+  // Idempotent; then falls through so metadata.tenantId+planCode drive the
+  // normal recurring path.
+  if (session.metadata?.scope === 'agent_demo_claim') {
+    const { completeAgentDemoClaim } = await import('./agent-demo.service.js')
+    await completeAgentDemoClaim(session)
+  }
+
   const tenantId = session.metadata?.tenantId
   const planCode = session.metadata?.planCode
   // No app-originated metadata = a raw Payment Link checkout (comp-code buy link).
