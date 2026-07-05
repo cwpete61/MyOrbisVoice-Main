@@ -13,7 +13,7 @@ import { TenantLogo } from '@/components/TenantLogo'
 import { TenantIdBadge } from '@/components/TenantIdBadge'
 import { TierBadge } from '@/components/TierBadge'
 import { IdleTimeout } from '@/components/IdleTimeout'
-import { getImpersonationInfo, endImpersonation } from '@/lib/auth'
+import { getImpersonationInfo, endImpersonation, getPlatformRoleTier } from '@/lib/auth'
 import { apiFetch } from '@/hooks/useApi'
 import { useTenantContext } from '@/hooks/useTenantContext'
 import { useT } from '@/lib/i18n/I18nProvider'
@@ -113,6 +113,18 @@ function SidebarContents({ onNav }: { onNav?: () => void }) {
       <nav className="flex-1 min-h-0 px-3 py-4 overflow-y-auto nav-scroll" onClick={onNav}>
         <SidebarNav />
       </nav>
+
+      {/* Admin entry — only for platform staff (super_admin / admin / support).
+         Host decides which admin renders: agents host → MyOrbisAgents admin hub. */}
+      {getPlatformRoleTier() != null && (
+        <div className="px-3 pt-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <a href="/admin" onClick={onNav}
+            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition"
+            style={{ color: 'var(--text-secondary)', background: 'var(--surface-overlay)' }}>
+            <span>🛡️</span> Admin dashboard
+          </a>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
