@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/authenticate.js'
 import { requirePlatformAdmin, requirePlatformSuperAdmin, requirePlatformSupport } from '../middleware/rbac.js'
 import * as adminService from '../services/admin.service.js'
 import * as compCodeService from '../services/comp-code.service.js'
+import * as agentDemoService from '../services/agent-demo.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { getEnv } from '@voiceautomation/config'
 import { prisma } from '../lib/prisma.js'
@@ -2590,6 +2591,60 @@ router.delete('/scripts/:id', requirePlatformAdmin, async (req, res, next) => {
   try {
     const scriptsSvc = await import('../services/scripts.service.js')
     res.json({ data: await scriptsSvc.deleteDefault(req.params.id!) })
+  } catch (err) { next(err) }
+})
+
+// ── MyOrbisAgents custom agent demos ───────────────────────────────────────────
+// Admin pastes an agent + 3 listings → we provision a per-agent demo tenant
+// (Orby + listings + enrichment) and email the agent a live demo + promo. Agents
+// host only. See agent-demo.service.ts.
+const agentDemoCreateSchema = z.object({
+  agentName:   z.string().min(2).max(120),
+  brokerage:   z.string().max(160).optional().or(z.literal('')),
+  market:      z.string().min(2).max(120),
+  agentEmail:  z.string().email(),
+  agentPhone:  z.string().max(40).optional().or(z.literal('')),
+  specialties: z.string().max(300).optional().or(z.literal('')),
+  listings:    z.array(z.string().min(1).max(4000)).min(1).max(3),
+  avgPriceUsd: z.number().int().nonnegative().optional(),
+  salesLast12: z.number().int().nonnegative().optional(),
+})
+
+function requireAgentsHost(req: { hostname: string }) {
+  if (!isAgentsHost(req)) throw new AppError('NOT_FOUND', 'Not found', 404)
+}
+
+router.get('/agent-demos', async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    res.json({ data: await agentDemoService.listAgentDemos() })
+  } catch (err) { next(err) }
+})
+
+router.get('/agent-demos/:id', async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    res.json({ data: await agentDemoService.getAgentDemo(req.params['id']!) })
+  } catch (err) { next(err) }
+})
+
+router.post('/agent-demos', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const body = validate(agentDemoCreateSchema, req.body)
+    const demo = await agentDemoService.createAgentDemo({
+      agentName:   body.agentName,
+      brokerage:   body.brokerage || undefined,
+      market:      body.market,
+      agentEmail:  body.agentEmail,
+      agentPhone:  body.agentPhone || undefined,
+      specialties: body.specialties || undefined,
+      listings:    body.listings,
+      avgPriceUsd: body.avgPriceUsd,
+      salesLast12: body.salesLast12,
+      createdById: req.user!.id,
+    })
+    res.status(201).json({ data: demo })
   } catch (err) { next(err) }
 })
 

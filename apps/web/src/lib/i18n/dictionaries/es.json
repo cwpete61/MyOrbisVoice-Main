@@ -1,4 +1,21 @@
 {
+  "agentDemoSite": {
+    "badge": "Demo en vivo",
+    "meetOrby": "Conoce a Orby — el asistente de IA de {agent}",
+    "tagline": "Tus compradores reciben respuestas al instante sobre tus propiedades, 24/7. Pruébalo — chatea o llama, como lo haría un comprador.",
+    "talkHeading": "Habla con Orby",
+    "talkBody": "Toca la burbuja de chat en la esquina y pregunta por una de tus propiedades — escuelas cercanas, el precio, agendar una visita.",
+    "callHeading": "O llama a Orby",
+    "callBody": "Llama al número de abajo. Desde tu propio teléfono, Orby contesta como tu asistente. Desde cualquier otro teléfono, ingresa este PIN:",
+    "listingsHeading": "Las propiedades que Orby conoce",
+    "planLabel": "Plan recomendado",
+    "claimCta": "Consigue Orby para tu negocio",
+    "claimNote": "50% de descuento mensual tu primer año + $250 de instalación — solo esta promoción.",
+    "loading": "Cargando tu demo…",
+    "notFound": "Este enlace de demo no es válido o ha expirado.",
+    "beds": "hab",
+    "baths": "baños"
+  },
   "nav": {
     "groups": {
       "overview": "Resumen",

@@ -1,4 +1,21 @@
 {
+  "agentDemoSite": {
+    "badge": "Live demo",
+    "meetOrby": "Meet Orby — {agent}'s AI assistant",
+    "tagline": "Your buyers get instant answers about your listings, 24/7. Try it — talk or call, just like a buyer would.",
+    "talkHeading": "Talk to Orby",
+    "talkBody": "Tap the chat bubble in the corner and ask about one of your listings — nearby schools, the price, book a showing.",
+    "callHeading": "Or call Orby",
+    "callBody": "Call the number below. From your own phone, Orby answers as your assistant. From any other phone, enter this PIN:",
+    "listingsHeading": "The listings Orby knows",
+    "planLabel": "Recommended plan",
+    "claimCta": "Get Orby for your business",
+    "claimNote": "50% off monthly for your first year + $250 setup — this promo only.",
+    "loading": "Loading your demo…",
+    "notFound": "This demo link is invalid or has expired.",
+    "beds": "bd",
+    "baths": "ba"
+  },
   "nav": {
     "groups": {
       "overview": "Overview",

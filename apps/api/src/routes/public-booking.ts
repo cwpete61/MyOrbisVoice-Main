@@ -7,6 +7,7 @@ import { getConfigValue } from '../services/system-config.service.js'
 import { searchAvailability, createAppointment } from '../services/appointment.service.js'
 import { createContact } from '../services/contact.service.js'
 import { attributeBooking } from '../services/cold-email-campaign.service.js'
+import { DEMO_PHONE_E164 } from '../services/demo-session.service.js'
 
 const router: IRouter = Router()
 
@@ -315,6 +316,43 @@ router.post('/public/partners/:slug/bookings', asyncHandler(async (req, res) => 
       startAt:       appointment.startAt,
       endAt:         appointment.endAt,
       timezone:      appointment.timezone,
+    },
+  })
+}))
+
+// ─── GET /api/public/agent-demo/:slug ───────────────────────────────────────
+// Public data for a MyOrbisAgents custom-demo microsite (/demo/<slug>). No auth
+// — the agent opens it from their email. Returns the agent's widget publicKey
+// (to embed live Orby), their enriched listings, and the shared call line + PIN.
+router.get('/public/agent-demo/:slug', asyncHandler(async (req, res) => {
+  const demo = await prisma.agentDemo.findUnique({ where: { micrositeSlug: req.params['slug']! } })
+  if (!demo) throw new AppError('NOT_FOUND', 'Demo not found', 404)
+  if (demo.expiresAt && demo.expiresAt.getTime() < Date.now()) {
+    throw new AppError('GONE', 'This demo link has expired', 410)
+  }
+  const [widget, listings] = await Promise.all([
+    prisma.channelConfig.findFirst({
+      where:  { tenantId: demo.tenantId, channelType: 'WIDGET' },
+      select: { publicKey: true },
+    }),
+    prisma.listing.findMany({
+      where:   { tenantId: demo.tenantId },
+      orderBy: { createdAt: 'asc' },
+      select:  { id: true, address: true, headline: true, priceUsd: true, beds: true, baths: true,
+                 sqft: true, propertyType: true, description: true, highlights: true },
+    }),
+  ])
+  res.json({
+    data: {
+      agentName:       demo.agentName,
+      brokerage:       demo.brokerage,
+      market:          demo.market,
+      widgetPublicKey: widget?.publicKey ?? '',
+      demoPhone:       DEMO_PHONE_E164,
+      pin:             demo.pin,
+      recommendedTier: demo.recommendedTier,
+      status:          demo.status,
+      listings,
     },
   })
 }))

@@ -35,6 +35,7 @@ const ADMIN_CARDS: Card[] = [
   { group: 'Tenants & billing', label: 'Plans & pricing', href: '/admin/plans',           icon: '💳', desc: 'Plans, entitlements, price mapping.',            min: 'admin' },
   { group: 'Tenants & billing', label: 'Comp codes',      href: '/admin/comp-codes',      icon: '🎟️', desc: 'Generate & track complimentary access codes.',   min: 'admin' },
   { group: 'Tenants & billing', label: 'Prospects',       href: '/admin/prospects',       icon: '🌱', desc: 'Inbound leads & onboarding pipeline.',           min: 'admin' },
+  { group: 'Tenants & billing', label: 'Agent demos',     href: '/admin/agent-demos',     icon: '🏡', desc: 'Build a live Orby demo from an agent + 3 listings.', min: 'admin' },
 
   { group: 'Telephony & compliance', label: 'A2P compliance',  href: '/admin/a2p',             icon: '📋', desc: 'Review & submit 10DLC brand + campaigns.',      min: 'support' },
   { group: 'Telephony & compliance', label: 'Phone numbers',   href: '/admin/phone-numbers',   icon: '☎️', desc: 'Provisioned numbers, forwarding, capabilities.', min: 'admin' },

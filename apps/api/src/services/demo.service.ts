@@ -43,7 +43,7 @@ const SAMPLE_LISTINGS = [
   { address: '3300 Duval St, Austin, TX 78705', headline: 'Downtown-adjacent condo', priceUsd: 449000, beds: 2, baths: 2, sqft: 1120, propertyType: 'Condo', status: 'ACTIVE' as const, description: 'Corner unit with skyline views, covered parking, community pool.', highlights: ['HOA covers water', 'Gated', 'Top floor'] },
 ]
 
-async function applyDemoEntitlements(tenantId: string): Promise<void> {
+export async function applyDemoEntitlements(tenantId: string): Promise<void> {
   for (const e of DEMO_ENTITLEMENTS) {
     const isBool = e.bool !== undefined
     await prisma.tenantEntitlement.upsert({
