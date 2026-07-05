@@ -244,12 +244,24 @@ export default function AdminTenantDetailPage() {
               className="input flex-1 text-xs"
             >
               <option value="">Select a plan to grant…</option>
-              <option value="free">Free</option>
-              <option value="basic_monthly">Basic ($197/mo)</option>
-              <option value="pro_monthly">Pro ($497/mo)</option>
-              <option value="premier_monthly">Premier ($997/mo)</option>
-              <option value="enterprise_monthly">Enterprise ($1,997/mo)</option>
-              <option value="ltd">LTD ($497 lifetime)</option>
+              {typeof window !== 'undefined' && window.location.host === 'app.myorbisagents.com' ? (
+                // MyOrbisAgents admin grants only the real-estate agent packages.
+                <>
+                  <option value="solo_capture">Solo Capture ($297/mo)</option>
+                  <option value="solo_power">Solo Power ($497/mo)</option>
+                  <option value="solo_capture_yearly">Solo Capture ($2,282/yr)</option>
+                  <option value="solo_power_yearly">Solo Power ($3,482/yr)</option>
+                </>
+              ) : (
+                <>
+                  <option value="free">Free</option>
+                  <option value="basic_monthly">Basic ($197/mo)</option>
+                  <option value="pro_monthly">Pro ($497/mo)</option>
+                  <option value="premier_monthly">Premier ($997/mo)</option>
+                  <option value="enterprise_monthly">Enterprise ($1,997/mo)</option>
+                  <option value="ltd">LTD ($497 lifetime)</option>
+                </>
+              )}
             </select>
             <button
               onClick={grantPlan}

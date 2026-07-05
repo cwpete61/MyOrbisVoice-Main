@@ -14,6 +14,14 @@ import * as a2pService from '../services/a2p.service.js'
 import { writeAuditLogFromRequest } from '../lib/audit.js'
 
 const router: IRouter = Router()
+
+// MyOrbisAgents runs on its own admin door (api.myorbisagents.com). That app is
+// real-estate only: its plans, pricing and comp-code surfaces must show ONLY the
+// agent packages, never the Voice tiers. Any list endpoint the agents admin hits
+// scopes to these codes when the request lands on the agents host.
+const AGENTS_API_HOST = 'api.myorbisagents.com'
+const AGENT_PLAN_CODES = ['solo_capture', 'solo_power', 'solo_capture_yearly', 'solo_power_yearly']
+const isAgentsHost = (req: { hostname: string }) => req.hostname === AGENTS_API_HOST
 // File-level guard is the WEAKEST platform-staff role (Support). Read-only
 // routes inherit this guard and need nothing more. Routes that perform
 // privileged writes get an extra `requirePlatformAdmin` middleware in
@@ -21,9 +29,11 @@ const router: IRouter = Router()
 // `requirePlatformSuperAdmin`. Three tiers, enforced server-side.
 router.use(authenticate, requirePlatformSupport)
 
-router.get('/platform/status', async (_req, res, next) => {
+router.get('/platform/status', async (req, res, next) => {
   try {
     const env = getEnv()
+    // On the MyOrbisAgents admin door, every tenant metric is real-estate only.
+    const VERT = req.hostname === 'api.myorbisagents.com' ? { industryVertical: 'REAL_ESTATE' as const } : {}
     // Exclude soft-deleted Tenant rows from every metric here. The total
     // (`tenantCount`) used to include rows with deletedAt set — most of
     // those are test signups, churned trials, and abandoned onboarding
@@ -31,11 +41,11 @@ router.get('/platform/status', async (_req, res, next) => {
     // only 6 rows are alive). Filter once, surface a per-status breakdown.
     const NOT_DELETED = { deletedAt: null } as const
     const [tenantCount, activeCount, trialCount, suspendedCount, softDeletedCount] = await Promise.all([
-      prisma.tenant.count({ where: NOT_DELETED }),
-      prisma.tenant.count({ where: { ...NOT_DELETED, status: 'ACTIVE' } }),
-      prisma.tenant.count({ where: { ...NOT_DELETED, status: 'TRIAL' } }),
-      prisma.tenant.count({ where: { ...NOT_DELETED, status: 'SUSPENDED' } }),
-      prisma.tenant.count({ where: { deletedAt: { not: null } } }),
+      prisma.tenant.count({ where: { ...NOT_DELETED, ...VERT } }),
+      prisma.tenant.count({ where: { ...NOT_DELETED, ...VERT, status: 'ACTIVE' } }),
+      prisma.tenant.count({ where: { ...NOT_DELETED, ...VERT, status: 'TRIAL' } }),
+      prisma.tenant.count({ where: { ...NOT_DELETED, ...VERT, status: 'SUSPENDED' } }),
+      prisma.tenant.count({ where: { deletedAt: { not: null }, ...VERT } }),
     ])
     res.json({
       data: {
@@ -82,7 +92,10 @@ const listQuerySchema = z.object({
 router.get('/tenants', async (req, res, next) => {
   try {
     const params = validate(listQuerySchema, req.query)
-    const result = await adminService.listTenants(params)
+    // On the MyOrbisAgents admin door (api.myorbisagents.com), the tenant roster
+    // is real-estate agents ONLY — never Voice/other-vertical tenants.
+    const vertical = req.hostname === 'api.myorbisagents.com' ? 'REAL_ESTATE' : undefined
+    const result = await adminService.listTenants({ ...params, vertical })
     res.json({ data: { items: result.tenants, total: result.total, limit: result.limit, offset: result.offset } })
   } catch (err) { next(err) }
 })
@@ -90,6 +103,11 @@ router.get('/tenants', async (req, res, next) => {
 router.get('/tenants/:tenantId', async (req, res, next) => {
   try {
     const tenant = await adminService.getTenantDetail(req.params['tenantId']!)
+    // MyOrbisAgents admin is real-estate only — a hand-typed URL to a Voice
+    // tenant must not open here even though the roster never lists it.
+    if (req.hostname === 'api.myorbisagents.com' && tenant.industryVertical !== 'REAL_ESTATE') {
+      throw new AppError('NOT_FOUND', 'Tenant not found', 404)
+    }
     res.json({ data: tenant })
   } catch (err) { next(err) }
 })
@@ -891,9 +909,10 @@ router.post('/tenants/:tenantId/storage-tier', requirePlatformAdmin, async (req,
 
 // ── Plan management ────────────────────────────────────────────────────────────
 
-router.get('/plans', async (_req, res, next) => {
+router.get('/plans', async (req, res, next) => {
   try {
     const plans = await prisma.plan.findMany({
+      where: isAgentsHost(req) ? { code: { in: AGENT_PLAN_CODES } } : undefined,
       include: { entitlements: { orderBy: { key: 'asc' } } },
       orderBy: { name: 'asc' },
     })
@@ -1127,10 +1146,14 @@ router.get('/twilio-logs', async (req, res, next) => {
 // GET /api/admin/errors — recent unhandled errors captured by the global
 // error handler. Sourced from AuditLog rows where action starts with
 // 'system.error.'. Newest first, capped at 200.
-router.get('/errors', async (_req, res, next) => {
+router.get('/errors', async (req, res, next) => {
   try {
     const errors = await prisma.auditLog.findMany({
-      where:   { action: { startsWith: 'system.error.' } },
+      where:   {
+        action: { startsWith: 'system.error.' },
+        // Agents admin sees only errors tied to real-estate tenants.
+        ...(isAgentsHost(req) ? { tenant: { is: { industryVertical: 'REAL_ESTATE' } } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       take:    200,
     })
@@ -2066,7 +2089,7 @@ function buildA2PData(d: z.infer<typeof a2pAdminSchema>) {
 // docs/runbook-comp-codes-setup.md for the one-time Stripe Dashboard setup.
 
 const compCodeCreateSchema = z.object({
-  tier:           z.enum(['BASIC', 'PRO', 'PREMIER', 'ENTERPRISE']),
+  tier:           z.enum(['BASIC', 'PRO', 'PREMIER', 'ENTERPRISE', 'SOLO_CAPTURE', 'SOLO_POWER']),
   recipientName:  z.string().min(1).max(200),
   recipientEmail: z.string().email(),
   purpose:        z.string().max(500).optional().or(z.literal('')),
@@ -2099,10 +2122,15 @@ router.get('/comp-codes/config-status', async (_req, res, next) => {
 // standalone link-generator section in the admin UI uses this to let an
 // admin pick any tier (including LTD) and generate a "share this buy link
 // with email pre-filled" URL — separate from comp codes.
-router.get('/comp-codes/buy-links', async (_req, res, next) => {
+router.get('/comp-codes/buy-links', async (req, res, next) => {
   try {
     const plans = await prisma.plan.findMany({
-      where:  { isActive: true, stripeBuyLinkUrl: { not: null } },
+      where:  {
+        isActive: true,
+        stripeBuyLinkUrl: { not: null },
+        // Agents admin never surfaces Voice buy-links.
+        ...(isAgentsHost(req) ? { code: { in: AGENT_PLAN_CODES } } : {}),
+      },
       select: { code: true, name: true, stripeBuyLinkUrl: true, priceCents: true, interval: true },
       orderBy: { priceCents: 'asc' },
     })

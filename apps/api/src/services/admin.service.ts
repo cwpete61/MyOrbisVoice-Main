@@ -9,11 +9,14 @@ export const adminUpdateTenantSchema = z.object({
   timezone: z.string().max(60).optional(),
 })
 
-export async function listTenants(params: { search?: string; status?: string; limit?: number; offset?: number }) {
-  const { search, status, limit = 50, offset = 0 } = params
+export async function listTenants(params: { search?: string; status?: string; limit?: number; offset?: number; vertical?: string }) {
+  const { search, status, limit = 50, offset = 0, vertical } = params
 
   const where = {
     deletedAt: null,
+    // Scope the roster to one vertical when asked (MyOrbisAgents admin passes
+    // REAL_ESTATE so its roster shows only real-estate agents, never Voice tenants).
+    ...(vertical && { industryVertical: vertical as 'REAL_ESTATE' }),
     ...(status && { status: status as 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CANCELED' | 'ARCHIVED' }),
     ...(search && {
       OR: [

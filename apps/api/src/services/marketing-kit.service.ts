@@ -45,9 +45,13 @@ export function mediaTypeFromMime(mime: string): MediaType {
 
 // ── Read ─────────────────────────────────────────────────────────────────────
 
-export async function listVideos(adminMode = false) {
+export async function listVideos(adminMode = false, brand?: string) {
   return prisma.marketingKitVideo.findMany({
-    where: adminMode ? {} : { visible: true },
+    where: {
+      ...(adminMode ? {} : { visible: true }),
+      // Host-gated brand scope: agents surfaces pass 'AGENTS', Voice pass 'VOICE'.
+      ...(brand ? { brand } : {}),
+    },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
   })
 }
@@ -102,6 +106,7 @@ export interface CreateInput {
   sortOrder?:    number
   mediaType?:    MediaType
   track?:        string
+  brand?:        string
 }
 function validateCreate(d: CreateInput) {
   if (!VALID_INTENTS.includes(d.intent)) throw new AppError('VALIDATION_ERROR', `intent must be one of: ${VALID_INTENTS.join(', ')}`, 422)
@@ -140,6 +145,7 @@ export async function createVideo(data: CreateInput, userId?: string) {
       sortOrder:     data.sortOrder ?? ((last?.sortOrder ?? 0) + 10),
       mediaType:     data.mediaType ?? 'video',
       track:         data.track ?? null,
+      brand:         data.brand ?? 'VOICE',
       createdById:   userId,
     },
   })
@@ -308,6 +314,7 @@ export async function createVideoWithFile(
       mediaType,
       mimeType:      mime,
       track:         data.track ?? null,
+      brand:         data.brand ?? 'VOICE',
       createdById:   userId,
     },
   })
@@ -356,6 +363,7 @@ export async function createCarouselWithFiles(
       mediaType:     'carousel',
       mimeType:      files[0]!.mime,
       track:         data.track ?? null,
+      brand:         data.brand ?? 'VOICE',
       createdById:   userId,
     },
   })
@@ -475,6 +483,8 @@ export interface GenerateInput {
   // requested deliberately and is ALSO gated by the MARKETING_KIT_AI_IMAGES
   // env kill-switch. Without both, generation runs text-only at $0 image cost.
   aiBackground?: boolean
+  // Product surface the generated row belongs to ('VOICE' | 'AGENTS').
+  brand?:        string
 }
 
 // Master kill-switch for paid AI image generation. Default OFF — set
@@ -558,6 +568,7 @@ export async function generatePostAndRender(input: GenerateInput, userId?: strin
       mediaType:     isVideo ? 'video' : 'image',
       mimeType:      mime,
       captionsJson:  payload.captions as unknown as object,
+      brand:         input.brand ?? 'VOICE',
       createdById:   userId,
     },
   })

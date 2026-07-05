@@ -19,8 +19,21 @@ import { useEffect, useMemo, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 import { useT, useLocale } from '@/lib/i18n/I18nProvider'
 
-type CompTier = 'BASIC' | 'PRO' | 'PREMIER' | 'ENTERPRISE'
-const TIERS: readonly CompTier[] = ['BASIC', 'PRO', 'PREMIER', 'ENTERPRISE']
+type CompTier = 'BASIC' | 'PRO' | 'PREMIER' | 'ENTERPRISE' | 'SOLO_CAPTURE' | 'SOLO_POWER'
+const VOICE_TIERS: readonly CompTier[] = ['BASIC', 'PRO', 'PREMIER', 'ENTERPRISE']
+const AGENT_TIERS: readonly CompTier[] = ['SOLO_CAPTURE', 'SOLO_POWER']
+// MyOrbisAgents admin (app.myorbisagents.com) offers only the real-estate
+// packages; the Voice admin offers the Voice tiers. Config-status returns all
+// tiers server-side; the UI shows only the ones for its host.
+function activeTiers(): readonly CompTier[] {
+  return (typeof window !== 'undefined' && window.location.host === 'app.myorbisagents.com')
+    ? AGENT_TIERS : VOICE_TIERS
+}
+// Display label for a tier code (SOLO_CAPTURE → "Solo Capture").
+const TIER_LABEL: Record<CompTier, string> = {
+  BASIC: 'Basic', PRO: 'Pro', PREMIER: 'Premier', ENTERPRISE: 'Enterprise',
+  SOLO_CAPTURE: 'Solo Capture', SOLO_POWER: 'Solo Power',
+}
 
 interface CompCode {
   id:               string
@@ -49,10 +62,12 @@ interface BuyLinkPlan {
 type ConfigStatus = Record<CompTier, boolean>
 
 const TIER_STYLES: Record<CompTier, { bg: string; fg: string }> = {
-  BASIC:      { bg: 'oklch(95% 0.02 230)', fg: 'oklch(35% 0.10 230)' },
-  PRO:        { bg: 'oklch(95% 0.06 270)', fg: 'oklch(35% 0.16 270)' },
-  PREMIER:    { bg: 'oklch(95% 0.06 320)', fg: 'oklch(35% 0.18 320)' },
-  ENTERPRISE: { bg: 'oklch(95% 0.06 25)',  fg: 'oklch(35% 0.18 25)'  },
+  BASIC:        { bg: 'oklch(95% 0.02 230)', fg: 'oklch(35% 0.10 230)' },
+  PRO:          { bg: 'oklch(95% 0.06 270)', fg: 'oklch(35% 0.16 270)' },
+  PREMIER:      { bg: 'oklch(95% 0.06 320)', fg: 'oklch(35% 0.18 320)' },
+  ENTERPRISE:   { bg: 'oklch(95% 0.06 25)',  fg: 'oklch(35% 0.18 25)'  },
+  SOLO_CAPTURE: { bg: 'oklch(95% 0.06 193)', fg: 'oklch(35% 0.14 193)' },
+  SOLO_POWER:   { bg: 'oklch(95% 0.08 193)', fg: 'oklch(30% 0.16 193)' },
 }
 
 function TierPill({ tier }: { tier: CompTier }) {
@@ -62,7 +77,7 @@ function TierPill({ tier }: { tier: CompTier }) {
       className="inline-block px-2 py-0.5 rounded text-xs font-medium uppercase tracking-wide"
       style={{ background: s.bg, color: s.fg }}
     >
-      {tier}
+      {TIER_LABEL[tier]}
     </span>
   )
 }
@@ -446,7 +461,7 @@ export default function AdminCompCodesPage() {
 
   const missingTiers = useMemo(() => {
     if (!config) return [] as CompTier[]
-    return TIERS.filter(tier => !config[tier])
+    return activeTiers().filter(tier => !config[tier])
   }, [config])
 
   const visibleCodes = useMemo(() => {
@@ -541,7 +556,7 @@ export default function AdminCompCodesPage() {
           {t('adminCompCodes.generators.title')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {TIERS.map(tier => (
+          {activeTiers().map(tier => (
             <GeneratorCard
               key={tier}
               tier={tier}
@@ -568,7 +583,7 @@ export default function AdminCompCodesPage() {
             style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
           >
             <option value="ALL">{t('adminCompCodes.table.filterAll')}</option>
-            {TIERS.map(tier => <option key={tier} value={tier}>{tier}</option>)}
+            {activeTiers().map(tier => <option key={tier} value={tier}>{TIER_LABEL[tier]}</option>)}
           </select>
         </div>
 

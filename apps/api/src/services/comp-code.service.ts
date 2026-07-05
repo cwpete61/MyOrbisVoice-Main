@@ -23,12 +23,18 @@ import { AppError } from '@voiceautomation/shared'
 import { getStripe } from '../lib/stripe.js'
 import { prisma } from '../lib/prisma.js'
 
-/** Map tier enum (used in Stripe coupon metadata) → Plan.code (DB row). */
-const TIER_TO_PLAN_CODE: Record<'BASIC' | 'PRO' | 'PREMIER' | 'ENTERPRISE', string> = {
-  BASIC:      'basic_monthly',
-  PRO:        'pro_monthly',
-  PREMIER:    'premier_monthly',
-  ENTERPRISE: 'enterprise_monthly',
+/** Map tier enum (used in Stripe coupon metadata) → Plan.code (DB row).
+ *  BASIC/PRO/PREMIER/ENTERPRISE are the MyOrbisVoice tiers; SOLO_CAPTURE /
+ *  SOLO_POWER are the MyOrbisAgents (real-estate) packages. Each tier's coupon
+ *  is scoped in Stripe to only its plan's product, so a code for one tier
+ *  cannot be redeemed against another. */
+const TIER_TO_PLAN_CODE: Record<CompCodeTier, string> = {
+  BASIC:        'basic_monthly',
+  PRO:          'pro_monthly',
+  PREMIER:      'premier_monthly',
+  ENTERPRISE:   'enterprise_monthly',
+  SOLO_CAPTURE: 'solo_capture',
+  SOLO_POWER:   'solo_power',
 }
 
 /**
@@ -40,7 +46,7 @@ const TIER_TO_PLAN_CODE: Record<'BASIC' | 'PRO' | 'PREMIER' | 'ENTERPRISE', stri
  * to create the Payment Link in Stripe and store its URL on the Plan row).
  */
 async function buildCheckoutUrl(
-  tier:           'BASIC' | 'PRO' | 'PREMIER' | 'ENTERPRISE',
+  tier:           CompCodeTier,
   recipientEmail: string,
   code:           string,
 ): Promise<string | null> {
@@ -85,8 +91,12 @@ interface StripePromotionCode {
   metadata:         Record<string, string> | null
 }
 
-export type CompCodeTier = 'BASIC' | 'PRO' | 'PREMIER' | 'ENTERPRISE'
-export const COMP_TIERS: readonly CompCodeTier[] = ['BASIC', 'PRO', 'PREMIER', 'ENTERPRISE']
+export type CompCodeTier = 'BASIC' | 'PRO' | 'PREMIER' | 'ENTERPRISE' | 'SOLO_CAPTURE' | 'SOLO_POWER'
+export const COMP_TIERS: readonly CompCodeTier[] = ['BASIC', 'PRO', 'PREMIER', 'ENTERPRISE', 'SOLO_CAPTURE', 'SOLO_POWER']
+/** The MyOrbisVoice comp tiers (shown on api.myorbisvoice.com admin). */
+export const VOICE_COMP_TIERS: readonly CompCodeTier[] = ['BASIC', 'PRO', 'PREMIER', 'ENTERPRISE']
+/** The MyOrbisAgents comp tiers (shown on api.myorbisagents.com admin). */
+export const AGENT_COMP_TIERS: readonly CompCodeTier[] = ['SOLO_CAPTURE', 'SOLO_POWER']
 
 export interface CompCodeListItem {
   id:               string         // Stripe promotion code ID (promo_...)

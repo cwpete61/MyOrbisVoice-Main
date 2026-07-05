@@ -29,12 +29,17 @@ const generateLimiter = rateLimit({
 
 const router: IRouter = Router()
 
+// MyOrbisAgents runs on its own hosts (api./app.myorbisagents.com). Its media
+// surfaces list only real-estate 'AGENTS' assets; Voice surfaces list 'VOICE'.
+const brandForHost = (req: { hostname: string }): 'VOICE' | 'AGENTS' =>
+  req.hostname === 'api.myorbisagents.com' ? 'AGENTS' : 'VOICE'
+
 // ── Public — partner web fetches this to render the kit ────────────────────
 const publicRouter: IRouter = Router()
-publicRouter.get('/marketing-kit/videos', async (_req, res, next) => {
+publicRouter.get('/marketing-kit/videos', async (req, res, next) => {
   try {
     const [videos, settings] = await Promise.all([
-      svc.listVideos(false),
+      svc.listVideos(false, brandForHost(req)),
       svc.getSettings(),
     ])
     res.json({ data: { videos, settings } })
@@ -45,13 +50,13 @@ publicRouter.get('/marketing-kit/videos', async (_req, res, next) => {
 const adminRouter: IRouter = Router()
 adminRouter.use(authenticate, requirePlatformAdmin)
 
-adminRouter.get('/marketing-kit/videos', async (_req, res, next) => {
-  try { res.json({ data: await svc.listVideos(true) }) } catch (err) { next(err) }
+adminRouter.get('/marketing-kit/videos', async (req, res, next) => {
+  try { res.json({ data: await svc.listVideos(true, brandForHost(req)) }) } catch (err) { next(err) }
 })
 
 adminRouter.post('/marketing-kit/videos', async (req, res, next) => {
   try {
-    const video = await svc.createVideo(req.body as svc.CreateInput, req.user!.id)
+    const video = await svc.createVideo({ ...(req.body as svc.CreateInput), brand: brandForHost(req) }, req.user!.id)
     res.status(201).json({ data: video })
   } catch (err) { next(err) }
 })
@@ -138,7 +143,7 @@ adminRouter.post('/marketing-kit/videos/with-file',
         else                      { titleEs = title; descriptionEs = description; titleEn = ''; descriptionEn = '' }
       }
 
-      const data: svc.CreateInput = { intent, titleEn, titleEs, descriptionEn, descriptionEs, aspectRatio, durationSec, visible, track }
+      const data: svc.CreateInput = { intent, titleEn, titleEs, descriptionEn, descriptionEs, aspectRatio, durationSec, visible, track, brand: brandForHost(req) }
       let created
       if (many.length >= 2) {
         created = await svc.createCarouselWithFiles(
@@ -178,7 +183,7 @@ adminRouter.get('/marketing-kit/angles', async (_req, res, next) => {
 
 adminRouter.post('/marketing-kit/generate', generateLimiter, async (req, res, next) => {
   const started = Date.now()
-  const body = req.body as svc.GenerateInput
+  const body = { ...(req.body as svc.GenerateInput), brand: brandForHost(req) }
   try {
     const row = await svc.generatePostAndRender(body, req.user!.id)
     writeAuditLogFromRequest(req, {
