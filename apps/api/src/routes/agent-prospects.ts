@@ -9,6 +9,7 @@ import { authenticate } from '../middleware/authenticate.js'
 import { requirePlatformAdmin } from '../middleware/rbac.js'
 import { prisma } from '../lib/prisma.js'
 import { extractProspect, scoreProspect, type ProspectFields } from '../services/prospect-scorer.service.js'
+import { createAgentDemoFromProspect } from '../services/agent-demo.service.js'
 
 const router: IRouter = Router()
 router.use(authenticate, requirePlatformAdmin)
@@ -71,34 +72,14 @@ router.delete('/agent-prospects/:id', async (req: Request, res: Response, next: 
   } catch (err) { next(err) }
 })
 
-// Auto-generate a personalized demo page for a prospect (§25 Step 5). Slugifies
-// the name, ensures uniqueness, persists demoSlug, and returns the shareable URL.
-// The page itself is the public /demo/[slug] route (shared demo widget, default
-// RE-ISA DNA — §17b: one widget, personalized page).
-function slugify(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'agent'
-}
-
-const DEMO_BASE = process.env.AGENTS_DEMO_BASE_URL || 'https://app.myorbisvoice.com'
-
+// Generate a demo for a prospect. Folds into the unified AgentDemo model: builds
+// a real per-agent demo tenant (Orby from the profile, no listings) and returns
+// the /agent-demo/<slug> microsite URL. Idempotent. Replaces the old §17b
+// shared-widget /demo/[slug] page (retired).
 router.post('/agent-prospects/:id/generate-demo', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const prospect = await prisma.agentProspect.findUnique({ where: { id: req.params.id! } })
-    if (!prospect) { res.status(404).json({ error: 'Prospect not found' }); return }
-    if (prospect.demoSlug) {
-      res.json({ data: { slug: prospect.demoSlug, url: `${DEMO_BASE}/demo/${prospect.demoSlug}` } })
-      return
-    }
-    const base = slugify(prospect.name)
-    let slug = base
-    for (let i = 2; i <= 50; i++) {
-      const clash = await prisma.agentProspect.findUnique({ where: { demoSlug: slug }, select: { id: true } })
-      if (!clash) break
-      slug = `${base}-${i}`
-    }
-    await prisma.agentProspect.update({ where: { id: prospect.id }, data: { demoSlug: slug } })
-    res.json({ data: { slug, url: `${DEMO_BASE}/demo/${slug}` } })
+    const result = await createAgentDemoFromProspect(req.params.id!, req.user!.id)
+    res.json({ data: result })
   } catch (err) { next(err) }
 })
 

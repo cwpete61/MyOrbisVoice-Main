@@ -74,8 +74,9 @@ function gen6(): string {
  * GENERATING; flips to READY when enrichment finishes).
  */
 export async function createAgentDemo(input: CreateAgentDemoInput) {
+  // 0 listings is allowed (the prospect fold-in path passes none — Orby still
+  // works from the profile DNA). The paste route enforces >=1 via its own zod.
   const blurbs = input.listings.map(l => l.trim()).filter(Boolean).slice(0, 3)
-  if (blurbs.length === 0) throw new AppError('VALIDATION_ERROR', 'At least one listing is required', 422)
 
   // 1. The per-agent demo tenant. isDemo=true (money-guard) + demoKind=AGENT
   //    (excluded from demo-reset + the shared-line inbound fallback).
@@ -256,6 +257,39 @@ export async function sendAgentDemo(id: string): Promise<{ status: string }> {
   })
   await prisma.agentDemo.update({ where: { id }, data: { status: 'SENT', sentAt: new Date() } })
   return { status: 'SENT' }
+}
+
+/**
+ * Fold-in: turn a scored AgentProspect into a real AgentDemo (Orby from the
+ * profile, no listings yet). Unifies the old §17b prospect demo onto the
+ * AgentDemo model + the /agent-demo microsite. Idempotent — re-running returns
+ * the existing demo. Stores the microsite slug back on the prospect.demoSlug.
+ */
+export async function createAgentDemoFromProspect(
+  prospectId: string,
+  createdById: string,
+): Promise<{ slug: string; url: string }> {
+  const p = await prisma.agentProspect.findUnique({ where: { id: prospectId } })
+  if (!p) throw new AppError('NOT_FOUND', 'Prospect not found', 404)
+  if (p.demoSlug) {
+    return { slug: p.demoSlug, url: `${AGENTS_APP_BASE}/agent-demo/${p.demoSlug}` }
+  }
+  if (!p.email)  throw new AppError('BAD_REQUEST', 'Add an email to this prospect before generating a demo.', 400)
+  if (!p.market) throw new AppError('BAD_REQUEST', 'Add a market to this prospect before generating a demo.', 400)
+
+  const demo = await createAgentDemo({
+    agentName:   p.name,
+    brokerage:   p.brokerage ?? undefined,
+    market:      p.market,
+    agentEmail:  p.email,
+    agentPhone:  p.phone ?? undefined,
+    listings:    [], // prospect demos have no listings — Orby answers from the profile
+    avgPriceUsd: p.avgPriceUsd ?? undefined,
+    salesLast12: p.salesLast12 ?? undefined,
+    createdById,
+  })
+  await prisma.agentProspect.update({ where: { id: p.id }, data: { demoSlug: demo.micrositeSlug } })
+  return { slug: demo.micrositeSlug, url: `${AGENTS_APP_BASE}/agent-demo/${demo.micrositeSlug}` }
 }
 
 /** Sweep: mark unclaimed demos past their expiry as EXPIRED. Called on the

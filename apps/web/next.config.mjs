@@ -25,6 +25,9 @@ const nextConfig = {
       { source: '/affiliate/:path*',          destination: '/partner/:path*',          permanent: true },
       { source: '/admin/affiliates',          destination: '/admin/partners',          permanent: true },
       { source: '/admin/affiliates/:path*',   destination: '/admin/partners/:path*',   permanent: true },
+      // §17b prospect demo (/demo/[slug]) folded into the unified per-agent demo
+      // (/agent-demo/[slug]). Keep old links working.
+      { source: '/demo/:slug',                destination: '/agent-demo/:slug',        permanent: true },
     ]
   },
 }

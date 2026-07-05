@@ -25,7 +25,7 @@ interface Prospect {
   demoSlug: string | null
 }
 
-const DEMO_BASE = 'https://app.myorbisvoice.com'
+const DEMO_BASE = 'https://app.myorbisagents.com'
 
 const STATUSES = ['TARGET', 'CONTACTED', 'DEMO', 'WON', 'LOST', 'SKIP']
 const tierStyle = (t: string) => t === 'A' ? { color: 'oklch(55% 0.15 150)', border: 'oklch(55% 0.15 150)' }
@@ -74,7 +74,7 @@ export default function ProspectsPage() {
     } catch (e) { setErr(e instanceof Error ? e.message : 'Failed to generate demo') }
   }
   const copyDemo = async (slug: string) => {
-    try { await navigator.clipboard.writeText(`${DEMO_BASE}/demo/${slug}`) } catch { /* */ }
+    try { await navigator.clipboard.writeText(`${DEMO_BASE}/agent-demo/${slug}`) } catch { /* */ }
   }
 
   const input = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'var(--surface-raised)', color: 'var(--text-primary)', fontSize: 14 } as const
@@ -141,7 +141,7 @@ export default function ProspectsPage() {
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                   {r.demoSlug
-                    ? <button onClick={() => copyDemo(r.demoSlug!)} title={`${DEMO_BASE}/demo/${r.demoSlug}`} style={{ ...mini, color: TEAL }}>Copy demo</button>
+                    ? <button onClick={() => copyDemo(r.demoSlug!)} title={`${DEMO_BASE}/agent-demo/${r.demoSlug}`} style={{ ...mini, color: TEAL }}>Copy demo</button>
                     : <button onClick={() => genDemo(r.id)} style={{ ...mini, color: TEAL }}>Generate demo</button>}
                   <select value={r.status} onChange={(e) => setStatus(r.id, e.target.value)} style={{ ...input, padding: '5px 8px', fontSize: 13 }}>
                     {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}

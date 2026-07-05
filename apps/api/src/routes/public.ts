@@ -319,31 +319,8 @@ router.get('/public/social-links', async (_req, res, next) => {
   } catch (err) { next(err) }
 })
 
-// GET /api/public/demo/:slug — MyOrbisAgents personalized demo page data (§17b).
-// One shared demo widget (default RE-ISA DNA, publicKey from system config), the
-// page is personalized per prospect. No auth. 404 when the slug isn't claimed.
-router.get('/public/demo/:slug', async (req, res, next) => {
-  try {
-    const slug = String(req.params['slug'] ?? '').trim().toLowerCase()
-    const prospect = await prisma.agentProspect.findUnique({
-      where:  { demoSlug: slug },
-      select: { name: true, brokerage: true, market: true, pitchAngle: true, recommendedTier: true },
-    })
-    if (!prospect) { res.status(404).json({ error: 'demo_not_found' }); return }
-    // Shared demo widget. Configurable; defaults to the live RE-ISA demo Orby.
-    const demoPublicKey =
-      (await systemConfig.getConfigValue('agents_demo_public_key'))
-      || '0e64e62f11af86c72ca55d969d555646a2553197b09b4dee'
-    res.set('Cache-Control', 'public, max-age=120')
-    res.json({ data: {
-      name:            prospect.name,
-      brokerage:       prospect.brokerage,
-      market:          prospect.market,
-      pitchAngle:      prospect.pitchAngle,
-      recommendedTier: prospect.recommendedTier,
-      demoPublicKey,
-    } })
-  } catch (err) { next(err) }
-})
+// (Retired) GET /api/public/demo/:slug — the §17b shared-widget prospect demo
+// was folded into the unified AgentDemo model. The prospect "generate demo"
+// route now builds a real /agent-demo/<slug>; /demo/<slug> 301-redirects there.
 
 export default router
