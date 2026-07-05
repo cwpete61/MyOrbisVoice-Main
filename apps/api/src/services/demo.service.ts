@@ -73,7 +73,10 @@ async function wipeTenantData(tenantId: string): Promise<void> {
 }
 
 export async function seedDemoTenant(tenantId: string, userId: string): Promise<void> {
-  await prisma.tenant.update({ where: { id: tenantId }, data: { isDemo: true, industryVertical: 'REAL_ESTATE' } })
+  // demoKind=SANDBOX marks this as the single shared generic demo — the only
+  // one demo-reset wipes and the only inbound target for the no-caller-ID
+  // fallback. Per-agent AGENT demos are excluded from both.
+  await prisma.tenant.update({ where: { id: tenantId }, data: { isDemo: true, demoKind: 'SANDBOX', industryVertical: 'REAL_ESTATE' } })
   await applyDemoEntitlements(tenantId)
 
   // Orby (DNA + widget) via the real onboarding path.

@@ -72,7 +72,9 @@ export async function activeDemoCallCount(): Promise<number> {
 /** The sandbox demo tenant's INBOUND channel — where PIN-bound calls connect. */
 export async function resolveSandboxInboundTarget(): Promise<{ tenantId: string; channelConfigId: string } | null> {
   const t = await prisma.tenant.findFirst({
-    where:   { isDemo: true },
+    // The shared generic sandbox only — NOT a per-agent AGENT demo (those are
+    // routed by caller-ID, never by this fallback).
+    where:   { isDemo: true, demoKind: 'SANDBOX' },
     include: { channelConfigs: { where: { channelType: 'INBOUND' } } },
   })
   if (!t) return null

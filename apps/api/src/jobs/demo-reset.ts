@@ -16,7 +16,10 @@ async function resetAllDemos(): Promise<void> {
   if (running) return
   running = true
   try {
-    const demos = await prisma.tenant.findMany({ where: { isDemo: true }, select: { id: true } })
+    // ONLY the shared generic sandbox — never per-agent AGENT demos (those hold
+    // real prospect DNA + listings and convert to paid accounts; wiping them
+    // would destroy a live sales demo).
+    const demos = await prisma.tenant.findMany({ where: { isDemo: true, demoKind: 'SANDBOX' }, select: { id: true } })
     for (const t of demos) {
       const owner = await prisma.tenantMember.findFirst({ where: { tenantId: t.id }, select: { userId: true } })
       if (!owner) continue
