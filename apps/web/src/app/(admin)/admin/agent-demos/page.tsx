@@ -82,6 +82,11 @@ export default function AgentDemosPage() {
     } finally { setBusy(false) }
   }
 
+  async function send(id: string) {
+    try { await apiFetch(`/api/admin/agent-demos/${id}/send`, { method: 'POST' }); await load() }
+    catch (e) { setErr((e as Error).message || 'Send failed.') }
+  }
+
   const micrositeUrl = (slug: string) => `https://app.myorbisagents.com/agent-demo/${slug}`
   const inp: React.CSSProperties = {
     width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 13,
@@ -149,7 +154,17 @@ export default function AgentDemosPage() {
                   <span>Tier: <strong style={{ color: 'var(--text-primary)' }}>{TIER_LABEL[r.recommendedTier] ?? r.recommendedTier}</strong></span>
                   <span>Call PIN: <strong style={{ color: 'var(--text-primary)', letterSpacing: '0.1em' }}>{r.pin}</strong></span>
                   <a href={micrositeUrl(r.micrositeSlug)} target="_blank" rel="noreferrer" style={{ color: TEAL }}>Preview microsite →</a>
-                  <span style={{ opacity: 0.6 }}>{r.status === 'SENT' ? 'sent' : r.status === 'CLAIMED' ? 'claimed 🎉' : 'not sent — Send (email) lands in Lane D'}</span>
+                  {r.status === 'CLAIMED' ? (
+                    <span style={{ opacity: 0.7 }}>claimed 🎉</span>
+                  ) : r.status === 'GENERATING' ? (
+                    <span style={{ opacity: 0.6 }}>enriching…</span>
+                  ) : (
+                    <button onClick={() => send(r.id)}
+                      style={{ background: 'none', border: 'none', color: TEAL, cursor: 'pointer', fontSize: 12, padding: 0, textDecoration: 'underline' }}>
+                      {r.status === 'SENT' ? 'Resend email' : 'Send email →'}
+                    </button>
+                  )}
+                  {r.status === 'SENT' && <span style={{ opacity: 0.6 }}>sent</span>}
                 </div>
               </div>
             )

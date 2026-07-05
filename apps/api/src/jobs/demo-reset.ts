@@ -8,6 +8,7 @@
  */
 import { prisma } from '../lib/prisma.js'
 import { resetDemoTenant } from '../services/demo.service.js'
+import { markExpiredAgentDemos } from '../services/agent-demo.service.js'
 
 const INTERVAL_MS = 15 * 60 * 1000 // 15 min
 let running = false
@@ -29,6 +30,15 @@ async function resetAllDemos(): Promise<void> {
       } catch (e) {
         console.error('[demo-reset] failed', t.id, (e as Error).message)
       }
+    }
+    // Separately, lapse any unclaimed per-agent AGENT demos past their expiry.
+    // (They are never reset above — this only flips their status to EXPIRED so
+    // the public microsite + claim link stop working.)
+    try {
+      const n = await markExpiredAgentDemos()
+      if (n > 0) console.log(`[demo-reset] expired ${n} agent demo(s)`)
+    } catch (e) {
+      console.error('[demo-reset] agent-demo expiry sweep failed', (e as Error).message)
     }
   } finally {
     running = false

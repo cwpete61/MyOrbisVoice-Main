@@ -2648,4 +2648,11 @@ router.post('/agent-demos', requirePlatformAdmin, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+router.post('/agent-demos/:id/send', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    res.json({ data: await agentDemoService.sendAgentDemo(req.params['id']!) })
+  } catch (err) { next(err) }
+})
+
 export default router

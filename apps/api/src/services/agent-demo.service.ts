@@ -30,7 +30,8 @@ import { getStripe } from '../lib/stripe.js'
 import { getOrCreateStripeCustomer } from './stripe.service.js'
 import { syncEntitlementsFromPlan } from './entitlement.service.js'
 import { startPasswordReset } from './auth.service.js'
-import { sendPasswordResetEmail } from './email.service.js'
+import { sendPasswordResetEmail, sendAgentDemoEmail } from './email.service.js'
+import { DEMO_PHONE_E164 } from './demo-session.service.js'
 
 /** Demo link lifetime before it lapses (unclaimed). */
 const DEMO_TTL_DAYS = 7
@@ -228,6 +229,44 @@ export async function getAgentDemo(id: string) {
 }
 
 const AGENTS_APP_BASE = 'https://app.myorbisagents.com'
+const AGENTS_API_BASE = 'https://api.myorbisagents.com'
+
+/** Send (or resend) the demo email to the agent. Requires enrichment done. */
+export async function sendAgentDemo(id: string): Promise<{ status: string }> {
+  const demo = await prisma.agentDemo.findUnique({ where: { id } })
+  if (!demo) throw new AppError('NOT_FOUND', 'Demo not found', 404)
+  if (demo.status === 'GENERATING') throw new AppError('BAD_REQUEST', 'Still generating — wait until enrichment finishes.', 400)
+  if (demo.status === 'CLAIMED') throw new AppError('CONFLICT', 'This demo has already been claimed.', 409)
+
+  const listings = await prisma.listing.findMany({
+    where:   { tenantId: demo.tenantId },
+    orderBy: { createdAt: 'asc' },
+    select:  { address: true, headline: true, priceUsd: true, highlights: true },
+  })
+  const planName = demo.recommendedTier === '497' ? 'Solo Power' : 'Solo Capture'
+  await sendAgentDemoEmail({
+    to:           demo.agentEmail,
+    agentName:    demo.agentName,
+    micrositeUrl: `${AGENTS_APP_BASE}/agent-demo/${demo.micrositeSlug}`,
+    claimUrl:     `${AGENTS_API_BASE}/api/public/agent-demo/${demo.micrositeSlug}/claim`,
+    demoPhone:    DEMO_PHONE_E164,
+    pin:          demo.pin,
+    planName,
+    listings,
+  })
+  await prisma.agentDemo.update({ where: { id }, data: { status: 'SENT', sentAt: new Date() } })
+  return { status: 'SENT' }
+}
+
+/** Sweep: mark unclaimed demos past their expiry as EXPIRED. Called on the
+ *  demo-reset interval. Returns how many were flipped. */
+export async function markExpiredAgentDemos(): Promise<number> {
+  const r = await prisma.agentDemo.updateMany({
+    where: { status: { notIn: ['CLAIMED', 'EXPIRED'] }, expiresAt: { lt: new Date() } },
+    data:  { status: 'EXPIRED' },
+  })
+  return r.count
+}
 
 /**
  * Build the promo Checkout Session for claiming a demo. Subscription mode:
