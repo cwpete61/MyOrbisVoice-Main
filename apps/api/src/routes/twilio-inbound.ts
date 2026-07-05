@@ -12,6 +12,7 @@ import {
   DEMO_PHONE_E164,
   resolveSandboxInboundTarget,
 } from '../services/demo-session.service.js'
+import { resolveAgentDemoInboundByPhone } from '../services/agent-demo.service.js'
 import { logTwilioEvent } from '../lib/twilio-log.js'
 import { handleRecordingReady, type TwilioRecordingPayload } from '../services/recording.service.js'
 import { processInboundSms, updateDeliveryStatus, type InboundSmsPayload } from '../services/sms.service.js'
@@ -40,8 +41,14 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
     // live (demoPinCapture). Falls back to the resolved tenant only if the
     // sandbox somehow isn't provisioned.
     if (To === DEMO_PHONE_E164) {
-      const sandbox = await resolveSandboxInboundTarget()
-      const demoTenantId = sandbox?.tenantId ?? phone.tenantId
+      // Caller-ID routing: if this From matches a per-agent custom demo, connect
+      // to THAT agent's Orby (their DNA + listings). Otherwise fall back to the
+      // shared generic sandbox. The DNA is fixed at connect time (the gateway
+      // reads tenantId from the stream params), so we MUST resolve the tenant
+      // here, before <Connect> — a mid-call PIN cannot switch it.
+      const agentTarget = await resolveAgentDemoInboundByPhone(From)
+      const target = agentTarget ?? await resolveSandboxInboundTarget()
+      const demoTenantId = target?.tenantId ?? phone.tenantId
       logCallStart({ tenantId: demoTenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To, partnerId: phone.partnerId, listingId: phone.listingId }).catch(e => console.error('[twilio] logCallStart failed:', e))
       // NOTE: do NOT start a REST call-recording here. `recordings.create()` on
       // a <Connect><Stream> call disrupts the media stream and Twilio drops the
@@ -49,8 +56,8 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
       // sentence). Demo audio recording should be done gateway-side (mux the
       // media-stream audio like the widget does), not via the Twilio call API.
       twiml = buildDemoDirectConnectTwiml(
-        sandbox
-          ? { tenantId: sandbox.tenantId, channelConfigId: sandbox.channelConfigId, callSid: CallSid, fromNumber: From || undefined }
+        target
+          ? { tenantId: target.tenantId, channelConfigId: target.channelConfigId, callSid: CallSid, fromNumber: From || undefined }
           : { tenantId: phone.tenantId, channelConfigId: channel?.id ?? '', callSid: CallSid, fromNumber: From || undefined },
       )
       res.type('text/xml').send(twiml)

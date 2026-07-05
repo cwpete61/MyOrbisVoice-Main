@@ -172,6 +172,31 @@ async function enrichAndReady(tenantId: string, demoId: string): Promise<void> {
   }
 }
 
+/**
+ * Caller-ID routing for the shared demo line. If the inbound `From` matches an
+ * agent's demo phone, return that demo tenant's INBOUND channel so Orby answers
+ * loaded with THEIR DNA + listings. Null → the caller isn't a known agent (the
+ * inbound handler falls back to the generic sandbox). Most-recent demo wins if
+ * an agent has more than one.
+ */
+export async function resolveAgentDemoInboundByPhone(
+  fromE164: string | null | undefined,
+): Promise<{ tenantId: string; channelConfigId: string } | null> {
+  const phone = normalizePhone(fromE164 ?? undefined)
+  if (!phone) return null
+  const demo = await prisma.agentDemo.findFirst({
+    where:   { agentPhone: phone, status: { not: 'EXPIRED' } },
+    orderBy: { createdAt: 'desc' },
+    select:  { tenantId: true },
+  })
+  if (!demo) return null
+  const ch = await prisma.channelConfig.findFirst({
+    where:  { tenantId: demo.tenantId, channelType: 'INBOUND' },
+    select: { id: true },
+  })
+  return { tenantId: demo.tenantId, channelConfigId: ch?.id ?? '' }
+}
+
 /** Admin list — newest first, with the demo tenant's listing count. */
 export async function listAgentDemos() {
   const demos = await prisma.agentDemo.findMany({ orderBy: { createdAt: 'desc' }, take: 100 })
