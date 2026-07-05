@@ -26,6 +26,11 @@ import { updateChannel } from './channel.service.js'
 import { formatListing, createListing } from './listing.service.js'
 import { enrichListing } from './listing-enrichment.service.js'
 import { scoreProspect } from './prospect-scorer.service.js'
+import { getStripe } from '../lib/stripe.js'
+import { getOrCreateStripeCustomer } from './stripe.service.js'
+import { syncEntitlementsFromPlan } from './entitlement.service.js'
+import { startPasswordReset } from './auth.service.js'
+import { sendPasswordResetEmail } from './email.service.js'
 
 /** Demo link lifetime before it lapses (unclaimed). */
 const DEMO_TTL_DAYS = 7
@@ -220,4 +225,123 @@ export async function getAgentDemo(id: string) {
                sqft: true, propertyType: true, enrichedAt: true },
   })
   return { ...demo, listings }
+}
+
+const AGENTS_APP_BASE = 'https://app.myorbisagents.com'
+
+/**
+ * Build the promo Checkout Session for claiming a demo. Subscription mode:
+ *   line_items          = [the agent plan's recurring price]
+ *   add_invoice_items   = [$250 setup one-time]  (first invoice only)
+ *   discounts           = [50%-off-12mo coupon]  (product-scoped → plan only)
+ * metadata carries scope=agent_demo_claim + tenantId/planCode/agentDemoId so the
+ * webhook converts THIS demo tenant to a paid account in place. Setup + coupon
+ * are resolved from Stripe at call time (created by provision-agent-promo-stripe).
+ */
+export async function createAgentDemoClaimSession(
+  slug: string,
+  tierOverride?: '297' | '497',
+): Promise<{ url: string }> {
+  const demo = await prisma.agentDemo.findUnique({ where: { micrositeSlug: slug } })
+  if (!demo) throw new AppError('NOT_FOUND', 'Demo not found', 404)
+  if (demo.expiresAt && demo.expiresAt.getTime() < Date.now()) {
+    throw new AppError('GONE', 'This demo link has expired', 410)
+  }
+
+  const tier     = tierOverride ?? (demo.recommendedTier as '297' | '497')
+  const planCode = tier === '497' ? 'solo_power' : 'solo_capture'
+  const plan = await prisma.plan.findFirst({ where: { code: planCode, isActive: true } })
+  if (!plan?.stripePriceId) throw new AppError('BAD_REQUEST', 'Plan has no Stripe price configured', 400)
+
+  const stripe     = getStripe()
+  const customerId = await getOrCreateStripeCustomer(demo.tenantId)
+
+  // Resolve the promo coupon + $250 setup price (provisioned once, idempotent).
+  const [coupons, setupPrices] = await Promise.all([
+    stripe.coupons.list({ limit: 100 }),
+    stripe.prices.list({ lookup_keys: ['agent_setup_250'], limit: 1 }),
+  ])
+  const coupon = (coupons.data as Array<{ id: string; valid: boolean; metadata: Record<string, string> | null }>)
+    .find(c => c.metadata?.['promo'] === 'agent_launch' && c.valid)
+  const setupPriceId = setupPrices.data[0]?.id
+
+  const meta = { scope: 'agent_demo_claim', tenantId: demo.tenantId, planCode, agentDemoId: demo.id }
+  const session = await stripe.checkout.sessions.create({
+    customer:    customerId,
+    mode:        'subscription',
+    line_items:  [{ price: plan.stripePriceId, quantity: 1 }],
+    subscription_data: {
+      metadata: meta,
+      ...(setupPriceId ? { add_invoice_items: [{ price: setupPriceId, quantity: 1 }] } : {}),
+    },
+    ...(coupon ? { discounts: [{ coupon: coupon.id }] } : {}),
+    metadata:    meta,
+    success_url: `${AGENTS_APP_BASE}/agent-demo/${slug}?claimed=1`,
+    cancel_url:  `${AGENTS_APP_BASE}/agent-demo/${slug}`,
+  })
+  if (!session.url) throw new AppError('INTERNAL_ERROR', 'Failed to create checkout session', 500)
+  return { url: session.url }
+}
+
+/**
+ * Webhook side of the claim (called from stripe.service checkout.session.completed
+ * when scope=agent_demo_claim). Converts the demo tenant to a real paid account
+ * IN PLACE — creates the agent's owner login, flips the demo flags, syncs plan
+ * entitlements — then emails a set-password link. Idempotent (guards on CLAIMED),
+ * so Stripe retries are safe. Runs BEFORE the standard subscription upsert.
+ */
+export async function completeAgentDemoClaim(
+  session: { metadata?: Record<string, string> | null; customer_email?: string | null; customer_details?: { email?: string | null } | null },
+): Promise<void> {
+  const agentDemoId = session.metadata?.['agentDemoId']
+  const tenantId    = session.metadata?.['tenantId']
+  if (!agentDemoId || !tenantId) return
+
+  const demo = await prisma.agentDemo.findUnique({ where: { id: agentDemoId } })
+  if (!demo || demo.status === 'CLAIMED') return // idempotent — already converted
+
+  const email = (session.customer_email || session.customer_details?.email || demo.agentEmail).trim()
+  const firstName = demo.agentName.split(/\s+/)[0] ?? null
+
+  // Owner user (reuse if the email already has an account).
+  let user = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } })
+  if (!user) {
+    user = await prisma.user.create({ data: { email, firstName, passwordHash: null, preferredLocale: 'en' } })
+  }
+  const ownerRole = await prisma.roleDefinition.findUnique({ where: { key: 'tenant_owner' } })
+  if (ownerRole) {
+    const existing = await prisma.tenantMember.findFirst({ where: { tenantId, userId: user.id } })
+    if (!existing) {
+      await prisma.tenantMember.create({ data: { tenantId, userId: user.id, roleDefinitionId: ownerRole.id, isOwner: true } })
+    }
+  }
+
+  // Flip the demo tenant into a real paid account (DNA + listings carry over).
+  await prisma.tenant.update({
+    where: { id: tenantId },
+    data:  { isDemo: false, demoKind: null, status: 'ACTIVE', registrationEmail: email },
+  })
+
+  const plan = await prisma.plan.findFirst({ where: { code: session.metadata?.['planCode'] ?? '' } })
+  if (plan) await syncEntitlementsFromPlan(tenantId, plan.id).catch(() => {})
+
+  await prisma.agentDemo.update({ where: { id: demo.id }, data: { status: 'CLAIMED', claimedAt: new Date() } })
+
+  await prisma.auditLog.create({
+    data: { tenantId, actorType: 'SYSTEM', action: 'agent_demo.claimed',
+            targetType: 'AgentDemo', targetId: demo.id, metadataJson: { email, planCode: plan?.code ?? null } },
+  }).catch(() => {})
+
+  // Set-password link so the agent can log in (best-effort — they can also use
+  // "forgot password" if it lapses).
+  try {
+    const reset = await startPasswordReset(email)
+    if (reset) {
+      await sendPasswordResetEmail({
+        to: email, firstName: reset.firstName,
+        resetUrl: `${AGENTS_APP_BASE}/reset-password?token=${reset.rawToken}`,
+        expiresInMinutes: 15,
+      })
+    }
+  } catch { /* non-fatal */ }
 }

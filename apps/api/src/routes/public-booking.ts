@@ -8,6 +8,7 @@ import { searchAvailability, createAppointment } from '../services/appointment.s
 import { createContact } from '../services/contact.service.js'
 import { attributeBooking } from '../services/cold-email-campaign.service.js'
 import { DEMO_PHONE_E164 } from '../services/demo-session.service.js'
+import { createAgentDemoClaimSession } from '../services/agent-demo.service.js'
 
 const router: IRouter = Router()
 
@@ -355,6 +356,17 @@ router.get('/public/agent-demo/:slug', asyncHandler(async (req, res) => {
       listings,
     },
   })
+}))
+
+// ─── GET /api/public/agent-demo/:slug/claim ─────────────────────────────────
+// The microsite "Get Orby" CTA. Builds the promo Checkout Session (plan + $250
+// setup + 50%-off-12mo coupon) and 303-redirects the agent straight to Stripe.
+// ?tier=297|497 overrides the scorer default.
+router.get('/public/agent-demo/:slug/claim', asyncHandler(async (req, res) => {
+  const tq = req.query['tier']
+  const tier = tq === '497' ? '497' : tq === '297' ? '297' : undefined
+  const { url } = await createAgentDemoClaimSession(req.params['slug']!, tier)
+  res.redirect(303, url)
 }))
 
 export { router as publicBookingRouter }

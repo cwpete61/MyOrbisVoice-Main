@@ -10,7 +10,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { apiFetch } from '@/hooks/useApi'
+import { apiFetch, API_BASE } from '@/hooks/useApi'
 import { useT, useLocale, type Locale } from '@/lib/i18n/I18nProvider'
 
 const GATEWAY = process.env['NEXT_PUBLIC_WIDGET_GATEWAY'] || 'https://gateway.myorbisvoice.com'
@@ -123,7 +123,7 @@ export default function AgentDemoMicrosite() {
         <div className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-tertiary)' }}>
           {t('agentDemoSite.planLabel')}: {PLAN_NAME[data.recommendedTier] ?? data.recommendedTier}
         </div>
-        <a href="https://myorbisagents.com/pricing" target="_blank" rel="noreferrer"
+        <a href={`${API_BASE}/api/public/agent-demo/${encodeURIComponent(slug)}/claim`}
           className="mt-3 inline-block rounded-xl px-6 py-3 font-bold text-white" style={{ background: BRAND }}>
           {t('agentDemoSite.claimCta')}
         </a>
