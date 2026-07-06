@@ -1,6 +1,16 @@
 ;(function (global) {
   'use strict'
 
+  // Global double-load guard. If this script executes twice on one page (CMS
+  // double-include, bfcache restore re-running an inline embed, a marketing
+  // embed + an in-app inject, an SPA re-inject), a SECOND IIFE run would build a
+  // fresh `_instance` closure and spawn a parallel widget with its own Gemini
+  // session talking over the first — two simultaneous conversations. The
+  // per-closure `_instance` singleton below cannot see across executions, so the
+  // guard must live on `global`: once OrbisVoice is installed, later loads no-op
+  // and the first install stays authoritative.
+  if (global.OrbisVoice && global.OrbisVoice.__installed) return
+
   const API_BASE  = 'https://api.myorbisvoice.com'
   const GW_BASE   = 'wss://gateway.myorbisvoice.com'
   const STYLES_ID = 'ov-widget-styles'
@@ -897,6 +907,7 @@
   // instance instead of spawning a parallel widget that could talk over the first.
   let _instance = null
   global.OrbisVoice = {
+    __installed: true,
     init(config) {
       if (!config?.publicKey) {
         console.error('[OrbisVoice] publicKey is required')
