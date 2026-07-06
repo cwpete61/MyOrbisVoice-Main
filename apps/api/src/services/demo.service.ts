@@ -62,7 +62,15 @@ async function wipeTenantData(tenantId: string): Promise<void> {
   // DemoLead marketing table is separate and NOT wiped.
   // Order matters only where FKs restrict; most are onDelete cascade/setNull.
   await prisma.appointment.deleteMany({ where: { tenantId } })
-  await prisma.conversation.deleteMany({ where: { tenantId } })
+  // Keep recent conversations (last 24h) so demo + test calls stay reviewable in
+  // the cockpit and keep their recordings, instead of vanishing on the next
+  // 15-min reset. A demo visitor only ever sees their OWN session (filtered by
+  // demoSessionId), so retaining them never leaks across sessions. The contact/
+  // listing deletes below only SetNull the kept conversations' refs. Older cruft
+  // is still purged.
+  await prisma.conversation.deleteMany({
+    where: { tenantId, startedAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+  })
   await prisma.listing.deleteMany({ where: { tenantId } })
   await prisma.contact.deleteMany({ where: { tenantId } })
   await prisma.channelConfig.deleteMany({ where: { tenantId } })
