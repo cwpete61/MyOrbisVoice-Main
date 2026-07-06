@@ -1602,6 +1602,12 @@ router.get('/phone-numbers', async (_req, res, next) => {
       orderBy: { e164Number: 'asc' },
     })
 
+    // Reconcile the DB rows against what Twilio actually reports (master +
+    // every subaccount). Attaches a per-number sync verdict + surfaces
+    // orphan numbers Twilio has that we never tracked. Read-only.
+    const { reconcilePhoneInventory } = await import('../services/twilio-inventory.service.js')
+    const recon = await reconcilePhoneInventory()
+
     res.json({
       data: {
         platform: masterNumbers.map(n => ({
@@ -1631,7 +1637,13 @@ router.get('/phone-numbers', async (_req, res, next) => {
           isOutboundEnabled:   n.isOutboundEnabled,
           isSmsEnabled:        n.isSmsEnabled,
           forwardingTarget:    n.forwardingTarget,
+          // Twilio reconcile verdict for this row (null if the live pull failed)
+          sync:                recon.byId[n.id] ?? null,
         })),
+        orphans:   recon.orphans,
+        syncSummary: recon.summary,
+        syncError: recon.syncError,
+        checkedAt: recon.checkedAt,
       },
     })
   } catch (err) { next(err) }

@@ -33,6 +33,15 @@ interface PlatformNumber {
   smsUrl:       string | null
 }
 
+type NumberSyncStatus = 'IN_SYNC' | 'GHOST' | 'MISPLACED' | 'WEBHOOK_DRIFT' | 'CAP_DRIFT'
+
+interface NumberSync {
+  status:         NumberSyncStatus
+  issues:         string[]
+  liveAccountSid: string | null
+  liveVoiceUrl:   string | null
+}
+
 interface TenantNumber {
   id:                  string
   phoneNumber:         string
@@ -46,11 +55,36 @@ interface TenantNumber {
   isOutboundEnabled:   boolean
   isSmsEnabled:        boolean
   forwardingTarget:    string | null
+  sync:                NumberSync | null
+}
+
+interface OrphanNumber {
+  twilioNumberSid: string
+  e164Number:      string
+  accountSid:      string
+  ownerLabel:      string | null
+  friendlyName:    string | null
+  voiceUrl:        string | null
+  capabilities:    { voice: boolean; sms: boolean; mms: boolean }
+}
+
+interface SyncSummary {
+  total:        number
+  inSync:       number
+  ghost:        number
+  misplaced:    number
+  webhookDrift: number
+  capDrift:     number
+  orphans:      number
 }
 
 interface InventoryResponse {
-  platform: PlatformNumber[]
-  tenants:  TenantNumber[]
+  platform:    PlatformNumber[]
+  tenants:     TenantNumber[]
+  orphans:     OrphanNumber[]
+  syncSummary: SyncSummary
+  syncError:   string | null
+  checkedAt:   string
 }
 
 interface DestinationsResponse {
@@ -70,6 +104,27 @@ function CapBadge({ on, label }: { on: boolean; label: string }) {
 function fmtMoney(cents: number | null) {
   if (cents == null) return '—'
   return `$${(cents / 100).toFixed(2)}/mo`
+}
+
+const SYNC_META: Record<NumberSyncStatus, { label: string; bg: string; fg: string }> = {
+  IN_SYNC:       { label: 'In sync',       bg: 'oklch(95% 0.05 145)', fg: 'oklch(35% 0.16 145)' },
+  GHOST:         { label: 'Ghost',         bg: 'oklch(95% 0.05 25)',  fg: 'oklch(40% 0.18 25)'  },
+  MISPLACED:     { label: 'Misplaced',     bg: 'oklch(96% 0.05 55)',  fg: 'oklch(40% 0.16 55)'  },
+  WEBHOOK_DRIFT: { label: 'Webhook drift', bg: 'oklch(96% 0.05 75)',  fg: 'oklch(38% 0.16 75)'  },
+  CAP_DRIFT:     { label: 'Cap drift',     bg: 'oklch(96% 0.05 300)', fg: 'oklch(40% 0.16 300)' },
+}
+
+function SyncBadge({ sync }: { sync: NumberSync | null }) {
+  if (!sync) {
+    return <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold" style={{ background: 'var(--surface-overlay)', color: 'var(--text-tertiary)' }}>Unchecked</span>
+  }
+  const m = SYNC_META[sync.status]
+  const title = sync.issues.length ? sync.issues.join('\n') : 'Matches Twilio: exists, right account, webhook wired, capabilities agree.'
+  return (
+    <span title={title} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold cursor-help" style={{ background: m.bg, color: m.fg }}>
+      {sync.status === 'IN_SYNC' ? '✓' : '⚠'} {m.label}
+    </span>
+  )
 }
 
 interface ReassignTarget {
@@ -181,6 +236,7 @@ export default function AdminPhoneNumbersPage() {
   const [confirmRelease, setConfirmRelease] = useState<string | null>(null)
   const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null)
   const [message, setMessage]             = useState('')
+  const [refreshing, setRefreshing]       = useState(false)
 
   // Backend wrappers passed into NumberSearch
   async function searchBackend(filters: SearchFilters): Promise<SearchResult[]> {
@@ -233,12 +289,51 @@ export default function AdminPhoneNumbersPage() {
           onDone={(msg) => { setMessage(msg); setReassignTarget(null); reload() }}
         />
       )}
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Phone numbers</h1>
-        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Every number across the platform — master-account (platform-owned) and subaccount (tenant-assigned). Live-proxied from Twilio + cross-referenced with the local DB.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Phone numbers</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            Every number across the platform — master-account (platform-owned) and subaccount (tenant-assigned). Reconciled live against Twilio (master + every subaccount) and cross-referenced with the local DB.
+          </p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+            Last checked {new Date(data.checkedAt).toLocaleString()}
+          </p>
+        </div>
+        <button
+          onClick={async () => { setRefreshing(true); try { await reload() } finally { setRefreshing(false) } }}
+          disabled={refreshing}
+          className="shrink-0 text-sm px-3 py-1.5 rounded-lg font-semibold"
+          style={{ background: 'var(--surface-raised)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', opacity: refreshing ? 0.6 : 1 }}
+        >
+          {refreshing ? 'Checking Twilio…' : '↻ Refresh'}
+        </button>
       </div>
+
+      {/* Reconcile summary banner */}
+      {data.syncError ? (
+        <div className="rounded-lg p-3 text-sm" style={{ background: 'oklch(95% 0.05 25)', color: 'oklch(40% 0.18 25)' }}>
+          ⚠ Live Twilio reconcile failed — tenant-assigned rows below are shown from the DB but could NOT be verified against Twilio. {data.syncError}
+        </div>
+      ) : (() => {
+        const s = data.syncSummary
+        const drift = s.ghost + s.misplaced + s.webhookDrift + s.capDrift
+        const clean = drift === 0 && s.orphans === 0
+        return (
+          <div className="rounded-lg p-3 text-sm flex flex-wrap items-center gap-x-4 gap-y-1" style={{
+            background: clean ? 'oklch(96% 0.05 145)' : 'oklch(96% 0.05 75)',
+            color:      clean ? 'oklch(35% 0.16 145)' : 'oklch(38% 0.16 75)',
+          }}>
+            <span className="font-semibold">
+              {clean ? `✓ All ${s.total} tenant numbers match Twilio` : `⚠ ${drift + s.orphans} issue${drift + s.orphans === 1 ? '' : 's'} across ${s.total} tenant numbers`}
+            </span>
+            {s.ghost       > 0 && <span>Ghost: <strong>{s.ghost}</strong></span>}
+            {s.misplaced   > 0 && <span>Misplaced: <strong>{s.misplaced}</strong></span>}
+            {s.webhookDrift > 0 && <span>Webhook drift: <strong>{s.webhookDrift}</strong></span>}
+            {s.capDrift    > 0 && <span>Cap drift: <strong>{s.capDrift}</strong></span>}
+            {s.orphans     > 0 && <span>Untracked on Twilio: <strong>{s.orphans}</strong></span>}
+          </div>
+        )
+      })()}
 
       {message && (
         <div className="rounded-lg p-3 text-sm" style={{
@@ -354,6 +449,7 @@ export default function AdminPhoneNumbersPage() {
                   <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Tenant</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Subaccount</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Capabilities</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Twilio sync</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Forwarding</th>
                   <th className="text-right px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}></th>
                 </tr>
@@ -377,6 +473,12 @@ export default function AdminPhoneNumbersPage() {
                         <CapBadge on={n.isSmsEnabled}      label="SMS" />
                       </div>
                     </td>
+                    <td className="px-4 py-2.5">
+                      <SyncBadge sync={n.sync} />
+                      {n.sync && n.sync.issues.length > 0 && (
+                        <div className="mt-1 text-[11px] leading-snug max-w-[260px]" style={{ color: 'var(--text-tertiary)' }}>{n.sync.issues[0]}</div>
+                      )}
+                    </td>
                     <td className="px-4 py-2.5 text-xs font-mono" style={{ color: 'var(--text-tertiary)' }}>{n.forwardingTarget ?? '—'}</td>
                     <td className="px-4 py-2.5 text-right">
                       {n.twilioNumberSid && n.twilioSubaccountSid && (
@@ -398,6 +500,52 @@ export default function AdminPhoneNumbersPage() {
           </div>
         )}
       </div>
+
+      {/* Orphans — live on a Twilio subaccount but no DB row */}
+      {data.orphans.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide mb-1" style={{ color: 'oklch(40% 0.18 25)' }}>
+            Untracked on Twilio ({data.orphans.length})
+          </h2>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>
+            Twilio reports these numbers on a subaccount, but the app has no record of them. They still bill and may take calls the platform can't see. Adopt or release them from the Twilio Console (auto-adopt not enabled here).
+          </p>
+          <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid oklch(85% 0.08 25)' }}>
+            <table className="w-full text-sm">
+              <thead style={{ background: 'oklch(97% 0.03 25)' }}>
+                <tr>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Number</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Twilio account</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Capabilities</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold" style={{ color: 'var(--text-tertiary)' }}>Voice webhook</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.orphans.map((o, i) => (
+                  <tr key={o.twilioNumberSid} style={{ background: i % 2 === 0 ? 'var(--surface-app)' : 'var(--surface-raised)', borderTop: '1px solid var(--border-subtle)' }}>
+                    <td className="px-4 py-2.5 font-mono text-sm" style={{ color: 'var(--text-primary)' }}>
+                      {o.e164Number}
+                      {o.friendlyName && <span className="ml-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>· {o.friendlyName}</span>}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      {o.ownerLabel ?? '—'}
+                      <span className="block font-mono mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{o.accountSid.slice(0, 14)}…</span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex gap-1">
+                        <CapBadge on={o.capabilities.voice} label="V" />
+                        <CapBadge on={o.capabilities.sms}   label="S" />
+                        <CapBadge on={o.capabilities.mms}   label="M" />
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs font-mono truncate max-w-[240px]" style={{ color: 'var(--text-tertiary)' }}>{o.voiceUrl ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

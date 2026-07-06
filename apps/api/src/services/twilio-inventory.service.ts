@@ -21,6 +21,7 @@
  */
 import { prisma } from '../lib/prisma.js'
 import { getSubaccountAuthTokenBySid } from './twilio-subaccount.service.js'
+import { getPlatformTwilioClient, getPlatformTwilioCredentials } from './twilio.service.js'
 
 export interface SubaccountInventoryNumber {
   id: string
@@ -214,6 +215,235 @@ export async function listMyTwilioInventory(userId: string): Promise<MyTwilioInv
     canTransfer: subaccounts.length >= 2,
     eligibleLinkTargets,
   }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Platform-wide reconcile (admin) — diff every DB PhoneNumber row against what
+// Twilio ACTUALLY reports across the master account + every subaccount.
+//
+// The admin phone-numbers page shows tenant-assigned numbers straight from the
+// DB with no Twilio check, so the "inventory" can silently drift from reality:
+// released numbers still listed (GHOST), numbers living on a different account
+// than the DB claims (MISPLACED), voice webhook not pointing at our gateway so
+// calls never reach Orby (WEBHOOK_DRIFT), or DB capability flags that disagree
+// with the number's real Twilio capabilities (CAP_DRIFT). Numbers Twilio has on
+// a subaccount that we never tracked show up as ORPHAN rows.
+//
+// Read-only: this flags drift, it never mutates Twilio or the DB.
+// ──────────────────────────────────────────────────────────────────────────────
+
+export type NumberSyncStatus =
+  | 'IN_SYNC'
+  | 'GHOST'          // DB row, no matching live Twilio number
+  | 'MISPLACED'      // exists on Twilio but on a different account than DB says
+  | 'WEBHOOK_DRIFT'  // inbound-enabled but voice webhook not pointing at our gateway
+  | 'CAP_DRIFT'      // DB capability flags disagree with Twilio's real capabilities
+
+export interface TenantNumberSync {
+  status: NumberSyncStatus
+  issues: string[]
+  liveAccountSid: string | null
+  liveVoiceUrl: string | null
+}
+
+export interface OrphanTwilioNumber {
+  twilioNumberSid: string
+  e164Number: string
+  accountSid: string
+  ownerLabel: string | null
+  friendlyName: string | null
+  voiceUrl: string | null
+  capabilities: { voice: boolean; sms: boolean; mms: boolean }
+}
+
+export interface PhoneInventoryReconcile {
+  /** Per-DB-row sync verdict, keyed by PhoneNumber.id. */
+  byId: Record<string, TenantNumberSync>
+  /** Live subaccount numbers with no DB row. */
+  orphans: OrphanTwilioNumber[]
+  summary: {
+    total: number
+    inSync: number
+    ghost: number
+    misplaced: number
+    webhookDrift: number
+    capDrift: number
+    orphans: number
+  }
+  /** Set when the live Twilio pull failed; verdicts fall back to UNKNOWN-safe
+   *  (everything marked IN_SYNC is suppressed, page shows the error instead). */
+  syncError: string | null
+  /** ISO timestamp the reconcile ran (server clock). */
+  checkedAt: string
+}
+
+interface LiveNumber {
+  sid: string
+  phoneNumber: string
+  accountSid: string
+  voiceUrl: string | null
+  capabilities: { voice: boolean; sms: boolean; mms: boolean }
+  friendlyName: string | null
+}
+
+/** Does a Twilio voiceUrl point at our own API host (→ inbound reaches Orby)? */
+function pointsAtGateway(voiceUrl: string | null, apiHost: string): boolean {
+  if (!voiceUrl) return false
+  return voiceUrl.includes(apiHost)
+}
+
+/** Pull every incomingPhoneNumber across the master account and all
+ *  subaccounts, using master credentials (parent creds can read subaccount
+ *  resources by scoping the account SID in the path). */
+async function fetchAllLiveTwilioNumbers(): Promise<{
+  numbers: LiveNumber[]
+  labelByAccount: Map<string, string>
+  masterSid: string | null
+}> {
+  const [client, creds] = await Promise.all([
+    getPlatformTwilioClient(),
+    getPlatformTwilioCredentials(),
+  ])
+  const masterSid = creds?.accountSid ?? null
+
+  // Every account under this project: the master itself + all subaccounts.
+  const accounts = await client.api.accounts.list({ limit: 200 })
+  const labelByAccount = new Map<string, string>()
+  const numbers: LiveNumber[] = []
+
+  for (const acct of accounts) {
+    labelByAccount.set(acct.sid, acct.friendlyName ?? acct.sid)
+    try {
+      const live = await client.api.accounts(acct.sid).incomingPhoneNumbers.list({ limit: 200 })
+      for (const ln of live) {
+        numbers.push({
+          sid:          ln.sid,
+          phoneNumber:  ln.phoneNumber,
+          accountSid:   acct.sid,
+          voiceUrl:     ln.voiceUrl ?? null,
+          friendlyName: ln.friendlyName ?? null,
+          capabilities: {
+            voice: !!ln.capabilities?.voice,
+            sms:   !!ln.capabilities?.sms,
+            mms:   !!ln.capabilities?.mms,
+          },
+        })
+      }
+    } catch {
+      // Suspended / closed subaccounts can 20xxx here. Skip; its numbers just
+      // won't appear as live matches (DB rows for it will read GHOST, which is
+      // itself a signal worth surfacing).
+    }
+  }
+  return { numbers, labelByAccount, masterSid }
+}
+
+/** Reconcile the DB's tenant-assigned PhoneNumber rows against live Twilio. */
+export async function reconcilePhoneInventory(): Promise<PhoneInventoryReconcile> {
+  const dbNumbers = await prisma.phoneNumber.findMany({
+    select: {
+      id: true,
+      e164Number: true,
+      twilioNumberSid: true,
+      twilioSubaccountSid: true,
+      isInboundEnabled: true,
+      isSmsEnabled: true,
+    },
+  })
+
+  const apiHost = (() => {
+    try { return new URL(process.env['API_BASE_URL'] ?? 'https://api.myorbisvoice.com').host }
+    catch { return 'api.myorbisvoice.com' }
+  })()
+
+  const empty = (syncError: string | null): PhoneInventoryReconcile => ({
+    byId: {},
+    orphans: [],
+    summary: { total: dbNumbers.length, inSync: 0, ghost: 0, misplaced: 0, webhookDrift: 0, capDrift: 0, orphans: 0 },
+    syncError,
+    checkedAt: nowIso(),
+  })
+
+  let live: Awaited<ReturnType<typeof fetchAllLiveTwilioNumbers>>
+  try {
+    live = await fetchAllLiveTwilioNumbers()
+  } catch (err) {
+    return empty((err as Error).message?.slice(0, 200) ?? 'Twilio sync failed')
+  }
+
+  const bySid = new Map(live.numbers.map((n) => [n.sid, n]))
+  const byE164 = new Map(live.numbers.map((n) => [n.phoneNumber, n]))
+  const dbSids = new Set(dbNumbers.map((n) => n.twilioNumberSid).filter(Boolean) as string[])
+  const dbE164 = new Set(dbNumbers.map((n) => n.e164Number))
+
+  const byId: Record<string, TenantNumberSync> = {}
+  const summary = { total: dbNumbers.length, inSync: 0, ghost: 0, misplaced: 0, webhookDrift: 0, capDrift: 0, orphans: 0 }
+
+  for (const n of dbNumbers) {
+    const match = (n.twilioNumberSid && bySid.get(n.twilioNumberSid)) || byE164.get(n.e164Number) || null
+    const issues: string[] = []
+
+    if (!match) {
+      byId[n.id] = { status: 'GHOST', issues: ['Not found on Twilio — released, ported out, or never provisioned.'], liveAccountSid: null, liveVoiceUrl: null }
+      summary.ghost++
+      continue
+    }
+
+    let misplaced = false, webhookDrift = false, capDrift = false
+
+    if (n.twilioSubaccountSid && match.accountSid !== n.twilioSubaccountSid) {
+      misplaced = true
+      const liveLabel = live.labelByAccount.get(match.accountSid) ?? match.accountSid
+      issues.push(`Lives on Twilio account ${match.accountSid.slice(0, 14)}… (${liveLabel}) but DB assigns it to ${n.twilioSubaccountSid.slice(0, 14)}…`)
+    }
+    if (n.isInboundEnabled && !pointsAtGateway(match.voiceUrl, apiHost)) {
+      webhookDrift = true
+      issues.push(`Voice webhook does not point at ${apiHost} — inbound calls won't reach Orby (currently: ${match.voiceUrl ? match.voiceUrl.slice(0, 60) : 'unset'}).`)
+    }
+    if (n.isInboundEnabled && !match.capabilities.voice) {
+      capDrift = true
+      issues.push('DB has inbound enabled but the Twilio number has no Voice capability.')
+    }
+    if (n.isSmsEnabled && !match.capabilities.sms) {
+      capDrift = true
+      issues.push('DB has SMS enabled but the Twilio number has no SMS capability.')
+    }
+
+    // Worst-first: MISPLACED > WEBHOOK_DRIFT > CAP_DRIFT > IN_SYNC.
+    let status: NumberSyncStatus = 'IN_SYNC'
+    if (misplaced) { status = 'MISPLACED'; summary.misplaced++ }
+    else if (webhookDrift) { status = 'WEBHOOK_DRIFT'; summary.webhookDrift++ }
+    else if (capDrift) { status = 'CAP_DRIFT'; summary.capDrift++ }
+    else summary.inSync++
+
+    byId[n.id] = { status, issues, liveAccountSid: match.accountSid, liveVoiceUrl: match.voiceUrl }
+  }
+
+  // Orphans: live numbers on a SUBACCOUNT (not the master) that we don't track.
+  // Master-owned numbers are legitimately shown in the platform section, so
+  // they're excluded here.
+  const orphans: OrphanTwilioNumber[] = []
+  for (const ln of live.numbers) {
+    if (live.masterSid && ln.accountSid === live.masterSid) continue
+    if (dbSids.has(ln.sid) || dbE164.has(ln.phoneNumber)) continue
+    orphans.push({
+      twilioNumberSid: ln.sid,
+      e164Number:      ln.phoneNumber,
+      accountSid:      ln.accountSid,
+      ownerLabel:      live.labelByAccount.get(ln.accountSid) ?? null,
+      friendlyName:    ln.friendlyName,
+      voiceUrl:        ln.voiceUrl,
+      capabilities:    ln.capabilities,
+    })
+  }
+  summary.orphans = orphans.length
+
+  return { byId, orphans, summary, syncError: null, checkedAt: nowIso() }
+}
+
+/** Server clock as ISO — isolated so the reconcile has one timestamp source. */
+function nowIso(): string {
+  return new Date().toISOString()
 }
 
 const numberSelect = {
