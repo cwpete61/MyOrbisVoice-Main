@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js'
+import type { ShowingBrief } from './summary.service.js'
 
 export type TranscriptEntry = {
   role: 'user' | 'assistant'
@@ -74,6 +75,10 @@ export async function persistConversation(opts: {
    *  the admin central call log's colour + alerting. */
   attentionLevel?: 'NONE' | 'WATCH' | 'ALERT'
   attentionReason?: string | null
+  /** Pre-showing handoff extracted from real-estate buyer calls — stored on
+   *  Conversation.outcomeJson and rendered as the Showing Brief card. Null for
+   *  non-buyer / non-RE conversations. */
+  showingBrief?: ShowingBrief | null
   /** Partner slug when the call's number is partner-owned. Inbound sets
    *  Conversation.partnerId at logCallStart, so it passes nothing here.
    *  Outbound has no pre-create step, so it passes the slug and we resolve +
@@ -84,8 +89,10 @@ export async function persistConversation(opts: {
    *  conversation so the demo cockpit can filter to that browser session. */
   demoSessionId?: string | null
 }): Promise<string> {
-  const { tenantId, sessionId, transcript, summary, channelType = 'WIDGET', turnLatenciesMs, attentionLevel, attentionReason, partnerSlug, demoSessionId } = opts
+  const { tenantId, sessionId, transcript, summary, channelType = 'WIDGET', turnLatenciesMs, attentionLevel, attentionReason, partnerSlug, demoSessionId, showingBrief } = opts
   const demoPatch = demoSessionId ? { demoSessionId } : {}
+  // Store the Showing Brief on outcomeJson when present (real-estate buyer calls).
+  const outcomePatch = showingBrief ? { outcomeJson: { showingBrief } as unknown as object } : {}
 
   // Resolve partner slug → id (outbound partner attribution). Only set when a
   // slug was supplied + matches; otherwise leave undefined so we never wipe a
@@ -123,10 +130,11 @@ export async function persistConversation(opts: {
     }
   }
 
-  // Attention assessment — only patch when the AI pass produced a result.
-  const attentionData = attentionLevel
-    ? { attentionLevel, attentionReason: attentionReason ?? null }
-    : {}
+  // Attention assessment + Showing Brief — patched into every write path below.
+  const attentionData = {
+    ...(attentionLevel ? { attentionLevel, attentionReason: attentionReason ?? null } : {}),
+    ...outcomePatch,
+  }
 
   if (channelType === 'INBOUND' || channelType === 'OUTBOUND') {
     // Conversation was already created by logCallStart — update it

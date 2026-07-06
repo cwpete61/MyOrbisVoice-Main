@@ -2219,6 +2219,18 @@
     "dash": "—"
   },
   "tenantConversations": {
+    "brief": {
+      "title": "Resumen de Cita",
+      "financing": "Financiamiento",
+      "timeline": "Plazo",
+      "motivation": "Motivación",
+      "budget": "Presupuesto",
+      "area": "Zona",
+      "mustHaves": "Imprescindibles",
+      "dealBreakers": "Inaceptables",
+      "deciders": "Quién decide",
+      "hasAgent": "Ya tiene agente"
+    },
     "title": "Conversaciones",
     "subtitle": "Transcripciones y resúmenes de sesiones de widget, entrantes y salientes.",
     "searchPlaceholder": "Buscar resumen, nombre de contacto, teléfono…",

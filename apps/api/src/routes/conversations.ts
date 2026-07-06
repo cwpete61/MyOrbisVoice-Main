@@ -77,6 +77,7 @@ router.get('/conversations', asyncHandler(async (req, res) => {
         transcriptJson: true,
         recordingStatus: true,
         outcomeCode: true,
+        outcomeJson: true,
         contact: { select: { firstName: true, lastName: true, email: true, phoneE164: true } },
       },
     }),

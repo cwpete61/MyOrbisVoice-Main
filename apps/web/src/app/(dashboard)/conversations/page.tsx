@@ -8,6 +8,19 @@ import { canPerformAdminWrites } from '@/lib/auth'
 
 interface Contact { firstName: string | null; lastName: string | null; email: string | null; phoneE164: string | null }
 
+interface ShowingBrief {
+  financing: string | null
+  timeline: string | null
+  motivation: string | null
+  budget: string | null
+  area: string | null
+  mustHaves: string[]
+  dealBreakers: string[]
+  decisionMakers: string | null
+  alreadyHasAgent: boolean | null
+  redFlags: string[]
+}
+
 interface Conversation {
   id: string
   channelType: 'WIDGET' | 'INBOUND' | 'OUTBOUND'
@@ -20,6 +33,7 @@ interface Conversation {
   transcriptJson: TranscriptEntry[] | null
   recordingStatus: string | null
   outcomeCode: string | null
+  outcomeJson: { showingBrief?: ShowingBrief | null } | null
   contact: Contact | null
   // Demo Gallery (Phase D.1)
   isFeaturedDemo?:    boolean
@@ -694,6 +708,39 @@ export default function ConversationsPage() {
                 {selected.summaryText}
               </div>
             )}
+
+            {/* Showing Brief — pre-showing qualification handoff (real-estate buyer calls) */}
+            {selected.outcomeJson?.showingBrief && (() => {
+              const b = selected.outcomeJson!.showingBrief!
+              const rows: Array<[string, string]> = []
+              if (b.financing)          rows.push([t('tenantConversations.brief.financing'), b.financing])
+              if (b.timeline)           rows.push([t('tenantConversations.brief.timeline'), b.timeline])
+              if (b.motivation)         rows.push([t('tenantConversations.brief.motivation'), b.motivation])
+              if (b.budget)             rows.push([t('tenantConversations.brief.budget'), b.budget])
+              if (b.area)               rows.push([t('tenantConversations.brief.area'), b.area])
+              if (b.mustHaves.length)   rows.push([t('tenantConversations.brief.mustHaves'), b.mustHaves.join(', ')])
+              if (b.dealBreakers.length) rows.push([t('tenantConversations.brief.dealBreakers'), b.dealBreakers.join(', ')])
+              if (b.decisionMakers)     rows.push([t('tenantConversations.brief.deciders'), b.decisionMakers])
+              if (b.alreadyHasAgent !== null) rows.push([t('tenantConversations.brief.hasAgent'), b.alreadyHasAgent ? '✓' : '—'])
+              return (
+                <div className="mb-4 p-3 rounded-lg text-xs leading-relaxed" style={{ background: 'var(--surface-sunken)', border: '1px solid var(--brand-500, #12a0a0)' }}>
+                  <div className="font-semibold mb-2" style={{ color: 'var(--brand-600, #0c6b6b)' }}>🏡 {t('tenantConversations.brief.title')}</div>
+                  <div className="flex flex-col gap-1">
+                    {rows.map(([k, v], i) => (
+                      <div key={i} className="flex gap-2">
+                        <span style={{ color: 'var(--text-tertiary)', minWidth: 92, flexShrink: 0 }}>{k}</span>
+                        <span style={{ color: 'var(--text-primary)' }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {b.redFlags.length > 0 && (
+                    <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                      <span style={{ color: 'oklch(55% 0.18 40)' }}>⚠ {b.redFlags.join(' · ')}</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Demo Gallery curation — admin-only */}
             {isAdmin && (

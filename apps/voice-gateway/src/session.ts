@@ -338,6 +338,7 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
           summary: analysis.summary,
           attentionLevel: analysis.attentionLevel,
           attentionReason: analysis.attentionReason,
+          showingBrief: analysis.showingBrief,
         })
         send(ws, { type: 'ended', conversationId })
       } else {

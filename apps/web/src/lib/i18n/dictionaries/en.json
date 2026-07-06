@@ -2219,6 +2219,18 @@
     "dash": "—"
   },
   "tenantConversations": {
+    "brief": {
+      "title": "Showing Brief",
+      "financing": "Financing",
+      "timeline": "Timeline",
+      "motivation": "Motivation",
+      "budget": "Budget",
+      "area": "Area",
+      "mustHaves": "Must-haves",
+      "dealBreakers": "Deal-breakers",
+      "deciders": "Decision-makers",
+      "hasAgent": "Has an agent"
+    },
     "title": "Conversations",
     "subtitle": "Transcripts and summaries from widget, inbound, and outbound sessions.",
     "searchPlaceholder": "Search summary, contact name, phone…",

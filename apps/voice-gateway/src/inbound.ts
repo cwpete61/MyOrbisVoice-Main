@@ -623,6 +623,7 @@ export async function handleInboundCall(ws: WebSocket) {
           summary: analysis.summary,
           attentionLevel: analysis.attentionLevel,
           attentionReason: analysis.attentionReason,
+          showingBrief: analysis.showingBrief,
           channelType: 'INBOUND',
           turnLatenciesMs,
           demoSessionId,
