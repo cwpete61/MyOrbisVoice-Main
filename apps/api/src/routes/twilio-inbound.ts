@@ -4,6 +4,7 @@ import {
   resolveInboundCall,
   buildInboundTwiml,
   buildDemoDirectConnectTwiml,
+  buildDirectConnectTwiml,
   logCallStart,
   logCallEnd,
   startCallRecording,
@@ -12,6 +13,7 @@ import {
   DEMO_PHONE_E164,
   resolveSandboxInboundTarget,
 } from '../services/demo-session.service.js'
+import { DIRECT_PHONE_E164, resolveMarketingReceptionTarget } from '../services/marketing-reception.service.js'
 import { resolveAgentDemoInboundByPhone } from '../services/agent-demo.service.js'
 import { logTwilioEvent } from '../lib/twilio-log.js'
 import { handleRecordingReady, type TwilioRecordingPayload } from '../services/recording.service.js'
@@ -31,6 +33,23 @@ router.post('/webhooks/twilio/voice', asyncHandler(async (req, res) => {
 
   let twiml: string
   try {
+    // DIRECT line (+1 929 640 3810): the public MyOrbisAgents reception number.
+    // It has NO DB PhoneNumber row (resolveInboundCall would throw), so handle it
+    // FIRST. Connect straight to the MyOrbisAgents brand-reception Orby, INSTANTLY
+    // — no PIN hold, no cockpit binding. Distinct from the 470 demo line.
+    if (To === DIRECT_PHONE_E164) {
+      const target = await resolveMarketingReceptionTarget()
+      if (!target) {
+        // Reception tenant not provisioned yet — don't dead-air; say a brief line.
+        res.type('text/xml').send('<Response><Say voice="alice">Thanks for calling MyOrbisAgents. Our line is being set up — please try again shortly.</Say><Hangup/></Response>')
+        return
+      }
+      logCallStart({ tenantId: target.tenantId, callSid: CallSid, fromNumber: From ?? '', toNumber: To, partnerId: null, listingId: null }).catch(e => console.error('[twilio] direct logCallStart failed:', e))
+      twiml = buildDirectConnectTwiml({ tenantId: target.tenantId, channelConfigId: target.channelConfigId, callSid: CallSid, fromNumber: From || undefined })
+      res.type('text/xml').send(twiml)
+      return
+    }
+
     const phone   = await resolveInboundCall(To)
     const channel = (phone as any).tenant?.channelConfigs?.[0] ?? null
     const profile = (phone as any).tenant?.businessProfile ?? null

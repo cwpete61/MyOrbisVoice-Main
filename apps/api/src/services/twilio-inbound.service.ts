@@ -142,6 +142,17 @@ export function buildDemoDirectConnectTwiml(p: AgentStreamParams): string {
   return response.toString()
 }
 
+/** DIRECT line (+1 929 640 3810): the public MyOrbisAgents reception number.
+ *  Orby answers instantly — NO PIN hold, NO cockpit binding (demoPinCapture
+ *  omitted, so the gateway never holds). Same connect path as the demo, just
+ *  without the PIN wait. */
+export function buildDirectConnectTwiml(p: AgentStreamParams): string {
+  const VoiceResponse = twilio.twiml.VoiceResponse
+  const response      = new VoiceResponse()
+  appendAgentStream(response, { ...p, demoPinCapture: false })
+  return response.toString()
+}
+
 
 // Managed Twilio: the call lives on whichever account owns the inbound
 // number. For tenants with a provisioned subaccount, that's the subaccount;

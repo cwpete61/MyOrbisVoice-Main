@@ -80,7 +80,7 @@
     if(player){
       var audio=player.querySelector('[data-audio]'),btn=player.querySelector('[data-play]'),cur=player.querySelector('[data-cur]');
       btn.addEventListener('click',function(){
-        if(audio.paused){audio.play().then(function(){player.classList.add('playing');btn.textContent='❚❚';}).catch(function(){window.location.href='tel:+14705173441';});}
+        if(audio.paused){audio.play().then(function(){player.classList.add('playing');btn.textContent='❚❚';}).catch(function(){window.location.href='tel:+19296403810';});}
         else{audio.pause();player.classList.remove('playing');btn.textContent='▶';}
       });
       audio.addEventListener('timeupdate',function(){var s=Math.floor(audio.currentTime||0);if(cur)cur.textContent=Math.floor(s/60)+':'+('0'+(s%60)).slice(-2);});
