@@ -422,14 +422,18 @@ export async function handleInboundCall(ws: WebSocket) {
       ? `Caller ID for this call: ${fromNumber}. Read this number back to the caller when confirming contact info — do not ask them to recite their phone number unless caller ID is missing.`
       : `Caller ID is blocked or unavailable for this call — you will need to ask the caller for their phone number.`
 
-    // DEMO line (option A): hold Orby silent until the PIN lands (or ~10s), so
-    // the whole conversation binds to the caller's demo session from word one.
-    // Incoming DTMF events are still processed while this awaits (each ws
-    // message is its own handler call), so the PIN releases the hold. Audio is
-    // dropped during the hold (gemini is null), keeping it silent — no robot.
+    // DEMO line: briefly hold Orby silent so a PIN-ready browser-demo caller
+    // binds their session BEFORE the greeting. Kept SHORT (2s) — the old 10s hold
+    // punished anyone who dialed the number directly (from the homepage, no PIN)
+    // with ten seconds of dead air before Orby spoke, which reads as a dropped
+    // call. A PIN keyed during this window releases the hold instantly; a PIN
+    // keyed LATER still binds mid-call (the DTMF handler runs the whole call and
+    // never interrupts Orby), so the only thing a late/absent PIN loses is the
+    // greeting turn in the cockpit — not the binding. Direct callers now hear
+    // Orby within ~2s.
     if (demoPinCapture) {
-      console.log('[inbound] demo: holding Orby until PIN or timeout')
-      await waitForPinOrTimeout(10_000)
+      console.log('[inbound] demo: short PIN hold (2s)')
+      await waitForPinOrTimeout(2_000)
       console.log(`[inbound] demo hold released — session=${demoSessionId ?? '(unbound)'}`)
     }
 
