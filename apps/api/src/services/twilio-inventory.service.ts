@@ -243,6 +243,9 @@ export interface TenantNumberSync {
   status: NumberSyncStatus
   issues: string[]
   liveAccountSid: string | null
+  /** Friendly name of the Twilio account the number actually lives on
+   *  (e.g. "CapturedByPeterson"). Null for ghosts / unnamed accounts. */
+  liveAccountLabel: string | null
   liveVoiceUrl: string | null
 }
 
@@ -384,10 +387,11 @@ export async function reconcilePhoneInventory(): Promise<PhoneInventoryReconcile
     const issues: string[] = []
 
     if (!match) {
-      byId[n.id] = { status: 'GHOST', issues: ['Not found on Twilio — released, ported out, or never provisioned.'], liveAccountSid: null, liveVoiceUrl: null }
+      byId[n.id] = { status: 'GHOST', issues: ['Not found on Twilio — released, ported out, or never provisioned.'], liveAccountSid: null, liveAccountLabel: null, liveVoiceUrl: null }
       summary.ghost++
       continue
     }
+    const liveAccountLabel = live.labelByAccount.get(match.accountSid) ?? null
 
     let misplaced = false, webhookDrift = false, capDrift = false
 
@@ -416,7 +420,7 @@ export async function reconcilePhoneInventory(): Promise<PhoneInventoryReconcile
     else if (capDrift) { status = 'CAP_DRIFT'; summary.capDrift++ }
     else summary.inSync++
 
-    byId[n.id] = { status, issues, liveAccountSid: match.accountSid, liveVoiceUrl: match.voiceUrl }
+    byId[n.id] = { status, issues, liveAccountSid: match.accountSid, liveAccountLabel, liveVoiceUrl: match.voiceUrl }
   }
 
   // Orphans: live numbers on a SUBACCOUNT (not the master) that we don't track.

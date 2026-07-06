@@ -2071,6 +2071,49 @@ router.delete('/phone-numbers/:sid', requirePlatformAdmin, async (req, res, next
   } catch (err) { next(err) }
 })
 
+// POST /api/admin/phone-numbers/tenant-row/:id/purge — delete a GHOST DB row.
+//   A ghost is a PhoneNumber row that Twilio no longer has (released, ported
+//   out, or never provisioned). There's nothing to release at Twilio — the row
+//   is just stale inventory. This removes the DB row ONLY.
+//   Guard: re-run the live reconcile and refuse unless this row is confirmed
+//   GHOST right now. Never deletes a row whose number is still live on Twilio
+//   (that would orphan a real number) — reassign/release those instead.
+router.post('/phone-numbers/tenant-row/:id/purge', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const { id } = req.params as { id: string }
+    const row = await prisma.phoneNumber.findUnique({
+      where: { id },
+      select: { id: true, e164Number: true, twilioNumberSid: true, twilioSubaccountSid: true, tenantId: true },
+    })
+    if (!row) throw new AppError('NOT_FOUND', 'Phone number row not found', 404)
+
+    // Verify with the SAME logic the UI showed: sweep master + every subaccount.
+    const { reconcilePhoneInventory } = await import('../services/twilio-inventory.service.js')
+    const recon = await reconcilePhoneInventory()
+    if (recon.syncError) {
+      throw new AppError('SERVICE_UNAVAILABLE', 'Cannot verify against Twilio right now — try again in a moment.', 503)
+    }
+    const verdict = recon.byId[id]
+    if (!verdict || verdict.status !== 'GHOST') {
+      throw new AppError('CONFLICT', 'This number is still live on Twilio — it is not a ghost. Reassign or release it instead of purging.', 409)
+    }
+
+    await prisma.phoneNumber.delete({ where: { id } })
+
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.phone_number.ghost_purged',
+      tenantId:     row.tenantId,
+      targetType:   'PhoneNumber',
+      targetId:     row.id,
+      metadataJson: { phoneNumber: row.e164Number, twilioNumberSid: row.twilioNumberSid, twilioSubaccountSid: row.twilioSubaccountSid },
+    })
+
+    res.json({ data: { purged: true, phoneNumber: row.e164Number } })
+  } catch (err) { next(err) }
+})
+
 // Helper to flatten the schema into Prisma-shaped data
 function buildA2PData(d: z.infer<typeof a2pAdminSchema>) {
   return {

@@ -36,10 +36,11 @@ interface PlatformNumber {
 type NumberSyncStatus = 'IN_SYNC' | 'GHOST' | 'MISPLACED' | 'WEBHOOK_DRIFT' | 'CAP_DRIFT'
 
 interface NumberSync {
-  status:         NumberSyncStatus
-  issues:         string[]
-  liveAccountSid: string | null
-  liveVoiceUrl:   string | null
+  status:           NumberSyncStatus
+  issues:           string[]
+  liveAccountSid:   string | null
+  liveAccountLabel: string | null
+  liveVoiceUrl:     string | null
 }
 
 interface TenantNumber {
@@ -237,6 +238,7 @@ export default function AdminPhoneNumbersPage() {
   const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null)
   const [message, setMessage]             = useState('')
   const [refreshing, setRefreshing]       = useState(false)
+  const [confirmPurge, setConfirmPurge]   = useState<string | null>(null)
 
   // Backend wrappers passed into NumberSearch
   async function searchBackend(filters: SearchFilters): Promise<SearchResult[]> {
@@ -272,6 +274,24 @@ export default function AdminPhoneNumbersPage() {
       reload()
     } catch (e) {
       setMessage((e as Error).message)
+    }
+  }
+
+  async function purgeGhost(id: string, phoneNumber: string) {
+    if (confirmPurge !== id) {
+      setConfirmPurge(id)
+      setTimeout(() => setConfirmPurge(prev => prev === id ? null : prev), 5000)
+      return
+    }
+    setMessage('')
+    try {
+      await apiFetch(`/api/admin/phone-numbers/tenant-row/${id}/purge`, { method: 'POST' })
+      setMessage(`✓ Purged stale row ${phoneNumber}. Nothing was released at Twilio — the number wasn't there.`)
+      setConfirmPurge(null)
+      reload()
+    } catch (e) {
+      setMessage((e as Error).message)
+      setConfirmPurge(null)
     }
   }
 
@@ -465,7 +485,14 @@ export default function AdminPhoneNumbersPage() {
                       {n.tenantName ?? '—'}
                       <span className="block text-xs font-mono mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{n.tenantId.slice(0, 8)}…</span>
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'var(--text-tertiary)' }}>{n.twilioSubaccountSid?.slice(0, 14) ?? '—'}…</td>
+                    <td className="px-4 py-2.5 text-xs">
+                      {/* Live Twilio account the number ACTUALLY lives on (matched
+                          during reconcile), with the SID underneath. */}
+                      <span style={{ color: 'var(--text-primary)' }}>{n.sync?.liveAccountLabel ?? '—'}</span>
+                      <span className="block font-mono mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                        {(n.sync?.liveAccountSid ?? n.twilioSubaccountSid)?.slice(0, 14) ?? '—'}…
+                      </span>
+                    </td>
                     <td className="px-4 py-2.5">
                       <div className="flex gap-1">
                         <CapBadge on={n.isInboundEnabled}  label="Inbound" />
@@ -481,7 +508,18 @@ export default function AdminPhoneNumbersPage() {
                     </td>
                     <td className="px-4 py-2.5 text-xs font-mono" style={{ color: 'var(--text-tertiary)' }}>{n.forwardingTarget ?? '—'}</td>
                     <td className="px-4 py-2.5 text-right">
-                      {n.twilioNumberSid && n.twilioSubaccountSid && (
+                      {n.sync?.status === 'GHOST' ? (
+                        <button onClick={() => purgeGhost(n.id, n.phoneNumber)}
+                          title="Delete this stale DB row. Nothing is released at Twilio — the number isn't there."
+                          className="text-xs px-2.5 py-1 rounded font-medium"
+                          style={{
+                            background: confirmPurge === n.id ? 'oklch(55% 0.18 25)' : 'transparent',
+                            color:      confirmPurge === n.id ? 'white' : 'oklch(55% 0.18 25)',
+                            border:     '1px solid oklch(55% 0.18 25)',
+                          }}>
+                          {confirmPurge === n.id ? 'Click again to purge' : 'Purge'}
+                        </button>
+                      ) : n.twilioNumberSid && n.twilioSubaccountSid ? (
                         <button onClick={() => setReassignTarget({
                           sid: n.twilioNumberSid!,
                           phoneNumber: n.phoneNumber,
@@ -491,7 +529,7 @@ export default function AdminPhoneNumbersPage() {
                           style={{ background: 'transparent', color: 'oklch(55% 0.11 193)', border: '1px solid oklch(55% 0.11 193)' }}>
                           Reassign
                         </button>
-                      )}
+                      ) : null}
                     </td>
                   </tr>
                 ))}
