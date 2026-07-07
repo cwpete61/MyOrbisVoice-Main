@@ -40,7 +40,7 @@ export const adLatinoScenes = (lang: Lang): FilmScene[] => {
   const c = T[lang];
   return [
     { dur: 150, audio: en(lang, 'adB-01'), node: <BigText text={c.b} sub={c.bSub} color={theme.white} size={92} /> },
-    { dur: callSceneDur('es', 2, 90), node: <AudibleCall callLang="es" simVariant="rent-es" narrator={en(lang, 'adB-02')} maxTurns={2} scale={1.15} showApp={false} leadIn={90} /> },
+    { dur: callSceneDur('rent-es', 2, 90), node: <AudibleCall variant="rent-es" narrator={en(lang, 'adB-02')} maxTurns={2} scale={1.15} showApp={false} leadIn={90} /> },
     { dur: 190, audio: en(lang, 'adA-03'), node: <CTACard lang={lang} /> },
   ];
 };
@@ -49,10 +49,10 @@ export const AdLatino: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film sc
 // ── Ad C — speed / the sim (snippet) ──
 export const adSpeedScenes = (lang: Lang): FilmScene[] => {
   const c = T[lang];
-  const sim = lang === 'es' ? 'rent-es' : 'rent-en';
+  const sim = lang === 'es' ? 'sale-es' : 'sale-en';
   return [
     { dur: 80, audio: en(lang, 'adC-01'), node: <BigText text={c.cHook} sub={c.cHookSub} size={110} /> },
-    { dur: callSceneDur(lang, 2, 90), node: <AudibleCall callLang={lang} simVariant={sim} narrator={en(lang, 'adC-02')} maxTurns={2} scale={1.15} showApp={false} leadIn={90} /> },
+    { dur: callSceneDur(sim, 2, 90), node: <AudibleCall variant={sim} narrator={en(lang, 'adC-02')} maxTurns={2} scale={1.15} showApp={false} leadIn={90} /> },
     { dur: 190, audio: en(lang, 'adA-03'), node: <CTACard lang={lang} /> },
   ];
 };

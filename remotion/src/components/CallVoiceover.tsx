@@ -1,11 +1,13 @@
 import { Audio, Sequence, staticFile } from 'remotion';
+import { callAudioPrefix } from '../data/calls';
 
-/** Plays the per-turn call voiceover clips (public/vo/call-<lang>-NN.mp3) in
- *  sync with the PhoneCallSim bubbles: clip i starts at the cumulative sum of
- *  the same `durs` the sim uses for its bubble layout. Orby lines are nova,
- *  caller lines echo (baked into the clips). Used only in the audible Explainer
- *  call. */
-export const CallVoiceover: React.FC<{ lang: 'en' | 'es'; durs: number[] }> = ({ lang, durs }) => {
+/** Plays the per-turn call voiceover clips (public/vo/<prefix>-NN.mp3, where the
+ *  prefix is derived from the call `variant` — call-<lang> for rentals,
+ *  sale-<lang> for the sales hero) in sync with the PhoneCallSim bubbles: clip i
+ *  starts at the cumulative sum of the same `durs` the sim uses for its bubble
+ *  layout. Orby lines are nova, caller lines echo (baked into the clips). */
+export const CallVoiceover: React.FC<{ variant: string; durs: number[] }> = ({ variant, durs }) => {
+  const prefix = callAudioPrefix(variant);
   const starts: number[] = [];
   durs.reduce((acc, d, i) => {
     starts[i] = acc;
@@ -14,8 +16,8 @@ export const CallVoiceover: React.FC<{ lang: 'en' | 'es'; durs: number[] }> = ({
   return (
     <>
       {durs.map((_, i) => (
-        <Sequence key={i} from={starts[i]!} name={`call-${lang}-${i}`}>
-          <Audio src={staticFile(`vo/call-${lang}-${String(i).padStart(2, '0')}.mp3`)} />
+        <Sequence key={i} from={starts[i]!} name={`${prefix}-${i}`}>
+          <Audio src={staticFile(`vo/${prefix}-${String(i).padStart(2, '0')}.mp3`)} />
         </Sequence>
       ))}
     </>

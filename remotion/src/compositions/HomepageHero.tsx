@@ -16,11 +16,11 @@ const COPY = {
 
 export const homepageScenes = (lang: Lang): FilmScene[] => {
   const c = COPY[lang];
-  const sim = lang === 'es' ? 'rent-es' : 'rent-en';
+  const sim = lang === 'es' ? 'sale-es' : 'sale-en';
   return [
     { dur: 92, audio: en(lang, 'homepage-01'), node: <RingingHook caption={c.hook} /> },
     { dur: 84, audio: en(lang, 'homepage-02'), node: <BigText text={c.tagline} size={130} withOrb /> },
-    { dur: callSceneDur(lang, 2, 120), node: <AudibleCall callLang={lang} simVariant={sim} narrator={en(lang, 'homepage-03')} maxTurns={2} scale={0.8} leadIn={120} /> },
+    { dur: callSceneDur(sim, 2, 120), node: <AudibleCall variant={sim} narrator={en(lang, 'homepage-03')} maxTurns={2} scale={0.8} leadIn={120} /> },
     { dur: 116, audio: en(lang, 'homepage-04'), node: (
       <Stage scale={0.95}>
         <div style={{ display: 'flex', gap: 70, alignItems: 'center' }}>

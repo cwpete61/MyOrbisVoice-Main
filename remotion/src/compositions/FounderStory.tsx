@@ -28,13 +28,13 @@ const COPY = {
 
 export const founderScenes = (lang: Lang): FilmScene[] => {
   const c = COPY[lang];
-  const sim = lang === 'es' ? 'rent-es' : 'rent-en';
+  const sim = lang === 'es' ? 'sale-es' : 'sale-en';
   return [
     { dur: 138, audio: en(lang, 'founder-01'), node: <BigText text={c.open} sub={c.openSub} size={78} /> },
     { dur: 272, audio: en(lang, 'founder-02'), node: <BigText text={c.loss} sub={c.lossSub} color={theme.coral} size={120} /> },
     { dur: 162, audio: en(lang, 'founder-03'), node: <BigText text={c.punch} sub={c.punchSub} color={theme.coral} size={100} /> },
     { dur: 122, audio: en(lang, 'founder-04'), node: <BigText text={c.decision} size={130} withOrb /> },
-    { dur: callSceneDur(lang, 4, 85), node: <AudibleCall callLang={lang} simVariant={sim} narrator={en(lang, 'founder-05')} maxTurns={4} scale={0.82} /> },
+    { dur: callSceneDur(sim, 4, 85), node: <AudibleCall variant={sim} narrator={en(lang, 'founder-05')} maxTurns={4} scale={0.82} /> },
     { dur: 158, audio: en(lang, 'founder-06'), node: (
       <Stage scale={0.92}>
         <div style={{ display: 'flex', gap: 80, alignItems: 'center' }}>

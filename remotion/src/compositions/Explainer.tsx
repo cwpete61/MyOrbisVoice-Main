@@ -2,7 +2,7 @@ import { AppCockpit } from '../components/AppCockpit';
 import { AudibleCall } from '../components/AudibleCall';
 import { CTACard } from '../components/CTACard';
 import { KpiCounter } from '../components/KpiCounter';
-import { RealityGap } from '../components/RealityGap';
+import { StatScene } from '../components/StatScene';
 import { callSceneDur } from '../data/calls';
 import { Film, filmDuration, type FilmScene } from '../components/Film';
 import { BigText, RingingHook, Stage } from '../components/Scene';
@@ -13,9 +13,10 @@ const en = (l: Lang, id: string) => (l === 'en' ? id : undefined);
 
 const COPY = {
   en: {
-    ring: 'ring… ring… ring…', gapLt: 'Without Orby', gapRt: 'With Orby',
-    gapL: 'Phone rings out. Buyer calls the next agent. You paid for that lead.',
-    gapR: 'Every call answered, qualified, booked — English or Spanish.',
+    ring: 'ring… ring… ring…',
+    gap78Sub: 'THE GAP NOBODY TALKS ABOUT', gap78Label: 'go with the first agent to respond',
+    gap78Cap: 'Not the best agent. The first one.',
+    cost10Sub: 'THE COST OF ONE MISSED CALL', cost10Label: 'commission — handed to whoever picked up',
     cost: 'You didn’t lose the deal on price. You lost it on a missed call.', costSub: 'THE REAL REASON DEALS SLIP',
     wave: 'Latinos are the majority of net new U.S. homeowner growth.¹', waveSub: 'THE GROWTH IN BUYING SPEAKS SPANISH',
     meet: 'Orby catches. You close.', meetSub: 'MEET ORBY — YOUR AI RECEPTIONIST',
@@ -28,9 +29,10 @@ const COPY = {
     successSub: 'WHAT SUCCESS LOOKS LIKE', caught: 'leads caught', slept: 'booked while you slept', kept: 'commission kept',
   },
   es: {
-    ring: 'ring… ring… ring…', gapLt: 'Sin Orby', gapRt: 'Con Orby',
-    gapL: 'El teléfono suena y nadie contesta. El comprador llama al siguiente agente.',
-    gapR: 'Cada llamada atendida, calificada y agendada — en inglés o español.',
+    ring: 'ring… ring… ring…',
+    gap78Sub: 'LA BRECHA QUE NADIE MENCIONA', gap78Label: 'elige al primer agente que contesta',
+    gap78Cap: 'No al mejor agente. Al primero.',
+    cost10Sub: 'EL COSTO DE UNA LLAMADA PERDIDA', cost10Label: 'de comisión — para quien sí contestó',
     cost: 'No perdiste la venta por el precio. La perdiste por una llamada sin contestar.', costSub: 'LA VERDADERA RAZÓN POR LA QUE SE ESCAPAN',
     wave: 'Los latinos son la mayoría del crecimiento neto de propietarios en EE. UU.¹', waveSub: 'EL CRECIMIENTO EN COMPRAS HABLA ESPAÑOL',
     meet: 'Orby atiende. Tú cierras.', meetSub: 'CONOCE A ORBY — TU RECEPCIONISTA CON IA',
@@ -58,20 +60,24 @@ const appBeat = (lang: Lang, sub: string, body: string, highlight: 'leads' | 'br
 
 export const explainerScenes = (lang: Lang): FilmScene[] => {
   const c = COPY[lang];
-  const sim = lang === 'es' ? 'rent-es' : 'rent-en';
+  // Hero call = the SALES conversation (pre-approved buyer books a showing —
+  // the commission story). Bilingual proof (scene 7) stays the Spanish rental.
+  const heroSim = lang === 'es' ? 'sale-es' : 'sale-en';
   const scenes: FilmScene[] = [
     { dur: 143, audio: en(lang, 'explainer-01'), node: <RingingHook caption={c.ring} /> },
-    { dur: 277, audio: en(lang, 'explainer-02'), node: <RealityGap leftTitle={c.gapLt} leftBody={c.gapL} rightTitle={c.gapRt} rightBody={c.gapR} /> },
-    { dur: 185, audio: en(lang, 'explainer-03'), node: <BigText text={c.cost} sub={c.costSub} color={theme.coral} size={82} /> },
+    { dur: 277, audio: en(lang, 'explainer-02'), node: <StatScene eyebrow={c.gap78Sub} stats={[{ to: 78, suffix: '%', label: c.gap78Label }]} caption={c.gap78Cap} /> },
+    { dur: 185, audio: en(lang, 'explainer-03'), node: <StatScene eyebrow={c.cost10Sub} stats={[{ prefix: '$', to: 10000, format: 'comma', label: c.cost10Label, color: theme.coral }]} /> },
     { dur: 234, audio: en(lang, 'explainer-04'), node: <BigText text={c.wave} sub={c.waveSub} color={theme.white} size={78} /> },
     { dur: 141, audio: en(lang, 'explainer-05'), node: <BigText text={c.meet} sub={c.meetSub} size={96} withOrb /> },
-    // 6 — the main audible call (EN or ES depending on the cut)
-    { dur: callSceneDur(lang, undefined, 85), node: <AudibleCall callLang={lang} simVariant={sim} narrator={lang === 'en' ? 'explainer-06' : 'explainer-es-06'} scale={0.82} /> },
+    // 6 — the main audible call: the SALES hero (EN or ES cut)
+    { dur: callSceneDur(heroSim, undefined, 85), node: <AudibleCall variant={heroSim} narrator={lang === 'en' ? 'explainer-06' : 'explainer-es-06'} scale={0.82} /> },
   ];
-  // 7 — bilingual proof (the Spanish call), EN cut only. ES cut's scene 6 is
-  // already the Spanish call, so it's dropped here to avoid the same call twice.
+  // 7 — bilingual + rental range proof (the Spanish rental call), EN cut only.
+  // The ES cut is already all-Spanish, so it keeps just the sales hero.
   if (lang === 'en') {
-    scenes.push({ dur: callSceneDur('es', undefined, 85), node: <AudibleCall callLang="es" simVariant="rent-es" narrator="explainer-07" scale={0.8} caption={c.bilingualSub} /> });
+    // leadIn 175 ≈ the 5.5s narration length, so "…a buyer calls in Spanish?"
+    // is fully spoken before the Spanish call audio starts (no overlap).
+    scenes.push({ dur: callSceneDur('rent-es', undefined, 175), node: <AudibleCall variant="rent-es" narrator="explainer-07" scale={0.8} leadIn={175} caption={c.bilingualSub} /> });
   }
   scenes.push(
     { dur: 191, audio: en(lang, 'explainer-08'), node: appBeat(lang, c.appSub, c.app, 'leads') },

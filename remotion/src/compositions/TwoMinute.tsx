@@ -2,7 +2,7 @@ import { AppCockpit } from '../components/AppCockpit';
 import { AudibleCall } from '../components/AudibleCall';
 import { CTACard } from '../components/CTACard';
 import { KpiCounter } from '../components/KpiCounter';
-import { RealityGap } from '../components/RealityGap';
+import { StatScene } from '../components/StatScene';
 import { callSceneDur } from '../data/calls';
 import { Film, filmDuration, type FilmScene } from '../components/Film';
 import { BigText, RingingHook, Stage } from '../components/Scene';
@@ -14,8 +14,8 @@ const en = (l: Lang, id: string) => (l === 'en' ? id : undefined);
 const COPY = {
   en: {
     ring: 'ring… ring…',
-    gapL: 'You’re one person. At a showing, in a closing, asleep. The phone doesn’t care.',
-    gapR: 'Every call caught, qualified, and booked — 24/7, English or Spanish.',
+    statSub: 'THE MATH ON A MISSED CALL', stat78Label: 'go with the first agent to respond', stat5Label: 'before a lead goes cold',
+    statCap: 'You can’t answer mid-showing, driving, or asleep. But somebody has to.',
     wave: 'The growth in home buying speaks Spanish.¹', waveSub: 'MOST NET NEW U.S. HOMEOWNERS: LATINO',
     proof: 'Built by an agent who lost the deal.', proofSub: 'FIFTEEN YEARS. ONE MISSED CALL.',
     orby: brand.tagline, orbySub: 'YOUR AI RECEPTIONIST',
@@ -26,8 +26,8 @@ const COPY = {
   },
   es: {
     ring: 'ring… ring…',
-    gapL: 'Eres una sola persona. En una cita, cerrando, dormido. Al teléfono no le importa.',
-    gapR: 'Cada llamada atendida, calificada y agendada — 24/7, en inglés o español.',
+    statSub: 'LAS CUENTAS DE UNA LLAMADA PERDIDA', stat78Label: 'elige al primer agente que contesta', stat5Label: 'y el contacto se enfría',
+    statCap: 'No puedes contestar en una cita, manejando o dormido. Pero alguien tiene que hacerlo.',
     wave: 'El crecimiento en la compra de casas habla español.¹', waveSub: 'MAYORÍA DEL CRECIMIENTO NETO DE PROPIETARIOS: LATINO',
     proof: 'Creado por un agente que perdió la venta.', proofSub: 'QUINCE AÑOS. UNA LLAMADA PERDIDA.',
     orby: brand.taglineEs, orbySub: 'TU RECEPCIONISTA CON IA',
@@ -42,11 +42,11 @@ export const twoMinuteScenes = (lang: Lang): FilmScene[] => {
   const c = COPY[lang];
   return [
     { dur: 130, audio: en(lang, 'twomin-01'), node: <RingingHook caption={c.ring} /> },
-    { dur: 361, audio: en(lang, 'twomin-02'), node: <RealityGap leftBody={c.gapL} rightBody={c.gapR} leftTitle={c.gapLt} rightTitle={c.gapRt} /> },
+    { dur: 361, audio: en(lang, 'twomin-02'), node: <StatScene eyebrow={c.statSub} stats={[{ to: 78, suffix: '%', label: c.stat78Label }, { prefix: '<', from: 30, to: 5, suffix: ' min', label: c.stat5Label, color: theme.coral }]} caption={c.statCap} /> },
     { dur: 264, audio: en(lang, 'twomin-03'), node: <BigText text={c.wave} sub={c.waveSub} color={theme.white} size={80} /> },
     { dur: 174, audio: en(lang, 'twomin-04'), node: <BigText text={c.proof} sub={c.proofSub} size={96} /> },
     { dur: 100, audio: en(lang, 'twomin-05'), node: <BigText text={c.orby} sub={c.orbySub} size={104} withOrb /> },
-    { dur: callSceneDur('es', 4, 105), node: <AudibleCall callLang="es" simVariant="rent-es" narrator={en(lang, 'twomin-06')} maxTurns={4} scale={0.82} leadIn={105} /> },
+    { dur: callSceneDur('rent-es', 4, 105), node: <AudibleCall variant="rent-es" narrator={en(lang, 'twomin-06')} maxTurns={4} scale={0.82} leadIn={105} /> },
     { dur: 190, audio: en(lang, 'twomin-07'), node: (
       <Stage scale={0.9}>
         <div style={{ display: 'flex', gap: 80, alignItems: 'center' }}>
