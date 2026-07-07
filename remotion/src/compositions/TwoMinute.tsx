@@ -48,16 +48,17 @@ const COPY = {
 
 export const TwoMinute: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const c = COPY[lang];
+  const vo = (id: string) => (lang === 'en' ? id : undefined);
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
-      <Scene from={0} dur={210}><RingingHook caption={c.ring} /></Scene>
-      <Scene from={210} dur={450}><RealityGap leftBody={c.gapL} rightBody={c.gapR} leftTitle={lang === 'es' ? 'Sin Orby' : 'Without Orby'} rightTitle={lang === 'es' ? 'Con Orby' : 'With Orby'} /></Scene>
-      <Scene from={660} dur={360}><BigText text={c.wave} sub={c.waveSub} bg={theme.teal} color={theme.white} size={80} /></Scene>
-      <Scene from={1020} dur={360}><BigText text={c.proof} sub={c.proofSub} size={96} /></Scene>
-      <Scene from={1380} dur={240}><BigText text={c.orby} sub={c.orbySub} size={120} /></Scene>
+      <Scene audio={vo('twomin-01')} from={0} dur={210}><RingingHook caption={c.ring} /></Scene>
+      <Scene audio={vo('twomin-02')} from={210} dur={450}><RealityGap leftBody={c.gapL} rightBody={c.gapR} leftTitle={lang === 'es' ? 'Sin Orby' : 'Without Orby'} rightTitle={lang === 'es' ? 'Con Orby' : 'With Orby'} /></Scene>
+      <Scene audio={vo('twomin-03')} from={660} dur={360}><BigText text={c.wave} sub={c.waveSub} bg={theme.teal} color={theme.white} size={80} /></Scene>
+      <Scene audio={vo('twomin-04')} from={1020} dur={360}><BigText text={c.proof} sub={c.proofSub} size={96} /></Scene>
+      <Scene audio={vo('twomin-05')} from={1380} dur={240}><BigText text={c.orby} sub={c.orbySub} size={104} withOrb /></Scene>
       {/* the Spanish sim as the wedge proof (subtitled), in both language cuts */}
-      <Scene from={1620} dur={900}><Stage scale={0.82}><PhoneCallSim variant="rent-es" /></Stage></Scene>
-      <Scene from={2520} dur={360}>
+      <Scene audio={vo('twomin-06')} from={1620} dur={900}><Stage scale={0.82}><PhoneCallSim variant="rent-es" /></Stage></Scene>
+      <Scene audio={vo('twomin-07')} from={2520} dur={360}>
         <Stage scale={0.9}>
           <div style={{ display: 'flex', gap: 80, alignItems: 'center' }}>
             <AppCockpit highlight="leads" lang={lang} />
@@ -68,7 +69,7 @@ export const TwoMinute: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
           </div>
         </Stage>
       </Scene>
-      <Scene from={2880} dur={420}>
+      <Scene audio={vo('twomin-08')} from={2880} dur={420}>
         <Stage>
           <div style={{ fontFamily: theme.font, textAlign: 'center' }}>
             <div style={{ fontSize: 30, fontWeight: 700, color: theme.muted, marginBottom: 30 }}>{c.successSub}</div>
@@ -80,7 +81,7 @@ export const TwoMinute: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
           </div>
         </Stage>
       </Scene>
-      <Scene from={3300} dur={300}><CTACard lang={lang} /></Scene>
+      <Scene audio={vo('twomin-09')} from={3300} dur={300}><CTACard lang={lang} /></Scene>
     </AbsoluteFill>
   );
 };

@@ -25,17 +25,18 @@ const COPY = {
 /** ~35s homepage hero — muted-first (on-screen text carries it), loops clean. */
 export const HomepageHero: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const c = COPY[lang];
+  const vo = (id: string) => (lang === 'en' ? id : undefined);
   const sim = lang === 'es' ? 'rent-es' : 'rent-en';
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
-      <Scene from={0} dur={120}><RingingHook caption={c.hook} /></Scene>
-      <Scene from={120} dur={180}><BigText text={c.tagline} size={130} /></Scene>
-      <Scene from={300} dur={360}>
+      <Scene audio={vo('homepage-01')} from={0} dur={120}><RingingHook caption={c.hook} /></Scene>
+      <Scene audio={vo('homepage-02')} from={120} dur={180}><BigText text={c.tagline} size={130} /></Scene>
+      <Scene audio={vo('homepage-03')} from={300} dur={360}>
         <Stage scale={0.8}>
           <PhoneCallSim variant={sim} />
         </Stage>
       </Scene>
-      <Scene from={660} dur={210}>
+      <Scene audio={vo('homepage-04')} from={660} dur={210}>
         <Stage scale={0.95}>
           <div style={{ display: 'flex', gap: 70, alignItems: 'center' }}>
             <AppCockpit highlight="brief" lang={lang} />
@@ -43,7 +44,7 @@ export const HomepageHero: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
           </div>
         </Stage>
       </Scene>
-      <Scene from={870} dur={180}><CTACard lang={lang} /></Scene>
+      <Scene audio={vo('homepage-05')} from={870} dur={180}><CTACard lang={lang} /></Scene>
       {/* sim caption for muted context */}
       <Scene from={300} dur={360}>
         <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 60 }}>

@@ -70,23 +70,24 @@ const COPY = {
 
 export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const c = COPY[lang];
+  const vo = (id: string) => (lang === 'en' ? id : undefined); // ES VO is a later pass
   const sim = lang === 'es' ? 'rent-es' : 'rent-en';
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
       {/* 1 hook */}
-      <Scene from={0} dur={180}><RingingHook caption={c.ring} /></Scene>
+      <Scene audio={vo('explainer-01')} from={0} dur={180}><RingingHook caption={c.ring} /></Scene>
       {/* 2 reality gap */}
-      <Scene from={180} dur={360}><RealityGap leftTitle={c.gapLt} leftBody={c.gapL} rightTitle={c.gapRt} rightBody={c.gapR} /></Scene>
+      <Scene audio={vo('explainer-02')} from={180} dur={360}><RealityGap leftTitle={c.gapLt} leftBody={c.gapL} rightTitle={c.gapRt} rightBody={c.gapR} /></Scene>
       {/* 3 the cost */}
-      <Scene from={540} dur={300}><BigText text={c.cost} sub={c.costSub} bg={theme.amberBg} color={theme.amber} size={82} /></Scene>
+      <Scene audio={vo('explainer-03')} from={540} dur={300}><BigText text={c.cost} sub={c.costSub} bg={theme.amberBg} color={theme.amber} size={82} /></Scene>
       {/* 4 the wave */}
-      <Scene from={840} dur={360}><BigText text={c.wave} sub={c.waveSub} bg={theme.teal} color={theme.white} size={78} /></Scene>
+      <Scene audio={vo('explainer-04')} from={840} dur={360}><BigText text={c.wave} sub={c.waveSub} bg={theme.teal} color={theme.white} size={78} /></Scene>
       {/* 5 meet Orby */}
-      <Scene from={1200} dur={300}><BigText text={c.meet} sub={c.meetSub} size={110} /></Scene>
+      <Scene audio={vo('explainer-05')} from={1200} dur={300}><BigText text={c.meet} sub={c.meetSub} size={96} withOrb /></Scene>
       {/* 6 phone sim (primary language) */}
-      <Scene from={1500} dur={840}><Stage scale={0.82}><PhoneCallSim variant={sim} /></Stage></Scene>
+      <Scene audio={vo('explainer-06')} from={1500} dur={840}><Stage scale={0.82}><PhoneCallSim variant={sim} /></Stage></Scene>
       {/* 7 bilingual proof — the Spanish call */}
-      <Scene from={2340} dur={600}>
+      <Scene audio={vo('explainer-07')} from={2340} dur={600}>
         <AbsoluteFill style={{ background: theme.bg }}>
           <Stage scale={0.8}><PhoneCallSim variant="rent-es" /></Stage>
           <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-start', paddingTop: 60 }}>
@@ -95,7 +96,7 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </AbsoluteFill>
       </Scene>
       {/* 8 the app */}
-      <Scene from={2940} dur={360}>
+      <Scene audio={vo('explainer-08')} from={2940} dur={360}>
         <Stage scale={0.92}>
           <div style={{ display: 'flex', gap: 80, alignItems: 'center' }}>
             <AppCockpit highlight="leads" lang={lang} />
@@ -107,7 +108,7 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </Stage>
       </Scene>
       {/* 9 showing brief */}
-      <Scene from={3300} dur={360}>
+      <Scene audio={vo('explainer-09')} from={3300} dur={360}>
         <Stage scale={0.92}>
           <div style={{ display: 'flex', gap: 80, alignItems: 'center' }}>
             <AppCockpit highlight="brief" lang={lang} />
@@ -119,13 +120,13 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </Stage>
       </Scene>
       {/* 10 control / trust */}
-      <Scene from={3660} dur={300}><BigText text={c.control} sub={c.controlSub} size={80} /></Scene>
+      <Scene audio={vo('explainer-10')} from={3660} dur={300}><BigText text={c.control} sub={c.controlSub} size={80} /></Scene>
       {/* 11 objection — augmentation not replacement */}
-      <Scene from={3960} dur={300}><BigText text={c.objection} sub={c.objectionSub} bg={theme.teal} color={theme.white} size={76} /></Scene>
+      <Scene audio={vo('explainer-11')} from={3960} dur={300}><BigText text={c.objection} sub={c.objectionSub} bg={theme.teal} color={theme.white} size={76} /></Scene>
       {/* 12 founder credibility */}
-      <Scene from={4260} dur={300}><BigText text={c.founder} sub={c.founderSub} size={96} /></Scene>
+      <Scene audio={vo('explainer-12')} from={4260} dur={300}><BigText text={c.founder} sub={c.founderSub} size={96} /></Scene>
       {/* 13 success */}
-      <Scene from={4560} dur={480}>
+      <Scene audio={vo('explainer-13')} from={4560} dur={480}>
         <Stage>
           <div style={{ fontFamily: theme.font, textAlign: 'center' }}>
             <div style={{ fontSize: 32, fontWeight: 700, color: theme.muted, marginBottom: 50 }}>{c.successSub}</div>
@@ -138,7 +139,7 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </Stage>
       </Scene>
       {/* 14 CTA */}
-      <Scene from={5040} dur={360}><CTACard lang={lang} /></Scene>
+      <Scene audio={vo('explainer-14')} from={5040} dur={360}><CTACard lang={lang} /></Scene>
     </AbsoluteFill>
   );
 };

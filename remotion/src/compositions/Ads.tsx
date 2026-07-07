@@ -39,11 +39,12 @@ const T = {
 /** Ad A — missed call = lost commission (18s / 540f) */
 export const AdMissedCall: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const c = T[lang];
+  const vo = (id: string) => (lang === 'en' ? id : undefined);
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
-      <Scene from={0} dur={150}><RingingHook caption={c.aHook} /></Scene>
-      <Scene from={150} dur={210}><BigText text={c.a} sub={c.aSub} bg={theme.amberBg} color={theme.amber} size={100} /></Scene>
-      <Scene from={360} dur={180}><CTACard lang={lang} /></Scene>
+      <Scene audio={vo('adA-01')} from={0} dur={150}><RingingHook caption={c.aHook} /></Scene>
+      <Scene audio={vo('adA-02')} from={150} dur={210}><BigText text={c.a} sub={c.aSub} bg={theme.amberBg} color={theme.amber} size={100} /></Scene>
+      <Scene audio={vo('adA-03')} from={360} dur={180}><CTACard lang={lang} /></Scene>
     </AbsoluteFill>
   );
 };
@@ -51,11 +52,12 @@ export const AdMissedCall: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
 /** Ad B — Latino wedge, Spanish sim (20s / 600f) */
 export const AdLatino: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const c = T[lang];
+  const vo = (id: string) => (lang === 'en' ? id : undefined);
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
-      <Scene from={0} dur={180}><BigText text={c.b} sub={c.bSub} bg={theme.teal} color={theme.white} size={92} /></Scene>
-      <Scene from={180} dur={240}><Stage scale={1.15}><PhoneCallSim variant="rent-es" showApp={false} /></Stage></Scene>
-      <Scene from={420} dur={180}><CTACard lang={lang} /></Scene>
+      <Scene audio={vo('adB-01')} from={0} dur={180}><BigText text={c.b} sub={c.bSub} bg={theme.teal} color={theme.white} size={92} /></Scene>
+      <Scene audio={vo('adB-02')} from={180} dur={240}><Stage scale={1.15}><PhoneCallSim variant="rent-es" showApp={false} /></Stage></Scene>
+      <Scene audio={vo('adA-03')} from={420} dur={180}><CTACard lang={lang} /></Scene>
     </AbsoluteFill>
   );
 };
@@ -63,12 +65,13 @@ export const AdLatino: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
 /** Ad C — speed / the sim (22s / 660f) */
 export const AdSpeed: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const c = T[lang];
+  const vo = (id: string) => (lang === 'en' ? id : undefined);
   const sim = lang === 'es' ? 'rent-es' : 'rent-en';
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
-      <Scene from={0} dur={120}><BigText text={c.cHook} sub={c.cHookSub} size={110} /></Scene>
-      <Scene from={120} dur={360}><Stage scale={1.15}><PhoneCallSim variant={sim} showApp={false} /></Stage></Scene>
-      <Scene from={480} dur={180}><CTACard lang={lang} /></Scene>
+      <Scene audio={vo('adC-01')} from={0} dur={120}><BigText text={c.cHook} sub={c.cHookSub} size={110} /></Scene>
+      <Scene audio={vo('adC-02')} from={120} dur={360}><Stage scale={1.15}><PhoneCallSim variant={sim} showApp={false} /></Stage></Scene>
+      <Scene audio={vo('adA-03')} from={480} dur={180}><CTACard lang={lang} /></Scene>
     </AbsoluteFill>
   );
 };
@@ -76,10 +79,11 @@ export const AdSpeed: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
 /** Ad D — Showing Brief (20s / 600f) */
 export const AdBrief: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const c = T[lang];
+  const vo = (id: string) => (lang === 'en' ? id : undefined);
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
-      <Scene from={0} dur={180}><BigText text={c.d} sub={c.dSub} bg={theme.amberBg} color={theme.amber} size={110} /></Scene>
-      <Scene from={180} dur={240}>
+      <Scene audio={vo('adD-01')} from={0} dur={180}><BigText text={c.d} sub={c.dSub} bg={theme.amberBg} color={theme.amber} size={110} /></Scene>
+      <Scene audio={vo('adD-02')} from={180} dur={240}>
         <Stage scale={0.95}>
           <div style={{ textAlign: 'center', fontFamily: theme.font }}>
             <AppCockpit highlight="brief" lang={lang} />
@@ -87,7 +91,7 @@ export const AdBrief: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
           </div>
         </Stage>
       </Scene>
-      <Scene from={420} dur={180}><CTACard lang={lang} /></Scene>
+      <Scene audio={vo('adA-03')} from={420} dur={180}><CTACard lang={lang} /></Scene>
     </AbsoluteFill>
   );
 };

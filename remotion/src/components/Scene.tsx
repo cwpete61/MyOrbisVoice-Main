@@ -1,5 +1,5 @@
 import React from 'react';
-import { AbsoluteFill, interpolate, Sequence, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Audio, interpolate, Sequence, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { Orb } from './Orb';
 import { theme } from '../theme';
 
@@ -29,9 +29,11 @@ export const Bg: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   );
 };
 
-/** Timed scene wrapper. */
-export const Scene: React.FC<{ from: number; dur: number; children: React.ReactNode }> = ({ from, dur, children }) => (
+/** Timed scene wrapper. `audio` = a VO file in public/vo/ (without extension),
+ *  played from the scene's start. */
+export const Scene: React.FC<{ from: number; dur: number; audio?: string; children: React.ReactNode }> = ({ from, dur, audio, children }) => (
   <Sequence from={from} durationInFrames={dur}>
+    {audio && <Audio src={staticFile(`vo/${audio}.mp3`)} />}
     {children}
   </Sequence>
 );
