@@ -446,6 +446,33 @@ export async function createAppointment(tenantId: string, userId: string | null,
    *  booking page — A2P opt-in proof for appointment-reminder texts. */
   smsConsentAt?: Date
 }) {
+  // Idempotency guard. Gemini Live sometimes emits book_appointment TWICE for
+  // the same slot in one session (observed on a real call: two appointment rows
+  // + two confirmation emails for one booking). If a live appointment for the
+  // same tenant + exact start time + same conversation (or contact) was created
+  // in the last 10 minutes, return THAT one instead of booking a duplicate —
+  // this short-circuits before the calendar hit and the confirmation email, so
+  // the second tool-call is a no-op that echoes the first appointment's id.
+  const dedupeOr: Array<Record<string, string>> = []
+  if (data.conversationId) dedupeOr.push({ conversationId: data.conversationId })
+  if (data.contactId)      dedupeOr.push({ contactId: data.contactId })
+  if (dedupeOr.length) {
+    const dupe = await prisma.appointment.findFirst({
+      where: {
+        tenantId,
+        startAt:   new Date(data.startAt),
+        status:    { notIn: ['CANCELED', 'FAILED'] },
+        createdAt: { gte: new Date(Date.now() - 10 * 60 * 1000) },
+        OR:        dedupeOr,
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+    if (dupe) {
+      console.warn(`[appointment] duplicate book_appointment ignored — returning existing ${dupe.id} (tenant=${tenantId}, start=${data.startAt})`)
+      return dupe
+    }
+  }
+
   // Try the full Google-Calendar-integrated path. When partnerId is set we
   // use the partner's calendar; otherwise the tenant's. Both fall back to
   // PENDING DB-only on Google-unavailable errors — the agent's caller still
@@ -727,9 +754,50 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
   const businessName = identity.bookingWithName
   const apptLabel    = opts.appointmentType || 'Appointment'
   const start        = new Date(opts.startAt)
+  const end          = new Date(opts.endAt)
   const dateStr      = start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: opts.timezone })
   const timeStr      = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone, timeZoneName: 'short' })
+  const endTimeStr   = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: opts.timezone, timeZoneName: 'short' })
   const subject      = `${opts.demo ? '[Demo] ' : ''}${apptLabel} confirmed — ${dateStr}`
+
+  // Best-effort enrichment for a fuller confirmation: greet the client by name,
+  // name the human agent + brokerage, and give a tap-to-call agent phone. Each
+  // piece renders only when present so real tenants without DNA/phone still get
+  // a clean email.
+  const [contact, dna] = await Promise.all([
+    opts.contactId
+      ? prisma.contact.findUnique({ where: { id: opts.contactId }, select: { firstName: true } }).catch(() => null)
+      : Promise.resolve(null),
+    prisma.businessDNA.findFirst({ where: { tenantId, isActive: true }, select: { identityJson: true } }).catch(() => null),
+  ])
+  const clientFirst = contact?.firstName?.trim() || ''
+  const dnaIdent    = (dna?.identityJson ?? {}) as Record<string, unknown>
+  // DNA businessName holds the human agent line, e.g. "John Brown · Austin Realtors".
+  const agentLine   = (typeof dnaIdent['businessName'] === 'string' && dnaIdent['businessName'].trim()) || businessName
+  const agentFirst  = agentLine.split(/[·,|]/)[0]!.trim() || agentLine
+
+  // Agent phone = the Twilio line the caller reaches the agent on — NOT
+  // tenant.publicPhone (which can be a personal/contact number and, in the
+  // demo, was actually the caller's own cell). Partner bookings use the
+  // partner's own phone; the demo uses the shared demo line; a real tenant
+  // uses its assigned Twilio number (prefer the outbound-capable one — that's
+  // the number that dials clients).
+  let agentPhoneRaw: string | null = identity.contactPhone
+  if (!agentPhoneRaw) {
+    if (opts.demo) {
+      agentPhoneRaw = DEMO_PHONE_E164
+    } else {
+      const pn = await prisma.phoneNumber.findFirst({
+        where:   { tenantId },
+        orderBy: [{ isOutboundEnabled: 'desc' }, { isInboundEnabled: 'desc' }, { createdAt: 'asc' }],
+        select:  { e164Number: true },
+      }).catch(() => null)
+      agentPhoneRaw = pn?.e164Number ?? null
+    }
+  }
+  const agentPhone  = formatUsPhone(agentPhoneRaw)
+  const agentPhoneTel = agentPhoneRaw ? agentPhoneRaw.replace(/[^\d+]/g, '') : null
+  const isShowing   = /showing|tour|open house|property/i.test(`${apptLabel} ${opts.notes ?? ''}`)
 
   // Footer names the host. Partner bookings additionally credit the partner's
   // Orby agent and the MyOrbisVoice platform so the recipient knows exactly
