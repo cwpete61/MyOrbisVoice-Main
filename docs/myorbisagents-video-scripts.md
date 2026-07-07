@@ -70,7 +70,7 @@ showing. On-screen English subtitles. This variant is the proof for the Latino b
 
 ## 1. FULL EXPLAINER
 
-`<Composition id="Explainer" width={1920} height={1080} fps={30} durationInFrames={3000} />` — **~100s, 16:9**
+`<Composition id="Explainer" width={1920} height={1080} fps={30} durationInFrames={5400} />` — **~180s (3 min), 16:9** · built as a 14-scene cut (adds a Spanish-call proof beat, control/trust, the "will it replace me? — no" objection, founder credibility); `remotion/src/compositions/Explainer.tsx` is the source of truth.
 
 | Scene (frames) | Visual (Remotion) | VO | On-screen text |
 |---|---|---|---|
@@ -220,7 +220,7 @@ Lead → Calificado → Agendado → Resumen ✓.
 
 ## 1. FULL EXPLAINER — ES
 
-`<Composition id="Explainer" width={1920} height={1080} fps={30} durationInFrames={3000} />` — **~100s, 16:9**
+`<Composition id="Explainer" width={1920} height={1080} fps={30} durationInFrames={5400} />` — **~180s (3 min), 16:9** · built as a 14-scene cut (adds a Spanish-call proof beat, control/trust, the "will it replace me? — no" objection, founder credibility); `remotion/src/compositions/Explainer.tsx` is the source of truth.
 
 | Escena (frames) | Visual (Remotion) | VO | Texto en pantalla |
 |---|---|---|---|

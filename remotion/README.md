@@ -19,7 +19,7 @@ npm run render Explainer out/explainer.mp4
 
 | id | format | length | piece |
 |---|---|---|---|
-| `Explainer` / `Explainer-ES` | 1920×1080 | ~100s | Full explainer |
+| `Explainer` / `Explainer-ES` | 1920×1080 | ~180s | Full explainer (14 scenes) |
 | `FounderStory` / `-ES` | 1920×1080 | ~75s | Personal-experience story |
 | `TwoMinute` / `-ES` | 1920×1080 | ~120s | 2-minute piece |
 | `HomepageHero` / `-ES` | 1920×1080 | ~35s | Homepage hero (muted-first) |
