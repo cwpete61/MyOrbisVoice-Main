@@ -1,10 +1,14 @@
 // Shared brand theme for every composition. Change once, propagates everywhere.
+// Brand colors pulled from the real MyOrbisAgents site (myorbisagents.com/assets/styles.css).
 export const theme = {
-  teal: '#1a9898',
-  tealDeep: '#0f6d6d',
-  ink: '#111318',
+  teal: '#15a8a8', // --brand
+  tealDeep: '#0b8f95',
+  aqua: '#2ccfcf', // aqua highlight
+  gradHot: 'linear-gradient(105deg, #12a3a3 0%, #15a8a8 45%, #34d6d6 100%)', // orb fill
+  gradMix: 'linear-gradient(115deg, #0b8f95 0%, #15a8a8 50%, #2ccfcf 100%)', // wordmark / highlights
+  ink: '#06141a', // brand canvas-0
   bg: '#f6f4ef', // warm off-white
-  bgDark: '#0d1512',
+  bgDark: '#06141a',
   amber: '#c2410c', // the "lost / missed" alert color
   amberBg: '#fff7ed',
   white: '#ffffff',

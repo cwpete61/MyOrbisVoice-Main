@@ -1,5 +1,6 @@
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { brand, theme } from '../theme';
+import { Logo } from './Logo';
 
 /** The identical closing card on every piece: tagline + "try Orby yourself" +
  *  number + site. Language-aware. */
@@ -25,6 +26,7 @@ export const CTACard: React.FC<{ lang?: 'en' | 'es' }> = ({ lang = 'en' }) => {
       }}
     >
       <div style={{ transform: `translateY(${interpolate(rise, [0, 1], [40, 0])}px)`, opacity: rise }}>
+        <div style={{ marginBottom: 44, display: 'flex', justifyContent: 'center' }}><Logo onDark size={1.6} /></div>
         <div style={{ fontSize: 84, fontWeight: 800, letterSpacing: -1, marginBottom: 28 }}>{tagline}</div>
         <div style={{ fontSize: 40, fontWeight: 600, opacity: 0.95, marginBottom: 48 }}>{cta}</div>
         <div
