@@ -10,11 +10,11 @@
     "render:all": "remotion render Explainer out/explainer.mp4 && remotion render TwoMinute out/two-minute.mp4 && remotion render FounderStory out/founder.mp4 && remotion render HomepageHero out/homepage.mp4"
   },
   "dependencies": {
-    "@remotion/cli": "^4.0.200",
-    "@remotion/google-fonts": "^4.0.200",
+    "@remotion/cli": "4.0.486",
+    "@remotion/google-fonts": "4.0.486",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "remotion": "^4.0.200"
+    "remotion": "4.0.486"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
