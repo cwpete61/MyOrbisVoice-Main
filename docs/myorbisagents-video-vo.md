@@ -19,7 +19,7 @@ Timings are taken from the actual `<Scene from/dur>` values at 30 fps.
 | Explainer | `echo` | Confident male narrator. Matches the punchy, plain-spoken swagger of the site explainer without colliding with the founder's onyx. |
 | FounderStory | `onyx` | Deep male, first person, per the founder's instruction. |
 | TwoMinute | `echo` | It is a cut-down of the Explainer. Same narrator keeps one brand voice. |
-| Four Ads | `nova` | Warm, bright female. Cuts through social feeds and gives the paid placements a distinct sound from the long-form narrator. |
+| Five outcome-ads | `nova` | Warm, bright female. Cuts through social feeds and gives the paid placements a distinct sound from the long-form narrator. Fully bilingual (EN + ES clips per line). |
 | HomepageHero | `echo` | Plays on the site next to the Explainer. Same voice, same brand. |
 
 ---
@@ -75,39 +75,54 @@ Timings are taken from the actual `<Scene from/dur>` values at 30 fps.
 
 ---
 
-## 4. Four Ads (vertical, 15–22s each) — voice: `nova`
+## 4. Five outcome-ads (vertical 9:16, 21–31s each) — voice: `nova`
 
-### Ad A — Missed call = lost commission (18s)
+Each ad = **one agent outcome**, built on PAS (loss-hook → agitate in
+dollars → outcome-close) → shared CTA. **Fully bilingual narration** —
+every line has an EN and an ES clip (`adN-MM-en.mp3` / `adN-MM-es.mp3`),
+plus `cta-en` / `cta-es`. The Spanish-speaking calls stay `rent-es`
+(audible in both cuts). Comp ids: `Ad-NeverMiss`, `Ad-Speed`, `Ad-Ready`,
+`Ad-Bilingual`, `Ad-TimeBack` (+ `-ES`).
 
-| Scene window | VO line |
-|---|---|
-| 0:00–0:05 (5s) | "That call you just missed? That was a buyer." [~4s] |
-| 0:05–0:12 (7s) | "A missed call is a lost commission. Orby makes sure you never miss another." [~6s] |
-| 0:12–0:18 (6s) | "Don't take my word for it. Try Orby yourself. Call (929) 640-3810." [~7s] ⚠ tight |
+### Ad 1 — Never Miss (outcome: every lead answered, 24/7)
 
-### Ad B — Latino wedge (20s)
+| # | Beat | VO line (EN) |
+|---|---|---|
+| 1 | Loss + agitate | "That ring? A buyer, ready to move — and you're mid-showing. Miss it, and they call the next agent. There goes a ten-thousand-dollar commission." |
+| 2 | Outcome | "Orby answers every call. Day, night, mid-showing. You never miss a lead again." |
+| 3 | CTA (`cta`) | "Don't take my word for it. Try Orby yourself. Call (929) 640-3810. Or visit myorbisagents.com." |
 
-| Scene window | VO line |
-|---|---|
-| 0:00–0:06 (6s) | "Millions of buyers shop for homes in Spanish. Can your phone keep up?" [~5s] |
-| 0:06–0:14 (8s) | "Orby answers in perfect Spanish, day or night." [~4s] [Spanish call audio plays] |
-| 0:14–0:20 (6s) | "Don't take my word for it. Try Orby yourself. Call (929) 640-3810." [~7s] ⚠ tight |
+### Ad 2 — Speed Wins (outcome: be the first responder — the 78%)
 
-### Ad C — Speed / booked while you worked (22s)
+| # | Beat | VO line (EN) |
+|---|---|---|
+| 1 | Stat (animated 78%) | "Seventy-eight percent of buyers go with the first agent who responds. Not the best agent. The first." |
+| 2 | Agitate + proof (sales call) | "Miss the window, lose the deal. Orby answers on the first ring. Listen." [sales call audio plays] |
+| 3 | CTA (`cta`) | shared CTA |
 
-| Scene window | VO line |
-|---|---|
-| 0:00–0:04 (4s) | "Booked while you worked." [~2s] |
-| 0:04–0:16 (12s) | "Nine p.m. call. Orby answers in one ring and books the showing. You find out in the morning." [~8s] [call audio under] |
-| 0:16–0:22 (6s) | "Don't take my word for it. Try Orby yourself. Call (929) 640-3810." [~7s] ⚠ tight |
+### Ad 3 — Walk In Ready (outcome: pre-qualified + Showing Brief)
 
-### Ad D — Showing Brief (20s)
+| # | Beat | VO line (EN) |
+|---|---|---|
+| 1 | Problem | "Most agents walk into a showing knowing a name. Guessing the budget, the timeline, whether the buyer's even pre-approved." |
+| 2 | Outcome (app + brief) | "Orby hands you a Showing Brief before you knock. Budget, pre-approval, must-haves. Walk in ready to close." |
+| 3 | CTA (`cta`) | shared CTA |
 
-| Scene window | VO line |
-|---|---|
-| 0:00–0:06 (6s) | "Never walk into a showing blind again." [~3s] |
-| 0:06–0:14 (8s) | "Orby preps a Showing Brief for every appointment. Who they are, their budget, their timeline, what they want." [~8s] |
-| 0:14–0:20 (6s) | "Don't take my word for it. Try Orby yourself. Call (929) 640-3810." [~7s] ⚠ tight |
+### Ad 4 — Bilingual (outcome: capture the Spanish buyers you're losing)
+
+| # | Beat | VO line (EN) |
+|---|---|---|
+| 1 | Problem | "The fastest-growing buyers in America speak Spanish. Your phone doesn't. So they hang up and call someone who does." |
+| 2 | Proof (Spanish call) | "Orby switches to Spanish instantly. Fluent. Natural. Listen." [Spanish call audio plays] |
+| 3 | CTA (`cta`) | shared CTA |
+
+### Ad 5 — Time Back (outcome: stop being chained to the phone)
+
+| # | Beat | VO line (EN) |
+|---|---|---|
+| 1 | Problem | "You became an agent to close deals — not to babysit a phone. But every call you miss, mid-dinner, mid-showing, is a deal gone." |
+| 2 | Outcome (app fills itself) | "Orby answers, qualifies the buyer, books the showing. You get your time back. And you still close." |
+| 3 | CTA (`cta`) | shared CTA |
 
 ---
 

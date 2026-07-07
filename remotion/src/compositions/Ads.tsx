@@ -1,84 +1,128 @@
 import { AppCockpit } from '../components/AppCockpit';
 import { AudibleCall } from '../components/AudibleCall';
 import { CTACard } from '../components/CTACard';
+import { StatScene } from '../components/StatScene';
 import { callSceneDur } from '../data/calls';
 import { Film, filmDuration, type FilmScene } from '../components/Film';
-import { BigText, RingingHook, Stage } from '../components/Scene';
+import { BigText, Stage } from '../components/Scene';
 import { theme } from '../theme';
 
+// ── Five outcome-ads. Each = one agent outcome, PAS structure
+// (loss-hook → agitate in dollars → outcome-close) → CTA. Bilingual narration
+// (nova, EN + ES) plus Spanish on-screen text. 9:16 vertical for paid social.
 type Lang = 'en' | 'es';
-const en = (l: Lang, id: string) => (l === 'en' ? id : undefined); // narrator VO is EN-only
+
+// Measured VO clip lengths (frames @30fps). Scene dur = clip + TAIL breath.
+const VO: Record<string, number> = {
+  'ad1-01-en': 244, 'ad1-01-es': 282, 'ad1-02-en': 138, 'ad1-02-es': 161,
+  'ad2-01-en': 185, 'ad2-01-es': 188, 'ad2-02-en': 131, 'ad2-02-es': 148,
+  'ad3-01-en': 225, 'ad3-01-es': 237, 'ad3-02-en': 191, 'ad3-02-es': 211,
+  'ad4-01-en': 216, 'ad4-01-es': 195, 'ad4-02-en': 109, 'ad4-02-es': 107,
+  'ad5-01-en': 227, 'ad5-01-es': 267, 'ad5-02-en': 178, 'ad5-02-es': 165,
+  'cta-en': 239, 'cta-es': 242,
+};
+const TAIL = 18;
+const clip = (id: string, lang: Lang) => `${id}-${lang}`;
+const dur = (id: string, lang: Lang) => VO[clip(id, lang)]! + TAIL;
+const ctaScene = (lang: Lang): FilmScene => ({ dur: dur('cta', lang), audio: clip('cta', lang), node: <CTACard lang={lang} /> });
 
 const T = {
   en: {
-    aHook: 'ring… ring… ring…', a: 'Missed call = lost commission.', aSub: 'THIS SOUND IS COSTING YOU DEALS',
-    b: 'Your phone doesn’t speak their language. Orby does.', bSub: 'MOST NET NEW HOMEOWNERS: LATINO¹',
-    cHook: 'You’re at a showing.', cHookSub: 'WHILE YOU CLOSE ONE DEAL…',
-    d: 'A name. That’s it.', dSub: 'MOST AGENTS WALK IN KNOWING', d2: 'Walk in ready to close.',
+    a1p: 'Miss the call. Hand over the commission.', a1psub: 'YOU’RE MID-SHOWING — THE PHONE ISN’T',
+    a1s: 'Orby answers every call. You never miss a lead.', a1ssub: '24/7 — DAY, NIGHT, MID-SHOWING',
+    a2cap: 'Not the best agent. The first one.', a2sub: 'SPEED-TO-LEAD WINS', a2label: 'go with the first agent to respond',
+    a3p: 'Most agents walk in knowing a name.', a3psub: 'GUESSING BUDGET · TIMELINE · PRE-APPROVAL',
+    a3s: 'Walk in ready to close.', a3ssub: 'A SHOWING BRIEF BEFORE YOU KNOCK',
+    a4p: 'Your phone doesn’t speak their language.', a4psub: 'THE FASTEST-GROWING BUYERS SPEAK SPANISH',
+    a5p: 'You close deals. Not babysit a phone.', a5psub: 'EVERY MISSED CALL = A DEAL GONE',
+    a5s: 'Orby answers, qualifies, books. You get your time back.', a5ssub: 'AND YOU STILL CLOSE',
   },
   es: {
-    aHook: 'ring… ring… ring…', a: 'Llamada perdida = comisión perdida.', aSub: 'ESE SONIDO TE CUESTA VENTAS',
-    b: 'Tu teléfono no habla su idioma. Orby sí.', bSub: 'MAYORÍA DEL CRECIMIENTO NETO DE PROPIETARIOS: LATINO¹',
-    cHook: 'Estás en una cita.', cHookSub: 'MIENTRAS CIERRAS UNA VENTA…',
-    d: 'Un nombre. Eso es todo.', dSub: 'CON LO QUE LLEGA LA MAYORÍA', d2: 'Llega listo para cerrar.',
+    a1p: 'Pierdes la llamada. Entregas la comisión.', a1psub: 'ESTÁS EN UNA CITA — EL TELÉFONO NO',
+    a1s: 'Orby contesta cada llamada. Nunca pierdes un cliente.', a1ssub: '24/7 — DÍA, NOCHE, EN PLENA CITA',
+    a2cap: 'No al mejor agente. Al primero.', a2sub: 'GANA QUIEN CONTESTA PRIMERO', a2label: 'elige al primer agente que contesta',
+    a3p: 'La mayoría llega sabiendo un nombre.', a3psub: 'ADIVINANDO PRESUPUESTO · PLAZOS · PREAPROBACIÓN',
+    a3s: 'Llega listo para cerrar.', a3ssub: 'UN RESUMEN DE CITA ANTES DE TOCAR LA PUERTA',
+    a4p: 'Tu teléfono no habla su idioma.', a4psub: 'LOS COMPRADORES QUE MÁS CRECEN HABLAN ESPAÑOL',
+    a5p: 'Cierras ventas. No cuidas un teléfono.', a5psub: 'CADA LLAMADA PERDIDA = UNA VENTA MENOS',
+    a5s: 'Orby contesta, califica y agenda. Recuperas tu tiempo.', a5ssub: 'Y SIGUES CERRANDO',
   },
 };
 
-// ── Ad A — missed call = lost commission ──
-export const adMissedCallScenes = (lang: Lang): FilmScene[] => {
+const appOutcome = (lang: Lang, highlight: 'leads' | 'brief', body: string, sub: string) => (
+  <Stage scale={0.98}>
+    <div style={{ textAlign: 'center', fontFamily: theme.font }}>
+      <AppCockpit highlight={highlight} lang={lang} />
+      <div style={{ fontSize: 34, fontWeight: 700, color: theme.muted, letterSpacing: 1.5, marginTop: 40 }}>{sub}</div>
+      <div style={{ fontSize: 76, fontWeight: 900, color: theme.text, marginTop: 14, lineHeight: 1.08 }}>{body}</div>
+    </div>
+  </Stage>
+);
+
+// ── Ad 1 — Never Miss (outcome: every lead answered, 24/7) ──
+export const adNeverMissScenes = (lang: Lang): FilmScene[] => {
   const c = T[lang];
   return [
-    { dur: 100, audio: en(lang, 'adA-01'), node: <RingingHook caption={c.aHook} /> },
-    { dur: 165, audio: en(lang, 'adA-02'), node: <BigText text={c.a} sub={c.aSub} color={theme.coral} size={100} /> },
-    { dur: 190, audio: en(lang, 'adA-03'), node: <CTACard lang={lang} /> },
+    { dur: dur('ad1-01', lang), audio: clip('ad1-01', lang), node: <BigText text={c.a1p} sub={c.a1psub} color={theme.coral} size={96} /> },
+    { dur: dur('ad1-02', lang), audio: clip('ad1-02', lang), node: <BigText text={c.a1s} sub={c.a1ssub} size={92} withOrb /> },
+    ctaScene(lang),
   ];
 };
-export const AdMissedCall: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={adMissedCallScenes(lang)} />;
 
-// ── Ad B — Latino wedge (Spanish snippet) ──
-export const adLatinoScenes = (lang: Lang): FilmScene[] => {
-  const c = T[lang];
-  return [
-    { dur: 150, audio: en(lang, 'adB-01'), node: <BigText text={c.b} sub={c.bSub} color={theme.white} size={92} /> },
-    { dur: callSceneDur('rent-es', 2, 90), node: <AudibleCall variant="rent-es" narrator={en(lang, 'adB-02')} maxTurns={2} scale={1.15} showApp={false} leadIn={90} /> },
-    { dur: 190, audio: en(lang, 'adA-03'), node: <CTACard lang={lang} /> },
-  ];
-};
-export const AdLatino: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={adLatinoScenes(lang)} />;
-
-// ── Ad C — speed / the sim (snippet) ──
+// ── Ad 2 — Speed Wins (outcome: be the first responder — the 78%) ──
 export const adSpeedScenes = (lang: Lang): FilmScene[] => {
   const c = T[lang];
   const sim = lang === 'es' ? 'sale-es' : 'sale-en';
+  const lead = VO[clip('ad2-02', lang)]! + 8;
   return [
-    { dur: 80, audio: en(lang, 'adC-01'), node: <BigText text={c.cHook} sub={c.cHookSub} size={110} /> },
-    { dur: callSceneDur(sim, 2, 90), node: <AudibleCall variant={sim} narrator={en(lang, 'adC-02')} maxTurns={2} scale={1.15} showApp={false} leadIn={90} /> },
-    { dur: 190, audio: en(lang, 'adA-03'), node: <CTACard lang={lang} /> },
+    { dur: dur('ad2-01', lang), audio: clip('ad2-01', lang), node: <StatScene eyebrow={c.a2sub} stats={[{ to: 78, suffix: '%', label: c.a2label }]} caption={c.a2cap} /> },
+    { dur: callSceneDur(sim, 2, lead), node: <AudibleCall variant={sim} narrator={clip('ad2-02', lang)} maxTurns={2} scale={1.12} showApp={false} leadIn={lead} /> },
+    ctaScene(lang),
   ];
 };
-export const AdSpeed: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={adSpeedScenes(lang)} />;
 
-// ── Ad D — Showing Brief ──
-export const adBriefScenes = (lang: Lang): FilmScene[] => {
+// ── Ad 3 — Walk In Ready (outcome: pre-qualified + Showing Brief) ──
+export const adReadyScenes = (lang: Lang): FilmScene[] => {
   const c = T[lang];
   return [
-    { dur: 100, audio: en(lang, 'adD-01'), node: <BigText text={c.d} sub={c.dSub} color={theme.coral} size={110} /> },
-    { dur: 210, audio: en(lang, 'adD-02'), node: (
-      <Stage scale={0.95}>
-        <div style={{ textAlign: 'center', fontFamily: theme.font }}>
-          <AppCockpit highlight="brief" lang={lang} />
-          <div style={{ fontSize: 60, fontWeight: 900, color: theme.text, marginTop: 30 }}>{c.d2}</div>
-        </div>
-      </Stage>
-    ) },
-    { dur: 190, audio: en(lang, 'adA-03'), node: <CTACard lang={lang} /> },
+    { dur: dur('ad3-01', lang), audio: clip('ad3-01', lang), node: <BigText text={c.a3p} sub={c.a3psub} color={theme.coral} size={94} /> },
+    { dur: dur('ad3-02', lang), audio: clip('ad3-02', lang), node: appOutcome(lang, 'brief', c.a3s, c.a3ssub) },
+    ctaScene(lang),
   ];
 };
-export const AdBrief: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={adBriefScenes(lang)} />;
+
+// ── Ad 4 — Bilingual (outcome: capture the Spanish buyers you're losing) ──
+export const adBilingualScenes = (lang: Lang): FilmScene[] => {
+  const c = T[lang];
+  const lead = VO[clip('ad4-02', lang)]! + 8;
+  return [
+    { dur: dur('ad4-01', lang), audio: clip('ad4-01', lang), node: <BigText text={c.a4p} sub={c.a4psub} color={theme.white} size={92} /> },
+    // Solve = the Spanish call itself (audible in both cuts — the proof).
+    { dur: callSceneDur('rent-es', 2, lead), node: <AudibleCall variant="rent-es" narrator={clip('ad4-02', lang)} maxTurns={2} scale={1.12} showApp={false} leadIn={lead} /> },
+    ctaScene(lang),
+  ];
+};
+
+// ── Ad 5 — Time Back (outcome: stop being chained to the phone) ──
+export const adTimeBackScenes = (lang: Lang): FilmScene[] => {
+  const c = T[lang];
+  return [
+    { dur: dur('ad5-01', lang), audio: clip('ad5-01', lang), node: <BigText text={c.a5p} sub={c.a5psub} color={theme.coral} size={94} /> },
+    { dur: dur('ad5-02', lang), audio: clip('ad5-02', lang), node: appOutcome(lang, 'leads', c.a5s, c.a5ssub) },
+    ctaScene(lang),
+  ];
+};
+
+export const AdNeverMiss: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={adNeverMissScenes(lang)} />;
+export const AdSpeed: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={adSpeedScenes(lang)} />;
+export const AdReady: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={adReadyScenes(lang)} />;
+export const AdBilingual: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={adBilingualScenes(lang)} />;
+export const AdTimeBack: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={adTimeBackScenes(lang)} />;
 
 export const adDurations = {
-  missed: (l: Lang) => filmDuration(adMissedCallScenes(l)),
-  latino: (l: Lang) => filmDuration(adLatinoScenes(l)),
+  neverMiss: (l: Lang) => filmDuration(adNeverMissScenes(l)),
   speed: (l: Lang) => filmDuration(adSpeedScenes(l)),
-  brief: (l: Lang) => filmDuration(adBriefScenes(l)),
+  ready: (l: Lang) => filmDuration(adReadyScenes(l)),
+  bilingual: (l: Lang) => filmDuration(adBilingualScenes(l)),
+  timeBack: (l: Lang) => filmDuration(adTimeBackScenes(l)),
 };

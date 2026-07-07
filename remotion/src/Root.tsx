@@ -1,5 +1,5 @@
 import { Composition } from 'remotion';
-import { AdBrief, AdLatino, AdMissedCall, AdSpeed, adDurations } from './compositions/Ads';
+import { AdBilingual, AdNeverMiss, AdReady, AdSpeed, AdTimeBack, adDurations } from './compositions/Ads';
 import { Explainer, explainerDuration } from './compositions/Explainer';
 import { FounderStory, founderDuration } from './compositions/FounderStory';
 import { HomepageHero, homepageDuration } from './compositions/HomepageHero';
@@ -31,17 +31,20 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="HomepageHero-ES" component={HomepageHero} durationInFrames={882} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: homepageDuration(L(props)) })} />
 
       {/* ── 9:16 ads ───────────────────────────────────────────── */}
-      <Composition id="Ad-MissedCall" component={AdMissedCall} durationInFrames={423} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.missed(L(props)) })} />
-      <Composition id="Ad-MissedCall-ES" component={AdMissedCall} durationInFrames={423} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.missed(L(props)) })} />
+      <Composition id="Ad-NeverMiss" component={AdNeverMiss} durationInFrames={655} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.neverMiss(L(props)) })} />
+      <Composition id="Ad-NeverMiss-ES" component={AdNeverMiss} durationInFrames={720} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.neverMiss(L(props)) })} />
 
-      <Composition id="Ad-Latino" component={AdLatino} durationInFrames={742} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.latino(L(props)) })} />
-      <Composition id="Ad-Latino-ES" component={AdLatino} durationInFrames={742} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.latino(L(props)) })} />
+      <Composition id="Ad-Speed" component={AdSpeed} durationInFrames={860} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.speed(L(props)) })} />
+      <Composition id="Ad-Speed-ES" component={AdSpeed} durationInFrames={880} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.speed(L(props)) })} />
 
-      <Composition id="Ad-Speed" component={AdSpeed} durationInFrames={640} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.speed(L(props)) })} />
-      <Composition id="Ad-Speed-ES" component={AdSpeed} durationInFrames={672} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.speed(L(props)) })} />
+      <Composition id="Ad-Ready" component={AdReady} durationInFrames={700} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.ready(L(props)) })} />
+      <Composition id="Ad-Ready-ES" component={AdReady} durationInFrames={745} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.ready(L(props)) })} />
 
-      <Composition id="Ad-Brief" component={AdBrief} durationInFrames={468} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.brief(L(props)) })} />
-      <Composition id="Ad-Brief-ES" component={AdBrief} durationInFrames={468} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.brief(L(props)) })} />
+      <Composition id="Ad-Bilingual" component={AdBilingual} durationInFrames={780} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.bilingual(L(props)) })} />
+      <Composition id="Ad-Bilingual-ES" component={AdBilingual} durationInFrames={780} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.bilingual(L(props)) })} />
+
+      <Composition id="Ad-TimeBack" component={AdTimeBack} durationInFrames={690} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.timeBack(L(props)) })} />
+      <Composition id="Ad-TimeBack-ES" component={AdTimeBack} durationInFrames={750} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.timeBack(L(props)) })} />
     </>
   );
 };
