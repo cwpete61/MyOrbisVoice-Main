@@ -17,7 +17,7 @@ import { prisma } from '../lib/prisma.js'
 import { provisionAgentOrby } from './agent-onboarding.service.js'
 import { updateChannel } from './channel.service.js'
 import { enrichListing } from './listing-enrichment.service.js'
-import { applyDemoEntitlements } from './demo.service.js'
+import { applyDemoEntitlements, applyDemoBookingProfile, SAMPLE_LISTINGS } from './demo.service.js'
 
 /** Public direct-dial line — instant Orby, no PIN. Distinct from DEMO_PHONE. */
 export const DIRECT_PHONE_E164 = '+19296403810'
@@ -27,24 +27,19 @@ export const MARKETING_TENANT_SLUG = 'myorbisagents-reception'
 
 // Same demo persona as the sandbox (demo.service.ts) so this line IS the demo
 // account, just instant. Keep the two in sync when the persona changes.
+// Same persona as the sandbox (demo.service.ts). SAMPLE_LISTINGS (sale + rent)
+// and the booking profile are imported from demo.service so both lines stay in
+// sync from a single source.
 const DEMO_AGENT = {
   agentName:     'John Brown',
   brokerage:     'Austin Realtors',
   market:        'Austin metro',
-  specialties:   'first-time buyers, luxury, relocation',
+  specialties:   'first-time buyers, luxury, relocation, rentals',
   bookingHours:  'Mon–Sat 9am–6pm',
   language:      'bilingual' as const,
-  listingsBrief: 'Renovated South Austin bungalow at $685k; a coming-soon 4BR; a downtown condo.',
+  listingsBrief: 'For sale: South Austin bungalow $685k, coming-soon 4BR, downtown condo. For rent: 2BR near Lady Bird Lake $2,200/mo, 3BR house near UT $3,100/mo.',
+  leadTimeHours: 2,
 }
-
-// Same 3 geocodable Austin addresses the sandbox uses, so free enrichment
-// (population, hospitals, schools, flood) resolves and Orby can answer area
-// questions when a caller asks about a listing.
-const SAMPLE_LISTINGS = [
-  { address: '2200 S Lamar Blvd, Austin, TX 78704', headline: 'Renovated bungalow in South Austin', priceUsd: 685000, beds: 3, baths: 2, sqft: 1740, propertyType: 'Single-family', status: 'ACTIVE' as const, description: 'Updated kitchen, large backyard, walkable to shops and parks.', highlights: ['New roof (2024)', 'Quartz counters', 'Detached studio'] },
-  { address: '4200 Avenue B, Austin, TX 78751', headline: 'Coming soon — modern 4BR', priceUsd: 815000, beds: 4, baths: 3, sqft: 2410, propertyType: 'Single-family', status: 'COMING_SOON' as const, description: 'Open-concept layout, energy-efficient build, oversized garage.', highlights: ['Solar-ready', 'Smart-home wired', 'Cul-de-sac'] },
-  { address: '3300 Duval St, Austin, TX 78705', headline: 'Downtown-adjacent condo', priceUsd: 449000, beds: 2, baths: 2, sqft: 1120, propertyType: 'Condo', status: 'ACTIVE' as const, description: 'Corner unit with skyline views, covered parking, community pool.', highlights: ['HOA covers water', 'Gated', 'Top floor'] },
-]
 
 /**
  * Create (or refresh) the direct-line tenant end-to-end: tenant →
@@ -80,9 +75,12 @@ export async function seedMarketingReceptionTenant(): Promise<{ tenantId: string
 
   await applyDemoEntitlements(tenantId)
 
-  // Provision Orby with the demo persona (same as the sandbox) — publishes DNA
-  // + enables the WIDGET channel.
-  await provisionAgentOrby(tenantId, actorId, { ...DEMO_AGENT })
+  // Provision Orby with the demo persona (same as the sandbox), deterministic
+  // (skipEnrich) so the script + Spanish line don't drift on re-provision.
+  await provisionAgentOrby(tenantId, actorId, { ...DEMO_AGENT }, { skipEnrich: true })
+
+  // Booking hours/notice the availability tool reads (Mon–Sat 9–6, 2h notice).
+  await applyDemoBookingProfile(tenantId, 'John Brown · Austin Realtors')
 
   // Enable INBOUND so the phone webhook can connect to this tenant's Orby.
   const inbound = await updateChannel(tenantId, 'INBOUND', { isEnabled: true })

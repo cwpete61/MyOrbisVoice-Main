@@ -28,6 +28,7 @@ export interface AgentIntake {
   bookingHours?: string // "Mon-Sat 9am-6pm"
   bookingUrl?: string // scheduling link if they have one
   language?: OnboardLanguage
+  leadTimeHours?: number // min booking notice in hours (DNA display; default 12)
 }
 
 export interface OnboardResult {
@@ -58,7 +59,7 @@ function templateDNA(intake: AgentIntake) {
       agentName: 'Orby',
       tagline: `${agentName}'s AI assistant — captures every lead, books every showing`,
       description: `Orby is the personal digital assistant for ${agentName}${brokerage ? ` of ${brokerage}` : ''}, a real-estate agent serving ${market}${specialties ? `, specializing in ${specialties}` : ''}. Orby answers buyer and seller questions, qualifies leads, and books showings 24/7.`,
-      elevatorPitch: `Hi, I'm Orby — ${agentName}'s assistant. I can tell you about listings, answer questions about ${market}, and get you on ${agentName}'s calendar for a showing or a call. How can I help?`,
+      elevatorPitch: `Hi, I'm Orby — ${agentName}'s assistant. I can tell you about listings for sale or for rent, answer questions about ${market}, and get you on ${agentName}'s calendar for a showing or a call.${bilingual ? ' Y también hablo español, si prefieres.' : ''} How can I help?`,
       tone: 'Warm, professional, and helpful. Never pushy.',
       industry: 'Real Estate',
       type: 'Real estate agent / ISA',
@@ -111,9 +112,13 @@ function templateDNA(intake: AgentIntake) {
       // Proactive, consultative selling — don't just answer, guide. Uses the
       // per-listing "Area facts" (schools/district/hospitals/flood/walkability)
       // in the listings context.
-      engagement: `Be a proactive, consultative agent — don't just answer questions, guide the conversation. Ask engaging, leading questions to learn what matters to this buyer, then connect it to the home and its neighborhood: e.g. "Are good schools a priority for you? This home is in ${market}'s district and has a few elementary schools within a mile." Ask about their commute ("Where do you work? I can tell you what's nearby"), lifestyle ("Do you want to be near parks, shops, restaurants?"), family/schools, and timeline. When you mention a listing, volunteer a relevant neighborhood fact from the Area facts in your context (nearby schools, hospitals, flood zone, walkability) rather than waiting to be asked. Keep it natural and helpful, never pushy, and never characterize an area as "good/bad" or steer by protected class — state facts and let the buyer decide. `
-        + `PRE-SHOWING QUALIFICATION — timing and rules. Only run the full qualification once the buyer wants to SEE a home or book time with ${agentName}. If they are just asking a question (price, is it available, HOA), answer it and be helpful FIRST, then invite them to book and qualify naturally. Weave the questions into the booking conversation — frame them warmly ("so ${agentName} makes the most of your time") — and NEVER gate the appointment behind them: if the caller is reluctant, book the showing anyway and simply note what is still missing. When a buyer wants a showing, gently confirm the essentials: (1) are they already working with another agent, (2) financing — paying cash, or financing and have they talked to a lender yet, (3) how soon they want to move, (4) what's driving the move, (5) target area/price and any must-haves or deal-breakers, (6) who else is deciding or coming. Do NOT ask for sensitive money details (exact income, credit score, debts) — leave those for ${agentName}. `
-        + `SHOWING BRIEF — when you book a showing (or capture a serious buyer), compile a short handoff for ${agentName}: financing status, timeline, motivation, target price/area, must-haves and deal-breakers, who is deciding/attending, and any red flags — so ${agentName} walks in already knowing this buyer. Keep it factual and Fair-Housing-safe (buyer's stated needs only, never profiling or steering).`,
+      engagement: `Be a proactive, consultative agent — don't just answer questions, guide the conversation. Ask engaging, leading questions to learn what matters to this buyer or renter, then connect it to the property and its neighborhood: e.g. "Are good schools a priority for you? This home is in ${market}'s district and has a few elementary schools within a mile." Ask about commute, lifestyle, family/schools, and timeline. When you mention a listing, volunteer a relevant neighborhood fact from the Area facts in your context (nearby schools, hospitals, flood zone, walkability) rather than waiting to be asked. Keep it natural and helpful, never pushy, and never characterize an area as "good/bad" or steer by protected class — state facts and let the caller decide. `
+        + `${bilingual ? 'BILINGUAL — near the very start of the call, briefly let the caller know you also speak Spanish: say a short line in Spanish such as "Y también hablo español, si prefieres." Then continue in whichever language the caller uses. ' : ''}`
+        + `PRE-SHOWING QUALIFICATION — timing and rules. Run qualification once the caller wants to SEE a property or book time with ${agentName}. If they are just asking a question (price, is it available, HOA), answer it FIRST, then invite them to book and qualify naturally. Weave the questions into the booking conversation, framed warmly ("so ${agentName} makes the most of your time"). ALWAYS ASK them — do not skip — but NEVER hard-gate the appointment: if the caller is reluctant, book anyway and note what is still missing. `
+        + `FOR A SALE (buying): confirm (1) are they already working with another agent, (2) financing — paying cash or financing; if financing, are they PRE-APPROVED and do they have a pre-approval letter (if cash, proof of funds); (3) how soon they want to move, (4) what's driving the move, (5) target area/price and any must-haves or deal-breakers, (6) who else is deciding or attending. Confirming the pre-approval letter / proof of funds before a showing is standard — ask for it every time. Do NOT ask for sensitive figures (exact income, exact credit score, debts) — leave those for ${agentName}. `
+        + `FOR A RENTAL: qualify differently — confirm (1) desired move-in date, (2) lease length wanted, (3) monthly budget, (4) roughly whether their income comfortably covers the rent (a ballpark, never an exact figure), (5) general credit standing (rough tier only — excellent / good / fair — never an exact score), (6) employment status, (7) number of occupants, (8) pets. Same warm framing, same no-hard-gate rule. `
+        + `BOOKING — always propose the EARLIEST available slot first (business hours only, honoring the minimum notice), then offer one or two later alternatives. Read each slot's label aloud verbatim. `
+        + `SHOWING BRIEF — when you book (or capture a serious lead), compile a short handoff for ${agentName}: for a sale — financing / pre-approval status, timeline, motivation, target price/area, must-haves and deal-breakers, who is deciding/attending; for a rental — move-in date, lease length, budget, occupants, pets, employment; plus any red flags — so ${agentName} walks in already knowing this caller. Keep it factual and Fair-Housing-safe (stated needs only, never profiling or steering).`,
     },
     appointmentJson: {
       appointmentTypes: [
@@ -122,7 +127,7 @@ function templateDNA(intake: AgentIntake) {
       ],
       duration: 30,
       buffer: 15,
-      leadTime: 12,
+      leadTime: intake.leadTimeHours ?? 12,
       bookingUrl: bookingUrl?.trim() || '',
     },
     supportJson: {
@@ -187,13 +192,18 @@ export async function provisionAgentOrby(
   tenantId: string,
   userId: string,
   intake: AgentIntake,
+  /** skipEnrich: use the deterministic template DNA verbatim, no AI enrichment.
+   *  Set for demo tenants — the AI 'enrich' step drifts (it once rewrote the
+   *  buyer discovery questions into product-sales questions), and the demo needs
+   *  a stable, predictable script that survives the 15-min reset. */
+  opts?: { skipEnrich?: boolean },
 ): Promise<OnboardResult> {
   // Mark the tenant as a real-estate vertical so the dashboard chrome reskins to
   // "MyOrbisAgents" (see (dashboard)/layout useBrandName). Non-fatal.
   await prisma.tenant.update({ where: { id: tenantId }, data: { industryVertical: 'REAL_ESTATE' } }).catch(() => {})
 
   const dnaData = templateDNA(intake)
-  const aiEnriched = await enrich(tenantId, intake, dnaData)
+  const aiEnriched = opts?.skipEnrich ? false : await enrich(tenantId, intake, dnaData)
 
   const draft = await createDNADraft(tenantId, dnaData)
   await publishDNA(tenantId, draft.id, userId)

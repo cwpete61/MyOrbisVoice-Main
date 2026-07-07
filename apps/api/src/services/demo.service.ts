@@ -34,14 +34,45 @@ const DEMO_ENTITLEMENTS: Array<{ key: string; bool?: boolean; int?: number }> = 
   { key: 'listing_enrichment', bool: false }, // avoid burning our RentCast quota
 ]
 
-const SAMPLE_LISTINGS = [
-  // Real, geocodable Austin addresses so free enrichment (population, hospitals,
-  // schools, flood) resolves for the demo. Fictional addresses don't geocode →
-  // no neighborhood data.
-  { address: '2200 S Lamar Blvd, Austin, TX 78704', headline: 'Renovated bungalow in South Austin', priceUsd: 685000, beds: 3, baths: 2, sqft: 1740, propertyType: 'Single-family', status: 'ACTIVE' as const, description: 'Updated kitchen, large backyard, walkable to shops and parks.', highlights: ['New roof (2024)', 'Quartz counters', 'Detached studio'] },
-  { address: '4200 Avenue B, Austin, TX 78751', headline: 'Coming soon — modern 4BR', priceUsd: 815000, beds: 4, baths: 3, sqft: 2410, propertyType: 'Single-family', status: 'COMING_SOON' as const, description: 'Open-concept layout, energy-efficient build, oversized garage.', highlights: ['Solar-ready', 'Smart-home wired', 'Cul-de-sac'] },
-  { address: '3300 Duval St, Austin, TX 78705', headline: 'Downtown-adjacent condo', priceUsd: 449000, beds: 2, baths: 2, sqft: 1120, propertyType: 'Condo', status: 'ACTIVE' as const, description: 'Corner unit with skyline views, covered parking, community pool.', highlights: ['HOA covers water', 'Gated', 'Top floor'] },
+// Shared by the SANDBOX (470) and the direct-line demo tenant (929) so both
+// lines show the same for-sale AND for-rent inventory. Real, geocodable Austin
+// addresses so free enrichment (population, hospitals, schools, flood) resolves.
+// Rentals are soft-modeled — no rental field on Listing, so `priceUsd` holds the
+// MONTHLY rent and the headline/description say "for rent / per month" so Orby
+// treats them as rentals and runs the rental qualification.
+export const SAMPLE_LISTINGS = [
+  // For sale
+  { address: '2200 S Lamar Blvd, Austin, TX 78704', headline: 'For sale — renovated bungalow in South Austin ($685,000)', priceUsd: 685000, beds: 3, baths: 2, sqft: 1740, propertyType: 'Single-family (for sale)', status: 'ACTIVE' as const, description: 'For sale at $685,000. Updated kitchen, large backyard, walkable to shops and parks.', highlights: ['New roof (2024)', 'Quartz counters', 'Detached studio'] },
+  { address: '4200 Avenue B, Austin, TX 78751', headline: 'For sale — coming-soon modern 4BR ($815,000)', priceUsd: 815000, beds: 4, baths: 3, sqft: 2410, propertyType: 'Single-family (for sale)', status: 'COMING_SOON' as const, description: 'For sale at $815,000. Open-concept layout, energy-efficient build, oversized garage.', highlights: ['Solar-ready', 'Smart-home wired', 'Cul-de-sac'] },
+  { address: '3300 Duval St, Austin, TX 78705', headline: 'For sale — downtown-adjacent condo ($449,000)', priceUsd: 449000, beds: 2, baths: 2, sqft: 1120, propertyType: 'Condo (for sale)', status: 'ACTIVE' as const, description: 'For sale at $449,000. Corner unit with skyline views, covered parking, community pool.', highlights: ['HOA covers water', 'Gated', 'Top floor'] },
+  // For rent (priceUsd = monthly rent)
+  { address: '1500 E Riverside Dr, Austin, TX 78741', headline: 'For rent — modern 2BR near Lady Bird Lake ($2,200/month)', priceUsd: 2200, beds: 2, baths: 2, sqft: 1050, propertyType: 'Apartment (for rent)', status: 'ACTIVE' as const, description: 'For rent at $2,200 per month. Modern 2-bed near Lady Bird Lake, in-unit laundry, covered parking. 12-month lease.', highlights: ['In-unit laundry', 'Pool + gym', 'Pet-friendly'] },
+  { address: '900 W 23rd St, Austin, TX 78705', headline: 'For rent — 3BR house near UT campus ($3,100/month)', priceUsd: 3100, beds: 3, baths: 2, sqft: 1500, propertyType: 'House (for rent)', status: 'ACTIVE' as const, description: 'For rent at $3,100 per month. 3-bed house near UT, fenced yard, washer/dryer included. 12-month lease.', highlights: ['Fenced yard', 'Washer/dryer', 'Walk to campus'] },
 ]
+
+// Booking config the availability tool actually reads (BusinessProfile, NOT the
+// DNA): business hours Mon–Sat 9am–6pm with Sunday CLOSED, and a 2-hour minimum
+// notice. Sunday must be explicit `null` — a missing day is treated as "open".
+const DEMO_BUSINESS_HOURS = {
+  mon: { open: '09:00', close: '18:00' },
+  tue: { open: '09:00', close: '18:00' },
+  wed: { open: '09:00', close: '18:00' },
+  thu: { open: '09:00', close: '18:00' },
+  fri: { open: '09:00', close: '18:00' },
+  sat: { open: '09:00', close: '18:00' },
+  sun: null,
+}
+
+/** Upsert the demo tenant's BusinessProfile so searchAvailability offers only
+ *  Mon–Sat 9–6 slots with a 2-hour minimum notice (earliest-first is already
+ *  the tool's default ordering). Shared by both demo lines. */
+export async function applyDemoBookingProfile(tenantId: string, brandName: string): Promise<void> {
+  await prisma.businessProfile.upsert({
+    where:  { tenantId },
+    update: { businessHoursJson: DEMO_BUSINESS_HOURS, bookingMinNoticeMin: 120 },
+    create: { tenantId, brandName, businessHoursJson: DEMO_BUSINESS_HOURS, bookingMinNoticeMin: 120 },
+  })
+}
 
 export async function applyDemoEntitlements(tenantId: string): Promise<void> {
   for (const e of DEMO_ENTITLEMENTS) {
@@ -90,9 +121,13 @@ export async function seedDemoTenant(tenantId: string, userId: string): Promise<
   // Orby (DNA + widget) via the real onboarding path.
   await provisionAgentOrby(tenantId, userId, {
     agentName: 'John Brown', brokerage: 'Austin Realtors', market: 'Austin metro',
-    specialties: 'first-time buyers, luxury, relocation', bookingHours: 'Mon–Sat 9am–6pm', language: 'bilingual',
-    listingsBrief: 'Renovated South Austin bungalow at $685k; a coming-soon 4BR; a downtown condo.',
-  })
+    specialties: 'first-time buyers, luxury, relocation, rentals', bookingHours: 'Mon–Sat 9am–6pm', language: 'bilingual',
+    listingsBrief: 'For sale: South Austin bungalow $685k, coming-soon 4BR, downtown condo. For rent: 2BR near Lady Bird Lake $2,200/mo, 3BR house near UT $3,100/mo.',
+    leadTimeHours: 2,
+  }, { skipEnrich: true })
+
+  // Booking hours/notice the availability tool reads (Mon–Sat 9–6, 2h notice).
+  await applyDemoBookingProfile(tenantId, 'John Brown · Austin Realtors')
 
   // Enable the INBOUND channel so PIN-bound demo phone calls (+1 470 517 3441)
   // can connect to the sandbox Orby. See demo-session.service.
