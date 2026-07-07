@@ -22,15 +22,18 @@ const Waveform: React.FC<{ bars?: number }> = ({ bars = 22 }) => {
 
 /** Hero: a dark "Orby on a call" card whose chat builds live, beside a dark app
  *  pipeline that lights up as the showing books. Matches the reference explainer. */
-export const PhoneCallSim: React.FC<{ variant?: string; showApp?: boolean }> = ({ variant = 'rent-en', showApp = true }) => {
+export const PhoneCallSim: React.FC<{ variant?: string; showApp?: boolean; turnDurs?: number[] }> = ({ variant = 'rent-en', showApp = true, turnDurs }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const call = CALLS[variant] ?? CALLS['rent-en']!;
 
+  // Bubble timing: default from the call data, or overridden (e.g. matched to
+  // per-turn voiceover clip lengths in the audible Explainer call).
+  const durs = turnDurs ?? call.turns.map((t) => t.dur);
   const starts: number[] = [];
-  call.turns.reduce((acc, t, i) => {
+  durs.reduce((acc, d, i) => {
     starts[i] = acc;
-    return acc + t.dur;
+    return acc + d;
   }, 0);
   const activeIndex = starts.reduce((best, s, i) => (s <= frame ? i : best), 0);
   const scroll = -Math.max(0, activeIndex - VISIBLE + 1) * ROW_STEP;

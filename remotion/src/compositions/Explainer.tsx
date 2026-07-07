@@ -1,5 +1,6 @@
-import { AbsoluteFill } from 'remotion';
+import { AbsoluteFill, Audio, Sequence, staticFile } from 'remotion';
 import { AppCockpit } from '../components/AppCockpit';
+import { CallVoiceover } from '../components/CallVoiceover';
 import { CTACard } from '../components/CTACard';
 import { KpiCounter } from '../components/KpiCounter';
 import { PhoneCallSim } from '../components/PhoneCallSim';
@@ -8,6 +9,13 @@ import { BigText, RingingHook, Scene, Stage } from '../components/Scene';
 import { theme } from '../theme';
 
 type Lang = 'en' | 'es';
+
+// Per-turn voiceover clip lengths (frames @30fps) for the audible Explainer
+// call — drives both the bubble layout and the VO placement so they stay in
+// sync. EN clips at TTS speed 1.4, ES at 1.6 (Spanish is wordier) so the full
+// conversation fits the 1571–2336 window without shifting later scenes.
+const CALL_DURS_EN = [134, 60, 180, 27, 89, 25, 89, 22, 112, 23];
+const CALL_DURS_ES = [121, 67, 160, 36, 65, 23, 112, 22, 130, 22];
 
 const COPY = {
   en: {
@@ -72,6 +80,7 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const c = COPY[lang];
   const vo = (id: string) => (lang === 'en' ? id : undefined); // ES VO is a later pass
   const sim = lang === 'es' ? 'rent-es' : 'rent-en';
+  const callDurs = lang === 'en' ? CALL_DURS_EN : CALL_DURS_ES;
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
       {/* 1 hook */}
@@ -84,8 +93,15 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
       <Scene audio={vo('explainer-04')} from={840} dur={360}><BigText text={c.wave} sub={c.waveSub} bg={theme.teal} color={theme.white} size={78} /></Scene>
       {/* 5 meet Orby */}
       <Scene audio={vo('explainer-05')} from={1200} dur={300}><BigText text={c.meet} sub={c.meetSub} size={96} withOrb /></Scene>
-      {/* 6 phone sim (primary language) */}
-      <Scene audio={vo('explainer-06')} from={1500} dur={840}><Stage scale={0.82}><PhoneCallSim variant={sim} /></Stage></Scene>
+      {/* 6 phone sim — AUDIBLE call: narrator lead-in (~2.4s), then the voiced
+          conversation (Orby=nova, caller=echo) synced to the bubbles, 1571–2336 */}
+      <Scene from={1500} dur={840}>
+        <Audio src={staticFile(lang === 'en' ? 'vo/explainer-06.mp3' : 'vo/explainer-es-06.mp3')} />
+        <Sequence from={71}>
+          <Stage scale={0.82}><PhoneCallSim variant={sim} turnDurs={callDurs} /></Stage>
+          <CallVoiceover lang={lang} durs={callDurs} />
+        </Sequence>
+      </Scene>
       {/* 7 bilingual proof — the Spanish call */}
       <Scene audio={vo('explainer-07')} from={2340} dur={600}>
         <AbsoluteFill style={{ background: theme.bg }}>
