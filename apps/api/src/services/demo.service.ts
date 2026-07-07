@@ -89,7 +89,7 @@ export async function seedDemoTenant(tenantId: string, userId: string): Promise<
 
   // Orby (DNA + widget) via the real onboarding path.
   await provisionAgentOrby(tenantId, userId, {
-    agentName: 'Jordan Blake', brokerage: 'Skyline Realty', market: 'Austin metro',
+    agentName: 'John Brown', brokerage: 'Austin Realtors', market: 'Austin metro',
     specialties: 'first-time buyers, luxury, relocation', bookingHours: 'Mon–Sat 9am–6pm', language: 'bilingual',
     listingsBrief: 'Renovated South Austin bungalow at $685k; a coming-soon 4BR; a downtown condo.',
   })

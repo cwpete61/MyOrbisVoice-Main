@@ -107,7 +107,7 @@ export default function AgentDemosPage() {
           <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Agent name
             <input style={inp} value={agentName} onChange={e => setAgentName(e.target.value)} placeholder="Jane Realtor" /></label>
           <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Brokerage
-            <input style={inp} value={brokerage} onChange={e => setBrokerage(e.target.value)} placeholder="Skyline Realty" /></label>
+            <input style={inp} value={brokerage} onChange={e => setBrokerage(e.target.value)} placeholder="Austin Realtors" /></label>
           <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Market
             <input style={inp} value={market} onChange={e => setMarket(e.target.value)} placeholder="Austin metro" /></label>
           <label style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Specialties
