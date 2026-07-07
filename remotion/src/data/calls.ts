@@ -64,3 +64,23 @@ export const CALLS: Record<string, CallScript> = {
 };
 
 export const totalCallFrames = (c: CallScript): number => c.turns.reduce((s, t) => s + t.dur, 0);
+
+// ── Audible-call timing (shared by every composition) ──────────────────────
+// Per-turn VO clip lengths (frames @30fps) = ceil(clip) + 8f pause, so each
+// bubble holds its spoken line plus a short beat before the next speaker (no
+// overlap, natural back-and-forth). Matches public/vo/call-<lang>-NN.mp3 at 1.0×.
+export const CALL_DURS: Record<'en' | 'es', number[]> = {
+  en: [201, 91, 246, 45, 123, 42, 142, 39, 168, 41],
+  es: [210, 114, 256, 65, 97, 45, 183, 44, 214, 39],
+};
+// Narrator lead-in (>= the lead-in clip) so narration finishes before the call.
+export const CALL_LEAD_IN = 85;
+
+/** Turn durs for a call, optionally limited to the first `maxTurns` (snippets
+ *  for short pieces). */
+export const callDurs = (lang: 'en' | 'es', maxTurns?: number): number[] =>
+  maxTurns ? CALL_DURS[lang].slice(0, maxTurns) : CALL_DURS[lang];
+
+/** Total scene length needed to hold a (possibly trimmed) audible call. */
+export const callSceneDur = (lang: 'en' | 'es', maxTurns?: number, leadIn = CALL_LEAD_IN): number =>
+  leadIn + callDurs(lang, maxTurns).reduce((a, b) => a + b, 0) + 20;

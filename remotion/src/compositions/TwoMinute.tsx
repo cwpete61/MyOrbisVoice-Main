@@ -1,8 +1,8 @@
 import { AbsoluteFill } from 'remotion';
 import { AppCockpit } from '../components/AppCockpit';
+import { AudibleCall } from '../components/AudibleCall';
 import { CTACard } from '../components/CTACard';
 import { KpiCounter } from '../components/KpiCounter';
-import { PhoneCallSim } from '../components/PhoneCallSim';
 import { RealityGap } from '../components/RealityGap';
 import { BigText, RingingHook, Scene, Stage } from '../components/Scene';
 import { brand, theme } from '../theme';
@@ -56,8 +56,10 @@ export const TwoMinute: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
       <Scene audio={vo('twomin-03')} from={660} dur={360}><BigText text={c.wave} sub={c.waveSub} bg={theme.teal} color={theme.white} size={80} /></Scene>
       <Scene audio={vo('twomin-04')} from={1020} dur={360}><BigText text={c.proof} sub={c.proofSub} size={96} /></Scene>
       <Scene audio={vo('twomin-05')} from={1380} dur={240}><BigText text={c.orby} sub={c.orbySub} size={104} withOrb /></Scene>
-      {/* the Spanish sim as the wedge proof (subtitled), in both language cuts */}
-      <Scene audio={vo('twomin-06')} from={1620} dur={900}><Stage scale={0.82}><PhoneCallSim variant="rent-es" /></Stage></Scene>
+      {/* the Spanish sim as the wedge proof — AUDIBLE (fits the 900f scene) */}
+      <Scene from={1620} dur={900}>
+        <AudibleCall callLang="es" simVariant="rent-es" narrator={vo('twomin-06')} maxTurns={4} scale={0.82} leadIn={105} />
+      </Scene>
       <Scene audio={vo('twomin-07')} from={2520} dur={360}>
         <Stage scale={0.9}>
           <div style={{ display: 'flex', gap: 80, alignItems: 'center' }}>

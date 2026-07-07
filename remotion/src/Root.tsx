@@ -20,24 +20,24 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="Explainer" component={Explainer} durationInFrames={6575} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} />
       <Composition id="Explainer-ES" component={Explainer} durationInFrames={5932} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} />
 
-      <Composition id="FounderStory" component={FounderStory} durationInFrames={2250} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} />
-      <Composition id="FounderStory-ES" component={FounderStory} durationInFrames={2250} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} />
+      <Composition id="FounderStory" component={FounderStory} durationInFrames={2338} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} />
+      <Composition id="FounderStory-ES" component={FounderStory} durationInFrames={2400} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} />
 
       <Composition id="TwoMinute" component={TwoMinute} durationInFrames={3600} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} />
       <Composition id="TwoMinute-ES" component={TwoMinute} durationInFrames={3600} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} />
 
-      <Composition id="HomepageHero" component={HomepageHero} durationInFrames={1050} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} />
-      <Composition id="HomepageHero-ES" component={HomepageHero} durationInFrames={1050} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} />
+      <Composition id="HomepageHero" component={HomepageHero} durationInFrames={1122} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} />
+      <Composition id="HomepageHero-ES" component={HomepageHero} durationInFrames={1154} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} />
 
       {/* ── 9:16 ads ───────────────────────────────────────────── */}
       <Composition id="Ad-MissedCall" component={AdMissedCall} durationInFrames={540} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} />
       <Composition id="Ad-MissedCall-ES" component={AdMissedCall} durationInFrames={540} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} />
 
-      <Composition id="Ad-Latino" component={AdLatino} durationInFrames={600} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} />
-      <Composition id="Ad-Latino-ES" component={AdLatino} durationInFrames={600} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} />
+      <Composition id="Ad-Latino" component={AdLatino} durationInFrames={794} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} />
+      <Composition id="Ad-Latino-ES" component={AdLatino} durationInFrames={794} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} />
 
-      <Composition id="Ad-Speed" component={AdSpeed} durationInFrames={660} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} />
-      <Composition id="Ad-Speed-ES" component={AdSpeed} durationInFrames={660} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} />
+      <Composition id="Ad-Speed" component={AdSpeed} durationInFrames={702} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} />
+      <Composition id="Ad-Speed-ES" component={AdSpeed} durationInFrames={734} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} />
 
       <Composition id="Ad-Brief" component={AdBrief} durationInFrames={600} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} />
       <Composition id="Ad-Brief-ES" component={AdBrief} durationInFrames={600} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} />

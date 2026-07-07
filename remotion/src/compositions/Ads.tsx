@@ -1,8 +1,10 @@
 import { AbsoluteFill } from 'remotion';
 import { AppCockpit } from '../components/AppCockpit';
+import { AudibleCall } from '../components/AudibleCall';
 import { CTACard } from '../components/CTACard';
-import { PhoneCallSim } from '../components/PhoneCallSim';
+import { callSceneDur } from '../data/calls';
 import { BigText, RingingHook, Scene, Stage } from '../components/Scene';
+// (PhoneCallSim now rendered inside AudibleCall)
 import { theme } from '../theme';
 
 type Lang = 'en' | 'es';
@@ -53,11 +55,13 @@ export const AdMissedCall: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
 export const AdLatino: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const c = T[lang];
   const vo = (id: string) => (lang === 'en' ? id : undefined);
+  const simDur = callSceneDur('es', 2, 90); // short audible Spanish snippet
+  const shift = simDur - 240;
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
       <Scene audio={vo('adB-01')} from={0} dur={180}><BigText text={c.b} sub={c.bSub} bg={theme.teal} color={theme.white} size={92} /></Scene>
-      <Scene audio={vo('adB-02')} from={180} dur={240}><Stage scale={1.15}><PhoneCallSim variant="rent-es" showApp={false} /></Stage></Scene>
-      <Scene audio={vo('adA-03')} from={420} dur={180}><CTACard lang={lang} /></Scene>
+      <Scene from={180} dur={simDur}><AudibleCall callLang="es" simVariant="rent-es" narrator={vo('adB-02')} maxTurns={2} scale={1.15} showApp={false} leadIn={90} /></Scene>
+      <Scene audio={vo('adA-03')} from={420 + shift} dur={180}><CTACard lang={lang} /></Scene>
     </AbsoluteFill>
   );
 };
@@ -67,11 +71,13 @@ export const AdSpeed: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const c = T[lang];
   const vo = (id: string) => (lang === 'en' ? id : undefined);
   const sim = lang === 'es' ? 'rent-es' : 'rent-en';
+  const simDur = callSceneDur(lang, 2, 90); // short audible snippet
+  const shift = simDur - 360;
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
       <Scene audio={vo('adC-01')} from={0} dur={120}><BigText text={c.cHook} sub={c.cHookSub} size={110} /></Scene>
-      <Scene audio={vo('adC-02')} from={120} dur={360}><Stage scale={1.15}><PhoneCallSim variant={sim} showApp={false} /></Stage></Scene>
-      <Scene audio={vo('adA-03')} from={480} dur={180}><CTACard lang={lang} /></Scene>
+      <Scene from={120} dur={simDur}><AudibleCall callLang={lang} simVariant={sim} narrator={vo('adC-02')} maxTurns={2} scale={1.15} showApp={false} leadIn={90} /></Scene>
+      <Scene audio={vo('adA-03')} from={480 + shift} dur={180}><CTACard lang={lang} /></Scene>
     </AbsoluteFill>
   );
 };
