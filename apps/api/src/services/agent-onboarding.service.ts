@@ -165,16 +165,15 @@ async function enrich(tenantId: string, intake: AgentIntake, dna: ReturnType<typ
       ok = true
     }
   } catch { /* keep template */ }
-  try {
-    const sales = await generateDnaSection(tenantId, 'sales', seed)
-    if (sales && Array.isArray(sales.discoveryQuestions) && sales.discoveryQuestions.length) {
-      dna.salesJson.discoveryQuestions = sales.discoveryQuestions as string[]
-      if (Array.isArray(sales.qualificationCriteria) && sales.qualificationCriteria.length) {
-        dna.salesJson.qualificationCriteria = sales.qualificationCriteria as string[]
-      }
-      ok = true
-    }
-  } catch { /* keep template */ }
+  // NOTE: we deliberately do NOT AI-generate the sales discovery questions.
+  // For a real-estate agent, the template's questions are BUYER qualification
+  // ("buying or selling?", "financing or cash?", "which areas / must-haves?").
+  // The generic 'sales' enrichment drifted to product-sales questions ("how do
+  // you manage your listings?", "what features would you want in an AI
+  // assistant?") — i.e. talking to the agent about buying software, not to a
+  // home buyer about a showing. That regressed the demo Orby. The template
+  // buyer questions + the pre-showing qualification in `engagement` are the
+  // source of truth; keep them.
   return ok
 }
 
