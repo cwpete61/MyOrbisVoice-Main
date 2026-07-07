@@ -12,10 +12,12 @@ type Lang = 'en' | 'es';
 
 // Per-turn voiceover clip lengths (frames @30fps) for the audible Explainer
 // call — drives both the bubble layout and the VO placement so they stay in
-// sync. EN clips at TTS speed 1.4, ES at 1.6 (Spanish is wordier) so the full
-// conversation fits the 1571–2336 window without shifting later scenes.
-const CALL_DURS_EN = [134, 60, 180, 27, 89, 25, 89, 22, 112, 23];
-const CALL_DURS_ES = [121, 67, 160, 36, 65, 23, 112, 22, 130, 22];
+// sync. NORMAL speed (1.0×) so the call sounds natural; the sim scene grows to
+// fit and the later scenes shift by `shift` (below). EN call ~35s, ES ~40s.
+const CALL_DURS_EN = [192, 82, 238, 37, 114, 33, 134, 31, 160, 32];
+const CALL_DURS_ES = [202, 105, 248, 57, 89, 37, 175, 35, 205, 31];
+const LEAD_IN = 71; // narrator lead-in before the call starts
+const BASE_SIM_DUR = 840; // original sim-scene length (before the audible call)
 
 const COPY = {
   en: {
@@ -81,6 +83,8 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const vo = (id: string) => (lang === 'en' ? id : undefined); // ES VO is a later pass
   const sim = lang === 'es' ? 'rent-es' : 'rent-en';
   const callDurs = lang === 'en' ? CALL_DURS_EN : CALL_DURS_ES;
+  const simDur = LEAD_IN + callDurs.reduce((a, b) => a + b, 0) + 20; // grows to fit the full-speed call
+  const shift = simDur - BASE_SIM_DUR; // every scene after the sim moves later by this
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
       {/* 1 hook */}
@@ -95,7 +99,7 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
       <Scene audio={vo('explainer-05')} from={1200} dur={300}><BigText text={c.meet} sub={c.meetSub} size={96} withOrb /></Scene>
       {/* 6 phone sim — AUDIBLE call: narrator lead-in (~2.4s), then the voiced
           conversation (Orby=nova, caller=echo) synced to the bubbles, 1571–2336 */}
-      <Scene from={1500} dur={840}>
+      <Scene from={1500} dur={simDur}>
         <Audio src={staticFile(lang === 'en' ? 'vo/explainer-06.mp3' : 'vo/explainer-es-06.mp3')} />
         <Sequence from={71}>
           <Stage scale={0.82}><PhoneCallSim variant={sim} turnDurs={callDurs} /></Stage>
@@ -103,7 +107,7 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </Sequence>
       </Scene>
       {/* 7 bilingual proof — the Spanish call */}
-      <Scene audio={vo('explainer-07')} from={2340} dur={600}>
+      <Scene audio={vo('explainer-07')} from={2340 + shift} dur={600}>
         <AbsoluteFill style={{ background: theme.bg }}>
           <Stage scale={0.8}><PhoneCallSim variant="rent-es" /></Stage>
           <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-start', paddingTop: 60 }}>
@@ -112,7 +116,7 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </AbsoluteFill>
       </Scene>
       {/* 8 the app */}
-      <Scene audio={vo('explainer-08')} from={2940} dur={360}>
+      <Scene audio={vo('explainer-08')} from={2940 + shift} dur={360}>
         <Stage scale={0.92}>
           <div style={{ display: 'flex', gap: 80, alignItems: 'center' }}>
             <AppCockpit highlight="leads" lang={lang} />
@@ -124,7 +128,7 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </Stage>
       </Scene>
       {/* 9 showing brief */}
-      <Scene audio={vo('explainer-09')} from={3300} dur={360}>
+      <Scene audio={vo('explainer-09')} from={3300 + shift} dur={360}>
         <Stage scale={0.92}>
           <div style={{ display: 'flex', gap: 80, alignItems: 'center' }}>
             <AppCockpit highlight="brief" lang={lang} />
@@ -136,13 +140,13 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </Stage>
       </Scene>
       {/* 10 control / trust */}
-      <Scene audio={vo('explainer-10')} from={3660} dur={300}><BigText text={c.control} sub={c.controlSub} size={80} /></Scene>
+      <Scene audio={vo('explainer-10')} from={3660 + shift} dur={300}><BigText text={c.control} sub={c.controlSub} size={80} /></Scene>
       {/* 11 objection — augmentation not replacement */}
-      <Scene audio={vo('explainer-11')} from={3960} dur={300}><BigText text={c.objection} sub={c.objectionSub} bg={theme.teal} color={theme.white} size={76} /></Scene>
+      <Scene audio={vo('explainer-11')} from={3960 + shift} dur={300}><BigText text={c.objection} sub={c.objectionSub} bg={theme.teal} color={theme.white} size={76} /></Scene>
       {/* 12 founder credibility */}
-      <Scene audio={vo('explainer-12')} from={4260} dur={300}><BigText text={c.founder} sub={c.founderSub} size={96} /></Scene>
+      <Scene audio={vo('explainer-12')} from={4260 + shift} dur={300}><BigText text={c.founder} sub={c.founderSub} size={96} /></Scene>
       {/* 13 success */}
-      <Scene audio={vo('explainer-13')} from={4560} dur={480}>
+      <Scene audio={vo('explainer-13')} from={4560 + shift} dur={480}>
         <Stage>
           <div style={{ fontFamily: theme.font, textAlign: 'center' }}>
             <div style={{ fontSize: 32, fontWeight: 700, color: theme.muted, marginBottom: 50 }}>{c.successSub}</div>
@@ -155,7 +159,7 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </Stage>
       </Scene>
       {/* 14 CTA */}
-      <Scene audio={vo('explainer-14')} from={5040} dur={360}><CTACard lang={lang} /></Scene>
+      <Scene audio={vo('explainer-14')} from={5040 + shift} dur={360}><CTACard lang={lang} /></Scene>
     </AbsoluteFill>
   );
 };
