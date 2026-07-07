@@ -30,6 +30,9 @@ export const PhoneCallSim: React.FC<{ variant?: string; showApp?: boolean; turnD
   // Bubble timing: default from the call data, or overridden (e.g. matched to
   // per-turn voiceover clip lengths in the audible Explainer call).
   const durs = turnDurs ?? call.turns.map((t) => t.dur);
+  // A snippet passes fewer turnDurs than the script has turns — only render that
+  // many turns (else the extra turns get an undefined start frame → NaN crash).
+  const turns = call.turns.slice(0, durs.length);
   const starts: number[] = [];
   durs.reduce((acc, d, i) => {
     starts[i] = acc;
@@ -39,11 +42,11 @@ export const PhoneCallSim: React.FC<{ variant?: string; showApp?: boolean; turnD
   const scroll = -Math.max(0, activeIndex - VISIBLE + 1) * ROW_STEP;
 
   const doneSteps = new Set<string>();
-  call.turns.forEach((t, i) => {
+  turns.forEach((t, i) => {
     if (t.app && starts[i]! <= frame) doneSteps.add(t.app);
   });
 
-  const spanishTurn = call.turns.findIndex((t) => t.spanish);
+  const spanishTurn = turns.findIndex((t) => t.spanish);
   const spanishStart = spanishTurn >= 0 ? starts[spanishTurn]! : -9999;
   const showBadge = frame >= spanishStart + 18 && frame < spanishStart + 120;
   const cardIn = spring({ frame, fps, config: { damping: 18 } });
@@ -75,7 +78,7 @@ export const PhoneCallSim: React.FC<{ variant?: string; showApp?: boolean; turnD
         {/* transcript */}
         <div style={{ position: 'absolute', top: 100, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
           <div style={{ padding: '24px 30px', transform: `translateY(${scroll}px)` }}>
-            {call.turns.map((t, i) => {
+            {turns.map((t, i) => {
               const start = starts[i]!;
               if (frame < start - 4) return null;
               const s = spring({ frame: frame - start, fps, config: { damping: 16 } });
