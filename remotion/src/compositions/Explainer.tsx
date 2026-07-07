@@ -14,9 +14,11 @@ type Lang = 'en' | 'es';
 // call — drives both the bubble layout and the VO placement so they stay in
 // sync. NORMAL speed (1.0×) so the call sounds natural; the sim scene grows to
 // fit and the later scenes shift by `shift` (below). EN call ~35s, ES ~40s.
-const CALL_DURS_EN = [192, 82, 238, 37, 114, 33, 134, 31, 160, 32];
-const CALL_DURS_ES = [202, 105, 248, 57, 89, 37, 175, 35, 205, 31];
-const LEAD_IN = 71; // narrator lead-in before the call starts
+// = ceil(clip length) + 8f, so each bubble holds its full spoken clip plus a
+// short pause before the next speaker — no overlap, natural back-and-forth.
+const CALL_DURS_EN = [201, 91, 246, 45, 123, 42, 142, 39, 168, 41];
+const CALL_DURS_ES = [210, 114, 256, 65, 97, 45, 183, 44, 214, 39];
+const LEAD_IN = 85; // narrator lead-in (>= narrator clip) so it finishes before the call
 const BASE_SIM_DUR = 840; // original sim-scene length (before the audible call)
 
 const COPY = {
