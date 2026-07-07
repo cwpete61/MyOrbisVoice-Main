@@ -144,3 +144,32 @@ plus `cta-en` / `cta-es`. The Spanish-speaking calls stay `rent-es`
 - **Phone-demo ducking.** Where a narrator lead-in overlaps a `PhoneCallSim` scene, duck the call audio until the lead-in ends (about 3–5s in), then bring Orby's call up full. The demo is the proof, let it play clean.
 - **Number style.** If a chosen voice reads "(929) 640-3810" awkwardly, pass it to TTS as "nine two nine, six four zero, three eight one zero."
 - **Explainer beat 13 (KPIs).** The line paces with the three `KpiCounter` animations: "every call caught" on the 100% counter, "booked while you slept" on the second, "commissions kept" on the amber one.
+
+---
+
+## 6. Funnel expansion set (added) — voices as noted
+
+Four new pieces beyond the core suite. All bilingual (EN + ES clip per line).
+
+### PartnerPitch (16:9, ~34s) — voice: `echo` — audience: affiliates/partners
+Recruit partners for the partner-led GTM. Loop: your network leaks →
+refer to Orby → recurring income, we run the tech. Uses the Lead Eval
+report card as the leave-behind. CTA = site (`Become a partner`).
+Clips `p-01..p-05` (EN/ES). Comp ids `PartnerPitch` / `-ES`.
+
+### LeadEval (16:9, ~26s) — voice: `echo` — the wedge tool demo
+The free Lead Capture Eval: reveals missed calls, after-hours gaps,
+response time, and estimated commission leaking (sample: $18,400) on an
+animated report card. CTA = site (`See what you're losing`, free/no card).
+Clips `e-01..e-05`. Comp ids `LeadEval` / `-ES`.
+
+### Objections (16:9, ~40s) — voice: `echo` — BOF, unblock skeptics
+The 3 hesitations, each answered with proof: (1) sounds robotic? → play a
+live call; (2) replace you? → augmentation, you still close; (3) hard to
+set up? → 3 steps, ~10 min. Clips `o-01..o-05` (o-02 runs under the call).
+Comp ids `Objections` / `-ES`.
+
+### 6-second cutdowns (9:16, ~5s ea) — voice: `nova` — scroll-stoppers
+One punch line + fast brand tag, per outcome — pre-roll / Reels / TikTok.
+Clips `cut1..cut5`. Comp ids `Cut-NeverMiss`, `Cut-Speed`, `Cut-Ready`,
+`Cut-Bilingual`, `Cut-TimeBack` (+ `-ES`).
