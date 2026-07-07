@@ -1,0 +1,23 @@
+{
+  "name": "myorbisagents-remotion",
+  "version": "1.0.0",
+  "description": "MyOrbisAgents explainer + marketing video suite (Remotion). Standalone — not part of the pnpm workspace.",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render",
+    "typecheck": "tsc --noEmit",
+    "render:all": "remotion render Explainer out/explainer.mp4 && remotion render TwoMinute out/two-minute.mp4 && remotion render FounderStory out/founder.mp4 && remotion render HomepageHero out/homepage.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.200",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.200"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.4"
+  }
+}
