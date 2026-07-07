@@ -17,7 +17,7 @@ export const RemotionRoot: React.FC = () => {
       {/* ── 16:9 films ─────────────────────────────────────────── */}
       {/* Durations grown to fit the full-speed audible call in the sim scene
           (EN +304f, ES +435f — see CALL_DURS in Explainer.tsx). */}
-      <Composition id="Explainer" component={Explainer} durationInFrames={5704} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} />
+      <Composition id="Explainer" component={Explainer} durationInFrames={6379} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} />
       <Composition id="Explainer-ES" component={Explainer} durationInFrames={5835} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} />
 
       <Composition id="FounderStory" component={FounderStory} durationInFrames={2250} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} />

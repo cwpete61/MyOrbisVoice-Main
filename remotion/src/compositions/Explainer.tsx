@@ -84,7 +84,13 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
   const sim = lang === 'es' ? 'rent-es' : 'rent-en';
   const callDurs = lang === 'en' ? CALL_DURS_EN : CALL_DURS_ES;
   const simDur = LEAD_IN + callDurs.reduce((a, b) => a + b, 0) + 20; // grows to fit the full-speed call
-  const shift = simDur - BASE_SIM_DUR; // every scene after the sim moves later by this
+  const shift = simDur - BASE_SIM_DUR; // scenes 7-14 move later by this
+  // Scene 7 (bilingual proof, the Spanish call) is voiced in the EN cut only —
+  // in the ES cut scene 6 is already the Spanish call, so it stays visual there.
+  const voiceScene7 = lang === 'en';
+  const esCallTotal = CALL_DURS_ES.reduce((a, b) => a + b, 0);
+  const sim7Dur = voiceScene7 ? LEAD_IN + esCallTotal + 20 : 600;
+  const shift2 = sim7Dur - 600; // scenes 8-14 move later by this (EN only)
   return (
     <AbsoluteFill style={{ background: theme.bg }}>
       {/* 1 hook */}
@@ -106,17 +112,33 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
           <CallVoiceover lang={lang} durs={callDurs} />
         </Sequence>
       </Scene>
-      {/* 7 bilingual proof — the Spanish call */}
-      <Scene audio={vo('explainer-07')} from={2340 + shift} dur={600}>
-        <AbsoluteFill style={{ background: theme.bg }}>
-          <Stage scale={0.8}><PhoneCallSim variant="rent-es" /></Stage>
-          <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-start', paddingTop: 60 }}>
-            <div style={{ fontFamily: theme.font, fontSize: 34, fontWeight: 800, color: theme.tealDeep, letterSpacing: 1 }}>{c.bilingualSub}</div>
+      {/* 7 bilingual proof — the Spanish call. Voiced (audible) in the EN cut;
+          visual-only in the ES cut (its scene 6 is already the Spanish call). */}
+      <Scene from={2340 + shift} dur={sim7Dur}>
+        {voiceScene7 ? (
+          <>
+            <Audio src={staticFile('vo/explainer-07.mp3')} />
+            <Sequence from={LEAD_IN}>
+              <AbsoluteFill style={{ background: theme.bg }}>
+                <Stage scale={0.8}><PhoneCallSim variant="rent-es" turnDurs={CALL_DURS_ES} /></Stage>
+                <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-start', paddingTop: 60 }}>
+                  <div style={{ fontFamily: theme.font, fontSize: 34, fontWeight: 800, color: theme.tealDeep, letterSpacing: 1 }}>{c.bilingualSub}</div>
+                </AbsoluteFill>
+              </AbsoluteFill>
+              <CallVoiceover lang="es" durs={CALL_DURS_ES} />
+            </Sequence>
+          </>
+        ) : (
+          <AbsoluteFill style={{ background: theme.bg }}>
+            <Stage scale={0.8}><PhoneCallSim variant="rent-es" /></Stage>
+            <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'flex-start', paddingTop: 60 }}>
+              <div style={{ fontFamily: theme.font, fontSize: 34, fontWeight: 800, color: theme.tealDeep, letterSpacing: 1 }}>{c.bilingualSub}</div>
+            </AbsoluteFill>
           </AbsoluteFill>
-        </AbsoluteFill>
+        )}
       </Scene>
       {/* 8 the app */}
-      <Scene audio={vo('explainer-08')} from={2940 + shift} dur={360}>
+      <Scene audio={vo('explainer-08')} from={2940 + shift + shift2} dur={360}>
         <Stage scale={0.92}>
           <div style={{ display: 'flex', gap: 80, alignItems: 'center' }}>
             <AppCockpit highlight="leads" lang={lang} />
@@ -128,7 +150,7 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </Stage>
       </Scene>
       {/* 9 showing brief */}
-      <Scene audio={vo('explainer-09')} from={3300 + shift} dur={360}>
+      <Scene audio={vo('explainer-09')} from={3300 + shift + shift2} dur={360}>
         <Stage scale={0.92}>
           <div style={{ display: 'flex', gap: 80, alignItems: 'center' }}>
             <AppCockpit highlight="brief" lang={lang} />
@@ -140,13 +162,13 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </Stage>
       </Scene>
       {/* 10 control / trust */}
-      <Scene audio={vo('explainer-10')} from={3660 + shift} dur={300}><BigText text={c.control} sub={c.controlSub} size={80} /></Scene>
+      <Scene audio={vo('explainer-10')} from={3660 + shift + shift2} dur={300}><BigText text={c.control} sub={c.controlSub} size={80} /></Scene>
       {/* 11 objection — augmentation not replacement */}
-      <Scene audio={vo('explainer-11')} from={3960 + shift} dur={300}><BigText text={c.objection} sub={c.objectionSub} bg={theme.teal} color={theme.white} size={76} /></Scene>
+      <Scene audio={vo('explainer-11')} from={3960 + shift + shift2} dur={300}><BigText text={c.objection} sub={c.objectionSub} bg={theme.teal} color={theme.white} size={76} /></Scene>
       {/* 12 founder credibility */}
-      <Scene audio={vo('explainer-12')} from={4260 + shift} dur={300}><BigText text={c.founder} sub={c.founderSub} size={96} /></Scene>
+      <Scene audio={vo('explainer-12')} from={4260 + shift + shift2} dur={300}><BigText text={c.founder} sub={c.founderSub} size={96} /></Scene>
       {/* 13 success */}
-      <Scene audio={vo('explainer-13')} from={4560 + shift} dur={480}>
+      <Scene audio={vo('explainer-13')} from={4560 + shift + shift2} dur={480}>
         <Stage>
           <div style={{ fontFamily: theme.font, textAlign: 'center' }}>
             <div style={{ fontSize: 32, fontWeight: 700, color: theme.muted, marginBottom: 50 }}>{c.successSub}</div>
@@ -159,7 +181,7 @@ export const Explainer: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => {
         </Stage>
       </Scene>
       {/* 14 CTA */}
-      <Scene audio={vo('explainer-14')} from={5040 + shift} dur={360}><CTACard lang={lang} /></Scene>
+      <Scene audio={vo('explainer-14')} from={5040 + shift + shift2} dur={360}><CTACard lang={lang} /></Scene>
     </AbsoluteFill>
   );
 };
