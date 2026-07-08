@@ -3,6 +3,7 @@ import { AdBilingual, AdNeverMiss, AdReady, AdSpeed, AdTimeBack, adDurations } f
 import { CutBilingual, CutNeverMiss, CutReady, CutSpeed, CutTimeBack, cutDurations } from './compositions/Cutdowns';
 import { Explainer, explainerDuration } from './compositions/Explainer';
 import { FounderStory, founderDuration } from './compositions/FounderStory';
+import { GifMoneyCounter } from './compositions/GifMoneyCounter';
 import { HomepageHero, homepageDuration } from './compositions/HomepageHero';
 import { LeadEval, leadEvalDuration } from './compositions/LeadEval';
 import { Objections, objectionDuration } from './compositions/Objections';
@@ -42,6 +43,10 @@ export const RemotionRoot: React.FC = () => {
 
       <Composition id="Objections" component={Objections} durationInFrames={1210} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: objectionDuration(L(props)) })} />
       <Composition id="Objections-ES" component={Objections} durationInFrames={1240} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: objectionDuration(L(props)) })} />
+
+      {/* ── Email-marketing GIF source (landscape, 3s loop) ─────── */}
+      <Composition id="GifMoneyCounter" component={GifMoneyCounter} durationInFrames={90} fps={FPS} width={1200} height={675} defaultProps={{ lang: 'en' as const }} />
+      <Composition id="GifMoneyCounter-ES" component={GifMoneyCounter} durationInFrames={90} fps={FPS} width={1200} height={675} defaultProps={{ lang: 'es' as const }} />
 
       {/* ── 9:16 ads ───────────────────────────────────────────── */}
       <Composition id="Ad-NeverMiss" component={AdNeverMiss} durationInFrames={655} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.neverMiss(L(props)) })} />
