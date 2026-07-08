@@ -47,6 +47,8 @@ export const RemotionRoot: React.FC = () => {
       {/* ── Email-marketing GIF source (landscape, 3s loop) ─────── */}
       <Composition id="GifMoneyCounter" component={GifMoneyCounter} durationInFrames={90} fps={FPS} width={1200} height={675} defaultProps={{ lang: 'en' as const }} />
       <Composition id="GifMoneyCounter-ES" component={GifMoneyCounter} durationInFrames={90} fps={FPS} width={1200} height={675} defaultProps={{ lang: 'es' as const }} />
+      <Composition id="GifMoneyCounter-Sq" component={GifMoneyCounter} durationInFrames={90} fps={FPS} width={1080} height={1080} defaultProps={{ lang: 'en' as const }} />
+      <Composition id="GifMoneyCounter-Sq-ES" component={GifMoneyCounter} durationInFrames={90} fps={FPS} width={1080} height={1080} defaultProps={{ lang: 'es' as const }} />
 
       {/* ── 9:16 ads ───────────────────────────────────────────── */}
       <Composition id="Ad-NeverMiss" component={AdNeverMiss} durationInFrames={655} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: adDurations.neverMiss(L(props)) })} />
