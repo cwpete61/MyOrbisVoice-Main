@@ -109,9 +109,51 @@
       <div class="stat" data-reveal><div class="num">&lt;5<span style="font-size:.5em"> min</span></div><div class="lbl">response window before a lead goes cold</div></div>
       <div class="stat" data-reveal><div class="num">24/7</div><div class="lbl">Orby answers — nights, weekends, showings</div></div>
     </div>
-    <div class="center" style="margin-top:34px" data-reveal><a class="btn btn-light btn-lg" href="/calculator/">See what missed calls cost you → Free calculator</a></div>
   </div>
 </section>
+
+<!-- MISSED-MONEY CALCULATOR (interactive teaser) -->
+<style>
+  .hcalc{display:grid;grid-template-columns:1fr 1fr;gap:26px;max-width:920px;margin:34px auto 0;align-items:center}
+  @media(max-width:760px){.hcalc{grid-template-columns:1fr}}
+  .hcalc-in{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:28px;box-shadow:var(--shadow-sm)}
+  .hcalc-in .frow{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;margin-bottom:10px}
+  .hcalc-in .frow span{color:var(--brand);font-weight:900;font-size:20px}
+  .hcalc-in input[type=range]{width:100%;accent-color:var(--brand);height:6px;cursor:pointer}
+  .hcalc-in .hint{color:var(--fg-mute);font-size:13px;margin:14px 0 0;line-height:1.5}
+  .hcalc-out{background:var(--ink);color:#eaf7f5;border-radius:var(--r-lg);padding:32px 28px;text-align:center;box-shadow:var(--shadow-lg)}
+  .hcalc-out .ey{font-size:12px;font-weight:800;letter-spacing:2px;color:#9fc7c7;text-transform:uppercase}
+  .hcalc-out .big{font-size:clamp(48px,9vw,72px);font-weight:900;color:#ff6b6b;line-height:1.05;letter-spacing:-.03em;text-shadow:0 0 40px rgba(255,107,107,.3);margin:8px 0 20px}
+  .hcalc-out .btn{width:100%;justify-content:center}
+</style>
+<section>
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-reveal>Free · 15 seconds · no signup</span>
+      <h2 data-reveal>See what a missed call really costs you.</h2>
+      <p data-reveal>Every missed call is a lost commission — handed to whoever answered first. Drag one slider and watch your yearly leak.</p>
+    </div>
+    <div class="hcalc" data-reveal>
+      <div class="hcalc-in">
+        <div class="frow"><label for="hc-calls">Buyer calls a week</label><span id="hc-calls-v">15</span></div>
+        <input type="range" id="hc-calls" min="2" max="60" step="1" value="15">
+        <p class="hint">Assumes 30% missed · 20% close rate · $9,000 avg commission. <a class="textlink" href="/calculator/">Adjust every number →</a></p>
+      </div>
+      <div class="hcalc-out">
+        <div class="ey">Leaking every year</div>
+        <div class="big" id="hc-leak">$0</div>
+        <a class="btn btn-primary btn-lg" href="/calculator/">Get your full breakdown →</a>
+      </div>
+    </div>
+  </div>
+</section>
+<script>
+(function(){var c=document.getElementById('hc-calls'),cv=document.getElementById('hc-calls-v'),lk=document.getElementById('hc-leak');if(!c)return;
+var K=52*0.30*0.50*0.78*0.20*9000;var f=function(n){return n.toLocaleString('en-US')};var shown=0,id=null;
+function anim(to){var s=shown,t0=null;cancelAnimationFrame(id);function st(ts){if(!t0)t0=ts;var p=Math.min(1,(ts-t0)/500),e=1-Math.pow(1-p,3);shown=Math.round(s+(to-s)*e);lk.textContent='$'+f(shown);if(p<1)id=requestAnimationFrame(st)}id=requestAnimationFrame(st)}
+function u(){cv.textContent=c.value;anim(Math.round(c.value*K/100)*100)}
+c.addEventListener('input',u);u();})();
+</script>
 
 <!-- VIDEO EXPLAINER -->
 <section>

@@ -106,9 +106,51 @@
       <div class="stat" data-reveal><div class="num">&lt;5<span style="font-size:.5em"> min</span></div><div class="lbl">de ventana de respuesta antes de que un lead se enfríe</div></div>
       <div class="stat" data-reveal><div class="num">24/7</div><div class="lbl">Orby contesta — noches, fines de semana, visitas</div></div>
     </div>
-    <div class="center" style="margin-top:34px" data-reveal><a class="btn btn-light btn-lg" href="/es/calculator/">Calcula lo que te cuestan las llamadas perdidas → Calculadora gratis</a></div>
   </div>
 </section>
+
+<!-- CALCULADORA DE DINERO PERDIDO (interactiva) -->
+<style>
+  .hcalc{display:grid;grid-template-columns:1fr 1fr;gap:26px;max-width:920px;margin:34px auto 0;align-items:center}
+  @media(max-width:760px){.hcalc{grid-template-columns:1fr}}
+  .hcalc-in{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r-lg);padding:28px;box-shadow:var(--shadow-sm)}
+  .hcalc-in .frow{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;margin-bottom:10px}
+  .hcalc-in .frow span{color:var(--brand);font-weight:900;font-size:20px}
+  .hcalc-in input[type=range]{width:100%;accent-color:var(--brand);height:6px;cursor:pointer}
+  .hcalc-in .hint{color:var(--fg-mute);font-size:13px;margin:14px 0 0;line-height:1.5}
+  .hcalc-out{background:var(--ink);color:#eaf7f5;border-radius:var(--r-lg);padding:32px 28px;text-align:center;box-shadow:var(--shadow-lg)}
+  .hcalc-out .ey{font-size:12px;font-weight:800;letter-spacing:2px;color:#9fc7c7;text-transform:uppercase}
+  .hcalc-out .big{font-size:clamp(48px,9vw,72px);font-weight:900;color:#ff6b6b;line-height:1.05;letter-spacing:-.03em;text-shadow:0 0 40px rgba(255,107,107,.3);margin:8px 0 20px}
+  .hcalc-out .btn{width:100%;justify-content:center}
+</style>
+<section>
+  <div class="wrap">
+    <div class="section-head center">
+      <span class="eyebrow" data-reveal>Gratis · 15 segundos · sin registro</span>
+      <h2 data-reveal>Mira lo que de verdad te cuesta una llamada perdida.</h2>
+      <p data-reveal>Cada llamada perdida es una comisión perdida — para quien contestó primero. Mueve un control y mira tu fuga anual.</p>
+    </div>
+    <div class="hcalc" data-reveal>
+      <div class="hcalc-in">
+        <div class="frow"><label for="hc-calls">Llamadas de compradores por semana</label><span id="hc-calls-v">15</span></div>
+        <input type="range" id="hc-calls" min="2" max="60" step="1" value="15">
+        <p class="hint">Supone 30% perdidas · 20% de cierre · $9,000 de comisión promedio. <a class="textlink" href="/es/calculator/">Ajusta cada número →</a></p>
+      </div>
+      <div class="hcalc-out">
+        <div class="ey">Que pierdes cada año</div>
+        <div class="big" id="hc-leak">$0</div>
+        <a class="btn btn-primary btn-lg" href="/es/calculator/">Ve tu desglose completo →</a>
+      </div>
+    </div>
+  </div>
+</section>
+<script>
+(function(){var c=document.getElementById('hc-calls'),cv=document.getElementById('hc-calls-v'),lk=document.getElementById('hc-leak');if(!c)return;
+var K=52*0.30*0.50*0.78*0.20*9000;var f=function(n){return n.toLocaleString('en-US')};var shown=0,id=null;
+function anim(to){var s=shown,t0=null;cancelAnimationFrame(id);function st(ts){if(!t0)t0=ts;var p=Math.min(1,(ts-t0)/500),e=1-Math.pow(1-p,3);shown=Math.round(s+(to-s)*e);lk.textContent='$'+f(shown);if(p<1)id=requestAnimationFrame(st)}id=requestAnimationFrame(st)}
+function u(){cv.textContent=c.value;anim(Math.round(c.value*K/100)*100)}
+c.addEventListener('input',u);u();})();
+</script>
 
 <!-- VIDEO EXPLAINER -->
 <section>
