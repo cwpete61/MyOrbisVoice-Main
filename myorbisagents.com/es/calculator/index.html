@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora de dinero perdido — ¿cuánto te cuesta tu teléfono? | MyOrbisAgents</title>
+<meta name="description" content="Mira cuánta comisión pierdes cada año por llamadas sin contestar. Calculadora gratis para agentes de bienes raíces — sin registro. Luego, una Evaluación gratis.">
+<link rel="canonical" href="https://myorbisagents.com/es/calculator/">
+<link rel="alternate" hreflang="en" href="https://myorbisagents.com/calculator/">
+<link rel="alternate" hreflang="es" href="https://myorbisagents.com/es/calculator/">
+<meta property="og:title" content="¿Cuánto te cuesta tu teléfono? — Calculadora de dinero perdido">
+<meta property="og:description" content="Cada llamada perdida es una comisión perdida. Mira tu fuga anual en 15 segundos.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://myorbisagents.com/es/calculator/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/styles.css?v=r20260706">
+<script>(function(){try{var t=localStorage.getItem("orby_theme");if(!t)t=window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<style>
+  .calc-hero{padding:56px 0 12px;text-align:center}
+  .calc-hero h1{max-width:820px;margin:14px auto 0}
+  .calc-hero .lede{max-width:640px;margin:16px auto 0;color:var(--fg-soft);font-size:clamp(16px,2.4vw,19px)}
+  .calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start;margin:36px 0 8px}
+  @media(max-width:860px){.calc-grid{grid-template-columns:1fr}}
+  .calc-card{padding:30px clamp(20px,4vw,36px)}
+  .calc-card h2{font-size:22px;margin:0 0 6px}
+  .calc-card .hint{color:var(--fg-mute);font-size:14px;margin:0 0 22px}
+  .field{margin:22px 0}
+  .field .frow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .field label{font-weight:700;font-size:15px}
+  .field .val{font-weight:900;font-size:20px;color:var(--brand)}
+  .field input[type=range]{width:100%;accent-color:var(--brand);height:6px;cursor:pointer}
+  .res{background:var(--ink);color:#eaf7f5;border:1px solid rgba(63,227,227,.18);box-shadow:var(--shadow-lg);border-radius:var(--r-lg);padding:34px clamp(22px,4vw,38px);position:sticky;top:90px}
+  .res .ey{font-size:13px;font-weight:800;letter-spacing:2px;color:#9fc7c7;text-transform:uppercase}
+  .res .big{font-size:clamp(56px,12vw,92px);font-weight:900;line-height:1;letter-spacing:-.03em;color:#ff6b6b;text-shadow:0 0 44px rgba(255,107,107,.32);margin:10px 0 4px}
+  .res .unit{font-size:18px;font-weight:700;color:#cfe6e6;margin-bottom:22px}
+  .chain{border-top:1px solid rgba(255,255,255,.1);margin-top:8px}
+  .chain .row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:15px}
+  .chain .row span:first-child{color:#bcd6d6}
+  .chain .row b{font-weight:900;font-size:17px}
+  .chain .row.hot b{color:#ff6b6b}
+  .res .note{font-size:13px;color:#8fb0b0;margin-top:16px;line-height:1.5}
+  .res .cta{display:flex;flex-direction:column;gap:12px;margin-top:24px}
+  .res .cta .btn{width:100%;justify-content:center}
+  .assumptions{color:var(--fg-mute);font-size:12.5px;text-align:center;max-width:780px;margin:6px auto 60px;line-height:1.6}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Ir al contenido</a>
+
+<!-- NAV -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="/es/"><span class="dot"></span>MYORBIS<b>AGENTS</b></a>
+    <nav class="nav-links">
+      <a href="/es/how-it-works/">Cómo funciona</a>
+      <a href="/es/benefits/">Beneficios</a>
+      <a href="/es/pricing/">Precios</a>
+      <a href="/es/book/">Agenda una llamada</a>
+      <a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Ingreso de agentes</a>
+    </nav>
+    <div class="nav-right">
+      <a class="lang-pill" href="/calculator/" aria-label="View in English">EN</a>
+      <button class="icon-btn" data-theme-toggle aria-label="Cambiar modo oscuro">🌓</button>
+      <a class="btn btn-primary nav-cta desk" href="tel:+19296403810">Escucha a Orby →</a>
+      <button class="icon-btn burger" data-burger aria-label="Menú" aria-expanded="false">☰</button>
+    </div>
+  </div>
+  <div class="mobile-menu" data-mobile-menu>
+    <a href="/es/how-it-works/">Cómo funciona</a>
+    <a href="/es/benefits/">Beneficios</a>
+    <a href="/es/pricing/">Precios</a>
+    <a href="/es/book/">Agenda una llamada</a>
+    <a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Ingreso de agentes</a>
+    <a class="btn btn-primary" href="tel:+19296403810">Escucha a Orby →</a>
+  </div>
+</header>
+
+<main id="main">
+<section>
+  <div class="wrap">
+    <div class="calc-hero">
+      <span class="eyebrow">Herramienta gratis · Sin registro</span>
+      <h1>¿Cuánto te está costando tu teléfono?</h1>
+      <p class="lede">Cada llamada perdida es una comisión perdida — para quien contestó primero. Mueve los controles a tu realidad y mira lo que pierdes al año.</p>
+    </div>
+
+    <div class="calc-grid">
+      <!-- INPUTS -->
+      <div class="card calc-card">
+        <h2>Tus números</h2>
+        <p class="hint">Con cifras típicas de un agente. Ajústalas a las tuyas.</p>
+
+        <div class="field">
+          <div class="frow"><label for="calls">Llamadas de compradores por semana</label><span class="val" id="calls-v">15</span></div>
+          <input type="range" id="calls" min="2" max="60" step="1" value="15">
+        </div>
+        <div class="field">
+          <div class="frow"><label for="miss">Llamadas que pierdes (ocupado, en cita, fuera de horario)</label><span class="val" id="miss-v">30%</span></div>
+          <input type="range" id="miss" min="5" max="70" step="1" value="30">
+        </div>
+        <div class="field">
+          <div class="frow"><label for="close">Tu tasa de cierre con un comprador en vivo</label><span class="val" id="close-v">20%</span></div>
+          <input type="range" id="close" min="3" max="50" step="1" value="20">
+        </div>
+        <div class="field">
+          <div class="frow"><label for="comm">Comisión promedio por venta</label><span class="val" id="comm-v">$9,000</span></div>
+          <input type="range" id="comm" min="2000" max="30000" step="500" value="9000">
+        </div>
+        <div class="field">
+          <div class="frow"><label for="ready">Porción de llamadas perdidas que son compradores reales y listos</label><span class="val" id="ready-v">50%</span></div>
+          <input type="range" id="ready" min="20" max="80" step="5" value="50">
+        </div>
+      </div>
+
+      <!-- RESULT -->
+      <div class="res">
+        <div class="ey">Lo que cuesta una llamada perdida</div>
+        <div class="big" id="leak">$0</div>
+        <div class="unit">que pierdes cada año — una llamada a la vez</div>
+        <div class="chain">
+          <div class="row"><span>Llamadas perdidas al año</span><b id="c-missed">0</b></div>
+          <div class="row"><span>Compradores reales y listos</span><b id="c-leads">0</b></div>
+          <div class="row"><span>Perdidos ante un agente más rápido <em>(78% elige al que contesta primero)</em></span><b id="c-lost">0</b></div>
+          <div class="row hot"><span>Ventas perdidas</span><b id="c-deals">0</b></div>
+        </div>
+        <p class="note">Cuentas conservadoras que puedes ver. Antes de noches, fines de semana, mensajes, leads web y los compradores que hablan español y nunca escuchas.</p>
+        <div class="cta">
+          <a class="btn btn-primary btn-lg" id="cta-eval" href="/es/book/">Ve tu número real — Evaluación gratis →</a>
+          <a class="btn btn-ghost" href="tel:+19296403810">📞 O escucha a Orby atender una llamada</a>
+        </div>
+      </div>
+    </div>
+    <p class="assumptions">Cómo se calcula: llamadas perdidas/año = llamadas por semana × 52 × % perdido. De esas, la porción de "compradores listos" son leads reales; el 78% de los leads se va con el primer agente que responde (referencia del sector); tu tasa de cierre convierte leads perdidos en ventas perdidas; × tu comisión promedio = la fuga. Cada factor lo ajustas tú. Orby contesta cada llamada, texto y lead web en segundos — así nada de esto es dinero que tengas que perder.</p>
+  </div>
+</section>
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-about">
+        <a class="brand" href="/es/"><span class="dot"></span>MYORBIS<b>AGENTS</b></a>
+        <p>Orby es tu agente de ventas con IA — contesta cada llamada, texto y lead web, y agenda cada visita, 24/7.</p>
+        <p style="margin-top:10px">Un producto de <a class="textlink" href="https://myorbisresults.com">MyOrbisResults</a>.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Producto</h4>
+        <a href="/es/how-it-works/">Cómo funciona</a>
+        <a href="/es/benefits/">Beneficios</a>
+        <a href="/es/pricing/">Precios</a>
+        <a href="/es/book/">Agenda una llamada</a>
+        <a href="tel:+14705173441">Línea demo</a>
+        <a href="https://api.myorbisagents.com/api/auth/oidc/login?next=%2Fagents%2Fcockpit">Ingreso de agentes</a>
+      </div>
+      <div class="foot-col">
+        <h4>Empresa</h4>
+        <a href="https://myorbisresults.com">Sobre MyOrbisResults</a>
+        <a href="/es/book/">Hablar con ventas</a>
+        <a href="/calculator/">English</a>
+      </div>
+      <div class="foot-col">
+        <h4>Legal</h4>
+        <a href="https://myorbisagents.com/legal/terms/">Términos del servicio</a>
+        <a href="https://myorbisagents.com/legal/privacy/">Política de privacidad</a>
+        <a href="https://myorbisagents.com/legal/cookies/">Política de cookies</a>
+        <a href="https://myorbisagents.com/legal/fair-housing/">Vivienda Justa</a>
+        <a href="https://myorbisagents.com/sms/">Términos SMS</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      © 2026 MyOrbisResults. Todos los derechos reservados. Las estimaciones son ilustrativas, basadas en los datos y referencias del sector que puedes ajustar arriba — no una garantía de resultados. Orby es un asistente de IA, no un agente de bienes raíces con licencia.
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/app.js?v=r20260706"></script>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var fmt=function(n){return n.toLocaleString('en-US')};
+  var ids=['calls','miss','close','comm','ready'];
+  var leakEl=$('leak'), rafShown=0, rafTarget=0, rafId=null;
+  function animateLeak(to){
+    rafTarget=to; cancelAnimationFrame(rafId);
+    var start=rafShown, t0=null, dur=500;
+    function step(ts){ if(!t0)t0=ts; var p=Math.min(1,(ts-t0)/dur); var e=1-Math.pow(1-p,3);
+      rafShown=Math.round(start+(rafTarget-start)*e); leakEl.textContent='$'+fmt(rafShown);
+      if(p<1)rafId=requestAnimationFrame(step); }
+    rafId=requestAnimationFrame(step);
+  }
+  function calc(){
+    var calls=+$('calls').value, miss=+$('miss').value/100, close=+$('close').value/100,
+        comm=+$('comm').value, ready=+$('ready').value/100;
+    $('calls-v').textContent=calls;
+    $('miss-v').textContent=Math.round(miss*100)+'%';
+    $('close-v').textContent=Math.round(close*100)+'%';
+    $('comm-v').textContent='$'+fmt(comm);
+    $('ready-v').textContent=Math.round(ready*100)+'%';
+    var missed=Math.round(calls*52*miss);
+    var leads=Math.round(missed*ready);
+    var lost=Math.round(leads*0.78);
+    var deals=Math.round(lost*close);
+    var leak=Math.round(deals*comm/100)*100;
+    $('c-missed').textContent=fmt(missed);
+    $('c-leads').textContent=fmt(leads);
+    $('c-lost').textContent=fmt(lost);
+    $('c-deals').textContent=fmt(deals);
+    animateLeak(leak);
+  }
+  ids.forEach(function(id){ $(id).addEventListener('input',calc); });
+  try{ var ref=new URLSearchParams(location.search).get('ref');
+    if(ref){ var a=$('cta-eval'); a.href='/es/book/?ref='+encodeURIComponent(ref); } }catch(e){}
+  calc();
+})();
+</script>
+</body>
+</html>
