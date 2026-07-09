@@ -6,6 +6,7 @@ import { AuthGuard } from '@/components/AuthGuard'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { SidebarNav } from '@/components/SidebarNav'
+import { NativeBootstrap } from '@/components/NativeBootstrap'
 import { SignOutButton } from '@/components/SignOutButton'
 import { SidebarUserBadge } from '@/components/SidebarUserBadge'
 import { NotificationBell } from '@/components/NotificationBell'
@@ -184,6 +185,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <AuthGuard>
+      <NativeBootstrap />
       <IdleTimeout redirectTo={isAgents ? AGENTS_HOME : 'https://myorbisresults.com'} />
       {/* h-[100dvh] not h-screen — iOS Safari's 100vh includes chrome that's
          actually hiding part of the layout. Desktop sidebar at lg: (≥1024px)

@@ -7,7 +7,7 @@ import { sendEmail } from './email.service.js'
 import { scheduleAppointmentReminders, cancelAppointmentReminders } from './reminder.service.js'
 import { resolveBookingIdentity, BOOKING_BRAND } from './booking-identity.service.js'
 import { DEMO_PHONE_E164 } from './demo-session.service.js'
-import { sendToTenant } from './push.service.js'
+import { sendToTenant, sendNativeToTenant } from './push.service.js'
 import type { Prisma } from '@prisma/client'
 
 /** Push the agent when Orby books a showing. Delivers to every subscribed
@@ -27,11 +27,13 @@ async function notifyAgentShowingBooked(
       timeZone: a.timezone, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
     })
   } catch { /* fall back to raw ISO */ }
-  await sendToTenant(tenantId, {
+  const payload = {
     title: 'Showing booked',
     body:  `${who} — ${when}${a.location ? ` · ${a.location}` : ''}. Orby caught it — go close.`,
     url:   '/agents/cockpit',
-  })
+  }
+  // Fan out to Web Push (PWA/browser) and native (the app), independently.
+  await Promise.allSettled([sendToTenant(tenantId, payload), sendNativeToTenant(tenantId, payload)])
 }
 
 const DEFAULT_SLOT_INCREMENT_MINUTES = 30

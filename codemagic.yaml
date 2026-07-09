@@ -1,0 +1,87 @@
+# Codemagic CI/CD — builds the MyOrbisAgents native apps (Capacitor) for the
+# App Store and Google Play. The app is a thin shell around the live web app
+# (apps/mobile/capacitor.config.ts → server.url = app.myorbisagents.com), so
+# builds are fast and there's no web bundle to compile here.
+#
+# ─── ONE-TIME SETUP (Codemagic UI → Environment variables & groups) ─────────
+#  Group "firebase":
+#    GOOGLE_SERVICES_JSON       — base64 of android google-services.json
+#    GOOGLE_SERVICE_INFO_PLIST  — base64 of ios GoogleService-Info.plist
+#  Group "android_keystore":
+#    CM_KEYSTORE (base64), CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_PASSWORD
+#    GCLOUD_SERVICE_ACCOUNT_CREDENTIALS — Play publishing service account JSON
+#  iOS signing: add an App Store Connect API key integration named below, and
+#    register bundle id com.myorbisagents.app. Codemagic manages the certs.
+# See docs/native-app-setup.md for how to produce each of these.
+
+workflows:
+  android:
+    name: MyOrbisAgents · Android
+    max_build_duration: 45
+    environment:
+      groups: [firebase, android_keystore]
+      node: 20
+    scripts:
+      - name: Install mobile deps
+        script: cd apps/mobile && npm install
+      - name: Add Android platform + Firebase + sync
+        script: |
+          cd apps/mobile
+          [ -d android ] || npx cap add android
+          echo "$GOOGLE_SERVICES_JSON" | base64 --decode > android/app/google-services.json
+          npx cap sync android
+      - name: Decode keystore
+        script: echo "$CM_KEYSTORE" | base64 --decode > "$CM_BUILD_DIR/keystore.jks"
+      - name: Build signed AAB
+        script: |
+          cd apps/mobile/android
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file="$CM_BUILD_DIR/keystore.jks" \
+            -Pandroid.injected.signing.store.password="$CM_KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$CM_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$CM_KEY_PASSWORD"
+    artifacts:
+      - apps/mobile/android/app/build/outputs/**/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal   # internal → closed → production once verified
+
+  ios:
+    name: MyOrbisAgents · iOS
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: MyOrbisAgents ASC key
+    environment:
+      groups: [firebase]
+      node: 20
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.myorbisagents.app
+    scripts:
+      - name: Install mobile deps
+        script: cd apps/mobile && npm install
+      - name: Add iOS platform + Firebase + sync
+        script: |
+          cd apps/mobile
+          [ -d ios ] || npx cap add ios
+          echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > ios/App/App/GoogleService-Info.plist
+          npx cap sync ios
+      - name: CocoaPods
+        script: cd apps/mobile/ios/App && pod install
+      - name: Set up signing
+        script: xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          cd apps/mobile/ios/App
+          xcode-project build-ipa --workspace App.xcworkspace --scheme App
+    artifacts:
+      - apps/mobile/ios/App/build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

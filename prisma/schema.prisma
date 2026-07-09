@@ -413,6 +413,7 @@ model User {
   startedImpersonations ImpersonationSession[] @relation("ImpersonationStartedBy")
   refreshTokens         RefreshToken[]
   pushSubscriptions     PushSubscription[]
+  pushDevices           PushDevice[]
   a2pOperatorNotes      A2POperatorNote[]
   passwordResetTokens   PasswordResetToken[]
   uploadedKbFiles       KnowledgeBaseFile[]    @relation("KbFileUploadedBy")
@@ -494,6 +495,7 @@ model Tenant {
   twilioSubaccount          TenantTwilioSubaccount?
   a2pApplication            TenantA2PApplication?
   pushSubscriptions         PushSubscription[]
+  pushDevices               PushDevice[]
   contacts                  Contact[]
   contactNotes              ContactNote[]
   pipelineStages            PipelineStage[]
@@ -1308,6 +1310,24 @@ model PushSubscription {
   p256dh     String // browser public key for E2E encryption
   auth       String // browser auth secret
   userAgent  String?
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+}
+
+// Native app (Capacitor) push tokens — FCM registration tokens for iOS + Android.
+// Parallel to PushSubscription (Web Push): the native app registers its FCM token
+// here, and the backend fans a notification out to both channels.
+model PushDevice {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String
+  platform   String   // 'ios' | 'android'
+  token      String   @unique // FCM registration token
   lastUsedAt DateTime @default(now())
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

@@ -10,6 +10,7 @@
  * and pruned on send-failure (404/410 = subscription dead).
  */
 import webPush from 'web-push'
+import { google } from 'googleapis'
 import { prisma } from '../lib/prisma.js'
 import { getConfigValue } from './system-config.service.js'
 
@@ -103,4 +104,74 @@ async function sendToSubscriptions(subs: StoredSubscription[], payload: PushPayl
   }
 
   return { delivered, pruned }
+}
+
+// ── Native (Capacitor) push via FCM v1 ─────────────────────────────────────
+// The native app registers an FCM token in PushDevice; we send through the FCM
+// HTTP v1 API using a service-account JSON stored (encrypted) in SystemConfig
+// under `fcm_service_account`. FCM delivers to Android natively and to iOS via
+// the APNs key configured in the Firebase project. Guarded — no-ops until set.
+interface FcmCreds { projectId: string; clientEmail: string; privateKey: string }
+let fcmCreds: FcmCreds | null = null
+let fcmChecked = false
+async function ensureFcm(): Promise<FcmCreds | null> {
+  if (fcmChecked) return fcmCreds
+  fcmChecked = true
+  const raw = await getConfigValue('fcm_service_account')
+  if (!raw) { console.warn('[push] FCM service account not configured — native push disabled'); return null }
+  try {
+    const sa = JSON.parse(raw) as { project_id: string; client_email: string; private_key: string }
+    fcmCreds = { projectId: sa.project_id, clientEmail: sa.client_email, privateKey: sa.private_key }
+  } catch { console.warn('[push] fcm_service_account is not valid JSON'); fcmCreds = null }
+  return fcmCreds
+}
+async function fcmAccessToken(c: FcmCreds): Promise<string | null> {
+  try {
+    const jwt = new google.auth.JWT({ email: c.clientEmail, key: c.privateKey, scopes: ['https://www.googleapis.com/auth/firebase.messaging'] })
+    const { access_token } = await jwt.authorize()
+    return access_token ?? null
+  } catch (e) { console.warn('[push] FCM auth failed:', (e as Error).message); return null }
+}
+async function sendFcm(devices: { id: string; token: string }[], payload: PushPayload): Promise<{ delivered: number; pruned: number }> {
+  const creds = await ensureFcm()
+  if (!creds || devices.length === 0) return { delivered: 0, pruned: 0 }
+  const accessToken = await fcmAccessToken(creds)
+  if (!accessToken) return { delivered: 0, pruned: 0 }
+  let delivered = 0
+  const deadIds: string[] = []
+  await Promise.all(devices.map(async (dv) => {
+    const res = await fetch(`https://fcm.googleapis.com/v1/projects/${creds.projectId}/messages:send`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: {
+          token: dv.token,
+          notification: { title: payload.title, body: payload.body },
+          data: payload.url ? { url: payload.url } : undefined,
+          android: { priority: 'high', notification: { sound: 'default' } },
+          apns: { payload: { aps: { sound: 'default' } } },
+        },
+      }),
+    }).catch(() => null)
+    if (!res) return
+    if (res.ok) {
+      delivered++
+      prisma.pushDevice.update({ where: { id: dv.id }, data: { lastUsedAt: new Date() } }).catch(() => null)
+      return
+    }
+    const txt = await res.text().catch(() => '')
+    if (res.status === 404 || /UNREGISTERED|NotRegistered|InvalidRegistration/i.test(txt)) deadIds.push(dv.id)
+    else console.warn('[push] FCM send failed', res.status, txt.slice(0, 140))
+  }))
+  if (deadIds.length > 0) await prisma.pushDevice.deleteMany({ where: { id: { in: deadIds } } })
+  return { delivered, pruned: deadIds.length }
+}
+
+/** Native push to one user (all their registered devices). */
+export async function sendNativeToUser(userId: string, payload: PushPayload) {
+  return sendFcm(await prisma.pushDevice.findMany({ where: { userId }, select: { id: true, token: true } }), payload)
+}
+/** Native push to every device on a tenant. */
+export async function sendNativeToTenant(tenantId: string, payload: PushPayload) {
+  return sendFcm(await prisma.pushDevice.findMany({ where: { tenantId }, select: { id: true, token: true } }), payload)
 }

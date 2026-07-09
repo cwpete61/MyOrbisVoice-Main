@@ -2,7 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { useT } from '@/lib/i18n/I18nProvider'
+import { isNativeApp } from '@/lib/native'
+
+// In the native app the sidebar is a focused companion — the daily surfaces
+// only. Setup/config/billing stay on desktop web (a phone is a poor place to
+// wire OAuth or edit Business DNA). These are the hrefs the app keeps.
+const COMPANION_HREFS = new Set<string>([
+  '/dashboard', '/agents/cockpit', '/agents/listings',
+  '/contacts', '/crm', '/conversations', '/appointments',
+])
 
 interface NavItem {
   href: string
@@ -82,10 +92,16 @@ const NAV_GROUPS: NavGroup[] = [
 export function SidebarNav() {
   const pathname = usePathname()
   const t = useT()
+  const [native, setNative] = useState(false)
+  useEffect(() => { setNative(isNativeApp()) }, [])
+
+  const groups = native
+    ? NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => COMPANION_HREFS.has(i.href)) })).filter((g) => g.items.length > 0)
+    : NAV_GROUPS
 
   return (
     <div className="space-y-5 pt-1">
-      {NAV_GROUPS.map((group) => (
+      {groups.map((group) => (
         <div key={group.labelKey}>
           <p
             className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider"
@@ -124,6 +140,14 @@ export function SidebarNav() {
           </ul>
         </div>
       ))}
+      {native && (
+        <p className="px-3 pt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+          Setup, billing &amp; integrations —{' '}
+          <a href="https://app.myorbisagents.com/dashboard" target="_blank" rel="noreferrer" style={{ color: 'var(--brand, #15a8a8)' }}>
+            manage on desktop
+          </a>
+        </p>
+      )}
     </div>
   )
 }

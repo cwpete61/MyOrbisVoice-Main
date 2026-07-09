@@ -52,6 +52,30 @@ router.post('/push/subscribe', asyncHandler(async (req, res) => {
   res.status(201).json({ data: { id: sub.id } })
 }))
 
+// Native app (Capacitor) registers its FCM token here after permission is granted.
+const registerNativeSchema = z.object({
+  platform: z.enum(['ios', 'android']),
+  token:    z.string().min(1),
+})
+router.post('/push/register-native', asyncHandler(async (req, res) => {
+  const tenantId = req.user!.currentTenantId!
+  const userId   = req.user!.id
+  const { platform, token } = registerNativeSchema.parse(req.body)
+  const device = await prisma.pushDevice.upsert({
+    where:  { token },
+    create: { tenantId, userId, platform, token },
+    update: { tenantId, userId, platform, lastUsedAt: new Date() },
+  })
+  res.status(201).json({ data: { id: device.id } })
+}))
+
+router.delete('/push/register-native/:token', asyncHandler(async (req, res) => {
+  const userId = req.user!.id
+  const token  = req.params['token']!
+  await prisma.pushDevice.deleteMany({ where: { token, userId } })
+  res.sendStatus(204)
+}))
+
 router.delete('/push/subscriptions/:id', asyncHandler(async (req, res) => {
   const userId = req.user!.id
   const id     = req.params['id']!

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MyOrbisAgents</title>
+  <style>
+    html,body{margin:0;height:100%;background:#06141a;color:#eaf7f5;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+    .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px}
+    .orb{width:76px;height:76px;border-radius:50%;
+      background:radial-gradient(circle at 34% 30%,#eafffb,#6ff0ea 22%,#19b9b9 60%,#0e8a8a);
+      box-shadow:0 0 44px rgba(45,207,207,.5)}
+    p{color:#9fc7c7;max-width:22ch;line-height:1.4}
+    a{color:#3fe3e3}
+  </style>
+</head>
+<body>
+  <!-- Offline fallback only. In normal use the shell loads the live dashboard
+       from server.url (app.myorbisagents.com); this shows if the device is
+       offline at launch. -->
+  <div class="c">
+    <div class="orb"></div>
+    <h2>MyOrbisAgents</h2>
+    <p>You're offline. Reconnect to reach your Orby dashboard.</p>
+    <a href="https://app.myorbisagents.com">Retry &rarr;</a>
+  </div>
+</body>
+</html>
