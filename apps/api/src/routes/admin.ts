@@ -78,7 +78,9 @@ function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
       const key = issue.path.join('.') || 'root'
       fields[key] = [...(fields[key] ?? []), issue.message]
     }
-    throw new AppError('VALIDATION_ERROR', 'Invalid input', 422, fields)
+    const first = result.error.issues[0]
+    const summary = first ? `Invalid input: ${first.path.join('.') || 'field'} — ${first.message}` : 'Invalid input'
+    throw new AppError('VALIDATION_ERROR', summary, 422, fields)
   }
   return result.data
 }
@@ -1529,7 +1531,9 @@ function validateA2PNote(data: unknown): z.infer<typeof a2pNoteSchema> {
       const key = issue.path.join('.') || 'root'
       fields[key] = [...(fields[key] ?? []), issue.message]
     }
-    throw new AppError('VALIDATION_ERROR', 'Invalid input', 422, fields)
+    const first = result.error.issues[0]
+    const summary = first ? `Invalid input: ${first.path.join('.') || 'field'} — ${first.message}` : 'Invalid input'
+    throw new AppError('VALIDATION_ERROR', summary, 422, fields)
   }
   return result.data
 }
@@ -2159,7 +2163,9 @@ function validateCompCode(data: unknown): z.infer<typeof compCodeCreateSchema> {
       const key = issue.path.join('.') || 'root'
       fields[key] = [...(fields[key] ?? []), issue.message]
     }
-    throw new AppError('VALIDATION_ERROR', 'Invalid input', 422, fields)
+    const first = result.error.issues[0]
+    const summary = first ? `Invalid input: ${first.path.join('.') || 'field'} — ${first.message}` : 'Invalid input'
+    throw new AppError('VALIDATION_ERROR', summary, 422, fields)
   }
   return result.data
 }
@@ -2660,7 +2666,9 @@ const agentDemoCreateSchema = z.object({
   agentEmail:  z.string().email(),
   agentPhone:  z.string().max(40).optional().or(z.literal('')),
   specialties: z.string().max(300).optional().or(z.literal('')),
-  listings:    z.array(z.string().min(1).max(4000)).min(1).max(3),
+  // Real Zillow/MLS pastes are long (schools, payment calc, tax history…) — 4000
+  // rejected legitimate listings. The AI formatter trims it down anyway.
+  listings:    z.array(z.string().min(1).max(20000)).min(1).max(3),
   avgPriceUsd: z.number().int().nonnegative().optional(),
   salesLast12: z.number().int().nonnegative().optional(),
 })
