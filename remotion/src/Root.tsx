@@ -1,6 +1,6 @@
 import { Composition } from 'remotion';
 import { AdBilingual, AdNeverMiss, AdReady, AdSpeed, AdTimeBack, adDurations } from './compositions/Ads';
-import { CutBilingual, CutNeverMiss, CutReady, CutSpeed, CutTimeBack, cutDurations } from './compositions/Cutdowns';
+import { CutBilingual, CutNeverMiss, CutReady, CutSpeed, CutTimeBack, cutDurations, WhatIfCutShowing, WhatIfCutSpanish, WhatIfCutSlept, whatIfCutDurations } from './compositions/Cutdowns';
 import { Explainer, explainerDuration } from './compositions/Explainer';
 import { FounderStory, founderDuration } from './compositions/FounderStory';
 import { GifMoneyCounter } from './compositions/GifMoneyCounter';
@@ -92,6 +92,16 @@ export const RemotionRoot: React.FC = () => {
 
       <Composition id="Cut-TimeBack" component={CutTimeBack} durationInFrames={160} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: cutDurations.timeBack(L(props)) })} />
       <Composition id="Cut-TimeBack-ES" component={CutTimeBack} durationInFrames={163} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: cutDurations.timeBack(L(props)) })} />
+
+      {/* ── 9:16 "What if…" hook cutdowns ────────────────────────── */}
+      <Composition id="WhatIfCut-Showing" component={WhatIfCutShowing} durationInFrames={244} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfCutDurations.showing(L(props)) })} />
+      <Composition id="WhatIfCut-Showing-ES" component={WhatIfCutShowing} durationInFrames={250} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfCutDurations.showing(L(props)) })} />
+
+      <Composition id="WhatIfCut-Spanish" component={WhatIfCutSpanish} durationInFrames={217} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfCutDurations.spanish(L(props)) })} />
+      <Composition id="WhatIfCut-Spanish-ES" component={WhatIfCutSpanish} durationInFrames={236} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfCutDurations.spanish(L(props)) })} />
+
+      <Composition id="WhatIfCut-Slept" component={WhatIfCutSlept} durationInFrames={215} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfCutDurations.slept(L(props)) })} />
+      <Composition id="WhatIfCut-Slept-ES" component={WhatIfCutSlept} durationInFrames={259} fps={FPS} width={VW} height={VH} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfCutDurations.slept(L(props)) })} />
     </>
   );
 };

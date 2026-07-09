@@ -11,6 +11,9 @@ type Lang = 'en' | 'es';
 const VO: Record<string, number> = {
   'cut1-en': 111, 'cut1-es': 124, 'cut2-en': 85, 'cut2-es': 102, 'cut3-en': 100, 'cut3-es': 78,
   'cut4-en': 91, 'cut4-es': 114, 'cut5-en': 98, 'cut5-es': 101,
+  // "What if…" hook clips (reused from the full What-if videos) — the hook line
+  // alone is the scroll-stopper for Reels/TikTok.
+  'w1-01-en': 182, 'w1-01-es': 188, 'w2-01-en': 155, 'w2-01-es': 174, 'w3-01-en': 153, 'w3-01-es': 197,
 };
 
 const MiniTag: React.FC<{ lang: Lang }> = ({ lang }) => (
@@ -63,4 +66,36 @@ export const cutDurations = {
   ready: (l: Lang) => filmDuration(cutScenes('cut3', l)),
   bilingual: (l: Lang) => filmDuration(cutScenes('cut4', l)),
   timeBack: (l: Lang) => filmDuration(cutScenes('cut5', l)),
+};
+
+// ── "What if…" hook cutdowns (9:16) — the USP question alone, ~7s ──
+const WHATIF = {
+  en: {
+    w1: { t: 'What if the call you couldn’t take booked itself?', c: theme.text },
+    w2: { t: 'What if you captured every Spanish-speaking buyer?', c: theme.text },
+    w3: { t: 'What if 2 a.m. leads booked themselves by sunrise?', c: theme.text },
+  },
+  es: {
+    w1: { t: '¿Y si la llamada que no pudiste tomar se agendara sola?', c: theme.text },
+    w2: { t: '¿Y si captaras a cada comprador que habla español?', c: theme.text },
+    w3: { t: '¿Y si los leads de las 2 a.m. se agendaran al amanecer?', c: theme.text },
+  },
+};
+
+const whatIfCutScenes = (id: 'w1' | 'w2' | 'w3', lang: Lang): FilmScene[] => {
+  const h = WHATIF[lang][id];
+  return [
+    { dur: VO[`${id}-01-${lang}`]! + 16, audio: `${id}-01-${lang}`, node: <BigText text={h.t} color={h.c} size={100} /> },
+    { dur: 46, node: <MiniTag lang={lang} /> },
+  ];
+};
+
+export const WhatIfCutShowing: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={whatIfCutScenes('w1', lang)} />;
+export const WhatIfCutSpanish: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={whatIfCutScenes('w2', lang)} />;
+export const WhatIfCutSlept: React.FC<{ lang?: Lang }> = ({ lang = 'en' }) => <Film scenes={whatIfCutScenes('w3', lang)} />;
+
+export const whatIfCutDurations = {
+  showing: (l: Lang) => filmDuration(whatIfCutScenes('w1', l)),
+  spanish: (l: Lang) => filmDuration(whatIfCutScenes('w2', l)),
+  slept: (l: Lang) => filmDuration(whatIfCutScenes('w3', l)),
 };
