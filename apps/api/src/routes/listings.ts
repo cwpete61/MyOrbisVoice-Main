@@ -30,7 +30,7 @@ function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
   return result.data
 }
 
-const STATUS = z.enum(['ACTIVE', 'COMING_SOON', 'PENDING', 'SOLD', 'POCKET', 'OFF_MARKET'])
+const STATUS = z.enum(['ACTIVE', 'COMING_SOON', 'PENDING', 'SOLD', 'RENTED', 'POCKET', 'OFF_MARKET'])
 
 const listingBody = z.object({
   address:      z.string().trim().min(3).max(300),
