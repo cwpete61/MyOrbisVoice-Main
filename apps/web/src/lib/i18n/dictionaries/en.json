@@ -4804,6 +4804,7 @@
     "statusComingSoon": "Coming soon",
     "statusPending": "Pending",
     "statusSold": "Sold",
+    "statusRented": "Rented",
     "statusPocket": "Pocket/private",
     "statusOffMarket": "Off market",
     "calls": "calls",

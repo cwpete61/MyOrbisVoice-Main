@@ -3486,6 +3486,7 @@ enum ListingStatus {
   COMING_SOON
   PENDING
   SOLD
+  RENTED
   POCKET
   OFF_MARKET
 }

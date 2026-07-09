@@ -4804,6 +4804,7 @@
     "statusComingSoon": "Próximamente",
     "statusPending": "En proceso",
     "statusSold": "Vendida",
+    "statusRented": "Rentada",
     "statusPocket": "Privada",
     "statusOffMarket": "Fuera del mercado",
     "calls": "llamadas",

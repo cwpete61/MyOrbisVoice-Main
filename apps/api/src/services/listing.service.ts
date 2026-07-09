@@ -15,7 +15,11 @@ import type { Prisma, ListingStatus } from '@prisma/client'
 
 const OPENAI = 'https://api.openai.com/v1/chat/completions'
 
-const STATUSES: ListingStatus[] = ['ACTIVE', 'COMING_SOON', 'PENDING', 'SOLD', 'POCKET', 'OFF_MARKET']
+const STATUSES: ListingStatus[] = ['ACTIVE', 'COMING_SOON', 'PENDING', 'SOLD', 'RENTED', 'POCKET', 'OFF_MARKET']
+// Off-market states: not part of the active book (isActive=false), but Orby still
+// announces recently off-market ones so a caller asking gets "that's been
+// sold/rented" + an alternative — never a booking on a gone listing.
+const OFF_MARKET_STATUSES: ListingStatus[] = ['SOLD', 'RENTED', 'OFF_MARKET']
 
 export interface ListingDraft {
   address: string
@@ -109,7 +113,7 @@ export async function createListing(tenantId: string, data: ListingInput) {
     data: {
       tenantId,
       status: coerceStatus(data.status),
-      isActive: coerceStatus(data.status) !== 'SOLD' && coerceStatus(data.status) !== 'OFF_MARKET',
+      isActive: !OFF_MARKET_STATUSES.includes(coerceStatus(data.status)),
       address: data.address.trim(),
       headline: data.headline?.trim() || null,
       priceUsd: data.priceUsd ?? null,
@@ -187,7 +191,13 @@ export async function updateListing(tenantId: string, id: string, data: Partial<
   if (!existing) throw new AppError('NOT_FOUND', 'Listing not found', 404)
   const update: Prisma.ListingUpdateInput = {
     ...(data.status !== undefined && { status: coerceStatus(data.status) }),
-    ...(data.isActive !== undefined && { isActive: data.isActive }),
+    // Status drives the active book: flipping to Sold/Rented/Off-market drops the
+    // listing out of "active" automatically, unless isActive is set explicitly.
+    ...(data.isActive !== undefined
+      ? { isActive: data.isActive }
+      : data.status !== undefined
+        ? { isActive: !OFF_MARKET_STATUSES.includes(coerceStatus(data.status)) }
+        : {}),
     ...(data.address !== undefined && { address: data.address.trim() }),
     ...(data.headline !== undefined && { headline: data.headline?.trim() || null }),
     ...(data.priceUsd !== undefined && { priceUsd: data.priceUsd }),
@@ -209,7 +219,7 @@ export async function deleteListing(tenantId: string, id: string) {
 
 const STATUS_LABEL: Record<ListingStatus, string> = {
   ACTIVE: 'Active', COMING_SOON: 'Coming soon', PENDING: 'Pending',
-  SOLD: 'Sold', POCKET: 'Pocket/private', OFF_MARKET: 'Off market',
+  SOLD: 'Sold', RENTED: 'Rented', POCKET: 'Pocket/private', OFF_MARKET: 'Off market',
 }
 
 function money(n: number | null): string {
@@ -223,13 +233,24 @@ function money(n: number | null): string {
  */
 export async function renderListingsForPrompt(tenantId: string, maxChars = 40_000): Promise<string | null> {
   const rows = await prisma.listing.findMany({
-    where: { tenantId, isActive: true },
-    orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+    where: {
+      tenantId,
+      OR: [
+        { isActive: true },
+        // Recently off-market (last 90 days) — so Orby can announce "that's been
+        // sold/rented" instead of pitching a gone listing.
+        { status: { in: OFF_MARKET_STATUSES }, updatedAt: { gte: new Date(Date.now() - 90 * 864e5) } },
+      ],
+    },
+    orderBy: [{ isActive: 'desc' }, { status: 'asc' }, { createdAt: 'desc' }],
     take: 200,
   })
   if (rows.length === 0) return null
-  const parts: string[] = ['=== LISTINGS (properties this agent represents — answer buyer/seller questions from these) ===']
-  let used = parts[0]!.length
+  const parts: string[] = [
+    '=== LISTINGS (properties this agent represents — answer buyer/seller questions from these) ===',
+    '\nIMPORTANT: A listing tagged [Sold], [Rented], or [Off market] is NO LONGER available. If a caller asks about one, tell them it just came off the market (sold or rented), do NOT book a showing for it, and offer an active listing instead. Say it naturally in the caller’s language — English or Spanish.',
+  ]
+  let used = parts.reduce((n, p) => n + p.length, 0)
   for (const l of rows) {
     const facts = [
       money(l.priceUsd),

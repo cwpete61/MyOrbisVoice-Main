@@ -9,8 +9,12 @@ import type { ListingStatus } from '@prisma/client'
 
 const STATUS_LABEL: Record<ListingStatus, string> = {
   ACTIVE: 'Active', COMING_SOON: 'Coming soon', PENDING: 'Pending',
-  SOLD: 'Sold', POCKET: 'Pocket/private', OFF_MARKET: 'Off market',
+  SOLD: 'Sold', RENTED: 'Rented', POCKET: 'Pocket/private', OFF_MARKET: 'Off market',
 }
+// Off-market states — dropped from the active book, but recent ones stay in the
+// prompt so Orby announces "that's been sold/rented" instead of pitching a gone
+// listing (mirrors listing.service.ts).
+const OFF_MARKET_STATUSES: ListingStatus[] = ['SOLD', 'RENTED', 'OFF_MARKET']
 
 function money(n: number | null): string {
   return n == null ? '' : `$${n.toLocaleString('en-US')}`
@@ -53,14 +57,23 @@ export async function fetchListingsForPrompt(
   maxChars = 40_000,
 ): Promise<string | null> {
   const rows = await prisma.listing.findMany({
-    where: { tenantId, isActive: true },
-    orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+    where: {
+      tenantId,
+      OR: [
+        { isActive: true },
+        // Recently off-market (last 90 days) — so Orby can announce "that's been
+        // sold/rented" instead of pitching a gone listing.
+        { status: { in: OFF_MARKET_STATUSES }, updatedAt: { gte: new Date(Date.now() - 90 * 864e5) } },
+      ],
+    },
+    orderBy: [{ isActive: 'desc' }, { status: 'asc' }, { createdAt: 'desc' }],
     take: 200,
   })
   if (rows.length === 0) return null
   const head = '=== LISTINGS (properties this agent represents — answer buyer/seller questions from these) ==='
-  const parts: string[] = [head]
-  let used = head.length
+  const rule = '\nIMPORTANT: A listing tagged [Sold], [Rented], or [Off market] is NO LONGER available. If a caller asks about one, tell them it just came off the market (sold or rented), do NOT book a showing for it, and offer an active listing instead. Say it naturally in the caller’s language — English or Spanish.'
+  const parts: string[] = [head, rule]
+  let used = head.length + rule.length
   for (const l of rows) {
     const facts = [
       money(l.priceUsd),

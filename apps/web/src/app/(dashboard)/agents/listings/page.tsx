@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '@/hooks/useApi'
 import { useT } from '@/lib/i18n/I18nProvider'
 
-type Status = 'ACTIVE' | 'COMING_SOON' | 'PENDING' | 'SOLD' | 'POCKET' | 'OFF_MARKET'
+type Status = 'ACTIVE' | 'COMING_SOON' | 'PENDING' | 'SOLD' | 'RENTED' | 'POCKET' | 'OFF_MARKET'
 
 interface Draft {
   address: string; headline: string | null; priceUsd: number | null
@@ -25,7 +25,7 @@ interface Listing extends Draft {
 }
 interface AvailNumber { id: string; e164Number: string; displayLabel: string | null; isInboundEnabled: boolean }
 
-const STATUSES: Status[] = ['ACTIVE', 'COMING_SOON', 'PENDING', 'SOLD', 'POCKET', 'OFF_MARKET']
+const STATUSES: Status[] = ['ACTIVE', 'COMING_SOON', 'PENDING', 'SOLD', 'RENTED', 'POCKET', 'OFF_MARKET']
 const emptyDraft: Draft = { address: '', headline: '', priceUsd: null, beds: null, baths: null, sqft: null, propertyType: '', description: '', highlights: [] }
 
 export default function ListingsPage() {
