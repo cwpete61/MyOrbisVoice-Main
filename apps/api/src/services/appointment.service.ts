@@ -6,7 +6,33 @@ import { getAuthenticatedGoogleClient, sendGmailEmail } from './google.service.j
 import { sendEmail } from './email.service.js'
 import { scheduleAppointmentReminders, cancelAppointmentReminders } from './reminder.service.js'
 import { resolveBookingIdentity, BOOKING_BRAND } from './booking-identity.service.js'
+import { DEMO_PHONE_E164 } from './demo-session.service.js'
+import { sendToTenant } from './push.service.js'
 import type { Prisma } from '@prisma/client'
+
+/** Push the agent when Orby books a showing. Delivers to every subscribed
+ *  device (Web Push today, the native app later reuses the same send). Safe
+ *  no-op when push isn't configured. */
+async function notifyAgentShowingBooked(
+  tenantId: string,
+  a: { contactId: string | null; startAt: string; timezone: string; location: string | null },
+): Promise<void> {
+  const contact = a.contactId
+    ? await prisma.contact.findUnique({ where: { id: a.contactId }, select: { firstName: true, lastName: true } })
+    : null
+  const who = [contact?.firstName, contact?.lastName].filter(Boolean).join(' ') || 'A buyer'
+  let when = a.startAt
+  try {
+    when = new Date(a.startAt).toLocaleString('en-US', {
+      timeZone: a.timezone, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    })
+  } catch { /* fall back to raw ISO */ }
+  await sendToTenant(tenantId, {
+    title: 'Showing booked',
+    body:  `${who} — ${when}${a.location ? ` · ${a.location}` : ''}. Orby caught it — go close.`,
+    url:   '/agents/cockpit',
+  })
+}
 
 const DEFAULT_SLOT_INCREMENT_MINUTES = 30
 
@@ -579,6 +605,16 @@ export async function createAppointment(tenantId: string, userId: string | null,
     metadataJson: { googleEventId: providerEventId, status },
   })
 
+  // Push the agent the second Orby books — the moment the app exists for.
+  // Fire-and-forget: delivers to any subscribed device (Web Push today; the
+  // native app reuses the same send). No-ops safely when push isn't configured.
+  void notifyAgentShowingBooked(tenantId, {
+    contactId: data.contactId ?? null,
+    startAt:   data.startAt,
+    timezone:  data.timezone,
+    location:  data.location ?? null,
+  }).catch((e) => console.warn('[appointment] booking push failed:', (e as Error).message))
+
   // Best-effort: send a branded confirmation email from the tenant's own
   // Gmail account, separate from Google Calendar's automatic invite. The
   // calendar invite gets the meeting on the contact's calendar; this email
@@ -586,6 +622,7 @@ export async function createAppointment(tenantId: string, userId: string | null,
   if (data.attendeeEmail) {
     sendAppointmentConfirmationEmail(tenantId, {
       to:               data.attendeeEmail,
+      contactId:        data.contactId ?? null,
       appointmentType:  data.appointmentType,
       startAt:          data.startAt,
       endAt:            data.endAt,
@@ -623,7 +660,10 @@ export async function createAppointment(tenantId: string, userId: string | null,
   // Phase F.1 + F.3 — auto-transition the contact to "Booked Appointment".
   // Scope follows the appointment: partner-routed bookings move the partner
   // CRM stage; tenant-side bookings move the tenant CRM stage.
-  if (data.contactId && !demoSim) {
+  // Demo bookings DO run this — it's a pure in-DB pipeline stage move (no
+  // external side effect), so a sandbox booking shows in the CRM pipeline as
+  // well as on the Appointments page, "as if the calendar were connected."
+  if (data.contactId) {
     const contactIdResolved = data.contactId
     const scope = data.partnerId
       ? { kind: 'partner' as const, partnerId: data.partnerId, hostingTenantId: tenantId }
@@ -735,8 +775,18 @@ async function enrollAppointmentReminder(
   ))
 }
 
+/** "19294977803" → "(929) 497-7803"; returns null for empty, raw for non-US. */
+function formatUsPhone(p: string | null | undefined): string | null {
+  if (!p) return null
+  const d = p.replace(/\D/g, '')
+  const n = d.length === 11 && d.startsWith('1') ? d.slice(1) : d
+  return n.length === 10 ? `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}` : p
+}
+
 async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
   to:              string
+  /** Contact the booking is for — used to greet the client by name. */
+  contactId?:      string | null
   appointmentType?: string
   startAt:         string
   endAt:           string
@@ -821,16 +871,32 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
   const calendarLine = opts.demo
     ? `<p style="color:#666;font-size:14px;margin:0 0 8px">In a live account, this would also land on your Google Calendar automatically.</p>`
     : `<p style="color:#666;font-size:14px;margin:0 0 8px">You'll also see this on your calendar — Google has added it automatically.</p>`
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding:9px 0;color:#888;width:130px;vertical-align:top;font-size:14px">${label}</td><td style="color:#222;font-size:14px">${value}</td></tr>`
+
+  const rows = [
+    opts.location ? row(isShowing ? 'Property' : 'Location', `<strong>${opts.location}</strong>`) : '',
+    row('Date', `<strong>${dateStr}</strong>`),
+    row('Time', `${timeStr} – ${endTimeStr}`),
+    row('Your agent', agentLine),
+    agentPhone ? row('Agent phone', agentPhoneTel ? `<a href="tel:${agentPhoneTel}" style="color:#1a9898;text-decoration:none">${agentPhone}</a>` : agentPhone) : '',
+    opts.notes ? row('Notes', opts.notes) : '',
+  ].filter(Boolean).join('')
+
+  // A short "what happens next" line, tailored for a showing when we can tell.
+  const nextStep = isShowing
+    ? `<p style="color:#444;font-size:14px;line-height:1.5;margin:0 0 16px">${agentFirst} will meet you at the property at the time above. Please arrive a few minutes early${agentPhone ? `, and call or text ${agentFirst} at <a href="tel:${agentPhoneTel}" style="color:#1a9898;text-decoration:none">${agentPhone}</a> if you're running late or need directions` : ''}.</p>`
+    : `<p style="color:#444;font-size:14px;line-height:1.5;margin:0 0 16px">${agentFirst} is looking forward to connecting with you${agentPhone ? `. Reach ${agentFirst} directly at <a href="tel:${agentPhoneTel}" style="color:#1a9898;text-decoration:none">${agentPhone}</a> with any questions` : ''}.</p>`
+
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#222">
       ${demoBanner}
-      <h2 style="color:#1a9898;margin:0 0 8px">${apptLabel} confirmed</h2>
-      <p style="color:#555;margin:0 0 20px">Thanks for booking with ${businessName}. Here are the details:</p>
-      <table style="width:100%;border-collapse:collapse;margin:0 0 20px">
-        <tr><td style="padding:8px 0;color:#888;width:120px;vertical-align:top">When</td><td style="color:#222"><strong>${dateStr}</strong><br>${timeStr}</td></tr>
-        ${opts.location ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Where</td><td style="color:#222">${opts.location}</td></tr>` : ''}
-        ${opts.notes    ? `<tr><td style="padding:8px 0;color:#888;vertical-align:top">Notes</td><td style="color:#222">${opts.notes}</td></tr>`       : ''}
+      <h2 style="color:#1a9898;margin:0 0 6px">${apptLabel} confirmed${clientFirst ? `, ${clientFirst}` : ''} ✅</h2>
+      <p style="color:#555;margin:0 0 20px">You're booked with <strong>${agentLine}</strong>. Here are the details:</p>
+      <table style="width:100%;border-collapse:collapse;margin:0 0 18px;border-top:1px solid #eee;border-bottom:1px solid #eee">
+        ${rows}
       </table>
+      ${nextStep}
       ${calendarLine}
       ${footer}
     </div>
@@ -840,11 +906,18 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
   // Gmail) with a MyOrbisAgents-branded From, so the sandbox visitor reliably
   // gets the "check your email" confirmation.
   if (opts.demo) {
+    // Send from the parent @myorbisresults.com domain — it's verified on Brevo
+    // (proper SPF/DKIM, reliably inboxes at Gmail). @myorbisvoice.com has no
+    // working hosted provider today: Postmark rejects the unverified From and
+    // the Resend key is invalid, so both fall back to local Postfix which Gmail
+    // spams. Display name stays "MyOrbisAgents (Demo)" so the caller sees the
+    // right brand. Revisit once a valid Resend key / verified myorbisvoice.com
+    // sender is in place.
     await sendEmail({
       to:      opts.to,
       subject,
       html,
-      from:    `"MyOrbisAgents (Demo)" <notify@myorbisvoice.com>`,
+      from:    `"MyOrbisAgents (Demo)" <notify@myorbisresults.com>`,
     })
     await prisma.messageLog.create({
       data: {
@@ -938,7 +1011,9 @@ async function sendAppointmentChangeEmailDemo(tenantId: string, opts: {
       <p style="color:#aaa;font-size:12px;margin:8px 0 0">Powered by ${BOOKING_BRAND}</p>
     </div>
   `.trim()
-  await sendEmail({ to: opts.to, subject, html, from: `"MyOrbisAgents (Demo)" <notify@myorbisvoice.com>` })
+  // @myorbisresults.com → Brevo (the only verified/inboxing path today). See
+  // the note in sendAppointmentConfirmationEmail's demo branch.
+  await sendEmail({ to: opts.to, subject, html, from: `"MyOrbisAgents (Demo)" <notify@myorbisresults.com>` })
   await prisma.messageLog.create({
     data: {
       tenantId, channel: 'EMAIL', direction: 'OUTBOUND', sender: 'platform-smtp',
