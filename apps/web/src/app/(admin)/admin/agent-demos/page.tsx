@@ -86,6 +86,12 @@ export default function AgentDemosPage() {
     try { await apiFetch(`/api/admin/agent-demos/${id}/send`, { method: 'POST' }); await load() }
     catch (e) { setErr((e as Error).message || 'Send failed.') }
   }
+  async function remove(id: string) {
+    if (!window.confirm('Delete this demo? Removes it from the list and its throwaway demo workspace. (Claimed demos can’t be deleted here.)')) return
+    setRows(rs => rs.filter(r => r.id !== id))
+    try { await apiFetch(`/api/admin/agent-demos/${id}`, { method: 'DELETE' }); await load() }
+    catch (e) { setErr((e as Error).message || 'Delete failed.'); await load() }
+  }
 
   const micrositeUrl = (slug: string) => `https://app.myorbisagents.com/agent-demo/${slug}`
   const inp: React.CSSProperties = {
@@ -165,6 +171,12 @@ export default function AgentDemosPage() {
                     </button>
                   )}
                   {r.status === 'SENT' && <span style={{ opacity: 0.6 }}>sent</span>}
+                  {r.status !== 'CLAIMED' && (
+                    <button onClick={() => remove(r.id)}
+                      style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 12, padding: 0, marginLeft: 'auto', textDecoration: 'underline' }}>
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             )

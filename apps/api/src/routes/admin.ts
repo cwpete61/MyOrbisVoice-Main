@@ -2718,4 +2718,11 @@ router.post('/agent-demos/:id/send', requirePlatformAdmin, async (req, res, next
   } catch (err) { next(err) }
 })
 
+router.delete('/agent-demos/:id', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    res.json({ data: await agentDemoService.deleteAgentDemo(req.params['id']!) })
+  } catch (err) { next(err) }
+})
+
 export default router

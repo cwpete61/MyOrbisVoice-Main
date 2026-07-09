@@ -259,6 +259,26 @@ export async function sendAgentDemo(id: string): Promise<{ status: string }> {
   return { status: 'SENT' }
 }
 
+/** Delete a demo (e.g. after it's been sent). Removes the AgentDemo row and
+ *  best-effort purges the provisioned demo tenant. Refuses CLAIMED demos —
+ *  those converted into a real paying account and must not be touched here. */
+export async function deleteAgentDemo(id: string): Promise<{ deleted: true }> {
+  const demo = await prisma.agentDemo.findUnique({ where: { id }, select: { id: true, status: true, tenantId: true } })
+  if (!demo) throw new AppError('NOT_FOUND', 'Demo not found', 404)
+  if (demo.status === 'CLAIMED') {
+    throw new AppError('CONFLICT', 'This demo was claimed into a paying account — delete the tenant from Tenants instead.', 409)
+  }
+  await prisma.agentDemo.delete({ where: { id } })
+  // Purge the throwaway demo tenant (isDemo guard so a real/claimed tenant is
+  // never deleted). Best-effort: the list entry is already gone regardless.
+  const tenant = await prisma.tenant.findUnique({ where: { id: demo.tenantId }, select: { id: true, isDemo: true } })
+  if (tenant?.isDemo) {
+    await prisma.tenant.delete({ where: { id: tenant.id } })
+      .catch(e => console.warn(`[agent-demo] demo tenant purge failed (${tenant.id}):`, (e as Error).message))
+  }
+  return { deleted: true }
+}
+
 /**
  * Fold-in: turn a scored AgentProspect into a real AgentDemo (Orby from the
  * profile, no listings yet). Unifies the old §17b prospect demo onto the
