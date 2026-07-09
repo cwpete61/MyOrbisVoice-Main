@@ -9,6 +9,7 @@ import { LeadEval, leadEvalDuration } from './compositions/LeadEval';
 import { Objections, objectionDuration } from './compositions/Objections';
 import { PartnerPitch, partnerDuration } from './compositions/PartnerPitch';
 import { TwoMinute, twoMinuteDuration } from './compositions/TwoMinute';
+import { WhatIfShowing, WhatIfSpanish, WhatIfSlept, whatIfDurations } from './compositions/WhatIf';
 
 type Lang = 'en' | 'es';
 const FPS = 30;
@@ -43,6 +44,16 @@ export const RemotionRoot: React.FC = () => {
 
       <Composition id="Objections" component={Objections} durationInFrames={1210} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: objectionDuration(L(props)) })} />
       <Composition id="Objections-ES" component={Objections} durationInFrames={1240} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: objectionDuration(L(props)) })} />
+
+      {/* ── "What if…" USP videos (dream → gap → live call → CTA) ── */}
+      <Composition id="WhatIf-Showing" component={WhatIfShowing} durationInFrames={1100} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfDurations.showing(L(props)) })} />
+      <Composition id="WhatIf-Showing-ES" component={WhatIfShowing} durationInFrames={1160} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfDurations.showing(L(props)) })} />
+
+      <Composition id="WhatIf-Spanish" component={WhatIfSpanish} durationInFrames={1180} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfDurations.spanish(L(props)) })} />
+      <Composition id="WhatIf-Spanish-ES" component={WhatIfSpanish} durationInFrames={1180} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfDurations.spanish(L(props)) })} />
+
+      <Composition id="WhatIf-Slept" component={WhatIfSlept} durationInFrames={1040} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfDurations.slept(L(props)) })} />
+      <Composition id="WhatIf-Slept-ES" component={WhatIfSlept} durationInFrames={1100} fps={FPS} width={W} height={H} defaultProps={{ lang: 'es' as const }} calculateMetadata={({ props }) => ({ durationInFrames: whatIfDurations.slept(L(props)) })} />
 
       {/* ── Email-marketing GIF source (landscape, 3s loop) ─────── */}
       <Composition id="GifMoneyCounter" component={GifMoneyCounter} durationInFrames={90} fps={FPS} width={1200} height={675} defaultProps={{ lang: 'en' as const }} />
