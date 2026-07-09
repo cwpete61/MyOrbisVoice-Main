@@ -96,8 +96,13 @@ function pickProvider(opts: EmailOptions): EmailProvider {
   // the phone and need the recipient to confirm receipt instantly, so keep it on the
   // instant hosted provider that actually owns the domain.
   if (fromAddr.includes('@myorbisresults.com')) return 'brevo'
-  if (opts.kind === 'transactional' || opts.kind == null) return 'postmark'
+  // @myorbisvoice.com is verified on Resend, NOT Postmark. Route it by domain
+  // BEFORE the kind default — otherwise transactional (kind==null) sends short-
+  // circuit to Postmark, which rejects the unverified From and silently falls
+  // back to local Postfix (Gmail spams/drops it). This was why demo booking
+  // confirmations never arrived. Domain ownership wins over the kind default.
   if (fromAddr.includes('@myorbisvoice.com'))   return 'resend'
+  if (opts.kind === 'transactional' || opts.kind == null) return 'postmark'
   return 'smtp'  // default for unknown marketing domains
 }
 
@@ -650,47 +655,42 @@ export async function sendAgentDemoEmail(opts: {
       ${l.highlights.length ? `<div style="color:#516170;font-size:12px;margin-top:2px">${l.highlights.slice(0, 4).join(' · ')}</div>` : ''}
     </td></tr>`).join('')
 
-  const btn = (href: string, label: string) =>
-    `<a href="${href}" style="display:inline-block;background:${TEAL_EMAIL};color:#fff;padding:11px 22px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;margin:6px 8px 6px 0">${label}</a>`
+  const link = (href: string, label: string) =>
+    `<a href="${href}" style="color:${TEAL_EMAIL};font-weight:700;text-decoration:underline">${label}</a>`
 
+  // Kept plain and transactional (no promo box, no CTA buttons) so it lands in
+  // the primary inbox instead of Gmail's Promotions tab. Routing is caller-ID
+  // only (the demo binds the agent's Orby at connect time), so no PIN.
   const block = (L: {
-    hi: string; lede: string; listingsH: string; tryH: string; tryBtn: string;
-    callH: string; callBody: string; pinLabel: string; promo: string; claimBtn: string
+    hi: string; lede: string; listingsH: string;
+    callH: string; callBody: string; promo: string; claimLink: string
   }) => `
     <p style="font-size:15px;color:#0f1720">${L.hi}</p>
     <p style="font-size:15px;color:#516170">${L.lede}</p>
-    <div style="margin:18px 0">${btn(opts.micrositeUrl, L.tryBtn)}</div>
     <h3 style="font-size:14px;color:#0f1720;margin:22px 0 6px">${L.listingsH}</h3>
     <table style="width:100%;border-collapse:collapse">${listingRows}</table>
     <h3 style="font-size:14px;color:#0f1720;margin:22px 0 6px">📞 ${L.callH}</h3>
     <p style="font-size:14px;color:#516170;margin:0 0 4px">${L.callBody}</p>
-    <p style="font-size:16px;margin:0"><a href="tel:${opts.demoPhone}" style="color:${TEAL_EMAIL};font-weight:700;text-decoration:none">${phoneDisplay}</a> · ${L.pinLabel} <strong style="letter-spacing:.1em">${opts.pin}</strong></p>
-    <div style="background:#f4fbfb;border:1px solid #cceceb;border-radius:10px;padding:14px 16px;margin:22px 0">
-      <p style="font-size:14px;color:#0f1720;margin:0 0 10px">${L.promo}</p>
-      ${btn(opts.claimUrl, L.claimBtn)}
-    </div>`
+    <p style="font-size:16px;margin:0"><a href="tel:${opts.demoPhone}" style="color:${TEAL_EMAIL};font-weight:700;text-decoration:none">${phoneDisplay}</a></p>
+    <p style="font-size:14px;color:#0f1720;margin:22px 0 0">${L.promo} ${link(opts.claimUrl, L.claimLink)}</p>`
 
   const en = block({
     hi: `Hi ${first},`,
-    lede: `I built you a live demo of Orby — an AI assistant that answers your buyers 24/7, already loaded with your listings below. Try it, then keep it for your business.`,
+    lede: `I built you a live demo of Orby — an AI assistant that answers your buyers 24/7, already loaded with your listings below.`,
     listingsH: `Listings Orby already knows:`,
-    tryH: '', tryBtn: 'Try your live demo →',
     callH: `Call Orby`,
-    callBody: `Call from your own phone and Orby answers as your assistant. From any other phone, enter the PIN:`,
-    pinLabel: 'PIN',
-    promo: `<strong>Launch offer:</strong> 50% off your monthly ${opts.planName} plan for a full year + $250 setup — this promotion only.`,
-    claimBtn: 'Get Orby for your business →',
+    callBody: `Call from the phone number you gave us and Orby answers as your assistant — knowing your name and these listings.`,
+    promo: `<strong>Launch offer:</strong> 50% off your monthly plan — Solo Capture or Solo Power — for a full year, plus $250 setup.`,
+    claimLink: `Get Orby for your business →`,
   })
   const es = block({
     hi: `Hola ${first}:`,
-    lede: `Te preparé una demo en vivo de Orby — un asistente de IA que responde a tus compradores 24/7, ya cargado con tus propiedades abajo. Pruébalo y consérvalo para tu negocio.`,
+    lede: `Te preparé una demo en vivo de Orby — un asistente de IA que responde a tus compradores 24/7, ya cargado con tus propiedades abajo.`,
     listingsH: `Propiedades que Orby ya conoce:`,
-    tryH: '', tryBtn: 'Prueba tu demo en vivo →',
     callH: `Llama a Orby`,
-    callBody: `Llama desde tu propio teléfono y Orby contesta como tu asistente. Desde cualquier otro teléfono, ingresa el PIN:`,
-    pinLabel: 'PIN',
-    promo: `<strong>Oferta de lanzamiento:</strong> 50% de descuento en tu plan mensual ${opts.planName} por un año completo + $250 de instalación — solo esta promoción.`,
-    claimBtn: 'Consigue Orby para tu negocio →',
+    callBody: `Llama desde el número de teléfono que nos diste y Orby contesta como tu asistente — con tu nombre y estas propiedades.`,
+    promo: `<strong>Oferta de lanzamiento:</strong> 50% de descuento en tu plan mensual — Solo Capture o Solo Power — por un año completo, más $250 de instalación.`,
+    claimLink: `Consigue Orby para tu negocio →`,
   })
 
   return sendEmail({
