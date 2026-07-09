@@ -119,6 +119,9 @@ type AgentStreamParams = {
   /** When '1', the gateway listens for keypad DTMF and binds the call to the
    *  matching demo session live (Orby answers first — no robotic pre-gather). */
   demoPinCapture?: boolean
+  /** When '1', the gateway records the demo call (caller+agent mux). Decoupled
+   *  from demoPinCapture so the demo line can record WITHOUT the PIN hold. */
+  demoRecord?: boolean
 }
 
 /** Append a <Connect><Stream> to an existing VoiceResponse. */
@@ -130,15 +133,17 @@ function appendAgentStream(response: InstanceType<typeof twilio.twiml.VoiceRespo
   if (p.fromNumber)     stream.parameter({ name: 'fromNumber',     value: p.fromNumber })
   if (p.demoSessionId)  stream.parameter({ name: 'demoSessionId',  value: p.demoSessionId })
   if (p.demoPinCapture) stream.parameter({ name: 'demoPinCapture', value: '1' })
+  if (p.demoRecord)     stream.parameter({ name: 'demoRecord',     value: '1' })
 }
 
-/** DEMO line (option C): Orby answers immediately (her own voice) and the
- *  gateway captures any keypad PIN via DTMF to bind the session — no robotic
- *  pre-gather. */
+/** DEMO line (+1 470 517 3441): Orby answers instantly, caller-ID-bound to the
+ *  agent's demo. NO PIN hold and NO DTMF PIN capture — the PIN was vestigial
+ *  (never matched a live session) and callers pressing it stalled the call. We
+ *  still record the demo (demoRecord), just without the PIN wait. */
 export function buildDemoDirectConnectTwiml(p: AgentStreamParams): string {
   const VoiceResponse = twilio.twiml.VoiceResponse
   const response      = new VoiceResponse()
-  appendAgentStream(response, { ...p, demoPinCapture: true })
+  appendAgentStream(response, { ...p, demoPinCapture: false, demoRecord: true })
   return response.toString()
 }
 

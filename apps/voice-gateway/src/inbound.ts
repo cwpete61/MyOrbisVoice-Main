@@ -54,6 +54,65 @@ function hangUpCall(callSid: string, ownerAccountSid: string | null) {
   return hangUpTwilioCall(callSid, ownerAccountSid, 'inbound')
 }
 
+// ---- Gateway-side call recording (demo) ----
+// Mix two time-stamped PCM16 streams (caller + Orby, both 8kHz mono) into a
+// single mono 8kHz WAV. Each chunk is placed on a shared timeline by its
+// arrival time relative to session start, so gaps/overlaps land naturally and
+// the two voices don't stack up at t=0.
+type RecChunk = { t: number; pcm: Buffer }
+function muxToWav(caller: RecChunk[], agent: RecChunk[], t0: number, rate = 8000): { wav: Buffer; durationSecs: number } | null {
+  const all = [...caller, ...agent]
+  if (all.length === 0 || t0 === 0) return null
+  let maxSamples = 0
+  for (const c of all) {
+    const start = Math.max(0, Math.floor(((c.t - t0) * rate) / 1000))
+    maxSamples = Math.max(maxSamples, start + c.pcm.length / 2)
+  }
+  if (maxSamples === 0) return null
+  const mix = new Int16Array(maxSamples)
+  const lay = (chunks: RecChunk[]) => {
+    for (const c of chunks) {
+      const start = Math.max(0, Math.floor(((c.t - t0) * rate) / 1000))
+      const n = c.pcm.length / 2
+      for (let i = 0; i < n; i++) {
+        const idx = start + i
+        if (idx >= maxSamples) break
+        let s = mix[idx]! + c.pcm.readInt16LE(i * 2)
+        if (s > 32767) s = 32767
+        else if (s < -32768) s = -32768
+        mix[idx] = s
+      }
+    }
+  }
+  lay(caller)
+  lay(agent)
+  const dataLen = mix.length * 2
+  const wav = Buffer.alloc(44 + dataLen)
+  wav.write('RIFF', 0); wav.writeUInt32LE(36 + dataLen, 4); wav.write('WAVE', 8)
+  wav.write('fmt ', 12); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22)
+  wav.writeUInt32LE(rate, 24); wav.writeUInt32LE(rate * 2, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34)
+  wav.write('data', 36); wav.writeUInt32LE(dataLen, 40)
+  for (let i = 0; i < mix.length; i++) wav.writeInt16LE(mix[i]!, 44 + i * 2)
+  return { wav, durationSecs: Math.round(mix.length / rate) }
+}
+
+const REC_API_BASE = (process.env['API_BASE_URL'] ?? 'http://localhost:4000').replace(/\/$/, '')
+async function uploadGatewayRecording(callSid: string, tenantId: string, wav: Buffer, durationSecs: number): Promise<void> {
+  const token = process.env['GATEWAY_INTERNAL_TOKEN']
+  if (!token) { console.warn('[inbound] recording: GATEWAY_INTERNAL_TOKEN unset, skip upload'); return }
+  const res = await fetch(`${REC_API_BASE}/api/internal/gateway/recording`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-internal-gateway-token': token,
+      'x-internal-tenant-id': tenantId,
+    },
+    body: JSON.stringify({ callSid, durationSecs, wavBase64: wav.toString('base64') }),
+  })
+  if (!res.ok) throw new Error(`recording upload ${res.status}: ${await res.text().catch(() => '')}`)
+  console.log(`[inbound] recording uploaded callSid=${callSid} ${(wav.length / 1024).toFixed(0)}KB ${durationSecs}s`)
+}
+
 // Twilio Media Stream message shapes
 type TwilioMsg =
   | { event: 'connected'; protocol: string; version: string }
@@ -74,6 +133,7 @@ export async function handleInboundCall(ws: WebSocket) {
   // arrives (or a short timeout), so the whole call binds to the demo session
   // from the first word. Non-demo calls never hold.
   let demoPinCapture = false
+  let demoRecord     = false
   let dtmfBuffer     = ''
   let dtmfTimer: ReturnType<typeof setTimeout> | null = null
   let pinHoldResolve: (() => void) | null = null
@@ -97,9 +157,22 @@ export async function handleInboundCall(ws: WebSocket) {
   // infrastructure/scripts/analyze-resampler.mjs for the offline comparison.
   const CAPTURE_RAW = process.env['VG_CAPTURE_RAW'] === '1'
   const rawChunks: Buffer[] = []
+
+  // Gateway-side call recording for DEMO calls. Twilio's call-recording API
+  // crashes <Connect><Stream> calls, so we mux the media stream ourselves:
+  // buffer caller audio (8kHz from Twilio) + Orby audio (resampled to 8kHz),
+  // each time-stamped, then mix to a mono 8kHz WAV at session end and upload.
+  // Passive (just copies audio we already handle) so it can't disrupt the call.
+  let recT0 = 0
+  const recCaller: { t: number; pcm: Buffer }[] = []
+  const recAgent:  { t: number; pcm: Buffer }[] = []
   let initialized = false
 
   const transcript: TranscriptEntry[] = []
+  // Diagnostic: count transcription deltas Gemini actually sends for this phone
+  // call. If this is 0 at finalize, Gemini isn't transcribing the phone audio
+  // (config/format), not a flush bug — that's why inbound saves no transcript.
+  let deltaCount = 0
   let gemini: ReturnType<typeof openGeminiLiveSession> | null = null
 
   // Accumulate streaming deltas into complete turns before pushing to transcript
@@ -157,6 +230,7 @@ export async function handleInboundCall(ws: WebSocket) {
     if (CAPTURE_RAW) rawChunks.push(Buffer.from(pcm24k))
     try {
       const pcm8k = resamplePcm16(pcm24k, 24000, 8000)
+      if (demoRecord) { if (!recT0) recT0 = Date.now(); recAgent.push({ t: Date.now(), pcm: Buffer.from(pcm8k) }) }
       const mulaw = pcm16ToMulaw(pcm8k)
       // Emit only whole 160-byte (20ms) frames to Twilio. Partial tail
       // stays buffered; flushes on call-end or onInterrupted.
@@ -253,6 +327,7 @@ export async function handleInboundCall(ws: WebSocket) {
     const partnerId  = params['partnerId']  ?? ''
     demoSessionId    = params['demoSessionId'] || null
     demoPinCapture   = params['demoPinCapture'] === '1'
+    demoRecord       = params['demoRecord'] === '1' || demoPinCapture
 
     console.log(`[inbound] init session tenantId=${tenantId} callSid=${callSid} from=${fromNumber || '(blocked)'}${partnerId ? ` partner=${partnerId}` : ''}${demoSessionId ? ` demoSession=${demoSessionId}` : ''}`)
 
@@ -459,6 +534,7 @@ export async function handleInboundCall(ws: WebSocket) {
         clearTwilioAudio()
       },
       onTranscriptDelta(role, text) {
+        deltaCount++
         // If the speaker switches, flush the previous speaker's buffer first
         if (lastRole && lastRole !== role) {
           flushBuffer(lastRole)
@@ -635,9 +711,21 @@ export async function handleInboundCall(ws: WebSocket) {
           const median = sorted[Math.floor(sorted.length / 2)]
           console.log(`[inbound] latency summary: turns=${turnLatenciesMs.length} median=${median}ms p95=${sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]}ms`)
         }
-        console.log(`[inbound] conversation persisted callSid=${callSid} turns=${transcript.length}`)
+        console.log(`[inbound] conversation persisted callSid=${callSid} turns=${transcript.length} deltas=${deltaCount}`)
+
+        // Best-effort: mux + upload the demo call recording. Gateway-side
+        // because Twilio's recording API crashes <Connect><Stream> calls.
+        // Runs after persist so the conversation row exists to attach to.
+        if (demoRecord && (recCaller.length > 0 || recAgent.length > 0)) {
+          try {
+            const muxed = muxToWav(recCaller, recAgent, recT0)
+            if (muxed) await uploadGatewayRecording(callSid, tenantId, muxed.wav, muxed.durationSecs)
+          } catch (err) {
+            console.error('[inbound] recording mux/upload failed:', err)
+          }
+        }
       } else {
-        console.log(`[inbound] finalize ${status} — transcript len=${transcript.length}, not persisting`)
+        console.log(`[inbound] finalize ${status} — transcript len=${transcript.length} deltas=${deltaCount}, not persisting`)
       }
     } catch (err) {
       console.error('[inbound] finalize error:', err)
@@ -679,6 +767,7 @@ export async function handleInboundCall(ws: WebSocket) {
           }
           const mulawBuf = Buffer.from(msg.media.payload, 'base64')
           const pcm8k    = mulawToPcm16(mulawBuf)
+          if (demoRecord) { if (!recT0) recT0 = Date.now(); recCaller.push({ t: Date.now(), pcm: Buffer.from(pcm8k) }) }
           const pcm16k   = resamplePcm16(pcm8k, 8000, 16000)  // Gemini expects 16kHz
           gemini.sendAudio(pcm16k)
           lastUserAudioAt = Date.now()
