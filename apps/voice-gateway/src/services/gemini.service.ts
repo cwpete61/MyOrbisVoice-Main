@@ -4,11 +4,15 @@ import { env } from '../lib/env.js'
 // We connect server-side and relay audio chunks between the visitor's browser and Gemini.
 
 const GEMINI_LIVE_HOST = 'generativelanguage.googleapis.com'
-// v1alpha serves the native-audio Live snapshots; the faster half-cascade / 3.x
-// Live models live on v1beta. Env-overridable so a faster model can be A/B'd via
-// GEMINI_API_VERSION=v1beta + GEMINI_LIVE_MODEL=<model> and reverted instantly —
-// WITHOUT a code change. A wrong model/version silently 1008s every call, so any
-// override MUST be validated on a real test call before it's trusted.
+// PROD runs gemini-3.1-flash-live-preview via GEMINI_LIVE_MODEL (set in
+// .env.prod). Validated on a live call 2026-07-10: much faster per turn than
+// native-audio, Aoede prebuilt voice works, clean close 1000, and it IS served
+// on v1alpha (no version flip needed — contrary to the docs). The code default
+// below stays on the proven native-audio snapshot as the STABLE fallback: unset
+// GEMINI_LIVE_MODEL to instantly revert if 3.1 (a preview) misbehaves — watch
+// its known ~170s WebSocket ping quirk on long calls. Env-overridable for both
+// model and API version; any override MUST be proven on a real call (1008s
+// silently break every call otherwise).
 const GEMINI_API_VERSION = process.env['GEMINI_API_VERSION'] ?? 'v1alpha'
 // Live model for the v1alpha BidiGenerateContent endpoint (see GEMINI_API_VERSION).
 // MUST be a model that endpoint actually serves — gemini-2.0-flash-live-001 was
