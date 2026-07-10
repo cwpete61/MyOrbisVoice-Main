@@ -279,6 +279,25 @@ export async function deleteAgentDemo(id: string): Promise<{ deleted: true }> {
   return { deleted: true }
 }
 
+/** Bulk-delete demos. Reuses deleteAgentDemo per id so the tenant-purge + isDemo
+ *  guard stay identical; CLAIMED / not-found ids are skipped (reported), not
+ *  fatal — one bad id never aborts the batch. */
+export async function bulkDeleteAgentDemos(
+  ids: string[],
+): Promise<{ deleted: string[]; skipped: { id: string; reason: string }[] }> {
+  const deleted: string[] = []
+  const skipped: { id: string; reason: string }[] = []
+  for (const id of ids) {
+    try {
+      await deleteAgentDemo(id)
+      deleted.push(id)
+    } catch (e) {
+      skipped.push({ id, reason: e instanceof AppError ? e.message : 'Delete failed' })
+    }
+  }
+  return { deleted, skipped }
+}
+
 /**
  * Fold-in: turn a scored AgentProspect into a real AgentDemo (Orby from the
  * profile, no listings yet). Unifies the old §17b prospect demo onto the

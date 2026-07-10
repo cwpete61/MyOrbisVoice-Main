@@ -2734,4 +2734,13 @@ router.delete('/agent-demos/:id', requirePlatformAdmin, async (req, res, next) =
   } catch (err) { next(err) }
 })
 
+const agentDemoBulkDeleteSchema = z.object({ ids: z.array(z.string()).min(1).max(200) })
+router.post('/agent-demos/bulk-delete', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const { ids } = agentDemoBulkDeleteSchema.parse(req.body)
+    res.json({ data: await agentDemoService.bulkDeleteAgentDemos(ids) })
+  } catch (err) { next(err) }
+})
+
 export default router

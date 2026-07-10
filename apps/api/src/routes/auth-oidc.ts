@@ -27,17 +27,18 @@ const CALLBACK = 'https://api.myorbisvoice.com/api/auth/oidc/callback'
 const STATE_COOKIE = 'ov_oidc_state'
 const NEXT_COOKIE = 'ov_oidc_next'
 
-// MyOrbisAgents runs on its own hostnames so agent logins/logouts are isolated
-// from the rest of the ecosystem (separate localStorage origin + its own KC
-// client, redirect, post-logout, and a forced fresh prompt so an existing Hub
-// SSO session never silently carries in). Everything is derived from the
-// request host, so the SAME API serves both without leaking one into the other.
+// MyOrbisAgents runs on its own hostnames + its own KC client (separate
+// localStorage origin, redirect, post-logout). Login RIDES the shared Hub SSO
+// session (same `myorbis` realm) so signing into the Hub auto-authenticates the
+// app with no second prompt. Logout stays app-session-only (see /logout) so
+// signing out of Agents doesn't sign the user out of every MyOrbis product.
+// Everything is host-derived, so the SAME API serves both without leaking.
 const AGENTS_API_HOST      = 'api.myorbisagents.com'
 const AGENTS_WEB           = 'https://app.myorbisagents.com'
 const AGENTS_CLIENT_ID     = process.env.OIDC_AGENTS_CLIENT_ID ?? 'myorbis-agents'
 const AGENTS_CLIENT_SECRET = process.env.OIDC_AGENTS_CLIENT_SECRET ?? ''
 
-type OidcCtx = { web: string; callback: string; clientId: string; clientSecret: string; forcePrompt: boolean }
+type OidcCtx = { web: string; callback: string; clientId: string; clientSecret: string; appSessionOnlyLogout: boolean }
 function resolveCtx(req: Request): OidcCtx {
   if (req.hostname === AGENTS_API_HOST) {
     return {
@@ -45,10 +46,10 @@ function resolveCtx(req: Request): OidcCtx {
       callback:     `https://${AGENTS_API_HOST}/api/auth/oidc/callback`,
       clientId:     AGENTS_CLIENT_ID,
       clientSecret: AGENTS_CLIENT_SECRET,
-      forcePrompt:  true, // app-session-only isolation: always ask on the agents door
+      appSessionOnlyLogout: true, // logout clears only the app session, not the shared KC session
     }
   }
-  return { web: WEB, callback: CALLBACK, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, forcePrompt: false }
+  return { web: WEB, callback: CALLBACK, clientId: CLIENT_ID, clientSecret: CLIENT_SECRET, appSessionOnlyLogout: false }
 }
 
 // Only allow same-app relative paths as a post-login destination (no open redirect).
@@ -82,8 +83,9 @@ router.get('/login', (req, res) => {
   u.searchParams.set('response_type', 'code')
   u.searchParams.set('scope', 'openid email profile')
   u.searchParams.set('state', state)
-  // Agents door forces a fresh login (never inherit a Hub/Voice SSO session).
-  if (ctx.forcePrompt) u.searchParams.set('prompt', 'login')
+  // No `prompt=login`: if a shared Hub/realm SSO session already exists, Keycloak
+  // returns a code silently (no second sign-in). Only when there's no session
+  // does KC show the branded login form.
   res.redirect(u.toString())
 })
 
@@ -141,8 +143,8 @@ router.post('/logout', authenticate, async (req: Request, res: Response) => {
   // (that logs the user out of every MyOrbis product). The forced prompt on the
   // agents login makes the next sign-in ask for credentials anyway, so it still
   // feels like a clean, isolated logout. Voice/Hub keep the full SSO logout.
-  if (userId && !ctx.forcePrompt) revoked = await logoutUserFromKeycloak(userId)
-  res.json({ data: { ok: true, revoked, appSessionOnly: ctx.forcePrompt } })
+  if (userId && !ctx.appSessionOnlyLogout) revoked = await logoutUserFromKeycloak(userId)
+  res.json({ data: { ok: true, revoked, appSessionOnly: ctx.appSessionOnlyLogout } })
 })
 
 export default router

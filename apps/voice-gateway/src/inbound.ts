@@ -4,6 +4,7 @@ import { resolveSystemPrompt, type PartnerContext } from './lib/prompt-resolver.
 import { loadPartnerContext } from './lib/partner-context.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { fetchListingsForPrompt } from './lib/listings.js'
+import { cachedContent } from './lib/content-cache.js'
 import { verifyStreamAuth } from './lib/stream-auth.js'
 import { findContactIdByPhone, getContactHistory, formatContactHistoryForPrompt } from './lib/contact-history.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
@@ -391,11 +392,11 @@ export async function handleInboundCall(ws: WebSocket) {
     } : null
 
     const [kbBase, listingsText] = await Promise.all([
-      fetchKbForPrompt(tenantId).catch(e => {
+      cachedContent(`kb:${tenantId}`, () => fetchKbForPrompt(tenantId)).catch(e => {
         console.error('[inbound] kb fetch failed (non-fatal):', e?.message ?? e)
         return null
       }),
-      fetchListingsForPrompt(tenantId).catch(e => {
+      cachedContent(`listings:${tenantId}`, () => fetchListingsForPrompt(tenantId)).catch(e => {
         console.error('[inbound] listings fetch failed (non-fatal):', e?.message ?? e)
         return null
       }),
