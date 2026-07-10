@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import twilio from 'twilio'
 import { prisma } from '../lib/prisma.js'
 import { getSubaccountClient } from './twilio-subaccount.service.js'
@@ -6,6 +7,30 @@ import { AppError } from '@voiceautomation/shared'
 
 const GW_WS_BASE = process.env['GATEWAY_WS_URL'] ?? 'wss://gateway.myorbisvoice.com'
 const API_BASE   = process.env['API_BASE_URL']    ?? 'https://api.myorbisvoice.com'
+
+// The gateway inbound/outbound WebSockets are internet-facing (Twilio must reach
+// them) and derive the acting tenant from the stream's customParameters. To stop
+// a forged stream from impersonating any tenant, we sign (tenantId, exp) with the
+// shared GATEWAY_INTERNAL_TOKEN and pass authSig/authExp as stream parameters;
+// the gateway rejects the connection unless the signature verifies. Returns null
+// when the secret isn't configured (local dev) so the gateway also skips the check.
+const STREAM_AUTH_TTL_MS = 300_000 // 5 min: covers TwiML fetch → Twilio stream connect
+export function streamAuthParams(tenantId: string): { authExp: string; authSig: string } | null {
+  const secret = process.env['GATEWAY_INTERNAL_TOKEN']
+  if (!secret) return null
+  const exp = Date.now() + STREAM_AUTH_TTL_MS
+  const sig = crypto.createHmac('sha256', secret).update(`${tenantId}.${exp}`).digest('hex')
+  return { authExp: String(exp), authSig: sig }
+}
+
+/** Attach the signed tenant-auth parameters to a Twilio <Stream>. */
+function attachStreamAuth(stream: { parameter(p: { name: string; value: string }): void }, tenantId: string): void {
+  const auth = streamAuthParams(tenantId)
+  if (auth) {
+    stream.parameter({ name: 'authExp', value: auth.authExp })
+    stream.parameter({ name: 'authSig', value: auth.authSig })
+  }
+}
 
 export async function resolveInboundCall(toNumber: string) {
   // Find the phone number record and its tenant
@@ -96,6 +121,7 @@ export function buildInboundTwiml(opts: {
     url: `${GW_WS_BASE}/ws/inbound`,
   })
   stream.parameter({ name: 'tenantId',        value: opts.tenantId })
+  attachStreamAuth(stream, opts.tenantId)
   stream.parameter({ name: 'channelConfigId', value: opts.channelConfigId })
   stream.parameter({ name: 'callSid',         value: opts.callSid })
   if (opts.fromNumber) {
@@ -128,6 +154,7 @@ type AgentStreamParams = {
 function appendAgentStream(response: InstanceType<typeof twilio.twiml.VoiceResponse>, p: AgentStreamParams): void {
   const stream = response.connect().stream({ url: `${GW_WS_BASE}/ws/inbound` })
   stream.parameter({ name: 'tenantId',        value: p.tenantId })
+  attachStreamAuth(stream, p.tenantId)
   stream.parameter({ name: 'channelConfigId', value: p.channelConfigId })
   stream.parameter({ name: 'callSid',         value: p.callSid })
   if (p.fromNumber)     stream.parameter({ name: 'fromNumber',     value: p.fromNumber })

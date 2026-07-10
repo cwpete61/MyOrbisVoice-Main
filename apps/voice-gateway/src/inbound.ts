@@ -4,6 +4,7 @@ import { resolveSystemPrompt, type PartnerContext } from './lib/prompt-resolver.
 import { loadPartnerContext } from './lib/partner-context.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { fetchListingsForPrompt } from './lib/listings.js'
+import { verifyStreamAuth } from './lib/stream-auth.js'
 import { findContactIdByPhone, getContactHistory, formatContactHistoryForPrompt } from './lib/contact-history.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { analyzeConversation, cleanTranscript } from './services/summary.service.js'
@@ -334,6 +335,14 @@ export async function handleInboundCall(ws: WebSocket) {
     if (!tenantId) {
       console.error('[inbound] missing tenantId in stream params')
       ws.close()
+      return
+    }
+
+    // Reject forged streams: the tenantId must be backed by a valid signature
+    // minted by the API at TwiML-build time (skipped only in dev without secret).
+    if (!verifyStreamAuth(tenantId, params)) {
+      console.error(`[inbound] stream auth failed for tenantId=${tenantId} callSid=${callSid} — rejecting`)
+      ws.close(1008, 'Unauthorized stream')
       return
     }
 

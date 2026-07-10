@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js'
 import { getSubaccountClient } from './twilio-subaccount.service.js'
 import { getPlatformTwilioClient } from './twilio.service.js'
 import { sendGmailEmail } from './google.service.js'
+import { streamAuthParams } from './twilio-inbound.service.js'
 import { getEnv } from '@voiceautomation/config'
 
 const GW_WS_BASE = process.env['GATEWAY_WS_URL'] ?? 'wss://gateway.myorbisvoice.com'
@@ -104,6 +105,11 @@ export async function buildOutboundTwiml(
   const connect = response.connect()
   const stream  = connect.stream({ url: `${GW_WS_BASE}/ws/outbound` })
   stream.parameter({ name: 'tenantId',   value: tenantId })
+  const auth = streamAuthParams(tenantId)
+  if (auth) {
+    stream.parameter({ name: 'authExp', value: auth.authExp })
+    stream.parameter({ name: 'authSig', value: auth.authSig })
+  }
   stream.parameter({ name: 'campaignId', value: campaignId })
   stream.parameter({ name: 'attemptId',  value: attemptId })
   // Partner-owned from-number → thread partnerId so the gateway tags the

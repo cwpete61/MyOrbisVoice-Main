@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { IndustryVertical, EnrollmentStatus } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
 import { AppError } from '@voiceautomation/shared'
 
@@ -172,12 +173,12 @@ export async function removeTag(tenantId: string, contactId: string, tag: string
   return { removed: true, tag }
 }
 
-export async function listEnrollments(tenantId: string, campaignId?: string, status?: string) {
+export async function listEnrollments(tenantId: string, campaignId?: string, status?: EnrollmentStatus) {
   return prisma.campaignEnrollment.findMany({
     where: {
       tenantId,
       ...(campaignId ? { campaignId } : {}),
-      ...(status ? { status: status as any } : {}),
+      ...(status ? { status } : {}),
     },
     include: {
       contact: { select: { id: true, firstName: true, lastName: true, fullName: true, email: true, phoneE164: true } },
@@ -188,10 +189,10 @@ export async function listEnrollments(tenantId: string, campaignId?: string, sta
   })
 }
 
-export async function updateTenantVertical(tenantId: string, vertical: string) {
+export async function updateTenantVertical(tenantId: string, vertical: IndustryVertical) {
   return prisma.tenant.update({
     where: { id: tenantId },
-    data: { industryVertical: vertical as any },
+    data: { industryVertical: vertical },
     select: { id: true, industryVertical: true },
   })
 }

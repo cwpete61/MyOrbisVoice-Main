@@ -258,13 +258,17 @@ router.delete('/partner/email-suppression/:id', authenticate, requirePartnerCont
 // stashes the raw body on (req as any).rawBody — Twilio webhooks rely on
 // this pattern. Reusing it here.
 
+// These webhooks are public and mutate DB state (suppression list, reputation),
+// so verification must FAIL CLOSED in production: a missing signing secret means
+// reject, not accept. Only local dev (NODE_ENV !== 'production') accepts unsigned.
+const IS_PROD = process.env['NODE_ENV'] === 'production'
+
 function verifyPostmark(req: Request): boolean {
   // Postmark uses HTTP Basic auth as its webhook auth model (no payload
   // signature). The configured username:password pair is stored in
-  // SystemConfig under postmark.webhook.basic_auth. Empty config = accept
-  // any (dev-mode) — flagged in startup logs.
+  // SystemConfig under postmark.webhook.basic_auth.
   const expected = process.env['POSTMARK_WEBHOOK_BASIC_AUTH']
-  if (!expected) return true  // dev mode: accept
+  if (!expected) return !IS_PROD  // prod: reject unsigned; dev: accept
   const auth = req.headers['authorization']
   if (!auth || !auth.startsWith('Basic ')) return false
   const presented = Buffer.from(auth.slice(6), 'base64').toString('utf8')
@@ -278,7 +282,7 @@ function verifyResend(req: Request): boolean {
   // requires the raw body. When RESEND_WEBHOOK_SECRET is unset we accept
   // anything (dev mode).
   const secret = process.env['RESEND_WEBHOOK_SECRET']
-  if (!secret) return true
+  if (!secret) return !IS_PROD  // prod: reject unsigned; dev: accept
   const sig    = req.headers['svix-signature']        as string | undefined
   const id     = req.headers['svix-id']               as string | undefined
   const ts     = req.headers['svix-timestamp']        as string | undefined
@@ -335,7 +339,7 @@ router.post('/email-webhooks/postmark', async (req: Request, res: Response, next
 // query param for an additional gate.
 function verifyBrevo(req: Request): boolean {
   const required = process.env['BREVO_WEBHOOK_SECRET']
-  if (!required) return true
+  if (!required) return !IS_PROD  // prod: reject unsigned; dev: accept
   const provided = (req.query['secret'] as string) ?? ''
   if (provided.length !== required.length) return false
   return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(required))
