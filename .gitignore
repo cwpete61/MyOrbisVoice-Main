@@ -79,3 +79,7 @@ pdfcoffee.com-*.pdf
 # One-off local HTML backups of the marketing index (kept locally, not tracked).
 site/index.legacy.html
 site/index.shell-backup.html
+
+# Render video artifacts — store on CDN, never in git (GitHub 100MB/file limit)
+apps/render/out/
+apps/render/public/source/*.mp4
