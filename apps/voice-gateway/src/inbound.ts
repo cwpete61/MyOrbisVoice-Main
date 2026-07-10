@@ -65,16 +65,31 @@ type RecChunk = { t: number; pcm: Buffer }
 function muxToWav(caller: RecChunk[], agent: RecChunk[], t0: number, rate = 8000): { wav: Buffer; durationSecs: number } | null {
   const all = [...caller, ...agent]
   if (all.length === 0 || t0 === 0) return null
-  let maxSamples = 0
-  for (const c of all) {
-    const start = Math.max(0, Math.floor(((c.t - t0) * rate) / 1000))
-    maxSamples = Math.max(maxSamples, start + c.pcm.length / 2)
+
+  // Per-stream write cursor. Gemini streams Orby's audio FASTER than real time —
+  // a multi-second response arrives as a burst of chunks with near-identical
+  // arrival timestamps. Placing each chunk purely by arrival time stacks them at
+  // the same spot on the timeline → they overlap and overwrite each other →
+  // jumbled playback (even though the live call, paced by Twilio, is fine). So we
+  // lay each stream's chunks CONSECUTIVELY (never overlapping the same stream's
+  // own previous chunk) while still honoring real gaps between turns. Caller
+  // frames arrive in real time, so their cursor tracks arrival naturally.
+  const streamEnd = (chunks: RecChunk[]): number => {
+    let cursor = 0
+    for (const c of chunks) {
+      const byTime = Math.max(0, Math.floor(((c.t - t0) * rate) / 1000))
+      cursor = Math.max(byTime, cursor) + c.pcm.length / 2
+    }
+    return cursor
   }
+  const maxSamples = Math.max(streamEnd(caller), streamEnd(agent))
   if (maxSamples === 0) return null
   const mix = new Int16Array(maxSamples)
   const lay = (chunks: RecChunk[]) => {
+    let cursor = 0
     for (const c of chunks) {
-      const start = Math.max(0, Math.floor(((c.t - t0) * rate) / 1000))
+      const byTime = Math.max(0, Math.floor(((c.t - t0) * rate) / 1000))
+      const start = Math.max(byTime, cursor)
       const n = c.pcm.length / 2
       for (let i = 0; i < n; i++) {
         const idx = start + i
@@ -84,6 +99,7 @@ function muxToWav(caller: RecChunk[], agent: RecChunk[], t0: number, rate = 8000
         else if (s < -32768) s = -32768
         mix[idx] = s
       }
+      cursor = start + n
     }
   }
   lay(caller)
