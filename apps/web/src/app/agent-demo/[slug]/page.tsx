@@ -106,7 +106,6 @@ export default function AgentDemoMicrosite() {
           <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>📞 {t('agentDemoSite.callHeading')}</h2>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>{t('agentDemoSite.callBody')}</p>
           <a href={`tel:${data.demoPhone}`} className="mt-2 inline-block text-xl font-extrabold" style={{ color: BRAND }}>{telDisplay(data.demoPhone)}</a>
-          <div className="text-sm" style={{ color: 'var(--text-primary)' }}>PIN <strong style={{ letterSpacing: '0.12em' }}>{data.pin}</strong></div>
         </div>
       </div>
 
