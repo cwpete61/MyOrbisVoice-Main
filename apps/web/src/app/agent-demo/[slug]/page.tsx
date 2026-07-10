@@ -135,7 +135,7 @@ export default function AgentDemoMicrosite() {
               </div>
               {c.summary && <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{c.summary}</div>}
               {c.recordingUrl && (
-                <audio controls preload="none" className="mt-2 w-full" src={`${API_BASE}${c.recordingUrl}`}>
+                <audio controls preload="none" crossOrigin="anonymous" className="mt-2 w-full" src={`${API_BASE}${c.recordingUrl}`}>
                   {locale === 'es' ? 'Tu navegador no admite audio.' : 'Your browser does not support audio.'}
                 </audio>
               )}

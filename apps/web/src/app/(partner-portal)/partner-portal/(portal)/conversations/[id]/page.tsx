@@ -142,7 +142,7 @@ export default function PartnerConversationDetailPage() {
             {t('partnerConversations.recordingHeading')}
           </p>
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-          <audio controls src={data.recordingUrl} style={{ width: '100%' }} />
+          <audio controls crossOrigin="anonymous" src={data.recordingUrl} style={{ width: '100%' }} />
         </div>
       )}
 

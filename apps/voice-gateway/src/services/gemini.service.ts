@@ -4,7 +4,12 @@ import { env } from '../lib/env.js'
 // We connect server-side and relay audio chunks between the visitor's browser and Gemini.
 
 const GEMINI_LIVE_HOST = 'generativelanguage.googleapis.com'
-const GEMINI_API_VERSION = 'v1alpha'
+// v1alpha serves the native-audio Live snapshots; the faster half-cascade / 3.x
+// Live models live on v1beta. Env-overridable so a faster model can be A/B'd via
+// GEMINI_API_VERSION=v1beta + GEMINI_LIVE_MODEL=<model> and reverted instantly —
+// WITHOUT a code change. A wrong model/version silently 1008s every call, so any
+// override MUST be validated on a real test call before it's trusted.
+const GEMINI_API_VERSION = process.env['GEMINI_API_VERSION'] ?? 'v1alpha'
 // Live model for the v1alpha BidiGenerateContent endpoint (see GEMINI_API_VERSION).
 // MUST be a model that endpoint actually serves — gemini-2.0-flash-live-001 was
 // tried on 2026-07-10 for lower latency but Gemini rejected it with close 1008
@@ -147,12 +152,12 @@ export function openGeminiLiveSession(
             // and stays.
             end_of_speech_sensitivity:   'END_SENSITIVITY_LOW',
             prefix_padding_ms:           20,
-            // 600ms — bottom of the 600-1000ms telephony band. Dropped from
-            // 800ms (2026-07-02) because Orby felt slow to reply after the
-            // caller stopped. End-sensitivity stays LOW so natural breath
-            // pauses still don't cut people off. Go no lower than ~500ms or
-            // mid-thought pauses start triggering early end-of-turn.
-            silence_duration_ms:         600,
+            // 500ms — floor of the telephony band. Dropped from 600ms
+            // (2026-07-10) to shave the caller-stops-to-Orby-replies gap.
+            // End-sensitivity stays LOW so natural breath pauses still don't cut
+            // people off. Do NOT go below 500ms or mid-thought pauses start
+            // triggering early end-of-turn.
+            silence_duration_ms:         500,
           },
         },
         // Transcription enabled (auto-detect language). Tried locking to

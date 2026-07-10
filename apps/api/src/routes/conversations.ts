@@ -5,6 +5,7 @@ import { requireTenantContext } from '../middleware/rbac.js'
 import { asyncHandler } from '../lib/async-handler.js'
 import { prisma } from '../lib/prisma.js'
 import { getBunnyConfig, storageHostForRegion } from '../services/bunny.service.js'
+import { wavToMp3 } from '../lib/wav-to-mp3.js'
 import { writeAuditLogFromRequest } from '../lib/audit.js'
 import { sendCallNotification } from '../services/email.service.js'
 import { streamConversationPdf } from '../services/conversation-pdf.service.js'
@@ -331,21 +332,24 @@ router.get('/conversations/:id/recording', asyncHandler(async (req, res) => {
     const config = await getBunnyConfig()
     if (config) {
       const host = storageHostForRegion(config.storageRegion)
-      const storageUrl = `https://${host}/${config.storageZone}/${conv.recordingBunnyPath}`
-      const upstream = await fetch(storageUrl, {
+      const upstream = await fetch(`https://${host}/${config.storageZone}/${conv.recordingBunnyPath}`, {
         headers: { AccessKey: config.storagePassword },
       })
       if (!upstream.ok) { res.status(404).json({ error: 'Recording file not found' }); return }
-      res.setHeader('Content-Type', upstream.headers.get('Content-Type') ?? 'audio/mpeg')
-      const cl = upstream.headers.get('Content-Length')
-      if (cl) res.setHeader('Content-Length', cl)
-      res.setHeader('Accept-Ranges', 'bytes')
-      // Defense-in-depth: lock the Content-Type the browser uses to what we
-      // sent. We only ever stream audio/mpeg from Bunny here.
       res.setHeader('X-Content-Type-Options', 'nosniff')
-      const { Readable } = await import('stream')
-      const nodeStream = Readable.fromWeb(upstream.body as any)
-      nodeStream.pipe(res)
+      if (conv.recordingBunnyPath.toLowerCase().endsWith('.mp3')) {
+        res.setHeader('Content-Type', 'audio/mpeg')
+        const cl = upstream.headers.get('Content-Length'); if (cl) res.setHeader('Content-Length', cl)
+        const { Readable } = await import('stream')
+        Readable.fromWeb(upstream.body as any).pipe(res)
+        return
+      }
+      // Always serve MP3 — Bunny stores 8kHz PCM WAVs whose hand-written headers
+      // Chrome rejects (NO_SOURCE); MP3 plays everywhere.
+      const mp3 = await wavToMp3(Buffer.from(await upstream.arrayBuffer()))
+      res.setHeader('Content-Type', 'audio/mpeg')
+      res.setHeader('Content-Length', String(mp3.length))
+      res.send(mp3)
       return
     }
   }

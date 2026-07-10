@@ -298,6 +298,24 @@ export async function bulkDeleteAgentDemos(
   return { deleted, skipped }
 }
 
+/** Bulk-send the demo email. Reuses sendAgentDemo per id; a failure on one id
+ *  (e.g. CLAIMED / still generating) is recorded, never aborts the batch. */
+export async function bulkSendAgentDemos(
+  ids: string[],
+): Promise<{ sent: string[]; skipped: { id: string; reason: string }[] }> {
+  const sent: string[] = []
+  const skipped: { id: string; reason: string }[] = []
+  for (const id of ids) {
+    try {
+      await sendAgentDemo(id)
+      sent.push(id)
+    } catch (e) {
+      skipped.push({ id, reason: e instanceof AppError ? e.message : 'Send failed' })
+    }
+  }
+  return { sent, skipped }
+}
+
 /**
  * Fold-in: turn a scored AgentProspect into a real AgentDemo (Orby from the
  * profile, no listings yet). Unifies the old §17b prospect demo onto the

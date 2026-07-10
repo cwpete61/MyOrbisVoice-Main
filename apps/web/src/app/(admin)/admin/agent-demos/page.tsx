@@ -124,6 +124,21 @@ export default function AgentDemosPage() {
     catch (e) { setErr((e as Error).message || 'Bulk delete failed.') }
     finally { await load() }   // reconciles any skipped/claimed rows back in
   }
+  async function bulkSend() {
+    if (!selected.size) return
+    if (!window.confirm(`Send the demo email to ${selected.size} agent(s)?`)) return
+    const ids = [...selected]
+    setImportMsg(''); setImportBusy(true)
+    try {
+      const r = await apiFetch<{ sentCount: number; failedCount: number; failed: { id: string; reason: string }[] }>(
+        '/api/admin/agent-demos/bulk-send', { method: 'POST', body: JSON.stringify({ ids }) })
+      const skipped = r.failed.length ? ` · ${r.failedCount} skipped` : ''
+      setImportMsg(`Sent ${r.sentCount} demo email${r.sentCount === 1 ? '' : 's'}${skipped}`)
+      setSelected(new Set())
+    } catch (e) {
+      setErr((e as Error).message || 'Bulk send failed.')
+    } finally { setImportBusy(false); await load() }
+  }
 
   // Bulk import from an uploaded .xlsx / .csv — parsed server-side.
   async function onImportFile(file: File) {
@@ -246,6 +261,10 @@ export default function AgentDemosPage() {
         {selected.size > 0 && (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
             <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{selected.size} selected</span>
+            <button onClick={bulkSend} disabled={importBusy}
+              style={{ padding: '5px 12px', borderRadius: 6, background: TEAL, color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              Send selected
+            </button>
             <button onClick={bulkRemove}
               style={{ padding: '5px 12px', borderRadius: 6, background: '#dc2626', color: '#fff', border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               Delete selected
@@ -275,7 +294,6 @@ export default function AgentDemosPage() {
                 </div>
                 <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)', flexWrap: 'wrap' }}>
                   <span>Tier: <strong style={{ color: 'var(--text-primary)' }}>{TIER_LABEL[r.recommendedTier] ?? r.recommendedTier}</strong></span>
-                  <span>Call PIN: <strong style={{ color: 'var(--text-primary)', letterSpacing: '0.1em' }}>{r.pin}</strong></span>
                   <a href={micrositeUrl(r.micrositeSlug)} target="_blank" rel="noreferrer" style={{ color: TEAL }}>Preview microsite →</a>
                   {r.status === 'CLAIMED' ? (
                     <span style={{ opacity: 0.7 }}>claimed 🎉</span>
