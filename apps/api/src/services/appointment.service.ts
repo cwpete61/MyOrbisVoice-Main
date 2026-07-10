@@ -895,7 +895,7 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
     `<tr><td style="padding:9px 0;color:#888;width:130px;vertical-align:top;font-size:14px">${label}</td><td style="color:#222;font-size:14px">${value}</td></tr>`
 
   const rows = [
-    opts.location ? row(isShowing ? 'Property' : 'Location', `<strong>${opts.location}</strong>`) : '',
+    opts.location ? row(isShowing ? 'Property' : 'Location', `<strong>${opts.location}</strong><br><a href="https://www.google.com/maps/dir/?api=1&amp;destination=${encodeURIComponent(opts.location)}" style="color:#1a9898;text-decoration:none;font-size:13px">📍 Get directions from your location →</a>`) : '',
     row('Date', `<strong>${dateStr}</strong>`),
     row('Time', `${timeStr} – ${endTimeStr}`),
     row('Your agent', agentLine),

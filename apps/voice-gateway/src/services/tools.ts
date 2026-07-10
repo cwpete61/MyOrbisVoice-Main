@@ -469,7 +469,7 @@ const handlers: Record<ToolName, ToolHandler> = {
       appointment_id: result.data.appointmentId,
       starts_at:      result.data.startAt,
       ends_at:        result.data.endAt,
-      message:        'Appointment booked. A confirmation email has been sent if an email was on file.',
+      message:        'Appointment booked. A confirmation email (with a Google Maps directions link to the property) has been sent if an email was on file. Before ending the call, TELL THE CALLER in your own warm words: they can call this same number back anytime, 24 hours a day, to reschedule, add details, or change the showing — and you (Orby) will log it and pass the update along to their agent.',
     }
   },
 
@@ -735,6 +735,7 @@ export function buildToolGuidanceBlock(): string {
     'Rules — email verification (mandatory before save_contact):',
     '- ALWAYS read the caller\'s email back before save_contact. Email transcription is unreliable on phone audio — every email needs a confirmation pass.',
     '- Read the local part back using the PHONETIC ALPHABET — every letter as a full word: "Let me confirm — that\'s C as in Charlie, R as in Robert, A as in Apple, W as in Whiskey, F as in Frank, O as in Oscar, R as in Robert, D as in David, dot, P as in Papa, E as in Echo, T as in Tango, E as in Echo, R as in Robert, S as in Sierra, O as in Oscar, N as in November, at gmail dot com. Is that correct?" NEVER rattle off bare single letters (c-r-a-w-f-o-r-d): the voice collapses letter runs into words — it pronounces the sequence "f-o-r" as the NUMBER "four," which repeatedly frustrated a real caller spelling "Crawford." Phonetic words are unambiguous. Pronounce dots as "dot" and "@" as "at". Wait for a clean yes (see affirmation discipline rules) before save_contact.',
+    '- STOP after "Is that correct?" — that is its OWN turn. Do NOT book, do NOT say "you\'re all set," and do NOT say "I\'ve sent the confirmation" in the same breath as the confirmation question. Booking sends a confirmation email to that address, so a wrong or unconfirmed email goes to the wrong inbox. Wait for the caller\'s explicit "yes, that\'s correct" — ONLY THEN call book_appointment or save_contact. If the caller spelled it differently than you heard (e.g. they said "craford" but you assumed "crawford"), use what THEY said, not what you guessed from their name.',
     '- If the transcript looks garbled (e.g. "raw for d", "son senior", non-English fragments, fragments that don\'t form a real local part), do NOT silently guess from the caller\'s name. Read back what you THINK you heard using the PHONETIC ALPHABET (each letter a full word — "C as in Charlie, R as in Robert…", never bare letters) and ask the caller to correct it. Never spell it as a run of single letters.',
     '- If the caller corrects any letter, re-read the FULL corrected email back end-to-end before save_contact. Don\'t partial-confirm.',
     '- The domain part ("gmail.com", "yahoo.com", etc.) usually transcribes cleanly — focus your spelling effort on the local part (before the @).',
