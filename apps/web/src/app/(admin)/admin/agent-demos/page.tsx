@@ -9,7 +9,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { apiFetch } from '@/hooks/useApi'
+import { apiFetch, API_BASE } from '@/hooks/useApi'
+import { getAccessToken } from '@/lib/auth'
 import { DEFAULT_SAMPLE_LISTINGS, DEFAULT_SAMPLE_MARKET } from './sample-listings'
 
 const TEAL = 'oklch(55% 0.11 193)'
@@ -42,6 +43,9 @@ export default function AgentDemosPage() {
   const [err, setErr]   = useState('')
   const [rows, setRows] = useState<AgentDemoRow[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [importBusy, setImportBusy] = useState(false)
+  const [importMsg, setImportMsg] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const load = useCallback(async () => {
@@ -121,6 +125,41 @@ export default function AgentDemosPage() {
     finally { await load() }   // reconciles any skipped/claimed rows back in
   }
 
+  // Bulk import from an uploaded .xlsx / .csv — parsed server-side.
+  async function onImportFile(file: File) {
+    setImportMsg(''); setImportBusy(true)
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      // Chunked base64 so large files don't blow the call stack.
+      let bin = ''
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+      const dataBase64 = btoa(bin)
+      const r = await apiFetch<{ createdCount: number; failedCount: number; failed: { row: number; reason: string }[] }>(
+        '/api/admin/agent-demos/import', { method: 'POST', body: JSON.stringify({ dataBase64, filename: file.name }) })
+      const skipped = r.failed.length
+        ? ` · ${r.failedCount} skipped (${r.failed.slice(0, 3).map(f => `row ${f.row}: ${f.reason}`).join('; ')}${r.failed.length > 3 ? '…' : ''})`
+        : ''
+      setImportMsg(`Imported ${r.createdCount} demo${r.createdCount === 1 ? '' : 's'}${skipped}`)
+      await load()
+    } catch (e) {
+      setImportMsg((e as Error).message || 'Import failed.')
+    } finally {
+      setImportBusy(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+  async function downloadTemplate() {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/agent-demos/import-template`, {
+        headers: { Authorization: `Bearer ${getAccessToken() ?? ''}` },
+      })
+      if (!res.ok) { setImportMsg('Could not download the template.'); return }
+      const url = URL.createObjectURL(await res.blob())
+      const a = document.createElement('a'); a.href = url; a.download = 'agent-demos-template.xlsx'; a.click()
+      URL.revokeObjectURL(url)
+    } catch { setImportMsg('Could not download the template.') }
+  }
+
   const micrositeUrl = (slug: string) => `https://app.myorbisagents.com/agent-demo/${slug}`
   const inp: React.CSSProperties = {
     width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 13,
@@ -175,6 +214,25 @@ export default function AgentDemosPage() {
                    fontSize: 13, fontWeight: 600, border: 'none', cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
           {busy ? 'Building demo…' : 'Build demo'}
         </button>
+      </div>
+
+      {/* Bulk import from file */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: 16, marginBottom: 28 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Bulk import from a file</div>
+        <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10 }}>
+          Upload an .xlsx or .csv — one demo per row. Columns: agent_name, brokerage, market, agent_email, agent_phone, specialties, listing_1, listing_2, listing_3.
+        </p>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input ref={fileRef} type="file" accept=".xlsx,.csv" disabled={importBusy}
+            onChange={e => { const f = e.target.files?.[0]; if (f) onImportFile(f) }}
+            style={{ fontSize: 12 }} />
+          <button type="button" onClick={downloadTemplate}
+            style={{ background: 'none', border: 'none', color: TEAL, cursor: 'pointer', fontSize: 12, padding: 0, textDecoration: 'underline' }}>
+            Download sample template (.xlsx)
+          </button>
+          {importBusy && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Importing…</span>}
+        </div>
+        {importMsg && <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>{importMsg}</p>}
       </div>
 
       {/* List */}

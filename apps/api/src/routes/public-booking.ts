@@ -441,7 +441,10 @@ router.get('/public/agent-demo/:slug/recording/:conversationId', asyncHandler(as
         headers: { AccessKey: config.storagePassword },
       })
       if (!upstream.ok) { res.status(404).json({ error: 'Recording file not found' }); return }
-      res.setHeader('Content-Type', upstream.headers.get('Content-Type') ?? 'audio/mpeg')
+      // Bunny serves stored files as application/octet-stream, which the browser
+      // <audio> element won't play — force the correct audio MIME from the ext.
+      const mime = conv.recordingBunnyPath.toLowerCase().endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav'
+      res.setHeader('Content-Type', mime)
       const cl = upstream.headers.get('Content-Length'); if (cl) res.setHeader('Content-Length', cl)
       res.setHeader('Accept-Ranges', 'bytes')
       res.setHeader('X-Content-Type-Options', 'nosniff')
