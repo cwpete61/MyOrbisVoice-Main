@@ -5,15 +5,18 @@ import { env } from '../lib/env.js'
 
 const GEMINI_LIVE_HOST = 'generativelanguage.googleapis.com'
 const GEMINI_API_VERSION = 'v1alpha'
-// Pinning to a stable snapshot instead of the rolling `-latest` alias.
-// `-latest` is a moving target — preview/experimental variants get tighter
-// limits or rotate without warning, which surfaced as repeated WebSocket
-// close code 1008 ("Operation is not implemented, or supported, or
-// enabled.") in the 2026-05-06 launch-blocker investigation. Override via
-// GEMINI_LIVE_MODEL env var if you want to test a different snapshot.
+// Default = the STABLE half-cascade Live model (gemini-2.0-flash-live-001).
+// We moved OFF gemini-2.5-flash-native-audio-preview (2026-07-10): native-audio
+// is higher-fidelity but noticeably slower per turn AND a preview snapshot, which
+// showed up as multi-second response gaps on real calls. Half-cascade flash-live
+// responds much faster on 8kHz telephony and still supports prebuilt voices
+// (voice_config). Pinned to a stable `-001` snapshot (not `-latest`, which
+// rotated preview variants and caused close code 1008 in the 2026-05-06
+// launch-blocker investigation). Override via GEMINI_LIVE_MODEL to A/B a snapshot
+// (e.g. back to native-audio for a quality comparison).
 const GEMINI_MODEL = process.env['GEMINI_LIVE_MODEL']
   ? `models/${process.env['GEMINI_LIVE_MODEL']}`
-  : 'models/gemini-2.5-flash-native-audio-preview-09-2025'
+  : 'models/gemini-2.0-flash-live-001'
 
 // Gemini tool function declaration. The full schema lives in services/tools.ts;
 // we accept it here as a structural type so this file stays free of tool logic.

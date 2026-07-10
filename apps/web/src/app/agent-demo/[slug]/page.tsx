@@ -27,7 +27,7 @@ interface DemoData {
   status: string; listings: Listing[]
 }
 interface Activity {
-  calls: { id: string; at: string; durationSec: number | null; summary: string | null; who: string | null }[]
+  calls: { id: string; at: string; durationSec: number | null; summary: string | null; who: string | null; recordingUrl: string | null }[]
   bookings: { id: string; at: string; type: string | null; status: string; who: string | null }[]
 }
 
@@ -134,6 +134,11 @@ export default function AgentDemoMicrosite() {
                 <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{c.durationSec ? `${Math.max(1, Math.round(c.durationSec / 60))} min · ` : ''}{fmtAt(c.at, locale === 'es')}</span>
               </div>
               {c.summary && <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{c.summary}</div>}
+              {c.recordingUrl && (
+                <audio controls preload="none" className="mt-2 w-full" src={`${API_BASE}${c.recordingUrl}`}>
+                  {locale === 'es' ? 'Tu navegador no admite audio.' : 'Your browser does not support audio.'}
+                </audio>
+              )}
             </div>
           ))}
         </div>

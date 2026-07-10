@@ -57,6 +57,20 @@ interface TimeSlot {
 type DayHours = { open?: string; close?: string; closed?: boolean; breakStart?: string; breakEnd?: string }
 type BusinessHoursMap = Record<string, DayHours>
 
+// Fallback hours for tenants/partners/demos that never configured any. Without
+// this, a null hours map made isWithinBusinessHours() return true for EVERY
+// hour, so Orby offered 4-6 AM showings. 9am-6pm weekdays is a sane default;
+// a tenant that sets real hours overrides it.
+const DEFAULT_BUSINESS_HOURS: BusinessHoursMap = {
+  monday:    { open: '09:00', close: '18:00' },
+  tuesday:   { open: '09:00', close: '18:00' },
+  wednesday: { open: '09:00', close: '18:00' },
+  thursday:  { open: '09:00', close: '18:00' },
+  friday:    { open: '09:00', close: '18:00' },
+  saturday:  { closed: true },
+  sunday:    { closed: true },
+}
+
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
 
 function timeOfDayInTz(ms: number, timezone: string): string {
@@ -359,6 +373,10 @@ export async function searchAvailability(
       try { client = await getAuthenticatedGoogleClient(tenantId) } catch { client = null }
     }
   }
+
+  // No hours configured (demo / unconfigured tenant or partner) → clamp to a
+  // sane default so we never offer middle-of-the-night slots.
+  if (!businessHours) businessHours = DEFAULT_BUSINESS_HOURS
 
   const calendar = client ? google.calendar({ version: 'v3', auth: client }) : null
 
