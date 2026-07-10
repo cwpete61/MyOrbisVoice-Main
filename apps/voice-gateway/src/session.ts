@@ -3,6 +3,7 @@ import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { fetchListingsForPrompt } from './lib/listings.js'
+import { cachedContent } from './lib/content-cache.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { analyzeConversation } from './services/summary.service.js'
 import { persistConversation, markSessionFailed, startWidgetConversation, type TranscriptEntry } from './services/conversation.service.js'
@@ -71,11 +72,11 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     : []
   const dna = session.businessDNASnapshotJson as Record<string, any> | null
   const [kbBase, listingsText] = await Promise.all([
-    fetchKbForPrompt(session.tenantId).catch(e => {
+    cachedContent(`kb:${session.tenantId}`, () => fetchKbForPrompt(session.tenantId)).catch(e => {
       console.error('[session] kb fetch failed (non-fatal):', e?.message ?? e)
       return null
     }),
-    fetchListingsForPrompt(session.tenantId).catch(e => {
+    cachedContent(`listings:${session.tenantId}`, () => fetchListingsForPrompt(session.tenantId)).catch(e => {
       console.error('[session] listings fetch failed (non-fatal):', e?.message ?? e)
       return null
     }),

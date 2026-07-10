@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma.js'
 import * as appointmentService from '../services/appointment.service.js'
 import * as googleService from '../services/google.service.js'
 import * as contactService from '../services/contact.service.js'
+import { storeGatewayRecording } from '../services/recording.service.js'
 import { writeAuditLog } from '../lib/audit.js'
 import { AppError } from '@voiceautomation/shared'
 
@@ -394,6 +395,7 @@ const bookSchema = z.object({
   contactQuery:    z.string().min(1).max(200),
   notes:           z.string().max(2000).optional(),
   appointmentType: z.string().max(120).optional(),
+  location:        z.string().max(300).optional(),
   timezone:        z.string().max(80).optional(),
   conversationId:  z.string().uuid().optional(),
   externalCallId:  z.string().min(1).max(120).optional(),
@@ -418,6 +420,20 @@ const availabilitySchema = z.object({
   externalCallId:    z.string().min(1).max(120).optional(),
 })
 
+// Slow tools (availability/booking) hit Google Calendar, which has no timeout of
+// its own — a Google stall used to hang the whole call until the gateway's 30s
+// silence watchdog fired ("are you still there?"). Cap the Google-backed work
+// here so the tool always returns FAST with a spoken message. Budget:
+// API (this) 6-7s < gateway abort 8s < silence watchdog 30s.
+class ToolTimeout extends Error {}
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let t: ReturnType<typeof setTimeout>
+  return Promise.race([
+    p.finally(() => clearTimeout(t)),
+    new Promise<T>((_, rej) => { t = setTimeout(() => rej(new ToolTimeout()), ms) }),
+  ])
+}
+
 router.post('/internal/gateway/tools/search-availability', async (req, res, next) => {
   try {
     const tenantId = (req as any).internalTenantId as string
@@ -432,11 +448,21 @@ router.post('/internal/gateway/tools/search-availability', async (req, res, next
     // book_appointment. Null on tenant-side calls; set on partner-page calls.
     const { partnerId } = await resolveGatewayCallContext(tenantId, { conversationId, externalCallId })
 
-    const result = await appointmentService.searchAvailability(tenantId, {
-      preferredStartRange: { from: fromIso, to: toIso },
-      durationMinutes,
-      timezone: effectiveTz,
-    }, partnerId)
+    let result
+    try {
+      result = await withTimeout(appointmentService.searchAvailability(tenantId, {
+        preferredStartRange: { from: fromIso, to: toIso },
+        durationMinutes,
+        timezone: effectiveTz,
+      }, partnerId), 6000)
+    } catch (e) {
+      if (e instanceof ToolTimeout) {
+        // Non-2xx → the tool's !result.ok branch fires (spoken system-error line).
+        res.status(504).json({ error: 'Calendar lookup timed out' })
+        return
+      }
+      throw e
+    }
 
     // Enrich each slot with a human-readable label + a timezone-aware ISO
     // the model can pass back to book_appointment without having to do
@@ -484,17 +510,28 @@ router.post('/internal/gateway/tools/book-appointment', async (req, res, next) =
     // for inbound phone calls; only partner-page widget calls have it set.
     const { conversationId, partnerId } = await resolveGatewayCallContext(tenantId, data)
 
-    const appointment = await appointmentService.createAppointment(tenantId, null, {
-      contactId:       contact?.id,
-      conversationId,
-      partnerId,
-      appointmentType: data.appointmentType,
-      startAt:         startAt.toISOString(),
-      endAt:           endAt.toISOString(),
-      timezone:        tz,
-      notes:           data.notes,
-      attendeeEmail,
-    })
+    let appointment
+    try {
+      appointment = await withTimeout(appointmentService.createAppointment(tenantId, null, {
+        contactId:       contact?.id,
+        conversationId,
+        partnerId,
+        appointmentType: data.appointmentType,
+        startAt:         startAt.toISOString(),
+        endAt:           endAt.toISOString(),
+        timezone:        tz,
+        location:        data.location,
+        notes:           data.notes,
+        attendeeEmail,
+      }), 7000)
+    } catch (e) {
+      if (e instanceof ToolTimeout) {
+        // Non-2xx → the tool's !result.ok branch fires (spoken confirming line).
+        res.status(504).json({ error: 'Booking timed out' })
+        return
+      }
+      throw e
+    }
 
     // Service writes its own appointment.created audit; add a gateway-attribution
     // entry so support can see the call → booking link.
@@ -752,6 +789,24 @@ router.post('/internal/gateway/tools/collect-payment', async (req, res, next) =>
     })
 
     res.json({ data: { ok: sms.success, sent: sms.success, amountCents, error: sms.success ? undefined : (sms.error ?? 'sms_failed') } })
+  } catch (err) { next(err) }
+})
+
+// The gateway muxes demo call audio (caller + Orby) into a WAV itself, because
+// Twilio's recording API crashes <Connect><Stream> calls. It posts the WAV here
+// (base64) after the conversation is persisted; we upload to Bunny + attach.
+const recordingSchema = z.object({
+  callSid:      z.string().min(1),
+  durationSecs: z.number().int().nonnegative(),
+  wavBase64:    z.string().min(1),
+})
+router.post('/internal/gateway/recording', async (req, res, next) => {
+  try {
+    const tenantId = (req as any).internalTenantId as string
+    const data = recordingSchema.parse(req.body)
+    const wav = Buffer.from(data.wavBase64, 'base64')
+    await storeGatewayRecording(data.callSid, tenantId, wav, data.durationSecs)
+    res.json({ data: { ok: true } })
   } catch (err) { next(err) }
 })
 

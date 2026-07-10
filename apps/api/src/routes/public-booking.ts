@@ -9,6 +9,7 @@ import { createContact } from '../services/contact.service.js'
 import { attributeBooking } from '../services/cold-email-campaign.service.js'
 import { DEMO_PHONE_E164 } from '../services/demo-session.service.js'
 import { createAgentDemoClaimSession } from '../services/agent-demo.service.js'
+import { getBunnyConfig, storageHostForRegion } from '../services/bunny.service.js'
 
 const router: IRouter = Router()
 
@@ -383,7 +384,7 @@ router.get('/public/agent-demo/:slug/activity', asyncHandler(async (req, res) =>
   const [calls, appts] = await Promise.all([
     prisma.conversation.findMany({
       where: { tenantId }, orderBy: { startedAt: 'desc' }, take: 8,
-      select: { id: true, startedAt: true, endedAt: true, summaryText: true, contactId: true },
+      select: { id: true, startedAt: true, endedAt: true, summaryText: true, contactId: true, recordingRef: true, recordingBunnyPath: true },
     }),
     prisma.appointment.findMany({
       where: { tenantId }, orderBy: { createdAt: 'desc' }, take: 8,
@@ -404,10 +405,56 @@ router.get('/public/agent-demo/:slug/activity', asyncHandler(async (req, res) =>
         durationSec: c.endedAt ? Math.round((c.endedAt.getTime() - c.startedAt.getTime()) / 1000) : null,
         summary: c.summaryText || null,
         who: (c.contactId && nameById.get(c.contactId)) || null,
+        recordingUrl: (c.recordingRef || c.recordingBunnyPath)
+          ? `/api/public/agent-demo/${req.params['slug']}/recording/${c.id}`
+          : null,
       })),
       bookings: appts.map((a) => ({ id: a.id, at: a.startAt, type: a.appointmentType, status: a.status, who: nm(a.contact) || null })),
     },
   })
+}))
+
+// ─── GET /api/public/agent-demo/:slug/recording/:conversationId ─────────────
+// No-login playback of a demo call's recording for the microsite audio player.
+// Same guard as /activity (not expired, not claimed, still a demo) + verifies
+// the conversation belongs to THIS demo's tenant, then proxies from Bunny.
+router.get('/public/agent-demo/:slug/recording/:conversationId', asyncHandler(async (req, res) => {
+  const demo = await prisma.agentDemo.findUnique({
+    where: { micrositeSlug: req.params['slug']! },
+    select: { tenantId: true, expiresAt: true, status: true, tenant: { select: { isDemo: true } } },
+  })
+  if (!demo) throw new AppError('NOT_FOUND', 'Demo not found', 404)
+  if (demo.expiresAt && demo.expiresAt.getTime() < Date.now()) throw new AppError('GONE', 'This demo link has expired', 410)
+  if (demo.status === 'CLAIMED' || demo.tenant?.isDemo === false) throw new AppError('GONE', 'This demo has been activated', 410)
+
+  const conv = await prisma.conversation.findFirst({
+    where: { id: req.params['conversationId']!, tenantId: demo.tenantId },
+    select: { recordingBunnyPath: true, recordingRef: true },
+  })
+  if (!conv?.recordingRef && !conv?.recordingBunnyPath) { res.status(404).json({ error: 'No recording available' }); return }
+
+  if (conv.recordingBunnyPath) {
+    const config = await getBunnyConfig()
+    if (config) {
+      const host = storageHostForRegion(config.storageRegion)
+      const upstream = await fetch(`https://${host}/${config.storageZone}/${conv.recordingBunnyPath}`, {
+        headers: { AccessKey: config.storagePassword },
+      })
+      if (!upstream.ok) { res.status(404).json({ error: 'Recording file not found' }); return }
+      // Bunny serves stored files as application/octet-stream, which the browser
+      // <audio> element won't play — force the correct audio MIME from the ext.
+      const mime = conv.recordingBunnyPath.toLowerCase().endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav'
+      res.setHeader('Content-Type', mime)
+      const cl = upstream.headers.get('Content-Length'); if (cl) res.setHeader('Content-Length', cl)
+      res.setHeader('Accept-Ranges', 'bytes')
+      res.setHeader('X-Content-Type-Options', 'nosniff')
+      const { Readable } = await import('stream')
+      Readable.fromWeb(upstream.body as any).pipe(res)
+      return
+    }
+  }
+  if (conv.recordingRef) { res.redirect(302, conv.recordingRef); return }
+  res.status(404).json({ error: 'No recording available' })
 }))
 
 // ─── GET /api/public/agent-demo/:slug/claim ─────────────────────────────────

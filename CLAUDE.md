@@ -966,3 +966,12 @@ This project is bound to wiki **MyOrbisLocal - GMB** (slug: `gmb-audit`). It hol
 
 Dashboard runs locally at http://127.0.0.1:8001. If a command fails with "Claude Watch not running", launch it: click the Claude Watch dock icon, or run `claude-watch`.
 <!-- claude-watch:wiki-binding-end -->
+
+## Self-learning
+
+When the user corrects you, or you catch yourself making a mistake: before continuing, add the lesson as a one-line rule under ## Lessons, so it never happens again.
+
+## Lessons
+
+- (Claude adds rules here)
+- When pulling/analyzing a call, ALWAYS supply the audio recording (a playable link/file), not just the transcript. A transcript without the recording is incomplete.

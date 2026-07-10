@@ -16,6 +16,16 @@ export const API_BASE =
     ? 'https://api.myorbisagents.com'
     : (process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000')
 
+// Silent-SSO login: send the browser to the server OIDC login endpoint, which
+// rides the shared Keycloak session (no second sign-in when a Hub session
+// exists) and returns to `next`. Host-aware via API_BASE. Feature-flagged so
+// local dev / OIDC-off environments keep the classic login flow.
+export const OIDC_ENABLED = (process.env['NEXT_PUBLIC_OIDC_ENABLED'] ?? '') === 'true'
+export function oidcLoginHref(next?: string): string {
+  const n = next ? `?next=${encodeURIComponent(next)}` : ''
+  return `${API_BASE}/api/auth/oidc/login${n}`
+}
+
 function buildHeaders(token: string | null, extra: Record<string, string> = {}): Record<string, string> {
   const h: Record<string, string> = { 'Content-Type': 'application/json', ...extra }
   if (token) h['Authorization'] = `Bearer ${token}`
@@ -50,6 +60,9 @@ function redirectToLogin() {
   const path = window.location.pathname
   if (path.startsWith('/partner-portal')) {
     window.location.href = '/partner-portal/login'
+  } else if (OIDC_ENABLED) {
+    // Silently re-auth from the shared KC session instead of bouncing to the hub.
+    window.location.href = oidcLoginHref(path + window.location.search)
   } else {
     window.location.href = '/login'
   }

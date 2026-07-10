@@ -8,6 +8,7 @@ import * as agentDemoService from '../services/agent-demo.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { getEnv } from '@voiceautomation/config'
 import { prisma } from '../lib/prisma.js'
+import * as XLSX from 'xlsx'
 import { Prisma } from '@prisma/client'
 import * as systemConfig from '../services/system-config.service.js'
 import * as storageTierSvc from '../services/storage-tier.service.js'
@@ -2731,6 +2732,112 @@ router.delete('/agent-demos/:id', requirePlatformAdmin, async (req, res, next) =
   try {
     requireAgentsHost(req)
     res.json({ data: await agentDemoService.deleteAgentDemo(req.params['id']!) })
+  } catch (err) { next(err) }
+})
+
+const agentDemoBulkDeleteSchema = z.object({ ids: z.array(z.string()).min(1).max(200) })
+router.post('/agent-demos/bulk-delete', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const { ids } = agentDemoBulkDeleteSchema.parse(req.body)
+    res.json({ data: await agentDemoService.bulkDeleteAgentDemos(ids) })
+  } catch (err) { next(err) }
+})
+
+// ── Bulk import demos from an uploaded XLSX/CSV ──────────────────────────────
+// Column headers (case/space/underscore-insensitive): agent_name, brokerage,
+// market, agent_email, agent_phone, specialties, listing_1, listing_2, listing_3.
+const IMPORT_COLUMNS = ['agent_name','brokerage','market','agent_email','agent_phone','specialties','listing_1','listing_2','listing_3'] as const
+
+/** Read a cell by any of the accepted normalized header aliases. */
+function cell(row: Record<string, unknown>, ...aliases: string[]): string {
+  for (const key of Object.keys(row)) {
+    const norm = key.toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (aliases.includes(norm)) return String(row[key] ?? '').trim()
+  }
+  return ''
+}
+
+const agentDemoImportSchema = z.object({ dataBase64: z.string().min(1), filename: z.string().optional() })
+router.post('/agent-demos/import', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const { dataBase64 } = agentDemoImportSchema.parse(req.body)
+    const buf = Buffer.from(dataBase64.replace(/^data:[^;]*;base64,/, ''), 'base64')
+    let rows: Record<string, unknown>[]
+    try {
+      const wb = XLSX.read(buf, { type: 'buffer' })
+      const sheet = wb.Sheets[wb.SheetNames[0]!]
+      if (!sheet) throw new Error('no sheet')
+      rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' })
+    } catch {
+      throw new AppError('VALIDATION_ERROR', 'Could not read the file — upload a valid .xlsx or .csv.', 422)
+    }
+    if (rows.length === 0) throw new AppError('VALIDATION_ERROR', 'The file has no data rows.', 422)
+    if (rows.length > 200) throw new AppError('VALIDATION_ERROR', 'Too many rows (max 200 per import).', 422)
+
+    let createdCount = 0
+    const failed: { row: number; reason: string }[] = []
+    let rowNum = 1 // header is row 1; first data row is row 2
+    for (const row of rows) {
+      rowNum++
+      const payload = {
+        agentName:   cell(row, 'agentname', 'name'),
+        brokerage:   cell(row, 'brokerage') || undefined,
+        market:      cell(row, 'market'),
+        agentEmail:  cell(row, 'agentemail', 'email'),
+        agentPhone:  cell(row, 'agentphone', 'phone') || undefined,
+        specialties: cell(row, 'specialties') || undefined,
+        listings:    [cell(row, 'listing1'), cell(row, 'listing2'), cell(row, 'listing3')].filter(Boolean),
+      }
+      const parsed = agentDemoCreateSchema.safeParse(payload)
+      if (!parsed.success) {
+        const first = parsed.error.issues[0]
+        failed.push({ row: rowNum, reason: `${first?.path.join('.') || 'field'}: ${first?.message || 'invalid'}` })
+        continue
+      }
+      try {
+        await agentDemoService.createAgentDemo({
+          agentName:   parsed.data.agentName,
+          brokerage:   parsed.data.brokerage || undefined,
+          market:      parsed.data.market,
+          agentEmail:  parsed.data.agentEmail,
+          agentPhone:  parsed.data.agentPhone || undefined,
+          specialties: parsed.data.specialties || undefined,
+          listings:    parsed.data.listings,
+          createdById: req.user!.id,
+        })
+        createdCount++
+      } catch (e) {
+        failed.push({ row: rowNum, reason: e instanceof Error ? e.message : 'create failed' })
+      }
+    }
+    res.json({ data: { createdCount, failedCount: failed.length, failed } })
+  } catch (err) { next(err) }
+})
+
+// Downloadable sample template with the exact columns the importer expects.
+router.get('/agent-demos/import-template', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const example: Record<string, string> = {
+      agent_name:   'Jane Realtor',
+      brokerage:    'Austin Realtors',
+      market:       'Austin metro',
+      agent_email:  'jane@brokerage.com',
+      agent_phone:  '(555) 123-4567',
+      specialties:  'luxury, first-time buyers',
+      listing_1:    '123 Main St, Austin, TX 78701 — $450,000. 3 bd, 2 ba, 1,800 sqft. Updated kitchen, large backyard, walkable to downtown.',
+      listing_2:    '(optional second listing — same format)',
+      listing_3:    '(optional third listing — same format)',
+    }
+    const ws = XLSX.utils.json_to_sheet([example], { header: IMPORT_COLUMNS as unknown as string[] })
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Demos')
+    const out = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', 'attachment; filename="agent-demos-template.xlsx"')
+    res.send(out)
   } catch (err) { next(err) }
 })
 

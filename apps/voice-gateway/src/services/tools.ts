@@ -95,7 +95,11 @@ export const TOOL_DECLARATIONS = [
         },
         appointment_type: {
           type: 'STRING',
-          description: 'Short label for the appointment type, e.g. "Consultation", "Service call". Optional.',
+          description: 'Short label for the appointment type, e.g. "Showing", "Consultation", "Service call". Optional.',
+        },
+        location: {
+          type: 'STRING',
+          description: 'The property address or meeting location for the appointment, e.g. "2200 S Lamar Blvd, Austin, TX 78704". For a home showing, pass the full listing address. Include it whenever there is a specific place — it appears on the confirmation the caller receives.',
         },
         timezone: {
           type: 'STRING',
@@ -290,6 +294,30 @@ export const TOOL_DECLARATIONS = [
       required: ['reason'],
     },
   },
+  {
+    name: 'collect_payment',
+    description:
+      'Text the caller a secure payment link (Stripe) to pay a deposit or invoice. The link is ' +
+      'sent by SMS to the number they are calling from. ONLY use this when your business ' +
+      'instructions explicitly say payments are enabled, OR the caller directly asks to pay. ' +
+      'Never offer payment otherwise. After calling, tell the caller you have texted them a link.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        amount_cents: {
+          type: 'INTEGER',
+          description:
+            'Amount to charge in cents (e.g. 5000 for $50.00). Omit to use the business default ' +
+            'deposit. Only set this if the caller agreed to a specific amount.',
+        },
+        description: {
+          type: 'STRING',
+          description: 'Short reason shown on the payment, e.g. "Deposit for Friday detailing".',
+        },
+      },
+      required: [],
+    },
+  },
 ] as const
 
 export type ToolName = (typeof TOOL_DECLARATIONS)[number]['name']
@@ -403,6 +431,7 @@ const handlers: Record<ToolName, ToolHandler> = {
     const contactQuery    = String(args['contact_phone_or_email']  ?? '').trim()
     const notes           = args['notes']            ? String(args['notes'])            : undefined
     const appointmentType = args['appointment_type'] ? String(args['appointment_type']) : undefined
+    const location        = args['location']         ? String(args['location'])         : undefined
     const timezone        = args['timezone']         ? String(args['timezone'])         : undefined
 
     if (!startsAtIso || !durationMinutes || !contactQuery) {
@@ -418,12 +447,23 @@ const handlers: Record<ToolName, ToolHandler> = {
         contactQuery,
         notes,
         appointmentType,
+        location,
         timezone,
         conversationId: ctx.conversationId,
         externalCallId: ctx.externalCallId,
       },
     )
-    if (!result.ok) return { ok: false, error: result.error }
+    // System error / timeout — the booking may still be finishing on Google's
+    // side. NEVER go silent and never say "it failed" flatly. Give the caller a
+    // calm, honest line so there's no dead air while the write settles.
+    if (!result.ok) {
+      return {
+        ok:         false,
+        error_kind: 'SYSTEM_ERROR',
+        error:      result.error,
+        message:    'Booking hit a system delay (NOT a rejection). Tell the caller warmly: "I\'ve got all your details for the showing — the system is finishing the confirmation now and someone from the team will text you shortly to lock it in." Do NOT say the booking failed or that the time is unavailable.',
+      }
+    }
     return {
       ok: true,
       appointment_id: result.data.appointmentId,
@@ -593,6 +633,29 @@ const handlers: Record<ToolName, ToolHandler> = {
         'Do NOT announce the release to the caller.',
     }
   },
+
+  // collect_payment — text the caller a Stripe payment link. The API enforces
+  // the gate (tenant.orbyPaymentsEnabled + stripeChargesEnabled); if off, it
+  // returns ok:false and nothing is sent. Needs a phone call (callSid) so it
+  // can resolve the caller's number — no-op on widget sessions (no phone).
+  async collect_payment(args, ctx) {
+    if (!ctx.callSid) {
+      return { ok: false, error: 'Payment links can only be texted on a phone call.' }
+    }
+    const amountCents = Number(args['amount_cents'] ?? 0)
+    const result = await callApi<{ ok: boolean; sent?: boolean; amountCents?: number; error?: string }>(
+      '/api/internal/gateway/tools/collect-payment',
+      ctx.tenantId,
+      {
+        callSid:     ctx.callSid,
+        ...(amountCents >= 50 ? { amountCents } : {}),
+        ...(args['description'] ? { description: String(args['description']) } : {}),
+      },
+    )
+    if (!result.ok) return { ok: false, error: result.error }
+    if (!result.data.ok) return { ok: false, error: result.data.error ?? 'payment_failed' }
+    return { ok: true, sent: true, message: 'A secure payment link has been texted to the caller.' }
+  },
 }
 
 // --- Public dispatcher -------------------------------------------------------
@@ -650,7 +713,7 @@ export async function rollbackToolCall(
 export function buildToolGuidanceBlock(): string {
   return [
     '--- Tools available ---',
-    'You have eight tools you may call during this conversation. Use them when appropriate; do not announce them.',
+    'You have nine tools you may call during this conversation. Use them when appropriate; do not announce them.',
     '',
     '1. lookup_contact(query) — Search for an existing customer by phone, email, or name. Call this once early when the caller has shared a phone or email so you can recognise returning customers.',
     '2. save_contact(full_name, phone_e164, email, notes?) — Save the caller\'s contact details to the database. ALWAYS call this after collecting the caller\'s full name, phone, AND email. Required on every call. Feeds campaigns and follow-up.',
@@ -660,6 +723,7 @@ export function buildToolGuidanceBlock(): string {
     '6. record_disposition(outcome_code, notes?) — Record the call outcome near the end of the conversation. Allowed codes: BOOKED, QUALIFIED_LEAD, NOT_QUALIFIED, INFO_REQUEST, COMPLAINT, CALLBACK_REQUESTED, WRONG_NUMBER, SPAM, NO_ACTION.',
     '7. enter_specialist(role, reason) — Pin onto ONE specialist role (APPOINTMENT, SALES, CUSTOMER_SERVICE, MARKETING, ASSISTANT, SECRETARY) for a multi-turn flow. Use ONLY when 2+ role prompts are loaded AND the caller is clearly inside one specialist\'s wheelhouse for the next several turns. See the Specialist Routing section of your system prompt for when to pin vs not. Silent to the caller.',
     '8. exit_specialist(reason) — Release the pin set by enter_specialist and return to multi-specialist routing. Call when the pinned flow completes, the caller abandons it, or their intent leaves the pinned specialist\'s scope. Safe to call when no pin is active (no-op). Silent to the caller.',
+    '9. collect_payment(amount_cents?, description?) — Text the caller a secure Stripe payment link (sent by SMS to their number). ONLY use this when your business instructions explicitly say payments/deposits are enabled, OR the caller directly asks to pay. NEVER offer or take payment otherwise. Omit amount_cents to use the business default deposit. After it succeeds, tell the caller you have texted them the link.',
     '',
     'Rules — contact capture (mandatory):',
     '- ALWAYS collect the caller\'s full name AND phone number AND email address. All three. Never settle for one or the other.',
@@ -755,6 +819,7 @@ export function buildToolGuidanceBlock(): string {
     '- IMMEDIACY — once the caller confirms a slot ("yes that works"), call book_appointment IMMEDIATELY in the same turn. Do not go silent waiting for the caller to repeat themselves. Silence after a "yes" is a bug, not politeness.',
     '- If book_appointment returns an error or doesn\'t return a successful response, do not say it succeeded. Tell the caller you had trouble booking and offer to try a different time, take a message, or schedule a callback.',
     '- If you have not called book_appointment yet, language to use INSTEAD of "booked": "let me get that scheduled for you", "let me check that slot", "I\'m looking now". These are honest holding phrases. Switch to "you\'re booked" only AFTER the tool succeeds.',
+    '- NO DEAD AIR ON TOOLS — right before you call search_availability, book_appointment, or collect_payment, SPEAK a short holding line in the SAME turn ("Let me pull that up, one moment…" / "Give me one second while I check the calendar…"). Tools can take a few seconds; the caller must hear your voice, never silence. When a tool returns a system-error message, read that message\'s guidance to the caller warmly — never go quiet and never say the request flatly "failed".',
     '',
     'Rules — phone numbers (READ BACK, do not ask the caller to recite):',
     '- The caller\'s phone number is almost always available to you from caller ID at the start of the call (look for a "Caller ID" line in your initial context). If you have it, READ IT BACK to the caller — "I have your number as nine-two-nine, four-nine-seven, seven-eight-zero-three — is that the best number to reach you?" — and only ask them to provide one if caller ID was blocked or shows "Unknown".',
