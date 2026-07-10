@@ -26,6 +26,10 @@ interface DemoData {
   widgetPublicKey: string; demoPhone: string; pin: string; recommendedTier: string
   status: string; listings: Listing[]
 }
+interface Activity {
+  calls: { id: string; at: string; durationSec: number | null; summary: string | null; who: string | null }[]
+  bookings: { id: string; at: string; type: string | null; status: string; who: string | null }[]
+}
 
 const PLAN_NAME: Record<string, string> = { '297': 'Solo Capture', '497': 'Solo Power' }
 const money = (n: number | null) => (n == null ? null : `$${n.toLocaleString('en-US')}`)
@@ -33,13 +37,17 @@ const telDisplay = (e164: string) => {
   const d = e164.replace(/\D/g, '')
   return d.length === 11 ? `(${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7)}` : e164
 }
+const fmtAt = (iso: string, es: boolean) => {
+  try { return new Date(iso).toLocaleString(es ? 'es' : 'en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) } catch { return '' }
+}
 
 export default function AgentDemoMicrosite() {
   const params = useParams<{ slug: string }>()
   const slug = params.slug
   const t = useT()
-  const { setLocale } = useLocale()
+  const { locale, setLocale } = useLocale()
   const [data, setData] = useState<DemoData | null>(null)
+  const [act, setAct] = useState<Activity | null>(null)
   const [err, setErr] = useState(false)
 
   useEffect(() => {
@@ -48,6 +56,17 @@ export default function AgentDemoMicrosite() {
       .then(d => { if (!cancelled) setData(d) })
       .catch(() => { if (!cancelled) setErr(true) })
     return () => { cancelled = true }
+  }, [slug])
+
+  // Poll the no-login activity feed — the agent calls Orby and watches their
+  // own calls + bookings appear here live. Every 8s while the page is open.
+  useEffect(() => {
+    let cancelled = false
+    const load = () => apiFetch<Activity>(`/api/public/agent-demo/${encodeURIComponent(slug)}/activity`)
+      .then((a) => { if (!cancelled) setAct(a) }).catch(() => {})
+    load()
+    const timer = setInterval(load, 8000)
+    return () => { cancelled = true; clearInterval(timer) }
   }, [slug])
 
   // Inject the agent's OWN Orby widget once we have their publicKey.
@@ -90,6 +109,36 @@ export default function AgentDemoMicrosite() {
           <div className="text-sm" style={{ color: 'var(--text-primary)' }}>PIN <strong style={{ letterSpacing: '0.12em' }}>{data.pin}</strong></div>
         </div>
       </div>
+
+      {/* What Orby did — live, no login. Polls the activity feed. */}
+      <h2 className="mt-10 text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{locale === 'es' ? 'Lo que Orby hizo por ti' : 'What Orby did for you'}</h2>
+      <p className="mt-1 text-sm" style={{ color: 'var(--text-tertiary)' }}>{locale === 'es' ? 'Llama a Orby y míralo aparecer aquí — en vivo.' : 'Call Orby and watch it appear here — live.'}</p>
+      {(!act || (act.calls.length === 0 && act.bookings.length === 0)) ? (
+        <div className="mt-4 rounded-2xl p-5 text-sm text-center" style={{ background: 'var(--surface-raised)', border: '1px dashed var(--border-subtle)', color: 'var(--text-tertiary)' }}>
+          {locale === 'es' ? 'Aún nada. Llama al número de arriba y pregunta por una propiedad.' : 'Nothing yet. Call the number above and ask about a listing.'}
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-3">
+          {act.bookings.map((b) => (
+            <div key={b.id} className="rounded-2xl p-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+              <div className="flex justify-between gap-3 flex-wrap">
+                <strong style={{ color: 'var(--text-primary)' }}>📅 {locale === 'es' ? 'Cita agendada' : 'Showing booked'}{b.who ? ` · ${b.who}` : ''}</strong>
+                <span className="text-sm font-semibold" style={{ color: BRAND }}>{fmtAt(b.at, locale === 'es')}</span>
+              </div>
+              {b.type && <div className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>{b.type}</div>}
+            </div>
+          ))}
+          {act.calls.map((c) => (
+            <div key={c.id} className="rounded-2xl p-4" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+              <div className="flex justify-between gap-3 flex-wrap">
+                <strong style={{ color: 'var(--text-primary)' }}>📞 {c.who || (locale === 'es' ? 'Llamada' : 'Call')}</strong>
+                <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{c.durationSec ? `${Math.max(1, Math.round(c.durationSec / 60))} min · ` : ''}{fmtAt(c.at, locale === 'es')}</span>
+              </div>
+              {c.summary && <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{c.summary}</div>}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Listings */}
       <h2 className="mt-10 text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{t('agentDemoSite.listingsHeading')}</h2>

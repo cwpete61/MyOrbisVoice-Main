@@ -658,37 +658,54 @@ export async function sendAgentDemoEmail(opts: {
   const link = (href: string, label: string) =>
     `<a href="${href}" style="color:${TEAL_EMAIL};font-weight:700;text-decoration:underline">${label}</a>`
 
-  // Kept plain and transactional (no promo box, no CTA buttons) so it lands in
-  // the primary inbox instead of Gmail's Promotions tab. Routing is caller-ID
-  // only (the demo binds the agent's Orby at connect time), so no PIN.
+  // Brief + transactional. Two buttons: autodial the call, then open the
+  // no-login demo to watch what Orby did. Routing is caller-ID only (no PIN).
+  const btn = (href: string, label: string) =>
+    `<a href="${href}" style="display:inline-block;background:${TEAL_EMAIL};color:#fff;padding:12px 22px;border-radius:9px;text-decoration:none;font-size:15px;font-weight:700">${label}</a>`
   const block = (L: {
-    hi: string; lede: string; listingsH: string;
-    callH: string; callBody: string; promo: string; claimLink: string
+    hi: string; lede: string; callBody: string; callBtn: string; tryIntro: string; tryBullets: string[];
+    demoBtn: string; listingsH: string; promo: string; claimLink: string
   }) => `
     <p style="font-size:15px;color:#0f1720">${L.hi}</p>
     <p style="font-size:15px;color:#516170">${L.lede}</p>
-    <h3 style="font-size:14px;color:#0f1720;margin:22px 0 6px">${L.listingsH}</h3>
+    <p style="font-size:14px;color:#516170;margin:20px 0 8px">${L.callBody}</p>
+    <p style="margin:0 0 14px">${btn(`tel:${opts.demoPhone}`, `📞 ${L.callBtn} ${phoneDisplay}`)}</p>
+    <p style="font-size:14px;color:#0f1720;margin:0 0 4px"><strong>${L.tryIntro}</strong></p>
+    <ul style="margin:0 0 16px;padding-left:20px;color:#516170;font-size:14px;line-height:1.6">${L.tryBullets.map((b) => `<li>${b}</li>`).join('')}</ul>
+    <p style="margin:0 0 20px">${btn(opts.micrositeUrl, L.demoBtn)}</p>
+    <h3 style="font-size:14px;color:#0f1720;margin:20px 0 6px">${L.listingsH}</h3>
     <table style="width:100%;border-collapse:collapse">${listingRows}</table>
-    <h3 style="font-size:14px;color:#0f1720;margin:22px 0 6px">📞 ${L.callH}</h3>
-    <p style="font-size:14px;color:#516170;margin:0 0 4px">${L.callBody}</p>
-    <p style="font-size:16px;margin:0"><a href="tel:${opts.demoPhone}" style="color:${TEAL_EMAIL};font-weight:700;text-decoration:none">${phoneDisplay}</a></p>
     <p style="font-size:14px;color:#0f1720;margin:22px 0 0">${L.promo} ${link(opts.claimUrl, L.claimLink)}</p>`
 
   const en = block({
     hi: `Hi ${first},`,
-    lede: `I built you a live demo of Orby — an AI assistant that answers your buyers 24/7, already loaded with your listings below.`,
+    lede: `I built you a live demo of Orby — an AI assistant that answers your buyers 24/7, loaded with your listings.`,
+    callBody: `Call from the phone number you gave us and Orby answers as your assistant — knowing your name and your listings.`,
+    callBtn: `Call Orby —`,
+    tryIntro: `On the call, try this:`,
+    tryBullets: [
+      `Ask if one of your listings is available`,
+      `Answer Orby's questions — budget, pre-approval, timeline`,
+      `Book a time, then check your email for the confirmation`,
+    ],
+    demoBtn: `Open your demo — watch what Orby did →`,
     listingsH: `Listings Orby already knows:`,
-    callH: `Call Orby`,
-    callBody: `Call from the phone number you gave us and Orby answers as your assistant — knowing your name and these listings.`,
     promo: `<strong>Launch offer:</strong> 50% off your monthly plan — Solo Capture or Solo Power — for a full year, plus $250 setup.`,
     claimLink: `Get Orby for your business →`,
   })
   const es = block({
     hi: `Hola ${first}:`,
-    lede: `Te preparé una demo en vivo de Orby — un asistente de IA que responde a tus compradores 24/7, ya cargado con tus propiedades abajo.`,
+    lede: `Te preparé una demo en vivo de Orby — un asistente de IA que responde a tus compradores 24/7, con tus propiedades cargadas.`,
+    callBody: `Llama desde el número de teléfono que nos diste y Orby contesta como tu asistente — con tu nombre y tus propiedades.`,
+    callBtn: `Llama a Orby —`,
+    tryIntro: `En la llamada, prueba esto:`,
+    tryBullets: [
+      `Pregunta si una de tus propiedades está disponible`,
+      `Responde las preguntas de Orby — presupuesto, preaprobación, plazos`,
+      `Agenda una hora y revisa tu correo para la confirmación`,
+    ],
+    demoBtn: `Abre tu demo — mira lo que Orby hizo →`,
     listingsH: `Propiedades que Orby ya conoce:`,
-    callH: `Llama a Orby`,
-    callBody: `Llama desde el número de teléfono que nos diste y Orby contesta como tu asistente — con tu nombre y estas propiedades.`,
     promo: `<strong>Oferta de lanzamiento:</strong> 50% de descuento en tu plan mensual — Solo Capture o Solo Power — por un año completo, más $250 de instalación.`,
     claimLink: `Consigue Orby para tu negocio →`,
   })

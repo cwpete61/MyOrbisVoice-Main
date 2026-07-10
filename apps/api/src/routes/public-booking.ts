@@ -358,6 +358,49 @@ router.get('/public/agent-demo/:slug', asyncHandler(async (req, res) => {
   })
 }))
 
+// ─── GET /api/public/agent-demo/:slug/activity ──────────────────────────────
+// No-login feed of what Orby did on the agent's demo tenant: the calls it
+// handled, and the showings it booked. The microsite polls this so the agent
+// calls Orby and watches their own results appear — no password needed.
+router.get('/public/agent-demo/:slug/activity', asyncHandler(async (req, res) => {
+  const demo = await prisma.agentDemo.findUnique({
+    where: { micrositeSlug: req.params['slug']! },
+    select: { tenantId: true, expiresAt: true },
+  })
+  if (!demo) throw new AppError('NOT_FOUND', 'Demo not found', 404)
+  if (demo.expiresAt && demo.expiresAt.getTime() < Date.now()) throw new AppError('GONE', 'This demo link has expired', 410)
+  const tenantId = demo.tenantId
+
+  const [calls, appts] = await Promise.all([
+    prisma.conversation.findMany({
+      where: { tenantId }, orderBy: { startedAt: 'desc' }, take: 8,
+      select: { id: true, startedAt: true, endedAt: true, summaryText: true, contactId: true },
+    }),
+    prisma.appointment.findMany({
+      where: { tenantId }, orderBy: { createdAt: 'desc' }, take: 8,
+      select: { id: true, startAt: true, appointmentType: true, status: true, contact: { select: { firstName: true, lastName: true } } },
+    }),
+  ])
+  const cids = [...new Set(calls.map((c) => c.contactId).filter(Boolean))] as string[]
+  const contacts = cids.length
+    ? await prisma.contact.findMany({ where: { id: { in: cids } }, select: { id: true, firstName: true, lastName: true } })
+    : []
+  const nameById = new Map(contacts.map((c) => [c.id, [c.firstName, c.lastName].filter(Boolean).join(' ')]))
+  const nm = (o?: { firstName: string | null; lastName: string | null } | null) => [o?.firstName, o?.lastName].filter(Boolean).join(' ')
+
+  res.json({
+    data: {
+      calls: calls.map((c) => ({
+        id: c.id, at: c.startedAt,
+        durationSec: c.endedAt ? Math.round((c.endedAt.getTime() - c.startedAt.getTime()) / 1000) : null,
+        summary: c.summaryText || null,
+        who: (c.contactId && nameById.get(c.contactId)) || null,
+      })),
+      bookings: appts.map((a) => ({ id: a.id, at: a.startAt, type: a.appointmentType, status: a.status, who: nm(a.contact) || null })),
+    },
+  })
+}))
+
 // ─── GET /api/public/agent-demo/:slug/claim ─────────────────────────────────
 // The microsite "Get Orby" CTA. Builds the promo Checkout Session (plan + $250
 // setup + 50%-off-12mo coupon) and 303-redirects the agent straight to Stripe.
