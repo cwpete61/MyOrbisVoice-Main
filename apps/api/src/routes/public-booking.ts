@@ -10,6 +10,44 @@ import { attributeBooking } from '../services/cold-email-campaign.service.js'
 import { DEMO_PHONE_E164 } from '../services/demo-session.service.js'
 import { createAgentDemoClaimSession } from '../services/agent-demo.service.js'
 import { getBunnyConfig, storageHostForRegion } from '../services/bunny.service.js'
+import lamejs from '@breezystack/lamejs'
+
+/**
+ * Transcode a PCM16 WAV buffer to MP3. Telephony recordings are stored as
+ * 8kHz mono PCM WAV; the gateway's hand-written WAV headers don't reliably
+ * decode in-browser (Chrome rejects them as NO_SOURCE), so we always serve
+ * MP3, which every browser plays. Small files, low volume — fine on the fly.
+ */
+function wavToMp3(wav: Buffer): Buffer {
+  const ab = wav.buffer.slice(wav.byteOffset, wav.byteOffset + wav.byteLength) as ArrayBuffer
+  // readHeader is a real static method; the shipped .d.ts just omits it.
+  const header = (lamejs.WavHeader as unknown as {
+    readHeader(v: DataView): { channels: number; sampleRate: number; dataOffset: number; dataLen: number }
+  }).readHeader(new DataView(ab))
+  const channels = header.channels || 1
+  const sampleRate = header.sampleRate || 8000
+  const samples = new Int16Array(ab, header.dataOffset, header.dataLen / 2)
+  const enc = new lamejs.Mp3Encoder(channels, sampleRate, 64)
+  const out: Buffer[] = []
+  const BLOCK = 1152
+  if (channels === 2) {
+    const n = samples.length >> 1
+    const left = new Int16Array(n), right = new Int16Array(n)
+    for (let i = 0, j = 0; j < n; i += 2, j++) { left[j] = samples[i]!; right[j] = samples[i + 1]! }
+    for (let i = 0; i < n; i += BLOCK) {
+      const buf = enc.encodeBuffer(left.subarray(i, i + BLOCK), right.subarray(i, i + BLOCK))
+      if (buf.length) out.push(Buffer.from(buf))
+    }
+  } else {
+    for (let i = 0; i < samples.length; i += BLOCK) {
+      const buf = enc.encodeBuffer(samples.subarray(i, i + BLOCK))
+      if (buf.length) out.push(Buffer.from(buf))
+    }
+  }
+  const end = enc.flush()
+  if (end.length) out.push(Buffer.from(end))
+  return Buffer.concat(out)
+}
 
 const router: IRouter = Router()
 
@@ -441,15 +479,20 @@ router.get('/public/agent-demo/:slug/recording/:conversationId', asyncHandler(as
         headers: { AccessKey: config.storagePassword },
       })
       if (!upstream.ok) { res.status(404).json({ error: 'Recording file not found' }); return }
-      // Bunny serves stored files as application/octet-stream, which the browser
-      // <audio> element won't play — force the correct audio MIME from the ext.
-      const mime = conv.recordingBunnyPath.toLowerCase().endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav'
-      res.setHeader('Content-Type', mime)
-      const cl = upstream.headers.get('Content-Length'); if (cl) res.setHeader('Content-Length', cl)
-      res.setHeader('Accept-Ranges', 'bytes')
       res.setHeader('X-Content-Type-Options', 'nosniff')
-      const { Readable } = await import('stream')
-      Readable.fromWeb(upstream.body as any).pipe(res)
+      res.setHeader('Cache-Control', 'private, max-age=3600')
+      if (conv.recordingBunnyPath.toLowerCase().endsWith('.mp3')) {
+        res.setHeader('Content-Type', 'audio/mpeg')
+        const cl = upstream.headers.get('Content-Length'); if (cl) res.setHeader('Content-Length', cl)
+        const { Readable } = await import('stream')
+        Readable.fromWeb(upstream.body as any).pipe(res)
+        return
+      }
+      // Always serve MP3 (browsers reliably play it; the stored 8kHz WAVs don't).
+      const mp3 = wavToMp3(Buffer.from(await upstream.arrayBuffer()))
+      res.setHeader('Content-Type', 'audio/mpeg')
+      res.setHeader('Content-Length', String(mp3.length))
+      res.send(mp3)
       return
     }
   }

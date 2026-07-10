@@ -13,6 +13,7 @@
     "@aws-sdk/client-route-53-domains": "^3.1048.0",
     "@aws-sdk/client-sesv2": "^3.1048.0",
     "@aws-sdk/client-sns": "^3.1049.0",
+    "@breezystack/lamejs": "^1.2.7",
     "@prisma/client": "^5.15.0",
     "@sentry/node": "^10.53.1",
     "@voiceautomation/config": "workspace:*",
