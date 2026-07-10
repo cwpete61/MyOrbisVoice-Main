@@ -1,8 +1,12 @@
 import { Router, type IRouter } from 'express'
+import { z } from 'zod'
+import { IndustryVertical, EnrollmentStatus } from '@prisma/client'
 import { authenticate } from '../middleware/authenticate.js'
 import { requireTenantContext } from '../middleware/rbac.js'
 import * as svc from '../services/campaign.service.js'
 import { AppError } from '@voiceautomation/shared'
+
+const enrollmentStatusSchema = z.nativeEnum(EnrollmentStatus).optional()
 
 const router: IRouter = Router()
 router.use(authenticate, requireTenantContext)
@@ -82,16 +86,18 @@ router.delete('/contacts/:contactId/tags/:tag', async (req, res, next) => {
 router.get('/campaigns/:id/enrollments', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const status = req.query['status'] as string | undefined
-    res.json({ data: await svc.listEnrollments(tenantId, req.params['id']!, status) })
+    const status = enrollmentStatusSchema.safeParse(req.query['status'] || undefined)
+    if (!status.success) throw new AppError('VALIDATION_ERROR', 'Invalid status filter', 422)
+    res.json({ data: await svc.listEnrollments(tenantId, req.params['id']!, status.data) })
   } catch (err) { next(err) }
 })
 
 router.get('/enrollments', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const status = req.query['status'] as string | undefined
-    res.json({ data: await svc.listEnrollments(tenantId, undefined, status) })
+    const status = enrollmentStatusSchema.safeParse(req.query['status'] || undefined)
+    if (!status.success) throw new AppError('VALIDATION_ERROR', 'Invalid status filter', 422)
+    res.json({ data: await svc.listEnrollments(tenantId, undefined, status.data) })
   } catch (err) { next(err) }
 })
 
@@ -99,9 +105,9 @@ router.get('/enrollments', async (req, res, next) => {
 router.patch('/tenant/vertical', async (req, res, next) => {
   try {
     const tenantId = req.user!.currentTenantId!
-    const { vertical } = req.body as { vertical?: string }
-    if (!vertical) throw new AppError('VALIDATION_ERROR', 'vertical is required', 422)
-    res.json({ data: await svc.updateTenantVertical(tenantId, vertical) })
+    const parsed = z.object({ vertical: z.nativeEnum(IndustryVertical) }).safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid vertical', 422)
+    res.json({ data: await svc.updateTenantVertical(tenantId, parsed.data.vertical) })
   } catch (err) { next(err) }
 })
 

@@ -148,10 +148,18 @@ export default function PartnerEmailDetailPage() {
                     )}
                   </div>
                   {m.htmlBody ? (
-                    <div
-                      className="mailbox-body"
-                      style={{ color: 'var(--text-primary)' }}
-                      dangerouslySetInnerHTML={{ __html: m.htmlBody }}
+                    // Inbound email HTML is attacker-controlled. Render it in a
+                    // locked sandboxed iframe (NO allow-scripts) so inline scripts
+                    // and event handlers (<img onerror>, <svg onload>) can't run —
+                    // this neutralizes stored-XSS / token theft. allow-popups only
+                    // lets target=_blank links open; no script capability is granted.
+                    <iframe
+                      title="Email message"
+                      className="mailbox-body w-full rounded-lg"
+                      style={{ minHeight: 200, height: '60vh', border: '1px solid var(--border-subtle)', background: '#fff' }}
+                      sandbox="allow-popups allow-popups-to-escape-sandbox"
+                      referrerPolicy="no-referrer"
+                      srcDoc={m.htmlBody}
                     />
                   ) : (
                     <pre className="whitespace-pre-wrap text-sm" style={{ color: 'var(--text-primary)', fontFamily: 'inherit' }}>

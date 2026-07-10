@@ -12,9 +12,68 @@
  *   - Some sites block server-side scrapers (Cloudflare, etc.)
  */
 
+import { lookup } from 'node:dns/promises'
+import { isIP } from 'node:net'
+
 const MAX_BYTES = 1_500_000  // cap ~1.5 MB per page so we don't OOM on giant sites
 const TIMEOUT_MS = 15_000
+const MAX_REDIRECTS = 5
 const USER_AGENT = 'OrbisVoiceWebsiteChecker/1.0 (+https://myorbisvoice.com)'
+
+// ─── SSRF guard ─────────────────────────────────────────────────────────────
+// This service fetches URLs supplied by tenant users. Without a guard, an
+// authenticated user could point it at internal Docker services or cloud
+// metadata (169.254.169.254). We resolve the host and reject any private,
+// loopback, link-local, or reserved address — and re-check on every redirect
+// hop so a public URL can't 302 into the internal network.
+
+function ipv4Blocked(ip: string): boolean {
+  const parts = ip.split('.').map(Number)
+  if (parts.length !== 4 || parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return true
+  const [a, b] = parts as [number, number, number, number]
+  if (a === 0) return true                              // 0.0.0.0/8
+  if (a === 10) return true                             // 10/8 private
+  if (a === 127) return true                            // loopback
+  if (a === 169 && b === 254) return true               // link-local + cloud metadata
+  if (a === 172 && b >= 16 && b <= 31) return true      // 172.16/12 private
+  if (a === 192 && b === 168) return true               // 192.168/16 private
+  if (a === 100 && b >= 64 && b <= 127) return true     // 100.64/10 CGNAT
+  if (a === 192 && b === 0) return true                 // 192.0.0/24 + 192.0.2/24
+  if (a === 198 && (b === 18 || b === 19)) return true  // 198.18/15 benchmark
+  if (a >= 224) return true                             // multicast + reserved (224-255)
+  return false
+}
+
+function ipBlocked(ip: string): boolean {
+  const v = isIP(ip)
+  if (v === 4) return ipv4Blocked(ip)
+  if (v === 6) {
+    const low = ip.toLowerCase()
+    if (low === '::1' || low === '::') return true                 // loopback / unspecified
+    if (low.startsWith('fe80') || low.startsWith('fc') || low.startsWith('fd')) return true // link-local + ULA
+    const m = low.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/)            // IPv4-mapped
+    if (m?.[1]) return ipv4Blocked(m[1])
+    return false
+  }
+  return true // not a parseable IP → block
+}
+
+/** Throws if the URL is non-http(s) or resolves to a blocked (private/internal) address. */
+async function assertPublicUrl(raw: string): Promise<void> {
+  let u: URL
+  try { u = new URL(raw) } catch { throw new Error('Invalid URL') }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Only http and https URLs are allowed')
+  const host = u.hostname.replace(/^\[|\]$/g, '')
+  if (host.toLowerCase() === 'localhost') throw new Error('URL points to a blocked address')
+  if (isIP(host)) {
+    if (ipBlocked(host)) throw new Error('URL points to a blocked address')
+    return
+  }
+  let addrs
+  try { addrs = await lookup(host, { all: true }) } catch { throw new Error('Could not resolve host') }
+  if (!addrs.length) throw new Error('Could not resolve host')
+  for (const a of addrs) if (ipBlocked(a.address)) throw new Error('URL points to a blocked address')
+}
 
 export type WebsiteFinding = {
   ok: boolean | null    // true = passes, false = fails, null = couldn't determine
@@ -36,32 +95,44 @@ async function fetchWithTimeout(url: string): Promise<{ html: string; finalUrl: 
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,application/xhtml+xml' },
-      redirect: 'follow',
-      signal: controller.signal,
-    })
-    const contentType = res.headers.get('content-type') ?? ''
-    if (!contentType.toLowerCase().includes('text/html')) {
-      return { error: `Server returned ${contentType || 'unknown content type'}, not HTML` }
+    let current = url
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      // Re-validate every hop so a public URL can't redirect into the internal network.
+      await assertPublicUrl(current)
+      const res = await fetch(current, {
+        headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,application/xhtml+xml' },
+        redirect: 'manual',
+        signal: controller.signal,
+      })
+      if (res.status >= 300 && res.status < 400) {
+        const loc = res.headers.get('location')
+        if (!loc) return { error: `Redirect (HTTP ${res.status}) with no Location header` }
+        try { current = new URL(loc, current).toString() } catch { return { error: 'Invalid redirect target' } }
+        continue
+      }
+      const contentType = res.headers.get('content-type') ?? ''
+      if (!contentType.toLowerCase().includes('text/html')) {
+        return { error: `Server returned ${contentType || 'unknown content type'}, not HTML` }
+      }
+      if (!res.ok) {
+        return { error: `HTTP ${res.status} ${res.statusText}` }
+      }
+      // Read up to MAX_BYTES so we don't OOM on giant pages
+      const reader = res.body?.getReader()
+      if (!reader) return { error: 'No response body' }
+      const decoder = new TextDecoder('utf-8', { fatal: false })
+      let html = ''
+      let total = 0
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        total += value.length
+        if (total > MAX_BYTES) { reader.cancel(); break }
+        html += decoder.decode(value, { stream: true })
+      }
+      return { html, finalUrl: current, status: res.status, contentType }
     }
-    if (!res.ok) {
-      return { error: `HTTP ${res.status} ${res.statusText}` }
-    }
-    // Read up to MAX_BYTES so we don't OOM on giant pages
-    const reader = res.body?.getReader()
-    if (!reader) return { error: 'No response body' }
-    const decoder = new TextDecoder('utf-8', { fatal: false })
-    let html = ''
-    let total = 0
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      total += value.length
-      if (total > MAX_BYTES) { reader.cancel(); break }
-      html += decoder.decode(value, { stream: true })
-    }
-    return { html, finalUrl: res.url, status: res.status, contentType }
+    return { error: 'Too many redirects' }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     return { error: controller.signal.aborted ? `Request timed out after ${TIMEOUT_MS / 1000}s` : msg }

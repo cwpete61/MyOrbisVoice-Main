@@ -1103,6 +1103,13 @@ router.post('/impersonation/:sessionId/end', async (req, res, next) => {
     const session = await prisma.impersonationSession.findUnique({ where: { id: sessionId } })
     if (!session) throw new AppError('NOT_FOUND', 'Session not found', 404)
 
+    // Only the admin who started the session (or a Super Admin) may end it —
+    // don't let one operator close another operator's session by id.
+    const isSuperAdmin = req.user!.roleKey === 'platform_super_admin'
+    if (session.adminUserId !== adminUserId && !isSuperAdmin) {
+      throw new AppError('FORBIDDEN', 'You can only end your own impersonation session', 403)
+    }
+
     await prisma.impersonationSession.update({
       where: { id: sessionId },
       data: { endedAt: new Date() },
@@ -1539,7 +1546,9 @@ function validateA2PNote(data: unknown): z.infer<typeof a2pNoteSchema> {
 }
 
 // POST /api/admin/a2p/:applicationId/notes — append a note
-router.post('/a2p/:applicationId/notes', async (req, res, next) => {
+// Writing an operator note mutates tenant-adjacent state, so it requires Admin
+// (matching every other A2P write); read-only Support must not annotate records.
+router.post('/a2p/:applicationId/notes', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { applicationId } = req.params as { applicationId: string }
     const { category, note } = validateA2PNote(req.body)

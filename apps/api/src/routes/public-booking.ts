@@ -331,6 +331,10 @@ router.get('/public/agent-demo/:slug', asyncHandler(async (req, res) => {
   if (demo.expiresAt && demo.expiresAt.getTime() < Date.now()) {
     throw new AppError('GONE', 'This demo link has expired', 410)
   }
+  // Once the demo is claimed the tenant converts in place into a real (paying)
+  // account and starts handling real customer calls. Stop serving the public
+  // microsite so the slug can't be used to read a live tenant's data.
+  if (demo.status === 'CLAIMED') throw new AppError('GONE', 'This demo has been activated', 410)
   const [widget, listings] = await Promise.all([
     prisma.channelConfig.findFirst({
       where:  { tenantId: demo.tenantId, channelType: 'WIDGET' },
@@ -365,10 +369,15 @@ router.get('/public/agent-demo/:slug', asyncHandler(async (req, res) => {
 router.get('/public/agent-demo/:slug/activity', asyncHandler(async (req, res) => {
   const demo = await prisma.agentDemo.findUnique({
     where: { micrositeSlug: req.params['slug']! },
-    select: { tenantId: true, expiresAt: true },
+    select: { tenantId: true, expiresAt: true, status: true, tenant: { select: { isDemo: true } } },
   })
   if (!demo) throw new AppError('NOT_FOUND', 'Demo not found', 404)
   if (demo.expiresAt && demo.expiresAt.getTime() < Date.now()) throw new AppError('GONE', 'This demo link has expired', 410)
+  // Never serve activity for a claimed demo / a tenant that is no longer a demo —
+  // it would leak a live paying tenant's real customer PII to anyone with the slug.
+  if (demo.status === 'CLAIMED' || demo.tenant?.isDemo === false) {
+    throw new AppError('GONE', 'This demo has been activated', 410)
+  }
   const tenantId = demo.tenantId
 
   const [calls, appts] = await Promise.all([

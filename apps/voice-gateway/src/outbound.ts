@@ -2,6 +2,7 @@ import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
 import { loadPartnerContext } from './lib/partner-context.js'
+import { verifyStreamAuth } from './lib/stream-auth.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { getContactHistory, formatContactHistoryForPrompt } from './lib/contact-history.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
@@ -137,6 +138,14 @@ export async function handleOutboundCall(ws: WebSocket) {
     if (!tenantId) {
       console.error('[outbound] missing tenantId in stream params')
       ws.close()
+      return
+    }
+
+    // Reject forged streams: tenantId must carry a valid API-minted signature
+    // (skipped only in dev without secret).
+    if (!verifyStreamAuth(tenantId, params)) {
+      console.error(`[outbound] stream auth failed for tenantId=${tenantId} callSid=${callSid} — rejecting`)
+      ws.close(1008, 'Unauthorized stream')
       return
     }
 
