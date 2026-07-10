@@ -975,3 +975,4 @@ When the user corrects you, or you catch yourself making a mistake: before conti
 
 - (Claude adds rules here)
 - When pulling/analyzing a call, ALWAYS supply the audio recording (a playable link/file), not just the transcript. A transcript without the recording is incomplete.
+- NEVER swap the Gemini Live model without a real test call to confirm it. Model IDs are API-version-specific: `gemini-2.0-flash-live-001` is INVALID on the v1alpha BidiGenerateContent endpoint (close code 1008 "not found for API version v1alpha"), which silently breaks every call — Orby connects then Gemini kills the session, no audio. Keep the proven `gemini-2.5-flash-native-audio-preview-*` snapshot unless a live call proves a replacement works. There is no static way to verify a Live model; only a real call does.

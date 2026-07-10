@@ -5,18 +5,17 @@ import { env } from '../lib/env.js'
 
 const GEMINI_LIVE_HOST = 'generativelanguage.googleapis.com'
 const GEMINI_API_VERSION = 'v1alpha'
-// Default = the STABLE half-cascade Live model (gemini-2.0-flash-live-001).
-// We moved OFF gemini-2.5-flash-native-audio-preview (2026-07-10): native-audio
-// is higher-fidelity but noticeably slower per turn AND a preview snapshot, which
-// showed up as multi-second response gaps on real calls. Half-cascade flash-live
-// responds much faster on 8kHz telephony and still supports prebuilt voices
-// (voice_config). Pinned to a stable `-001` snapshot (not `-latest`, which
-// rotated preview variants and caused close code 1008 in the 2026-05-06
-// launch-blocker investigation). Override via GEMINI_LIVE_MODEL to A/B a snapshot
-// (e.g. back to native-audio for a quality comparison).
+// Live model for the v1alpha BidiGenerateContent endpoint (see GEMINI_API_VERSION).
+// MUST be a model that endpoint actually serves — gemini-2.0-flash-live-001 was
+// tried on 2026-07-10 for lower latency but Gemini rejected it with close 1008
+// ("not found for API version v1alpha … not supported for bidiGenerateContent"),
+// breaking every call. Reverted to the proven native-audio snapshot. Do NOT swap
+// this without confirming the model is valid for v1alpha bidi on a live call —
+// there is no way to verify a Live model works except by placing a real call.
+// Override via GEMINI_LIVE_MODEL only with a known-good v1alpha bidi model.
 const GEMINI_MODEL = process.env['GEMINI_LIVE_MODEL']
   ? `models/${process.env['GEMINI_LIVE_MODEL']}`
-  : 'models/gemini-2.0-flash-live-001'
+  : 'models/gemini-2.5-flash-native-audio-preview-09-2025'
 
 // Gemini tool function declaration. The full schema lives in services/tools.ts;
 // we accept it here as a structural type so this file stays free of tool logic.
