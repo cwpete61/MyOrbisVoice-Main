@@ -10,20 +10,34 @@ import { attributeBooking } from '../services/cold-email-campaign.service.js'
 import { DEMO_PHONE_E164 } from '../services/demo-session.service.js'
 import { createAgentDemoClaimSession } from '../services/agent-demo.service.js'
 import { getBunnyConfig, storageHostForRegion } from '../services/bunny.service.js'
-import lamejs from '@breezystack/lamejs'
+
+type LameEncoder = { encodeBuffer(l: Int16Array, r?: Int16Array): Int8Array; flush(): Int8Array }
+type LameModule = {
+  WavHeader: { readHeader(v: DataView): { channels: number; sampleRate: number; dataOffset: number; dataLen: number } }
+  Mp3Encoder: new (channels: number, sampleRate: number, kbps: number) => LameEncoder
+}
+
+// Real ESM dynamic import that survives tsc's CommonJS lowering. With
+// module:commonjs, tsc rewrites a plain `import()` into `require()`, and this
+// package's CJS/IIFE build exports an empty object — so we hide the import in a
+// Function body (a string tsc won't touch) to force Node's native ESM loader.
+const esmImport = new Function('m', 'return import(m)') as (m: string) => Promise<{ default?: LameModule } & LameModule>
 
 /**
  * Transcode a PCM16 WAV buffer to MP3. Telephony recordings are stored as
  * 8kHz mono PCM WAV; the gateway's hand-written WAV headers don't reliably
  * decode in-browser (Chrome rejects them as NO_SOURCE), so we always serve
  * MP3, which every browser plays. Small files, low volume — fine on the fly.
+ *
+ * Dynamic import() is deliberate: this package's CJS `require` resolves to an
+ * empty IIFE build (Mp3Encoder/WavHeader undefined), so a static default import
+ * breaks in the CJS api. import() forces the ESM build with the real exports.
  */
-function wavToMp3(wav: Buffer): Buffer {
+async function wavToMp3(wav: Buffer): Promise<Buffer> {
+  const mod = await esmImport('@breezystack/lamejs')
+  const lamejs = (mod.default ?? mod) as LameModule
   const ab = wav.buffer.slice(wav.byteOffset, wav.byteOffset + wav.byteLength) as ArrayBuffer
-  // readHeader is a real static method; the shipped .d.ts just omits it.
-  const header = (lamejs.WavHeader as unknown as {
-    readHeader(v: DataView): { channels: number; sampleRate: number; dataOffset: number; dataLen: number }
-  }).readHeader(new DataView(ab))
+  const header = lamejs.WavHeader.readHeader(new DataView(ab))
   const channels = header.channels || 1
   const sampleRate = header.sampleRate || 8000
   const samples = new Int16Array(ab, header.dataOffset, header.dataLen / 2)
@@ -489,7 +503,7 @@ router.get('/public/agent-demo/:slug/recording/:conversationId', asyncHandler(as
         return
       }
       // Always serve MP3 (browsers reliably play it; the stored 8kHz WAVs don't).
-      const mp3 = wavToMp3(Buffer.from(await upstream.arrayBuffer()))
+      const mp3 = await wavToMp3(Buffer.from(await upstream.arrayBuffer()))
       res.setHeader('Content-Type', 'audio/mpeg')
       res.setHeader('Content-Length', String(mp3.length))
       res.send(mp3)
