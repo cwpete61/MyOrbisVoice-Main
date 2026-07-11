@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="170 175 660 445" role="img" aria-label="MyOrbisAgents">
+  <defs>
+    <linearGradient id="oa" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5fecec"/>
+      <stop offset="0.55" stop-color="#20bcc2"/>
+      <stop offset="1" stop-color="#0c8088"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#oa)" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="rotate(-20 500 400)"><ellipse cx="500" cy="400" rx="330" ry="120" stroke-width="16"/></g>
+    <circle cx="784" cy="322" r="10" fill="url(#oa)" stroke="none"/>
+    <circle cx="500" cy="390" r="205" stroke-width="26"/>
+    <path d="M300 250 A210 210 0 0 0 300 530" stroke-width="13"/>
+    <path d="M270 275 A250 250 0 0 0 275 520" stroke-width="10"/>
+    <path d="M244 305 A290 290 0 0 0 255 505" stroke-width="7"/>
+    <path d="M413 300 h174 a34 34 0 0 1 34 34 v118 a34 34 0 0 1 -34 34 h-96 l-40 40 v-40 h-38 a34 34 0 0 1 -34 -34 v-118 a34 34 0 0 1 34 -34 z" stroke-width="17"/>
+  </g>
+  <!-- house with punched-out door (evenodd) so it works on any background -->
+  <path fill="url(#oa)" fill-rule="evenodd"
+        d="M500 332 L588 402 H556 V462 H444 V402 H412 Z M482 422 h36 v40 h-36 Z"/>
+</svg>

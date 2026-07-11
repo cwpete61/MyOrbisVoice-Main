@@ -455,3 +455,5 @@ section { padding-block: clamp(56px, 8vw, 104px); position: relative; }
 /* ---------- video explainer ---------- */
 .video-wrap{max-width:960px;margin:0 auto;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-lg);background:#000}
 .video-wrap video{display:block;width:100%;height:auto}
+
+.brand .brandmark { width:26px; height:26px; display:block; flex:0 0 auto; }
