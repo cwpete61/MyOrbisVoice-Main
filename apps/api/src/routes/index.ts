@@ -41,7 +41,8 @@ import agentProspectsRouter from './agent-prospects.js'
 import partnerCampaignsRouter from './partner-campaigns.js'
 import partnerMailboxRouter from './partner-mailbox.js'
 import partnerGmbRouter from './partner-gmb.js'
-import partnerWebinarMarketingRouter from './partner-webinar-marketing.js'
+import adminWebinarMarketingRouter from './admin-webinar-marketing.js'
+import webinarRouter from './webinar.js'
 import partnerDailyActivityRouter from './partner-daily-activity.js'
 import meTwilioRouter from './me-twilio.js'
 import leadEngineRouter from './lead-engine.js'
@@ -88,6 +89,7 @@ router.use('/api', publicRouter)        // public /public/social-links — no au
 router.use('/api', unsubscribeRouter)   // public /public/unsubscribe — no auth (email recipients)
 router.use('/api', webhooksSesRouter)   // public /webhooks/ses — no auth (SNS; signature-verified)
 router.use('/api', publicBookingRouter) // public /public/partners/:slug/booking-info|slots|bookings (E.4) — no auth
+router.use('/api', webinarRouter)       // public /public/webinar/* (register + events) — must precede the auth-gated zone; its /admin/webinars/* routes self-guard
 router.use('/api', billingRouter)       // before auth-gated routers — contains public /billing/plans
 router.use('/api', widgetRouter)        // contains public /public/widget/session
 router.use('/api', pushRouter)          // contains public /push/vapid-public-key — must precede tenantRouter
@@ -108,7 +110,7 @@ router.use('/api', partnerScriptsRouter)
 router.use('/api', partnerCampaignsRouter)
 router.use('/api', partnerMailboxRouter)
 router.use('/api', partnerGmbRouter)
-router.use('/api', partnerWebinarMarketingRouter)
+router.use('/api', adminWebinarMarketingRouter)
 router.use('/api', partnerDailyActivityRouter)
 router.use('/api', meTwilioRouter)
 router.use('/api', leadEngineRouter)

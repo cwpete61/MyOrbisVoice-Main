@@ -1,36 +1,29 @@
 'use client'
 
 /**
- * Webinar Marketing — list index. Shows partner's lead lists with status
- * badges + counts, plus an inline "New list" form. Click a row → detail page.
+ * Admin Webinar Marketing — list index. Admin-only lead-discovery tool (was
+ * formerly partner-scoped). Shows the platform operator account's lead lists
+ * with status + counts, plus an inline "New list" form.
  */
 
 import { useState } from 'react'
 import Link from 'next/link'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { WEBINAR_THEME_VARS } from '@/components/webinar-marketing/theme'
 
 interface LeadListRow {
   id: string
   name: string
   niche: string
   location: string
-  status:
-    | 'DRAFT'
-    | 'DISCOVERING'
-    | 'EXTRACTING'
-    | 'VERIFYING'
-    | 'READY'
-    | 'ARCHIVED'
+  status: 'DRAFT' | 'DISCOVERING' | 'EXTRACTING' | 'VERIFYING' | 'READY' | 'ARCHIVED'
   searchEngines: string[]
   maxResultsPerQuery: number
   maxPagesPerDomain: number
   verificationMode: 'SYNTAX_DNS_ONLY' | 'EXTERNAL_PROVIDER'
   allowedEmailTypes: string[]
   createdAt: string
-  _count?: {
-    extractedEmails: number
-    inviteContacts: number
-  }
+  _count?: { extractedEmails: number; inviteContacts: number }
 }
 
 const STATUS_COLORS: Record<LeadListRow['status'], string> = {
@@ -42,14 +35,14 @@ const STATUS_COLORS: Record<LeadListRow['status'], string> = {
   ARCHIVED: '#374151',
 }
 
-export default function WebinarMarketingIndexPage() {
+export default function AdminWebinarMarketingIndexPage() {
   const { data: lists, loading, error, reload } = useApi<LeadListRow[]>(
-    '/api/partner/webinar-marketing/lists',
+    '/api/admin/webinar-marketing/lists',
   )
   const [showForm, setShowForm] = useState(false)
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
+    <div style={{ ...WEBINAR_THEME_VARS, maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 16 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>Webinar Marketing</h1>
@@ -62,14 +55,10 @@ export default function WebinarMarketingIndexPage() {
           type="button"
           onClick={() => setShowForm((v) => !v)}
           style={{
-            padding: '10px 18px',
-            borderRadius: 8,
-            border: 'none',
+            padding: '10px 18px', borderRadius: 8, border: 'none',
             background: showForm ? 'var(--surface)' : 'var(--accent)',
             color: showForm ? 'var(--text)' : '#04151A',
-            fontWeight: 600,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
+            fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
           }}
         >
           {showForm ? 'Cancel' : '+ New list'}
@@ -82,16 +71,7 @@ export default function WebinarMarketingIndexPage() {
       {error && <p style={{ color: '#ef4444' }}>Error: {String(error)}</p>}
 
       {lists && lists.length === 0 && !showForm && (
-        <div
-          style={{
-            border: '1px dashed var(--border-strong)',
-            borderRadius: 12,
-            padding: 32,
-            textAlign: 'center',
-            color: 'var(--text-secondary)',
-            marginTop: 16,
-          }}
-        >
+        <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 12, padding: 32, textAlign: 'center', color: 'var(--text-secondary)', marginTop: 16 }}>
           <p style={{ margin: 0 }}>No lists yet. Click <strong>+ New list</strong> to start.</p>
         </div>
       )}
@@ -101,19 +81,11 @@ export default function WebinarMarketingIndexPage() {
           {lists.map((l) => (
             <Link
               key={l.id}
-              href={`/partner-portal/webinar-marketing/${l.id}`}
+              href={`/admin/webinar-marketing/${l.id}`}
               style={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 12,
-                padding: '18px 20px',
-                textDecoration: 'none',
-                color: 'inherit',
-                display: 'grid',
-                gridTemplateColumns: '1fr auto',
-                gap: 12,
-                alignItems: 'center',
-                transition: 'border-color 0.15s ease',
+                background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 12,
+                padding: '18px 20px', textDecoration: 'none', color: 'inherit', display: 'grid',
+                gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'center', transition: 'border-color 0.15s ease',
               }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)' }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-subtle)' }}
@@ -145,19 +117,11 @@ export default function WebinarMarketingIndexPage() {
 
   function StatusPill({ status }: { status: LeadListRow['status'] }) {
     return (
-      <span
-        style={{
-          display: 'inline-block',
-          padding: '2px 8px',
-          borderRadius: 999,
-          background: `${STATUS_COLORS[status]}22`,
-          color: STATUS_COLORS[status],
-          fontSize: '0.7rem',
-          fontWeight: 600,
-          letterSpacing: '0.04em',
-          textTransform: 'uppercase',
-        }}
-      >
+      <span style={{
+        display: 'inline-block', padding: '2px 8px', borderRadius: 999,
+        background: `${STATUS_COLORS[status]}22`, color: STATUS_COLORS[status],
+        fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
+      }}>
         {status}
       </span>
     )
@@ -167,9 +131,9 @@ export default function WebinarMarketingIndexPage() {
 // ─── New list form (inline) ──────────────────────────────────────────────────
 
 const SEARCH_ENGINES = [
-  { slug: 'duckduckgo', label: 'DuckDuckGo', defaultChecked: true, badge: '' },
-  { slug: 'bing_web_search', label: 'Bing API', defaultChecked: false, badge: 'paid' },
-  { slug: 'google_scrape', label: 'Google (advanced)', defaultChecked: false, badge: '⚠ ToS risk' },
+  { slug: 'duckduckgo', label: 'DuckDuckGo', badge: '' },
+  { slug: 'bing_web_search', label: 'Bing API', badge: 'paid' },
+  { slug: 'google_scrape', label: 'Google (advanced)', badge: '⚠ ToS risk' },
 ]
 
 function NewListForm({ onCreated }: { onCreated: () => void }) {
@@ -185,9 +149,7 @@ function NewListForm({ onCreated }: { onCreated: () => void }) {
   const [error, setError] = useState<string | null>(null)
 
   function toggleEngine(slug: string) {
-    setEngines((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug],
-    )
+    setEngines((prev) => prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug])
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -195,12 +157,10 @@ function NewListForm({ onCreated }: { onCreated: () => void }) {
     setSubmitting(true)
     setError(null)
     try {
-      await apiFetch('/api/partner/webinar-marketing/lists', {
+      await apiFetch('/api/admin/webinar-marketing/lists', {
         method: 'POST',
         body: JSON.stringify({
-          name,
-          niche,
-          location,
+          name, niche, location,
           optionalEmailDomainFilter: domainFilter.trim() || null,
           searchEngines: engines,
           maxResultsPerQuery: maxResults,
@@ -218,18 +178,7 @@ function NewListForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 12,
-        padding: 20,
-        marginBottom: 16,
-        display: 'grid',
-        gap: 14,
-      }}
-    >
+    <form onSubmit={onSubmit} style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: 20, marginBottom: 16, display: 'grid', gap: 14 }}>
       <Row label="Name" hint="e.g. Dentists — Atlanta — Webinar Invite May 2026">
         <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} style={inputStyle} />
       </Row>
@@ -269,21 +218,10 @@ function NewListForm({ onCreated }: { onCreated: () => void }) {
         </Row>
       </div>
       {error && <p style={{ color: '#ef4444', margin: 0 }}>{error}</p>}
-      <button
-        type="submit"
-        disabled={submitting || engines.length === 0}
-        style={{
-          padding: '10px 18px',
-          borderRadius: 8,
-          border: 'none',
-          background: 'var(--accent)',
-          color: '#04151A',
-          fontWeight: 600,
-          cursor: 'pointer',
-          opacity: submitting || engines.length === 0 ? 0.5 : 1,
-          justifySelf: 'start',
-        }}
-      >
+      <button type="submit" disabled={submitting || engines.length === 0} style={{
+        padding: '10px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#04151A',
+        fontWeight: 600, cursor: 'pointer', opacity: submitting || engines.length === 0 ? 0.5 : 1, justifySelf: 'start',
+      }}>
         {submitting ? 'Creating…' : 'Create list'}
       </button>
     </form>
@@ -303,10 +241,6 @@ function Row({ label, hint, children }: { label: string; hint: string; children:
 }
 
 const inputStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: 6,
-  border: '1px solid var(--border-subtle)',
-  background: 'var(--background)',
-  color: 'var(--text)',
-  fontSize: '0.9rem',
+  padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border-subtle)',
+  background: 'var(--background)', color: 'var(--text)', fontSize: '0.9rem',
 }

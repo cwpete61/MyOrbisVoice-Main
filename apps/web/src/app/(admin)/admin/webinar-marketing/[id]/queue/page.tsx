@@ -1,15 +1,16 @@
 'use client'
 
 /**
- * Webinar Marketing — manual review queue. Shows QUARANTINED rows with
- * verification details + source context. Operator approves with consent
- * status + lawful-basis notes, or rejects with optional reason.
+ * Admin Webinar Marketing — manual review queue. QUARANTINED rows with
+ * verification details + source context. Operator approves with consent status
+ * + lawful-basis notes, or rejects with an optional reason.
  */
 
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { apiFetch, useApi } from '@/hooks/useApi'
+import { WEBINAR_THEME_VARS } from '@/components/webinar-marketing/theme'
 
 interface QueueRow {
   id: string
@@ -42,19 +43,16 @@ const TYPE_BADGE_COLORS: Record<string, string> = {
   MANUAL_REVIEW_REQUIRED: '#8b5cf6',
 }
 
-export default function ReviewQueuePage() {
+export default function AdminReviewQueuePage() {
   const params = useParams<{ id: string }>()
   const listId = params.id
   const { data: rows, loading, error, reload } = useApi<QueueRow[]>(
-    `/api/partner/webinar-marketing/lists/${listId}/queue`,
+    `/api/admin/webinar-marketing/lists/${listId}/queue`,
   )
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
-      <Link
-        href={`/partner-portal/webinar-marketing/${listId}`}
-        style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textDecoration: 'none', display: 'inline-block', marginBottom: 12 }}
-      >
+    <div style={{ ...WEBINAR_THEME_VARS, maxWidth: 1100, margin: '0 auto', padding: '32px 24px' }}>
+      <Link href={`/admin/webinar-marketing/${listId}`} style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textDecoration: 'none', display: 'inline-block', marginBottom: 12 }}>
         ← Back to list
       </Link>
       <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, marginBottom: 6 }}>Manual review queue</h1>
@@ -94,7 +92,7 @@ function QueueCard({ row, onChanged }: { row: QueueRow; onChanged: () => void })
     setBusy(true)
     setErrMsg(null)
     try {
-      await apiFetch(`/api/partner/webinar-marketing/queue/${row.id}/approve`, {
+      await apiFetch(`/api/admin/webinar-marketing/queue/${row.id}/approve`, {
         method: 'POST',
         body: JSON.stringify({
           consentStatus: consent,
@@ -114,7 +112,7 @@ function QueueCard({ row, onChanged }: { row: QueueRow; onChanged: () => void })
     setBusy(true)
     setErrMsg(null)
     try {
-      await apiFetch(`/api/partner/webinar-marketing/queue/${row.id}/reject`, {
+      await apiFetch(`/api/admin/webinar-marketing/queue/${row.id}/reject`, {
         method: 'POST',
         body: JSON.stringify({ notes: notes.trim() || undefined }),
       })
@@ -159,11 +157,8 @@ function QueueCard({ row, onChanged }: { row: QueueRow; onChanged: () => void })
             </blockquote>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          style={{ background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, flexShrink: 0 }}
-        >
+        <button type="button" onClick={() => setOpen((v) => !v)}
+          style={{ background: 'transparent', border: '1px solid var(--border-subtle)', color: 'var(--text)', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600, flexShrink: 0 }}>
           {open ? 'Cancel' : 'Decide'}
         </button>
       </div>
@@ -184,31 +179,19 @@ function QueueCard({ row, onChanged }: { row: QueueRow; onChanged: () => void })
           </label>
           <label style={{ display: 'grid', gap: 4, fontSize: '0.82rem', color: 'var(--text)' }}>
             Lawful-basis notes {consent === 'MANUAL_LAWFUL_BASIS_REVIEWED' && <span style={{ color: '#ef4444' }}>· required</span>}
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              maxLength={2000}
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} maxLength={2000}
               placeholder="Why is contacting this address lawful? (GDPR Art. 6, CAN-SPAM, prior business relationship, public business listing, …)"
-              style={{ ...inputStyle, fontFamily: 'inherit' }}
-            />
+              style={{ ...inputStyle, fontFamily: 'inherit' }} />
           </label>
           {errMsg && <p style={{ color: '#ef4444', fontSize: '0.85rem', margin: 0 }}>{errMsg}</p>}
           <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              type="button"
-              onClick={approve}
+            <button type="button" onClick={approve}
               disabled={busy || (consent === 'MANUAL_LAWFUL_BASIS_REVIEWED' && notes.trim().length === 0)}
-              style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#04151A', fontWeight: 600, cursor: 'pointer', fontSize: '0.88rem', opacity: busy ? 0.5 : 1 }}
-            >
+              style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#04151A', fontWeight: 600, cursor: 'pointer', fontSize: '0.88rem', opacity: busy ? 0.5 : 1 }}>
               {busy ? '…' : 'Approve & promote'}
             </button>
-            <button
-              type="button"
-              onClick={reject}
-              disabled={busy}
-              style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid #ef444477', background: 'transparent', color: '#ef4444', fontWeight: 600, cursor: 'pointer', fontSize: '0.88rem' }}
-            >
+            <button type="button" onClick={reject} disabled={busy}
+              style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid #ef444477', background: 'transparent', color: '#ef4444', fontWeight: 600, cursor: 'pointer', fontSize: '0.88rem' }}>
               Reject
             </button>
           </div>
@@ -219,10 +202,6 @@ function QueueCard({ row, onChanged }: { row: QueueRow; onChanged: () => void })
 }
 
 const inputStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: 6,
-  border: '1px solid var(--border-subtle)',
-  background: 'var(--background)',
-  color: 'var(--text)',
-  fontSize: '0.88rem',
+  padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border-subtle)',
+  background: 'var(--background)', color: 'var(--text)', fontSize: '0.88rem',
 }
