@@ -15,6 +15,9 @@ const TEAL = '#12a3a3'
 interface PublicWebinar {
   id: string; slug: string; title: string; titleEs: string | null
   description: string | null; descriptionEs: string | null; coverImageUrl: string | null
+  // The HOSTING TENANT's brand — this page belongs to them, not to us. Their
+  // prospects see their name, never ours (white-label by default).
+  brand: { name: string | null; logoUrl: string | null }
   sessions: { id: string; kind: string; startsAt: string | null }[]
 }
 
@@ -47,7 +50,11 @@ export default function WebinarPublicPage() {
     <div style={{ minHeight: '100vh', background: '#f6f8f8', color: '#111', fontFamily: '-apple-system,Segoe UI,Roboto,sans-serif' }}>
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '28px 20px 60px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <span style={{ fontWeight: 800, color: TEAL, letterSpacing: '-.01em' }}>MyOrbisAgents</span>
+          {/* The hosting tenant's brand — NOT ours. This was hardcoded to
+              "MyOrbisAgents", which showed every tenant's prospects the wrong company. */}
+          {w.brand.logoUrl
+            ? <img src={w.brand.logoUrl} alt={w.brand.name ?? ''} style={{ height: 28, maxWidth: 200, objectFit: 'contain' }} />
+            : <span style={{ fontWeight: 800, color: TEAL, letterSpacing: '-.01em' }}>{w.brand.name ?? ''}</span>}
           <button onClick={() => setLang(l => (l === 'en' ? 'es' : 'en'))} style={{ background: 'none', border: '1px solid #ddd', borderRadius: 999, padding: '5px 12px', fontSize: 13, cursor: 'pointer', color: '#333' }}>{t.langLabel}</button>
         </div>
 

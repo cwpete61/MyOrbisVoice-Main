@@ -137,13 +137,24 @@ export async function getWebinar(tenantId: string, id: string) {
   return webinar
 }
 
-/** Public registration-page payload (safe subset, no tenant internals). */
+/**
+ * Public registration-page payload (safe subset, no tenant internals).
+ *
+ * Includes the HOSTING TENANT'S brand, because this page is seen by the tenant's
+ * prospects — not by us and not by our customers. Acme Roofing's registrants must see
+ * "Acme Roofing". Branding it MyOrbisWebinar (or, as it was hardcoded, MyOrbisAgents)
+ * would be like Mailchimp stamping its logo on a business's own emails. White-label by
+ * default; a "powered by" footer would be a tier/pricing decision, not a default.
+ *
+ * Only brandName + logoUrl cross the wire — everything else on BusinessProfile is
+ * tenant-internal and must not leak to an unauthenticated page.
+ */
 export async function getPublicWebinarBySlug(slug: string) {
   const webinar = await prisma.webinar.findFirst({
     where:  { slug, status: 'PUBLISHED' },
     select: {
       id: true, slug: true, title: true, titleEs: true, description: true,
-      descriptionEs: true, coverImageUrl: true,
+      descriptionEs: true, coverImageUrl: true, tenantId: true,
       sessions: {
         where:   { status: 'OPEN' },
         orderBy: { startsAt: 'asc' },
@@ -152,7 +163,29 @@ export async function getPublicWebinarBySlug(slug: string) {
     },
   })
   if (!webinar) throw new AppError('NOT_FOUND', 'Webinar not found', 404)
-  return webinar
+
+  // Webinar.tenantId has no FK relation, so this is a second lookup rather than an
+  // include. BusinessProfile is 1:1 per tenant (tenantId @unique); fall back to the
+  // Tenant's displayName when a profile hasn't been filled in yet.
+  const [profile, tenant] = await Promise.all([
+    prisma.businessProfile.findUnique({
+      where:  { tenantId: webinar.tenantId },
+      select: { brandName: true, logoUrl: true },
+    }),
+    prisma.tenant.findUnique({
+      where:  { id: webinar.tenantId },
+      select: { displayName: true },
+    }),
+  ])
+
+  const { tenantId: _tenantId, ...safe } = webinar // don't expose the tenant id publicly
+  return {
+    ...safe,
+    brand: {
+      name:    profile?.brandName ?? tenant?.displayName ?? null,
+      logoUrl: profile?.logoUrl ?? null,
+    },
+  }
 }
 
 export async function createSession(input: {
