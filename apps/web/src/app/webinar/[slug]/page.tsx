@@ -19,8 +19,10 @@ interface PublicWebinar {
 }
 
 const COPY = {
-  en: { register: 'Register free', name: 'Your name', email: 'Email', phone: 'Phone (optional)', watch: 'Watch now', registered: "You're registered!", play: '▶ Play webinar', ask: 'Ask a question', askPh: 'Type your question…', cta: 'Book a call', guide: 'Download the guide', sending: 'Registering…', langLabel: 'Español' },
-  es: { register: 'Regístrate gratis', name: 'Tu nombre', email: 'Correo', phone: 'Teléfono (opcional)', watch: 'Ver ahora', registered: '¡Estás registrado!', play: '▶ Reproducir webinar', ask: 'Haz una pregunta', askPh: 'Escribe tu pregunta…', cta: 'Agenda una llamada', guide: 'Descarga la guía', sending: 'Registrando…', langLabel: 'English' },
+  en: { register: 'Register free', name: 'Your name', email: 'Email', phone: 'Phone (optional)', watch: 'Watch now', registered: "You're registered!", play: '▶ Play webinar', ask: 'Ask a question', askPh: 'Type your question…', cta: 'Book a call', guide: 'Download the guide', sending: 'Registering…', langLabel: 'Español',
+        voiceConsent: 'You can call me about this webinar', consentNote: 'Optional. Leave it unticked and we will never call you — you still get the webinar.' },
+  es: { register: 'Regístrate gratis', name: 'Tu nombre', email: 'Correo', phone: 'Teléfono (opcional)', watch: 'Ver ahora', registered: '¡Estás registrado!', play: '▶ Reproducir webinar', ask: 'Haz una pregunta', askPh: 'Escribe tu pregunta…', cta: 'Agenda una llamada', guide: 'Descarga la guía', sending: 'Registrando…', langLabel: 'English',
+        voiceConsent: 'Pueden llamarme sobre este seminario', consentNote: 'Opcional. Si no lo marcas, nunca te llamaremos — igual recibes el seminario.' },
 }
 
 export default function WebinarPublicPage() {
@@ -66,13 +68,17 @@ function Centered({ children }: { children: React.ReactNode }) {
 
 function RegisterForm({ slug, sessionId, lang, t, onRegistered }: { slug: string; sessionId?: string; lang: 'en' | 'es'; t: typeof COPY['en']; onRegistered: (token: string) => void }) {
   const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [phone, setPhone] = useState('')
+  // Unticked by default and never auto-checked — an unticked box is a legally
+  // meaningful "no". The API treats absent/false as "keep the wall up".
+  const [voiceConsent, setVoiceConsent] = useState(false)
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null)
   const input: React.CSSProperties = { padding: '12px 14px', borderRadius: 8, border: '1px solid #d5dbdb', background: '#fff', fontSize: 15, width: '100%' }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setErr(null)
     try {
-      const r = await apiFetch<{ joinToken: string }>(`/api/public/webinar/${slug}/register`, { method: 'POST', body: JSON.stringify({ name, email, phone: phone || undefined, locale: lang, sessionId }) })
+      // Only claim consent when there's a number to call and the box is ticked.
+      const r = await apiFetch<{ joinToken: string }>(`/api/public/webinar/${slug}/register`, { method: 'POST', body: JSON.stringify({ name, email, phone: phone || undefined, locale: lang, sessionId, voiceConsent: voiceConsent && !!phone }) })
       onRegistered(r.joinToken)
     } catch (e2) { setErr(e2 instanceof Error ? e2.message : 'Failed') }
     finally { setBusy(false) }
@@ -83,6 +89,24 @@ function RegisterForm({ slug, sessionId, lang, t, onRegistered }: { slug: string
       <input style={input} placeholder={t.name} value={name} onChange={e => setName(e.target.value)} required maxLength={120} />
       <input style={input} type="email" placeholder={t.email} value={email} onChange={e => setEmail(e.target.value)} required maxLength={320} />
       <input style={input} placeholder={t.phone} value={phone} onChange={e => setPhone(e.target.value)} maxLength={40} />
+
+      {/* Voice consent. Only offered once there's a number to call. Unticked = we
+          never dial: the Contact stays optedOutVoice and the compliance gate in
+          dispatchPendingCalls suppresses any attempt. */}
+      {phone.trim() !== '' && (
+        <label style={{ display: 'flex', gap: 9, alignItems: 'flex-start', fontSize: 13.5, color: '#334', cursor: 'pointer', lineHeight: 1.45 }}>
+          <input
+            type="checkbox"
+            checked={voiceConsent}
+            onChange={e => setVoiceConsent(e.target.checked)}
+            style={{ marginTop: 2, width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+          />
+          <span>
+            {t.voiceConsent}
+            <span style={{ display: 'block', color: '#8a9394', fontSize: 12, marginTop: 2 }}>{t.consentNote}</span>
+          </span>
+        </label>
+      )}
       {err && <p style={{ color: '#dc2626', margin: 0, fontSize: 14 }}>{err}</p>}
       <button type="submit" disabled={busy} style={{ padding: '13px', borderRadius: 8, border: 'none', background: TEAL, color: '#fff', fontWeight: 700, fontSize: 16, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? t.sending : t.register}</button>
     </form>

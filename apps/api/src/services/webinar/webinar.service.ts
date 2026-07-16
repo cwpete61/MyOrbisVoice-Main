@@ -12,6 +12,7 @@ import { resolvePerson } from './identity.service.js'
 import { appendEvent } from './events.service.js'
 import { createAppointment } from '../appointment.service.js'
 import { createContact } from '../contact.service.js'
+import { processOptIn } from '../opt-out.service.js'
 
 function slugify(s: string): string {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'webinar'
@@ -178,6 +179,62 @@ export async function createSession(input: {
  * Register a person for a webinar (public). Idempotent per (webinar, email):
  * a repeat registration returns the existing Registrant without double-logging.
  */
+/**
+ * Ensure a WebinarPerson has a Voice CRM Contact, creating one if needed, and apply
+ * the consent posture. Returns the contactId.
+ *
+ * THE COMPLIANCE WALL. createContact() defaults optedOutVoice=false (opted IN), which
+ * is wrong for a webinar lead — so a Contact born here is forced opted OUT of voice and
+ * SMS, matching every other cold-lead path in this codebase (lead-engine, partner-crm,
+ * public, gmb-evaluation). Only an explicit, user-ticked consent re-opens a channel, via
+ * processOptIn (which clears the flag AND writes the OptOutLog proof).
+ *
+ * Why a Contact exists at REGISTRATION and not only at booking: the hero rule chases
+ * people who clicked the CTA and did NOT book. OutboundCallAttempt.contactId is a
+ * required FK and optedOutVoice lives only on Contact — so with no Contact those people
+ * are both un-callable and un-gateable, and the rule could never fire for its own target.
+ */
+async function ensureContactForPerson(input: {
+  tenantId: string
+  personId: string
+  name: string
+  email: string
+  phone?: string | null
+  voiceConsent?: boolean | undefined
+  smsConsent?: boolean | undefined
+  source: string
+}): Promise<string> {
+  const person = await prisma.webinarPerson.findUnique({
+    where:  { id: input.personId },
+    select: { contactId: true },
+  })
+  let contactId = person?.contactId ?? null
+
+  if (!contactId) {
+    const [firstName, ...rest] = input.name.trim().split(/\s+/)
+    const contact = await createContact(input.tenantId, {
+      firstName: firstName ?? input.name,
+      lastName:  rest.length ? rest.join(' ') : undefined,
+      email:     input.email,
+      phoneE164: input.phone ?? undefined,
+      source:    input.source,
+    })
+    // The wall goes up first; consent (below) is the only thing that lowers it.
+    await prisma.contact.update({
+      where: { id: contact.id },
+      data:  { optedOutVoice: true, optedOutVoiceAt: new Date(), optedOutSms: true, optedOutSmsAt: new Date() },
+    })
+    contactId = contact.id
+    await prisma.webinarPerson.update({ where: { id: input.personId }, data: { contactId } })
+  }
+
+  // Explicit consent only. processOptIn writes the flag + the audit trail together.
+  if (input.voiceConsent) await processOptIn(input.tenantId, contactId, 'VOICE', 'MANUAL')
+  if (input.smsConsent)   await processOptIn(input.tenantId, contactId, 'SMS',   'MANUAL')
+
+  return contactId
+}
+
 export async function registerForSession(input: {
   slug: string
   name: string
@@ -185,6 +242,8 @@ export async function registerForSession(input: {
   phone?: string | null
   locale?: string
   sessionId?: string | null
+  voiceConsent?: boolean | undefined
+  smsConsent?: boolean | undefined
 }) {
   const webinar = await prisma.webinar.findFirst({
     where:  { slug: input.slug, status: 'PUBLISHED' },
@@ -197,6 +256,22 @@ export async function registerForSession(input: {
     email:    input.email,
     phone:    input.phone,
     fullName: input.name,
+  })
+
+  // Contact + consent BEFORE the already-registered short-circuit: it's idempotent,
+  // and a repeat registration is exactly when someone re-submits the form with the
+  // consent box ticked. Running it after the early return would strand every existing
+  // registrant without a Contact — and no Contact means the hero rule can never reach
+  // them (OutboundCallAttempt.contactId is a required FK).
+  await ensureContactForPerson({
+    tenantId:     webinar.tenantId,
+    personId:     person.id,
+    name:         input.name,
+    email:        input.email,
+    phone:        input.phone ?? null,
+    voiceConsent: input.voiceConsent,
+    smsConsent:   input.smsConsent,
+    source:       'webinar-registration',
   })
 
   const existing = await prisma.registrant.findUnique({
@@ -261,6 +336,7 @@ export async function bookFromWebinar(input: {
   timezone: string
   notes?: string | undefined
   smsConsent?: boolean | undefined
+  voiceConsent?: boolean | undefined
 }) {
   const reg = await prisma.registrant.findUnique({
     where:  { joinToken: input.joinToken },
@@ -268,31 +344,18 @@ export async function bookFromWebinar(input: {
   })
   if (!reg) throw new AppError('NOT_FOUND', 'Registration not found', 404)
 
-  // Reuse the soft-linked Contact if identity resolution already found one.
-  const person = await prisma.webinarPerson.findUnique({
-    where:  { id: reg.personId },
-    select: { contactId: true },
+  // Same wall + consent path as registration (usually a no-op here — the Contact
+  // already exists from registration; this also applies any consent ticked at booking).
+  const contactId = await ensureContactForPerson({
+    tenantId:     reg.tenantId,
+    personId:     reg.personId,
+    name:         reg.name,
+    email:        reg.email,
+    phone:        reg.phone,
+    voiceConsent: input.voiceConsent,
+    smsConsent:   input.smsConsent,
+    source:       'webinar-booking',
   })
-  let contactId = person?.contactId ?? null
-
-  if (!contactId) {
-    const [firstName, ...rest] = reg.name.trim().split(/\s+/)
-    const contact = await createContact(reg.tenantId, {
-      firstName: firstName ?? reg.name,
-      lastName:  rest.length ? rest.join(' ') : undefined,
-      email:     reg.email,
-      phoneE164: reg.phone ?? undefined,
-      source:    'webinar-booking',
-    })
-    // The compliance wall — see the doc comment above. Closed by default.
-    await prisma.contact.update({
-      where: { id: contact.id },
-      data:  { optedOutVoice: true, optedOutSms: !input.smsConsent },
-    })
-    contactId = contact.id
-    // Backfill the soft link so the spine and CRM agree from here on.
-    await prisma.webinarPerson.update({ where: { id: reg.personId }, data: { contactId } })
-  }
 
   const appointment = await createAppointment(reg.tenantId, null, {
     contactId,

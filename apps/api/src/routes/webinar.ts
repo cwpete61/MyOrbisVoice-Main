@@ -105,6 +105,10 @@ const registerSchema = z.object({
   phone:     z.string().max(40).optional(),
   locale:    z.enum(['en', 'es']).optional(),
   sessionId: z.string().uuid().optional(),
+  // Consent is unticked by default — absent/false means the wall stays up and this
+  // person is never auto-dialed or texted. Only an explicit true opens a channel.
+  voiceConsent: z.boolean().optional(),
+  smsConsent:   z.boolean().optional(),
 })
 router.post('/public/webinar/:slug/register', async (req, res, next) => {
   try {
@@ -140,6 +144,9 @@ const bookSchema = z.object({
   timezone:   z.string().min(1).max(64),
   notes:      z.string().max(2000).optional(),
   smsConsent: z.boolean().optional(),
+  // Unticked by default — the safe path is the lazy path. Only an explicit true
+  // ever opens the voice wall (see bookFromWebinar).
+  voiceConsent: z.boolean().optional(),
 })
 router.post('/public/webinar/book', async (req, res, next) => {
   try {
