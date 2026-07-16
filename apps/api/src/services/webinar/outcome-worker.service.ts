@@ -103,18 +103,68 @@ async function chaseOne(row: { personId: string; webinarId: string; tenantId: st
     return false
   }
 
-  await appendEvent({
-    personId:  row.personId,
-    tenantId:  row.tenantId,
-    type:      'CALLED',
-    source:    'VOICE',
-    webinarId: row.webinarId,
-    meta:      { callId: attempt.id },
-    // One CALLED per attempt — a replayed tick can't double-count the score.
-    traceId:   `webinar:called:${attempt.id}`,
-  })
+  // NOTE: no CALLED event here. The dial is in flight; Twilio resolves the real
+  // outcome later via the status webhook (handleOutboundStatus). reconcileCalls()
+  // below emits CALLED once we know what actually happened — so meta.outcome is
+  // truthful rather than optimistic.
   console.log(`[webinar-outcome] ${row.personId}: engaged + CTA, no booking → AI call placed`)
   return true
+}
+
+/**
+ * Emit CALLED for dials that have RESOLVED, with their real outcome.
+ *
+ * Deliberately pull-based: outbound.service is a generic voice primitive used by
+ * every campaign, and reaching into it to emit webinar events would couple it to this
+ * product. Instead we poll our own bridge campaigns' attempts. Twilio's status webhook
+ * (handleOutboundStatus) sets outcomeCode; we translate that into the spine.
+ *
+ * Only real dials become CALLED. `opted_out_voice` (gated — never dialed) and
+ * `dispatch_error…` (never left the building) are NOT calls and must never score.
+ */
+const REAL_DIAL_OUTCOMES = new Set(['answered', 'busy', 'no_answer', 'canceled', 'failed'])
+
+async function reconcileCalls(tenantId: string): Promise<void> {
+  const bridges = await prisma.outboundCampaign.findMany({
+    where:  { tenantId, audienceJson: { path: ['kind'], equals: 'webinar_hero_bridge' } },
+    select: { id: true, audienceJson: true },
+  })
+  if (!bridges.length) return
+
+  for (const bridge of bridges) {
+    const webinarId = (bridge.audienceJson as { webinarId?: string } | null)?.webinarId
+    if (!webinarId) continue
+
+    const resolved = await prisma.outboundCallAttempt.findMany({
+      where:  { campaignId: bridge.id, outcomeCode: { not: null } },
+      select: { id: true, contactId: true, outcomeCode: true },
+      take:   BATCH,
+    })
+
+    for (const a of resolved) {
+      const outcome = a.outcomeCode ?? ''
+      // Strip the "dispatch_error: …" detail before matching.
+      const base = outcome.split(':')[0]?.trim() ?? ''
+      if (!REAL_DIAL_OUTCOMES.has(base)) continue
+
+      const person = await prisma.webinarPerson.findFirst({
+        where:  { tenantId, contactId: a.contactId },
+        select: { id: true },
+      })
+      if (!person) continue
+
+      // traceId makes this idempotent — re-ticking can't double-count the score.
+      await appendEvent({
+        personId:  person.id,
+        tenantId,
+        type:      'CALLED',
+        source:    'VOICE',
+        webinarId,
+        meta:      { callId: a.id, outcome: base },
+        traceId:   `webinar:called:${a.id}`,
+      })
+    }
+  }
 }
 
 export async function runTick(): Promise<void> {
@@ -122,6 +172,10 @@ export async function runTick(): Promise<void> {
   ticking = true
   try {
     const tenantId = await getPlatformWebinarTenantId()
+
+    // Turn finished dials into CALLED events first, so a person who was just called
+    // is excluded from the chase below on this same tick.
+    await reconcileCalls(tenantId)
 
     // Engaged enough to be worth a call.
     const scores = await prisma.engagementScore.findMany({
