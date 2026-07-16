@@ -23,7 +23,6 @@
  */
 import { prisma } from '../../lib/prisma.js'
 import { appendEvent } from './events.service.js'
-import { getPlatformWebinarTenantId } from './metrics.service.js'
 
 const WORKER_INTERVAL_MS = 30_000
 const BATCH = 20
@@ -124,16 +123,18 @@ async function chaseOne(row: { personId: string; webinarId: string; tenantId: st
  */
 const REAL_DIAL_OUTCOMES = new Set(['answered', 'busy', 'no_answer', 'canceled', 'failed'])
 
-async function reconcileCalls(tenantId: string): Promise<void> {
+async function reconcileCalls(): Promise<void> {
+  // Every tenant's bridges — the worker has no session, so tenant comes off the row.
   const bridges = await prisma.outboundCampaign.findMany({
-    where:  { tenantId, audienceJson: { path: ['kind'], equals: 'webinar_hero_bridge' } },
-    select: { id: true, audienceJson: true },
+    where:  { audienceJson: { path: ['kind'], equals: 'webinar_hero_bridge' } },
+    select: { id: true, tenantId: true, audienceJson: true },
   })
   if (!bridges.length) return
 
   for (const bridge of bridges) {
     const webinarId = (bridge.audienceJson as { webinarId?: string } | null)?.webinarId
     if (!webinarId) continue
+    const tenantId = bridge.tenantId
 
     const resolved = await prisma.outboundCallAttempt.findMany({
       where:  { campaignId: bridge.id, outcomeCode: { not: null } },
@@ -171,22 +172,22 @@ export async function runTick(): Promise<void> {
   if (ticking) return // re-entrancy guard (single-instance worker)
   ticking = true
   try {
-    const tenantId = await getPlatformWebinarTenantId()
-
     // Turn finished dials into CALLED events first, so a person who was just called
     // is excluded from the chase below on this same tick.
-    await reconcileCalls(tenantId)
+    await reconcileCalls()
 
-    // Engaged enough to be worth a call.
+    // Engaged enough to be worth a call — across ALL tenants. The worker runs without a
+    // session, so tenantId comes off each row rather than a caller's context.
     const scores = await prisma.engagementScore.findMany({
-      where:   { tenantId, score: { gte: MIN_SCORE } },
+      where:   { score: { gte: MIN_SCORE } },
       orderBy: { computedAt: 'asc' },
       take:    BATCH,
-      select:  { personId: true, webinarId: true },
+      select:  { personId: true, webinarId: true, tenantId: true },
     })
     if (!scores.length) return
 
     for (const s of scores) {
+      const tenantId = s.tenantId
       // The rule, read straight off the append-only log.
       const events = await prisma.interactionEvent.findMany({
         where:  { personId: s.personId, webinarId: s.webinarId },

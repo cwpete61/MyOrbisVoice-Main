@@ -38,9 +38,9 @@ export default function WebinarDetailPage() {
     setErr(null)
     try {
       const [d, c, l] = await Promise.all([
-        apiFetch<Detail>(`/api/admin/webinars/${id}`),
-        apiFetch<Command>(`/api/admin/webinars/${id}/command`),
-        apiFetch<Lead[]>(`/api/admin/webinars/${id}/leads`),
+        apiFetch<Detail>(`/api/webinars/${id}`),
+        apiFetch<Command>(`/api/webinars/${id}/command`),
+        apiFetch<Lead[]>(`/api/webinars/${id}/leads`),
       ])
       setDetail(d); setCommand(c); setLeads(l)
     } catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
@@ -49,13 +49,13 @@ export default function WebinarDetailPage() {
 
   async function openTimeline(personId: string, name: string) {
     setPerson({ id: personId, name }); setTab('timeline'); setTimeline(null)
-    try { setTimeline(await apiFetch<Timeline>(`/api/admin/webinars/person/${personId}/timeline?webinarId=${id}`)) }
+    try { setTimeline(await apiFetch<Timeline>(`/api/webinars/person/${personId}/timeline?webinarId=${id}`)) }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
   }
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 4px' }}>
-      <Link href="/admin/webinars" style={{ color: 'var(--text-secondary)', fontSize: 13, textDecoration: 'none', display: 'inline-block', marginBottom: 10 }}>← Back to webinars</Link>
+      <Link href="/webinars" style={{ color: 'var(--text-secondary)', fontSize: 13, textDecoration: 'none', display: 'inline-block', marginBottom: 10 }}>← Back to webinars</Link>
       <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)' }}>{detail?.title ?? 'Webinar'}</h1>
       {detail?.status === 'PUBLISHED' && (
         <a href={`/webinar/${detail.slug}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: TEAL }}>/webinar/{detail.slug} ↗</a>

@@ -9,34 +9,11 @@
  */
 import { prisma } from '../../lib/prisma.js'
 
-/**
- * Admin-hosted webinars live under the existing platform tenant.
- *
- * This was a hardcoded UUID ('b7833050-…', commented "orbis-platform") that matched
- * no Tenant row in any environment — the seed mints the platform tenant with a random
- * uuid(), so a literal could never line up. It went unnoticed because the webinar
- * tables carry tenantId with NO foreign key, so writes silently "worked" against a
- * phantom tenant. The first call into the real CRM (Contact.tenantId HAS an FK) blew
- * up with Contact_tenantId_fkey. Resolve the real tenant by its stable slug instead,
- * cached for the process — the slug is the durable contract, the uuid is not.
- *
- * Phase 3 (multi-tenant) replaces this entirely: tenantId comes from the session.
- */
-const PLATFORM_TENANT_SLUG = 'orbis-platform'
-let platformTenantIdCache: string | null = null
-
-export async function getPlatformWebinarTenantId(): Promise<string> {
-  if (platformTenantIdCache) return platformTenantIdCache
-  const tenant = await prisma.tenant.findUnique({
-    where:  { slug: PLATFORM_TENANT_SLUG },
-    select: { id: true },
-  })
-  if (!tenant) {
-    throw new Error(`Platform tenant '${PLATFORM_TENANT_SLUG}' not found — run \`pnpm db:seed\``)
-  }
-  platformTenantIdCache = tenant.id
-  return tenant.id
-}
+// NOTE: getPlatformWebinarTenantId() lived here and pinned every webinar to a single
+// hardcoded tenant, which made this an internal tool rather than a product. It is gone
+// on purpose — tenantId now comes from the caller's session (routes) or off the row
+// itself (the outcome worker, which has no session). Do not reintroduce a "default
+// tenant" helper: a single stray call site would silently re-pin every tenant's data.
 
 /** Command — headline metrics for one webinar. Revenue + pipeline, not attendance. */
 export async function commandMetrics(webinarId: string) {

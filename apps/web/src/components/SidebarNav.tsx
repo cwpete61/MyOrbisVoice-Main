@@ -70,6 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/crm',           labelKey: 'nav.items.crm',            icon: <Icon d="M2 3h3v4H2zm5 0h3v4H7zm5 0h3v4h-3zM2 9h3v4H2zm5 0h3v4H7zm5 0h3v4h-3z" /> },
       { href: '/conversations', labelKey: 'nav.items.conversations',  icon: <Icon d="M2 4h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H5l-3 2V5a1 1 0 0 1 1-1zm3 3h6M5 9h4" /> },
       { href: '/appointments',  labelKey: 'nav.items.appointments',   icon: <Icon d="M4 3h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zm3 4h2M7 10h2M4 6h8" /> },
+      { href: '/webinars',      labelKey: 'nav.items.webinars',       icon: <Icon d="M2 4h9a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM12 7l3-2v6l-3-2z" /> },
       { href: '/payments',      labelKey: 'nav.items.payments',       icon: <Icon d="M1 5h14v6a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5zm0-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2M4 9h3" /> },
       { href: '/campaigns',     labelKey: 'nav.items.campaigns',      icon: <Icon d="M3 5h10M3 8h7M3 11h4m6-4v6m0 0-2-2m2 2 2-2" /> },
       { href: '/outbound',      labelKey: 'nav.items.outbound',       icon: <Icon d="M15 3l-4 4M3 13l4-4M11 7l2 2-6 6-2-2zm-3 7l-3 2 1-3" /> },

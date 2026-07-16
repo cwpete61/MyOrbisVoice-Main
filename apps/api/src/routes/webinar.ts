@@ -1,26 +1,55 @@
 /**
  * MyOrbisWebinar routes.
- *   /api/admin/webinars/*  — platform-admin management + the 3 screens' data.
- *   /api/public/webinar/*  — registration page + attendee engagement events.
+ *   /api/webinars/*        — a tenant manages ITS OWN webinars + the 3 screens' data.
+ *   /api/public/webinar/*  — registration page + attendee engagement events (no auth).
  *
- * Admin-hosted for now: every webinar is scoped to the platform tenant
- * (resolved by slug, see getPlatformWebinarTenantId). Web is Prisma-free — it calls these over HTTP.
+ * MULTI-TENANT. Every webinar is scoped to the caller's own tenant, taken from the
+ * session (req.user.currentTenantId), exactly like contacts/appointments. It used to be
+ * platform-admin-only against one hardcoded tenant, which made it an internal tool
+ * rather than a product.
+ *
+ * Platform staff reach a tenant's webinars the same way they reach any tenant data:
+ * POST /api/admin/tenants/:tenantId/impersonate mints a tenant-scoped token
+ * (roleKey=tenant_owner, isPlatformRole=false). No bypass here, by design.
+ *
+ * Web is Prisma-free — it calls these over HTTP.
  */
-import { Router, type IRouter } from 'express'
+import { Router, type IRouter, type Request } from 'express'
 import { z } from 'zod'
 import { authenticate } from '../middleware/authenticate.js'
-import { requirePlatformAdmin } from '../middleware/rbac.js'
+import { requireTenantContext } from '../middleware/rbac.js'
 import { AppError } from '@voiceautomation/shared'
 import {
   createWebinar, listWebinars, getWebinar, updateWebinar, createSession,
   getPublicWebinarBySlug, registerForSession, recordEngagement, bookFromWebinar,
 } from '../services/webinar/webinar.service.js'
-import { commandMetrics, leadIntelligence, personTimeline, getPlatformWebinarTenantId } from '../services/webinar/metrics.service.js'
+import { commandMetrics, leadIntelligence, personTimeline } from '../services/webinar/metrics.service.js'
 
 const router: IRouter = Router()
 
-// ─── Admin ───────────────────────────────────────────────────────────────────
-router.use('/admin/webinars', authenticate, requirePlatformAdmin)
+/**
+ * The caller's tenant — never optional.
+ *
+ * The house idiom is `req.user!.currentTenantId!`, but that `!` lies: requireTenantContext
+ * lets any isPlatformRole token through WITHOUT a tenantId, so currentTenantId can be null
+ * at runtime. Passing that into Prisma as `where: { tenantId: undefined }` makes Prisma DROP
+ * the filter and return every tenant's rows — a silent cross-tenant leak. Fail loudly instead.
+ * A platform admin who wants tenant data must impersonate (which carries a real tenantId).
+ */
+function tenantOf(req: Request): string {
+  const tenantId = req.user?.currentTenantId
+  if (!tenantId) {
+    throw new AppError('FORBIDDEN', 'No tenant context — platform staff must impersonate a tenant to manage its webinars', 403)
+  }
+  return tenantId
+}
+
+// ─── Tenant-scoped management ────────────────────────────────────────────────
+// NOT under /api/admin on purpose: marketing-kit mounts an adminRouter at '/api/admin'
+// with a blanket `authenticate + requirePlatformAdmin` (marketing-kit.ts:51,238) and is
+// registered at '/' BEFORE this router, so ANY /api/admin/* path is platform-gated
+// before it reaches us. A tenant-facing product cannot live in that namespace.
+router.use('/webinars', authenticate, requireTenantContext)
 
 const createSchema = z.object({
   title:         z.string().min(2).max(160),
@@ -30,20 +59,20 @@ const createSchema = z.object({
   vertical:      z.string().max(80).optional(),
 })
 
-router.post('/admin/webinars', async (req, res, next) => {
+router.post('/webinars', async (req, res, next) => {
   try {
     const p = createSchema.safeParse(req.body)
     if (!p.success) throw new AppError('VALIDATION_ERROR', p.error.issues[0]?.message ?? 'Invalid input', 422)
-    res.status(201).json({ data: await createWebinar({ tenantId: await getPlatformWebinarTenantId(), createdBy: req.user!.id, ...p.data }) })
+    res.status(201).json({ data: await createWebinar({ tenantId: tenantOf(req), createdBy: req.user!.id, ...p.data }) })
   } catch (err) { next(err) }
 })
 
-router.get('/admin/webinars', async (_req, res, next) => {
-  try { res.json({ data: await listWebinars(await getPlatformWebinarTenantId()) }) } catch (err) { next(err) }
+router.get('/webinars', async (req, res, next) => {
+  try { res.json({ data: await listWebinars(tenantOf(req)) }) } catch (err) { next(err) }
 })
 
-router.get('/admin/webinars/:id', async (req, res, next) => {
-  try { res.json({ data: await getWebinar(await getPlatformWebinarTenantId(), req.params.id) }) } catch (err) { next(err) }
+router.get('/webinars/:id', async (req, res, next) => {
+  try { res.json({ data: await getWebinar(tenantOf(req), req.params.id) }) } catch (err) { next(err) }
 })
 
 const updateSchema = z.object({
@@ -56,11 +85,11 @@ const updateSchema = z.object({
   videoAssetRef: z.string().max(300).nullable().optional(),
   status:        z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
 })
-router.patch('/admin/webinars/:id', async (req, res, next) => {
+router.patch('/webinars/:id', async (req, res, next) => {
   try {
     const p = updateSchema.safeParse(req.body)
     if (!p.success) throw new AppError('VALIDATION_ERROR', p.error.issues[0]?.message ?? 'Invalid input', 422)
-    res.json({ data: await updateWebinar(await getPlatformWebinarTenantId(), req.params.id, p.data) })
+    res.json({ data: await updateWebinar(tenantOf(req), req.params.id, p.data) })
   } catch (err) { next(err) }
 })
 
@@ -69,28 +98,28 @@ const sessionSchema = z.object({
   startsAt: z.string().datetime().optional(),
   timezone: z.string().max(60).optional(),
 })
-router.post('/admin/webinars/:id/sessions', async (req, res, next) => {
+router.post('/webinars/:id/sessions', async (req, res, next) => {
   try {
     const p = sessionSchema.safeParse(req.body)
     if (!p.success) throw new AppError('VALIDATION_ERROR', p.error.issues[0]?.message ?? 'Invalid input', 422)
     res.status(201).json({ data: await createSession({
-      tenantId: await getPlatformWebinarTenantId(), webinarId: req.params.id,
+      tenantId: tenantOf(req), webinarId: req.params.id,
       kind: p.data.kind, startsAt: p.data.startsAt ? new Date(p.data.startsAt) : null, timezone: p.data.timezone,
     }) })
   } catch (err) { next(err) }
 })
 
 // The 3 screens.
-router.get('/admin/webinars/:id/command', async (req, res, next) => {
-  try { await getWebinar(await getPlatformWebinarTenantId(), req.params.id); res.json({ data: await commandMetrics(req.params.id) }) } catch (err) { next(err) }
+router.get('/webinars/:id/command', async (req, res, next) => {
+  try { await getWebinar(tenantOf(req), req.params.id); res.json({ data: await commandMetrics(req.params.id) }) } catch (err) { next(err) }
 })
-router.get('/admin/webinars/:id/leads', async (req, res, next) => {
-  try { await getWebinar(await getPlatformWebinarTenantId(), req.params.id); res.json({ data: await leadIntelligence(req.params.id) }) } catch (err) { next(err) }
+router.get('/webinars/:id/leads', async (req, res, next) => {
+  try { await getWebinar(tenantOf(req), req.params.id); res.json({ data: await leadIntelligence(req.params.id) }) } catch (err) { next(err) }
 })
-router.get('/admin/webinars/person/:personId/timeline', async (req, res, next) => {
+router.get('/webinars/person/:personId/timeline', async (req, res, next) => {
   try {
     const webinarId = typeof req.query['webinarId'] === 'string' ? req.query['webinarId'] : undefined
-    res.json({ data: await personTimeline(req.params.personId, await getPlatformWebinarTenantId(), webinarId) })
+    res.json({ data: await personTimeline(req.params.personId, tenantOf(req), webinarId) })
   } catch (err) { next(err) }
 })
 

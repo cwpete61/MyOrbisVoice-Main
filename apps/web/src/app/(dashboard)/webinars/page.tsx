@@ -35,14 +35,14 @@ export default function WebinarsPage() {
 
   const load = useCallback(async () => {
     setErr(null)
-    try { setRows(await apiFetch<WebinarRow[]>('/api/admin/webinars')) }
+    try { setRows(await apiFetch<WebinarRow[]>('/api/webinars')) }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
   }, [])
   useEffect(() => { void load() }, [load])
 
   async function publish(id: string, status: 'PUBLISHED' | 'DRAFT') {
     setBusy(true)
-    try { await apiFetch(`/api/admin/webinars/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }); await load() }
+    try { await apiFetch(`/api/webinars/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }); await load() }
     catch (e) { alert(e instanceof Error ? e.message : 'Failed') }
     finally { setBusy(false) }
   }
@@ -59,10 +59,10 @@ export default function WebinarsPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <Link href="/admin/webinar-marketing"
-            style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
-            Find invite contacts →
-          </Link>
+          {/* The "Find invite contacts" link to /admin/webinar-marketing was removed here:
+              that's the platform-only outbound cold-email tool, which a tenant cannot open
+              (its whole /api/admin namespace is requirePlatformAdmin). Linking to it from a
+              tenant page would be a guaranteed 403. */}
           <button onClick={() => setShowForm(v => !v)}
             style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: showForm ? 'var(--surface-app)' : TEAL, color: showForm ? 'var(--text-primary)' : '#fff', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             {showForm ? 'Cancel' : '+ New webinar'}
@@ -87,7 +87,7 @@ export default function WebinarsPage() {
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 5 }}>
-                    <Link href={`/admin/webinars/${w.id}`} style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)', textDecoration: 'none' }}>{w.title}</Link>
+                    <Link href={`/webinars/${w.id}`} style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)', textDecoration: 'none' }}>{w.title}</Link>
                     <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', padding: '2px 7px', borderRadius: 999, background: s.bg, color: s.fg, border: `1px solid ${s.bd}` }}>{w.status}</span>
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -98,7 +98,7 @@ export default function WebinarsPage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                  <Link href={`/admin/webinars/${w.id}`} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Open</Link>
+                  <Link href={`/webinars/${w.id}`} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Open</Link>
                   {w.status === 'DRAFT'
                     ? <button onClick={() => publish(w.id, 'PUBLISHED')} disabled={busy} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Publish</button>
                     : w.status === 'PUBLISHED'
@@ -126,7 +126,7 @@ function NewWebinarForm({ onCreated }: { onCreated: () => void }) {
     e.preventDefault()
     setBusy(true); setErr(null)
     try {
-      await apiFetch('/api/admin/webinars', { method: 'POST', body: JSON.stringify({
+      await apiFetch('/api/webinars', { method: 'POST', body: JSON.stringify({
         title, titleEs: titleEs || undefined, vertical: vertical || undefined, description: description || undefined,
       }) })
       onCreated()
