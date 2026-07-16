@@ -3297,6 +3297,355 @@ model WebinarAuditLog {
 }
 
 // ============================================================================
+// CALL REVIEW — multi-agent, cross-model QA judge for Orby's calls.
+//
+// Runs OFFLINE post-call (never the live hot path). A panel of diverse-lens
+// reviewers grades the transcript, an adversarial refuter (different model)
+// tries to kill each flag, an editor synthesizes. Findings that survive carry a
+// proposed prompt/config fix a human APPROVES before anything touches the live
+// agent. Immutable ledger — the human-review trail. See
+// apps/api/src/services/call-review/.
+// ============================================================================
+enum CallReviewStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum FindingCategory {
+  ACCURACY      // stated data the caller never gave (hallucination)
+  COMPLIANCE    // false claims, consent, booking-truth
+  COMPLETENESS  // skipped qualifying questions
+  UX            // loops, re-asks, stacked questions, unnatural flow
+  BOOKING       // wrong/failed booking, confirm-before-send
+  BILINGUAL     // missed Spanish handling
+  OTHER
+}
+
+enum FindingSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// Panel outcome for a flag. DISPUTED = reviewers/refuter disagreed → the
+// disagreement is the signal, route to a human.
+enum FindingDisposition {
+  CONFIRMED
+  REFUTED
+  DISPUTED
+}
+
+enum FindingReviewStatus {
+  OPEN
+  APPROVED   // human accepted the proposed fix
+  REJECTED   // human dismissed (false positive / not worth it)
+  APPLIED    // fix landed in the prompt/config (Phase 2)
+}
+
+model CallReview {
+  id             String           @id @default(uuid())
+  conversationId String           @unique
+  tenantId       String
+  status         CallReviewStatus @default(PENDING)
+  // Composite call-quality score (0-100) + panel agreement confidence (0-100).
+  score          Int?
+  confidence     Int?
+  modelsUsed     String[]         @default([])
+  summary        String?
+  // Raw panel output (reviewers + refuters + editor) kept for audit.
+  panelJson      Json?
+  error          String?
+  createdAt      DateTime         @default(now())
+  completedAt    DateTime?
+
+  findings CallReviewFinding[]
+
+  @@index([tenantId, createdAt])
+  @@index([status])
+}
+
+model CallReviewFinding {
+  id             String              @id @default(uuid())
+  reviewId       String
+  conversationId String
+  tenantId       String
+  category       FindingCategory
+  severity       FindingSeverity
+  title          String
+  detail         String?
+  // Transcript quote so a human verifies in seconds (design rule: every flag
+  // carries evidence).
+  quote          String?
+  disposition    FindingDisposition
+  confidence     Int                 @default(0)
+  // Which models raised vs refuted, for the audit trail.
+  votesJson      Json?
+  // The correction proposed to Orby's prompt/config (NOT auto-applied).
+  proposedFix    String?
+  reviewStatus   FindingReviewStatus @default(OPEN)
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  reviewNotes    String?
+
+  review CallReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@index([reviewStatus, severity])
+  @@index([tenantId, disposition])
+}
+
+// Learned prompt corrections — the Phase-2 apply loop for Call Review.
+//
+// An APPROVED finding auto-creates a DRAFT rule from its proposedFix. A human
+// must then EDIT + PUBLISH it (second gate) before it reaches Orby's live
+// prompt. RETIRE is an instant rollback. Nothing here ever auto-activates —
+// mutating a live voice agent's prompt without a human is how you ship a
+// regression to every caller at once.
+enum PromptRuleStatus {
+  DRAFT    // created from an approved finding; NOT in the live prompt
+  ACTIVE   // published — injected into Orby's Layer-1 prompt
+  RETIRED  // rolled back; out of the prompt, kept for the audit trail
+}
+
+model AgentPromptRule {
+  id                   String           @id @default(uuid())
+  // null = platform-wide (all agents). Set = scoped to one tenant.
+  tenantId             String?
+  category             FindingCategory
+  // The instruction injected verbatim into the prompt.
+  text                 String
+  status               PromptRuleStatus @default(DRAFT)
+  version              Int              @default(1)
+  // Provenance — which reviewed call produced this rule. Unique so re-approving
+  // the same finding can't spawn duplicate rules.
+  sourceFindingId      String?          @unique
+  sourceConversationId String?
+  // Audit trail (who did what, when) — this IS the change log.
+  createdBy            String?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  activatedAt          DateTime?
+  activatedBy          String?
+  retiredAt            DateTime?
+  retiredBy            String?
+  // Chain when a rule is replaced by a revised version.
+  supersedesId         String?
+
+  @@index([status, tenantId])
+}
+
+// ============================================================================
+// MYORBISWEBINAR — the acquisition/webinar PRODUCT (apps/webinar).
+//
+// ⚠️ DISTINCT from the "Webinar Marketing" models above. Those build outbound
+// INVITE LISTS (search → scrape → verify emails). THESE are the customer-
+// acquisition platform: async/evergreen webinars + the attribution SPINE
+// (person identity + typed event log + engagement score). Design of record:
+// MyOrbisWebinar/docs/MyOrbisWebinar-product-architecture.md §9 (locked
+// 2026-07-04): in-repo as apps/webinar, async-first, Voice auth/CRM/A2P as
+// imports. Native live streaming is a deferred Phase-5 add-on. All rows carry
+// the Voice/Hub tenantId.
+// ============================================================================
+enum WebinarStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum WebinarSessionKind {
+  EVERGREEN     // always-on, plays on demand per registrant
+  JUST_IN_TIME  // scheduled recurring auto-start (e.g. "next session in 12 min")
+  SCHEDULED     // one fixed datetime
+  LIVE          // native live (Phase 5)
+}
+
+enum WebinarSessionStatus {
+  DRAFT
+  OPEN          // registration open
+  ENDED
+  CANCELED
+}
+
+// The spine event vocabulary. Source-tagged so cross-product signal (Voice
+// calls, Reviews, etc.) projects into the same log.
+enum InteractionEventType {
+  REGISTERED
+  JOINED
+  WATCHED       // metaJson.seconds — a watch heartbeat
+  POLL_ANSWERED
+  QUESTION_ASKED
+  CTA_CLICKED
+  DOWNLOADED
+  BOOKED        // booking-first CTA → Voice Appointment
+  CALLED        // MyOrbisVoice touchpoint (via import/webhook)
+  PURCHASED
+  REVIEWED
+  REPLAY_WATCHED
+  NO_SHOW
+}
+
+enum InteractionEventSource {
+  WEBINAR
+  VOICE
+  BIZ
+  REVIEWS
+}
+
+enum EngagementTemp {
+  HOT
+  WARM
+  COLD
+}
+
+// D4 identity — the stable per-tenant person the event log keys on. Resolved
+// deterministically (email-exact → phone-exact → new). Ambiguous matches are
+// flagged, never auto-merged. Links to the Voice Contact when resolvable.
+model WebinarPerson {
+  id              String   @id @default(uuid())
+  tenantId        String
+  email           String?
+  normalizedEmail String?
+  phone           String?
+  normalizedPhone String?
+  fullName        String?
+  // Voice CRM link (email/phone resolved). Best-effort; may be null.
+  contactId       String?
+  // D4: set when email→one person but phone→another. Held separate + surfaced.
+  ambiguousFlag   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  registrants Registrant[]
+  events      InteractionEvent[]
+  scores      EngagementScore[]
+
+  @@unique([tenantId, normalizedEmail])
+  @@index([tenantId, normalizedPhone])
+  @@index([contactId])
+}
+
+model Webinar {
+  id            String        @id @default(uuid())
+  tenantId      String
+  slug          String        @unique // public registration URL: /webinar/<slug>
+  title         String
+  titleEs       String?
+  description   String?
+  descriptionEs String?
+  vertical      String?
+  status        WebinarStatus @default(DRAFT)
+  coverImageUrl String?
+  // Owned video primitive (Mux/Cloudflare Stream/IVS decided at Phase 2). The
+  // reference to the recorded asset for evergreen playback.
+  videoAssetRef String?
+  createdBy     String?       // admin user id
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  sessions    WebinarSession[]
+  registrants Registrant[]
+  events      InteractionEvent[]
+  scores      EngagementScore[]
+
+  @@index([tenantId, status])
+}
+
+model WebinarSession {
+  id        String               @id @default(uuid())
+  webinarId String
+  tenantId  String
+  kind      WebinarSessionKind   @default(EVERGREEN)
+  status    WebinarSessionStatus @default(OPEN)
+  startsAt  DateTime?            // null for pure evergreen
+  timezone  String               @default("America/New_York")
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  webinar     Webinar      @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+  registrants Registrant[]
+  events      InteractionEvent[]
+
+  @@index([webinarId, status])
+  @@index([tenantId])
+}
+
+model Registrant {
+  id           String   @id @default(uuid())
+  webinarId    String
+  sessionId    String?
+  tenantId     String
+  personId     String
+  name         String
+  email        String
+  phone        String?
+  locale       String   @default("en")
+  // Opaque token → the join/watch/replay URL (no login for attendees).
+  joinToken    String   @unique @default(uuid())
+  registeredAt DateTime @default(now())
+  attendedAt   DateTime?
+  watchSeconds Int      @default(0)
+  // Reminder offsets already fired, e.g. ["24h","1h"]. Reminders route through
+  // Voice's A2P/OptOutLog compliance contract before sending.
+  remindersSent String[] @default([])
+
+  webinar Webinar         @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+  session WebinarSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  person  WebinarPerson   @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([webinarId, email])
+  @@index([webinarId, personId])
+  @@index([tenantId])
+}
+
+// THE spine: append-only typed event log. D5 — payloads are a zod-validated
+// discriminated union checked at the service layer before write. traceId gives
+// idempotent ingestion (dedup on replay/webhook retries).
+model InteractionEvent {
+  id        String                 @id @default(uuid())
+  personId  String
+  tenantId  String
+  webinarId String?
+  sessionId String?
+  type      InteractionEventType
+  source    InteractionEventSource @default(WEBINAR)
+  // Idempotency key for cross-product webhook replays. Unique when present.
+  traceId   String?                @unique
+  metaJson  Json?
+  ts        DateTime               @default(now())
+
+  person  WebinarPerson   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  webinar Webinar?        @relation(fields: [webinarId], references: [id], onDelete: SetNull)
+  session WebinarSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([personId, ts])
+  @@index([tenantId, ts])
+  @@index([webinarId, type])
+}
+
+// D6 — materialized engagement score per person per webinar. Recomputed
+// incrementally from that person's events on each append; upserted here.
+model EngagementScore {
+  id         String         @id @default(uuid())
+  personId   String
+  webinarId  String
+  tenantId   String
+  intent     Int            @default(0) // 0-100
+  attention  Int            @default(0) // 0-100
+  score      Int            @default(0) // 0-100 composite
+  temp       EngagementTemp @default(COLD)
+  stage      String?
+  computedAt DateTime       @default(now())
+
+  person  WebinarPerson @relation(fields: [personId], references: [id], onDelete: Cascade)
+  webinar Webinar       @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, webinarId])
+  @@index([tenantId, temp])
+}
+
+// ============================================================================
 // PARTNER DAILY ACTIVITY — daily playbook checkbox tracker
 //
 // One row per (partner × activityKey × dayKey). dayKey = YYYY-MM-DD in
@@ -3483,6 +3832,11 @@ model AgentDemo {
   // Scorer output: '297' (Solo Capture) | '497' (Solo Power) — default tier at claim.
   recommendedTier String
   status          AgentDemoStatus @default(DRAFT)
+  // Personalized founder-intro video (JoggAI talking avatar of the operator,
+  // greeting THIS lead by name). videoStatus: NONE|GENERATING|READY|FAILED.
+  videoUrl        String?
+  videoStatus     String?         @default("NONE")
+  videoJoggId     String?
   enrichedAt      DateTime?
   sentAt          DateTime?
   claimedAt       DateTime?
