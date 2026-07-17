@@ -3437,16 +3437,23 @@ model AgentPromptRule {
 }
 
 // ============================================================================
-// MYORBISWEBINAR — the acquisition/webinar PRODUCT (apps/webinar).
+// MYORBISWEBINAR — the acquisition/webinar PRODUCT.
 //
 // ⚠️ DISTINCT from the "Webinar Marketing" models above. Those build outbound
 // INVITE LISTS (search → scrape → verify emails). THESE are the customer-
 // acquisition platform: async/evergreen webinars + the attribution SPINE
-// (person identity + typed event log + engagement score). Design of record:
-// MyOrbisWebinar/docs/MyOrbisWebinar-product-architecture.md §9 (locked
-// 2026-07-04): in-repo as apps/webinar, async-first, Voice auth/CRM/A2P as
-// imports. Native live streaming is a deferred Phase-5 add-on. All rows carry
-// the Voice/Hub tenantId.
+// (person identity + typed event log + engagement score).
+//
+// As-built reference: docs/27-myorbiswebinar-architecture.md. (The old pointer
+// here was MyOrbisWebinar/docs/…-product-architecture.md §9 — a path outside
+// this repo, describing a greenfield separate repo. Neither is what got built.)
+//
+// NOT apps/webinar. The code is apps/api/src/{routes,services}/webinar plus
+// apps/web/src/app/(dashboard)/webinars and /webinar/[slug]. Async-first, with
+// Voice auth/CRM/A2P/outbound as in-repo imports and NO Account Hub dependency
+// (the Hub is designed but not running). Native live streaming is a deferred
+// add-on. Multi-tenant: every row carries the caller's own tenantId, taken from
+// the session — see tenantOf() in routes/webinar.ts.
 // ============================================================================
 enum WebinarStatus {
   DRAFT
