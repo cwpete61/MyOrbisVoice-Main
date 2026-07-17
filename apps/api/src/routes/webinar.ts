@@ -66,7 +66,7 @@ const createSchema = z.object({
   description:   z.string().max(4000).optional(),
   descriptionEs: z.string().max(4000).optional(),
   vertical:      z.string().max(80).optional(),
-  videoUrl:      z.string().max(600).optional(),
+  videoUrl:      z.string().max(1200).optional(),   // fits a pasted <iframe> blob, not just a URL
   ctaLabel:      z.string().max(60).optional(),
   ctaLabelEs:    z.string().max(60).optional(),
   ctaUrl:        z.string().max(600).optional(),
@@ -132,7 +132,7 @@ const updateSchema = z.object({
   coverImageUrl: z.string().url().max(600).nullable().optional(),
   // videoAssetRef is NOT settable directly — it is half of a pair, and a raw ref would
   // skip the parser. Tenants send the URL they pasted; the service derives both columns.
-  videoUrl:      z.string().max(600).nullable().optional(),
+  videoUrl:      z.string().max(1200).nullable().optional(),  // fits a pasted <iframe> blob
   ctaLabel:      z.string().max(60).nullable().optional(),
   ctaLabelEs:    z.string().max(60).nullable().optional(),
   ctaUrl:        z.string().max(600).nullable().optional(),

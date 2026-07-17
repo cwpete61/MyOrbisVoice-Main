@@ -38,6 +38,45 @@ describe('Vimeo — including the forms where the id is not the last segment', (
   })
 })
 
+describe('pasted "Share → Embed" blobs — what people actually copy', () => {
+  it('takes the real YouTube embed code verbatim', () => {
+    const blob = '<iframe width="560" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ?si=xY1&amp;controls=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write" allowfullscreen></iframe>'
+    expect(parseVideoUrl(blob)).toEqual({ provider: 'YOUTUBE', ref: 'dQw4w9WgXcQ' })
+  })
+
+  it('takes the real Vimeo embed code verbatim', () => {
+    const blob = '<iframe src="https://player.vimeo.com/video/76979871?h=a1b2c3&amp;badge=0" width="640" height="360" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>'
+    expect(parseVideoUrl(blob)).toEqual({ provider: 'VIMEO', ref: '76979871' })
+  })
+
+  it('handles the nocookie host and single quotes', () => {
+    expect(parseVideoUrl("<iframe src='https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ'></iframe>"))
+      .toEqual({ provider: 'YOUTUBE', ref: 'dQw4w9WgXcQ' })
+  })
+
+  it('survives a multi-line paste', () => {
+    expect(parseVideoUrl('<iframe\n  width="560"\n  src="https://youtu.be/dQw4w9WgXcQ"\n></iframe>'))
+      .toEqual({ provider: 'YOUTUBE', ref: 'dQw4w9WgXcQ' })
+  })
+
+  // Extracting a src does NOT relax the gate — it feeds the same host/protocol checks.
+  it.each([
+    ['<iframe src="https://evil.example/embed/dQw4w9WgXcQ"></iframe>'],
+    ['<iframe src="javascript:alert(1)"></iframe>'],
+    ['<iframe src="https://youtube.com.evil.example/embed/dQw4w9WgXcQ"></iframe>'],
+    ['<iframe onload="alert(1)"></iframe>'],
+    ['<iframe></iframe>'],
+  ])('a hostile blob still fails the same gate: %s', (blob) => {
+    expect(parseVideoUrl(blob)).toBeNull()
+  })
+
+  it('ignores the blob\'s own attributes — we rebuild the embed ourselves', () => {
+    // width/allow/onload from the paste are discarded; only the id survives.
+    const blob = '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" onload="alert(1)" sandbox="allow-scripts"></iframe>'
+    expect(parseVideoUrl(blob)).toEqual({ provider: 'YOUTUBE', ref: 'dQw4w9WgXcQ' })
+  })
+})
+
 describe('rejects — these are the reason this file exists', () => {
   it.each([
     // Script execution. `new URL()` accepts all of these, so z.string().url() would too.

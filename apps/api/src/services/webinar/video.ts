@@ -35,7 +35,14 @@ const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/
 /** Vimeo ids are numeric. */
 const VIMEO_ID = /^[0-9]{6,12}$/
 
-const YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be', 'www.youtu.be'])
+// youtube-nocookie.com is here because "Share → Embed → privacy-enhanced mode" hands
+// you that host — and because it is the host WE render. Omitting it meant our own
+// preview's embed code was a URL we refused to accept.
+const YOUTUBE_HOSTS = new Set([
+  'youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com',
+  'youtu.be', 'www.youtu.be',
+  'youtube-nocookie.com', 'www.youtube-nocookie.com',
+])
 const VIMEO_HOSTS = new Set(['vimeo.com', 'www.vimeo.com', 'player.vimeo.com'])
 
 /** youtube.com/<kind>/<id> forms. /watch carries the id in ?v= instead. */
@@ -70,11 +77,31 @@ function parseVimeo(u: URL): string | null {
 }
 
 /**
+ * Pull the src out of a pasted <iframe> blob.
+ *
+ * "Share → Embed" on YouTube and Vimeo gives a full `<iframe width="560" src="…">`, and
+ * that is the most natural thing for someone to paste into a field asking for a video.
+ * Refusing it is technically correct and practically useless.
+ *
+ * This does NOT weaken anything: we take the src and run it through exactly the same
+ * host + protocol + id checks as a hand-typed URL. The iframe's own attributes are
+ * discarded — we rebuild the embed from our template regardless. So the worst a hostile
+ * blob can do is supply a URL that then fails the same gate it would have failed alone.
+ */
+function srcFromIframe(raw: string): string | null {
+  if (!/<\s*iframe/i.test(raw)) return null
+  const m = /\bsrc\s*=\s*["']([^"']+)["']/i.exec(raw)
+  return m?.[1] ?? null
+}
+
+/**
  * Parse a pasted video URL. Returns null for anything we can't confidently identify —
  * the caller decides whether that's a validation error or a cleared field.
+ *
+ * Accepts a plain URL or a full <iframe> embed blob; both end up in the same checks.
  */
 export function parseVideoUrl(input: string): ParsedVideo | null {
-  const raw = input.trim()
+  const raw = (srcFromIframe(input) ?? input).trim()
   if (!raw) return null
 
   let u: URL

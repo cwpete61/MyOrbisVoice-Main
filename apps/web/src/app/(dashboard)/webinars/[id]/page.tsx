@@ -234,11 +234,12 @@ function SetupPanel({ detail, onSaved }: { detail: Detail; onSaved: () => Promis
     <div style={{ display: 'grid', gap: 16, maxWidth: 620 }}>
       <div style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: 18, display: 'grid', gap: 14 }}>
         <div>
-          <label style={fieldLabel}>Video <span style={hint}>— YouTube or Vimeo link</span></label>
+          <label style={fieldLabel}>Video <span style={hint}>— YouTube or Vimeo</span></label>
           <input style={fieldInput} value={videoUrl} onChange={e => setVideoUrl(e.target.value)}
                  placeholder="https://youtu.be/dQw4w9WgXcQ" />
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '5px 0 0' }}>
-            Unlisted is fine — attendees never see the video page, only your player.
+            Paste the link or the whole <strong>Share → Embed</strong> code — either works.
+            Unlisted is fine: attendees never see the video page, only your player.
             Watch time is measured from real playback, so this is what scores your leads.
           </p>
         </div>
