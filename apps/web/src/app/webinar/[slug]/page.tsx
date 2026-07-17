@@ -144,12 +144,27 @@ function WatchStub({ joinToken, t }: { joinToken: string; t: typeof COPY['en'] }
     try { await apiFetch('/api/public/webinar/event', { method: 'POST', body: JSON.stringify({ joinToken, type, meta }) }) } catch { /* best-effort telemetry */ }
   }, [joinToken])
 
+  // Watch heartbeats — the owned engagement instrumentation the design calls for (no
+  // provider sells a per-attendee webhook, so we emit it ourselves).
+  //
+  // 30s, not 10s. Every beat is an appended row AND triggers a full recompute that
+  // re-reads that person's whole event list, so the work is QUADRATIC in beats: a
+  // 45-min watch at 10s was 270 rows and ~36k row-reads per attendee (~14.6M at 400
+  // concurrent). At 30s that's 90 rows and ~4k reads — same numbers, ~9x less work.
+  //
+  // The cost is granularity on exit: someone who leaves mid-beat loses up to 30s of
+  // watch time instead of 10s. That is noise against a 45-minute session and does not
+  // move a hot/warm/cold bucket. Don't push this to 60s+ — short viewers (the cold
+  // ones we still want to score) would round to zero.
+  const HEARTBEAT_SECONDS = 30
+
   function play() {
     setPlaying(true)
     void emit('JOINED')
-    // 10s watch heartbeats — this is the owned engagement instrumentation the
-    // design calls for (no provider webhook needed).
-    heartbeat.current = setInterval(() => void emit('WATCHED', { seconds: 10 }), 10_000)
+    heartbeat.current = setInterval(
+      () => void emit('WATCHED', { seconds: HEARTBEAT_SECONDS }),
+      HEARTBEAT_SECONDS * 1000,
+    )
   }
   useEffect(() => () => { if (heartbeat.current) clearInterval(heartbeat.current) }, [])
 
