@@ -89,7 +89,7 @@ router.use('/api', publicRouter)        // public /public/social-links — no au
 router.use('/api', unsubscribeRouter)   // public /public/unsubscribe — no auth (email recipients)
 router.use('/api', webhooksSesRouter)   // public /webhooks/ses — no auth (SNS; signature-verified)
 router.use('/api', publicBookingRouter) // public /public/partners/:slug/booking-info|slots|bookings (E.4) — no auth
-router.use('/api', webinarRouter)       // public /public/webinar/* (register + events) — must precede the auth-gated zone; its /admin/webinars/* routes self-guard
+router.use('/api', webinarRouter)       // public /public/webinar/* (register + events) — must precede the auth-gated zone; its tenant /webinars/* routes self-guard
 router.use('/api', billingRouter)       // before auth-gated routers — contains public /billing/plans
 router.use('/api', widgetRouter)        // contains public /public/widget/session
 router.use('/api', pushRouter)          // contains public /push/vapid-public-key — must precede tenantRouter
