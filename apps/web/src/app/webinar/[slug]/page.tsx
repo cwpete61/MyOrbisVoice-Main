@@ -18,13 +18,16 @@ interface PublicWebinar {
   // The HOSTING TENANT's brand — this page belongs to them, not to us. Their
   // prospects see their name, never ours (white-label by default).
   brand: { name: string | null; logoUrl: string | null }
+  // Lower tiers carry a small "Powered by MyOrbis" mark; paid tiers buy it away.
+  // Server-resolved from the tenant's entitlements, not a client flag.
+  poweredBy: boolean
   sessions: { id: string; kind: string; startsAt: string | null }[]
 }
 
 const COPY = {
-  en: { register: 'Register free', name: 'Your name', email: 'Email', phone: 'Phone (optional)', watch: 'Watch now', registered: "You're registered!", play: '▶ Play webinar', ask: 'Ask a question', askPh: 'Type your question…', cta: 'Book a call', guide: 'Download the guide', sending: 'Registering…', langLabel: 'Español',
+  en: { register: 'Register free', name: 'Your name', email: 'Email', phone: 'Phone (optional)', watch: 'Watch now', registered: "You're registered!", play: '▶ Play webinar', ask: 'Ask a question', askPh: 'Type your question…', cta: 'Book a call', guide: 'Download the guide', sending: 'Registering…', langLabel: 'Español', poweredBy: 'Powered by',
         voiceConsent: 'You can call me about this webinar', consentNote: 'Optional. Leave it unticked and we will never call you — you still get the webinar.' },
-  es: { register: 'Regístrate gratis', name: 'Tu nombre', email: 'Correo', phone: 'Teléfono (opcional)', watch: 'Ver ahora', registered: '¡Estás registrado!', play: '▶ Reproducir webinar', ask: 'Haz una pregunta', askPh: 'Escribe tu pregunta…', cta: 'Agenda una llamada', guide: 'Descarga la guía', sending: 'Registrando…', langLabel: 'English',
+  es: { register: 'Regístrate gratis', name: 'Tu nombre', email: 'Correo', phone: 'Teléfono (opcional)', watch: 'Ver ahora', registered: '¡Estás registrado!', play: '▶ Reproducir webinar', ask: 'Haz una pregunta', askPh: 'Escribe tu pregunta…', cta: 'Agenda una llamada', guide: 'Descarga la guía', sending: 'Registrando…', langLabel: 'English', poweredBy: 'Con tecnología de',
         voiceConsent: 'Pueden llamarme sobre este seminario', consentNote: 'Opcional. Si no lo marcas, nunca te llamaremos — igual recibes el seminario.' },
 }
 
@@ -64,6 +67,17 @@ export default function WebinarPublicPage() {
         {!joinToken
           ? <RegisterForm slug={slug} sessionId={w.sessions[0]?.id} lang={lang} t={t} onRegistered={setJoinToken} />
           : <WatchStub joinToken={joinToken} t={t} />}
+
+        {/* Lower tiers carry the mark; paid tiers buy it away (webinar_white_label).
+            Deliberately small and below the fold of the form — this is the tenant's
+            page, and their prospect's attention belongs to them, not to us. */}
+        {w.poweredBy && (
+          <p style={{ marginTop: 28, textAlign: 'center', fontSize: 12, color: '#9aa3a3' }}>
+            {t.poweredBy}{' '}
+            <a href="https://myorbisresults.com" target="_blank" rel="noopener noreferrer"
+               style={{ color: '#7d8686', textDecoration: 'underline' }}>MyOrbis</a>
+          </p>
+        )}
       </div>
     </div>
   )

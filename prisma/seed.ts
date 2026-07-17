@@ -333,16 +333,18 @@ async function main() {
   // Free deliberately gets the product with 0 calls: the tenant SEES the hot leads it
   // cannot call. That's the upgrade prompt, and scoring costs us nothing.
   // -1 = unlimited. Absent key = fail closed (see services/webinar/entitlement.ts).
-  const WEBINAR_ENTITLEMENTS: Record<string, { active: number; calls: number; enabled: boolean }> = {
-    free:               { enabled: true,  active: 1,  calls: 0 },
-    basic_monthly:      { enabled: true,  active: 3,  calls: 25 },
-    pro_monthly:        { enabled: true,  active: -1, calls: 100 },
-    premier_monthly:    { enabled: true,  active: -1, calls: 250 },
-    enterprise_monthly: { enabled: true,  active: -1, calls: -1 },
+  // whiteLabel=false means the page carries a small "Powered by MyOrbis" mark. Free
+  // carries it (it's the price of free, and it's distribution); paid tiers buy it away.
+  const WEBINAR_ENTITLEMENTS: Record<string, { active: number; calls: number; enabled: boolean; whiteLabel: boolean }> = {
+    free:               { enabled: true,  active: 1,  calls: 0,   whiteLabel: false },
+    basic_monthly:      { enabled: true,  active: 3,  calls: 25,  whiteLabel: false },
+    pro_monthly:        { enabled: true,  active: -1, calls: 100, whiteLabel: true },
+    premier_monthly:    { enabled: true,  active: -1, calls: 250, whiteLabel: true },
+    enterprise_monthly: { enabled: true,  active: -1, calls: -1,  whiteLabel: true },
     // LTD bought Voice for life before this product existed. Defaulting to NOT included
     // so we don't silently give away metered AI calls forever — an explicit decision,
     // not an accident. Flip to true (with a call cap) if the deal is meant to cover it.
-    ltd:                { enabled: false, active: 0,  calls: 0 },
+    ltd:                { enabled: false, active: 0,  calls: 0,   whiteLabel: false },
   }
 
   console.log('[seed] seeding webinar entitlements...')
@@ -353,6 +355,7 @@ async function main() {
       { key: 'webinar_enabled', valueType: 'BOOLEAN' as const, booleanValue: cfg.enabled, integerValue: null },
       { key: 'webinar_max_active', valueType: 'INTEGER' as const, booleanValue: null, integerValue: cfg.active },
       { key: 'included_webinar_ai_calls_per_month', valueType: 'INTEGER' as const, booleanValue: null, integerValue: cfg.calls },
+      { key: 'webinar_white_label', valueType: 'BOOLEAN' as const, booleanValue: cfg.whiteLabel, integerValue: null },
     ]
     for (const r of rows) {
       await prisma.planEntitlement.upsert({

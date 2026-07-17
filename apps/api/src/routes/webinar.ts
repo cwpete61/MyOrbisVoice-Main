@@ -24,7 +24,7 @@ import {
   getPublicWebinarBySlug, registerForSession, recordEngagement, bookFromWebinar,
 } from '../services/webinar/webinar.service.js'
 import { commandMetrics, leadIntelligence, personTimeline } from '../services/webinar/metrics.service.js'
-import { webinarEnabled, canPublishAnotherWebinar } from '../services/webinar/entitlement.js'
+import { webinarEnabled, canPublishAnotherWebinar, aiCallsRemaining } from '../services/webinar/entitlement.js'
 
 const router: IRouter = Router()
 
@@ -84,6 +84,26 @@ router.post('/webinars', async (req, res, next) => {
 
 router.get('/webinars', async (req, res, next) => {
   try { res.json({ data: await listWebinars(tenantOf(req)) }) } catch (err) { next(err) }
+})
+
+/**
+ * Plan usage for the dashboard. Without this a tenant only discovers its limits by
+ * hitting a 403 — the caps become visible instead of ambush.
+ */
+router.get('/webinars/quota', async (req, res, next) => {
+  try {
+    const tenantId = tenantOf(req)
+    const [enabled, active, calls] = await Promise.all([
+      webinarEnabled(tenantId),
+      canPublishAnotherWebinar(tenantId),
+      aiCallsRemaining(tenantId),
+    ])
+    res.json({ data: {
+      enabled,
+      activeWebinars: { used: active.used, cap: active.cap },
+      aiCalls:        { used: calls.used,  cap: calls.cap },
+    } })
+  } catch (err) { next(err) }
 })
 
 router.get('/webinars/:id', async (req, res, next) => {

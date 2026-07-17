@@ -13,6 +13,7 @@ import { appendEvent } from './events.service.js'
 import { createAppointment } from '../appointment.service.js'
 import { createContact } from '../contact.service.js'
 import { processOptIn } from '../opt-out.service.js'
+import { webinarWhiteLabel } from './entitlement.js'
 
 function slugify(s: string): string {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'webinar'
@@ -178,6 +179,10 @@ export async function getPublicWebinarBySlug(slug: string) {
     }),
   ])
 
+  // Lower tiers carry a "Powered by MyOrbis" mark; paid tiers buy it away. Resolved
+  // server-side so the client can't just not-render it.
+  const whiteLabel = await webinarWhiteLabel(webinar.tenantId)
+
   const { tenantId: _tenantId, ...safe } = webinar // don't expose the tenant id publicly
   return {
     ...safe,
@@ -185,6 +190,7 @@ export async function getPublicWebinarBySlug(slug: string) {
       name:    profile?.brandName ?? tenant?.displayName ?? null,
       logoUrl: profile?.logoUrl ?? null,
     },
+    poweredBy: !whiteLabel,
   }
 }
 

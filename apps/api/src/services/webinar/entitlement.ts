@@ -22,6 +22,18 @@ import { checkEntitlement } from '../entitlement.service.js'
 export const WEBINAR_ENABLED_KEY = 'webinar_enabled'
 export const WEBINAR_MAX_ACTIVE_KEY = 'webinar_max_active'
 export const WEBINAR_AI_CALLS_KEY = 'included_webinar_ai_calls_per_month'
+export const WEBINAR_WHITE_LABEL_KEY = 'webinar_white_label'
+
+/**
+ * May this tenant hide the "Powered by MyOrbis" mark on its registration page?
+ *
+ * Fails closed to SHOWING the mark, which is the safe default in both directions: an
+ * unconfigured tenant gives us attribution rather than silently white-labelling, and
+ * nothing about the tenant's own brand is hidden either way.
+ */
+export async function webinarWhiteLabel(tenantId: string): Promise<boolean> {
+  return (await checkEntitlement(tenantId, WEBINAR_WHITE_LABEL_KEY)) === true
+}
 
 /** Is the webinar product in this tenant's plan? */
 export async function webinarEnabled(tenantId: string): Promise<boolean> {

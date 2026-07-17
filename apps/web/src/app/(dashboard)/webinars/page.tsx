@@ -27,23 +27,57 @@ const STATUS_COLORS: Record<WebinarRow['status'], { bg: string; fg: string; bd: 
   ARCHIVED:  { bg: 'var(--surface-app)', fg: 'var(--text-tertiary)', bd: 'var(--border-subtle)' },
 }
 
+interface Quota {
+  enabled: boolean
+  activeWebinars: { used: number; cap: number }
+  aiCalls: { used: number; cap: number }
+}
+// -1 means unlimited (see services/webinar/entitlement.ts).
+const capLabel = (c: number) => (c < 0 ? '∞' : String(c))
+const atCap = (used: number, cap: number) => cap >= 0 && used >= cap
+
+/** One plan-usage figure. Turns amber at the cap — informative, not alarming. */
+function QuotaChip({ label, used, cap, note }: { label: string; used: number; cap: number; note?: string }) {
+  const full = atCap(used, cap)
+  return (
+    <div style={{
+      borderRadius: 10, padding: '8px 12px', background: 'var(--surface-raised)',
+      border: `1px solid ${full ? '#f0c36d' : 'var(--border-subtle)'}`, minWidth: 170,
+    }}>
+      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</div>
+      <div style={{ fontSize: 15, fontWeight: 700, color: full ? '#a16207' : 'var(--text-primary)' }}>
+        {used} <span style={{ color: 'var(--text-tertiary)', fontWeight: 500 }}>/ {capLabel(cap)}</span>
+      </div>
+      {note && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{note}</div>}
+    </div>
+  )
+}
+
 export default function WebinarsPage() {
   const [rows, setRows] = useState<WebinarRow[] | null>(null)
+  const [quota, setQuota] = useState<Quota | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     setErr(null)
-    try { setRows(await apiFetch<WebinarRow[]>('/api/webinars')) }
-    catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
+    try {
+      const [list, q] = await Promise.all([
+        apiFetch<WebinarRow[]>('/api/webinars'),
+        // Quota is advisory — a failure here must not blank the page.
+        apiFetch<Quota>('/api/webinars/quota').catch(() => null),
+      ])
+      setRows(list); setQuota(q)
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
   }, [])
   useEffect(() => { void load() }, [load])
 
   async function publish(id: string, status: 'PUBLISHED' | 'DRAFT') {
     setBusy(true)
+    // The API is the authority on caps; surface its message rather than guessing.
     try { await apiFetch(`/api/webinars/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }); await load() }
-    catch (e) { alert(e instanceof Error ? e.message : 'Failed') }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Failed') }
     finally { setBusy(false) }
   }
 
@@ -70,8 +104,33 @@ export default function WebinarsPage() {
         </div>
       </header>
 
+      {/* Plan usage — so the caps are visible up front instead of ambushing someone
+          with a 403 the moment they hit publish. */}
+      {quota && (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '14px 0 4px' }}>
+          <QuotaChip
+            label="Published webinars"
+            used={quota.activeWebinars.used}
+            cap={quota.activeWebinars.cap}
+          />
+          <QuotaChip
+            label="AI calls this month"
+            used={quota.aiCalls.used}
+            cap={quota.aiCalls.cap}
+            // 0 calls is the free tier's whole upgrade prompt: you can see the hot
+            // leads, you just can't call them yet. Say that, don't just show 0/0.
+            note={quota.aiCalls.cap === 0 ? 'Not in your plan — leads are still scored' : undefined}
+          />
+        </div>
+      )}
+
       {showForm && <NewWebinarForm onCreated={() => { setShowForm(false); load() }} />}
-      {err && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', margin: '12px 0', fontSize: 13, color: '#991b1b' }}>Failed to load: {err}</div>}
+      {err && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 12px', margin: '12px 0', fontSize: 13, color: '#991b1b', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+          <span>{err}</span>
+          <button onClick={() => setErr(null)} style={{ background: 'none', border: 'none', color: '#991b1b', cursor: 'pointer', fontWeight: 700 }}>×</button>
+        </div>
+      )}
 
       {rows && rows.length === 0 && !showForm && (
         <div style={{ border: '1px dashed var(--border-subtle)', borderRadius: 12, padding: 32, textAlign: 'center', color: 'var(--text-secondary)', marginTop: 12 }}>
