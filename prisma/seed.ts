@@ -394,6 +394,31 @@ async function main() {
       },
     })
 
+    // Webinar entitlements for the platform's OWN tenant — this is the tenant we run
+    // our own (in-house) webinars under, and it has no Subscription, so nothing would
+    // sync entitlements to it from a plan and the gate would fail closed: "MyOrbisWebinar
+    // is not included in this plan". Granted directly as MANUAL so it survives having no
+    // plan at all.
+    //
+    // The AI-call cap is NOT a paywall here — there is no one to bill. It is a SPEND
+    // GUARDRAIL. In-house webinars still cost real money (Twilio minutes + OpenAI
+    // realtime), and a bug in the outcome worker could dial hundreds of people overnight.
+    // 200/month is the circuit breaker; raise it deliberately, don't set it to -1.
+    const PLATFORM_WEBINAR_GRANT = [
+      { key: 'webinar_enabled', valueType: 'BOOLEAN' as const, booleanValue: true, integerValue: null },
+      { key: 'webinar_max_active', valueType: 'INTEGER' as const, booleanValue: null, integerValue: -1 },
+      { key: 'included_webinar_ai_calls_per_month', valueType: 'INTEGER' as const, booleanValue: null, integerValue: 200 },
+      { key: 'webinar_white_label', valueType: 'BOOLEAN' as const, booleanValue: true, integerValue: null },
+    ]
+    for (const r of PLATFORM_WEBINAR_GRANT) {
+      await prisma.tenantEntitlement.upsert({
+        where:  { tenantId_key: { tenantId: adminTenant.id, key: r.key } },
+        update: { valueType: r.valueType, booleanValue: r.booleanValue, integerValue: r.integerValue, sourceType: 'MANUAL' },
+        create: { tenantId: adminTenant.id, key: r.key, valueType: r.valueType, booleanValue: r.booleanValue, integerValue: r.integerValue, sourceType: 'MANUAL' },
+      })
+    }
+    console.log('  [seed] webinar: orbis-platform granted (in-house; 200 AI calls/mo spend guardrail)')
+
     const existingMembership = await prisma.tenantMember.findFirst({
       where: { userId: adminUser.id, tenantId: adminTenant.id },
     })
