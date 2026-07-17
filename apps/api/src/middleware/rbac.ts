@@ -50,13 +50,36 @@ export function requirePlatformSupport(req: Request, _res: Response, next: NextF
   next()
 }
 
-// If the token was issued without a tenantId (e.g. during a rate-limited login session),
-// fall back to a DB lookup so the user isn't permanently locked out.
+/**
+ * Guarantee a tenant context for every route behind it.
+ *
+ * The ~134 `req.user!.currentTenantId!` call sites downstream assert non-null on a
+ * `string | null`. That assertion holds today only because of an invariant in
+ * issueTokensForUserId: tenantId and isPlatformRole are both derived from the SAME
+ * membership, so isPlatformRole === true implies tenantId !== null. Nothing enforces
+ * or documents that coupling.
+ *
+ * It used to short-circuit on `isPlatformRole || currentTenantId`. Given the invariant
+ * that branch was unreachable-with-null, so this is not a live-bug fix — it is a
+ * guardrail. If a future token path ever set isPlatformRole with no tenantId (a new SSO
+ * flow, a platform user without a membership), every one of those call sites would pass
+ * `where: { tenantId: undefined }` to Prisma, which DROPS the filter and returns every
+ * tenant's rows. Requiring a real tenantId here makes that fail closed with a 403
+ * instead of leaking silently.
+ *
+ * Platform staff are unaffected: granting a platform role creates a TenantMember on the
+ * platform tenant, so their tokens carry a tenantId. To act on a specific tenant they
+ * impersonate (which mints a tenant-scoped token) — the same path as before.
+ *
+ * If the token was issued without a tenantId (e.g. during a rate-limited login session),
+ * fall back to a DB lookup so the user isn't permanently locked out.
+ */
 export function requireTenantContext(req: Request, _res: Response, next: NextFunction): void {
   if (!req.user) { next(Errors.unauthorized()); return }
-  if (req.user.isPlatformRole || req.user.currentTenantId) { next(); return }
+  if (req.user.currentTenantId) { next(); return }
 
-  // Token has no tenantId — attempt DB recovery before blocking
+  // No tenantId — attempt DB recovery before blocking. Applies to platform roles too:
+  // a tenant route without a tenant is never safe to serve.
   prisma.tenantMember.findFirst({
     where: { userId: req.user.id },
     orderBy: { createdAt: 'asc' },
