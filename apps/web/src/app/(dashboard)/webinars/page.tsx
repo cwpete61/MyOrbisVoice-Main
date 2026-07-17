@@ -17,9 +17,17 @@ interface WebinarRow {
   slug: string
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
   vertical: string | null
+  // Publish-readiness, so the button can say "Finish setup" instead of throwing a 422.
+  videoProvider: 'YOUTUBE' | 'VIMEO' | null
+  videoAssetRef: string | null
+  ctaUrl: string | null
   createdAt: string
   _count?: { registrants: number; sessions: number }
 }
+
+/** Mirrors assertPublishable on the API. The server stays the authority — this only
+ *  decides which button to render. */
+const isReady = (w: WebinarRow) => !!(w.videoProvider && w.videoAssetRef && w.ctaUrl)
 
 const STATUS_COLORS: Record<WebinarRow['status'], { bg: string; fg: string; bd: string }> = {
   DRAFT:     { bg: '#faf5ff', fg: '#7c3aed', bd: '#e9d5ff' },
@@ -158,7 +166,12 @@ export default function WebinarsPage() {
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   <Link href={`/webinars/${w.id}`} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Open</Link>
-                  {w.status === 'DRAFT'
+                  {/* A draft with no video or CTA can't publish (assertPublishable).
+                      Send them to the Setup tab that fixes it rather than firing a
+                      request that can only 422. */}
+                  {w.status === 'DRAFT' && !isReady(w)
+                    ? <Link href={`/webinars/${w.id}`} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid #f0c36d', background: '#fffbeb', color: '#a16207', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Finish setup</Link>
+                    : w.status === 'DRAFT'
                     ? <button onClick={() => publish(w.id, 'PUBLISHED')} disabled={busy} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', background: '#16a34a', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Publish</button>
                     : w.status === 'PUBLISHED'
                     ? <button onClick={() => publish(w.id, 'DRAFT')} disabled={busy} style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Unpublish</button>
@@ -178,6 +191,10 @@ function NewWebinarForm({ onCreated }: { onCreated: () => void }) {
   const [titleEs, setTitleEs] = useState('')
   const [vertical, setVertical] = useState('')
   const [description, setDescription] = useState('')
+  // Optional here, required to publish. Offered up front because a webinar without them
+  // is a draft that can't go anywhere, and one trip beats two.
+  const [videoUrl, setVideoUrl] = useState('')
+  const [ctaUrl, setCtaUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -187,6 +204,7 @@ function NewWebinarForm({ onCreated }: { onCreated: () => void }) {
     try {
       await apiFetch('/api/webinars', { method: 'POST', body: JSON.stringify({
         title, titleEs: titleEs || undefined, vertical: vertical || undefined, description: description || undefined,
+        videoUrl: videoUrl || undefined, ctaUrl: ctaUrl || undefined,
       }) })
       onCreated()
     } catch (e2) { setErr(e2 instanceof Error ? e2.message : 'Failed') }
@@ -204,6 +222,8 @@ function NewWebinarForm({ onCreated }: { onCreated: () => void }) {
         <div><label style={label}>Vertical <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>— optional</span></label><input style={input} value={vertical} onChange={e => setVertical(e.target.value)} maxLength={80} placeholder="real estate" /></div>
       </div>
       <div><label style={label}>Description <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>— optional</span></label><textarea style={{ ...input, fontFamily: 'inherit' }} rows={2} value={description} onChange={e => setDescription(e.target.value)} maxLength={4000} /></div>
+      <div><label style={label}>Video <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>— YouTube or Vimeo link; needed to publish</span></label><input style={input} value={videoUrl} onChange={e => setVideoUrl(e.target.value)} maxLength={600} placeholder="https://youtu.be/dQw4w9WgXcQ" /></div>
+      <div><label style={label}>CTA link <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>— where the button sends them; needed to publish</span></label><input style={input} value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} maxLength={600} placeholder="https://cal.com/you/intro-call" /></div>
       {err && <p style={{ color: '#dc2626', margin: 0, fontSize: 13 }}>{err}</p>}
       <button type="submit" disabled={busy || title.trim().length < 2} style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: TEAL, color: '#fff', fontWeight: 600, cursor: 'pointer', opacity: busy || title.trim().length < 2 ? 0.5 : 1, justifySelf: 'start' }}>
         {busy ? 'Creating…' : 'Create webinar'}

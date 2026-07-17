@@ -149,7 +149,39 @@ would sync entitlements to it and the gate would lock us out of our own product.
 200-call cap is a **spend guardrail**, not a paywall: in-house webinars still burn real
 Twilio/OpenAI money, and a worker bug could dial hundreds of people overnight.
 
-## 8. The public page
+## 8. The webinar itself — video and the offer
+
+For a long stretch this product had everything around a webinar and no webinar. The
+watch page was a play button over nothing, beating `setInterval(emit('WATCHED'), 30s)`
+whether or not anything played. Because those events feed the score, and the score feeds
+the hero rule, "the video is a stub" quietly meant **the lead intelligence was fiction** —
+it would have dialled real people based on watch time nobody spent.
+
+**Third-party embed, not owned video.** YouTube or Vimeo, per the build plan's Phase 2.
+Mux/Cloudflare are the eventual owned primitive; paying for one before a single webinar
+has run would be buying infrastructure to answer a question we haven't asked.
+
+**The tenant's URL is never stored.** It is parsed to `(provider, native id)` and the
+embed URL is rebuilt from a constant template (`services/webinar/video.ts`). Storing the
+raw string and rendering `<iframe src={videoUrl}>` would make anyone who can edit a
+webinar a stored-XSS author. Note `z.string().url()` does **not** protect you — it
+accepts `javascript:alert(1)`; the protocol and host are checked explicitly. A ref
+matching `/^[A-Za-z0-9_-]{11}$/` cannot express a scheme, a host, or a quote.
+
+**Heartbeats follow real playback** (`VideoPlayer.tsx`): the beat starts on the
+provider's PLAY, stops on PAUSE/END, suspends on a hidden tab (backgrounded video keeps
+playing — nobody is watching it), and flushes the final partial beat so a 40s watch
+scores 40, not 30. If the provider SDK is blocked, the page says tracking is unavailable
+rather than falling back to a blind timer: a wrong number is worse than a missing one
+when it decides who gets an automated phone call.
+
+**Publishing is gated on a video and a CTA** (`assertPublishable`). Without a video you
+ship the original bug to a prospect; without a CTA there is no `CTA_CLICKED`, so the
+hero rule can never fire and the webinar cannot produce pipeline. The route writes
+content → checks → flips status, so a refused publish keeps the tenant's edits and stays
+a draft.
+
+## 9. The public page
 
 White-label. It belongs to the **tenant**, and their prospects see **their** brand
 (`BusinessProfile.brandName` → `Tenant.displayName`), never ours. It was hardcoded to
@@ -162,11 +194,15 @@ that re-reads the person's event list, so cost is quadratic in beats: a 45-min w
 270 rows / ~36k row-reads at 10s, versus 90 / ~4k at 30s. Not 60s+ — short viewers would
 round toward zero, and they are exactly the cold leads we still want scored.
 
-## 9. Known gaps
+## 10. Known gaps
 
-- **Streaming is a stub.** `WatchStub` is a placeholder; `videoAssetRef` is unused. No
-  provider sells a per-attendee engagement webhook — that instrumentation is ours to
-  build on a video primitive (Mux / Cloudflare Stream / IVS).
+- **Live streaming is still deferred**, per the build plan — a webinar is a recording
+  played on demand. Native live is a Phase-5 add-on and nothing depends on it.
+- **A published webinar can have its video cleared.** `assertPublishable` runs on the
+  publish transition, not on every edit, so a tenant can unset the video of a live
+  webinar. The watch page degrades to "video isn't available" rather than a dead frame,
+  and the Setup preview shows it immediately — but the API allows it. Fixing it properly
+  needs the update + check in one transaction; not worth the refactor at this scale.
 - **`POLL_ANSWERED`, `REVIEWED`, `NO_SHOW`** have weights and schemas but no producers.
   `NO_SHOW` also has no `intentWeight`, so it scores 0.
 - **`EngagementScore.stage`** is declared and never written.

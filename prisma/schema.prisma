@@ -3461,6 +3461,19 @@ enum WebinarStatus {
   ARCHIVED
 }
 
+// Where the recording is hosted. Deliberately only providers we have a REAL player
+// for — never add a value before its player exists, or a tenant configures a video
+// that silently renders nothing. (Mux/Cloudflare belong here when the owned video
+// primitive is built; until then this is a third-party embed, per the build plan.)
+//
+// We store provider + native id, NOT the tenant's pasted URL. The embed URL is rebuilt
+// from a fixed per-provider template at render time, so a hostile paste can never reach
+// an iframe src. See services/webinar/video.ts.
+enum WebinarVideoProvider {
+  YOUTUBE
+  VIMEO
+}
+
 enum WebinarSessionKind {
   EVERGREEN     // always-on, plays on demand per registrant
   JUST_IN_TIME  // scheduled recurring auto-start (e.g. "next session in 12 min")
@@ -3544,9 +3557,27 @@ model Webinar {
   vertical      String?
   status        WebinarStatus @default(DRAFT)
   coverImageUrl String?
-  // Owned video primitive (Mux/Cloudflare Stream/IVS decided at Phase 2). The
-  // reference to the recorded asset for evergreen playback.
+
+  // ── The actual webinar ─────────────────────────────────────────────────────
+  // Without these two the watch page is a play button over nothing: it emitted
+  // WATCHED heartbeats on a timer whether or not anything played, so every score,
+  // the hot/warm/cold bucket and the hero rule were computed from fiction.
+  //
+  // videoAssetRef is the provider's NATIVE ID (YouTube "dQw4w9WgXcQ", Vimeo
+  // "76979871"), never a URL — see the WebinarVideoProvider comment.
+  videoProvider WebinarVideoProvider?
   videoAssetRef String?
+
+  // ── The offer ──────────────────────────────────────────────────────────────
+  // The CTA used to be a hardcoded "Book a call" that navigated nowhere. CTA_CLICKED
+  // is the hero rule's trigger, so this button is the single most load-bearing
+  // element on the page: it has to go somewhere real.
+  ctaLabel    String?
+  ctaLabelEs  String?
+  ctaUrl      String?  // http(s) only — validated on write, not just on render
+  // Lead magnet. Null hides the button rather than shipping one that downloads nothing.
+  resourceUrl String?
+
   createdBy     String?       // admin user id
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

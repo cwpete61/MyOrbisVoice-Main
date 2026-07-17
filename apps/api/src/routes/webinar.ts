@@ -22,6 +22,7 @@ import { AppError } from '@voiceautomation/shared'
 import {
   createWebinar, listWebinars, getWebinar, updateWebinar, createSession,
   getPublicWebinarBySlug, registerForSession, recordEngagement, bookFromWebinar,
+  assertPublishable,
 } from '../services/webinar/webinar.service.js'
 import { commandMetrics, leadIntelligence, personTimeline } from '../services/webinar/metrics.service.js'
 import { webinarEnabled, canPublishAnotherWebinar, aiCallsRemaining } from '../services/webinar/entitlement.js'
@@ -52,12 +53,24 @@ function tenantOf(req: Request): string {
 // before it reaches us. A tenant-facing product cannot live in that namespace.
 router.use('/webinars', authenticate, requireTenantContext)
 
+/**
+ * NOTE on the URL fields: zod's .url() is NOT a safety check here — it accepts
+ * `javascript:alert(1)` because it delegates to the URL parser. These are length/shape
+ * checks only; the real validation is parseVideoUrlOrThrow / assertSafeHttpUrl in
+ * services/webinar/video.ts, which pin the protocol and the host. Don't be tempted to
+ * "simplify" by trusting .url() — see video.test.ts.
+ */
 const createSchema = z.object({
   title:         z.string().min(2).max(160),
   titleEs:       z.string().max(160).optional(),
   description:   z.string().max(4000).optional(),
   descriptionEs: z.string().max(4000).optional(),
   vertical:      z.string().max(80).optional(),
+  videoUrl:      z.string().max(600).optional(),
+  ctaLabel:      z.string().max(60).optional(),
+  ctaLabelEs:    z.string().max(60).optional(),
+  ctaUrl:        z.string().max(600).optional(),
+  resourceUrl:   z.string().max(600).optional(),
 })
 
 /**
@@ -117,7 +130,13 @@ const updateSchema = z.object({
   descriptionEs: z.string().max(4000).nullable().optional(),
   vertical:      z.string().max(80).nullable().optional(),
   coverImageUrl: z.string().url().max(600).nullable().optional(),
-  videoAssetRef: z.string().max(300).nullable().optional(),
+  // videoAssetRef is NOT settable directly — it is half of a pair, and a raw ref would
+  // skip the parser. Tenants send the URL they pasted; the service derives both columns.
+  videoUrl:      z.string().max(600).nullable().optional(),
+  ctaLabel:      z.string().max(60).nullable().optional(),
+  ctaLabelEs:    z.string().max(60).nullable().optional(),
+  ctaUrl:        z.string().max(600).nullable().optional(),
+  resourceUrl:   z.string().max(600).nullable().optional(),
   status:        z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
 })
 router.patch('/webinars/:id', async (req, res, next) => {
@@ -136,6 +155,23 @@ router.patch('/webinars/:id', async (req, res, next) => {
         }
       }
     }
+
+    // Publishing is two steps on purpose.
+    //
+    // The readiness check has to run AFTER the content edits land (so "paste the video
+    // and publish" in one request works — checking first would reject a patch that
+    // supplies the very field it wants). But writing status=PUBLISHED and *then*
+    // throwing would put the webinar live while returning a 422 to the caller.
+    //
+    // So: write the content, check, then flip. A webinar that fails the check keeps the
+    // tenant's edits and stays a draft — nothing is lost and nothing half-published.
+    if (p.data.status === 'PUBLISHED') {
+      await updateWebinar(tenantId, req.params.id, { ...p.data, status: undefined })
+      await assertPublishable(tenantId, req.params.id) // throws → still a draft
+      res.json({ data: await updateWebinar(tenantId, req.params.id, { status: 'PUBLISHED' }) })
+      return
+    }
+
     res.json({ data: await updateWebinar(tenantId, req.params.id, p.data) })
   } catch (err) { next(err) }
 })

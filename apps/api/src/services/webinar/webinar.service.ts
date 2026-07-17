@@ -14,6 +14,33 @@ import { createAppointment } from '../appointment.service.js'
 import { createContact } from '../contact.service.js'
 import { processOptIn } from '../opt-out.service.js'
 import { webinarWhiteLabel } from './entitlement.js'
+import { parseVideoUrlOrThrow, assertSafeHttpUrl } from './video.js'
+
+/**
+ * Translate the tenant's pasted `videoUrl` into the two columns that store it.
+ *
+ * Callers never set videoProvider/videoAssetRef directly: they are two halves of one
+ * fact, and a provider without a ref (or the reverse) renders a broken player. One
+ * owner keeps them in lockstep.
+ *
+ * Tri-state on purpose:
+ *   undefined → field absent from the patch; leave the video alone
+ *   null / '' → tenant cleared it; unset BOTH columns
+ *   a string  → parse strictly, or 422
+ */
+function videoColumns(videoUrl: string | null | undefined) {
+  if (videoUrl === undefined) return {}
+  if (videoUrl === null || videoUrl.trim() === '') return { videoProvider: null, videoAssetRef: null }
+  const { provider, ref } = parseVideoUrlOrThrow(videoUrl)
+  return { videoProvider: provider, videoAssetRef: ref }
+}
+
+/** Same tri-state for a tenant-supplied outbound link. Empty clears it. */
+function safeUrlColumn(url: string | null | undefined, field: string): string | null | undefined {
+  if (url === undefined) return undefined
+  if (url === null || url.trim() === '') return null
+  return assertSafeHttpUrl(url, field)
+}
 
 function slugify(s: string): string {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'webinar'
@@ -38,6 +65,11 @@ export async function createWebinar(input: {
   description?: string | null
   descriptionEs?: string | null
   vertical?: string | null
+  videoUrl?: string | null
+  ctaLabel?: string | null
+  ctaLabelEs?: string | null
+  ctaUrl?: string | null
+  resourceUrl?: string | null
   createdBy?: string | null
 }) {
   const slug = await uniqueSlug(input.title)
@@ -52,7 +84,12 @@ export async function createWebinar(input: {
       description:   input.description ?? null,
       descriptionEs: input.descriptionEs ?? null,
       vertical:      input.vertical ?? null,
+      ctaLabel:      input.ctaLabel ?? null,
+      ctaLabelEs:    input.ctaLabelEs ?? null,
+      ctaUrl:        safeUrlColumn(input.ctaUrl, 'CTA link') ?? null,
+      resourceUrl:   safeUrlColumn(input.resourceUrl, 'Lead magnet link') ?? null,
       createdBy:     input.createdBy ?? null,
+      ...videoColumns(input.videoUrl),
       sessions:      { create: { tenantId: input.tenantId, kind: 'EVERGREEN', status: 'OPEN' } },
     },
     include: { sessions: true },
@@ -62,11 +99,53 @@ export async function createWebinar(input: {
 export async function updateWebinar(tenantId: string, id: string, patch: {
   title?: string; titleEs?: string | null; description?: string | null
   descriptionEs?: string | null; vertical?: string | null; coverImageUrl?: string | null
-  videoAssetRef?: string | null; status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+  videoUrl?: string | null; ctaLabel?: string | null; ctaLabelEs?: string | null
+  ctaUrl?: string | null; resourceUrl?: string | null
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
 }) {
   const existing = await prisma.webinar.findFirst({ where: { id, tenantId }, select: { id: true } })
   if (!existing) throw new AppError('NOT_FOUND', 'Webinar not found', 404)
-  return prisma.webinar.update({ where: { id }, data: patch })
+
+  // videoUrl is an input, not a column — strip it and expand into the real pair.
+  // Passing the patch straight through would make Prisma throw on the unknown key.
+  const { videoUrl, ctaUrl, resourceUrl, ...rest } = patch
+  return prisma.webinar.update({
+    where: { id },
+    data: {
+      ...rest,
+      ...videoColumns(videoUrl),
+      ...(ctaUrl      !== undefined ? { ctaUrl:      safeUrlColumn(ctaUrl, 'CTA link') } : {}),
+      ...(resourceUrl !== undefined ? { resourceUrl: safeUrlColumn(resourceUrl, 'Lead magnet link') } : {}),
+    },
+  })
+}
+
+/**
+ * A webinar is publishable only if it can actually do its job.
+ *
+ * Publishing without a video ships a play button over nothing — which is exactly the
+ * bug this feature exists to kill, and worse than a 404 because it still emits WATCHED
+ * heartbeats and scores the lead on fiction.
+ *
+ * Publishing without a CTA is quieter but just as broken: CTA_CLICKED is the hero
+ * rule's trigger, so a webinar with no offer can never produce a booking or a call.
+ * On a product measured by pipeline, that is a webinar that cannot pay for itself.
+ *
+ * Both are cheap to fix and the tenant is standing right there in the editor.
+ */
+export async function assertPublishable(tenantId: string, id: string): Promise<void> {
+  const w = await prisma.webinar.findFirst({
+    where:  { id, tenantId },
+    select: { videoProvider: true, videoAssetRef: true, ctaUrl: true },
+  })
+  if (!w) throw new AppError('NOT_FOUND', 'Webinar not found', 404)
+
+  const missing: string[] = []
+  if (!w.videoProvider || !w.videoAssetRef) missing.push('a video (paste a YouTube or Vimeo link)')
+  if (!w.ctaUrl) missing.push('a CTA link (where the button sends them)')
+  if (missing.length) {
+    throw new AppError('VALIDATION_ERROR', `Can't publish yet — add ${missing.join(' and ')}.`, 422)
+  }
 }
 
 /** Attendee-facing engagement event (watch heartbeat, poll, CTA, question) keyed
@@ -156,6 +235,10 @@ export async function getPublicWebinarBySlug(slug: string) {
     select: {
       id: true, slug: true, title: true, titleEs: true, description: true,
       descriptionEs: true, coverImageUrl: true, tenantId: true,
+      // The webinar itself. videoAssetRef is a provider-native id, safe to expose:
+      // the page rebuilds the embed URL from it via a fixed template.
+      videoProvider: true, videoAssetRef: true,
+      ctaLabel: true, ctaLabelEs: true, ctaUrl: true, resourceUrl: true,
       sessions: {
         where:   { status: 'OPEN' },
         orderBy: { startsAt: 'asc' },

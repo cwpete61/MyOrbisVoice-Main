@@ -2,19 +2,29 @@
 
 /**
  * MyOrbisWebinar — public registration + watch page (bilingual EN/ES).
- * Registration seeds the spine; the watch stub emits real engagement events
- * (join, watch heartbeats, poll, CTA, question) that score the lead live.
+ * Registration seeds the spine; watching emits real engagement events (join, watch
+ * heartbeats, CTA, question) that score the lead live.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { apiFetch } from '@/hooks/useApi'
+import { VideoPlayer, type VideoProvider } from './VideoPlayer'
 
 const TEAL = '#12a3a3'
 
 interface PublicWebinar {
   id: string; slug: string; title: string; titleEs: string | null
   description: string | null; descriptionEs: string | null; coverImageUrl: string | null
+  // The webinar itself. videoAssetRef is a provider-native id (never a URL) — the
+  // player rebuilds the embed URL from a fixed template. Null until the tenant sets
+  // one, which is why publishing without a video is blocked server-side.
+  videoProvider: VideoProvider | null
+  videoAssetRef: string | null
+  // The offer. ctaUrl is where the button actually goes; CTA_CLICKED (the hero rule's
+  // trigger) is emitted before we navigate.
+  ctaLabel: string | null; ctaLabelEs: string | null; ctaUrl: string | null
+  resourceUrl: string | null
   // The HOSTING TENANT's brand — this page belongs to them, not to us. Their
   // prospects see their name, never ours (white-label by default).
   brand: { name: string | null; logoUrl: string | null }
@@ -26,8 +36,10 @@ interface PublicWebinar {
 
 const COPY = {
   en: { register: 'Register free', name: 'Your name', email: 'Email', phone: 'Phone (optional)', watch: 'Watch now', registered: "You're registered!", play: '▶ Play webinar', ask: 'Ask a question', askPh: 'Type your question…', cta: 'Book a call', guide: 'Download the guide', sending: 'Registering…', langLabel: 'Español', poweredBy: 'Powered by',
+        noVideo: 'The video for this session isn’t available right now.',
         voiceConsent: 'You can call me about this webinar', consentNote: 'Optional. Leave it unticked and we will never call you — you still get the webinar.' },
   es: { register: 'Regístrate gratis', name: 'Tu nombre', email: 'Correo', phone: 'Teléfono (opcional)', watch: 'Ver ahora', registered: '¡Estás registrado!', play: '▶ Reproducir webinar', ask: 'Haz una pregunta', askPh: 'Escribe tu pregunta…', cta: 'Agenda una llamada', guide: 'Descarga la guía', sending: 'Registrando…', langLabel: 'English', poweredBy: 'Con tecnología de',
+        noVideo: 'El video de esta sesión no está disponible en este momento.',
         voiceConsent: 'Pueden llamarme sobre este seminario', consentNote: 'Opcional. Si no lo marcas, nunca te llamaremos — igual recibes el seminario.' },
 }
 
@@ -66,7 +78,7 @@ export default function WebinarPublicPage() {
 
         {!joinToken
           ? <RegisterForm slug={slug} sessionId={w.sessions[0]?.id} lang={lang} t={t} onRegistered={setJoinToken} />
-          : <WatchStub joinToken={joinToken} t={t} />}
+          : <WatchRoom joinToken={joinToken} webinar={w} lang={lang} t={t} />}
 
         {/* Lower tiers carry the mark; paid tiers buy it away (webinar_white_label).
             Deliberately small and below the fold of the form — this is the tenant's
@@ -134,65 +146,84 @@ function RegisterForm({ slug, sessionId, lang, t, onRegistered }: { slug: string
   )
 }
 
-function WatchStub({ joinToken, t }: { joinToken: string; t: typeof COPY['en'] }) {
-  const [playing, setPlaying] = useState(false)
+/**
+ * The watch room. Was `WatchStub`: a play button over nothing, whose heartbeat ran on a
+ * timer regardless of whether anything played. The events it produced were the input to
+ * every score and to the hero rule, so "the video is a stub" quietly meant "the lead
+ * intelligence is fiction". The player now drives the beat — see VideoPlayer.tsx.
+ */
+function WatchRoom({ joinToken, webinar, lang, t }: { joinToken: string; webinar: PublicWebinar; lang: 'en' | 'es'; t: typeof COPY['en'] }) {
   const [question, setQuestion] = useState('')
   const [done, setDone] = useState<string[]>([])
-  const heartbeat = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const emit = useCallback(async (type: string, meta?: Record<string, unknown>) => {
     try { await apiFetch('/api/public/webinar/event', { method: 'POST', body: JSON.stringify({ joinToken, type, meta }) }) } catch { /* best-effort telemetry */ }
   }, [joinToken])
 
-  // Watch heartbeats — the owned engagement instrumentation the design calls for (no
-  // provider sells a per-attendee webhook, so we emit it ourselves).
-  //
-  // 30s, not 10s. Every beat is an appended row AND triggers a full recompute that
-  // re-reads that person's whole event list, so the work is QUADRATIC in beats: a
-  // 45-min watch at 10s was 270 rows and ~36k row-reads per attendee (~14.6M at 400
-  // concurrent). At 30s that's 90 rows and ~4k reads — same numbers, ~9x less work.
-  //
-  // The cost is granularity on exit: someone who leaves mid-beat loses up to 30s of
-  // watch time instead of 10s. That is noise against a 45-minute session and does not
-  // move a hot/warm/cold bucket. Don't push this to 60s+ — short viewers (the cold
-  // ones we still want to score) would round to zero.
-  const HEARTBEAT_SECONDS = 30
-
-  function play() {
-    setPlaying(true)
-    void emit('JOINED')
-    heartbeat.current = setInterval(
-      () => void emit('WATCHED', { seconds: HEARTBEAT_SECONDS }),
-      HEARTBEAT_SECONDS * 1000,
-    )
-  }
-  useEffect(() => () => { if (heartbeat.current) clearInterval(heartbeat.current) }, [])
-
   const mark = (k: string) => setDone(d => (d.includes(k) ? d : [...d, k]))
+  const ctaLabel = (lang === 'es' && webinar.ctaLabelEs) || webinar.ctaLabel || t.cta
+
+  /**
+   * CTA. Emit BEFORE navigating — this event is the hero rule's trigger, and a
+   * fire-and-forget POST is not guaranteed to survive the page unload. We await it,
+   * then open in a new tab so the webinar keeps playing behind them (a lead who clicks
+   * the offer and loses the video is a lead who watched less).
+   */
+  async function clickCta() {
+    mark('cta')
+    await emit('CTA_CLICKED', { ctaId: 'primary', url: webinar.ctaUrl })
+    if (webinar.ctaUrl) window.open(webinar.ctaUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  async function clickResource() {
+    mark('guide')
+    await emit('DOWNLOADED', { assetId: 'primary', url: webinar.resourceUrl })
+    if (webinar.resourceUrl) window.open(webinar.resourceUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  const hasVideo = !!(webinar.videoProvider && webinar.videoAssetRef)
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div style={{ background: '#fff', border: '1px solid #e3e8e8', borderRadius: 16, padding: 20 }}>
         <div style={{ fontWeight: 700, color: '#16a34a', marginBottom: 12 }}>✓ {t.registered}</div>
-        <div style={{ aspectRatio: '16/9', borderRadius: 12, background: playing ? '#06231f' : '#0b2b2b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, fontWeight: 600 }}>
-          {playing
-            ? <span style={{ opacity: .85 }}>● live · your engagement is being scored</span>
-            : <button onClick={play} style={{ background: TEAL, border: 'none', color: '#fff', padding: '14px 26px', borderRadius: 10, fontSize: 17, fontWeight: 700, cursor: 'pointer' }}>{t.play}</button>}
-        </div>
+        {hasVideo
+          ? <VideoPlayer
+              provider={webinar.videoProvider!}
+              videoRef={webinar.videoAssetRef!}
+              onFirstPlay={() => void emit('JOINED')}
+              onWatched={seconds => void emit('WATCHED', { seconds })}
+            />
+          // Publishing without a video is blocked server-side, so this is only
+          // reachable if the field was cleared while the webinar was live. Say what
+          // happened instead of showing a dead frame.
+          : <div style={{ aspectRatio: '16/9', borderRadius: 12, background: '#0b2b2b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8fb2ad', fontSize: 15, textAlign: 'center', padding: 20 }}>
+              {t.noVideo}
+            </div>}
       </div>
 
-      {playing && (
-        <div style={{ display: 'grid', gap: 10 }}>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button onClick={() => { void emit('CTA_CLICKED', { ctaId: 'book-call' }); mark('cta') }} style={{ padding: '11px 18px', borderRadius: 8, border: 'none', background: TEAL, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>{t.cta}{done.includes('cta') && ' ✓'}</button>
-            <button onClick={() => { void emit('DOWNLOADED', { assetId: 'guide' }); mark('guide') }} style={{ padding: '11px 18px', borderRadius: 8, border: '1px solid #d5dbdb', background: '#fff', fontWeight: 600, cursor: 'pointer' }}>{t.guide}{done.includes('guide') && ' ✓'}</button>
-          </div>
-          <form onSubmit={e => { e.preventDefault(); if (question.trim()) { void emit('QUESTION_ASKED', { text: question.trim() }); setQuestion(''); mark('q') } }} style={{ display: 'flex', gap: 8 }}>
-            <input value={question} onChange={e => setQuestion(e.target.value)} placeholder={t.askPh} style={{ flex: 1, padding: '11px 14px', borderRadius: 8, border: '1px solid #d5dbdb', fontSize: 15 }} />
-            <button type="submit" style={{ padding: '11px 16px', borderRadius: 8, border: '1px solid #d5dbdb', background: '#fff', fontWeight: 600, cursor: 'pointer' }}>{t.ask}</button>
-          </form>
+      {/* The offer + the engagement surface. Shown once they're in the room, not gated
+          on play: someone who registers and scrolls should still be able to convert. */}
+      <div style={{ display: 'grid', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {webinar.ctaUrl && (
+            <button onClick={() => void clickCta()} style={{ padding: '11px 18px', borderRadius: 8, border: 'none', background: TEAL, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+              {ctaLabel}{done.includes('cta') && ' ✓'}
+            </button>
+          )}
+          {/* Null hides it. The old build shipped this button unconditionally and it
+              downloaded nothing — a DOWNLOADED event with no download behind it. */}
+          {webinar.resourceUrl && (
+            <button onClick={() => void clickResource()} style={{ padding: '11px 18px', borderRadius: 8, border: '1px solid #d5dbdb', background: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+              {t.guide}{done.includes('guide') && ' ✓'}
+            </button>
+          )}
         </div>
-      )}
+        <form onSubmit={e => { e.preventDefault(); if (question.trim()) { void emit('QUESTION_ASKED', { text: question.trim() }); setQuestion(''); mark('q') } }} style={{ display: 'flex', gap: 8 }}>
+          <input value={question} onChange={e => setQuestion(e.target.value)} placeholder={t.askPh} style={{ flex: 1, padding: '11px 14px', borderRadius: 8, border: '1px solid #d5dbdb', fontSize: 15 }} />
+          <button type="submit" style={{ padding: '11px 16px', borderRadius: 8, border: '1px solid #d5dbdb', background: '#fff', fontWeight: 600, cursor: 'pointer' }}>{t.ask}</button>
+        </form>
+      </div>
     </div>
   )
 }
