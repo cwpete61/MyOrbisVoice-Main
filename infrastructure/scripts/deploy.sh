@@ -175,11 +175,20 @@ else
   AUDIT_OUT=$(pnpm audit --prod --audit-level=critical 2>&1)
   AUDIT_EXIT=$?
   set -e
-  if [[ "$AUDIT_EXIT" -ne 0 ]]; then
+  # npm retired the legacy audit endpoint (returns HTTP 410); `pnpm audit` then
+  # exits non-zero because it could not REACH the registry — NOT because it found
+  # a CVE. Distinguish the two: an unreachable/broken endpoint degrades to a loud
+  # warning (Dependabot + the weekly scan remain the real gate); a genuine
+  # critical finding still hard-blocks the deploy.
+  if echo "$AUDIT_OUT" | grep -qiE "ERR_PNPM_AUDIT_BAD_RESPONSE|endpoint is being retired|responded with 4[0-9][0-9]|ENOTFOUND|ETIMEDOUT|ECONNREFUSED|network"; then
+    echo "   ⚠  Audit endpoint unavailable (npm retired the legacy audit API / network issue) —"
+    echo "      could not check CVEs here. Relying on Dependabot + the weekly security scan. Continuing."
+  elif [[ "$AUDIT_EXIT" -ne 0 ]]; then
     echo "$AUDIT_OUT" | tail -30
     fail "Critical CVE in production dependencies — bump the affected package or re-run with SKIP_SECURITY_AUDIT=1 if intentional."
+  else
+    ok "No critical CVEs in production deps"
   fi
-  ok "No critical CVEs in production deps"
 fi
 
 # ── 1. Pre-deploy snapshot ─────────────────────────────────────────────────
@@ -355,12 +364,49 @@ step_gateway() {
 
 step_web() {
   log "Web — build → sync → WIPE stale chunks → inject → commit-to-image → restart..."
+
+  # ── .env.local guard (2026-07-17 incident) ────────────────────────────────
+  # We build on a DEV machine and ship .next/. Next.js loads .env.local in EVERY
+  # environment except test, and it OVERRIDES .env.production. So a developer's
+  # local override is compiled straight into the production bundle — and because
+  # NEXT_PUBLIC_* is inlined at build time, nothing on the server can correct it.
+  #
+  # This shipped NEXT_PUBLIC_API_URL=http://localhost:4000 to app.myorbisvoice.com:
+  # every browser on production tried to call the visitor's own laptop and died with
+  # "blocked by CORS policy: ... loopback address space". Total outage — and the
+  # deploy reported SUCCESS, because the build compiles fine. It's just aimed at
+  # nowhere.
+  #
+  # It hid because .env.local happened to hold the SAME value as .env.production, so
+  # the override was invisible until someone pointed .env.local at localhost for
+  # local dev — which is exactly what that file is for.
+  WEB_ENV_LOCAL="$REPO_ROOT/apps/web/.env.local"
+  if [ -f "$WEB_ENV_LOCAL" ]; then
+    mv "$WEB_ENV_LOCAL" "$WEB_ENV_LOCAL.deploy-hold"
+    # shellcheck disable=SC2064
+    trap "[ -f '$WEB_ENV_LOCAL.deploy-hold' ] && mv '$WEB_ENV_LOCAL.deploy-hold' '$WEB_ENV_LOCAL'" EXIT
+    ok "apps/web/.env.local held aside so it cannot override .env.production"
+  fi
+
   # CRITICAL: catch real build errors. The grep filter has missed "Failed to compile." in the past.
   WEB_BUILD_OUT=$(pnpm --filter @voiceautomation/web build 2>&1)
   if echo "$WEB_BUILD_OUT" | grep -qE "Failed to compile|error TS"; then
     echo "$WEB_BUILD_OUT" | tail -30
     fail "Web build failed — fix TypeScript errors before deploying"
   fi
+
+  # Assert on the ARTIFACT, not the env plumbing. A bundle that compiles cleanly but
+  # points at localhost is a silent, total outage, so prove it before shipping.
+  # SocialLinks.tsx chooses its base from window.location.hostname at RUNTIME, so the
+  # literal legitimately appears in that chunk; anything else is a baked-in API base.
+  OFFENDERS=$(grep -rl '"http://localhost:4000"' "$REPO_ROOT/apps/web/.next/static/chunks/" 2>/dev/null \
+              | xargs -r grep -Ll 'window.location.hostname' 2>/dev/null || true)
+  if [ -n "$OFFENDERS" ]; then
+    echo "$OFFENDERS" | sed 's/^/   /'
+    fail "Web bundle has a localhost API base baked in — production would call the visitor's laptop. Check apps/web/.env*"
+  fi
+  ok "Web bundle verified: no localhost API base"
+
   ensure_deps myorbisvoice-web apps/web
   # public/ contains static assets served at the root path (sw.js, favicon,
   # help-screenshots/, etc.). Next.js serves these from /app/apps/web/public/
