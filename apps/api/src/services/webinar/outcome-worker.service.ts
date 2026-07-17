@@ -23,6 +23,7 @@
  */
 import { prisma } from '../../lib/prisma.js'
 import { appendEvent } from './events.service.js'
+import { webinarEnabled, aiCallsRemaining } from './entitlement.js'
 
 const WORKER_INTERVAL_MS = 30_000
 const BATCH = 20
@@ -205,6 +206,15 @@ export async function runTick(): Promise<void> {
       // No Contact → un-callable AND un-gateable (optedOutVoice lives on Contact).
       // Skip rather than invent consent.
       if (!person?.contactId || !webinar) continue
+
+      // Plan gates. Checked per person because a tenant can cross its cap mid-tick.
+      // Cheap (two indexed reads) and this is a 30s tick, not a hot path.
+      if (!(await webinarEnabled(tenantId))) continue
+      const quota = await aiCallsRemaining(tenantId)
+      if (!quota.ok) {
+        console.log(`[webinar-outcome] tenant ${tenantId}: AI call cap reached (${quota.used}/${quota.cap}) — skipping`)
+        continue
+      }
 
       try {
         await chaseOne({ personId: s.personId, webinarId: s.webinarId, tenantId, contactId: person.contactId, title: webinar.title })

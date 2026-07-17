@@ -24,6 +24,7 @@ import {
   getPublicWebinarBySlug, registerForSession, recordEngagement, bookFromWebinar,
 } from '../services/webinar/webinar.service.js'
 import { commandMetrics, leadIntelligence, personTimeline } from '../services/webinar/metrics.service.js'
+import { webinarEnabled, canPublishAnotherWebinar } from '../services/webinar/entitlement.js'
 
 const router: IRouter = Router()
 
@@ -59,11 +60,25 @@ const createSchema = z.object({
   vertical:      z.string().max(80).optional(),
 })
 
+/**
+ * Plan gate on WRITES only — reads stay open so a tenant whose plan lapsed can still
+ * see the leads they already paid to generate. Locking someone out of their own data
+ * is a way to lose them, not to upsell them.
+ */
+async function requireWebinarPlan(req: Request): Promise<string> {
+  const tenantId = tenantOf(req)
+  if (!(await webinarEnabled(tenantId))) {
+    throw new AppError('FORBIDDEN', 'MyOrbisWebinar is not included in this plan', 403)
+  }
+  return tenantId
+}
+
 router.post('/webinars', async (req, res, next) => {
   try {
+    const tenantId = await requireWebinarPlan(req)
     const p = createSchema.safeParse(req.body)
     if (!p.success) throw new AppError('VALIDATION_ERROR', p.error.issues[0]?.message ?? 'Invalid input', 422)
-    res.status(201).json({ data: await createWebinar({ tenantId: tenantOf(req), createdBy: req.user!.id, ...p.data }) })
+    res.status(201).json({ data: await createWebinar({ tenantId, createdBy: req.user!.id, ...p.data }) })
   } catch (err) { next(err) }
 })
 
@@ -87,9 +102,21 @@ const updateSchema = z.object({
 })
 router.patch('/webinars/:id', async (req, res, next) => {
   try {
+    const tenantId = await requireWebinarPlan(req)
     const p = updateSchema.safeParse(req.body)
     if (!p.success) throw new AppError('VALIDATION_ERROR', p.error.issues[0]?.message ?? 'Invalid input', 422)
-    res.json({ data: await updateWebinar(tenantOf(req), req.params.id, p.data) })
+
+    // The active-webinar cap bites at PUBLISH, not at create — a draft costs nothing.
+    if (p.data.status === 'PUBLISHED') {
+      const current = await getWebinar(tenantId, req.params.id)
+      if (current.status !== 'PUBLISHED') { // re-publishing an already-live one is free
+        const { ok, cap, used } = await canPublishAnotherWebinar(tenantId)
+        if (!ok) {
+          throw new AppError('FORBIDDEN', `Plan allows ${cap} published webinar${cap === 1 ? '' : 's'} (${used} in use). Upgrade or unpublish one.`, 403)
+        }
+      }
+    }
+    res.json({ data: await updateWebinar(tenantId, req.params.id, p.data) })
   } catch (err) { next(err) }
 })
 

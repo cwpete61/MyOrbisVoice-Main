@@ -46,6 +46,7 @@ async function main() {
       priceCents: 0,
       entitlements: [
         { key: 'widget_enabled',         valueType: 'BOOLEAN' as const, booleanValue: true  },
+        { key: 'payments_enabled',       valueType: 'BOOLEAN' as const, booleanValue: false },
         { key: 'inbound_enabled',        valueType: 'BOOLEAN' as const, booleanValue: false },
         { key: 'outbound_enabled',       valueType: 'BOOLEAN' as const, booleanValue: false },
         { key: 'sms_enabled',            valueType: 'BOOLEAN' as const, booleanValue: false },
@@ -103,6 +104,7 @@ async function main() {
       interval: 'ONE_TIME' as PlanInterval,
       priceCents: 49700,
       entitlements: [
+        { key: 'payments_enabled', valueType: 'BOOLEAN' as const, booleanValue: true },
         { key: 'max_channels', valueType: 'INTEGER' as const, integerValue: 3 },
         { key: 'max_agents', valueType: 'INTEGER' as const, integerValue: 7 },
         { key: 'minutes_per_month', valueType: 'INTEGER' as const, integerValue: 2000 },
@@ -132,6 +134,7 @@ async function main() {
       interval: 'MONTHLY' as const,
       priceCents: 19700,
       entitlements: [
+        { key: 'payments_enabled', valueType: 'BOOLEAN' as const, booleanValue: false },
         { key: 'max_channels', valueType: 'INTEGER' as const, integerValue: 1 },
         { key: 'max_agents', valueType: 'INTEGER' as const, integerValue: 2 },
         { key: 'minutes_per_month', valueType: 'INTEGER' as const, integerValue: 500 },
@@ -161,6 +164,7 @@ async function main() {
       interval: 'MONTHLY' as const,
       priceCents: 49700,
       entitlements: [
+        { key: 'payments_enabled', valueType: 'BOOLEAN' as const, booleanValue: true },
         { key: 'max_channels', valueType: 'INTEGER' as const, integerValue: 3 },
         { key: 'max_agents', valueType: 'INTEGER' as const, integerValue: 7 },
         { key: 'minutes_per_month', valueType: 'INTEGER' as const, integerValue: 2000 },
@@ -190,6 +194,7 @@ async function main() {
       interval: 'MONTHLY' as const,
       priceCents: 99700,
       entitlements: [
+        { key: 'payments_enabled', valueType: 'BOOLEAN' as const, booleanValue: true },
         { key: 'max_channels', valueType: 'INTEGER' as const, integerValue: 5 },
         { key: 'max_agents', valueType: 'INTEGER' as const, integerValue: 7 },
         { key: 'minutes_per_month', valueType: 'INTEGER' as const, integerValue: 5000 },
@@ -219,6 +224,7 @@ async function main() {
       interval: 'MONTHLY' as const,
       priceCents: 199700,
       entitlements: [
+        { key: 'payments_enabled', valueType: 'BOOLEAN' as const, booleanValue: true },
         // ── Channels ──────────────────────────────────────────────
         { key: 'widget_enabled',           valueType: 'BOOLEAN' as const, booleanValue: true },
         { key: 'inbound_enabled',          valueType: 'BOOLEAN' as const, booleanValue: true },
@@ -312,6 +318,50 @@ async function main() {
         },
       })
     }
+  }
+
+  // ── MyOrbisWebinar entitlements ────────────────────────────────────────────
+  // Attached to the existing plan ladder rather than standalone webinar plans: the
+  // portfolio doc calls for a separate Stripe line-item, but that needs real Stripe
+  // prices and a pricing decision. These are PROVISIONAL — change the numbers here.
+  //
+  // The meter is AI CALLS, not registrants. The product's pitch is "measured by
+  // pipeline, not attendance", so billing per attendee would contradict it and would
+  // charge for top-funnel success while the real cost (Twilio + OpenAI realtime,
+  // ~$0.20-0.35/min) sits at the bottom. Metering calls keeps price and cost aligned.
+  //
+  // Free deliberately gets the product with 0 calls: the tenant SEES the hot leads it
+  // cannot call. That's the upgrade prompt, and scoring costs us nothing.
+  // -1 = unlimited. Absent key = fail closed (see services/webinar/entitlement.ts).
+  const WEBINAR_ENTITLEMENTS: Record<string, { active: number; calls: number; enabled: boolean }> = {
+    free:               { enabled: true,  active: 1,  calls: 0 },
+    basic_monthly:      { enabled: true,  active: 3,  calls: 25 },
+    pro_monthly:        { enabled: true,  active: -1, calls: 100 },
+    premier_monthly:    { enabled: true,  active: -1, calls: 250 },
+    enterprise_monthly: { enabled: true,  active: -1, calls: -1 },
+    // LTD bought Voice for life before this product existed. Defaulting to NOT included
+    // so we don't silently give away metered AI calls forever — an explicit decision,
+    // not an accident. Flip to true (with a call cap) if the deal is meant to cover it.
+    ltd:                { enabled: false, active: 0,  calls: 0 },
+  }
+
+  console.log('[seed] seeding webinar entitlements...')
+  for (const [code, cfg] of Object.entries(WEBINAR_ENTITLEMENTS)) {
+    const plan = await prisma.plan.findUnique({ where: { code }, select: { id: true } })
+    if (!plan) continue
+    const rows = [
+      { key: 'webinar_enabled', valueType: 'BOOLEAN' as const, booleanValue: cfg.enabled, integerValue: null },
+      { key: 'webinar_max_active', valueType: 'INTEGER' as const, booleanValue: null, integerValue: cfg.active },
+      { key: 'included_webinar_ai_calls_per_month', valueType: 'INTEGER' as const, booleanValue: null, integerValue: cfg.calls },
+    ]
+    for (const r of rows) {
+      await prisma.planEntitlement.upsert({
+        where:  { planId_key: { planId: plan.id, key: r.key } },
+        update: { valueType: r.valueType, booleanValue: r.booleanValue, integerValue: r.integerValue },
+        create: { planId: plan.id, key: r.key, valueType: r.valueType, booleanValue: r.booleanValue, integerValue: r.integerValue },
+      })
+    }
+    console.log(`  [seed] webinar: ${code} — enabled=${cfg.enabled} active=${cfg.active} calls/mo=${cfg.calls}`)
   }
 
   console.log('[seed] seeding platform admin...')
