@@ -16,6 +16,7 @@ interface SystemSettings {
   storage: { defaultQuotaGb: number; warningThresholdPct: number; retentionDays: number | null }
   openai: { apiKey: boolean; model: string }
   serper: { apiKey: boolean }
+  email: { resend: boolean; brevo: boolean; postmark: boolean }
   enrichment: {
     rentcast: boolean; dataGov: boolean; attom: boolean; houseCanary: boolean
     estated: boolean; walkScore: boolean; googleMaps: boolean; mapbox: boolean
@@ -137,6 +138,7 @@ export default function SystemSettingsPage() {
   const { data: affSettings, reload: reloadAff } = useApi<AffiliateSettings>('/api/admin/affiliate/settings')
   const { data: tierData, reload: reloadTiers } = useApi<TierConfig[]>('/api/admin/storage-tiers')
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [unBackfilling, setUnBackfilling] = useState(false)
 
   // Affiliate settings form
   const [aff, setAff] = useState<Partial<AffiliateSettings>>({})
@@ -410,6 +412,24 @@ export default function SystemSettingsPage() {
     setSerperSaving(false)
   }
 
+  // Transactional email providers — routed by From-domain in email.service.ts:
+  // Resend = @myorbisvoice.com (Primary placement), Brevo = @myorbisresults.com
+  // (marketing), Postmark = @myorbisagents.com. Write-only; blank = keep current.
+  const [email, setEmail] = useState({ resendApiKey: '', brevoApiKey: '', postmarkServerToken: '' })
+  const [emailSaving, setEmailSaving] = useState(false)
+  async function saveEmailProviders(e: React.FormEvent) {
+    e.preventDefault()
+    const body: Record<string, string> = {}
+    if (email.resendApiKey) body['resendApiKey'] = email.resendApiKey
+    if (email.brevoApiKey) body['brevoApiKey'] = email.brevoApiKey
+    if (email.postmarkServerToken) body['postmarkServerToken'] = email.postmarkServerToken
+    if (Object.keys(body).length === 0) { showToast('error', 'Enter at least one key to save.'); return }
+    setEmailSaving(true)
+    const ok = await saveSection('email-providers', body, 'Email providers')
+    if (ok) setEmail({ resendApiKey: '', brevoApiKey: '', postmarkServerToken: '' })
+    setEmailSaving(false)
+  }
+
   // Content provider — which OpenAI-compatible LLM powers text generation
   // (social posts, translations, graphic lines). Default openai; gemini/groq
   // free-tier cut the bill to ~$0. Images stay OpenAI.
@@ -576,6 +596,19 @@ export default function SystemSettingsPage() {
   const inputCls = 'input font-mono text-sm'
   const labelCls = 'label'
 
+  async function backfillUsernames() {
+    if (!confirm('Set every Keycloak username to the app username so users can log in with username OR email?\n\nONLY run after the realm "Login with email" setting is ON — otherwise email login breaks.')) return
+    setUnBackfilling(true)
+    try {
+      const res = await apiFetchRaw('/api/admin/keycloak/backfill-usernames', { method: 'POST' })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j?.errors?.[0]?.message ?? 'Failed')
+      const r = j.data as { scanned: number; updated: string[]; unchanged: number; notInKc: number; failed: unknown[] }
+      setToast({ type: r.failed?.length ? 'error' : 'success', text: `Scanned ${r.scanned}. Updated ${r.updated.length}. Unchanged ${r.unchanged}. Not in Keycloak ${r.notInKc}.${r.failed?.length ? ` Failed ${r.failed.length}` : ''}` })
+    } catch (e) { setToast({ type: 'error', text: (e as Error).message }) }
+    finally { setUnBackfilling(false) }
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -593,6 +626,26 @@ export default function SystemSettingsPage() {
 
       {!loading && (
         <>
+          {/* ── SSO / Login ── */}
+          <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <CardHeader
+              title="SSO / Login"
+              subtitle="Keycloak single sign-on. Let members log in with their username OR email."
+              configured={true}
+            />
+            <div className="p-5 pt-0 space-y-3">
+              <div className="rounded-lg p-3 text-xs" style={{ background: 'oklch(96% 0.05 75)', color: 'oklch(38% 0.16 75)' }}>
+                <strong>⚠ Prerequisite:</strong> in Keycloak (auth.myorbisresults.com → realm <code>myorbis</code> → Realm settings → Login), turn <strong>Login with email</strong> ON before running this — otherwise members who sign in with their email get locked out.
+              </div>
+              <button onClick={backfillUsernames} disabled={unBackfilling} className="btn-ghost text-sm">
+                {unBackfilling ? 'Migrating…' : 'Enable username login (backfill Keycloak usernames)'}
+              </button>
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                Sets each Keycloak username to the app username so members can sign in with username or email. Idempotent — safe to re-run.
+              </p>
+            </div>
+          </div>
+
           {/* ── Google OAuth ── */}
           <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
             <CardHeader
@@ -746,6 +799,56 @@ export default function SystemSettingsPage() {
               </div>
               <button type="submit" disabled={serperSaving} className="btn-primary">
                 {serperSaving ? 'Saving…' : 'Save Serper.dev key'}
+              </button>
+            </form>
+          </div>
+
+          {/* ── Transactional Email Providers ── */}
+          <div className="rounded-xl" style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)' }}>
+            <CardHeader
+              title="Transactional Email Providers"
+              subtitle="API keys for the three sending providers. The provider is chosen by the From-domain: myorbisvoice.com → Resend, myorbisresults.com → Brevo, myorbisagents.com → Postmark."
+              configured={!!(data?.email?.resend || data?.email?.brevo || data?.email?.postmark)}
+            />
+
+            <div className="px-6 py-5 space-y-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <StatusRow label="Resend (myorbisvoice.com → Inbox)" value={!!data?.email?.resend} isSecret />
+              <StatusRow label="Brevo (myorbisresults.com → marketing)" value={!!data?.email?.brevo} isSecret />
+              <StatusRow label="Postmark (myorbisagents.com)" value={!!data?.email?.postmark} isSecret />
+              <div className="rounded-lg px-4 py-3 text-xs space-y-1" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)' }}>
+                <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Routing</p>
+                <ul className="space-y-0.5 list-disc list-inside" style={{ color: 'var(--text-tertiary)' }}>
+                  <li>Resend — transactional (verification, receipts, demo emails). Lands in Primary.</li>
+                  <li>Brevo — marketing/promotions from myorbisresults.com.</li>
+                  <li>Postmark — myorbisagents.com transactional.</li>
+                </ul>
+              </div>
+            </div>
+
+            <form onSubmit={saveEmailProviders} className="px-6 py-5 space-y-4">
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                All keys are stored encrypted (write-only). Leave a field blank to keep its current value.
+              </p>
+              <div>
+                <label className={labelCls}>Resend API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                <input type="password" className={inputCls} value={email.resendApiKey}
+                  onChange={e => setEmail({ ...email, resendApiKey: e.target.value })}
+                  placeholder="re_…" autoComplete="new-password" />
+              </div>
+              <div>
+                <label className={labelCls}>Brevo API Key <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                <input type="password" className={inputCls} value={email.brevoApiKey}
+                  onChange={e => setEmail({ ...email, brevoApiKey: e.target.value })}
+                  placeholder="xkeysib-…" autoComplete="new-password" />
+              </div>
+              <div>
+                <label className={labelCls}>Postmark Server Token <span style={{ color: 'var(--text-tertiary)' }}>(write-only)</span></label>
+                <input type="password" className={inputCls} value={email.postmarkServerToken}
+                  onChange={e => setEmail({ ...email, postmarkServerToken: e.target.value })}
+                  placeholder="postmark server token…" autoComplete="new-password" />
+              </div>
+              <button type="submit" disabled={emailSaving} className="btn-primary">
+                {emailSaving ? 'Saving…' : 'Save email provider keys'}
               </button>
             </form>
           </div>

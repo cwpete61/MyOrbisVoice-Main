@@ -213,6 +213,26 @@ router.post('/tenants/:tenantId/restore', requirePlatformAdmin, async (req, res,
   } catch (err) { next(err) }
 })
 
+// POST /keycloak/backfill-usernames — one-time migration so users can log in with
+// their app username OR email. Sets each KC user's username to their app username
+// (KC was seeded with username=email). Super-admin only (auth-wide change).
+// PREREQUISITE: realm "Login with email" must be ON first, or email login breaks.
+router.post('/keycloak/backfill-usernames', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const { backfillKeycloakUsernames } = await import('../services/keycloak-sync.service.js')
+    const result = await backfillKeycloakUsernames()
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.keycloak.username_backfill',
+      targetType:   'User',
+      targetId:     'bulk',
+      metadataJson: { scanned: result.scanned, updated: result.updated.length, unchanged: result.unchanged, notInKc: result.notInKc, failed: result.failed.length },
+    })
+    res.json({ data: result })
+  } catch (err) { next(err) }
+})
+
 // POST /tenants/:tenantId/password-reset — send the tenant OWNER a password-reset
 // email. Auth is Keycloak/SSO, so this goes through KC's execute-actions-email
 // (UPDATE_PASSWORD), NOT the legacy local reset-token flow (dead under SSO).

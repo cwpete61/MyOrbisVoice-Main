@@ -54,7 +54,10 @@ export async function syncUserToKeycloak(userId: string, plaintextPassword?: str
       method: 'POST',
       headers: { ...auth, 'content-type': 'application/json' },
       body: JSON.stringify({
-        username: user.email,
+        // KC username = the user's chosen app username so they can log in with it
+        // OR their email (email login requires realm "Login with email" = ON).
+        // Falls back to email for users with no username (e.g. Google-only).
+        username: user.username || user.email,
         email: user.email,
         enabled: true,
         emailVerified: true,
@@ -155,6 +158,51 @@ export async function backfillPartnersToKeycloak(): Promise<{
       const sent = await sendKeycloakSetPasswordEmail(u.id)
       if (sent) result.provisioned.push(u.email)
       else result.failed.push({ email: u.email, reason: 'provisioned but set-password email failed' })
+    } catch (e) {
+      result.failed.push({ email: u.email, reason: (e as Error).message.slice(0, 120) })
+    }
+  }
+  return result
+}
+
+/**
+ * One-time migration for username login: set every KC user's username to their
+ * app username (KC was provisioned with username = email). After this + the realm
+ * "Login with email = ON" setting, users can sign in with EITHER their username or
+ * their email. Idempotent — users whose KC username already matches are skipped.
+ *
+ * PREREQUISITE: the realm MUST have "Login with email" enabled before this runs,
+ * otherwise users who currently log in with their email lose that path (KC would
+ * only accept the new username). Do not run until that setting is confirmed ON.
+ */
+export async function backfillKeycloakUsernames(): Promise<{
+  scanned: number; updated: string[]; unchanged: number; notInKc: number; failed: { email: string; reason: string }[]
+}> {
+  const result = { scanned: 0, updated: [] as string[], unchanged: 0, notInKc: 0, failed: [] as { email: string; reason: string }[] }
+  if (!CLIENT_ID || !SECRET || !BASE || !REALM) { result.failed.push({ email: '-', reason: 'keycloak not configured' }); return result }
+  const users = await prisma.user.findMany({ select: { id: true, email: true, username: true } })
+  let token: string
+  try { token = await adminToken() } catch (e) { result.failed.push({ email: '-', reason: `kc token: ${(e as Error).message}` }); return result }
+  const auth = { authorization: `Bearer ${token}` }
+  for (const u of users) {
+    if (!u.email || !u.username) continue
+    if (/(@orbisvoice\.test$)|(\.test$)|(^e2e-)/i.test(u.email)) continue
+    // username == email → KC username already equals it; nothing to migrate.
+    if (u.username.toLowerCase() === u.email.toLowerCase()) { result.unchanged++; continue }
+    result.scanned++
+    try {
+      const q = await fetch(`${BASE}/admin/realms/${REALM}/users?email=${encodeURIComponent(u.email)}&exact=true`, { headers: auth })
+      const found = q.ok ? ((await q.json()) as { id: string; username?: string }[]) : []
+      const kc = found[0]
+      if (!kc) { result.notInKc++; continue }
+      if ((kc.username ?? '').toLowerCase() === u.username.toLowerCase()) { result.unchanged++; continue }
+      const upd = await fetch(`${BASE}/admin/realms/${REALM}/users/${kc.id}`, {
+        method: 'PUT',
+        headers: { ...auth, 'content-type': 'application/json' },
+        body: JSON.stringify({ username: u.username }),
+      })
+      if (!upd.ok) throw new Error(`kc update ${upd.status}`)
+      result.updated.push(u.email)
     } catch (e) {
       result.failed.push({ email: u.email, reason: (e as Error).message.slice(0, 120) })
     }
