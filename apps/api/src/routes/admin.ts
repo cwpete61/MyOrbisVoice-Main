@@ -5,6 +5,8 @@ import { requirePlatformAdmin, requirePlatformSuperAdmin, requirePlatformSupport
 import * as adminService from '../services/admin.service.js'
 import * as compCodeService from '../services/comp-code.service.js'
 import * as agentDemoService from '../services/agent-demo.service.js'
+import { runCallReview, getCallReview, decideFinding } from '../services/call-review/pipeline.service.js'
+import * as promptRules from '../services/call-review/prompt-rules.service.js'
 import { AppError } from '@voiceautomation/shared'
 import { getEnv } from '@voiceautomation/config'
 import { prisma } from '../lib/prisma.js'
@@ -208,6 +210,33 @@ router.post('/tenants/:tenantId/restore', requirePlatformAdmin, async (req, res,
   try {
     const tenant = await adminService.restoreTenant(req.params['tenantId']!, req.user!.id)
     res.json({ data: tenant })
+  } catch (err) { next(err) }
+})
+
+// POST /tenants/:tenantId/password-reset — send the tenant OWNER a password-reset
+// email. Auth is Keycloak/SSO, so this goes through KC's execute-actions-email
+// (UPDATE_PASSWORD), NOT the legacy local reset-token flow (dead under SSO).
+router.post('/tenants/:tenantId/password-reset', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where:   { id: req.params['tenantId']! },
+      include: { members: { where: { isOwner: true }, include: { user: true }, take: 1 } },
+    })
+    const owner = tenant?.members[0]?.user
+    if (!owner) throw new AppError('NOT_FOUND', 'Tenant owner user not found', 404)
+    const { sendKeycloakSetPasswordEmail } = await import('../services/keycloak-sync.service.js')
+    const sent = await sendKeycloakSetPasswordEmail(owner.id)
+    if (!sent) throw new AppError('BAD_GATEWAY', 'Could not send the reset email — the user may not exist in Keycloak, or Keycloak is unavailable.', 502)
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.tenant.password_reset_sent',
+      targetType:   'User',
+      targetId:     owner.id,
+      tenantId:     tenant!.id,
+      metadataJson: { email: owner.email },
+    })
+    res.json({ data: { sent: true, email: owner.email } })
   } catch (err) { next(err) }
 })
 
@@ -680,6 +709,38 @@ router.patch('/system-settings/serper', requirePlatformSuperAdmin, async (req, r
     await writeAuditLogFromRequest(req, {
       actorType: 'USER', actorUserId: userId,
       action: 'system_settings.serper.updated',
+      targetType: 'SystemConfig',
+      metadataJson: { fields: Object.keys(parsed.data) },
+    })
+
+    const settings = await systemConfig.getSystemSettings()
+    res.json({ data: settings })
+  } catch (err) { next(err) }
+})
+
+// Transactional email providers — write-only secrets. Keyed by From-domain in
+// email.service.ts pickProvider(): @myorbisvoice.com→Resend, @myorbisresults.com→Brevo,
+// @myorbisagents.com→Postmark. Blank field = keep existing (no reveal path).
+const emailProvidersSettingsSchema = z.object({
+  resendApiKey:       z.string().min(1).optional(),
+  brevoApiKey:        z.string().min(1).optional(),
+  postmarkServerToken: z.string().min(1).optional(),
+})
+
+router.patch('/system-settings/email-providers', requirePlatformSuperAdmin, async (req, res, next) => {
+  try {
+    const parsed = emailProvidersSettingsSchema.safeParse(req.body)
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 'Invalid input', 422)
+    const { resendApiKey, brevoApiKey, postmarkServerToken } = parsed.data
+    const userId = req.user!.id
+
+    if (resendApiKey)        await systemConfig.setConfigValue('email.resend.api_key', resendApiKey, true, userId)
+    if (brevoApiKey)         await systemConfig.setConfigValue('email.brevo.api_key', brevoApiKey, true, userId)
+    if (postmarkServerToken) await systemConfig.setConfigValue('email.postmark.server_token', postmarkServerToken, true, userId)
+
+    await writeAuditLogFromRequest(req, {
+      actorType: 'USER', actorUserId: userId,
+      action: 'system_settings.email_providers.updated',
       targetType: 'SystemConfig',
       metadataJson: { fields: Object.keys(parsed.data) },
     })
@@ -1880,8 +1941,12 @@ router.post('/phone-number-requests/:id/reject', requirePlatformAdmin, async (re
 })
 
 // GET /api/admin/phone-numbers/destinations — list of valid reassign targets:
-// the master account + every tenant subaccount with its display name. Used by
-// the reassign modal to populate the destination dropdown.
+// the master account + EVERY eligible tenant on the platform (not just ones that
+// already have a Twilio subaccount). A platform number can be handed to any live
+// tenant; the subaccount is minted on first assignment (see reassign handler).
+// Eligible = not deleted, status TRIAL/ACTIVE/PAST_DUE (SUSPENDED/CANCELED/
+// ARCHIVED excluded — they can't take a working number). Demo tenants ARE
+// included; they take numbers for demo calls.
 router.get('/phone-numbers/destinations', async (_req, res, next) => {
   try {
     const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
@@ -1890,12 +1955,22 @@ router.get('/phone-numbers/destinations', async (_req, res, next) => {
     // Master account SID (the account this API key authenticates against)
     const master = await masterClient.api.v2010.accounts(masterClient.accountSid!).fetch()
 
-    // All tenant subaccounts in our DB
-    const subaccounts = await prisma.tenantTwilioSubaccount.findMany({
-      where:   { status: 'ACTIVE' },
-      include: { tenant: { select: { id: true, displayName: true } } },
-      orderBy: { tenant: { displayName: 'asc' } },
+    // Every tenant that can receive a number — including demo tenants (they take
+    // numbers for demo calls) and the platform tenant. Only excludes deleted +
+    // suspended/canceled/archived tenants that can't own a working number.
+    const tenants = await prisma.tenant.findMany({
+      where:   { deletedAt: null, status: { in: ['TRIAL', 'ACTIVE', 'PAST_DUE'] } },
+      select:  { id: true, displayName: true },
+      orderBy: { displayName: 'asc' },
     })
+
+    // Which of them already have an ACTIVE subaccount (so the UI can flag that a
+    // new one will be created for those that don't).
+    const subs = await prisma.tenantTwilioSubaccount.findMany({
+      where:  { status: 'ACTIVE' },
+      select: { tenantId: true, twilioSubaccountSid: true },
+    })
+    const subByTenant = new Map(subs.map(s => [s.tenantId, s.twilioSubaccountSid]))
 
     res.json({
       data: {
@@ -1903,10 +1978,11 @@ router.get('/phone-numbers/destinations', async (_req, res, next) => {
           accountSid: master.sid,
           label:      `${master.friendlyName ?? 'Platform'} (master)`,
         },
-        subaccounts: subaccounts.map(s => ({
-          accountSid:  s.twilioSubaccountSid,
-          tenantId:    s.tenantId,
-          label:       s.tenant.displayName,
+        tenants: tenants.map(t => ({
+          tenantId:      t.id,
+          label:         t.displayName,
+          accountSid:    subByTenant.get(t.id) ?? null, // null = subaccount minted on first assignment
+          hasSubaccount: subByTenant.has(t.id),
         })),
       },
     })
@@ -1914,44 +1990,55 @@ router.get('/phone-numbers/destinations', async (_req, res, next) => {
 })
 
 // POST /api/admin/phone-numbers/:sid/reassign — move a number between accounts.
-// Body: { targetAccountSid: string, targetTenantId?: string }
-//   - targetAccountSid is master.sid for "move to platform-owned"
-//   - or a subaccount SID for "move to tenant"
-//   - targetTenantId is required when targetAccountSid is a subaccount (so we
-//     can update the local DB row)
+// Body: exactly one of:
+//   - { toMaster: true }        → move back to the platform master account
+//   - { targetTenantId: uuid }  → move to that tenant. The tenant does NOT need
+//     an existing subaccount — one is minted on demand (ensureTenantSubaccount)
+//     so ANY live tenant can receive a platform number.
+// Plus { confirmPhoneNumber } — must match the number being moved.
 //
 // Updates the DB to reflect the new ownership:
 //   - master ← anywhere : delete the PhoneNumber row (no longer tenant-assigned)
-//   - master → subaccount : create a new PhoneNumber row for the tenant
+//   - master → subaccount : create a new PhoneNumber row for the tenant (comp: $0/mo)
 //   - subaccount → subaccount : update tenantId + subaccountSid on existing row
 const reassignSchema = z.object({
-  targetAccountSid: z.string().regex(/^AC[a-zA-Z0-9]{32}$/, 'Invalid Twilio account SID'),
-  targetTenantId:   z.string().uuid().optional(),
+  targetTenantId:     z.string().uuid().optional(),
+  toMaster:           z.boolean().optional(),
   confirmPhoneNumber: z.string().regex(/^\+[1-9]\d{7,14}$/, 'Must match the number being reassigned in E.164'),
+}).refine(d => (d.toMaster === true) !== (!!d.targetTenantId), {
+  message: 'Provide exactly one of toMaster or targetTenantId',
 })
 
 router.post('/phone-numbers/:sid/reassign', requirePlatformAdmin, async (req, res, next) => {
   try {
     const { sid } = req.params as { sid: string }
     if (!sid.startsWith('PN')) throw new AppError('VALIDATION_ERROR', 'Invalid Twilio number SID', 422)
-    const { targetAccountSid, targetTenantId, confirmPhoneNumber } = reassignSchema.parse(req.body)
+    const { toMaster, confirmPhoneNumber } = reassignSchema.parse(req.body)
 
     const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
     const masterClient = await getPlatformTwilioClient()
     const masterAccountSid = masterClient.accountSid!
 
-    // Verify target is either master or a known active subaccount
-    if (targetAccountSid !== masterAccountSid) {
-      const sub = await prisma.tenantTwilioSubaccount.findUnique({ where: { twilioSubaccountSid: targetAccountSid } })
-      if (!sub || sub.status !== 'ACTIVE') {
-        throw new AppError('VALIDATION_ERROR', 'Target account is not a known active subaccount', 422)
+    // Resolve the destination Twilio account SID. For a tenant target, validate
+    // the tenant is real + eligible, then ensure (create-if-missing) its subaccount.
+    let targetAccountSid: string
+    let targetTenantId: string | undefined
+    if (toMaster) {
+      targetAccountSid = masterAccountSid
+    } else {
+      const parsedTenantId = reassignSchema.parse(req.body).targetTenantId!
+      const tenant = await prisma.tenant.findFirst({
+        where:  { id: parsedTenantId, deletedAt: null },
+        select: { id: true, status: true },
+      })
+      if (!tenant) throw new AppError('VALIDATION_ERROR', 'Target tenant not found', 422)
+      if (!['TRIAL', 'ACTIVE', 'PAST_DUE'].includes(tenant.status)) {
+        throw new AppError('VALIDATION_ERROR', `Tenant is ${tenant.status} — cannot receive a number`, 422)
       }
-      if (!targetTenantId) {
-        throw new AppError('VALIDATION_ERROR', 'targetTenantId is required when reassigning to a subaccount', 422)
-      }
-      if (sub.tenantId !== targetTenantId) {
-        throw new AppError('VALIDATION_ERROR', 'targetTenantId does not match the subaccount', 422)
-      }
+      const { ensureTenantSubaccount } = await import('../services/twilio-subaccount.service.js')
+      const { subaccountSid } = await ensureTenantSubaccount(tenant.id)
+      targetAccountSid = subaccountSid
+      targetTenantId   = tenant.id
     }
 
     // Confirm the phoneNumber typed in the modal matches what we're moving —
@@ -1973,6 +2060,32 @@ router.post('/phone-numbers/:sid/reassign', requirePlatformAdmin, async (req, re
 
     // ── Execute the Twilio-side move ─────────────────────────────────────
     await masterClient.incomingPhoneNumbers(sid).update({ accountSid: targetAccountSid })
+
+    // ── Wire the voice/SMS webhooks on the destination ───────────────────
+    // A platform-owned ops number carries NO voice webhook (voiceUrl unset), so
+    // a bare accountSid transfer would leave the tenant with a number that can't
+    // reach Orby ("webhook drift"). Point it at our API — same wiring a normal
+    // tenant purchase gets (phone-numbers.ts). Must run through the DESTINATION
+    // subaccount client: after the move, the master client can't address the
+    // number anymore. Non-fatal — the number is already moved + DB-reconciled
+    // below; a failed webhook set surfaces as drift in the inventory view.
+    if (targetTenantId) {
+      try {
+        const API_BASE = process.env['API_BASE_URL'] ?? 'https://api.myorbisvoice.com'
+        const { getSubaccountClient } = await import('../services/twilio-subaccount.service.js')
+        const subClient = await getSubaccountClient(targetTenantId)
+        await subClient.incomingPhoneNumbers(sid).update({
+          voiceUrl:             `${API_BASE}/api/webhooks/twilio/voice`,
+          voiceMethod:          'POST',
+          statusCallback:       `${API_BASE}/api/webhooks/twilio/status`,
+          statusCallbackMethod: 'POST',
+          smsUrl:               `${API_BASE}/api/webhooks/twilio/sms`,
+          smsMethod:            'POST',
+        })
+      } catch (e) {
+        console.error('[reassign] webhook wiring failed for', sid, (e as Error).message)
+      }
+    }
 
     // ── Reconcile our DB to reflect the new ownership ─────────────────────
     // Look up the existing row (if any) by either twilioNumberSid or e164Number
@@ -2002,7 +2115,10 @@ router.post('/phone-numbers/:sid/reassign', requirePlatformAdmin, async (req, re
             twilioNumberSid:     sid,
             twilioSubaccountSid: targetAccountSid,
             e164Number:          beforeNumber.phoneNumber,
-            monthlyPriceCents:   115,
+            // Platform-owned number handed to a tenant = comp ($0/mo), not a
+            // tenant purchase. Platform keeps eating the Twilio cost.
+            monthlyPriceCents:   0,
+            notes:               'Platform-assigned (comp)',
             isInboundEnabled:    true,
             isOutboundEnabled:   true,
             isSmsEnabled:        true,
@@ -2024,7 +2140,10 @@ router.post('/phone-numbers/:sid/reassign', requirePlatformAdmin, async (req, re
             twilioNumberSid:     sid,
             twilioSubaccountSid: targetAccountSid,
             e164Number:          beforeNumber.phoneNumber,
-            monthlyPriceCents:   115,
+            // Platform-owned number handed to a tenant = comp ($0/mo), not a
+            // tenant purchase. Platform keeps eating the Twilio cost.
+            monthlyPriceCents:   0,
+            notes:               'Platform-assigned (comp)',
             isInboundEnabled:    true,
             isOutboundEnabled:   true,
             isSmsEnabled:        true,
@@ -2058,6 +2177,27 @@ router.post('/phone-numbers/:sid/reassign', requirePlatformAdmin, async (req, re
         targetTenantId: targetTenantId ?? null,
       },
     })
+  } catch (err) { next(err) }
+})
+
+// POST /api/admin/phone-numbers/repair-webhooks — bulk-fix WEBHOOK_DRIFT.
+// Scans every tracked number against live Twilio and re-points the voice/SMS/
+// status webhooks at our API for any whose voiceUrl drifted (e.g. a platform
+// ops number reassigned to a tenant before the reassign path wired webhooks).
+// Idempotent; safe to re-run.
+router.post('/phone-numbers/repair-webhooks', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const { repairWebhookDrift } = await import('../services/twilio-inventory.service.js')
+    const result = await repairWebhookDrift()
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.phone_number.webhooks_repaired',
+      targetType:   'PhoneNumber',
+      targetId:     'bulk',
+      metadataJson: { repaired: result.repaired.length, failed: result.failed.length, scanned: result.scanned, detail: result },
+    })
+    res.json({ data: result })
   } catch (err) { next(err) }
 })
 
@@ -2694,6 +2834,94 @@ router.get('/agent-demos', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// A/B scoreboard for the demo email. BEFORE '/agent-demos/:id' so it isn't read as an id.
+router.get('/agent-demos/ab-results', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    res.json({ data: await agentDemoService.demoEmailAbResults() })
+  } catch (err) { next(err) }
+})
+
+// Preview every demo-email variant rendered with this agent's real listings —
+// the "read the copy, then pick which to send" flow.
+router.get('/agent-demos/:id/email-preview', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const locale = req.query['locale'] === 'es' ? 'es' as const : 'en' as const
+    res.json({ data: await agentDemoService.previewAgentDemoEmail(req.params['id']!, locale) })
+  } catch (err) { next(err) }
+})
+
+// NOTE: must be registered BEFORE '/agent-demos/:id' so "call-qa" isn't matched as an id.
+router.get('/agent-demos/call-qa', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    res.json({ data: await agentDemoService.listDemoCallQa() })
+  } catch (err) { next(err) }
+})
+
+// ─── Multi-agent Call Review (cross-model QA judge) ──────────────────────────
+// Trigger a fresh cross-model review for one call (runs the reviewer→refuter→
+// editor panel, ~10-20s). Off the live hot path — this is a manual admin action.
+router.post('/agent-demos/call-review/:conversationId', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    await runCallReview(req.params['conversationId']!)
+    res.json({ data: await getCallReview(req.params['conversationId']!) })
+  } catch (err) { next(err) }
+})
+
+// Fetch the stored review + findings for one call.
+router.get('/agent-demos/call-review/:conversationId', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    res.json({ data: await getCallReview(req.params['conversationId']!) })
+  } catch (err) { next(err) }
+})
+
+// Human decision on a finding — the approve/reject gate. APPROVED means the
+// proposed fix is accepted (application to the prompt is a later, separate step).
+router.patch('/agent-demos/call-review/finding/:id', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const status = req.body?.status
+    if (status !== 'APPROVED' && status !== 'REJECTED') {
+      throw new AppError('VALIDATION_ERROR', 'status must be APPROVED or REJECTED', 422)
+    }
+    res.json({ data: await decideFinding(req.params['id']!, status, req.user!.id, req.body?.notes ?? null) })
+  } catch (err) { next(err) }
+})
+
+// ─── Learned prompt rules (Phase 2 apply loop) ───────────────────────────────
+// DRAFT rules come from approved findings. Publishing is the ONLY thing that
+// puts text into Orby's live prompt — and it always requires a human.
+router.get('/prompt-rules', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const status = req.query['status'] as 'DRAFT' | 'ACTIVE' | 'RETIRED' | undefined
+    res.json({ data: await promptRules.listRules(status) })
+  } catch (err) { next(err) }
+})
+
+router.patch('/prompt-rules/:id', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    res.json({ data: await promptRules.updateRuleText(req.params['id']!, String(req.body?.text ?? ''), req.user!.id) })
+  } catch (err) { next(err) }
+})
+
+router.post('/prompt-rules/:id/publish', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    res.json({ data: await promptRules.publishRule(req.params['id']!, req.user!.id) })
+  } catch (err) { next(err) }
+})
+
+router.post('/prompt-rules/:id/retire', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    res.json({ data: await promptRules.retireRule(req.params['id']!, req.user!.id) })
+  } catch (err) { next(err) }
+})
+
+router.post('/prompt-rules/:id/reopen', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    res.json({ data: await promptRules.reopenRule(req.params['id']!, req.user!.id) })
+  } catch (err) { next(err) }
+})
+
 router.get('/agent-demos/:id', async (req, res, next) => {
   try {
     requireAgentsHost(req)
@@ -2721,10 +2949,37 @@ router.post('/agent-demos', requirePlatformAdmin, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+const agentDemoUpdateSchema = z.object({
+  agentName:  z.string().min(2).max(120).optional(),
+  brokerage:  z.string().max(160).optional(),
+  market:     z.string().min(2).max(120).optional(),
+  agentEmail: z.string().email().optional(),
+  agentPhone: z.string().max(40).optional(),
+})
+router.patch('/agent-demos/:id', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const body = validate(agentDemoUpdateSchema, req.body)
+    res.json({ data: await agentDemoService.updateAgentDemo(req.params['id']!, body) })
+  } catch (err) { next(err) }
+})
+
 router.post('/agent-demos/:id/send', requirePlatformAdmin, async (req, res, next) => {
   try {
     requireAgentsHost(req)
-    res.json({ data: await agentDemoService.sendAgentDemo(req.params['id']!) })
+    // ?variant=A|B|C picks the argument (each has its own subject line);
+    // ?locale=en|es sends ONE language. Both optional — defaults A/en.
+    const variant = ['A', 'B', 'C'].includes(String(req.body?.variant)) ? req.body.variant as 'A' | 'B' | 'C' : undefined
+    const locale  = req.body?.locale === 'es' ? 'es' as const : req.body?.locale === 'en' ? 'en' as const : undefined
+    res.json({ data: await agentDemoService.sendAgentDemo(req.params['id']!, { variant, locale }) })
+  } catch (err) { next(err) }
+})
+
+router.post('/agent-demos/:id/generate-video', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const { generateAgentDemoVideo } = await import('../services/agent-demo-video.service.js')
+    res.json({ data: await generateAgentDemoVideo(req.params['id']!) })
   } catch (err) { next(err) }
 })
 

@@ -89,8 +89,10 @@ interface InventoryResponse {
 }
 
 interface DestinationsResponse {
-  master:      { accountSid: string; label: string }
-  subaccounts: { accountSid: string; tenantId: string; label: string }[]
+  master:  { accountSid: string; label: string }
+  // Every eligible tenant (not just ones with a subaccount). accountSid is the
+  // existing subaccount SID, or null when one will be minted on assignment.
+  tenants: { tenantId: string; label: string; accountSid: string | null; hasSubaccount: boolean }[]
 }
 
 function CapBadge({ on, label }: { on: boolean; label: string }) {
@@ -142,30 +144,37 @@ function ReassignModal({
   onClose:      () => void
   onDone:       (msg: string) => void
 }) {
-  const [targetAccountSid, setTargetAccountSid] = useState('')
-  const [confirmText, setConfirmText]           = useState('')
-  const [busy, setBusy]                         = useState(false)
-  const [error, setError]                       = useState('')
+  const [dest, setDest]               = useState('') // '__master__' | tenantId
+  const [confirmText, setConfirmText] = useState('')
+  const [busy, setBusy]               = useState(false)
+  const [error, setError]             = useState('')
 
+  const onMaster = target.currentAccountSid === destinations.master.accountSid
   const options = [
-    { accountSid: destinations.master.accountSid, tenantId: undefined as string | undefined, label: destinations.master.label, isMaster: true },
-    ...destinations.subaccounts.map(s => ({ accountSid: s.accountSid, tenantId: s.tenantId, label: s.label, isMaster: false })),
-  ].filter(o => o.accountSid !== target.currentAccountSid)
+    // Hide "master" when the number is already on master.
+    ...(onMaster ? [] : [{ value: '__master__', label: destinations.master.label, isMaster: true, hasSubaccount: true }]),
+    // Every eligible tenant; drop the one that already holds this number.
+    ...destinations.tenants
+      .filter(t => t.accountSid == null || t.accountSid !== target.currentAccountSid)
+      .map(t => ({ value: t.tenantId, label: t.label, isMaster: false, hasSubaccount: t.hasSubaccount })),
+  ]
 
-  const targetTenantId = options.find(o => o.accountSid === targetAccountSid)?.tenantId
+  const picked = options.find(o => o.value === dest)
 
   async function submit() {
     setError('')
-    if (!targetAccountSid) { setError('Pick a destination'); return }
+    if (!dest) { setError('Pick a destination'); return }
     if (confirmText !== target.phoneNumber) { setError('Type the full phone number to confirm'); return }
     setBusy(true)
     try {
+      const body = dest === '__master__'
+        ? { toMaster: true, confirmPhoneNumber: target.phoneNumber }
+        : { targetTenantId: dest, confirmPhoneNumber: target.phoneNumber }
       await apiFetch(`/api/admin/phone-numbers/${target.sid}/reassign`, {
         method: 'POST',
-        body: JSON.stringify({ targetAccountSid, targetTenantId, confirmPhoneNumber: target.phoneNumber }),
+        body: JSON.stringify(body),
       })
-      const destLabel = options.find(o => o.accountSid === targetAccountSid)?.label ?? targetAccountSid
-      onDone(`✓ Moved ${target.phoneNumber} → ${destLabel}. A2P throughput on the destination resets to default until that account has its own A2P registration.`)
+      onDone(`✓ Moved ${target.phoneNumber} → ${picked?.label ?? dest}. A2P throughput on the destination resets to default until that account has its own A2P registration.`)
     } catch (e) {
       setError((e as Error).message)
       setBusy(false)
@@ -181,16 +190,23 @@ function ReassignModal({
         </p>
 
         <label className="block mb-1 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Move to</label>
-        <select value={targetAccountSid} onChange={e => setTargetAccountSid(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg text-sm mb-4"
+        <select value={dest} onChange={e => setDest(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg text-sm mb-2"
           style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
           <option value="">— Select destination —</option>
           {options.map(o => (
-            <option key={o.accountSid} value={o.accountSid}>
-              {o.isMaster ? '🌐 ' : '🏢 '}{o.label}
+            <option key={o.value} value={o.value}>
+              {o.isMaster ? '🌐 ' : '🏢 '}{o.label}{!o.isMaster && !o.hasSubaccount ? ' (new subaccount)' : ''}
             </option>
           ))}
         </select>
+
+        {picked && !picked.isMaster && !picked.hasSubaccount && (
+          <div className="rounded-lg p-2 mb-4 text-xs" style={{ background: 'oklch(96% 0.04 240)', color: 'oklch(40% 0.14 240)' }}>
+            First number for this tenant — a new Twilio subaccount is created automatically on assignment. Number is comp ($0/mo, platform-billed).
+          </div>
+        )}
+        {(!picked || picked.isMaster || picked.hasSubaccount) && <div className="mb-2" />}
 
         <div className="rounded-lg p-3 mb-4 text-xs" style={{ background: 'oklch(96% 0.05 75)', color: 'oklch(35% 0.16 75)' }}>
           <strong>⚠ Footguns to know:</strong>
@@ -219,9 +235,9 @@ function ReassignModal({
             style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
             Cancel
           </button>
-          <button onClick={submit} disabled={busy || !targetAccountSid || confirmText !== target.phoneNumber}
+          <button onClick={submit} disabled={busy || !dest || confirmText !== target.phoneNumber}
             className="px-4 py-2 rounded-lg text-sm font-semibold"
-            style={{ background: 'oklch(55% 0.11 193)', color: 'white', opacity: busy || !targetAccountSid || confirmText !== target.phoneNumber ? 0.5 : 1 }}>
+            style={{ background: 'oklch(55% 0.11 193)', color: 'white', opacity: busy || !dest || confirmText !== target.phoneNumber ? 0.5 : 1 }}>
             {busy ? 'Moving…' : 'Reassign'}
           </button>
         </div>
@@ -238,6 +254,7 @@ export default function AdminPhoneNumbersPage() {
   const [reassignTarget, setReassignTarget] = useState<ReassignTarget | null>(null)
   const [message, setMessage]             = useState('')
   const [refreshing, setRefreshing]       = useState(false)
+  const [repairing, setRepairing]         = useState(false)
   const [confirmPurge, setConfirmPurge]   = useState<string | null>(null)
 
   // Backend wrappers passed into NumberSearch
@@ -292,6 +309,25 @@ export default function AdminPhoneNumbersPage() {
     } catch (e) {
       setMessage((e as Error).message)
       setConfirmPurge(null)
+    }
+  }
+
+  async function repairWebhooks() {
+    setRepairing(true); setMessage('')
+    try {
+      const r = await apiFetch<{ scanned: number; repaired: { e164: string }[]; failed: { e164: string; reason: string }[] }>(
+        '/api/admin/phone-numbers/repair-webhooks', { method: 'POST' },
+      )
+      const okMsg = r.repaired.length
+        ? `✓ Repaired ${r.repaired.length} number${r.repaired.length === 1 ? '' : 's'} (${r.repaired.map(x => x.e164).join(', ')}). Inbound now reaches Orby.`
+        : '✓ Scanned — no webhook drift to repair.'
+      const failMsg = r.failed.length ? ` ${r.failed.length} failed: ${r.failed.map(x => `${x.e164} (${x.reason})`).join('; ')}.` : ''
+      setMessage(okMsg + failMsg)
+      await reload()
+    } catch (e) {
+      setMessage((e as Error).message)
+    } finally {
+      setRepairing(false)
     }
   }
 
@@ -351,6 +387,13 @@ export default function AdminPhoneNumbersPage() {
             {s.webhookDrift > 0 && <span>Webhook drift: <strong>{s.webhookDrift}</strong></span>}
             {s.capDrift    > 0 && <span>Cap drift: <strong>{s.capDrift}</strong></span>}
             {s.orphans     > 0 && <span>Untracked on Twilio: <strong>{s.orphans}</strong></span>}
+            {s.webhookDrift > 0 && (
+              <button onClick={repairWebhooks} disabled={repairing}
+                className="ml-auto shrink-0 text-xs px-2.5 py-1 rounded-md font-semibold"
+                style={{ background: 'oklch(55% 0.11 193)', color: 'white', opacity: repairing ? 0.6 : 1 }}>
+                {repairing ? 'Repairing…' : '🔧 Repair webhook drift'}
+              </button>
+            )}
           </div>
         )
       })()}

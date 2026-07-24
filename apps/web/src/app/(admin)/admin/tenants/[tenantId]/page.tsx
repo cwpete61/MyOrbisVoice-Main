@@ -105,6 +105,16 @@ export default function AdminTenantDetailPage() {
     finally { setSaving(false) }
   }
 
+  async function sendPasswordReset() {
+    if (!confirm('Send a password-reset email to the tenant owner?')) return
+    setSaving(true)
+    try {
+      const r = await apiFetch<{ sent: boolean; email: string }>(`/api/admin/tenants/${tenantId}/password-reset`, { method: 'POST', body: '{}' })
+      showToast('success', `Password-reset email sent to ${r.email}.`)
+    } catch (err) { showToast('error', err instanceof Error ? err.message : 'Failed') }
+    finally { setSaving(false) }
+  }
+
   const [grantPlanCode, setGrantPlanCode] = useState('')
   const [grantSaving, setGrantSaving]     = useState(false)
   async function grantPlan() {
@@ -190,6 +200,9 @@ export default function AdminTenantDetailPage() {
             title="Enter this tenant's dashboard as support mode"
           >
             {impersonating ? 'Entering…' : 'Enter as tenant →'}
+          </button>
+          <button onClick={sendPasswordReset} disabled={saving} className="btn-ghost text-xs" title="Email the tenant owner a Keycloak password-reset link">
+            {saving ? 'Working…' : 'Send password reset'}
           </button>
           {tenant.status !== 'SUSPENDED' ? (
             <button onClick={suspend} disabled={saving} className="btn-danger text-xs">{saving ? 'Working…' : 'Suspend'}</button>

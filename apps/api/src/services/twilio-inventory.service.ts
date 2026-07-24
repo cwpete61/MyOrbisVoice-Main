@@ -526,3 +526,67 @@ async function mergeWithLiveTwilio(
     }
   }
 }
+
+export interface WebhookRepairResult {
+  scanned:  number
+  repaired: { id: string; e164: string }[]
+  failed:   { id: string; e164: string; reason: string }[]
+}
+
+/**
+ * Remediation for WEBHOOK_DRIFT — set the voice/SMS/status webhooks on every
+ * inbound-enabled number whose live Twilio voiceUrl doesn't point at our API.
+ * Idempotent: numbers already in sync are skipped. Fixes the "reassigned a
+ * platform ops number to a tenant, but its webhook was unset → inbound never
+ * reaches Orby" class of issue (the reassign path now wires this at move time;
+ * this repairs any that drifted before the fix, or drifted for other reasons).
+ * Each number is updated through the client that owns it (its subaccount, or
+ * master for platform-owned numbers).
+ */
+export async function repairWebhookDrift(): Promise<WebhookRepairResult> {
+  const recon = await reconcilePhoneInventory()
+  if (recon.syncError) {
+    return { scanned: 0, repaired: [], failed: [{ id: '-', e164: '-', reason: recon.syncError }] }
+  }
+  const driftedIds = Object.entries(recon.byId)
+    .filter(([, v]) => v.status === 'WEBHOOK_DRIFT')
+    .map(([id]) => id)
+  if (!driftedIds.length) return { scanned: recon.summary.total, repaired: [], failed: [] }
+
+  const rows = await prisma.phoneNumber.findMany({
+    where:  { id: { in: driftedIds } },
+    select: { id: true, e164Number: true, twilioNumberSid: true, twilioSubaccountSid: true },
+  })
+
+  const apiBase  = process.env['API_BASE_URL'] ?? 'https://api.myorbisvoice.com'
+  const webhooks = {
+    voiceUrl:             `${apiBase}/api/webhooks/twilio/voice`,
+    voiceMethod:          'POST',
+    statusCallback:       `${apiBase}/api/webhooks/twilio/status`,
+    statusCallbackMethod: 'POST',
+    smsUrl:               `${apiBase}/api/webhooks/twilio/sms`,
+    smsMethod:            'POST',
+  }
+
+  const Twilio   = (await import('twilio')).default
+  const master   = await getPlatformTwilioClient()
+  const repaired: WebhookRepairResult['repaired'] = []
+  const failed:   WebhookRepairResult['failed']   = []
+
+  for (const r of rows) {
+    if (!r.twilioNumberSid) { failed.push({ id: r.id, e164: r.e164Number, reason: 'no Twilio number SID on record' }); continue }
+    try {
+      let client = master
+      if (r.twilioSubaccountSid) {
+        const token = await getSubaccountAuthTokenBySid(r.twilioSubaccountSid)
+        if (!token) { failed.push({ id: r.id, e164: r.e164Number, reason: 'subaccount auth token unavailable' }); continue }
+        client = Twilio(r.twilioSubaccountSid, token)
+      }
+      await client.incomingPhoneNumbers(r.twilioNumberSid).update(webhooks)
+      repaired.push({ id: r.id, e164: r.e164Number })
+    } catch (e) {
+      failed.push({ id: r.id, e164: r.e164Number, reason: (e as Error).message.slice(0, 120) })
+    }
+  }
+  return { scanned: recon.summary.total, repaired, failed }
+}
