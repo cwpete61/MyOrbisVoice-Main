@@ -144,14 +144,34 @@ export default function AdminAffiliatesPage() {
     try {
       const res = await apiFetchRaw(`/api/admin/affiliates/${id}/${action}`, { method: 'POST' })
       if (!res.ok) throw new Error('Failed')
-      // 'regenerate-code' has its own success message because "regenerate-coded" reads weird.
-      const msg = action === 'regenerate-code' ? 'Referral code rotated.' : `Partner ${action}d.`
+      // Some actions read weird with the "-ed" suffix — give them their own copy.
+      const msg = action === 'regenerate-code' ? 'Referral code rotated.'
+        : action === 'password-reset' ? 'Password-reset email sent to the partner.'
+        : `Partner ${action}d.`
       showToast('success', msg)
       reloadAff()
     } catch {
-      const msg = action === 'regenerate-code' ? 'Failed to rotate referral code.' : `Failed to ${action} partner.`
+      const msg = action === 'regenerate-code' ? 'Failed to rotate referral code.'
+        : action === 'password-reset' ? 'Failed to send the password-reset email.'
+        : `Failed to ${action} partner.`
       showToast('error', msg)
     }
+    finally { setWorking(null) }
+  }
+
+  // Recover partners locked out of login: provision any affiliate missing from
+  // Keycloak + email them a set-password link. Idempotent — safe to re-run.
+  async function backfillKeycloak() {
+    if (!confirm('Provision any partners missing from Keycloak and email them a set-password link? Safe to re-run.')) return
+    setWorking('backfill')
+    try {
+      const r = await apiFetch<{ scanned: number; provisioned: string[]; alreadyInKc: number; failed: { email: string; reason: string }[] }>(
+        '/api/admin/affiliates/backfill-keycloak', { method: 'POST' },
+      )
+      const msg = `Scanned ${r.scanned}. Recovered + emailed ${r.provisioned.length}${r.provisioned.length ? ` (${r.provisioned.join(', ')})` : ''}. Already OK: ${r.alreadyInKc}.${r.failed.length ? ` Failed: ${r.failed.length}` : ''}`
+      showToast(r.failed.length ? 'error' : 'success', msg)
+      reloadAff()
+    } catch (e) { showToast('error', (e as Error).message) }
     finally { setWorking(null) }
   }
 
@@ -274,6 +294,11 @@ export default function AdminAffiliatesPage() {
                 <button key={s} onClick={() => setStatusFilter(s)} style={FILTER_BTN(statusFilter === s)}>{s || 'All'}</button>
               ))}
             </div>
+            <button onClick={backfillKeycloak} disabled={working === 'backfill'} className="text-xs px-2.5 py-1 rounded"
+              style={{ background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }}
+              title="Recover partners locked out of login: provision any missing Keycloak users + email them a set-password link.">
+              {working === 'backfill' ? 'Backfilling…' : '🔑 Backfill partner logins'}
+            </button>
           </div>
 
           {affLoading && <div className="h-4 rounded animate-pulse w-48" style={{ background: 'var(--border-subtle)' }} />}
@@ -330,6 +355,7 @@ export default function AdminAffiliatesPage() {
                             {a.status === 'ACTIVE'   && <button onClick={() => doAffAction(a.id, 'pause')}      disabled={!!working} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>Pause</button>}
                             {a.status === 'PAUSED'   && <button onClick={() => doAffAction(a.id, 'reactivate')} disabled={!!working} className="text-xs px-2 py-1 rounded" style={{ background: 'oklch(19% 0.04 193)', color: 'oklch(72% 0.12 193)' }}>Reactivate</button>}
                             {a.status !== 'DISABLED' && <button onClick={() => doAffAction(a.id, 'disable')}    disabled={!!working} className="text-xs px-2 py-1 rounded" style={{ background: 'oklch(13% 0.04 25)', color: 'oklch(68% 0.20 25)' }}>Disable</button>}
+                            <button onClick={() => { if (confirm('Send a password-reset email to this partner?')) doAffAction(a.id, 'password-reset') }} disabled={!!working} className="text-xs px-2 py-1 rounded" style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }} title="Email this partner a Keycloak password-reset link">Reset password</button>
                             <button
                               onClick={() => setEditModal(a)}
                               disabled={!!working}

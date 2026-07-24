@@ -108,6 +108,61 @@ export async function sendKeycloakSetPasswordEmail(userId: string, lifespanSecon
 }
 
 /**
+ * Is this email already a Keycloak user? Used by the backfill + the per-partner
+ * recovery so we only email people who actually needed provisioning.
+ */
+export async function keycloakUserExists(email: string): Promise<boolean> {
+  if (!CLIENT_ID || !SECRET || !BASE || !REALM) return false
+  try {
+    const token = await adminToken()
+    const q = await fetch(`${BASE}/admin/realms/${REALM}/users?email=${encodeURIComponent(email)}&exact=true`, {
+      headers: { authorization: `Bearer ${token}` },
+    })
+    const found = q.ok ? ((await q.json()) as unknown[]) : []
+    return found.length > 0
+  } catch { return false }
+}
+
+/**
+ * Recover partners locked out by the affiliateSignupUser Keycloak gap: for every
+ * affiliate whose user is NOT in Keycloak, provision them (forced set-password —
+ * we don't hold their plaintext) and send the set-password email so they can log
+ * in. Idempotent: partners already in Keycloak are left untouched, so this is
+ * safe to re-run.
+ */
+export async function backfillPartnersToKeycloak(): Promise<{
+  scanned: number
+  provisioned: string[]
+  alreadyInKc: number
+  failed: { email: string; reason: string }[]
+}> {
+  const result = { scanned: 0, provisioned: [] as string[], alreadyInKc: 0, failed: [] as { email: string; reason: string }[] }
+  if (!CLIENT_ID || !SECRET || !BASE || !REALM) {
+    result.failed.push({ email: '-', reason: 'keycloak not configured' })
+    return result
+  }
+  const affiliates = await prisma.affiliateAccount.findMany({
+    select: { user: { select: { id: true, email: true } } },
+  })
+  for (const a of affiliates) {
+    const u = a.user
+    if (!u?.email) continue
+    if (/(@orbisvoice\.test$)|(\.test$)|(^e2e-)/i.test(u.email)) continue
+    result.scanned++
+    try {
+      if (await keycloakUserExists(u.email)) { result.alreadyInKc++; continue }
+      await syncUserToKeycloak(u.id)              // create in KC (UPDATE_PASSWORD)
+      const sent = await sendKeycloakSetPasswordEmail(u.id)
+      if (sent) result.provisioned.push(u.email)
+      else result.failed.push({ email: u.email, reason: 'provisioned but set-password email failed' })
+    } catch (e) {
+      result.failed.push({ email: u.email, reason: (e as Error).message.slice(0, 120) })
+    }
+  }
+  return result
+}
+
+/**
  * Back-channel SSO logout: revoke the user's Keycloak sessions via the admin API.
  * Used instead of a browser redirect to KC's /logout endpoint — that endpoint,
  * without an id_token_hint, shows a confirm screen that NPEs (500) on an expired

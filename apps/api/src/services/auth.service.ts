@@ -294,6 +294,13 @@ export async function affiliateSignupUser(data: {
     data: { email: data.email, username: data.username, passwordHash, firstName: data.firstName ?? null, lastName: data.lastName ?? null, phone: data.phone || null, smsConsentAt: data.smsConsent ? new Date() : null },
   })
 
+  // Provision into Keycloak for SSO — WITHOUT this, the partner is logged in at
+  // signup (tokens issued below) but can NEVER log back in: re-login goes through
+  // the Keycloak SSO funnel, which has no record of them. Same call the tenant +
+  // Google signup paths make. Pass the plaintext so KC sets the credential and
+  // skips the forced reset, so their signup password just works. Best-effort.
+  await syncUserToKeycloak(user.id, data.password)
+
   // Create the affiliate account in PENDING state
   await applyForAffiliate(user.id)
   // Mirror into the Hub Partner table so the parent storefront recognizes them as a

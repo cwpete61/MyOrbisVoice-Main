@@ -5,6 +5,13 @@ import { AppError } from '@voiceautomation/shared'
 import { getGoogleConfig } from './system-config.service.js'
 import crypto from 'node:crypto'
 
+// Google returns invalid_grant when a refresh token is revoked or expired (common
+// when the OAuth app is in "Testing" mode → 7-day token expiry). Treat as reconnect.
+function isInvalidGrant(err: unknown): boolean {
+  const e = err as { response?: { data?: { error?: string } }; message?: string }
+  return e?.response?.data?.error === 'invalid_grant' || /invalid_grant/i.test(String(e?.message ?? ''))
+}
+
 const REQUIRED_SCOPES = [
   'https://www.googleapis.com/auth/gmail.send',
   'https://www.googleapis.com/auth/gmail.readonly',
@@ -43,7 +50,10 @@ export async function startGoogleOAuth(tenantId: string, userId: string): Promis
   const client = await buildOAuthClient()
   const url = client.generateAuthUrl({
     access_type: 'offline',
-    prompt: 'consent',
+    // 'select_account' forces Google's account chooser every time so the user
+    // picks WHICH Gmail to connect (not the last-used one); 'consent' keeps the
+    // consent screen that access_type:offline needs to reissue a refresh token.
+    prompt: 'select_account consent',
     scope: REQUIRED_SCOPES,
     state,
   })
@@ -263,7 +273,18 @@ export async function getAuthenticatedGoogleClient(tenantId: string) {
   // Refresh if expired or near expiry
   const expiryDate = typeof rawTokens.expiry_date === 'number' ? rawTokens.expiry_date : null
   if (expiryDate && expiryDate < Date.now() + 5 * 60 * 1000) {
-    const { credentials } = await client.refreshAccessToken()
+    let credentials: Auth.Credentials
+    try {
+      ({ credentials } = await client.refreshAccessToken())
+    } catch (err) {
+      if (isInvalidGrant(err)) {
+        // Refresh token revoked/expired (often: OAuth app in Testing mode → 7-day
+        // expiry). Flag for reconnect instead of crashing the calendar with a 500.
+        await prisma.integrationConnection.update({ where: { id: conn.id }, data: { status: 'ERROR' } }).catch(() => {})
+        throw new AppError('GOOGLE_REAUTH_REQUIRED', 'Google access expired — please reconnect your Google account.', 409)
+      }
+      throw err
+    }
     client.setCredentials(credentials)
     // Persist updated tokens
     await prisma.secretRef.updateMany({
@@ -404,7 +425,7 @@ export async function startStaffGoogleOAuth(tenantId: string, staffMemberId: str
   }
 
   const client = await buildOAuthClient()
-  const url = client.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: REQUIRED_SCOPES, state })
+  const url = client.generateAuthUrl({ access_type: 'offline', prompt: 'select_account consent', scope: REQUIRED_SCOPES, state })
   await writeAuditLog({ tenantId, actorType: 'USER', actorUserId, action: 'staff.google.oauth_started', targetType: 'StaffMember', targetId: staffMemberId })
   return { url }
 }
@@ -506,7 +527,16 @@ export async function getAuthenticatedGoogleClientByConnectionId(connectionId: s
   client.setCredentials(tokens)
 
   if (tokens.expiry_date && Date.now() > (tokens.expiry_date as number) - 5 * 60 * 1000) {
-    const { credentials } = await client.refreshAccessToken()
+    let credentials: Auth.Credentials
+    try {
+      ({ credentials } = await client.refreshAccessToken())
+    } catch (err) {
+      if (isInvalidGrant(err)) {
+        await prisma.integrationConnection.update({ where: { id: connectionId }, data: { status: 'ERROR' } }).catch(() => {})
+        throw new AppError('GOOGLE_REAUTH_REQUIRED', 'Google access expired — please reconnect your Google account.', 409)
+      }
+      throw err
+    }
     client.setCredentials(credentials)
     await prisma.secretRef.update({ where: { id: ref.id }, data: { externalRef: encryptTokens(credentials), lastValidatedAt: new Date() } })
   }
@@ -553,7 +583,7 @@ export async function startPartnerGoogleOAuth(affiliateAccountId: string, actorU
   }
 
   const client = await buildOAuthClient()
-  const url = client.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: REQUIRED_SCOPES, state })
+  const url = client.generateAuthUrl({ access_type: 'offline', prompt: 'select_account consent', scope: REQUIRED_SCOPES, state })
   await writeAuditLog({
     actorType:   'USER',
     actorUserId,

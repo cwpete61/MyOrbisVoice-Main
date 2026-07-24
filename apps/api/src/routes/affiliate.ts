@@ -347,6 +347,52 @@ adminRouter.post('/affiliates/:id/reactivate', async (req, res, next) => { try {
 adminRouter.post('/affiliates/:id/disable',    async (req, res, next) => { try { const { notes } = req.body as { notes?: string }; res.json({ data: await affiliateService.disableAffiliate(req.params.id!, notes) }) } catch (err) { next(err) } })
 adminRouter.patch('/affiliates/:id/notes',     async (req, res, next) => { try { const { notes } = req.body as { notes: string }; res.json({ data: await affiliateService.updateAffiliateNotes(req.params.id!, notes) }) } catch (err) { next(err) } })
 
+// Send the partner a password-reset email. Auth is Keycloak/SSO, so this goes
+// through KC's execute-actions-email (UPDATE_PASSWORD), not a local reset token.
+adminRouter.post('/affiliates/:id/password-reset', async (req, res, next) => {
+  try {
+    const { prisma } = await import('../lib/prisma.js')
+    const acct = await prisma.affiliateAccount.findUnique({ where: { id: req.params.id! }, include: { user: true } })
+    if (!acct?.user) { res.status(404).json({ error: 'Partner user not found' }); return }
+    const { sendKeycloakSetPasswordEmail, syncUserToKeycloak } = await import('../services/keycloak-sync.service.js')
+    // Provision into Keycloak if missing — partners who self-signed up before the
+    // affiliateSignupUser fix were never in KC, so the reset email would no-op.
+    await syncUserToKeycloak(acct.userId)
+    const sent = await sendKeycloakSetPasswordEmail(acct.userId)
+    if (!sent) { res.status(502).json({ error: 'Could not send the reset email — the user may not exist in Keycloak, or Keycloak is unavailable.' }); return }
+    const { writeAuditLogFromRequest } = await import('../lib/audit.js')
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  (req as { user?: { id: string } }).user?.id,
+      action:       'admin.partner.password_reset_sent',
+      targetType:   'User',
+      targetId:     acct.userId,
+      metadataJson: { email: acct.user.email, affiliateId: acct.id },
+    })
+    res.json({ data: { sent: true, email: acct.user.email } })
+  } catch (err) { next(err) }
+})
+
+// Bulk recovery: provision every affiliate missing from Keycloak + email them a
+// set-password link. Fixes partners locked out by the affiliateSignupUser gap.
+// Idempotent — partners already in Keycloak are skipped, so it's safe to re-run.
+adminRouter.post('/affiliates/backfill-keycloak', async (req, res, next) => {
+  try {
+    const { backfillPartnersToKeycloak } = await import('../services/keycloak-sync.service.js')
+    const result = await backfillPartnersToKeycloak()
+    const { writeAuditLogFromRequest } = await import('../lib/audit.js')
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  (req as { user?: { id: string } }).user?.id,
+      action:       'admin.partner.keycloak_backfill',
+      targetType:   'AffiliateAccount',
+      targetId:     'bulk',
+      metadataJson: { scanned: result.scanned, provisioned: result.provisioned.length, alreadyInKc: result.alreadyInKc, failed: result.failed.length },
+    })
+    res.json({ data: result })
+  } catch (err) { next(err) }
+})
+
 // Full editable partner record (profile + settings + booking + usage + email policy).
 adminRouter.get('/affiliates/:id/edit-shape', async (req, res, next) => {
   try {
