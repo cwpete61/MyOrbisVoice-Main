@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
+import { loadLearnedRules } from './lib/learned-rules.js'
 import { loadPartnerContext } from './lib/partner-context.js'
 import { verifyStreamAuth } from './lib/stream-auth.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
@@ -10,7 +11,7 @@ import { generateSummary, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
 import { mulawToPcm16, pcm16ToMulaw, resamplePcm16, MulawFrameBuffer } from './lib/mulaw.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
-import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
+import { toolDeclarationsForMode, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
 import { hangUpTwilioCall } from './lib/twilio-call-control.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
@@ -219,6 +220,9 @@ export async function handleOutboundCall(ws: WebSocket) {
       }
     }
 
+    const outboundTenant = await prisma.tenant.findUnique({
+      where: { id: tenantId }, select: { industryVertical: true },
+    })
     const systemPrompt = resolveSystemPrompt(
       prompts as any[],
       dnaSnap,
@@ -227,6 +231,8 @@ export async function handleOutboundCall(ws: WebSocket) {
       kbText,
       partnerCtx,            // partner identity when the from-number is partner-owned
       callerHistoryBlock,    // E.7 — Callee Context layer
+      await loadLearnedRules(tenantId), // Call-Review Phase 2 — published corrections
+      outboundTenant?.industryVertical ?? null, // Layer 1.2 — default vertical persona
     )
 
     // Build greeting from DNA business name + campaign description
@@ -352,7 +358,7 @@ export async function handleOutboundCall(ws: WebSocket) {
         await finalize('FAILED')
         ws.close()
       },
-    }, { apiKeyOverride: effectiveGeminiKey, voiceName, tools: [...TOOL_DECLARATIONS] })
+    }, { apiKeyOverride: effectiveGeminiKey, voiceName, tools: toolDeclarationsForMode(undefined) })
 
     initialized = true
     console.log('[outbound] session ready, Gemini connecting…')
@@ -377,6 +383,7 @@ export async function handleOutboundCall(ws: WebSocket) {
           summary,
           channelType: 'OUTBOUND',
           partnerSlug,
+          usage: gemini?.getUsage() ?? null,
         })
 
         // Link conversation back to the OutboundCallAttempt

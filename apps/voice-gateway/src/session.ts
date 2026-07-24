@@ -1,14 +1,16 @@
 import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt } from './lib/prompt-resolver.js'
+import { loadLearnedRules } from './lib/learned-rules.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { fetchListingsForPrompt } from './lib/listings.js'
 import { cachedContent } from './lib/content-cache.js'
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { analyzeConversation } from './services/summary.service.js'
+import { runCallQa } from './services/call-qa.service.js'
 import { persistConversation, markSessionFailed, startWidgetConversation, type TranscriptEntry } from './services/conversation.service.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
-import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
+import { toolDeclarationsForMode, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
 
 // Message types sent from the browser widget
 type ClientMsg =
@@ -89,7 +91,15 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
   const partner = (meta?.['partner'] && typeof meta['partner'] === 'object')
     ? meta['partner']
     : null
-  const systemPrompt = resolveSystemPrompt(prompts, dna, 'WIDGET', buildToolGuidanceBlock(), kbText, partner)
+  const tenantRow = await prisma.tenant.findUnique({
+    where: { id: session.tenantId }, select: { industryVertical: true },
+  })
+  const systemPrompt = resolveSystemPrompt(
+    prompts, dna, 'WIDGET', buildToolGuidanceBlock(), kbText, partner,
+    null,                             // no caller-history on the widget
+    await loadLearnedRules(session.tenantId), // Call-Review Phase 2 — published corrections
+    tenantRow?.industryVertical ?? null,      // Layer 1.2 — default vertical persona
+  )
 
   const transcript: TranscriptEntry[] = []
   // Buffer streaming Gemini transcription deltas into complete turns. Without
@@ -248,6 +258,7 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
         const result = await executeTool(call.name, call.args, {
           tenantId:       session.tenantId,
           conversationId: conversationId,
+          getTranscriptText: () => transcript.map(t => `${t.role}: ${t.text}`).join('\n'),
         })
         const tracker = toolCallTracker.get(call.id)
         if (tracker) tracker.result = result
@@ -291,7 +302,9 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
       await finalize('FAILED')
       ws.close()
     },
-  }, { apiKeyOverride: effectiveGeminiKey, voiceName, tools: [...TOOL_DECLARATIONS] })
+    // Widget stays on BOOKING tools for now (CALLBACK is a phone-first feature —
+    // see docs/scheduling-modes-plan.md Phase 2). Excludes request_callback.
+  }, { apiKeyOverride: effectiveGeminiKey, voiceName, tools: toolDeclarationsForMode(undefined) })
 
   send(ws, { type: 'ready' })
 
@@ -332,6 +345,8 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
 
       if (status === 'COMPLETED' && transcript.length > 0) {
         const analysis = await analyzeConversation(transcript)
+        const qaBooked = (await prisma.appointment.count({ where: { tenantId: session.tenantId, createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) } } })) > 0
+        const qa = runCallQa(transcript, { bookedAppointment: qaBooked })
         conversationId = await persistConversation({
           tenantId: session.tenantId,
           sessionId: session.id,
@@ -340,6 +355,8 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
           attentionLevel: analysis.attentionLevel,
           attentionReason: analysis.attentionReason,
           showingBrief: analysis.showingBrief,
+          qa,
+          usage: gemini?.getUsage() ?? null,
         })
         send(ws, { type: 'ended', conversationId })
       } else {

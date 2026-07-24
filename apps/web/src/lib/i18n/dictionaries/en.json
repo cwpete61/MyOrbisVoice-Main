@@ -2560,6 +2560,22 @@
       "placeholder": "e.g. friendly, formal, professional",
       "help": "Sets the tone of the agent's opening message"
     },
+    "scheduling": {
+      "title": "Scheduling",
+      "modeLabel": "Scheduling mode",
+      "modeHelp": "How Orby handles appointments on calls. Callback-only fits field-service businesses whose jobs run long.",
+      "modeBooking": "Booking — offer calendar times",
+      "modeCallback": "Callback only — capture the lead, promise a call back",
+      "slaLabel": "Callback promise",
+      "slaOneHour": "Within the hour",
+      "slaSameDay": "By end of day",
+      "slaNextDay": "Next business day",
+      "whoLabel": "Who calls back",
+      "whoPlaceholder": "e.g. Mike",
+      "ownerPhoneLabel": "Owner notification number",
+      "ownerPhoneHelp": "We text this number the moment a callback is captured.",
+      "textBackLabel": "Text the caller a confirmation"
+    },
     "escalation": {
       "modeLabel": "Escalation mode",
       "modeTooltip": "When the agent decides a caller needs a human (e.g. complex complaint, refund request), this controls how it hands off.",

@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt, type PartnerContext } from './lib/prompt-resolver.js'
+import { loadLearnedRules } from './lib/learned-rules.js'
 import { loadPartnerContext } from './lib/partner-context.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
 import { fetchListingsForPrompt } from './lib/listings.js'
@@ -10,11 +11,12 @@ import { findContactIdByPhone, getContactHistory, formatContactHistoryForPrompt 
 import { openGeminiLiveSession } from './services/gemini.service.js'
 import { analyzeConversation, cleanTranscript } from './services/summary.service.js'
 import { persistConversation, type TranscriptEntry } from './services/conversation.service.js'
+import { runCallQa, qaOneLine } from './services/call-qa.service.js'
 import { mulawToPcm16, pcm16ToMulaw, resamplePcm16, MulawFrameBuffer } from './lib/mulaw.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
-import { sendCallNotificationEmail } from './services/notify.service.js'
+import { sendCallNotificationEmail, sendDemoTryNotification } from './services/notify.service.js'
 import { sendToTenant as sendPushToTenant } from './services/push.service.js'
-import { TOOL_DECLARATIONS, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
+import { buildToolGuidanceBlock, executeTool, rollbackToolCall, toolDeclarationsForMode, type ToolResult, type SchedulingConfig } from './services/tools.js'
 import { hangUpTwilioCall } from './lib/twilio-call-control.js'
 
 const GOODBYE_PATTERN = /\b(goodbye|good-bye|bye|bye-bye|farewell|take care|have a good|have a great|talk (to you |with you )?(soon|later)|see you|thanks? (for calling|for your time)|thank you (for calling|for your time)|that('s| is) all|no (more )?questions|i('m| am) done|end the call|hang up)\b/i
@@ -152,6 +154,7 @@ export async function handleInboundCall(ws: WebSocket) {
   // from the first word. Non-demo calls never hold.
   let demoPinCapture = false
   let demoRecord     = false
+  let callerFrom     = ''   // caller ID, connection-scoped so finalize() can read it
   let dtmfBuffer     = ''
   let dtmfTimer: ReturnType<typeof setTimeout> | null = null
   let pinHoldResolve: (() => void) | null = null
@@ -198,10 +201,53 @@ export async function handleInboundCall(ws: WebSocket) {
   let agentBuffer   = ''
   let lastRole: 'user' | 'assistant' | null = null
 
+  // Repetition circuit-breaker. Gemini Live can degenerate into asking the SAME
+  // question over and over (a real call looped "are you working with another
+  // agent?" ~12x, ignoring the caller AND "stop asking me"). Detect near-identical
+  // consecutive agent turns (or explicit caller frustration) and inject ONE hard
+  // correction to break the loop. Fires once per loop, re-arms when Orby moves on.
+  let lastAgentSig = ''
+  let repeatCount = 0
+  let loopBreakerArmed = true
+  const CORRECTION =
+    '[SYSTEM CORRECTION] You are repeating the same question and the caller has ALREADY answered it, ' +
+    'possibly several times. STOP asking that question — do NOT ask it again in any form. Briefly ' +
+    'acknowledge their answer ("Thanks, got it"), then either finish booking now, ask a DIFFERENT ' +
+    'outstanding question, or wrap up. If the caller told you to stop, apologize once and move on ' +
+    'immediately. Never ask the same thing more than twice.'
+  function agentSig(t: string): string {
+    return t.toLowerCase().replace(/[^a-z ]/g, ' ')
+      .replace(/\b(um|uh|okay|ok|got|it|just|to|confirm|sure|make|check|also|and|so|the|a|an|you|your|are|is|not|correct|throw|out|there|thanks|for|that|now|let|me|i|can|help)\b/g, ' ')
+      .replace(/\s+/g, ' ').trim().slice(0, 80)
+  }
+  function wordOverlap(a: string, b: string): number {
+    const A = new Set(a.split(' ').filter(Boolean)), B = new Set(b.split(' ').filter(Boolean))
+    if (!A.size || !B.size) return 0
+    let inter = 0; for (const w of A) if (B.has(w)) inter++
+    return inter / Math.max(A.size, B.size)
+  }
+  function fireBreaker(why: string): void {
+    if (!loopBreakerArmed) return
+    loopBreakerArmed = false
+    console.log(`[inbound] repetition loop detected (${why}) — injecting correction`)
+    try { gemini?.sendText(CORRECTION) } catch { /* session may be closing */ }
+  }
+
   function flushBuffer(role: 'user' | 'assistant') {
     const text = role === 'user' ? userBuffer.trim() : agentBuffer.trim()
     if (text) {
       transcript.push({ role, text, timestamp: Date.now() })
+      if (role === 'assistant') {
+        const sig = agentSig(text)
+        if (sig && lastAgentSig && (sig === lastAgentSig || wordOverlap(sig, lastAgentSig) >= 0.6)) {
+          repeatCount++
+        } else { repeatCount = 0; loopBreakerArmed = true }
+        if (sig) lastAgentSig = sig
+        // Fire on the 2nd near-identical question (she should ask each thing ONCE).
+        if (repeatCount >= 1) fireBreaker('agent repeat x2')
+      } else if (/stop asking|already (told|answered|said|gave)|same question|i (just )?said|asked me (that|this)/i.test(text)) {
+        fireBreaker('caller frustration')
+      }
     }
     if (role === 'user') userBuffer = ''
     else agentBuffer = ''
@@ -226,6 +272,11 @@ export async function handleInboundCall(ws: WebSocket) {
   // One-shot diagnostic flags — see media-event handler below
   let firstMediaLogged       = false
   let firstTrackRejectLogged = false
+  // Set once the agent has said its terminal farewell. After this we stop
+  // feeding caller audio to Gemini so it can't spin up a fresh greeting on
+  // stray post-goodbye noise, then close the session. Fixes the "Orby said
+  // bye then restarted the whole conversation" bug (2026-07-11).
+  let farewellSaid           = false
   // Tool-call lifecycle tracker — keyed by Gemini's tool-call id. Lets us
   // compensate (e.g. cancel a freshly-booked appointment) when Gemini emits
   // a `toolCallCancellation` AFTER the API call already committed.
@@ -342,6 +393,7 @@ export async function handleInboundCall(ws: WebSocket) {
     channelConfigId = params['channelConfigId'] ?? ''
     callSid         = params['callSid']         ?? callSid
     const fromNumber = params['fromNumber'] ?? ''
+    callerFrom = fromNumber
     const partnerId  = params['partnerId']  ?? ''
     demoSessionId    = params['demoSessionId'] || null
     demoPinCapture   = params['demoPinCapture'] === '1'
@@ -387,13 +439,17 @@ export async function handleInboundCall(ws: WebSocket) {
         : Promise.resolve(null),
       prisma.tenant.findUnique({
         where:  { id: tenantId },
-        select: { orbyPaymentsEnabled: true, stripeChargesEnabled: true, orbyDepositCents: true },
+        select: { orbyPaymentsEnabled: true, stripeChargesEnabled: true, orbyDepositCents: true, industryVertical: true },
       }),
     ])
 
     const channelCfgJson  = (channelCfgRow?.configJson as Record<string, unknown> | null) ?? {}
     const voiceName       = (channelCfgJson['voiceName']       as string  | undefined) || 'Aoede'
     const agentSpeaksFirst = channelCfgJson['agentSpeaksFirst'] !== false  // default true
+    // Scheduling mode (Booking / Windows / Callback). Unset → BOOKING (current
+    // behavior). CALLBACK strips the calendar tools + drives the callback prompt.
+    const scheduling      = (channelCfgJson['scheduling'] as SchedulingConfig | undefined) ?? null
+    const schedulingMode  = scheduling?.mode ?? 'BOOKING'
 
     const dnaSnap = dna ? {
       identityJson:    dna.identityJson,
@@ -458,6 +514,9 @@ export async function handleInboundCall(ws: WebSocket) {
       kbText,
       partnerContext,        // partner — set for partner-owned inbound numbers
       callerHistoryBlock,    // E.7 — Caller Context layer
+      await loadLearnedRules(tenantId), // Call-Review Phase 2 — published corrections
+      payCfg?.industryVertical ?? null, // Layer 1.2 — default vertical persona
+      scheduling,                       // Layer 1.3 — scheduling-mode behavior
     )
 
     // Phase 2 — on-call payments. Only instruct Orby to offer/take payment when
@@ -520,8 +579,8 @@ export async function handleInboundCall(ws: WebSocket) {
     // instead of asking the caller to recite digits. Caller ID can be blocked
     // (empty / "Anonymous"); in that case the agent falls back to asking.
     const callerIdLine = fromNumber
-      ? `Caller ID for this call: ${fromNumber}. Read this number back to the caller when confirming contact info — do not ask them to recite their phone number unless caller ID is missing.`
-      : `Caller ID is blocked or unavailable for this call — you will need to ask the caller for their phone number.`
+      ? `Caller ID for this call: ${fromNumber}. This is the ONLY phone number you may state for the caller. When confirming their phone, read back EXACTLY this number (or the exact number a lookup_contact result returned for THIS caller) — digit for digit. NEVER invent, guess, or recite any other phone number from memory. If you are ever unsure of a phone number, ask the caller to say it — do NOT state a number you are not certain of.`
+      : `Caller ID is blocked or unavailable for this call — you will need to ask the caller for their phone number. NEVER invent or guess a phone number; if you don't have it, ask.`
 
     // DEMO line (470): hold Orby silent for ~3s so the PIN binds the demo
     // session before the greeting — Orby must NOT greet before the PIN activates
@@ -583,10 +642,14 @@ export async function handleInboundCall(ws: WebSocket) {
           // farewell unhandled until the silence watchdog timed out at
           // 60s. 3s delay gives the agent's farewell sentence time to
           // play out cleanly before Twilio drops the channel.
-          if (GOODBYE_PATTERN.test(text)) {
-            console.log('[inbound] goodbye detected (agent) — hanging up')
+          if (GOODBYE_PATTERN.test(text) && !farewellSaid) {
+            console.log('[inbound] goodbye detected (agent) — sealing session + hanging up')
             stopSilenceTimer()
-            setTimeout(() => hangUpCall(callSid, ownerAccountSid), 3000)
+            // Seal NOW so no further caller audio reaches Gemini (prevents it
+            // re-greeting on post-goodbye noise). Let the farewell audio play,
+            // then drop Twilio + close Gemini together.
+            farewellSaid = true
+            setTimeout(() => { hangUpCall(callSid, ownerAccountSid); gemini?.close() }, 2500)
           }
         }
       },
@@ -619,6 +682,8 @@ export async function handleInboundCall(ws: WebSocket) {
             externalCallId: callSid,
             callSid,
             ownerAccountSid,
+            scheduling,
+            getTranscriptText: () => transcript.map(t => `${t.role}: ${t.text}`).join('\n'),
           })
           const tracker = toolCallTracker.get(call.id)
           if (tracker) tracker.result = result
@@ -689,7 +754,7 @@ export async function handleInboundCall(ws: WebSocket) {
         await finalize('FAILED')
         ws.close()
       },
-    }, { apiKeyOverride: effectiveGeminiKey, voiceName, tools: [...TOOL_DECLARATIONS] })
+    }, { apiKeyOverride: effectiveGeminiKey, voiceName, tools: toolDeclarationsForMode(schedulingMode) })
 
     initialized = true
     console.log('[inbound] session ready, Gemini connecting…')
@@ -720,6 +785,14 @@ export async function handleInboundCall(ws: WebSocket) {
       if (status === 'COMPLETED' && transcript.length > 0) {
         const cleaned = await cleanTranscript(transcript)
         const analysis = await analyzeConversation(cleaned)
+        // Call-QA inputs: was an appointment created this call, and did the
+        // caller's email verify? Reused by the demo-try notification below.
+        const qaBooked  = (await prisma.appointment.count({ where: { tenantId, createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) } } })) > 0
+        const qaContact = callerFrom
+          ? await prisma.contact.findFirst({ where: { tenantId, phoneE164: callerFrom }, select: { fullName: true, emailStatus: true } })
+          : null
+        const qa = runCallQa(cleaned, { bookedAppointment: qaBooked, emailStatus: qaContact?.emailStatus })
+        console.log(`[inbound] ${qaOneLine(qa)}`)
         await persistConversation({
           tenantId,
           sessionId: callSid,
@@ -731,6 +804,11 @@ export async function handleInboundCall(ws: WebSocket) {
           channelType: 'INBOUND',
           turnLatenciesMs,
           demoSessionId,
+          qa,
+          // Booking requires contact info, so booked ⇒ contact was left.
+          stages: { talked: true, contact: !!qaContact || qaBooked, qualified: !!analysis.showingBrief, booked: qaBooked },
+          callerId: callerFrom || null,
+          usage: gemini?.getUsage() ?? null,
         })
         if (turnLatenciesMs.length > 0) {
           const sorted = [...turnLatenciesMs].sort((a, b) => a - b)
@@ -738,6 +816,22 @@ export async function handleInboundCall(ws: WebSocket) {
           console.log(`[inbound] latency summary: turns=${turnLatenciesMs.length} median=${median}ms p95=${sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]}ms`)
         }
         console.log(`[inbound] conversation persisted callSid=${callSid} turns=${transcript.length} deltas=${deltaCount}`)
+
+        // Demo-try notification: tell the operator someone tried an AGENT demo and
+        // how far they got. No-ops unless demo_notify_email is configured.
+        try {
+          const demo = await prisma.agentDemo.findFirst({ where: { tenantId }, select: { agentName: true } })
+          if (demo) {
+            await sendDemoTryNotification({
+              agentName:   demo.agentName,
+              callerPhone: callerFrom || undefined,
+              callerName:  qaContact?.fullName ?? null,
+              stages: { called: true, contact: !!qaContact, qualified: !!analysis.showingBrief, booked: qaBooked },
+              summary: analysis.summary,
+              qa,
+            })
+          }
+        } catch (e) { console.warn('[inbound] demo-try notify failed:', (e as Error).message) }
 
         // Best-effort: mux + upload the demo call recording. Gateway-side
         // because Twilio's recording API crashes <Connect><Stream> calls.
@@ -794,9 +888,13 @@ export async function handleInboundCall(ws: WebSocket) {
           const mulawBuf = Buffer.from(msg.media.payload, 'base64')
           const pcm8k    = mulawToPcm16(mulawBuf)
           if (demoRecord) { if (!recT0) recT0 = Date.now(); recCaller.push({ t: Date.now(), pcm: Buffer.from(pcm8k) }) }
-          const pcm16k   = resamplePcm16(pcm8k, 8000, 16000)  // Gemini expects 16kHz
-          gemini.sendAudio(pcm16k)
-          lastUserAudioAt = Date.now()
+          // After the agent's farewell, keep recording but STOP feeding Gemini —
+          // otherwise stray noise triggers a fresh greeting before the line drops.
+          if (!farewellSaid) {
+            const pcm16k = resamplePcm16(pcm8k, 8000, 16000)  // Gemini expects 16kHz
+            gemini.sendAudio(pcm16k)
+            lastUserAudioAt = Date.now()
+          }
         }
         return
       }

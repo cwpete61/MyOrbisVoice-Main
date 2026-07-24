@@ -6,8 +6,18 @@ import * as appointmentService from '../services/appointment.service.js'
 import * as googleService from '../services/google.service.js'
 import * as contactService from '../services/contact.service.js'
 import { storeGatewayRecording } from '../services/recording.service.js'
+import { sendEmail } from '../services/email.service.js'
 import { writeAuditLog } from '../lib/audit.js'
 import { AppError } from '@voiceautomation/shared'
+
+/** Escape user/agent-authored text before embedding it in the fallback HTML email. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
 
 /**
  * Internal gateway routes — only callable by the voice-gateway service.
@@ -634,12 +644,37 @@ router.post('/internal/gateway/tools/send-followup-email', async (req, res, next
       }).catch(() => null)
     }
 
-    await googleService.sendGmailEmail(tenantId, {
-      to:      recipient,
-      subject: data.subject,
-      body:    data.body,
-      isHtml:  data.isHtml ?? false,
-    })
+    // Prefer the tenant's own connected Gmail (the email lands from THEIR
+    // mailbox). Tenants without Google linked — every agent-demo tenant, and any
+    // tenant that hasn't finished OAuth — used to make this tool hard-fail, so
+    // Orby could never send anything on a demo call. Fall back to the platform
+    // transactional sender so "I'll email that to you" is always true.
+    let sentVia: 'gmail' | 'platform' = 'gmail'
+    try {
+      await googleService.sendGmailEmail(tenantId, {
+        to:      recipient,
+        subject: data.subject,
+        body:    data.body,
+        isHtml:  data.isHtml ?? false,
+      })
+    } catch (gmailErr) {
+      sentVia = 'platform'
+      const profile = await prisma.businessProfile.findUnique({
+        where:  { tenantId },
+        select: { brandName: true },
+      }).catch(() => null)
+      const fromName = (profile?.brandName || 'MyOrbisAgents').replace(/"/g, '')
+      const html = data.isHtml
+        ? data.body
+        : `<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;color:#111;line-height:1.55;white-space:pre-wrap">${escapeHtml(data.body)}</div>`
+      await sendEmail({
+        to:      recipient,
+        from:    `"${fromName}" <notify@myorbisresults.com>`,
+        subject: data.subject,
+        html,
+      })
+      console.warn(`[gateway] send_followup_email: Gmail unavailable for tenant ${tenantId} (${(gmailErr as Error).message}) — sent via platform sender instead`)
+    }
 
     await writeAuditLog({
       tenantId,
@@ -651,6 +686,7 @@ router.post('/internal/gateway/tools/send-followup-email', async (req, res, next
         recipient,
         subject:    data.subject,
         bodyLength: data.body.length,
+        sentVia,
       },
     })
 
@@ -727,6 +763,93 @@ router.post('/internal/gateway/tools/record-disposition', async (req, res, next)
     })
 
     res.json({ data: { ok: true, conversationId: conv.id, autoTag: tagToApply ?? null, enrolledCampaign: autoTaggedCampaign } })
+  } catch (err) { next(err) }
+})
+
+// request_callback — CALLBACK scheduling mode. Orby captures a lead instead of
+// booking a time: records the disposition, alerts the owner immediately, and
+// texts the caller a confirmation. See docs/scheduling-modes-plan.md.
+function callbackSlaPhrase(sla?: string | null): string {
+  switch ((sla ?? '').trim().toUpperCase()) {
+    case 'ONE_HOUR':          return 'within the hour'
+    case 'SAME_DAY':          return 'by the end of the day'
+    case 'NEXT_BUSINESS_DAY': return 'first thing the next business day'
+    case '':                  return 'shortly'
+    default:                  return (sla as string).trim()
+  }
+}
+
+const requestCallbackSchema = z.object({
+  conversationId: z.string().uuid().optional(),
+  externalCallId: z.string().min(1).max(120).optional(),
+  callSid:        z.string().min(1).optional(),
+  name:           z.string().min(1).max(120),
+  phone:          z.string().min(3).max(40),
+  address:        z.string().max(300).optional(),
+  problem:        z.string().max(600).optional(),
+  urgency:        z.string().max(20).optional(),
+  scheduling: z.object({
+    callbackWho:    z.string().max(120).optional(),
+    callbackSla:    z.string().max(120).optional(),
+    ownerNotify:    z.object({ sms: z.boolean().optional(), email: z.boolean().optional(), phone: z.string().max(40).optional() }).optional(),
+    callerTextBack: z.boolean().optional(),
+  }).nullable().optional(),
+})
+
+router.post('/internal/gateway/tools/request-callback', async (req, res, next) => {
+  try {
+    const tenantId = (req as any).internalTenantId as string
+    const d = requestCallbackSchema.parse(req.body)
+    const sched = d.scheduling ?? {}
+    const who = sched.callbackWho?.trim() || 'the team'
+    const promise = `${who} will call you back ${callbackSlaPhrase(sched.callbackSla)}`
+    const isUrgent = (d.urgency ?? '').toUpperCase() === 'EMERGENCY'
+
+    // Record the callback disposition + stash the captured lead on the conversation.
+    const conv = d.conversationId
+      ? await prisma.conversation.findFirst({ where: { id: d.conversationId, tenantId } })
+      : d.externalCallId
+        ? await prisma.conversation.findFirst({ where: { externalCallId: d.externalCallId, tenantId } })
+        : null
+    if (conv) {
+      const leadNote = [`Callback requested (${d.urgency ?? 'ROUTINE'})`, `Name: ${d.name}`, `Phone: ${d.phone}`, d.address ? `Address: ${d.address}` : '', d.problem ? `Problem: ${d.problem}` : ''].filter(Boolean).join(' · ')
+      await prisma.conversation.update({
+        where: { id: conv.id },
+        data:  { outcomeCode: 'CALLBACK_REQUESTED', summaryText: conv.summaryText ? `${conv.summaryText}\n\n${leadNote}` : leadNote },
+      }).catch((e) => console.error('[request_callback] conv update failed:', e))
+    }
+
+    // Caller + tenant numbers from the live call record (text-back + owner from-#).
+    const call = d.callSid
+      ? await prisma.callLog.findFirst({ where: { providerCallId: d.callSid, tenantId }, select: { sourceNumber: true, destinationNumber: true, contactId: true } })
+      : null
+
+    const { sendMessage } = await import('../services/sms.service.js')
+
+    // Owner notification — the linchpin: the callback only happens if the owner is
+    // pinged immediately with the lead.
+    let ownerNotified = false
+    const ownerPhone = sched.ownerNotify?.phone?.trim()
+    if (sched.ownerNotify?.sms !== false && ownerPhone && call?.destinationNumber) {
+      const body = `${isUrgent ? '🚨 URGENT ' : ''}Callback request: ${d.name} (${d.phone})` + (d.address ? ` · ${d.address}` : '') + (d.problem ? ` · ${d.problem}` : '')
+      const r = await sendMessage({ tenantId, from: call.destinationNumber, to: ownerPhone, body })
+      ownerNotified = r.success
+    }
+
+    // Caller text-back — concrete expectation + invite a photo.
+    let callerTexted = false
+    if (sched.callerTextBack !== false && call?.sourceNumber && call.destinationNumber) {
+      const r = await sendMessage({ tenantId, from: call.destinationNumber, to: call.sourceNumber, body: `Got it — ${promise}. Reply here with a photo if it helps us prepare.`, contactId: call.contactId ?? undefined })
+      callerTexted = r.success
+    }
+
+    await writeAuditLog({
+      tenantId, actorType: 'SYSTEM', action: 'gateway.tool.request_callback',
+      targetType: 'Conversation', targetId: conv?.id ?? undefined,
+      metadataJson: { name: d.name, phone: d.phone, urgency: d.urgency ?? 'ROUTINE', ownerNotified, callerTexted },
+    })
+
+    res.json({ data: { ok: true, promise, ownerNotified, callerTexted } })
   } catch (err) { next(err) }
 })
 

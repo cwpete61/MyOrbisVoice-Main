@@ -19,16 +19,33 @@
  * again with a different time").
  */
 
+// Per-tenant scheduling behavior (ChannelConfig.configJson.scheduling). Threaded
+// into the tool context so request_callback can honor the owner's SLA + notify
+// settings without another DB round-trip. See docs/scheduling-modes-plan.md.
+export type SchedulingMode = 'BOOKING' | 'WINDOWS' | 'CALLBACK'
+export type SchedulingConfig = {
+  mode?:         SchedulingMode
+  callbackSla?:  string  // 'ONE_HOUR' | 'SAME_DAY' | 'NEXT_BUSINESS_DAY' | free text
+  callbackWho?:  string  // owner display name for "{who} will call you back"
+  ownerNotify?:  { sms?: boolean; email?: boolean; phone?: string }
+  callerTextBack?: boolean
+}
+
 export type ToolContext = {
   tenantId:        string
   conversationId?: string  // when known (widget); inbound uses externalCallId instead
   externalCallId?: string  // Twilio CallSid for inbound/outbound
+  scheduling?:     SchedulingConfig | null  // resolved from the channel config
   // Populated for inbound/outbound voice sessions. Required by the
   // hangup_call tool — it POSTs Status=completed to Twilio for this call.
   // Widget sessions leave these undefined; hangup_call gracefully fails
   // there because there is no Twilio call to terminate.
   callSid?:         string
   ownerAccountSid?: string | null
+  // Returns the running conversation transcript ("role: text" per line) so a
+  // handler can inspect what has actually been discussed. Powers the
+  // book_appointment ask-gate. Undefined on paths that don't wire it.
+  getTranscriptText?: () => string
 }
 
 export type ToolResult = Record<string, unknown>
@@ -91,7 +108,7 @@ export const TOOL_DECLARATIONS = [
         },
         notes: {
           type: 'STRING',
-          description: 'Brief notes about what the appointment is for. Keep under 200 characters.',
+          description: 'A short recap of what was discussed on the call — this is emailed to the caller as a "What we discussed" reminder AND handed to the agent. Include: which property, and the key points covered (financing/pre-approval, timeline to close, reason for moving, pets, deal-breakers/must-haves, whether they already have an agent, who else is attending). Write it as a few plain readable lines, not JSON. Keep under 600 characters.',
         },
         appointment_type: {
           type: 'STRING',
@@ -318,9 +335,39 @@ export const TOOL_DECLARATIONS = [
       required: [],
     },
   },
+  {
+    name: 'request_callback',
+    description:
+      'Use this INSTEAD of booking an appointment when the business runs on callbacks (no fixed appointment times — a field/service business whose jobs run long). ' +
+      'Call it once you have the caller\'s name, a callback number, and ideally the service address, a short description of the problem, and whether it is urgent. ' +
+      'It logs the lead, alerts the business owner immediately, and texts the caller a confirmation. ' +
+      'After it returns success, tell the caller the exact callback promise it returns (who will call and by when) — do NOT invent a specific clock time.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        name:    { type: 'STRING', description: 'Caller full name.' },
+        phone:   { type: 'STRING', description: 'Callback number, E.164 preferred (e.g. "+15551234567").' },
+        address: { type: 'STRING', description: 'Service address or job location.' },
+        problem: { type: 'STRING', description: 'Short description of what they need / the problem.' },
+        urgency: { type: 'STRING', description: 'One of: EMERGENCY (no heat / active leak / lockout — needs someone now), URGENT (needs today), ROUTINE.' },
+      },
+      required: ['name', 'phone'],
+    },
+  },
 ] as const
 
 export type ToolName = (typeof TOOL_DECLARATIONS)[number]['name']
+
+// Which tool declarations to expose for a given scheduling mode. CALLBACK drops
+// the calendar tools entirely (so the model literally cannot offer a slot) and
+// adds request_callback; BOOKING/WINDOWS keep the calendar tools and hide
+// request_callback. See docs/scheduling-modes-plan.md.
+export function toolDeclarationsForMode(mode: SchedulingMode | null | undefined) {
+  if (mode === 'CALLBACK') {
+    return TOOL_DECLARATIONS.filter(t => t.name !== 'search_availability' && t.name !== 'book_appointment')
+  }
+  return TOOL_DECLARATIONS.filter(t => t.name !== 'request_callback')
+}
 
 // --- HTTP client to internal API endpoints ----------------------------------
 
@@ -438,6 +485,15 @@ const handlers: Record<ToolName, ToolHandler> = {
       return { ok: false, error: 'starts_at_iso, duration_minutes, and contact_phone_or_email are required' }
     }
 
+    // NOTE: the qualification ASK-GATE was REMOVED (2026-07-12). It rejected
+    // book_appointment until a transcript-regex saw every required topic — but the
+    // regex missed answered questions, so it looped forever: Orby re-asked, re-
+    // called book, was rejected again, and NEVER booked (a real caller got asked
+    // "another agent / deal-breakers" 7×, said "you keep looping", and left
+    // unbooked). Blocking a booking in-call is too fragile. Qualification is now
+    // driven by the prompt (Orby asks) and audited post-call by the Call-QA engine
+    // (which flags skipped questions) — the booking itself is NEVER blocked.
+
     const result = await callApi<{ ok: boolean; appointmentId: string; startAt: string; endAt: string }>(
       '/api/internal/gateway/tools/book-appointment',
       ctx.tenantId,
@@ -469,7 +525,7 @@ const handlers: Record<ToolName, ToolHandler> = {
       appointment_id: result.data.appointmentId,
       starts_at:      result.data.startAt,
       ends_at:        result.data.endAt,
-      message:        'Appointment booked. A confirmation email (with a Google Maps directions link to the property) has been sent if an email was on file. Before ending the call, TELL THE CALLER in your own warm words: they can call this same number back anytime, 24 hours a day, to reschedule, add details, or change the showing — and you (Orby) will log it and pass the update along to their agent.',
+      message:        'Appointment booked. A confirmation email (with a Google Maps directions link to the property) has been sent if an email was on file. Before ending the call, TELL THE CALLER in your own warm words, in ONE natural wrap-up: (1) they will get reminders before the showing — by text and email — one 24 hours before and another 1 hour before, so they do not miss it; AND (2) they can call this same number back anytime, 24 hours a day, to reschedule, add details, or change the showing, and you (Orby) will log it and pass the update along to their agent. Then close warmly.',
     }
   },
 
@@ -573,6 +629,38 @@ const handlers: Record<ToolName, ToolHandler> = {
     )
     if (!result.ok) return { ok: false, error: result.error }
     return { ok: true, conversation_id: result.data.conversationId, message: `Disposition recorded as ${outcomeCode}.` }
+  },
+
+  // CALLBACK scheduling mode — captures the lead, alerts the owner, texts the
+  // caller a confirmation, and returns a truthful callback promise for Orby to
+  // read back. See docs/scheduling-modes-plan.md.
+  async request_callback(args, ctx) {
+    const name    = String(args['name']    ?? '').trim()
+    const phone   = String(args['phone']   ?? '').trim()
+    const address = String(args['address'] ?? '').trim()
+    const problem = String(args['problem'] ?? '').trim()
+    const urgency = String(args['urgency'] ?? 'ROUTINE').trim().toUpperCase()
+    if (!name || !phone) return { ok: false, error: 'name and phone are required' }
+
+    const result = await callApi<{ ok: boolean; promise: string }>(
+      '/api/internal/gateway/tools/request-callback',
+      ctx.tenantId,
+      {
+        name, phone, address, problem, urgency,
+        callSid:        ctx.callSid,
+        conversationId: ctx.conversationId,
+        externalCallId: ctx.externalCallId,
+        scheduling:     ctx.scheduling ?? null,
+      },
+    )
+    if (!result.ok) {
+      return { ok: false, error: result.error, message: 'Could not log the callback right now. Reassure the caller their message is noted and the team will call them back.' }
+    }
+    return {
+      ok:      true,
+      promise: result.data.promise,
+      message: `Callback logged and the owner was alerted. Tell the caller, warmly and in your own words: ${result.data.promise}. Do NOT promise a specific clock time.`,
+    }
   },
   // end_call is intercepted in session.ts onToolCall BEFORE executeTool is
   // invoked (the gateway closes the WebSocket itself — there's no API roundtrip).
@@ -719,7 +807,9 @@ export function buildToolGuidanceBlock(): string {
     '2. save_contact(full_name, phone_e164, email, notes?) — Save the caller\'s contact details to the database. ALWAYS call this after collecting the caller\'s full name, phone, AND email. Required on every call. Feeds campaigns and follow-up.',
     '3. search_availability(from_iso, to_iso, duration_minutes) — Find open appointment slots on the business calendar. ALWAYS call this BEFORE book_appointment to confirm the slot the caller wants is actually free. Returns a list of open slots; pick the closest match to what the caller asked for and confirm verbally.',
     '4. book_appointment(starts_at_iso, duration_minutes, contact_phone_or_email, notes?, appointment_type?, timezone?) — Book on the business calendar. Only after explicit confirmation of date, time, duration, and contact info — AND only after search_availability confirmed the slot is open.',
-    '5. send_followup_email(contact_id_or_phone, subject, body) — Send a follow-up email from the business\'s Gmail. Only call when the caller asks for something in writing.',
+    '5. send_followup_email(contact_id_or_phone, subject, body) — Email the caller. YOU CAN ACTUALLY SEND EMAIL — use it. Call it whenever the caller asks for anything in writing ("can you email me that?", "send me the details/address/link/pricing/school info"), AND whenever YOU offer to send something ("I can email that over to you"). If you offer it, you MUST follow through and call this tool before the call ends — never promise an email and not send it. Rules: (a) confirm the email address first and read it back with the phonetic alphabet; (b) only ever send to an address THIS caller gave you or one on file for them; (c) write a short, useful, plain-text body in the business\'s voice, containing only facts established on this call or from your listing/knowledge data — never invent details; (d) after it sends, tell the caller it is on its way.',
+    '5a. WHEN THE EMAIL IS ABOUT A PROPERTY — send the WHOLE picture, not just the listing. Do not send only price/beds/baths. Include, for that specific property, every AREA FACT you were given in your listing data (the "Area facts" block): the assigned public school district and the nearest public K-12 schools with their grade ranges and distance; nearby hospitals; colleges within ~15 miles; the area median property tax; and the FEMA flood zone. Lay it out in plain-text sections a buyer can skim — the property first, then "Schools", then "Area". This is the single most useful email you send: it is the answer to the questions they were going to ask you next.',
+    '5b. AREA-FACT RULES IN EMAIL (identical to how you must speak them — writing them down does NOT relax them). State distances in MILES. Attribute them as public data. NEVER characterize a neighborhood or who should live there, and NEVER rate or comment on crime/safety/"is it a good area" in writing — point them to public sources instead (this is a Fair Housing requirement and it applies in email exactly as on the phone). Always add the line that they should verify current school attendance zones with the district, and that the property tax figure is an AREA MEDIAN, not this exact home. ONLY include a fact if it is actually present in your listing data for THAT property — if you were not given schools, hospitals, taxes, or flood data for it, leave that section out entirely. Never fill a gap from memory or guess a school, a hospital, a park, or a fire station.',
     '6. record_disposition(outcome_code, notes?) — Record the call outcome near the end of the conversation. Allowed codes: BOOKED, QUALIFIED_LEAD, NOT_QUALIFIED, INFO_REQUEST, COMPLAINT, CALLBACK_REQUESTED, WRONG_NUMBER, SPAM, NO_ACTION.',
     '7. enter_specialist(role, reason) — Pin onto ONE specialist role (APPOINTMENT, SALES, CUSTOMER_SERVICE, MARKETING, ASSISTANT, SECRETARY) for a multi-turn flow. Use ONLY when 2+ role prompts are loaded AND the caller is clearly inside one specialist\'s wheelhouse for the next several turns. See the Specialist Routing section of your system prompt for when to pin vs not. Silent to the caller.',
     '8. exit_specialist(reason) — Release the pin set by enter_specialist and return to multi-specialist routing. Call when the pinned flow completes, the caller abandons it, or their intent leaves the pinned specialist\'s scope. Safe to call when no pin is active (no-op). Silent to the caller.',
@@ -733,10 +823,12 @@ export function buildToolGuidanceBlock(): string {
     '- If the caller refuses to share a piece (genuinely refuses, not just hesitates), accept gracefully and save what you got — but ask for both first.',
     '',
     'Rules — email verification (mandatory before save_contact):',
+    '- IF YOU DID NOT CLEARLY CATCH THE EMAIL — it was said fast, mumbled, run together, accented, or you are not fully confident you got every character — do NOT guess and do NOT try to reconstruct it from their name. Politely ask the caller to SPELL it out for you, one letter at a time: "Sure — could you spell that out for me, letter by letter?" Only after they spell it do you read it back phonetically to confirm. It is always better to ask them to spell it than to save a wrong email.',
     '- ALWAYS read the caller\'s email back before save_contact. Email transcription is unreliable on phone audio — every email needs a confirmation pass.',
     '- Read the local part back using the PHONETIC ALPHABET — every letter as a full word: "Let me confirm — that\'s C as in Charlie, R as in Robert, A as in Apple, W as in Whiskey, F as in Frank, O as in Oscar, R as in Robert, D as in David, dot, P as in Papa, E as in Echo, T as in Tango, E as in Echo, R as in Robert, S as in Sierra, O as in Oscar, N as in November, at gmail dot com. Is that correct?" NEVER rattle off bare single letters (c-r-a-w-f-o-r-d): the voice collapses letter runs into words — it pronounces the sequence "f-o-r" as the NUMBER "four," which repeatedly frustrated a real caller spelling "Crawford." Phonetic words are unambiguous. Pronounce dots as "dot" and "@" as "at". Wait for a clean yes (see affirmation discipline rules) before save_contact.',
     '- STOP after "Is that correct?" — that is its OWN turn. Do NOT book, do NOT say "you\'re all set," and do NOT say "I\'ve sent the confirmation" in the same breath as the confirmation question. Booking sends a confirmation email to that address, so a wrong or unconfirmed email goes to the wrong inbox. Wait for the caller\'s explicit "yes, that\'s correct" — ONLY THEN call book_appointment or save_contact. If the caller spelled it differently than you heard (e.g. they said "craford" but you assumed "crawford"), use what THEY said, not what you guessed from their name.',
     '- If the transcript looks garbled (e.g. "raw for d", "son senior", non-English fragments, fragments that don\'t form a real local part), do NOT silently guess from the caller\'s name. Read back what you THINK you heard using the PHONETIC ALPHABET (each letter a full word — "C as in Charlie, R as in Robert…", never bare letters) and ask the caller to correct it. Never spell it as a run of single letters.',
+    '- SAVE EXACTLY WHAT WAS CONFIRMED. The email and phone you pass to save_contact / book_appointment MUST be character-for-character identical to the spelling you just read back and the caller confirmed — do NOT drop, add, or change a single letter or digit between confirming and saving (a real save stored "pathet1" after the caller confirmed "pathnet1", sending the confirmation to a dead inbox). If you are not 100% certain the value you are about to save matches what they confirmed, read it back once more before saving.',
     '- If the caller corrects any letter, re-read the FULL corrected email back end-to-end before save_contact. Don\'t partial-confirm.',
     '- The domain part ("gmail.com", "yahoo.com", etc.) usually transcribes cleanly — focus your spelling effort on the local part (before the @).',
     '',

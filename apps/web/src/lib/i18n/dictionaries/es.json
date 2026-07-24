@@ -2560,6 +2560,22 @@
       "placeholder": "p. ej. amable, formal, profesional",
       "help": "Define el tono del mensaje de apertura del agente"
     },
+    "scheduling": {
+      "title": "Programación",
+      "modeLabel": "Modo de programación",
+      "modeHelp": "Cómo Orby maneja las citas en las llamadas. Solo devolución de llamada funciona para negocios de servicio a domicilio cuyos trabajos se alargan.",
+      "modeBooking": "Reservas — ofrecer horarios del calendario",
+      "modeCallback": "Solo devolución — captura el prospecto y promete devolver la llamada",
+      "slaLabel": "Promesa de devolución",
+      "slaOneHour": "En menos de una hora",
+      "slaSameDay": "Al final del día",
+      "slaNextDay": "El siguiente día hábil",
+      "whoLabel": "Quién devuelve la llamada",
+      "whoPlaceholder": "p. ej. Mike",
+      "ownerPhoneLabel": "Número de notificación del dueño",
+      "ownerPhoneHelp": "Enviamos un texto a este número apenas se captura una devolución.",
+      "textBackLabel": "Enviar confirmación por texto al llamante"
+    },
     "escalation": {
       "modeLabel": "Modo de escalamiento",
       "modeTooltip": "Cuando el agente decide que una persona necesita atención humana (p. ej. queja compleja, solicitud de reembolso), esto controla cómo hace el traspaso.",
