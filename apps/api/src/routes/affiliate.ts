@@ -373,6 +373,22 @@ adminRouter.post('/affiliates/:id/password-reset', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Re-sync every partner to the Account Hub — backfills the commission rate onto
+// the hub so the storefront shows each partner's real % (not the default).
+adminRouter.post('/affiliates/sync-hub', async (req, res, next) => {
+  try {
+    const { syncAllPartnersToHub } = await import('../services/hub-sync.service.js')
+    const result = await syncAllPartnersToHub()
+    const { writeAuditLogFromRequest } = await import('../lib/audit.js')
+    await writeAuditLogFromRequest(req, {
+      actorType: 'ADMIN', actorUserId: (req as { user?: { id: string } }).user?.id,
+      action: 'admin.partner.hub_resync', targetType: 'AffiliateAccount', targetId: 'bulk',
+      metadataJson: result,
+    })
+    res.json({ data: result })
+  } catch (err) { next(err) }
+})
+
 // Bulk recovery: provision every affiliate missing from Keycloak + email them a
 // set-password link. Fixes partners locked out by the affiliateSignupUser gap.
 // Idempotent — partners already in Keycloak are skipped, so it's safe to re-run.

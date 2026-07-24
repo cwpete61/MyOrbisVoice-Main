@@ -14,6 +14,9 @@ type Account = {
   referralCode: string
   totalEarnedCents: number
   totalPaidCents: number
+  // The partner's OWN frozen commission rate (snapshotted at signup / admin-set).
+  // null = legacy partner → falls back to the platform default (AffiliateSettings).
+  commissionRatePct: number | null
 }
 
 type Stats = {
@@ -285,9 +288,12 @@ export default function PartnerDashboardPage() {
         {settings && (
           <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>
             {(() => {
-              const line = t('partnerDashboard.commissionLine', { pct: settings.commissionRatePct })
+              // THIS partner's actual rate — their frozen commissionRatePct, not the
+              // platform default. null (legacy partner) falls back to the default.
+              const effectivePct = account?.commissionRatePct ?? settings.commissionRatePct
+              const line = t('partnerDashboard.commissionLine', { pct: effectivePct })
               // Highlight the percentage in teal — split on the rendered "{pct}%" substring
-              const pctStr = `${settings.commissionRatePct}%`
+              const pctStr = `${effectivePct}%`
               const parts = line.split(pctStr)
               if (parts.length !== 2) return line
               return (

@@ -9,6 +9,9 @@ interface AffiliateAccount {
   referralCode: string; createdAt: string; approvedAt: string | null
   totalEarnedCents: number; totalPaidCents: number; notes: string | null
   leadSearchCredits: number
+  // Partner's own frozen rate (null = legacy → platform default) + tier label.
+  commissionRatePct: number | null
+  commissionTier: { name: string; recurringPct: number } | null
   // Phase F.4 — bulk-email policy fields (admin-controlled, partner read-only)
   emailBulkEnabled: boolean
   emailBulkSuspendedAt: string | null
@@ -175,6 +178,16 @@ export default function AdminAffiliatesPage() {
     finally { setWorking(null) }
   }
 
+  // Push every partner's commission rate to the Account Hub (storefront source).
+  async function syncHub() {
+    setWorking('synchub')
+    try {
+      const r = await apiFetch<{ synced: number; total: number }>('/api/admin/affiliates/sync-hub', { method: 'POST' })
+      showToast('success', `Synced ${r.synced}/${r.total} partner rates to the hub.`)
+    } catch (e) { showToast('error', (e as Error).message) }
+    finally { setWorking(null) }
+  }
+
   async function doCommAction(id: string, action: string, body?: Record<string, string>) {
     setWorking(id + action)
     try {
@@ -299,6 +312,11 @@ export default function AdminAffiliatesPage() {
               title="Recover partners locked out of login: provision any missing Keycloak users + email them a set-password link.">
               {working === 'backfill' ? 'Backfilling…' : '🔑 Backfill partner logins'}
             </button>
+            <button onClick={syncHub} disabled={working === 'synchub'} className="text-xs px-2.5 py-1 rounded"
+              style={{ background: 'var(--surface-overlay)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}
+              title="Push each partner's commission rate to the Account Hub so the storefront shows their real %.">
+              {working === 'synchub' ? 'Syncing…' : '↑ Sync rates to hub'}
+            </button>
           </div>
 
           {affLoading && <div className="h-4 rounded animate-pulse w-48" style={{ background: 'var(--border-subtle)' }} />}
@@ -334,6 +352,17 @@ export default function AdminAffiliatesPage() {
                         <td className="px-3 py-3">
                           <p className="font-medium text-xs" style={{ color: 'var(--text-primary)' }}>{userName(a.user)}</p>
                           <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{a.user.email}</p>
+                          {(() => {
+                            const def = settings?.commissionRatePct
+                            const eff = a.commissionRatePct ?? def
+                            if (eff == null) return null
+                            const isCustom = a.commissionRatePct != null && def != null && a.commissionRatePct !== def
+                            return (
+                              <p className="text-xs mt-0.5" style={{ color: isCustom ? 'oklch(55% 0.13 250)' : 'var(--text-tertiary)' }}>
+                                {eff}% commission{a.commissionTier ? ` · ${a.commissionTier.name}` : (a.commissionRatePct == null ? ' · default' : '')}{isCustom ? ' · custom' : ''}
+                              </p>
+                            )
+                          })()}
                         </td>
                         <td className="px-3 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{a.referralCode}</td>
                         <td className="px-3 py-3"><span className="badge" style={{ background: s.bg, color: s.text }}>{a.status}</span></td>

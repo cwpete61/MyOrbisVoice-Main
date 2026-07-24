@@ -230,3 +230,10 @@ export function personaOverlayForVertical(vertical: string | null | undefined): 
   const family: PersonaFamily = (vertical && VERTICAL_FAMILY[vertical]) || 'general'
   return PERSONA_OVERLAY[family]
 }
+
+/** Field-service verticals (trades + logistics) whose jobs run long and shift —
+ *  the class that fits callback-mode by default when no calendar is connected. */
+export function isFieldServiceVertical(vertical: string | null | undefined): boolean {
+  const family: PersonaFamily = (vertical && VERTICAL_FAMILY[vertical]) || 'general'
+  return family === 'home_services' || family === 'logistics'
+}

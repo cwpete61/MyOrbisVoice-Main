@@ -115,6 +115,7 @@ export default function ConversationsPage() {
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [hasRecording, setHasRecording] = useState('')
+  const [callbacksOnly, setCallbacksOnly] = useState(false)  // CALLBACK_REQUESTED worklist
   const [sortBy, setSortBy] = useState('startedAt')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(1)
@@ -250,6 +251,7 @@ export default function ConversationsPage() {
   if (statusFilter) params.set('status', statusFilter)
   if (search) params.set('search', search)
   if (hasRecording) params.set('hasRecording', hasRecording)
+  if (callbacksOnly) params.set('outcome', 'CALLBACK_REQUESTED')
 
   const { data, loading, reload } = useApi<ConversationsResponse>(`/api/conversations?${params}`)
   const conversations = data?.items ?? []
@@ -460,6 +462,14 @@ export default function ConversationsPage() {
           <option value="true">{t('tenantConversations.filters.hasRecording')}</option>
           <option value="false">{t('tenantConversations.filters.noRecording')}</option>
         </select>
+
+        {/* Callbacks worklist — captured callback requests to work through */}
+        <button type="button" onClick={() => { setCallbacksOnly(v => !v); setPage(1) }}
+          className="input text-xs w-auto"
+          style={callbacksOnly ? { background: 'oklch(55% 0.11 193)', color: 'white', borderColor: 'transparent' } : undefined}
+          title={t('tenantConversations.filters.callbacksHelp')}>
+          {t('tenantConversations.filters.callbacksOnly')}
+        </button>
 
         {/* Sort */}
         <select

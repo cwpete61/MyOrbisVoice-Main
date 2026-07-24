@@ -2240,7 +2240,9 @@
       "allStatuses": "Todos los estados",
       "allRecordings": "Todas las grabaciones",
       "hasRecording": "Con grabación",
-      "noRecording": "Sin grabación"
+      "noRecording": "Sin grabación",
+      "callbacksOnly": "📞 Devoluciones",
+      "callbacksHelp": "Muestra solo las devoluciones de llamada capturadas — tu lista de personas a quienes llamar."
     },
     "channel": {
       "widget": "Widget",

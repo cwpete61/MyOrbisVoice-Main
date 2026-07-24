@@ -17,6 +17,7 @@ router.use(authenticate, requireTenantContext)
 const listSchema = z.object({
   channelType: z.enum(['WIDGET', 'INBOUND', 'OUTBOUND']).optional(),
   status: z.string().optional(),
+  outcome: z.string().max(40).optional(),  // filter by outcomeCode, e.g. CALLBACK_REQUESTED
   search: z.string().optional(),
   hasRecording: z.enum(['true', 'false']).optional(),
   dateFrom: z.string().optional(),
@@ -35,6 +36,7 @@ router.get('/conversations', asyncHandler(async (req, res) => {
   const where: Record<string, unknown> = { tenantId }
   if (query.channelType) where['channelType'] = query.channelType
   if (query.status) where['status'] = query.status
+  if (query.outcome) where['outcomeCode'] = query.outcome
   if (query.hasRecording === 'true')  where['recordingStatus'] = 'stored'
   if (query.hasRecording === 'false') where['recordingStatus'] = { not: 'stored' }
   if (query.dateFrom || query.dateTo) {

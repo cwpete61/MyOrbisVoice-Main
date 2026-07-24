@@ -108,16 +108,38 @@ export async function syncPartnerToHub(userId: string): Promise<void> {
   try {
     const acct = await prisma.affiliateAccount.findFirst({
       where: { userId },
-      select: { id: true, slug: true, status: true, user: { select: { email: true } } },
+      select: { id: true, slug: true, status: true, commissionRatePct: true, user: { select: { email: true } } },
     })
     if (!acct?.user?.email) return
+    // Effective rate the storefront shows: the partner's own frozen rate, or the
+    // platform default for legacy partners (null frozen rate). Never send null so
+    // the hub always has a concrete number to display.
+    const { getSettings } = await import('./affiliate.service.js')
+    const defaultPct = (await getSettings().catch(() => null))?.commissionRatePct ?? null
+    const effectivePct = acct.commissionRatePct ?? defaultPct
     await hubPut('/v1/partners', {
       email: acct.user.email.toLowerCase(),
       voiceAffiliateId: acct.id,
       ...(acct.slug ? { slug: acct.slug } : {}),
       status: acct.status,
+      ...(effectivePct != null ? { commissionRatePct: effectivePct } : {}),
     })
   } catch (e) {
     console.warn('[hub-sync] partner sync failed (non-fatal):', (e as Error).message)
   }
+}
+
+/** Re-sync EVERY partner to the Hub — backfills the commission rate for partners
+ *  that predate the rate-propagation change (otherwise they only sync on signup /
+ *  status change). Idempotent (upsert). Returns how many were pushed. */
+export async function syncAllPartnersToHub(): Promise<{ synced: number; total: number }> {
+  if (!HUB_URL || !HUB_TOKEN) return { synced: 0, total: 0 }
+  const affiliates = await prisma.affiliateAccount.findMany({
+    where: { deletedAt: null }, select: { userId: true },
+  })
+  let synced = 0
+  for (const a of affiliates) {
+    try { await syncPartnerToHub(a.userId); synced++ } catch { /* best-effort per partner */ }
+  }
+  return { synced, total: affiliates.length }
 }

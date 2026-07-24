@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws'
 import { prisma } from './lib/prisma.js'
 import { resolveSystemPrompt, type PartnerContext } from './lib/prompt-resolver.js'
+import { isFieldServiceVertical } from './lib/vertical-personas.js'
 import { loadLearnedRules } from './lib/learned-rules.js'
 import { loadPartnerContext } from './lib/partner-context.js'
 import { fetchKbForPrompt } from './lib/knowledge-base.js'
@@ -428,7 +429,7 @@ export async function handleInboundCall(ws: WebSocket) {
 
     // Load active DNA, published prompts, channel config, and the tenant's
     // Orby-payment config for this tenant.
-    const [dna, prompts, channelCfgRow, payCfg] = await Promise.all([
+    const [dna, prompts, channelCfgRow, payCfg, googleConn] = await Promise.all([
       prisma.businessDNA.findFirst({ where: { tenantId, isActive: true } }),
       prisma.promptVersion.findMany({
         where: { tenantId, status: 'PUBLISHED', scope: { in: ['TENANT', 'CHANNEL', 'ROLE'] } },
@@ -439,17 +440,35 @@ export async function handleInboundCall(ws: WebSocket) {
         : Promise.resolve(null),
       prisma.tenant.findUnique({
         where:  { id: tenantId },
-        select: { orbyPaymentsEnabled: true, stripeChargesEnabled: true, orbyDepositCents: true, industryVertical: true },
+        select: { orbyPaymentsEnabled: true, stripeChargesEnabled: true, orbyDepositCents: true, industryVertical: true, displayName: true, publicPhone: true },
+      }),
+      // Is a Google Calendar connected? Drives the field-service scheduling default.
+      prisma.integrationConnection.findFirst({
+        where:  { tenantId, provider: 'GOOGLE', status: 'CONNECTED' },
+        select: { id: true },
       }),
     ])
 
     const channelCfgJson  = (channelCfgRow?.configJson as Record<string, unknown> | null) ?? {}
     const voiceName       = (channelCfgJson['voiceName']       as string  | undefined) || 'Aoede'
     const agentSpeaksFirst = channelCfgJson['agentSpeaksFirst'] !== false  // default true
-    // Scheduling mode (Booking / Windows / Callback). Unset → BOOKING (current
-    // behavior). CALLBACK strips the calendar tools + drives the callback prompt.
-    const scheduling      = (channelCfgJson['scheduling'] as SchedulingConfig | undefined) ?? null
-    const schedulingMode  = scheduling?.mode ?? 'BOOKING'
+    // Scheduling mode (Booking / Windows / Callback). Explicit config wins. When
+    // UNSET, a field-service tenant (trades/logistics) with NO Google Calendar
+    // connected can't really book — so default them to CALLBACK, with sensible
+    // fallbacks (business name as who, publicPhone as the owner alert #). Any
+    // tenant with a calendar, or a non-field-service vertical, stays BOOKING.
+    const rawScheduling = (channelCfgJson['scheduling'] as SchedulingConfig | undefined) ?? null
+    let scheduling: SchedulingConfig | null = rawScheduling
+    if (!rawScheduling?.mode && !googleConn && isFieldServiceVertical(payCfg?.industryVertical)) {
+      scheduling = {
+        mode:           'CALLBACK',
+        callbackSla:    rawScheduling?.callbackSla ?? 'SAME_DAY',
+        callbackWho:    rawScheduling?.callbackWho ?? payCfg?.displayName ?? undefined,
+        ownerNotify:    { sms: rawScheduling?.ownerNotify?.sms ?? true, email: rawScheduling?.ownerNotify?.email, phone: rawScheduling?.ownerNotify?.phone ?? payCfg?.publicPhone ?? undefined },
+        callerTextBack: rawScheduling?.callerTextBack ?? true,
+      }
+    }
+    const schedulingMode = scheduling?.mode ?? 'BOOKING'
 
     const dnaSnap = dna ? {
       identityJson:    dna.identityJson,

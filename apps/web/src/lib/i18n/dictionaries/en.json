@@ -2240,7 +2240,9 @@
       "allStatuses": "All statuses",
       "allRecordings": "All recordings",
       "hasRecording": "Has recording",
-      "noRecording": "No recording"
+      "noRecording": "No recording",
+      "callbacksOnly": "📞 Callbacks",
+      "callbacksHelp": "Show only captured callback requests — your worklist of people to call back."
     },
     "channel": {
       "widget": "Widget",

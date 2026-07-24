@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma.js'
+import { PLATFORM_WEBINAR_REFERRAL } from './webinar-marketing/platform-operator.js'
 import { syncCommissionToHub, syncCommissionsToHub } from './hub-commission-sync.service.js'
 import crypto from 'crypto'
 import { AppError } from '@voiceautomation/shared'
@@ -1732,6 +1733,9 @@ export async function listAffiliates(opts: { status?: string; search?: string; p
   // restore them. Stays opt-in so a careless caller can't surface deleted
   // records to the normal admin list.
   const where: Record<string, unknown> = opts.includeDeleted ? {} : { deletedAt: null }
+  // Never surface the internal platform Webinar Marketing operator account —
+  // it's not a real affiliate. See webinar-marketing/platform-operator.ts.
+  where['referralCode'] = { not: PLATFORM_WEBINAR_REFERRAL }
   if (opts.status) where['status'] = opts.status
   if (opts.search) {
     where['user'] = {
@@ -1746,8 +1750,9 @@ export async function listAffiliates(opts: { status?: string; search?: string; p
     prisma.affiliateAccount.findMany({
       where,
       include: {
-        user:   { select: { id: true, email: true, firstName: true, lastName: true } },
-        _count: { select: { clicks: true, conversions: true, commissions: true } },
+        user:          { select: { id: true, email: true, firstName: true, lastName: true } },
+        _count:        { select: { clicks: true, conversions: true, commissions: true } },
+        commissionTier: { select: { name: true, recurringPct: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip:    (opts.page - 1) * opts.limit,
