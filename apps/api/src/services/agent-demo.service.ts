@@ -27,10 +27,11 @@ import { formatListing, createListing } from './listing.service.js'
 import { enrichListing } from './listing-enrichment.service.js'
 import { scoreProspect } from './prospect-scorer.service.js'
 import { getStripe } from '../lib/stripe.js'
+import { signRecordingToken } from '../lib/recording-token.js'
 import { getOrCreateStripeCustomer } from './stripe.service.js'
 import { syncEntitlementsFromPlan } from './entitlement.service.js'
 import { startPasswordReset } from './auth.service.js'
-import { sendPasswordResetEmail, sendAgentDemoEmail } from './email.service.js'
+import { sendPasswordResetEmail, sendAgentDemoEmail, buildAgentDemoEmail, DEMO_VARIANT_LABELS } from './email.service.js'
 import { DEMO_PHONE_E164 } from './demo-session.service.js'
 
 /** Demo link lifetime before it lapses (unclaimed). */
@@ -207,13 +208,117 @@ export async function resolveAgentDemoInboundByPhone(
 /** Admin list — newest first, with the demo tenant's listing count. */
 export async function listAgentDemos() {
   const demos = await prisma.agentDemo.findMany({ orderBy: { createdAt: 'desc' }, take: 100 })
-  const counts = await prisma.listing.groupBy({
-    by: ['tenantId'],
-    where: { tenantId: { in: demos.map(d => d.tenantId) } },
+  const tenantIds = demos.map(d => d.tenantId)
+  // Funnel stages per demo (cumulative across ALL its calls): talked to Orby →
+  // left contact info → qualified → booked a showing.
+  const [counts, convs, contacts, appts] = await Promise.all([
+    prisma.listing.groupBy({ by: ['tenantId'], where: { tenantId: { in: tenantIds } }, _count: { _all: true } }),
+    prisma.conversation.findMany({ where: { tenantId: { in: tenantIds } }, select: { tenantId: true, outcomeJson: true } }),
+    prisma.contact.groupBy({ by: ['tenantId'], where: { tenantId: { in: tenantIds } }, _count: { _all: true } }),
+    prisma.appointment.groupBy({ by: ['tenantId'], where: { tenantId: { in: tenantIds } }, _count: { _all: true } }),
+  ])
+  const byTenant   = new Map(counts.map(c => [c.tenantId, c._count._all]))
+  const talked     = new Set(convs.map(c => c.tenantId))
+  const qualified  = new Set(convs.filter(c => c.outcomeJson && (c.outcomeJson as { showingBrief?: unknown }).showingBrief).map(c => c.tenantId))
+  const hasContact = new Set(contacts.map(c => c.tenantId))
+  const booked     = new Set(appts.map(a => a.tenantId))
+  // Stored stages (outcomeJson.stages) — captured at call-finalize so the funnel
+  // survives the idle-reset that wipes Contact/Appointment rows. Union across the
+  // tenant's calls. This is the source of truth; live rows are a fallback for old
+  // calls that predate stage-storage.
+  const stored = { talked: new Set<string>(), contact: new Set<string>(), qualified: new Set<string>(), booked: new Set<string>() }
+  for (const c of convs) {
+    const s = (c.outcomeJson as { stages?: { talked?: boolean; contact?: boolean; qualified?: boolean; booked?: boolean } } | null)?.stages
+    if (!s) continue
+    if (s.talked)    stored.talked.add(c.tenantId)
+    if (s.contact)   stored.contact.add(c.tenantId)
+    if (s.qualified) stored.qualified.add(c.tenantId)
+    if (s.booked)    stored.booked.add(c.tenantId)
+  }
+  return demos.map(d => {
+    const t = d.tenantId
+    // Booking always implies contact info was left (book_appointment requires it),
+    // so contact is true if any live/stored contact OR any booking exists.
+    const isBooked = stored.booked.has(t) || booked.has(t)
+    return {
+      ...d,
+      listingCount: byTenant.get(t) ?? 0,
+      stages: {
+        talked:    stored.talked.has(t)    || talked.has(t),
+        contact:   stored.contact.has(t)   || hasContact.has(t) || isBooked,
+        qualified: stored.qualified.has(t) || qualified.has(t),
+        booked:    isBooked,
+      },
+    }
+  })
+}
+
+/** Render a demo email variant WITH this agent's real listings, without sending —
+ *  powers the admin preview / "pick the copy" flow. Returns every variant so the
+ *  UI can show them side by side. */
+export async function previewAgentDemoEmail(id: string, locale: 'en' | 'es' = 'en') {
+  const demo = await prisma.agentDemo.findUnique({ where: { id } })
+  if (!demo) throw new AppError('NOT_FOUND', 'Demo not found', 404)
+  const listings = await prisma.listing.findMany({
+    where:   { tenantId: demo.tenantId },
+    orderBy: { createdAt: 'asc' },
+    select:  { address: true, headline: true, priceUsd: true, highlights: true, beds: true, baths: true, sqft: true, propertyType: true },
+  })
+  const planName = demo.recommendedTier === '497' ? 'Solo Power' : 'Solo Capture'
+  const base = {
+    agentName: demo.agentName,
+    micrositeUrl: `${AGENTS_APP_BASE}/agent-demo/${demo.micrositeSlug}`,
+    claimUrl: `${AGENTS_API_BASE}/api/public/agent-demo/${demo.micrositeSlug}/claim`,
+    demoPhone: DEMO_PHONE_E164, pin: demo.pin, planName, listings,
+  }
+  const variants = (['A', 'B', 'C', 'D'] as const).map(v => {
+    const built = buildAgentDemoEmail({ ...base, variant: v, locale })
+    return { variant: v, label: DEMO_VARIANT_LABELS[v], subject: built.subject, html: built.html }
+  })
+  return { locale, variants }
+}
+
+/**
+ * The A/B scoreboard: claim rate per email variant.
+ *
+ * No experiment table needed — AgentDemoStatus already walks SENT → CLAIMED, so
+ * "of the demos that got variant X, how many were claimed" IS the result.
+ * Small-N warning is deliberate: at a handful of sends per arm the difference is
+ * noise, and a scoreboard that doesn't say so invites a decision it can't support.
+ */
+export async function demoEmailAbResults() {
+  const rows = await prisma.agentDemo.groupBy({
+    by:     ['emailVariant', 'status'],
+    where:  { emailVariant: { not: null } },
     _count: { _all: true },
   })
-  const byTenant = new Map(counts.map(c => [c.tenantId, c._count._all]))
-  return demos.map(d => ({ ...d, listingCount: byTenant.get(d.tenantId) ?? 0 }))
+  const byVariant: Record<string, { sent: number; claimed: number }> = {}
+  for (const r of rows) {
+    const v = r.emailVariant!
+    byVariant[v] ??= { sent: 0, claimed: 0 }
+    byVariant[v].sent += r._count._all
+    if (r.status === 'CLAIMED') byVariant[v].claimed += r._count._all
+  }
+  const variants = (['A', 'B', 'C', 'D'] as const).map(v => {
+    const s = byVariant[v] ?? { sent: 0, claimed: 0 }
+    return {
+      variant:   v,
+      label:     DEMO_VARIANT_LABELS[v],
+      sent:      s.sent,
+      claimed:   s.claimed,
+      claimRate: s.sent ? Math.round((s.claimed / s.sent) * 100) : null,
+    }
+  })
+  const totalSent = variants.reduce((a, v) => a + v.sent, 0)
+  return {
+    variants,
+    totalSent,
+    // Don't let anyone call a winner off a handful of sends. 4 variants × ~15 each.
+    conclusive: totalSent >= 60 && variants.every(v => v.sent >= 15),
+    note: totalSent < 60
+      ? `Too early to call — ${totalSent} sent. Aim for ~15 per variant (4 variants) before comparing.`
+      : null,
+  }
 }
 
 /** Admin detail — the demo + its listings (with enrichment) for preview. */
@@ -229,20 +334,100 @@ export async function getAgentDemo(id: string) {
   return { ...demo, listings }
 }
 
+/** Admin Call-QA feed: recent AGENT-demo calls with their automated QA
+ *  (score + flagged anomalies + regressions), newest first. Powers the Call QA
+ *  panel on the Agent Demos page. */
+export async function listDemoCallQa(limit = 80) {
+  const demos = await prisma.agentDemo.findMany({ select: { tenantId: true, agentName: true, micrositeSlug: true } })
+  const byTenant = new Map(demos.map(d => [d.tenantId, d]))
+  const convs = await prisma.conversation.findMany({
+    where:   { tenantId: { in: demos.map(d => d.tenantId) } },
+    orderBy: { createdAt: 'desc' },
+    take:    limit,
+    select:  { id: true, tenantId: true, createdAt: true, recordingDurationSecs: true, recordingStatus: true, outcomeJson: true, metadataJson: true },
+  })
+  const calls = convs.map(c => {
+    const qa = (c.outcomeJson as { qa?: { score: number; flags: unknown[]; regressions: string[] } } | null)?.qa
+    if (!qa) return null
+    const d = byTenant.get(c.tenantId)
+    // Gemini token usage (gateway persists it at finalize). Null on calls that
+    // predate the instrumentation.
+    const usage = (c.metadataJson as { usage?: { totalTokens?: number; promptTokens?: number; responseTokens?: number; estimatedCostUsd?: number } } | null)?.usage
+    return {
+      conversationId: c.id,
+      agentName:      d?.agentName ?? 'Unknown',
+      micrositeSlug:  d?.micrositeSlug ?? null,
+      createdAt:      c.createdAt,
+      durationSecs:   c.recordingDurationSecs ?? 0,
+      hasRecording:   c.recordingStatus === 'stored',
+      // Signed token so the admin player can stream this recording past the
+      // public route's prospect expiry/claim guards (see recording-token.ts).
+      recordingToken: c.recordingStatus === 'stored' ? signRecordingToken(c.id) : null,
+      score:          qa.score,
+      flags:          qa.flags,
+      regressions:    qa.regressions ?? [],
+      tokens:         usage?.totalTokens ?? null,
+      promptTokens:   usage?.promptTokens ?? null,
+      costUsd:        usage?.estimatedCostUsd ?? null,
+    }
+  }).filter(Boolean)
+  // Regression tally across the returned window (for the summary strip).
+  const regTally: Record<string, number> = {}
+  for (const c of calls as { regressions: string[] }[]) for (const r of c.regressions) regTally[r] = (regTally[r] ?? 0) + 1
+  // Spend rollup across the window — the number that was invisible until now.
+  const withCost = (calls as { costUsd: number | null }[]).filter(c => c.costUsd != null)
+  const totalCostUsd = Math.round(withCost.reduce((s, c) => s + (c.costUsd ?? 0), 0) * 10000) / 10000
+  return {
+    calls,
+    regressionTally: regTally,
+    spend: { totalCostUsd, callsWithUsage: withCost.length, callsTotal: calls.length },
+  }
+}
+
+/** Admin edit — update the core lead fields (name/brokerage/market/email/phone).
+ *  Drives the microsite header, demo email greeting, and the intro-video script.
+ *  Does NOT re-provision Orby's DNA (businessName spoken by Orby is set at
+ *  onboarding); regenerate the demo if the spoken intro must change too. */
+export async function updateAgentDemo(id: string, data: {
+  agentName?: string; brokerage?: string | null; market?: string; agentEmail?: string; agentPhone?: string | null
+}) {
+  const demo = await prisma.agentDemo.findUnique({ where: { id } })
+  if (!demo) throw new AppError('NOT_FOUND', 'Demo not found', 404)
+  return prisma.agentDemo.update({
+    where: { id },
+    data: {
+      ...(data.agentName  !== undefined ? { agentName:  data.agentName.trim() } : {}),
+      ...(data.brokerage  !== undefined ? { brokerage:  data.brokerage?.trim() || null } : {}),
+      ...(data.market     !== undefined ? { market:     data.market.trim() } : {}),
+      ...(data.agentEmail !== undefined ? { agentEmail: data.agentEmail.trim() } : {}),
+      ...(data.agentPhone !== undefined ? { agentPhone: normalizePhone(data.agentPhone ?? undefined) } : {}),
+    },
+  })
+}
+
 const AGENTS_APP_BASE = 'https://app.myorbisagents.com'
 const AGENTS_API_BASE = 'https://api.myorbisagents.com'
 
-/** Send (or resend) the demo email to the agent. Requires enrichment done. */
-export async function sendAgentDemo(id: string): Promise<{ status: string }> {
+/** Send (or resend) the demo email to the agent. Requires enrichment done.
+ *  `variant` picks which argument to send (A=$40k ISA anchor · B=founder story ·
+ *  C=speed stats) — each carries its own subject line. `locale` sends ONE language. */
+export async function sendAgentDemo(
+  id: string,
+  opts?: { variant?: 'A' | 'B' | 'C'; locale?: 'en' | 'es' },
+): Promise<{ status: string }> {
   const demo = await prisma.agentDemo.findUnique({ where: { id } })
   if (!demo) throw new AppError('NOT_FOUND', 'Demo not found', 404)
   if (demo.status === 'GENERATING') throw new AppError('BAD_REQUEST', 'Still generating — wait until enrichment finishes.', 400)
   if (demo.status === 'CLAIMED') throw new AppError('CONFLICT', 'This demo has already been claimed.', 409)
 
+  // No explicit variant → round-robin, so the A/B runs itself. Explicit wins.
+  const variant = opts?.variant ?? await nextVariant()
+  const locale  = opts?.locale ?? 'en'
+
   const listings = await prisma.listing.findMany({
     where:   { tenantId: demo.tenantId },
     orderBy: { createdAt: 'asc' },
-    select:  { address: true, headline: true, priceUsd: true, highlights: true },
+    select:  { address: true, headline: true, priceUsd: true, highlights: true, beds: true, baths: true, sqft: true, propertyType: true },
   })
   const planName = demo.recommendedTier === '497' ? 'Solo Power' : 'Solo Capture'
   await sendAgentDemoEmail({
@@ -254,9 +439,38 @@ export async function sendAgentDemo(id: string): Promise<{ status: string }> {
     pin:          demo.pin,
     planName,
     listings,
+    variant,
+    locale,
   })
-  await prisma.agentDemo.update({ where: { id }, data: { status: 'SENT', sentAt: new Date() } })
+  // Record WHAT was sent, not just that something was. Claim rate grouped by
+  // emailVariant is the whole A/B readout.
+  await prisma.agentDemo.update({
+    where: { id },
+    data:  { status: 'SENT', sentAt: new Date(), emailVariant: variant, emailLocale: locale },
+  })
   return { status: 'SENT' }
+}
+
+/**
+ * Pick the next variant by round-robin over what's already been sent.
+ *
+ * Deliberately NOT random: at these volumes (tens of demos) random assignment
+ * routinely skews 7/1/2 and the test never resolves. Round-robin keeps the arms
+ * balanced, so the first ~15 sends are already comparable. It also means the A/B
+ * runs ITSELF — an admin who never touches the picker still produces a clean test,
+ * instead of every send silently defaulting to 'A' (which is what happened before:
+ * three variants existed in code and B/C were never once sent).
+ */
+async function nextVariant(): Promise<'A' | 'B' | 'C'> {
+  const counts = await prisma.agentDemo.groupBy({
+    by:      ['emailVariant'],
+    where:   { emailVariant: { not: null } },
+    _count:  { _all: true },
+  }).catch(() => [] as { emailVariant: string | null; _count: { _all: number } }[])
+  const used: Record<string, number> = { A: 0, B: 0, C: 0 }
+  for (const c of counts) if (c.emailVariant && c.emailVariant in used) used[c.emailVariant] = c._count._all
+  // Fewest-sent wins; ties break A → B → C.
+  return (['A', 'B', 'C'] as const).reduce((best, v) => (used[v]! < used[best]! ? v : best), 'A' as 'A' | 'B' | 'C')
 }
 
 /** Delete a demo (e.g. after it's been sent). Removes the AgentDemo row and

@@ -19,6 +19,8 @@ interface AgentDemoRow {
   id: string; agentName: string; brokerage: string | null; market: string; agentEmail: string
   agentPhone: string | null; pin: string; micrositeSlug: string; recommendedTier: string
   status: string; listingCount: number; expiresAt: string | null; sentAt: string | null; createdAt: string
+  videoStatus?: string; videoUrl?: string | null
+  stages?: { talked: boolean; contact: boolean; qualified: boolean; booked: boolean }
 }
 
 const TIER_LABEL: Record<string, string> = { '297': 'Solo Capture ($297/mo)', '497': 'Solo Power ($497/mo)' }
@@ -28,6 +30,445 @@ const statusStyle = (s: string) =>
   : s === 'SENT'       ? { color: TEAL, border: TEAL }
   : s === 'CLAIMED'    ? { color: 'oklch(55% 0.16 145)', border: 'oklch(55% 0.16 145)' }
   : { color: 'var(--text-tertiary)', border: 'var(--border-subtle)' }
+
+interface QaCall {
+  conversationId: string; agentName: string; micrositeSlug: string | null; createdAt: string
+  durationSecs: number; hasRecording: boolean; recordingToken: string | null; score: number
+  flags: { code: string; label: string; severity: string; regression: boolean }[]; regressions: string[]
+  tokens: number | null; promptTokens: number | null; costUsd: number | null
+}
+// Call-QA panel — automated per-call anomaly/quality tracking with regression flags.
+function QaPanel() {
+  const [open, setOpen] = useState(false)
+  const [data, setData] = useState<{ calls: QaCall[]; regressionTally: Record<string, number>; spend?: { totalCostUsd: number; callsWithUsage: number; callsTotal: number } } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
+  const [playing, setPlaying] = useState<string | null>(null)
+  async function load() {
+    setBusy(true)
+    setLoadErr(null)
+    // Never swallow the error — a silent catch here renders an empty box and
+    // makes the panel look "broken" with zero signal about why.
+    try { setData(await apiFetch<{ calls: QaCall[]; regressionTally: Record<string, number>; spend?: { totalCostUsd: number; callsWithUsage: number; callsTotal: number } }>('/api/admin/agent-demos/call-qa')) }
+    catch (e) { setLoadErr(e instanceof Error ? e.message : String(e)) }
+    finally { setBusy(false) }
+  }
+  useEffect(() => { if (open && !data) void load() }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+  const scoreColor = (s: number) => (s >= 85 ? '#16a34a' : s >= 60 ? '#d97706' : '#dc2626')
+  return (
+    <div style={{ marginBottom: 20, border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', textAlign: 'left', padding: '12px 16px', background: 'var(--surface-raised)', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+        {open ? '▾' : '▸'} Call QA — anomaly &amp; quality tracking{data ? ` · ${data.calls.length} analyzed calls` : ''}
+      </button>
+      {open && (
+        <div style={{ padding: 16 }}>
+          {busy && !data && <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>Loading…</div>}
+          {loadErr && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, color: '#991b1b' }}>
+              Failed to load Call QA: <strong>{loadErr}</strong>
+              <button onClick={load} style={{ marginLeft: 10, background: 'none', border: 'none', color: '#991b1b', textDecoration: 'underline', cursor: 'pointer', fontSize: 13 }}>retry</button>
+            </div>
+          )}
+          {data && Object.keys(data.regressionTally).length > 0 && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, color: '#991b1b' }}>
+              ⚠ Regressions in recent calls: {Object.entries(data.regressionTally).map(([k, v]) => `${k} (${v})`).join(' · ')}
+            </div>
+          )}
+          {data?.spend && (
+            <div style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
+              💸 Gemini spend on these calls: <strong style={{ color: 'var(--text-primary)' }}>${data.spend.totalCostUsd.toFixed(4)}</strong>
+              {' '}· measured on {data.spend.callsWithUsage}/{data.spend.callsTotal} calls
+              {data.spend.callsWithUsage < data.spend.callsTotal && <span style={{ color: 'var(--text-tertiary)' }}> (older calls predate token logging)</span>}
+              <span style={{ color: 'var(--text-tertiary)' }}> · cost is an estimate — verify rates against Google&apos;s pricing</span>
+            </div>
+          )}
+          {data && data.calls.length === 0 && <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>No analyzed calls yet.</div>}
+          {data && data.calls.map(c => (
+            <div key={c.conversationId} style={{ borderTop: '1px solid var(--border-subtle)', padding: '10px 0' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: scoreColor(c.score), borderRadius: 6, padding: '2px 8px', minWidth: 34, textAlign: 'center' }}>{c.score}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{c.agentName} <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>· {new Date(c.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} · {c.durationSecs}s
+                    {c.costUsd != null && (
+                      <> · <span title={`${c.tokens?.toLocaleString()} tokens (${c.promptTokens?.toLocaleString()} prompt)`} style={{ color: c.costUsd >= 0.5 ? '#dc2626' : 'var(--text-tertiary)', fontWeight: 600 }}>
+                        ${c.costUsd.toFixed(3)} · {((c.tokens ?? 0) / 1000).toFixed(0)}k tok
+                      </span></>
+                    )}
+                  </span></div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                    {c.flags.length === 0 && <span style={{ fontSize: 12, color: '#16a34a' }}>clean ✅</span>}
+                    {c.flags.map((f, i) => (
+                      <span key={i} title={f.label}
+                        style={{ fontSize: 11, padding: '2px 7px', borderRadius: 5, background: f.regression ? '#fef2f2' : 'var(--surface-app)', color: f.regression ? '#dc2626' : 'var(--text-secondary)', border: `1px solid ${f.regression ? '#fecaca' : 'var(--border-subtle)'}` }}>
+                        {f.regression ? '⚠ ' : ''}{f.code}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                {c.hasRecording && c.micrositeSlug && (
+                  <button onClick={() => setPlaying(p => (p === c.conversationId ? null : c.conversationId))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, color: TEAL, textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+                    {playing === c.conversationId ? '▾ hide recording' : '▶ recording'}
+                  </button>
+                )}
+              </div>
+              {playing === c.conversationId && c.hasRecording && c.micrositeSlug && (
+                <audio controls autoPlay preload="none" crossOrigin="anonymous"
+                  src={`https://api.myorbisagents.com/api/public/agent-demo/${c.micrositeSlug}/recording/${c.conversationId}${c.recordingToken ? `?t=${encodeURIComponent(c.recordingToken)}` : ''}`}
+                  style={{ width: '100%', marginTop: 8, height: 38 }} />
+              )}
+              <CallReviewBlock conversationId={c.conversationId} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Learned prompt rules (Phase 2 apply loop) ────────────────────────────────
+// Approving a finding drafts a rule here. PUBLISHING is the only thing that puts
+// text into Orby's live prompt — and it's always a human. Retire = instant rollback.
+interface PromptRule {
+  id: string; category: string; text: string
+  status: 'DRAFT' | 'ACTIVE' | 'RETIRED'
+  sourceConversationId: string | null
+  createdAt: string; activatedAt: string | null
+}
+const RULE_STATUS: Record<PromptRule['status'], { bg: string; fg: string; bd: string }> = {
+  DRAFT:   { bg: '#faf5ff', fg: '#7c3aed', bd: '#e9d5ff' },
+  ACTIVE:  { bg: '#f0fdf4', fg: '#16a34a', bd: '#bbf7d0' },
+  RETIRED: { bg: 'var(--surface-app)', fg: 'var(--text-tertiary)', bd: 'var(--border-subtle)' },
+}
+
+// Preview + pick copy — renders all 4 variants with the agent's real listings,
+// lets you read them, then send the one you choose.
+interface PreviewVariant { variant: string; label: string; subject: string; html: string }
+function EmailPreviewModal({ demoId, onClose, onSend }: { demoId: string; onClose: () => void; onSend: (variant: string) => void }) {
+  const [locale, setLocale] = useState<'en' | 'es'>('en')
+  const [data, setData] = useState<{ variants: PreviewVariant[] } | null>(null)
+  const [pick, setPick] = useState('A')
+  const [err, setErr] = useState<string | null>(null)
+  useEffect(() => {
+    setData(null)
+    apiFetch<{ variants: PreviewVariant[] }>(`/api/admin/agent-demos/${demoId}/email-preview?locale=${locale}`)
+      .then(setData).catch(e => setErr(e instanceof Error ? e.message : String(e)))
+  }, [demoId, locale])
+  const current = data?.variants.find(v => v.variant === pick)
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface-raised)', borderRadius: 12, width: 'min(720px, 96vw)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <strong style={{ fontSize: 15, color: 'var(--text-primary)' }}>Choose the demo email</strong>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button onClick={() => setLocale(l => l === 'en' ? 'es' : 'en')} style={{ fontSize: 12, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', borderRadius: 6, padding: '3px 9px', cursor: 'pointer' }}>{locale === 'en' ? 'Español' : 'English'}</button>
+            <button onClick={onClose} style={{ fontSize: 18, border: 'none', background: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>×</button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 6, padding: '10px 18px 0', flexWrap: 'wrap' }}>
+          {data?.variants.map(v => (
+            <button key={v.variant} onClick={() => setPick(v.variant)}
+              style={{ padding: '5px 10px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: `1px solid ${pick === v.variant ? TEAL : 'var(--border-subtle)'}`,
+                background: pick === v.variant ? TEAL : 'transparent', color: pick === v.variant ? '#fff' : 'var(--text-secondary)' }}>
+              {v.variant} · {v.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ padding: 18, overflow: 'auto', flex: 1 }}>
+          {err && <div style={{ color: '#dc2626', fontSize: 13 }}>{err}</div>}
+          {!data && !err && <div style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>Loading…</div>}
+          {current && (
+            <>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>Subject</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 14 }}>{current.subject}</div>
+              <div style={{ background: '#fff', borderRadius: 8, padding: 16, color: '#111', border: '1px solid var(--border-subtle)' }} dangerouslySetInnerHTML={{ __html: current.html }} />
+            </>
+          )}
+        </div>
+        <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button onClick={onClose} style={{ padding: '8px 14px', borderRadius: 7, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={() => onSend(pick)} disabled={!current} style={{ padding: '8px 16px', borderRadius: 7, border: 'none', background: TEAL, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Send variant {pick}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// A/B scoreboard — which demo-email argument earns the most claims.
+interface AbVariant { variant: string; label: string; sent: number; claimed: number; claimRate: number | null }
+function AbScoreboard() {
+  const [open, setOpen] = useState(false)
+  const [data, setData] = useState<{ variants: AbVariant[]; totalSent: number; conclusive: boolean; note: string | null } | null>(null)
+  const load = useCallback(async () => {
+    try { setData(await apiFetch('/api/admin/agent-demos/ab-results')) } catch { /* ignore */ }
+  }, [])
+  useEffect(() => { if (open && !data) void load() }, [open, data, load])
+
+  const best = data && data.conclusive
+    ? data.variants.filter(v => v.claimRate != null).sort((a, b) => (b.claimRate! - a.claimRate!))[0]
+    : null
+
+  return (
+    <div style={{ marginBottom: 20, border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', textAlign: 'left', padding: '12px 16px', background: 'var(--surface-raised)', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+        {open ? '▾' : '▸'} Demo email A/B — which argument wins{data ? ` · ${data.totalSent} sent` : ''}
+      </button>
+      {open && (
+        <div style={{ padding: 16 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+            Claim rate per email argument. <strong>Auto</strong> sends round-robin so the test balances itself. Winner isn&apos;t called until ~15 sent per arm.
+          </div>
+          {data?.note && <div style={{ fontSize: 12, color: '#d97706', marginBottom: 10 }}>{data.note}</div>}
+          {best && <div style={{ fontSize: 13, color: '#16a34a', fontWeight: 600, marginBottom: 10 }}>Leading: {best.label} — {best.claimRate}% claim rate</div>}
+          {data?.variants.map(v => (
+            <div key={v.variant} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderTop: '1px solid var(--border-subtle)' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, width: 16, color: 'var(--text-primary)' }}>{v.variant}</span>
+              <span style={{ fontSize: 13, flex: 1, color: 'var(--text-primary)' }}>{v.label}</span>
+              <div style={{ flex: 2, height: 8, background: 'var(--surface-app)', borderRadius: 999, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ width: `${v.claimRate ?? 0}%`, height: '100%', background: TEAL }} />
+              </div>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', width: 110, textAlign: 'right' }}>
+                {v.claimRate != null ? `${v.claimRate}%` : '—'} · {v.claimed}/{v.sent}
+              </span>
+            </div>
+          ))}
+          {data && data.totalSent === 0 && <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No demo emails sent yet. Send a few (Auto) and results appear here.</div>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function LearnedRulesPanel() {
+  const [open, setOpen] = useState(false)
+  const [data, setData] = useState<{ rules: PromptRule[]; activeCount: number; maxActive: number } | null>(null)
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoadErr(null)
+    try { setData(await apiFetch<{ rules: PromptRule[]; activeCount: number; maxActive: number }>('/api/admin/prompt-rules')) }
+    catch (e) { setLoadErr(e instanceof Error ? e.message : String(e)) }
+  }, [])
+  useEffect(() => { if (open && !data) void load() }, [open, data, load])
+
+  async function act(id: string, action: 'publish' | 'retire' | 'reopen') {
+    if (action === 'publish' && !confirm('Publish this rule? It goes into Orby\'s live prompt on the very next call.')) return
+    setBusy(true)
+    try { await apiFetch(`/api/admin/prompt-rules/${id}/${action}`, { method: 'POST' }); await load() }
+    catch (e) { alert(e instanceof Error ? e.message : 'Failed') }
+    finally { setBusy(false) }
+  }
+  async function saveEdit() {
+    if (!editing) return
+    setBusy(true)
+    try { await apiFetch(`/api/admin/prompt-rules/${editing.id}`, { method: 'PATCH', body: JSON.stringify({ text: editing.text }) }); setEditing(null); await load() }
+    catch (e) { alert(e instanceof Error ? e.message : 'Failed') }
+    finally { setBusy(false) }
+  }
+
+  const drafts = data?.rules.filter(r => r.status === 'DRAFT') ?? []
+  const active = data?.rules.filter(r => r.status === 'ACTIVE') ?? []
+  const retired = data?.rules.filter(r => r.status === 'RETIRED') ?? []
+
+  return (
+    <div style={{ marginBottom: 20, border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', textAlign: 'left', padding: '12px 16px', background: 'var(--surface-raised)', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+        {open ? '▾' : '▸'} Learned rules — Orby prompt corrections
+        {data ? ` · ${data.activeCount}/${data.maxActive} live${drafts.length ? ` · ${drafts.length} awaiting publish` : ''}` : ''}
+      </button>
+      {open && (
+        <div style={{ padding: 16 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+            Approving a Call-QA finding drafts a rule here. <strong>Publishing</strong> is what puts it into Orby&apos;s live prompt — nothing goes live on its own. <strong>Retire</strong> removes it on the next call.
+          </div>
+          {loadErr && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, color: '#991b1b' }}>
+              Failed to load rules: <strong>{loadErr}</strong>
+              <button onClick={load} style={{ marginLeft: 10, background: 'none', border: 'none', color: '#991b1b', textDecoration: 'underline', cursor: 'pointer', fontSize: 13 }}>retry</button>
+            </div>
+          )}
+
+          {[{ label: `Awaiting publish (${drafts.length})`, list: drafts },
+            { label: `Live in Orby's prompt (${active.length})`, list: active },
+            { label: `Retired (${retired.length})`, list: retired }].map(({ label, list }) => (
+            list.length === 0 ? null : (
+              <div key={label} style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-tertiary)', fontWeight: 700, marginBottom: 6 }}>{label}</div>
+                {list.map(r => {
+                  const s = RULE_STATUS[r.status]
+                  return (
+                    <div key={r.id} style={{ borderTop: '1px solid var(--border-subtle)', padding: '10px 0' }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', padding: '2px 7px', borderRadius: 999, background: s.bg, color: s.fg, border: `1px solid ${s.bd}` }}>{r.status}</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{r.category}</span>
+                      </div>
+                      {editing?.id === r.id ? (
+                        <>
+                          <textarea value={editing.text} onChange={e => setEditing({ id: r.id, text: e.target.value })} rows={3} maxLength={500}
+                            style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'var(--surface-app)', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit' }} />
+                          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                            <button onClick={saveEdit} disabled={busy} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: TEAL, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
+                            <button onClick={() => setEditing(null)} style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>{r.text}</div>
+                      )}
+                      {editing?.id !== r.id && (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          {r.status === 'DRAFT' && <>
+                            <button onClick={() => setEditing({ id: r.id, text: r.text })} style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Edit</button>
+                            <button onClick={() => act(r.id, 'publish')} disabled={busy} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#16a34a', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Publish to Orby</button>
+                          </>}
+                          {r.status === 'ACTIVE' && (
+                            <button onClick={() => act(r.id, 'retire')} disabled={busy} style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #fecaca', background: 'transparent', color: '#dc2626', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Retire (rollback)</button>
+                          )}
+                          {r.status === 'RETIRED' && (
+                            <button onClick={() => act(r.id, 'reopen')} disabled={busy} style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Reopen as draft</button>
+                          )}
+                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                            {r.activatedAt ? `live since ${new Date(r.activatedAt).toLocaleDateString()}` : `drafted ${new Date(r.createdAt).toLocaleDateString()}`}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          ))}
+          {data && data.rules.length === 0 && (
+            <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>No rules yet. Approve a finding in Call QA to draft one.</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Multi-agent cross-model review for one call ──────────────────────────────
+interface ReviewFinding {
+  id: string; category: string; severity: string; title: string; detail: string | null; quote: string | null
+  disposition: 'CONFIRMED' | 'REFUTED' | 'DISPUTED'; confidence: number
+  votesJson: { raisedBy?: string[]; verifierModel?: string; refuted?: boolean; verifierReason?: string | null } | null
+  proposedFix: string | null; reviewStatus: 'OPEN' | 'APPROVED' | 'REJECTED' | 'APPLIED'; reviewNotes: string | null
+}
+interface CallReview {
+  id: string; status: string; score: number | null; confidence: number | null
+  modelsUsed: string[]; summary: string | null; error: string | null; findings: ReviewFinding[]
+}
+
+const DISPO: Record<ReviewFinding['disposition'], { label: string; bg: string; fg: string; bd: string }> = {
+  CONFIRMED: { label: 'confirmed',       bg: '#fef2f2', fg: '#dc2626', bd: '#fecaca' },
+  DISPUTED:  { label: 'needs your call', bg: '#faf5ff', fg: '#7c3aed', bd: '#e9d5ff' },
+  REFUTED:   { label: 'refuted',         bg: 'var(--surface-app)', fg: 'var(--text-tertiary)', bd: 'var(--border-subtle)' },
+}
+
+function CallReviewBlock({ conversationId }: { conversationId: string }) {
+  const [open, setOpen] = useState(false)
+  const [review, setReview] = useState<CallReview | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [showRefuted, setShowRefuted] = useState(false)
+
+  async function fetchReview() {
+    try { setReview(await apiFetch<CallReview | null>(`/api/admin/agent-demos/call-review/${conversationId}`)) } catch { /* ignore */ }
+  }
+  useEffect(() => { if (open && review === null) void fetchReview() }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function run() {
+    setBusy(true)
+    try { setReview(await apiFetch<CallReview>(`/api/admin/agent-demos/call-review/${conversationId}`, { method: 'POST' })) }
+    catch (e) { alert(e instanceof Error ? e.message : 'Review failed') }
+    finally { setBusy(false) }
+  }
+  async function decide(id: string, status: 'APPROVED' | 'REJECTED') {
+    try {
+      const updated = await apiFetch<ReviewFinding>(`/api/admin/agent-demos/call-review/finding/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) })
+      setReview(r => r ? { ...r, findings: r.findings.map(f => f.id === id ? updated : f) } : r)
+    } catch (e) { alert(e instanceof Error ? e.message : 'Failed') }
+  }
+
+  const visible = review?.findings.filter(f => showRefuted || f.disposition !== 'REFUTED') ?? []
+  const refutedCount = review?.findings.filter(f => f.disposition === 'REFUTED').length ?? 0
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, color: TEAL, fontWeight: 600 }}>
+        {open ? '▾' : '▸'} Multi-agent review{review ? ` · ${review.status === 'DONE' ? `${review.findings.filter(f => f.disposition !== 'REFUTED').length} findings` : review.status.toLowerCase()}` : ''}
+      </button>
+      {open && (
+        <div style={{ marginTop: 8, padding: 12, background: 'var(--surface-app)', borderRadius: 8, border: '1px solid var(--border-subtle)' }}>
+          {!review && (
+            <button onClick={run} disabled={busy}
+              style={{ padding: '7px 14px', borderRadius: 7, border: 'none', background: TEAL, color: '#fff', fontWeight: 600, fontSize: 12, cursor: busy ? 'wait' : 'pointer' }}>
+              {busy ? 'Analyzing… (cross-model panel, ~15s)' : 'Run cross-model review'}
+            </button>
+          )}
+          {review?.status === 'FAILED' && <div style={{ fontSize: 12, color: '#dc2626' }}>Review failed: {review.error}</div>}
+          {review && review.status === 'DONE' && (
+            <>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
+                <span>Panel: <strong style={{ color: 'var(--text-primary)' }}>{review.modelsUsed.join(' + ') || '—'}</strong></span>
+                {review.score != null && <span>Quality <strong style={{ color: 'var(--text-primary)' }}>{review.score}</strong></span>}
+                {review.confidence != null && <span>Agreement <strong style={{ color: 'var(--text-primary)' }}>{review.confidence}%</strong></span>}
+                <button onClick={run} disabled={busy} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: TEAL, cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}>{busy ? '…' : 're-run'}</button>
+              </div>
+              {visible.length === 0 && <div style={{ fontSize: 12, color: '#16a34a' }}>Panel found nothing actionable — clean call ✅</div>}
+              {visible.map(f => {
+                const d = DISPO[f.disposition]
+                return (
+                  <div key={f.id} style={{ borderTop: '1px solid var(--border-subtle)', padding: '10px 0' }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', padding: '2px 7px', borderRadius: 999, background: d.bg, color: d.fg, border: `1px solid ${d.bd}` }}>{d.label}</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{f.category} · {f.severity} · {f.confidence}%</span>
+                      <span style={{ fontSize: 13, fontWeight: 600 }}>{f.title}</span>
+                    </div>
+                    {f.detail && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{f.detail}</div>}
+                    {f.quote && <blockquote style={{ margin: '4px 0', padding: '6px 10px', borderLeft: '3px solid var(--border-subtle)', fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic' }}>“{f.quote}”</blockquote>}
+                    {f.votesJson && (
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>
+                        raised by {(f.votesJson.raisedBy ?? []).join(', ') || '—'}
+                        {f.votesJson.verifierModel && <> · verified by {f.votesJson.verifierModel}{f.votesJson.verifierReason ? `: ${f.votesJson.verifierReason}` : ''}</>}
+                      </div>
+                    )}
+                    {f.proposedFix && (
+                      <div style={{ fontSize: 12, color: 'var(--text-primary)', background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '6px 10px', marginBottom: 6 }}>
+                        <strong>Proposed fix:</strong> {f.proposedFix}
+                      </div>
+                    )}
+                    {f.reviewStatus === 'OPEN' ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => decide(f.id, 'APPROVED')} style={{ padding: '5px 12px', borderRadius: 6, border: 'none', background: '#16a34a', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Approve fix</button>
+                        <button onClick={() => decide(f.id, 'REJECTED')} style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Reject</button>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 12, fontWeight: 600, color: f.reviewStatus === 'APPROVED' ? '#16a34a' : 'var(--text-tertiary)' }}>
+                        {f.reviewStatus === 'APPROVED' ? '✓ approved' : f.reviewStatus === 'APPLIED' ? '✓ applied' : '✕ rejected'}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+              {refutedCount > 0 && (
+                <button onClick={() => setShowRefuted(s => !s)} style={{ marginTop: 8, background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', fontSize: 11, textDecoration: 'underline' }}>
+                  {showRefuted ? 'hide' : 'show'} {refutedCount} refuted (filtered by the panel)
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function AgentDemosPage() {
   const [agentName, setAgentName]   = useState('')
@@ -45,6 +486,7 @@ export default function AgentDemosPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [importBusy, setImportBusy] = useState(false)
   const [importMsg, setImportMsg] = useState('')
+  const [edit, setEdit] = useState<{ id: string; agentName: string; brokerage: string; market: string; agentEmail: string; agentPhone: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -90,9 +532,33 @@ export default function AgentDemosPage() {
     } finally { setBusy(false) }
   }
 
-  async function send(id: string) {
-    try { await apiFetch(`/api/admin/agent-demos/${id}/send`, { method: 'POST' }); await load() }
+  // Variant per row: 'auto' (round-robin, the default that runs the A/B itself) or a
+  // forced A/B/C/D. Nothing to pass = auto.
+  const [sendVar, setSendVar] = useState<Record<string, string>>({})
+  const [preview, setPreview] = useState<string | null>(null) // demo id whose preview modal is open
+  async function send(id: string, forceVariant?: string) {
+    const v = forceVariant ?? sendVar[id]
+    const body = v && v !== 'auto' ? JSON.stringify({ variant: v }) : undefined
+    try { await apiFetch(`/api/admin/agent-demos/${id}/send`, { method: 'POST', body }); setPreview(null); await load() }
     catch (e) { setErr((e as Error).message || 'Send failed.') }
+  }
+  async function genVideo(id: string) {
+    setRows(rs => rs.map(r => r.id === id ? { ...r, videoStatus: 'GENERATING' } : r))
+    try { await apiFetch(`/api/admin/agent-demos/${id}/generate-video`, { method: 'POST' }); await load() }
+    catch (e) { setErr((e as Error).message || 'Video generation failed.'); await load() }
+  }
+  async function saveEdit() {
+    if (!edit) return
+    if (edit.agentName.trim().length < 2 || edit.market.trim().length < 2 || !edit.agentEmail.includes('@')) {
+      setErr('Agent name, market, and a valid email are required.'); return
+    }
+    try {
+      await apiFetch(`/api/admin/agent-demos/${edit.id}`, { method: 'PATCH', body: JSON.stringify({
+        agentName: edit.agentName.trim(), brokerage: edit.brokerage.trim(), market: edit.market.trim(),
+        agentEmail: edit.agentEmail.trim(), agentPhone: edit.agentPhone.trim(),
+      }) })
+      setEdit(null); await load()
+    } catch (e) { setErr((e as Error).message || 'Update failed.') }
   }
   async function remove(id: string) {
     if (!window.confirm('Delete this demo? Removes it from the list and its throwaway demo workspace. (Claimed demos can’t be deleted here.)')) return
@@ -184,6 +650,10 @@ export default function AgentDemosPage() {
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 0 60px' }}>
       <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Custom agent demos</h1>
+      {preview && <EmailPreviewModal demoId={preview} onClose={() => setPreview(null)} onSend={(v) => send(preview, v)} />}
+      <QaPanel />
+      <AbScoreboard />
+      <LearnedRulesPanel />
       <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 20 }}>
         Paste a real-estate agent + up to 3 of their listings. We build a live Orby demo loaded with their
         properties, score their tier, and enrich the listings so Orby can answer area questions.
@@ -288,6 +758,14 @@ export default function AgentDemosPage() {
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{r.agentName}{r.brokerage ? <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}> · {r.brokerage}</span> : null}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{r.market} · {r.agentEmail}{r.agentPhone ? ` · ${r.agentPhone}` : ''} · {r.listingCount} listing{r.listingCount === 1 ? '' : 's'}</div>
+                      {r.stages && (
+                        <div style={{ fontSize: 11, marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 10, color: 'var(--text-secondary)' }}>
+                          <span>{r.stages.talked ? '✅' : '⬜️'} Talked to Orby</span>
+                          <span>{r.stages.contact ? '✅' : '⬜️'} Left contact info</span>
+                          <span>{r.stages.qualified ? '✅' : '⬜️'} Qualified</span>
+                          <span>{r.stages.booked ? '✅' : '⬜️'} Booked a showing</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6, color: st.color, border: `1px solid ${st.border}` }}>{r.status}</span>
@@ -300,12 +778,50 @@ export default function AgentDemosPage() {
                   ) : r.status === 'GENERATING' ? (
                     <span style={{ opacity: 0.6 }}>enriching…</span>
                   ) : (
-                    <button onClick={() => send(r.id)}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <select value={sendVar[r.id] ?? 'auto'} onChange={e => setSendVar(s => ({ ...s, [r.id]: e.target.value }))}
+                        title="Which email argument to send (Auto = round-robin A/B/C)"
+                        style={{ fontSize: 11, border: '1px solid var(--border-subtle)', borderRadius: 5, padding: '1px 4px', background: 'var(--surface-app)', color: 'var(--text-secondary)' }}>
+                        <option value="auto">Auto A/B/C/D</option>
+                        <option value="A">A · ISA anchor</option>
+                        <option value="B">B · founder story</option>
+                        <option value="C">C · 917 min</option>
+                        <option value="D">D · what-if</option>
+                      </select>
+                      <button onClick={() => setPreview(r.id)} title="Read each version, then pick one to send"
+                        style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, padding: 0, textDecoration: 'underline' }}>
+                        preview
+                      </button>
+                      <button onClick={() => send(r.id)}
+                        style={{ background: 'none', border: 'none', color: TEAL, cursor: 'pointer', fontSize: 12, padding: 0, textDecoration: 'underline' }}>
+                        {r.status === 'SENT' ? 'Resend email' : 'Send email →'}
+                      </button>
+                    </span>
+                  )}
+                  {r.status === 'SENT' && (
+                    <span style={{ opacity: 0.6 }} title={r.sentAt ? new Date(r.sentAt).toLocaleString() : undefined}>
+                      sent{r.sentAt ? ` ${new Date(r.sentAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}
+                    </span>
+                  )}
+                  {r.status !== 'CLAIMED' && (
+                    r.videoStatus === 'GENERATING' ? (
+                      <span style={{ opacity: 0.6 }}>video…</span>
+                    ) : r.videoStatus === 'READY' ? (
+                      <a href={r.videoUrl || '#'} target="_blank" rel="noreferrer"
+                        style={{ color: TEAL, fontSize: 12, textDecoration: 'underline' }}>video ✓</a>
+                    ) : (
+                      <button onClick={() => genVideo(r.id)}
+                        style={{ background: 'none', border: 'none', color: TEAL, cursor: 'pointer', fontSize: 12, padding: 0, textDecoration: 'underline' }}>
+                        {r.videoStatus === 'FAILED' ? 'Retry video' : 'Generate video'}
+                      </button>
+                    )
+                  )}
+                  {r.status !== 'CLAIMED' && (
+                    <button onClick={() => setEdit({ id: r.id, agentName: r.agentName, brokerage: r.brokerage ?? '', market: r.market, agentEmail: r.agentEmail, agentPhone: r.agentPhone ?? '' })}
                       style={{ background: 'none', border: 'none', color: TEAL, cursor: 'pointer', fontSize: 12, padding: 0, textDecoration: 'underline' }}>
-                      {r.status === 'SENT' ? 'Resend email' : 'Send email →'}
+                      Edit
                     </button>
                   )}
-                  {r.status === 'SENT' && <span style={{ opacity: 0.6 }}>sent</span>}
                   {r.status !== 'CLAIMED' && (
                     <button onClick={() => remove(r.id)}
                       style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 12, padding: 0, marginLeft: 'auto', textDecoration: 'underline' }}>
@@ -316,6 +832,33 @@ export default function AgentDemosPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {edit && (
+        <div onClick={() => setEdit(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: 16 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: 24, width: 'min(460px, 100%)' }}>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Edit demo</h3>
+            <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+              {([
+                ['Agent name', 'agentName'], ['Brokerage', 'brokerage'], ['Market', 'market'],
+                ['Email', 'agentEmail'], ['Phone', 'agentPhone'],
+              ] as const).map(([label, key]) => (
+                <label key={key} style={{ display: 'grid', gap: 4, fontSize: 13, color: 'var(--text-secondary)' }}>
+                  {label}
+                  <input style={inp} value={edit[key]} onChange={e => setEdit({ ...edit, [key]: e.target.value })} />
+                </label>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button onClick={() => setEdit(null)}
+                style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', color: 'var(--text-secondary)' }}>Cancel</button>
+              <button onClick={saveEdit}
+                style={{ background: TEAL, border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', color: '#fff', fontWeight: 600 }}>Save</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

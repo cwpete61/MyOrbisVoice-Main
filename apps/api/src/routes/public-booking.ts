@@ -11,8 +11,45 @@ import { DEMO_PHONE_E164 } from '../services/demo-session.service.js'
 import { createAgentDemoClaimSession } from '../services/agent-demo.service.js'
 import { getBunnyConfig, storageHostForRegion } from '../services/bunny.service.js'
 import { wavToMp3 } from '../lib/wav-to-mp3.js'
+import { verifyRecordingToken } from '../lib/recording-token.js'
+import type { Request, Response } from 'express'
 
 const router: IRouter = Router()
+
+/**
+ * Serve an in-memory audio buffer with HTTP Range support so the browser's
+ * native audio scrubber can seek. Without Accept-Ranges + 206 responses, the
+ * seek bar is non-interactive (you can only play from the start). Recordings
+ * are small (a few MB), so buffering + slicing is simpler and more reliable
+ * than proxying Range upstream.
+ */
+function serveAudioWithRange(req: Request, res: Response, buf: Buffer, contentType = 'audio/mpeg'): void {
+  const total = buf.length
+  res.setHeader('Accept-Ranges', 'bytes')
+  res.setHeader('Content-Type', contentType)
+
+  const range = req.headers.range
+  const m = range ? /^bytes=(\d*)-(\d*)$/.exec(range.trim()) : null
+  if (m) {
+    let start = m[1] ? parseInt(m[1], 10) : 0
+    let end = m[2] ? parseInt(m[2], 10) : total - 1
+    if (Number.isNaN(start)) start = 0
+    if (Number.isNaN(end) || end >= total) end = total - 1
+    if (start > end || start >= total) {
+      res.status(416).setHeader('Content-Range', `bytes */${total}`)
+      res.end()
+      return
+    }
+    res.status(206)
+    res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`)
+    res.setHeader('Content-Length', String(end - start + 1))
+    res.end(buf.subarray(start, end + 1))
+    return
+  }
+
+  res.setHeader('Content-Length', String(total))
+  res.end(buf)
+}
 
 /**
  * Phase E.4 — Public prospect booking page.
@@ -359,6 +396,8 @@ router.get('/public/agent-demo/:slug', asyncHandler(async (req, res) => {
       pin:             demo.pin,
       recommendedTier: demo.recommendedTier,
       status:          demo.status,
+      videoUrl:        demo.videoStatus === 'READY' ? demo.videoUrl : null,
+      videoStatus:     demo.videoStatus ?? 'NONE',
       listings,
     },
   })
@@ -425,8 +464,14 @@ router.get('/public/agent-demo/:slug/recording/:conversationId', asyncHandler(as
     select: { tenantId: true, expiresAt: true, status: true, tenant: { select: { isDemo: true } } },
   })
   if (!demo) throw new AppError('NOT_FOUND', 'Demo not found', 404)
-  if (demo.expiresAt && demo.expiresAt.getTime() < Date.now()) throw new AppError('GONE', 'This demo link has expired', 410)
-  if (demo.status === 'CLAIMED' || demo.tenant?.isDemo === false) throw new AppError('GONE', 'This demo has been activated', 410)
+  // A valid admin-minted token (from the authed Call QA list) bypasses the
+  // prospect-facing expiry/claim guards so internal QA can replay any call.
+  // Prospects (no token) still hit the guards below.
+  const adminBypass = verifyRecordingToken(req.params['conversationId']!, req.query['t'] as string | undefined)
+  if (!adminBypass) {
+    if (demo.expiresAt && demo.expiresAt.getTime() < Date.now()) throw new AppError('GONE', 'This demo link has expired', 410)
+    if (demo.status === 'CLAIMED' || demo.tenant?.isDemo === false) throw new AppError('GONE', 'This demo has been activated', 410)
+  }
 
   const conv = await prisma.conversation.findFirst({
     where: { id: req.params['conversationId']!, tenantId: demo.tenantId },
@@ -444,18 +489,14 @@ router.get('/public/agent-demo/:slug/recording/:conversationId', asyncHandler(as
       if (!upstream.ok) { res.status(404).json({ error: 'Recording file not found' }); return }
       res.setHeader('X-Content-Type-Options', 'nosniff')
       res.setHeader('Cache-Control', 'private, max-age=3600')
-      if (conv.recordingBunnyPath.toLowerCase().endsWith('.mp3')) {
-        res.setHeader('Content-Type', 'audio/mpeg')
-        const cl = upstream.headers.get('Content-Length'); if (cl) res.setHeader('Content-Length', cl)
-        const { Readable } = await import('stream')
-        Readable.fromWeb(upstream.body as any).pipe(res)
-        return
-      }
-      // Always serve MP3 (browsers reliably play it; the stored 8kHz WAVs don't).
-      const mp3 = await wavToMp3(Buffer.from(await upstream.arrayBuffer()))
-      res.setHeader('Content-Type', 'audio/mpeg')
-      res.setHeader('Content-Length', String(mp3.length))
-      res.send(mp3)
+      // Buffer the (small, few-MB) audio then serve with HTTP Range support so
+      // the browser's audio scrubber can seek — a plain pipe/send has no
+      // Accept-Ranges, which leaves the seek bar dead.
+      const raw = Buffer.from(await upstream.arrayBuffer())
+      const mp3 = conv.recordingBunnyPath.toLowerCase().endsWith('.mp3')
+        ? raw
+        : await wavToMp3(raw) // stored 8kHz WAVs don't play reliably — always MP3
+      serveAudioWithRange(req, res, mp3, 'audio/mpeg')
       return
     }
   }
