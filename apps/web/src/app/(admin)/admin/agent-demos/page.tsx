@@ -783,7 +783,7 @@ export default function AgentDemosPage() {
                         title="Which email argument to send (Auto = round-robin A/B/C)"
                         style={{ fontSize: 11, border: '1px solid var(--border-subtle)', borderRadius: 5, padding: '1px 4px', background: 'var(--surface-app)', color: 'var(--text-secondary)' }}>
                         <option value="auto">Auto A/B/C/D</option>
-                        <option value="A">A · ISA anchor</option>
+                        <option value="A">A · Assistant anchor</option>
                         <option value="B">B · founder story</option>
                         <option value="C">C · 917 min</option>
                         <option value="D">D · what-if</option>

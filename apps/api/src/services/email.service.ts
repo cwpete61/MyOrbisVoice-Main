@@ -96,12 +96,24 @@ function pickProvider(opts: EmailOptions): EmailProvider {
   // the phone and need the recipient to confirm receipt instantly, so keep it on the
   // instant hosted provider that actually owns the domain.
   if (fromAddr.includes('@myorbisresults.com')) return 'brevo'
-  // @myorbisvoice.com is verified on Resend, NOT Postmark. Route it by domain
-  // BEFORE the kind default — otherwise transactional (kind==null) sends short-
-  // circuit to Postmark, which rejects the unverified From and silently falls
-  // back to local Postfix (Gmail spams/drops it). This was why demo booking
-  // confirmations never arrived. Domain ownership wins over the kind default.
+  // @myorbisvoice.com → Resend (transactional: booking confirmations, resets,
+  // notifications). Resend is transactional-first, tracking off by default.
+  // History (so nobody re-flips this blindly): this briefly pointed at Postmark
+  // because myorbisvoice.com was verified there — but that Postmark account got
+  // HELD (accepts sends, delivers nothing, no dashboard access), which is why
+  // confirmations silently died. Resend was re-keyed 2026-07-18 and
+  // myorbisvoice.com verified there (probed: a live send from it returns 200).
   if (fromAddr.includes('@myorbisvoice.com'))   return 'resend'
+  // @myorbisagents.com → Postmark. Deliberately NOT Resend: the Resend API key on
+  // this account is currently rejected ("API key is invalid"), so every Resend send
+  // throws and silently falls back to local Postfix (= spam). Postmark's token is
+  // verified working, it is transactional-first (best Primary placement), and it
+  // supports per-send tracking-off (see sendViaPostmark) rather than a dashboard
+  // toggle. This is also the only routing that makes the sender domain match the
+  // link domain (app.myorbisagents.com).
+  // REQUIRES: myorbisagents.com verified on Postmark (DKIM published +
+  // include:spf.mtasv.net in SPF) — until then Postmark rejects the unverified From.
+  if (fromAddr.includes('@myorbisagents.com'))  return 'postmark'
   if (opts.kind === 'transactional' || opts.kind == null) return 'postmark'
   return 'smtp'  // default for unknown marketing domains
 }
@@ -135,6 +147,14 @@ async function sendViaPostmark(opts: EmailOptions): Promise<{ providerMessageId:
       TextBody:      opts.text ?? opts.html.replace(/<[^>]+>/g, ''),
       ReplyTo:       opts.replyTo,
       MessageStream: 'outbound',
+      // Tracking OFF, explicitly. Postmark is our TRANSACTIONAL path; open-pixels
+      // and click-rewriting are two of the strongest Gmail Promotions signals, and
+      // a rewritten href also makes the link point at a tracking host instead of
+      // our own domain. Previously these were unset, so every send silently
+      // inherited whatever the Postmark server default happened to be. Marketing
+      // sends that DO want tracking go through Brevo (provider: 'brevo').
+      TrackOpens:    false,
+      TrackLinks:    'None',
       // Postmark accepts arbitrary MIME headers via a Headers array — used
       // for List-Unsubscribe etc. on the rare marketing/bulk send that goes
       // through postmark.
@@ -632,98 +652,307 @@ export async function sendPasswordResetEmail(opts: {
 // Brevo (the inboxing path). Agent-facing → both languages ship in one email.
 const TEAL_EMAIL = '#15A8A8'
 
-export async function sendAgentDemoEmail(opts: {
-  to: string
+/** A/B variants of the demo email. Same offer, deliberately different strategy so a
+ *  test isolates WHICH ARGUMENT works, not which wording:
+ *    A — control: the $40k Personal Agent Assistant price anchor.
+ *    B — the founder's lost-deal story (villain = "someone answered first").
+ *    C — the speed stats (78% / 917 min), then they compute their own loss.
+ *  Every number is from docs/myorbisagents-brand-voice.md §5. Never invent one. */
+export type DemoEmailVariant = 'A' | 'B' | 'C' | 'D'
+
+/** Human labels for the variants — shared by the admin picker + A/B scoreboard so
+ *  the copy and its name never drift apart. */
+export const DEMO_VARIANT_LABELS: Record<DemoEmailVariant, string> = {
+  A: '$40k assistant anchor',
+  B: 'Founder lost-deal story',
+  C: 'Speed stats (917 min)',
+  D: 'What-if outcomes',
+}
+
+/**
+ * HTML → a plain-text part a human would actually accept.
+ *
+ * The generic fallback in sendEmail is `html.replace(/<[^>]+>/g, '')`, which drops
+ * every href (the text part ends up with ZERO urls while the HTML has four),
+ * collapses <br>-joined lists onto one line, and leaves entities raw. A text/html
+ * divergence that large is itself a spam signal. This keeps the links (as
+ * "label (url)"), the line breaks, and decodes entities.
+ */
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<a\s[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi, (_m, href, label) =>
+      // A bare tel: link reads better as just the number.
+      String(href).startsWith('tel:') ? String(label) : `${String(label).replace(/<[^>]+>/g, '')} (${href})`)
+    .replace(/<\/p>|<br\s*\/?>|<\/div>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+    .split('\n').map(l => l.trim()).join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+/** Sender identity. Routing is BY DOMAIN (see pickProvider): @myorbisvoice.com →
+ *  Resend, which does not pixel/rewrite by default. The old
+ *  "MyOrbisAgents" <notify@myorbisresults.com> went to Brevo (a marketing platform
+ *  whose transactional default injects an open-pixel and rewrites every href) AND
+ *  paired a brand display-name with a `notify@` alias — both Promotions signals on
+ *  an email that is signed by a person. A dedicated demo@ mailbox also isolates this
+ *  stream's sending reputation from support/notify traffic.
+ *  NOTE: demo@myorbisvoice.com must exist as a real mailbox — the P.S. asks for replies. */
+// demo@myorbisagents.com — the sender domain now MATCHES the link domain
+// (app.myorbisagents.com). Mismatched sender/link domains are a classic promo
+// pattern; aligning them is worth more than any copy tweak.
+//
+// Verified 2026-07-13 on Postmark (which pickProvider routes @myorbisagents.com to):
+//   postmark._domainkey TXT ...................... DKIM signing
+//   SPF includes spf.mtasv.net ................... envelope auth
+//   pm-bounces CNAME -> pm.mtasv.net (DNS-only) .. Return-Path alignment
+//   _dmarc TXT p=none ............................ policy
+//   MX -> spacemail + a real demo@ mailbox ....... so the P.S. "reply demo" works
+// A person display-name (not a brand) on a real, reply-capable mailbox — the old
+// "MyOrbisAgents" <notify@...> paired a brand with a bulk-looking alias on a note
+// signed by a human.
+// From is on myorbisresults.com ON PURPOSE. Two reasons:
+//   1. Provider: pickProvider routes @myorbisresults.com → BREVO, and Brevo is the
+//      right home for this email — it's promotional/outreach ("I built you a demo,
+//      call this number"), which Postmark's transactional-only policy PROHIBITS.
+//      That policy mismatch is very likely why the Postmark account got held:
+//      accepts sends, delivers nothing. Brevo allows this content and delivers.
+//   2. Auth: myorbisresults.com is the only sending domain authenticated on Brevo
+//      today (DKIM/SPF verified). myorbisvoice.com and myorbisagents.com are not on
+//      Brevo, so a From on either would be rejected there.
+// The From mailbox need not receive — Reply-To points at the real
+// demo@myorbisagents.com inbox, so replies (the P.S. "reply demo") reach a human.
+// Known tradeoff: sender domain (myorbisresults.com) != link domain
+// (app.myorbisagents.com); revisit if Gmail tabs it Promotions. "Delivered to
+// Promotions" still beats "silently quarantined by a held Postmark account".
+// INTERIM Primary-placement test: send via RESEND, not Brevo. Proven 2026-07-18 —
+// Resend sends land in Gmail PRIMARY, Brevo sends land in PROMOTIONS (Brevo injects
+// an open-pixel + rewrites links; those are the Promotions signals). Only
+// myorbisvoice.com is verified on the (free, 1-domain) Resend account, so the From
+// is on that domain for now — which means sender-brand (Voice) ≠ link-brand (Agents).
+// The clean end state is demo@myorbisagents.com once that domain is verified on
+// Resend (Pro plan = unlimited domains, or free if a 2nd domain slot exists) —
+// then flip this one line and sender/link/brand all align.
+const DEMO_FROM     = '"Crawford Peterson" <demo@myorbisvoice.com>'
+const DEMO_REPLY_TO = 'demo@myorbisagents.com'
+
+/** Build the demo email (subject + html + text) for a variant/locale WITHOUT
+ *  sending — powers the admin "preview & pick the copy" flow. sendAgentDemoEmail
+ *  is a thin wrapper so preview and the real send can never diverge. */
+export function buildAgentDemoEmail(opts: {
   agentName: string
   micrositeUrl: string
   claimUrl: string
   demoPhone: string   // E.164
   pin: string
   planName: string    // 'Solo Capture' | 'Solo Power' (English, allow-listed)
-  listings: Array<{ address: string; headline: string | null; priceUsd: number | null; highlights: string[] }>
-}): Promise<SendResult> {
+  listings: Array<{ address: string; headline: string | null; priceUsd: number | null; highlights: string[]; beds?: number | null; baths?: number | null; sqft?: number | null; propertyType?: string | null }>
+  /** Which argument to send. Defaults to the control. */
+  variant?: DemoEmailVariant
+  /** ONE language per recipient. Both are authored (bilingual rule) but sending
+   *  EN+ES stacked in one body doubles the length, duplicates every link, and reads
+   *  as templated broadcast — a person writing one agent writes one language. */
+  locale?: 'en' | 'es'
+}): { subject: string; html: string; text: string; variant: DemoEmailVariant; locale: 'en' | 'es' } {
+  const variant = opts.variant ?? 'A'
+  const lang    = opts.locale === 'es' ? 'es' : 'en'
   const phoneDigits = opts.demoPhone.replace(/\D/g, '')
   const phoneDisplay = phoneDigits.length === 11
     ? `(${phoneDigits.slice(1, 4)}) ${phoneDigits.slice(4, 7)}-${phoneDigits.slice(7)}`
     : opts.demoPhone
   const first = opts.agentName.split(/\s+/)[0] || opts.agentName
-  const money = (n: number | null) => (n == null ? '' : ` — $${n.toLocaleString('en-US')}`)
 
-  const listingRows = opts.listings.map(l => `
-    <tr><td style="padding:8px 0;border-bottom:1px solid #eee">
-      <strong style="color:#0f1720">${l.headline || l.address}</strong>${money(l.priceUsd)}
-      ${l.highlights.length ? `<div style="color:#516170;font-size:12px;margin-top:2px">${l.highlights.slice(0, 4).join(' · ')}</div>` : ''}
-    </td></tr>`).join('')
+  // Deliberately PLAIN + personal so Gmail files it in Primary, not Promotions.
+  // No brand banner, no buttons, no listings table, no offer block, one link —
+  // it should read like a note from a person, because it is. `opts.listings`,
+  // `opts.claimUrl`, `opts.pin`, `opts.planName` are intentionally unused here;
+  // the microsite carries the listings + claim CTA + offer.
+  const a = (href: string, label: string) => `<a href="${href}" style="color:${TEAL_EMAIL}">${label}</a>`
+  const p = 'margin:0 0 14px;font-size:15px;color:#111;line-height:1.55'
+  const n = opts.listings.length
+  // Plain-text property list (address + basic details, no images/buttons/price
+  // tables) so Orby's listings are referenced without turning the note into a promo.
+  const money = (v: number) => `$${Math.round(v).toLocaleString('en-US')}`
+  const num   = (v: number) => v.toLocaleString('en-US')
+  const buildList = (lbl: { bd: string; ba: string; sqft: string }) =>
+    !n ? '' : `<div style="${p}">${opts.listings.map(l => {
+      const title = l.address || l.headline || 'Listing'
+      const bits: string[] = []
+      if (l.priceUsd != null) bits.push(money(l.priceUsd))
+      if (l.beds  != null)    bits.push(`${l.beds} ${lbl.bd}`)
+      if (l.baths != null)    bits.push(`${l.baths} ${lbl.ba}`)
+      if (l.sqft  != null)    bits.push(`${num(l.sqft)} ${lbl.sqft}`)
+      const detail = bits.length ? ` — ${bits.join(' · ')}` : ''
+      return `• ${title}${detail}`
+    }).join('<br>')}</div>`
+  const propListEn = buildList({ bd: 'bd', ba: 'ba', sqft: 'sqft' })
+  const propListEs = buildList({ bd: 'rec', ba: 'baños', sqft: 'sqft' })
+  const listSuffixEn = n ? ` — and I already loaded her with your ${n} listing${n === 1 ? '' : 's'}:` : '.'
+  const listSuffixEs = n ? ` — y ya la cargué con tus ${n} propiedad${n === 1 ? '' : 'es'}:` : '.'
 
-  const link = (href: string, label: string) =>
-    `<a href="${href}" style="color:${TEAL_EMAIL};font-weight:700;text-decoration:underline">${label}</a>`
+  // The 3 steps are plain NUMBERED LINES, not buttons or a table — structure a
+  // person would type. Buttons/tables are what push Gmail to Promotions; numbered
+  // text does not. Step 2 makes them role-play their own buyer, so the proof is
+  // experienced rather than claimed ("the demo brags; the copy doesn't").
+  const step = 'margin:0 0 6px;font-size:15px;color:#111;line-height:1.55'
+  const stepsEn = `
+    <p style="${p}">Three steps, about two minutes:</p>
+    <div style="${step}"><strong>1.</strong> Call ${a(`tel:${opts.demoPhone}`, phoneDisplay)} from your phone.</div>
+    <div style="${step}"><strong>2.</strong> Ask about one of those listings — like a buyer would.</div>
+    <div style="margin:0 0 14px;font-size:15px;color:#111;line-height:1.55"><strong>3.</strong> Let her book you a showing. Then check your email.</div>`
+  const stepsEs = `
+    <p style="${p}">Tres pasos, unos dos minutos:</p>
+    <div style="${step}"><strong>1.</strong> Llama al ${a(`tel:${opts.demoPhone}`, phoneDisplay)} desde tu teléfono.</div>
+    <div style="${step}"><strong>2.</strong> Pregunta por una de esas propiedades — como lo haría un comprador.</div>
+    <div style="margin:0 0 14px;font-size:15px;color:#111;line-height:1.55"><strong>3.</strong> Deja que te agende una cita. Luego revisa tu correo.</div>`
 
-  // Brief + transactional. Two buttons: autodial the call, then open the
-  // no-login demo to watch what Orby did. Routing is caller-ID only (no PIN).
-  const btn = (href: string, label: string) =>
-    `<a href="${href}" style="display:inline-block;background:${TEAL_EMAIL};color:#fff;padding:12px 22px;border-radius:9px;text-decoration:none;font-size:15px;font-weight:700">${label}</a>`
-  const block = (L: {
-    hi: string; lede: string; callBody: string; callBtn: string; tryIntro: string; tryBullets: string[];
-    demoBtn: string; listingsH: string; promo: string; claimLink: string
-  }) => `
-    <p style="font-size:15px;color:#0f1720">${L.hi}</p>
-    <p style="font-size:15px;color:#516170">${L.lede}</p>
-    <p style="font-size:14px;color:#516170;margin:20px 0 8px">${L.callBody}</p>
-    <p style="margin:0 0 14px">${btn(`tel:${opts.demoPhone}`, `📞 ${L.callBtn} ${phoneDisplay}`)}</p>
-    <p style="font-size:14px;color:#0f1720;margin:0 0 4px"><strong>${L.tryIntro}</strong></p>
-    <ul style="margin:0 0 16px;padding-left:20px;color:#516170;font-size:14px;line-height:1.6">${L.tryBullets.map((b) => `<li>${b}</li>`).join('')}</ul>
-    <p style="margin:0 0 20px">${btn(opts.micrositeUrl, L.demoBtn)}</p>
-    <h3 style="font-size:14px;color:#0f1720;margin:20px 0 6px">${L.listingsH}</h3>
-    <table style="width:100%;border-collapse:collapse">${listingRows}</table>
-    <p style="font-size:14px;color:#0f1720;margin:22px 0 0">${L.promo} ${link(opts.claimUrl, L.claimLink)}</p>`
+  // Personal Agent Assistant anchor, argued at the PESSIMISTIC number ($40k, the floor of the $40-60k
+  // range) so it can't be discounted away. Framed as an anchor, NOT a saving —
+  // this ICP never hired an assistant, so "replaces your assistant" would sell them a
+  // saving on money they never spent.
+  const en = `
+    <p style="${p}">Hi ${first},</p>
+    <p style="${p}">I built you a live demo of Orby — an AI assistant that answers your buyer calls 24/7, qualifies them, and books the showing on your calendar${listSuffixEn}</p>
+    ${propListEn}
+    ${stepsEn}
+    <p style="${p}">That's a buyer calling you at 8pm while you're at dinner. She answers every time.</p>
+    <p style="${p}">It's a $40,000-a-year Personal Agent Assistant's entire job — the hire you were never going to make. And this is just the demo.</p>
+    <p style="margin:0 0 14px;font-size:14px;color:#666;line-height:1.55">Can't call right now? It's all on your demo page too: ${a(opts.micrositeUrl, 'your Orby demo')}.</p>
+    <p style="${p}">Let me know what you think.</p>`
 
-  const en = block({
-    hi: `Hi ${first},`,
-    lede: `I built you a live demo of Orby — an AI assistant that answers your buyers 24/7, loaded with your listings.`,
-    callBody: `Call from the phone number you gave us and Orby answers as your assistant — knowing your name and your listings.`,
-    callBtn: `Call Orby —`,
-    tryIntro: `On the call, try this:`,
-    tryBullets: [
-      `Ask if one of your listings is available`,
-      `Answer Orby's questions — budget, pre-approval, timeline`,
-      `Book a time, then check your email for the confirmation`,
-    ],
-    demoBtn: `Open your demo — watch what Orby did →`,
-    listingsH: `Listings Orby already knows:`,
-    promo: `<strong>Launch offer:</strong> 50% off your monthly plan — Solo Capture or Solo Power — for a full year, plus $250 setup.`,
-    claimLink: `Get Orby for your business →`,
-  })
-  const es = block({
-    hi: `Hola ${first}:`,
-    lede: `Te preparé una demo en vivo de Orby — un asistente de IA que responde a tus compradores 24/7, con tus propiedades cargadas.`,
-    callBody: `Llama desde el número de teléfono que nos diste y Orby contesta como tu asistente — con tu nombre y tus propiedades.`,
-    callBtn: `Llama a Orby —`,
-    tryIntro: `En la llamada, prueba esto:`,
-    tryBullets: [
-      `Pregunta si una de tus propiedades está disponible`,
-      `Responde las preguntas de Orby — presupuesto, preaprobación, plazos`,
-      `Agenda una hora y revisa tu correo para la confirmación`,
-    ],
-    demoBtn: `Abre tu demo — mira lo que Orby hizo →`,
-    listingsH: `Propiedades que Orby ya conoce:`,
-    promo: `<strong>Oferta de lanzamiento:</strong> 50% de descuento en tu plan mensual — Solo Capture o Solo Power — por un año completo, más $250 de instalación.`,
-    claimLink: `Consigue Orby para tu negocio →`,
-  })
+  const es = `
+    <p style="${p}">Hola ${first}:</p>
+    <p style="${p}">Te preparé una demo en vivo de Orby — una asistente de IA que responde tus llamadas de compradores 24/7, los califica y agenda la cita en tu calendario${listSuffixEs}</p>
+    ${propListEs}
+    ${stepsEs}
+    <p style="${p}">Así se oye un comprador llamándote a las 8pm mientras cenas. Ella siempre contesta.</p>
+    <p style="${p}">Es el trabajo completo de un Asistente Personal de Agente de $40,000 al año — la contratación que nunca ibas a hacer. Y esto es solo la demo.</p>
+    <p style="margin:0 0 14px;font-size:14px;color:#666;line-height:1.55">¿No puedes llamar ahora? También está todo en tu página de demo: ${a(opts.micrositeUrl, 'tu demo de Orby')}.</p>
+    <p style="${p}">Cuéntame qué te parece.</p>`
 
+  // ── Variant B — the founder's lost-deal story (brand-voice §7) ─────────────
+  // Villain is "someone answered first", NOT lenders (picking that fight costs a
+  // needed referral partner). Story earns the demo ask instead of leading with it.
+  const bEn = `
+    <p style="${p}">Hi ${first},</p>
+    <p style="${p}">Before I built software I sold real estate in NYC. I paid to attract a buyer, got him mortgage-approved — the hottest lead of my year — and then he called while I was mid-showing. He couldn't reach me. The lender referred an agent who picked up, and that agent collected the commission I'd already paid to earn.</p>
+    <p style="${p}">Not because I was lazy. Because I was one person, and the buyer called at the wrong moment.</p>
+    <p style="${p}">So I built the thing that answers when I can't. Her name is Orby, and I already set up a live demo loaded with ${n || 3} of your own listings:</p>
+    ${propListEn}
+    <p style="${p}">Call ${a(`tel:${opts.demoPhone}`, phoneDisplay)} and ask about one — the way a buyer would. She'll answer, qualify them, and book the showing. You'd still run the showing; she just makes sure it's on your calendar.</p>
+    <p style="${p}">Two minutes. Your ears will tell you more than I can.</p>`
+  const bEs = `
+    <p style="${p}">Hola ${first}:</p>
+    <p style="${p}">Antes de crear software, vendía bienes raíces en Nueva York. Pagué por atraer a un comprador, conseguí que lo aprobaran para su hipoteca — el mejor lead de mi año — y me llamó justo cuando yo estaba mostrando otra casa. No pudo localizarme. El prestamista le recomendó a un agente que sí contestó, y ese agente se llevó la comisión que yo ya había pagado por ganar.</p>
+    <p style="${p}">No fue por flojera. Fue porque yo era una sola persona, y el comprador llamó en el momento equivocado.</p>
+    <p style="${p}">Así que construí lo que contesta cuando yo no puedo. Se llama Orby, y ya te preparé una demo en vivo cargada con ${n || 3} de tus propias propiedades:</p>
+    ${propListEs}
+    <p style="${p}">Llama al ${a(`tel:${opts.demoPhone}`, phoneDisplay)} y pregunta por una — como lo haría un comprador. Ella contesta, los califica y agenda la cita. Tú seguirías haciendo la visita; ella solo se asegura de que exista en tu calendario.</p>
+    <p style="${p}">Dos minutos. Tus oídos te dirán más que yo.</p>`
+
+  // ── Variant C — the speed stats, then they compute their own loss ──────────
+  // Every figure is verbatim from the §5 data spine. The "you can't know" beat is
+  // the silent-loss principle — fear of the unknown number beats any known stat.
+  const cEn = `
+    <p style="${p}">Hi ${first},</p>
+    <p style="${p}">Two numbers from industry research: 78% of buyers hire the first agent who responds — and the average agent takes 917 minutes, over 15 hours, to respond to a new lead. 62% of leads come in after hours, when nobody's answering at all.</p>
+    <p style="${p}">Every buyer who gave up on silence is a commission — roughly $10,000 on a median-priced home. How many calls went unreturned on your phone last year? You can't know. Nobody calls back to tell you they hired someone else. That unknown number is the expensive one.</p>
+    <p style="${p}">I built Orby to close that gap: she answers your buyer calls in seconds, 24/7, qualifies them, and books the showing on your calendar. She doesn't sell the house — you do. She makes sure the showing exists.</p>
+    <p style="${p}">Your live demo is already loaded with ${n || 3} of your listings:</p>
+    ${propListEn}
+    <p style="${p}">Call ${a(`tel:${opts.demoPhone}`, phoneDisplay)} and ask about one, the way a buyer would.</p>`
+  const cEs = `
+    <p style="${p}">Hola ${first}:</p>
+    <p style="${p}">Dos números de la investigación del sector: el 78% de los compradores contrata al primer agente que responde — y el agente promedio tarda 917 minutos, más de 15 horas, en responder a un lead nuevo. El 62% de los leads llegan fuera de horario, cuando nadie contesta.</p>
+    <p style="${p}">Cada comprador que se rindió ante el silencio es una comisión — unos $10,000 en una casa de precio medio. ¿Cuántas llamadas quedaron sin devolver en tu teléfono el año pasado? No puedes saberlo. Nadie te llama para avisarte que contrató a otro. Ese número desconocido es el que sale caro.</p>
+    <p style="${p}">Construí a Orby para cerrar esa brecha: contesta tus llamadas de compradores en segundos, 24/7, los califica y agenda la cita en tu calendario. Ella no vende la casa — eso lo haces tú. Ella se asegura de que la cita exista.</p>
+    <p style="${p}">Tu demo en vivo ya está cargada con ${n || 3} de tus propiedades:</p>
+    ${propListEs}
+    <p style="${p}">Llama al ${a(`tel:${opts.demoPhone}`, phoneDisplay)} y pregunta por una, como lo haría un comprador.</p>`
+
+  // ── Variant D — future-pacing (Before-After-Bridge): 3 "what if" questions,
+  // then grounded in the live demo so it doesn't float as aspiration. The 3rd
+  // question carries the $40k Personal Agent Assistant anchor (pessimistic number, per Law #5). The
+  // "walk into every showing knowing budget/timeline/motivation" is the "walk in
+  // armed" sub-promise — provable, not an overclaim like "capture all marketing".
+  const dEn = `
+    <p style="${p}">Hi ${first},</p>
+    <p style="${p}">Three questions — then something you can test in two minutes:</p>
+    <div style="margin:0 0 6px;font-size:15px;color:#111;line-height:1.55">• What if you never missed another buyer call? Not the 8pm one, not the one that came while you were mid-showing.</div>
+    <div style="margin:0 0 6px;font-size:15px;color:#111;line-height:1.55">• What if you walked into every showing already knowing the buyer's budget, timeline, and motivation?</div>
+    <div style="margin:0 0 14px;font-size:15px;color:#111;line-height:1.55">• What could you close with a $40,000-a-year assistant's work — for the price of a couple of leads?</div>
+    <p style="${p}">That's Orby. I already loaded her with ${n || 3} of your listings:</p>
+    ${propListEn}
+    <p style="${p}">Call ${a(`tel:${opts.demoPhone}`, phoneDisplay)} and ask about one, like a buyer would. She answers, qualifies, and books the showing.</p>
+    <p style="${p}">It's the assistant you were never going to hire — and this is just the demo.</p>`
+  const dEs = `
+    <p style="${p}">Hola ${first}:</p>
+    <p style="${p}">Tres preguntas — y luego algo que puedes probar en dos minutos:</p>
+    <div style="margin:0 0 6px;font-size:15px;color:#111;line-height:1.55">• ¿Y si nunca más perdieras una llamada de un comprador? Ni la de las 8pm, ni la que entró mientras mostrabas otra casa.</div>
+    <div style="margin:0 0 6px;font-size:15px;color:#111;line-height:1.55">• ¿Y si llegaras a cada cita ya sabiendo el presupuesto, el plazo y la motivación del comprador?</div>
+    <div style="margin:0 0 14px;font-size:15px;color:#111;line-height:1.55">• ¿Cuánto podrías cerrar con el trabajo de un asistente de $40,000 al año — por el precio de un par de leads?</div>
+    <p style="${p}">Eso es Orby. Ya la cargué con ${n || 3} de tus propiedades:</p>
+    ${propListEs}
+    <p style="${p}">Llama al ${a(`tel:${opts.demoPhone}`, phoneDisplay)} y pregunta por una, como lo haría un comprador. Ella contesta, califica y agenda la cita.</p>
+    <p style="${p}">Es el asistente que nunca ibas a contratar — y esto es solo la demo.</p>`
+
+  const signature = `<p style="${p}">— Crawford Peterson<br><span style="color:#666;font-size:14px">Founder, MyOrbisAgents</span></p>`
+
+  // Secondary CTA is a REPLY, not a second button. Two competing buttons split the
+  // click; a reply is the strongest positive signal Gmail has (it teaches the
+  // filter this is Primary mail) and it opens a conversation instead of a funnel.
+  // The promise stays concrete — the tasks Orby demonstrably does — rather than an
+  // open-ended "we can customize anything", which the first "no" would collapse.
+  const psEn = `<p style="margin:18px 0 0;font-size:14px;color:#555;line-height:1.55">P.S. Answering, qualifying, booking, the 24-hour reminder, the follow-up — that's a $40k Personal Agent Assistant's whole week. Reply "demo" and I'll show you the rest of what she takes off your plate.</p>`
+  const psEs = `<p style="margin:18px 0 0;font-size:14px;color:#555;line-height:1.55">P.D. Contestar, calificar, agendar, el recordatorio de 24 horas, el seguimiento — esa es la semana completa de un Asistente Personal de Agente de $40k. Responde "demo" y te muestro todo lo demás que te quita de encima.</p>`
+
+  // ── Variant + locale selection ────────────────────────────────────────────
+  // The subject IS the switch: each variant carries its own, so a reply or a
+  // reporting filter identifies the variant from the subject line alone.
+  const VARIANTS: Record<DemoEmailVariant, Record<'en' | 'es', { subject: string; body: string; ps: string }>> = {
+    A: {
+      en: { subject: `${first}, your Orby demo (${n || 3} listings, 2 minutes)`, body: en, ps: psEn },
+      es: { subject: `${first}, tu demo de Orby (${n || 3} propiedades, 2 minutos)`, body: es, ps: psEs },
+    },
+    B: {
+      en: { subject: `The buyer I paid for hired someone else`, body: bEn, ps: psEn },
+      es: { subject: `El comprador que pagué contrató a otro agente`, body: bEs, ps: psEs },
+    },
+    C: {
+      en: { subject: `78% of buyers hire whoever answers first`, body: cEn, ps: psEn },
+      es: { subject: `El 78% de los compradores contrata al primero que contesta`, body: cEs, ps: psEs },
+    },
+    D: {
+      en: { subject: `What if you never missed another lead?`, body: dEn, ps: psEn },
+      es: { subject: `¿Y si nunca más perdieras un lead?`, body: dEs, ps: psEs },
+    },
+  }
+  const chosen = VARIANTS[variant][lang]
+
+  // Unstyled container + a REAL text part. The old text part was
+  // html.replace(/<[^>]+>/g,'') — which silently dropped every href, so the
+  // text/html versions diverged wildly (a filter signal) and text-only readers
+  // got the listings mashed onto one line with no phone number.
+  const html = `<div dir="ltr">${chosen.body}${signature}${chosen.ps}</div>`
+  const text = htmlToPlainText(html)
+
+  return { subject: chosen.subject, html, text, variant, locale: lang }
+}
+
+/** Send the demo email. Thin wrapper over buildAgentDemoEmail so the preview a
+ *  human approves and the message actually sent are byte-for-byte identical. */
+export async function sendAgentDemoEmail(
+  opts: Parameters<typeof buildAgentDemoEmail>[0] & { to: string },
+): Promise<SendResult> {
+  const built = buildAgentDemoEmail(opts)
   return sendEmail({
-    to: opts.to,
-    from: `"MyOrbisAgents" <notify@myorbisresults.com>`,
-    subject: `${first}, meet Orby — your AI assistant, live on your listings`,
-    html: `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#0f1720;line-height:1.5">
-        <div style="border-bottom:2px solid ${TEAL_EMAIL};padding-bottom:10px;margin-bottom:18px">
-          <span style="font-size:18px;font-weight:800;color:${TEAL_EMAIL}">MyOrbisAgents</span>
-        </div>
-        ${en}
-        <div style="border-top:1px dashed #cbd5e1;margin:30px 0 22px;text-align:center;color:#94a3b8;font-size:12px">— Español —</div>
-        ${es}
-        <p style="color:#94a3b8;font-size:11px;margin-top:26px;border-top:1px solid #eee;padding-top:14px">MyOrbisAgents · a product of MyOrbisResults</p>
-      </div>
-    `,
+    to:      opts.to,
+    from:    DEMO_FROM,
+    replyTo: DEMO_REPLY_TO,
+    subject: built.subject,
+    html:    built.html,
+    text:    built.text,
   })
 }
