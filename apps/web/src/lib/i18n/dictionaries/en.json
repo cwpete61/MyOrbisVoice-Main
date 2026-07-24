@@ -4259,6 +4259,24 @@
     }
   },
   "adminCompCodes": {
+    "discount": {
+      "title": "Discount code",
+      "subtitle": "Generate a partial-discount code (% or $ off) for a plan. Choose how long it lasts. Shows in the list below alongside comp codes.",
+      "percent": "% off",
+      "amount": "$ off",
+      "once": "First payment only",
+      "repeating": "For N months",
+      "forever": "Forever (every renewal)",
+      "months": "Months",
+      "recipientName": "Recipient name",
+      "recipientEmail": "Recipient email",
+      "purpose": "Purpose (optional)",
+      "generate": "Generate discount code",
+      "generating": "Generating…",
+      "created": "Discount code {code} created.",
+      "fillAll": "Fill in a name, email, and a discount value.",
+      "pctRange": "Percent discount must be between 1 and 99."
+    },
     "title": "Comp Codes",
     "subtitle": "Generate single-use 100%-off promotion codes for tenants you want to comp at a specific plan tier. Each code is scoped to its tier (a Premier code can only redeem against Premier checkout) and burns on first redemption.",
     "loading": "Loading…",

@@ -102,6 +102,12 @@ export interface CompCodeListItem {
   id:               string         // Stripe promotion code ID (promo_...)
   code:             string         // The redeemable string (e.g. PREMIER-X9F2QM)
   tier:             CompCodeTier
+  /** 'comp' = 100%-off comp code (pre-made tier coupon). 'discount' = partial
+   *  off (percent or amount), coupon created on the fly. */
+  kind:             'comp' | 'discount'
+  /** Human label for a discount, e.g. "20% off · 3 months" or "$10 off · once".
+   *  Null for comp codes. */
+  discountLabel:    string | null
   recipientName:    string
   recipientEmail:   string
   purpose:          string
@@ -249,6 +255,96 @@ export async function generateCompCode(input: GenerateInput): Promise<CompCodeLi
   return formatted
 }
 
+export interface GenerateDiscountInput {
+  tier:            CompCodeTier
+  discountType:    'PERCENT' | 'AMOUNT'
+  value:           number   // percent (1-99) or dollars
+  duration:        'once' | 'repeating' | 'forever'
+  durationMonths?: number   // required when duration = 'repeating'
+  recipientName:   string
+  recipientEmail:  string
+  purpose?:        string
+  maxRedemptions?: number   // default 1
+  generatedBy:     string
+}
+
+/**
+ * Generate a partial-discount promotion code (% or $ off, single-use by default).
+ * Unlike comp codes (pre-made 100%-off tier coupons), this creates the coupon on
+ * the fly with the admin's chosen amount + duration, scoped to the tier's plan
+ * product. Tagged metadata.kind='discount' so it shows on the comp-codes admin.
+ */
+export async function generateDiscountCode(input: GenerateDiscountInput): Promise<CompCodeListItem> {
+  if (!COMP_TIERS.includes(input.tier)) throw new AppError('VALIDATION_ERROR', `Invalid tier: ${input.tier}`, 422)
+  if (input.discountType === 'PERCENT' && (input.value <= 0 || input.value >= 100)) {
+    throw new AppError('VALIDATION_ERROR', 'Percent discount must be between 1 and 99', 422)
+  }
+  if (input.discountType === 'AMOUNT' && input.value <= 0) {
+    throw new AppError('VALIDATION_ERROR', 'Amount discount must be greater than 0', 422)
+  }
+  if (input.duration === 'repeating' && (!input.durationMonths || input.durationMonths < 1)) {
+    throw new AppError('VALIDATION_ERROR', 'A repeating discount needs a month count (≥ 1)', 422)
+  }
+
+  const stripe = tryGetStripe()
+  if (!stripe) {
+    throw new AppError('BAD_REQUEST', 'Stripe is not configured. Set STRIPE_SECRET_KEY in Admin → System Settings first.', 400)
+  }
+
+  // Scope the coupon to this tier's plan product (resolve product from its price)
+  // so a discount for one plan can't be redeemed against another.
+  const plan = await prisma.plan.findUnique({ where: { code: TIER_TO_PLAN_CODE[input.tier] }, select: { stripePriceId: true } })
+  let appliesTo: { products: string[] } | undefined
+  if (plan?.stripePriceId) {
+    try {
+      const price = await stripe.prices.retrieve(plan.stripePriceId)
+      const prod = typeof price.product === 'string' ? price.product : (price.product as { id?: string })?.id
+      if (prod) appliesTo = { products: [prod] }
+    } catch { /* leave unscoped if the product can't be resolved */ }
+  }
+
+  const coupon = await stripe.coupons.create({
+    ...(input.discountType === 'PERCENT'
+      ? { percent_off: input.value }
+      : { amount_off: Math.round(input.value * 100), currency: 'usd' }),
+    duration: input.duration,
+    ...(input.duration === 'repeating' ? { duration_in_months: input.durationMonths } : {}),
+    ...(appliesTo ? { applies_to: appliesTo } : {}),
+    name: `${input.discountType === 'AMOUNT' ? '$' + input.value : input.value + '%'} off ${input.tier}`,
+    metadata: { kind: 'discount', tier: input.tier },
+  })
+
+  const generatedAt = new Date().toISOString()
+  const meta: Record<string, string> = {
+    kind:           'discount',
+    tier:           input.tier,
+    discountType:   input.discountType,
+    value:          String(input.value),
+    duration:       input.duration,
+    durationMonths: input.durationMonths ? String(input.durationMonths) : '',
+    recipientName:  input.recipientName,
+    recipientEmail: input.recipientEmail,
+    purpose:        input.purpose ?? '',
+    generatedBy:    input.generatedBy,
+    generatedAt,
+  }
+
+  let code = generateCodeString(input.tier)
+  let promo
+  try {
+    promo = await stripe.promotionCodes.create({ promotion: { type: 'coupon', coupon: coupon.id }, code, max_redemptions: input.maxRedemptions ?? 1, active: true, metadata: meta })
+  } catch (err: unknown) {
+    if ((err as { code?: string })?.code === 'code_already_exists') {
+      code = generateCodeString(input.tier)
+      promo = await stripe.promotionCodes.create({ promotion: { type: 'coupon', coupon: coupon.id }, code, max_redemptions: input.maxRedemptions ?? 1, active: true, metadata: meta })
+    } else throw err
+  }
+
+  const formatted = formatCompCode(promo as unknown as RawPromo)
+  formatted.checkoutUrl = await buildCheckoutUrl(input.tier, input.recipientEmail, formatted.code)
+  return formatted
+}
+
 interface RawPromo {
   id:               string
   code:             string
@@ -260,13 +356,26 @@ interface RawPromo {
   metadata:         Record<string, string> | null
 }
 
+/** Build a "20% off · 3 months" style label from discount metadata. */
+function discountLabelFromMeta(m: Record<string, string> | null): string | null {
+  if (!m || m['kind'] !== 'discount') return null
+  const amount = m['discountType'] === 'AMOUNT' ? `$${m['value']} off` : `${m['value']}% off`
+  const dur = m['duration'] === 'repeating' ? `${m['durationMonths']} months`
+    : m['duration'] === 'forever' ? 'forever'
+    : 'first payment'
+  return `${amount} · ${dur}`
+}
+
 function formatCompCode(promo: RawPromo): CompCodeListItem {
   const tier = (promo.metadata?.['tier'] ?? 'BASIC') as CompCodeTier
   const max  = promo.max_redemptions ?? 1
+  const kind = promo.metadata?.['kind'] === 'discount' ? 'discount' : 'comp'
   return {
     id:             promo.id,
     code:           promo.code,
     tier,
+    kind,
+    discountLabel:  discountLabelFromMeta(promo.metadata),
     recipientName:  promo.metadata?.['recipientName']  ?? '',
     recipientEmail: promo.metadata?.['recipientEmail'] ?? '',
     purpose:        promo.metadata?.['purpose']        ?? '',
@@ -299,6 +408,9 @@ export async function listCompCodes(filters?: { tier?: CompCodeTier }): Promise<
   // 100 active comp codes per call we'll need to paginate.
   const all = await stripe.promotionCodes.list({ limit: 100 })
   const ours = (all.data as unknown as StripePromotionCode[]).filter(p => {
+    // Discount codes we created carry metadata.kind='discount' (their coupons
+    // are one-off, not in ourCouponIds), so match those by metadata too.
+    if (p.metadata?.['kind'] === 'discount' && p.metadata?.['generatedBy']) return true
     const c = p.promotion?.coupon
     if (!c) return false
     const couponId = typeof c === 'string' ? c : c.id

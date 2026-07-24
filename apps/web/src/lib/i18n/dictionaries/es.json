@@ -4259,6 +4259,24 @@
     }
   },
   "adminCompCodes": {
+    "discount": {
+      "title": "Código de descuento",
+      "subtitle": "Genera un código de descuento parcial (% o $) para un plan. Elige cuánto dura. Aparece en la lista de abajo junto a los códigos de cortesía.",
+      "percent": "% de descuento",
+      "amount": "$ de descuento",
+      "once": "Solo el primer pago",
+      "repeating": "Por N meses",
+      "forever": "Para siempre (cada renovación)",
+      "months": "Meses",
+      "recipientName": "Nombre del destinatario",
+      "recipientEmail": "Correo del destinatario",
+      "purpose": "Propósito (opcional)",
+      "generate": "Generar código de descuento",
+      "generating": "Generando…",
+      "created": "Código de descuento {code} creado.",
+      "fillAll": "Completa un nombre, correo y un valor de descuento.",
+      "pctRange": "El descuento porcentual debe estar entre 1 y 99."
+    },
     "title": "Códigos de Cortesía",
     "subtitle": "Genera códigos promocionales de un solo uso con 100% de descuento para tenants a quienes quieras dar cortesía en un plan específico. Cada código está restringido a su nivel (un código de Premier solo puede canjearse en el checkout de Premier) y se invalida tras el primer canje.",
     "loading": "Cargando…",

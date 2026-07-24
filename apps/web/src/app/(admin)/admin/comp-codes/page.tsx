@@ -39,6 +39,8 @@ interface CompCode {
   id:               string
   code:             string
   tier:             CompTier
+  kind:             'comp' | 'discount'
+  discountLabel:    string | null
   recipientName:    string
   recipientEmail:   string
   purpose:          string
@@ -430,6 +432,80 @@ function DirectBuyLinkGenerator({ plans }: { plans: BuyLinkPlan[] }) {
   )
 }
 
+// Generate a partial-discount code (% or $ off, admin-chosen duration). Sits on
+// the same page as comp codes; discounts show in the same list tagged 'discount'.
+function DiscountGenerator({ tiers, onDone }: { tiers: readonly CompTier[]; onDone: (msg: string) => void }) {
+  const t = useT()
+  const [tier, setTier]         = useState<CompTier>(tiers[0] ?? 'BASIC')
+  const [dType, setDType]       = useState<'PERCENT' | 'AMOUNT'>('PERCENT')
+  const [value, setValue]       = useState('')
+  const [duration, setDuration] = useState<'once' | 'repeating' | 'forever'>('once')
+  const [months, setMonths]     = useState('3')
+  const [name, setName]         = useState('')
+  const [email, setEmail]       = useState('')
+  const [purpose, setPurpose]   = useState('')
+  const [busy, setBusy]         = useState(false)
+  const [err, setErr]           = useState('')
+
+  const inp = 'w-full px-2.5 py-1.5 rounded-lg text-sm'
+  const inpStyle = { background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' } as const
+
+  async function gen() {
+    setErr('')
+    const v = parseFloat(value)
+    if (!name.trim() || !email.trim() || !(v > 0)) { setErr(t('adminCompCodes.discount.fillAll')); return }
+    if (dType === 'PERCENT' && v >= 100) { setErr(t('adminCompCodes.discount.pctRange')); return }
+    setBusy(true)
+    try {
+      const created = await apiFetch<CompCode>('/api/admin/comp-codes/discount', {
+        method: 'POST',
+        body: JSON.stringify({
+          tier, discountType: dType, value: v, duration,
+          ...(duration === 'repeating' ? { durationMonths: parseInt(months, 10) } : {}),
+          recipientName: name.trim(), recipientEmail: email.trim(),
+          purpose: purpose.trim() || undefined,
+        }),
+      })
+      onDone(t('adminCompCodes.discount.created', { code: created.code }))
+      setValue(''); setName(''); setEmail(''); setPurpose('')
+    } catch (e) { setErr((e as Error).message) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="rounded-xl p-4 mb-6" style={{ background: 'var(--surface-app)', border: '1px solid var(--border-subtle)' }}>
+      <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{t('adminCompCodes.discount.title')}</h3>
+      <p className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>{t('adminCompCodes.discount.subtitle')}</p>
+      <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))' }}>
+        <select value={tier} onChange={e => setTier(e.target.value as CompTier)} className={inp} style={inpStyle}>
+          {tiers.map(tr => <option key={tr} value={tr}>{TIER_LABEL[tr]}</option>)}
+        </select>
+        <select value={dType} onChange={e => setDType(e.target.value as 'PERCENT' | 'AMOUNT')} className={inp} style={inpStyle}>
+          <option value="PERCENT">{t('adminCompCodes.discount.percent')}</option>
+          <option value="AMOUNT">{t('adminCompCodes.discount.amount')}</option>
+        </select>
+        <input value={value} onChange={e => setValue(e.target.value)} inputMode="decimal" placeholder={dType === 'PERCENT' ? '20' : '10'} className={inp} style={inpStyle} />
+        <select value={duration} onChange={e => setDuration(e.target.value as 'once' | 'repeating' | 'forever')} className={inp} style={inpStyle}>
+          <option value="once">{t('adminCompCodes.discount.once')}</option>
+          <option value="repeating">{t('adminCompCodes.discount.repeating')}</option>
+          <option value="forever">{t('adminCompCodes.discount.forever')}</option>
+        </select>
+        {duration === 'repeating' && (
+          <input value={months} onChange={e => setMonths(e.target.value)} inputMode="numeric" placeholder={t('adminCompCodes.discount.months')} className={inp} style={inpStyle} />
+        )}
+        <input value={name} onChange={e => setName(e.target.value)} placeholder={t('adminCompCodes.discount.recipientName')} className={inp} style={inpStyle} />
+        <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder={t('adminCompCodes.discount.recipientEmail')} className={inp} style={inpStyle} />
+        <input value={purpose} onChange={e => setPurpose(e.target.value)} placeholder={t('adminCompCodes.discount.purpose')} className={inp} style={inpStyle} />
+      </div>
+      {err && <div className="mt-2 text-xs" style={{ color: 'oklch(55% 0.18 25)' }}>{err}</div>}
+      <button onClick={gen} disabled={busy} className="mt-3 px-4 py-1.5 rounded-lg text-sm font-semibold"
+        style={{ background: 'oklch(55% 0.11 193)', color: 'white', opacity: busy ? 0.6 : 1 }}>
+        {busy ? t('adminCompCodes.discount.generating') : t('adminCompCodes.discount.generate')}
+      </button>
+    </div>
+  )
+}
+
 export default function AdminCompCodesPage() {
   const t = useT()
   const { locale } = useLocale()
@@ -571,6 +647,9 @@ export default function AdminCompCodesPage() {
           LTD, no comp code involved. Lives below the comp-code cards. */}
       <DirectBuyLinkGenerator plans={buyLinks} />
 
+      {/* Partial-discount code generator (% or $ off) — same list as comp codes. */}
+      <DiscountGenerator tiers={activeTiers()} onDone={(msg) => { showToast(msg); loadAll() }} />
+
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
@@ -617,7 +696,12 @@ export default function AdminCompCodesPage() {
                     style={{ borderTop: i > 0 ? '1px solid var(--border-subtle)' : undefined }}
                   >
                     <td className="px-3 py-2 font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>{c.code}</td>
-                    <td className="px-3 py-2"><TierPill tier={c.tier} /></td>
+                    <td className="px-3 py-2">
+                      <TierPill tier={c.tier} />
+                      {c.kind === 'discount'
+                        ? <div className="text-xs mt-0.5 font-semibold" style={{ color: 'oklch(50% 0.15 250)' }}>{c.discountLabel}</div>
+                        : <div className="text-xs mt-0.5" style={{ color: 'oklch(50% 0.16 145)' }}>100% off</div>}
+                    </td>
                     <td className="px-3 py-2" style={{ color: 'var(--text-primary)' }}>
                       <div>{c.recipientName}</div>
                       <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{c.recipientEmail}</div>

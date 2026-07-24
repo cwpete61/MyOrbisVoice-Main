@@ -2410,6 +2410,46 @@ router.post('/comp-codes', requirePlatformAdmin, async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// POST /api/admin/comp-codes/discount — generate a partial-discount code
+// (% or $ off, admin-chosen duration). Same surface as comp codes.
+const discountCreateSchema = z.object({
+  tier:           z.enum(['BASIC', 'PRO', 'PREMIER', 'ENTERPRISE', 'SOLO_CAPTURE', 'SOLO_POWER']),
+  discountType:   z.enum(['PERCENT', 'AMOUNT']),
+  value:          z.number().positive(),
+  duration:       z.enum(['once', 'repeating', 'forever']),
+  durationMonths: z.number().int().min(1).max(36).optional(),
+  recipientName:  z.string().min(1).max(200),
+  recipientEmail: z.string().email(),
+  purpose:        z.string().max(500).optional().or(z.literal('')),
+  maxRedemptions: z.number().int().min(1).max(1000).optional(),
+})
+router.post('/comp-codes/discount', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    const body = discountCreateSchema.parse(req.body)
+    const created = await compCodeService.generateDiscountCode({
+      tier:           body.tier,
+      discountType:   body.discountType,
+      value:          body.value,
+      duration:       body.duration,
+      durationMonths: body.durationMonths,
+      recipientName:  body.recipientName,
+      recipientEmail: body.recipientEmail,
+      purpose:        body.purpose || undefined,
+      maxRedemptions: body.maxRedemptions,
+      generatedBy:    req.user!.id,
+    })
+    await writeAuditLogFromRequest(req, {
+      actorType:    'ADMIN',
+      actorUserId:  req.user!.id,
+      action:       'admin.discount_code.generated',
+      targetType:   'PromotionCode',
+      targetId:     created.id,
+      metadataJson: { tier: created.tier, code: created.code, discount: created.discountLabel, recipientEmail: created.recipientEmail },
+    })
+    res.status(201).json({ data: created })
+  } catch (err) { next(err) }
+})
+
 // DELETE /api/admin/comp-codes/:id — disable an unredeemed comp code
 router.delete('/comp-codes/:id', requirePlatformAdmin, async (req, res, next) => {
   try {
