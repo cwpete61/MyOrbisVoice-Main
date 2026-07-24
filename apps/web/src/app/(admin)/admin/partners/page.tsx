@@ -356,10 +356,14 @@ export default function AdminAffiliatesPage() {
                             const def = settings?.commissionRatePct
                             const eff = a.commissionRatePct ?? def
                             if (eff == null) return null
-                            const isCustom = a.commissionRatePct != null && def != null && a.commissionRatePct !== def
+                            // The frozen rate IS the effective one (custom wins — it nulls the tier).
+                            // "Custom" = a set rate NOT tied to a standard tier (Standard/Silver/Gold).
+                            const onTier   = a.commissionTier != null
+                            const isCustom = !onTier && a.commissionRatePct != null
+                            const label    = onTier ? a.commissionTier!.name : (isCustom ? 'Custom' : 'default')
                             return (
                               <p className="text-xs mt-0.5" style={{ color: isCustom ? 'oklch(55% 0.13 250)' : 'var(--text-tertiary)' }}>
-                                {eff}% commission{a.commissionTier ? ` · ${a.commissionTier.name}` : (a.commissionRatePct == null ? ' · default' : '')}{isCustom ? ' · custom' : ''}
+                                {eff}% · {label}
                               </p>
                             )
                           })()}
