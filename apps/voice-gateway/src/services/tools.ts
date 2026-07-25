@@ -530,7 +530,7 @@ const handlers: Record<ToolName, ToolHandler> = {
     // driven by the prompt (Orby asks) and audited post-call by the Call-QA engine
     // (which flags skipped questions) — the booking itself is NEVER blocked.
 
-    const result = await callApi<{ ok: boolean; appointmentId: string; startAt: string; endAt: string }>(
+    const result = await callApi<{ ok: boolean; appointmentId: string; startAt: string; endAt: string; emailSent?: boolean; smsSent?: boolean; emailTo?: string | null }>(
       '/api/internal/gateway/tools/book-appointment',
       ctx.tenantId,
       {
@@ -556,12 +556,21 @@ const handlers: Record<ToolName, ToolHandler> = {
         message:    'Booking hit a system delay (NOT a rejection). Tell the caller warmly: "I\'ve got all your details for the showing — the system is finishing the confirmation now and someone from the team will text you shortly to lock it in." Do NOT say the booking failed or that the time is unavailable.',
       }
     }
+    const emailSent = result.data.emailSent === true
+    const smsSent   = result.data.smsSent === true
+    const confMsg = emailSent
+      ? `The confirmation email WAS sent successfully to ${result.data.emailTo ?? 'the caller'}. Tell the caller, in your own warm words, that you have just sent the confirmation email to that address and they should see it in a moment.`
+      : smsSent
+      ? 'The confirmation was sent by text message successfully. Tell the caller you have just texted them the confirmation.'
+      : 'IMPORTANT: the confirmation could NOT be sent automatically (no email on file, or the mail system is delayed). Do NOT tell the caller an email was sent. Instead say the appointment is booked and that someone from the team will follow up shortly with the written confirmation. Never claim a confirmation went out when it did not.'
     return {
       ok: true,
       appointment_id: result.data.appointmentId,
       starts_at:      result.data.startAt,
       ends_at:        result.data.endAt,
-      message:        'Appointment booked. A confirmation email (with a Google Maps directions link to the property) has been sent if an email was on file. Before ending the call, TELL THE CALLER in your own warm words, in ONE natural wrap-up: (1) they will get reminders before the showing — by text and email — one 24 hours before and another 1 hour before, so they do not miss it; AND (2) they can call this same number back anytime, 24 hours a day, to reschedule, add details, or change the showing, and you (Orby) will log it and pass the update along to their agent. Then close warmly.',
+      email_sent:     emailSent,
+      sms_sent:       smsSent,
+      message:        `Appointment booked. ${confMsg} Then, before ending the call, TELL THE CALLER in your own warm words, in ONE natural wrap-up: (1) they will get reminders before the showing — by text and email — one 24 hours before and another 1 hour before, so they do not miss it; AND (2) they can call this same number back anytime, 24 hours a day, to reschedule, add details, or change the showing, and you (Orby) will log it and pass the update along to their agent. Stay on the line until you have confirmed all of this — do not hang up abruptly. Then close warmly.`,
     }
   },
 
@@ -709,16 +718,25 @@ const handlers: Record<ToolName, ToolHandler> = {
     if (!['MORNING', 'AFTERNOON', 'EVENING'].includes(windowSlot)) return { ok: false, error: 'window_slot must be MORNING, AFTERNOON, or EVENING' }
     if (!contact) return { ok: false, error: 'contact_phone_or_email is required' }
 
-    const result = await callApi<{ ok: boolean; label: string; appointmentId: string }>(
+    const result = await callApi<{ ok: boolean; label: string; appointmentId: string; emailSent?: boolean; smsSent?: boolean; emailTo?: string | null }>(
       '/api/internal/gateway/tools/book-window',
       ctx.tenantId,
       { windowDate, windowSlot, contactQuery: contact, notes, conversationId: ctx.conversationId, externalCallId: ctx.externalCallId },
     )
     if (!result.ok) return { ok: false, error: result.error, message: 'Could not book that window. Tell the caller you\'ll have the team confirm the visit.' }
+    const wEmail = result.data.emailSent === true
+    const wSms   = result.data.smsSent === true
+    const wConf = wEmail
+      ? `You have also just sent the confirmation email to ${result.data.emailTo ?? 'the caller'} — tell them it's on its way.`
+      : wSms
+      ? 'You have also just texted the caller the confirmation — tell them.'
+      : 'Do NOT claim a confirmation email was sent — none went out. Say someone will follow up with the written confirmation.'
     return {
       ok: true,
       appointment_id: result.data.appointmentId,
-      message: `Booked the ${result.data.label} arrival window. Confirm it to the caller ("you're all set for ${result.data.label}") — do NOT promise an exact clock time.`,
+      email_sent: wEmail,
+      sms_sent:   wSms,
+      message: `Booked the ${result.data.label} arrival window. Confirm it to the caller ("you're all set for ${result.data.label}") — do NOT promise an exact clock time. ${wConf}`,
     }
   },
 
@@ -857,6 +875,17 @@ export async function rollbackToolCall(
   if (!result || result['ok'] !== true) return
   const appointmentId = result['appointment_id']
   if (typeof appointmentId !== 'string' || !appointmentId) return
+
+  // Do NOT un-book a booking whose confirmation already went out. Gemini fires
+  // toolCallCancellation on ordinary barge-in (caller talks over Orby) AFTER the
+  // booking committed + the email/SMS shipped — cancelling here silently un-books
+  // a caller who was just booked and confirmed. A duplicate is recoverable; a
+  // vanished, already-confirmed appointment is the failure the user reported
+  // (appt 006c9199: returned ok:true, then rolled back → no row, no email stuck).
+  if (result['email_sent'] === true || result['sms_sent'] === true) {
+    console.log(`[tools] skip rollback of confirmed booking ${appointmentId} (confirmation already delivered)`)
+    return
+  }
 
   const cancel = await callApi<{ ok: boolean; appointmentId?: string; alreadyCanceled?: boolean; error?: string }>(
     '/api/internal/gateway/tools/cancel-appointment',

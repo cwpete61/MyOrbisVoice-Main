@@ -660,13 +660,17 @@ export async function createAppointment(tenantId: string, userId: string | null,
   // EMAIL (default) | SMS | BOTH. SMS goes to the caller's own number (no email
   // spelling needed) but requires an A2P-approved SMS number; if SMS is chosen
   // but unavailable, we fall back to email so a confirmation is never dropped.
+  // Confirmation is AWAITED (not fire-and-forget) so the booking result can tell
+  // Orby whether it actually went out — she confirms "email sent" only when true.
+  let confEmailSent = false
+  let confSmsSent   = false
+  let confEmailTo: string | null = null
   try {
     const profile = await prisma.businessProfile.findUnique({ where: { tenantId }, select: { confirmationChannel: true } })
     const channel   = (profile?.confirmationChannel ?? 'EMAIL').toUpperCase()
     const wantEmail = channel === 'EMAIL' || channel === 'BOTH'
     const wantSms   = channel === 'SMS'   || channel === 'BOTH'
 
-    let smsSent = false
     if (wantSms && !demoSim) {
       const phone = data.contactId
         ? (await prisma.contact.findFirst({ where: { id: data.contactId, tenantId }, select: { phoneE164: true } }))?.phoneE164
@@ -679,13 +683,13 @@ export async function createAppointment(tenantId: string, userId: string | null,
         const { sendSms } = await import('./sms.service.js')
         const whenLabel = new Date(data.startAt).toLocaleString('en-US', { timeZone: data.timezone ?? undefined, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
         const r = await sendSms({ tenantId, from: smsNum.e164Number, to: phone, body: `You're booked for ${whenLabel}. Reply here to reschedule.`, contactId: data.contactId ?? undefined }).catch(() => ({ success: false }))
-        smsSent = !!r.success
+        confSmsSent = !!r.success
       }
     }
 
     // Email when chosen, OR as the fallback when SMS was requested but couldn't send.
-    if ((wantEmail || (channel === 'SMS' && !smsSent)) && data.attendeeEmail) {
-      sendAppointmentConfirmationEmail(tenantId, {
+    if ((wantEmail || (channel === 'SMS' && !confSmsSent)) && data.attendeeEmail) {
+      confEmailSent = await sendAppointmentConfirmationEmail(tenantId, {
         to:               data.attendeeEmail,
         contactId:        data.contactId ?? null,
         appointmentType:  data.appointmentType,
@@ -696,7 +700,8 @@ export async function createAppointment(tenantId: string, userId: string | null,
         notes:            data.notes,
         partnerId:        data.partnerId ?? null,
         demo:             demoSim,
-      }).catch(err => console.warn('[appointment] confirmation email failed:', (err as Error).message))
+      }).catch(err => { console.warn('[appointment] confirmation email failed:', (err as Error).message); return false })
+      if (confEmailSent) confEmailTo = data.attendeeEmail
     }
   } catch (e) {
     console.warn('[appointment] confirmation dispatch failed:', (e as Error).message)
@@ -782,7 +787,11 @@ export async function createAppointment(tenantId: string, userId: string | null,
     }).catch(err => console.warn('[appointment] reminder enrollment failed:', (err as Error).message))
   }
 
-  return appointment
+  return Object.assign(appointment, {
+    confirmationEmailSent: confEmailSent,
+    confirmationSmsSent:   confSmsSent,
+    confirmationEmailTo:   confEmailTo,
+  })
 }
 
 const REMINDER_HOURS_BEFORE = 24
@@ -867,7 +876,7 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
   /** Demo-sandbox booking — label the email as a simulation and send via
    *  platform SMTP (the demo tenant has no Gmail). */
   demo?:           boolean
-}) {
+}): Promise<boolean> {
   const identity     = await resolveBookingIdentity(tenantId, opts.partnerId ?? null)
   const businessName = identity.bookingWithName
   const apptLabel    = opts.appointmentType || 'Appointment'
@@ -993,7 +1002,7 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
     // spams. Display name stays "MyOrbisAgents (Demo)" so the caller sees the
     // right brand. Revisit once a valid Resend key / verified myorbisvoice.com
     // sender is in place.
-    await sendEmail({
+    const r = await sendEmail({
       to:      opts.to,
       subject,
       html,
@@ -1008,18 +1017,18 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
         recipient:      opts.to,
         subject,
         bodyText:       html.replace(/<[^>]+>/g, ''),
-        deliveryStatus: 'sent',
+        deliveryStatus: r.sent ? 'sent' : 'failed',
         sentAt:         new Date(),
       },
     }).catch(() => { /* non-fatal */ })
-    return
+    return r.sent === true
   }
 
   // Partner-routed bookings send straight via platform SMTP with a partner-
   // branded From display name — the tenant Gmail belongs to the platform demo
   // tenant that merely hosts the row, so sending from it would be misleading.
   if (identity.isPartner) {
-    await sendEmail({
+    const r = await sendEmail({
       to:        opts.to,
       subject,
       html,
@@ -1035,20 +1044,23 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
         recipient:      opts.to,
         subject,
         bodyText:       html.replace(/<[^>]+>/g, ''),
-        deliveryStatus: 'sent',
+        deliveryStatus: r.sent ? 'sent' : 'failed',
         sentAt:         new Date(),
       },
     }).catch(() => { /* non-fatal */ })
-    return
+    return r.sent === true
   }
 
+  let sent = false
   try {
     await sendGmailEmail(tenantId, { to: opts.to, subject, body: html, isHtml: true })
+    sent = true
   } catch (gmailErr) {
     // Fall back to platform SMTP (self-hosted Postfix). Used by any tenant
     // without a Gmail integration. The confirmation still reaches the visitor;
     // we lose only the per-tenant From-address branding.
-    await sendEmail({ to: opts.to, subject, html })
+    const r = await sendEmail({ to: opts.to, subject, html })
+    sent = r.sent === true
     await prisma.messageLog.create({
       data: {
         tenantId,
@@ -1058,11 +1070,12 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
         recipient:      opts.to,
         subject,
         bodyText:       html.replace(/<[^>]+>/g, ''),
-        deliveryStatus: 'sent',
+        deliveryStatus: sent ? 'sent' : 'failed',
         sentAt:         new Date(),
       },
     }).catch(() => { /* non-fatal */ })
   }
+  return sent
 }
 
 // Demo-only change notice (cancel / reschedule) — a simulated email so the

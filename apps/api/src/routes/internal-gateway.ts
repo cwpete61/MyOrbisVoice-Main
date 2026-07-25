@@ -533,7 +533,7 @@ router.post('/internal/gateway/tools/book-appointment', async (req, res, next) =
         location:        data.location,
         notes:           data.notes,
         attendeeEmail,
-      }), 7000)
+      }), 10000)
     } catch (e) {
       if (e instanceof ToolTimeout) {
         // Non-2xx → the tool's !result.ok branch fires (spoken confirming line).
@@ -558,12 +558,16 @@ router.post('/internal/gateway/tools/book-appointment', async (req, res, next) =
       },
     })
 
+    const conf = appointment as { confirmationEmailSent?: boolean; confirmationSmsSent?: boolean; confirmationEmailTo?: string | null }
     res.json({
       data: {
         ok: true,
         appointmentId: appointment.id,
         startAt:       appointment.startAt,
         endAt:         appointment.endAt,
+        emailSent:     conf.confirmationEmailSent ?? false,
+        smsSent:       conf.confirmationSmsSent ?? false,
+        emailTo:       conf.confirmationEmailTo ?? null,
       },
     })
   } catch (err) { next(err) }
@@ -628,7 +632,8 @@ router.post('/internal/gateway/tools/book-window', async (req, res, next) => {
       attendeeEmail,
     })
     await writeAuditLog({ tenantId, actorType: 'SYSTEM', action: 'gateway.tool.book_window', targetType: 'Appointment', targetId: appointment.id, metadataJson: { windowDate: d.windowDate, windowSlot: d.windowSlot, label } })
-    res.json({ data: { ok: true, appointmentId: appointment.id, label } })
+    const wconf = appointment as { confirmationEmailSent?: boolean; confirmationSmsSent?: boolean; confirmationEmailTo?: string | null }
+    res.json({ data: { ok: true, appointmentId: appointment.id, label, emailSent: wconf.confirmationEmailSent ?? false, smsSent: wconf.confirmationSmsSent ?? false, emailTo: wconf.confirmationEmailTo ?? null } })
   } catch (err) { next(err) }
 })
 
