@@ -2415,7 +2415,7 @@ router.post('/comp-codes', requirePlatformAdmin, async (req, res, next) => {
 const discountCreateSchema = z.object({
   tier:           z.enum(['BASIC', 'PRO', 'PREMIER', 'ENTERPRISE', 'SOLO_CAPTURE', 'SOLO_POWER']),
   discountType:   z.enum(['PERCENT', 'AMOUNT']),
-  value:          z.number().positive(),
+  value:          z.number().positive().finite().max(100000),  // $ cap / % checked in service
   duration:       z.enum(['once', 'repeating', 'forever']),
   durationMonths: z.number().int().min(1).max(36).optional(),
   recipientName:  z.string().min(1).max(200),

@@ -103,14 +103,14 @@ export async function syncTenantToHub(tenantId: string): Promise<void> {
  *  (which checks the Hub, not the Voice AffiliateAccount) recognizes them as a
  *  partner. Without this a new affiliate lands in the tenant dashboard. Best-effort:
  *  no-ops when the Hub is unconfigured; never throws into the signup path. */
-export async function syncPartnerToHub(userId: string): Promise<void> {
-  if (!HUB_URL || !HUB_TOKEN) return
+export async function syncPartnerToHub(userId: string): Promise<boolean> {
+  if (!HUB_URL || !HUB_TOKEN) return false
   try {
     const acct = await prisma.affiliateAccount.findFirst({
       where: { userId },
       select: { id: true, slug: true, status: true, commissionRatePct: true, user: { select: { email: true } } },
     })
-    if (!acct?.user?.email) return
+    if (!acct?.user?.email) return false
     // Effective rate the storefront shows: the partner's own frozen rate, or the
     // platform default for legacy partners (null frozen rate). Never send null so
     // the hub always has a concrete number to display.
@@ -124,8 +124,10 @@ export async function syncPartnerToHub(userId: string): Promise<void> {
       status: acct.status,
       ...(effectivePct != null ? { commissionRatePct: effectivePct } : {}),
     })
+    return true
   } catch (e) {
     console.warn('[hub-sync] partner sync failed (non-fatal):', (e as Error).message)
+    return false
   }
 }
 
@@ -139,7 +141,7 @@ export async function syncAllPartnersToHub(): Promise<{ synced: number; total: n
   })
   let synced = 0
   for (const a of affiliates) {
-    try { await syncPartnerToHub(a.userId); synced++ } catch { /* best-effort per partner */ }
+    try { if (await syncPartnerToHub(a.userId)) synced++ } catch { /* best-effort per partner */ }
   }
   return { synced, total: affiliates.length }
 }

@@ -279,8 +279,8 @@ export async function generateDiscountCode(input: GenerateDiscountInput): Promis
   if (input.discountType === 'PERCENT' && (input.value <= 0 || input.value >= 100)) {
     throw new AppError('VALIDATION_ERROR', 'Percent discount must be between 1 and 99', 422)
   }
-  if (input.discountType === 'AMOUNT' && input.value <= 0) {
-    throw new AppError('VALIDATION_ERROR', 'Amount discount must be greater than 0', 422)
+  if (input.discountType === 'AMOUNT' && (!Number.isFinite(input.value) || input.value <= 0 || input.value > 100000)) {
+    throw new AppError('VALIDATION_ERROR', 'Amount discount must be between $0 and $100,000', 422)
   }
   if (input.duration === 'repeating' && (!input.durationMonths || input.durationMonths < 1)) {
     throw new AppError('VALIDATION_ERROR', 'A repeating discount needs a month count (≥ 1)', 422)

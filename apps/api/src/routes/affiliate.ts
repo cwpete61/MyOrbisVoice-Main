@@ -2,7 +2,7 @@ import { Router, type IRouter } from 'express'
 import { z } from 'zod'
 import crypto from 'crypto'
 import { authenticate } from '../middleware/authenticate.js'
-import { requirePlatformAdmin } from '../middleware/rbac.js'
+import { requirePlatformAdmin, requirePlatformSuperAdmin } from '../middleware/rbac.js'
 import * as affiliateService from '../services/affiliate.service.js'
 import * as leadEngineService from '../services/lead-engine.service.js'
 import * as commissionTierService from '../services/commission-tier.service.js'
@@ -392,7 +392,9 @@ adminRouter.post('/affiliates/sync-hub', async (req, res, next) => {
 // Bulk recovery: provision every affiliate missing from Keycloak + email them a
 // set-password link. Fixes partners locked out by the affiliateSignupUser gap.
 // Idempotent — partners already in Keycloak are skipped, so it's safe to re-run.
-adminRouter.post('/affiliates/backfill-keycloak', async (req, res, next) => {
+// Super-admin only — bulk KC identity provisioning + mass set-password emails,
+// matching the tenant-side /keycloak/backfill-usernames gate (auth-wide op).
+adminRouter.post('/affiliates/backfill-keycloak', requirePlatformSuperAdmin, async (req, res, next) => {
   try {
     const { backfillPartnersToKeycloak } = await import('../services/keycloak-sync.service.js')
     const result = await backfillPartnersToKeycloak()
