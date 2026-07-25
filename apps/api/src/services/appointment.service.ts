@@ -705,8 +705,12 @@ export async function createAppointment(tenantId: string, userId: string | null,
     }
 
     // Business-owner notification — the company also gets an email that a
-    // booking came in (mirrors the callback owner-alert). Skipped for demos.
-    if (!demoSim && profile?.fallbackNotificationEmail) {
+    // booking came in (mirrors the callback owner-alert). Skipped for demos AND
+    // for partner-page bookings: those keep tenantId = the shared platform demo
+    // tenant (partnerId identifies the real owner), so notifying
+    // profile.fallbackNotificationEmail here would email the demo tenant, not the
+    // partner. Only fire for a real tenant's own booking (no partnerId).
+    if (!demoSim && !data.partnerId && profile?.fallbackNotificationEmail) {
       const contact = data.contactId
         ? await prisma.contact.findFirst({ where: { id: data.contactId, tenantId }, select: { fullName: true, phoneE164: true } })
         : null

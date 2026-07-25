@@ -520,6 +520,22 @@ router.post('/internal/gateway/tools/book-appointment', async (req, res, next) =
     // for inbound phone calls; only partner-page widget calls have it set.
     const { conversationId, partnerId } = await resolveGatewayCallContext(tenantId, data)
 
+    // Idempotency: if Orby re-calls book_appointment for the SAME slot in the same
+    // call (the prompt asks her to retry only after a rejection, but a model re-call
+    // after success happens), don't create a second row or re-send a second
+    // confirmation + owner email. Return the existing booking as success. Keyed on
+    // (conversationId, startAt); only when we have a conversationId to key on.
+    if (conversationId) {
+      const existing = await prisma.appointment.findFirst({
+        where:  { tenantId, conversationId, startAt, status: { in: ['PENDING', 'CONFIRMED', 'RESCHEDULED'] } },
+        select: { id: true, startAt: true, endAt: true },
+      })
+      if (existing) {
+        res.json({ data: { ok: true, appointmentId: existing.id, startAt: existing.startAt, endAt: existing.endAt, emailSent: !!attendeeEmail, smsSent: false, emailTo: attendeeEmail ?? null, deduped: true } })
+        return
+      }
+    }
+
     let appointment
     try {
       appointment = await withTimeout(appointmentService.createAppointment(tenantId, null, {
@@ -892,6 +908,12 @@ function callbackSlaPhrase(sla?: string | null): string {
   }
 }
 
+// Loose email sanity check for speech-to-text caller emails — enough to reject a
+// mis-heard word before we persist it or send to it, without rejecting valid ones.
+function isValidEmail(s: string): boolean {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s) && s.length <= 254
+}
+
 const requestCallbackSchema = z.object({
   conversationId: z.string().uuid().optional(),
   externalCallId: z.string().min(1).max(120).optional(),
@@ -925,6 +947,11 @@ router.post('/internal/gateway/tools/request-callback', async (req, res, next) =
       : d.externalCallId
         ? await prisma.conversation.findFirst({ where: { externalCallId: d.externalCallId, tenantId } })
         : null
+    // Idempotency: if this conversation was already marked CALLBACK_REQUESTED, Orby
+    // is re-calling the tool in the same call — don't re-blast the owner + caller
+    // with duplicate lead/confirmation notifications. We still return ok + promise
+    // so she can confirm again, and still refresh the persisted contact details.
+    const alreadyRequested = conv?.outcomeCode === 'CALLBACK_REQUESTED'
     if (conv) {
       const leadNote = [`Callback requested (${d.urgency ?? 'ROUTINE'})`, `Name: ${d.name}`, `Phone: ${d.phone}`, d.address ? `Address: ${d.address}` : '', d.problem ? `Problem: ${d.problem}` : ''].filter(Boolean).join(' · ')
       await prisma.conversation.update({
@@ -944,7 +971,7 @@ router.post('/internal/gateway/tools/request-callback', async (req, res, next) =
     // pinged immediately with the lead.
     let ownerNotified = false
     const ownerPhone = sched.ownerNotify?.phone?.trim()
-    if (sched.ownerNotify?.sms !== false && ownerPhone && call?.destinationNumber) {
+    if (!alreadyRequested && sched.ownerNotify?.sms !== false && ownerPhone && call?.destinationNumber) {
       const body = `${isUrgent ? '🚨 URGENT ' : ''}Callback request: ${d.name} (${d.phone})` + (d.address ? ` · ${d.address}` : '') + (d.problem ? ` · ${d.problem}` : '')
       const r = await sendMessage({ tenantId, from: call.destinationNumber, to: ownerPhone, body })
       ownerNotified = r.success
@@ -952,7 +979,7 @@ router.post('/internal/gateway/tools/request-callback', async (req, res, next) =
 
     // Caller text-back — concrete expectation + invite a photo.
     let callerTexted = false
-    if (sched.callerTextBack !== false && call?.sourceNumber && call.destinationNumber) {
+    if (!alreadyRequested && sched.callerTextBack !== false && call?.sourceNumber && call.destinationNumber) {
       const r = await sendMessage({ tenantId, from: call.destinationNumber, to: call.sourceNumber, body: `Got it — ${promise}. Reply here with a photo if it helps us prepare.`, contactId: call.contactId ?? undefined })
       callerTexted = r.success
     }
@@ -971,7 +998,10 @@ router.post('/internal/gateway/tools/request-callback', async (req, res, next) =
     const ownerLocale = (await prisma.tenantMember.findFirst({ where: { tenantId }, select: { user: { select: { preferredLocale: true } } }, orderBy: { createdAt: 'asc' } }))?.user?.preferredLocale ?? 'en'
 
     // Caller email: explicit from the tool, else the saved contact for this call.
-    let callerEmail = d.email?.trim() || null
+    // Validate format — the tool arg is raw speech-to-text and a mis-hear must not
+    // clobber a good Contact.email or trigger a send to a garbage/third-party address.
+    const rawCallerEmail = d.email?.trim() || null
+    let callerEmail = rawCallerEmail && isValidEmail(rawCallerEmail) ? rawCallerEmail.toLowerCase() : null
     if (!callerEmail && call?.contactId) {
       callerEmail = (await prisma.contact.findUnique({ where: { id: call.contactId }, select: { email: true } }))?.email ?? null
     }
@@ -980,22 +1010,25 @@ router.post('/internal/gateway/tools/request-callback', async (req, res, next) =
     // Persist what we captured onto the caller's Contact — the same way a booking
     // stores the job details — so the address + email live on the customer record,
     // not only in the conversation summary. Resolve the contact by the live call's
-    // contactId, else by the phone Orby captured. Non-fatal.
+    // contactId, else by the phone Orby captured. Only write a validated email, and
+    // never overwrite an existing good email with a different one (STT is lossy —
+    // treat the saved value as canonical once set). Non-fatal.
     try {
       let contactId = call?.contactId ?? null
       if (!contactId && d.phone) {
         contactId = (await prisma.contact.findFirst({ where: { tenantId, phoneE164: d.phone }, select: { id: true } }))?.id ?? null
       }
       if (contactId) {
+        const existing = await prisma.contact.findUnique({ where: { id: contactId }, select: { email: true } })
         const patch: Record<string, unknown> = {}
         if (d.address) patch['addressLine1'] = d.address.slice(0, 255)
-        if (callerEmail) patch['email'] = callerEmail
+        if (rawCallerEmail && isValidEmail(rawCallerEmail) && !existing?.email) patch['email'] = rawCallerEmail.toLowerCase()
         if (Object.keys(patch).length) await prisma.contact.update({ where: { id: contactId }, data: patch })
       }
     } catch (e) { console.warn('[request_callback] contact persist failed:', (e as Error).message) }
 
     let ownerEmailed = false
-    if (profile?.fallbackNotificationEmail) {
+    if (!alreadyRequested && profile?.fallbackNotificationEmail) {
       const r = await sendCallbackOwnerNotification({
         to: profile.fallbackNotificationEmail, tenantId, tenantName,
         callerName: d.name, callerPhone: d.phone, address: d.address ?? null,
@@ -1004,8 +1037,12 @@ router.post('/internal/gateway/tools/request-callback', async (req, res, next) =
       ownerEmailed = r.sent === true
     }
 
+    // Caller confirmation email — when confirmations are by email/both, OR when
+    // they're SMS-only but the text-back couldn't send (A2P-gated) and we have a
+    // valid email in hand. Mirrors the booking-side SMS→email fallback.
     let callerEmailed = false
-    if (callerEmail && (chan === 'EMAIL' || chan === 'BOTH')) {
+    const wantCallerEmail = chan === 'EMAIL' || chan === 'BOTH' || (chan === 'SMS' && !callerTexted)
+    if (!alreadyRequested && callerEmail && wantCallerEmail) {
       const r = await sendCallbackCallerConfirmation({
         to: callerEmail, tenantId, tenantName, who, whenPhrase: callbackSlaPhrase(sched.callbackSla), locale: ownerLocale,
       }).catch(e => { console.warn('[request_callback] caller email failed:', (e as Error).message); return { sent: false } })

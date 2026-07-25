@@ -880,35 +880,26 @@ export async function executeTool(
 export async function rollbackToolCall(
   name: string,
   result: ToolResult,
-  ctx: ToolContext,
+  _ctx: ToolContext,
 ): Promise<void> {
   if (name !== 'book_appointment') return
   if (!result || result['ok'] !== true) return
   const appointmentId = result['appointment_id']
   if (typeof appointmentId !== 'string' || !appointmentId) return
 
-  // Do NOT un-book a booking whose confirmation already went out. Gemini fires
+  // Do NOT un-book a COMMITTED booking on barge-in. Gemini fires
   // toolCallCancellation on ordinary barge-in (caller talks over Orby) AFTER the
-  // booking committed + the email/SMS shipped — cancelling here silently un-books
-  // a caller who was just booked and confirmed. A duplicate is recoverable; a
-  // vanished, already-confirmed appointment is the failure the user reported
-  // (appt 006c9199: returned ok:true, then rolled back → no row, no email stuck).
-  if (result['email_sent'] === true || result['sms_sent'] === true) {
-    console.log(`[tools] skip rollback of confirmed booking ${appointmentId} (confirmation already delivered)`)
-    return
-  }
-
-  const cancel = await callApi<{ ok: boolean; appointmentId?: string; alreadyCanceled?: boolean; error?: string }>(
-    '/api/internal/gateway/tools/cancel-appointment',
-    ctx.tenantId,
-    { appointmentId, reason: 'tool_call_cancelled_by_model' },
-  )
-  if (!cancel.ok) {
-    console.warn(`[tools] rollback book_appointment ${appointmentId} failed: ${cancel.error}`)
-    return
-  }
-  console.log(`[tools] rolled back book_appointment ${appointmentId}` +
-              (cancel.data.alreadyCanceled ? ' (already canceled)' : ''))
+  // booking already committed the row + Calendar event — cancelling here silently
+  // un-books a caller who was just booked. That is the failure the user reported
+  // (appt 006c9199: returned ok:true, then rolled back → no row, no email stuck),
+  // and it hit EVERY successful booking, not just ones that sent a confirmation
+  // (a valid phone booking with no email + no A2P SMS reports email_sent:false).
+  // A duplicate is recoverable by the owner; a vanished booking is invisible.
+  // A successful book_appointment always returns ok:true + appointment_id, so
+  // barge-in rollback is intentionally a no-op. The pre-commit failure path
+  // returns ok:false and never reaches here. Kept as the interface hook in case a
+  // future tool needs a real compensating action on genuine mid-commit cancels.
+  console.log(`[tools] skip rollback of committed booking ${appointmentId} (barge-in cancellation; booking stands)`)
 }
 
 // Short, model-friendly description block injected into the system prompt so
