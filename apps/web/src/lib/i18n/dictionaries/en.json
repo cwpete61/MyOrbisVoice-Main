@@ -2567,6 +2567,7 @@
       "modeLabel": "Scheduling mode",
       "modeHelp": "How Orby handles appointments on calls. Callback-only fits field-service businesses whose jobs run long.",
       "modeBooking": "Booking — offer calendar times",
+      "modeWindows": "Arrival windows — book a morning/afternoon/evening, not an exact time",
       "modeCallback": "Callback only — capture the lead, promise a call back",
       "slaLabel": "Callback promise",
       "slaOneHour": "Within the hour",

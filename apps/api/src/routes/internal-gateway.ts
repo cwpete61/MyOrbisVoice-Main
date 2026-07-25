@@ -569,6 +569,69 @@ router.post('/internal/gateway/tools/book-appointment', async (req, res, next) =
   } catch (err) { next(err) }
 })
 
+// ---------- tool: book_window (WINDOWS scheduling mode) ----------
+// Books an arrival WINDOW (day + morning/afternoon/evening) instead of an exact
+// time — for field-service tenants whose jobs run long. Reuses the Appointment
+// model: the window's start/end times bound the row, and the label rides in notes.
+const WINDOW_SLOTS: Record<string, { startHour: number; endHour: number; label: string }> = {
+  MORNING:   { startHour: 8,  endHour: 12, label: 'morning (8 AM–12 PM)' },
+  AFTERNOON: { startHour: 12, endHour: 16, label: 'afternoon (12–4 PM)' },
+  EVENING:   { startHour: 16, endHour: 20, label: 'evening (4–8 PM)' },
+}
+// Wall-clock {ymd, hour} in a tz → the correct UTC instant (DST-safe).
+function tzOffsetMinutes(date: Date, tz: string): number {
+  const dtf = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const p = dtf.formatToParts(date).reduce((a, x) => { a[x.type] = x.value; return a }, {} as Record<string, string>)
+  const asUtc = Date.UTC(+p['year']!, +p['month']! - 1, +p['day']!, +p['hour']!, +p['minute']!, +p['second']!)
+  return (asUtc - date.getTime()) / 60000
+}
+function zonedWallClockToUtc(ymd: string, hour: number, tz: string): Date {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const guess = new Date(Date.UTC(y!, m! - 1, d!, hour, 0, 0))
+  return new Date(guess.getTime() - tzOffsetMinutes(guess, tz) * 60000)
+}
+
+const bookWindowSchema = z.object({
+  windowDate:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  windowSlot:     z.enum(['MORNING', 'AFTERNOON', 'EVENING']),
+  contactQuery:   z.string().min(1).max(200),
+  notes:          z.string().max(600).optional(),
+  conversationId: z.string().uuid().optional(),
+  externalCallId: z.string().min(1).max(120).optional(),
+})
+
+router.post('/internal/gateway/tools/book-window', async (req, res, next) => {
+  try {
+    const tenantId = (req as any).internalTenantId as string
+    const d = bookWindowSchema.parse(req.body)
+    const slot = WINDOW_SLOTS[d.windowSlot]!
+    const tz = await appointmentService.resolveTenantTimezone(tenantId, undefined)
+    const startAt = zonedWallClockToUtc(d.windowDate, slot.startHour, tz)
+    const endAt   = zonedWallClockToUtc(d.windowDate, slot.endHour, tz)
+
+    const contact = await findContact(tenantId, d.contactQuery)
+    const attendeeEmail = contact?.email ?? (d.contactQuery.includes('@') ? d.contactQuery : undefined)
+    const { conversationId, partnerId } = await resolveGatewayCallContext(tenantId, d as any)
+
+    const dayLabel = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long', month: 'short', day: 'numeric' }).format(startAt)
+    const label = `${dayLabel}, ${slot.label}`
+
+    const appointment = await appointmentService.createAppointment(tenantId, null, {
+      contactId:       contact?.id,
+      conversationId,
+      partnerId,
+      appointmentType: 'Arrival window',
+      startAt:         startAt.toISOString(),
+      endAt:           endAt.toISOString(),
+      timezone:        tz,
+      notes:           `Arrival window: ${label}.${d.notes ? ` ${d.notes}` : ''}`,
+      attendeeEmail,
+    })
+    await writeAuditLog({ tenantId, actorType: 'SYSTEM', action: 'gateway.tool.book_window', targetType: 'Appointment', targetId: appointment.id, metadataJson: { windowDate: d.windowDate, windowSlot: d.windowSlot, label } })
+    res.json({ data: { ok: true, appointmentId: appointment.id, label } })
+  } catch (err) { next(err) }
+})
+
 // ---------- internal: cancel an appointment created during this session ----------
 //
 // Used to compensate when Gemini Live emits a `toolCallCancellation` for a

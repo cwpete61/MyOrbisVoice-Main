@@ -14,7 +14,7 @@ interface BusinessHours {
 }
 
 interface SchedulingConfig {
-  mode?: 'BOOKING' | 'CALLBACK'
+  mode?: 'BOOKING' | 'WINDOWS' | 'CALLBACK'
   callbackSla?: string
   callbackWho?: string
   ownerNotify?: { sms?: boolean; email?: boolean; phone?: string }
@@ -541,6 +541,7 @@ export default function ChannelsPage() {
                     onChange={(e) => setConfig('scheduling', { ...(cfg.scheduling ?? {}), mode: e.target.value })}
                     className={inp}>
                     <option value="BOOKING">{t('tenantChannels.scheduling.modeBooking')}</option>
+                    <option value="WINDOWS">{t('tenantChannels.scheduling.modeWindows')}</option>
                     <option value="CALLBACK">{t('tenantChannels.scheduling.modeCallback')}</option>
                   </select>
                   <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('tenantChannels.scheduling.modeHelp')}</p>

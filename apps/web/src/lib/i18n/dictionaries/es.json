@@ -2567,6 +2567,7 @@
       "modeLabel": "Modo de programación",
       "modeHelp": "Cómo Orby maneja las citas en las llamadas. Solo devolución de llamada funciona para negocios de servicio a domicilio cuyos trabajos se alargan.",
       "modeBooking": "Reservas — ofrecer horarios del calendario",
+      "modeWindows": "Ventanas de llegada — reservar una mañana/tarde/noche, no una hora exacta",
       "modeCallback": "Solo devolución — captura el prospecto y promete devolver la llamada",
       "slaLabel": "Promesa de devolución",
       "slaOneHour": "En menos de una hora",

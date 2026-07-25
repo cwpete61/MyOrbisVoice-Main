@@ -354,19 +354,41 @@ export const TOOL_DECLARATIONS = [
       required: ['name', 'phone'],
     },
   },
+  {
+    name: 'book_window',
+    description:
+      'Book an ARRIVAL WINDOW (not an exact time) — for field/service businesses whose jobs run long. ' +
+      'Offer the caller a day and a window (morning, afternoon, or evening), and once they pick one, call this. ' +
+      'You do NOT offer or promise an exact clock time; the window is the commitment. ' +
+      'Only call after the caller agreed to a specific day + window AND you have their name and a phone or email.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        window_date: { type: 'STRING', description: 'The date of the visit in YYYY-MM-DD (in the business\'s local timezone), e.g. "2026-07-30".' },
+        window_slot: { type: 'STRING', description: 'One of: MORNING (8am–12pm), AFTERNOON (12pm–4pm), EVENING (4pm–8pm).' },
+        contact_phone_or_email: { type: 'STRING', description: 'Caller phone (E.164 preferred) or email — to attach the contact + send the confirmation.' },
+        notes:   { type: 'STRING', description: 'Short recap: what the job is + the service address. Plain readable lines, under 600 chars.' },
+      },
+      required: ['window_date', 'window_slot', 'contact_phone_or_email'],
+    },
+  },
 ] as const
 
 export type ToolName = (typeof TOOL_DECLARATIONS)[number]['name']
 
-// Which tool declarations to expose for a given scheduling mode. CALLBACK drops
-// the calendar tools entirely (so the model literally cannot offer a slot) and
-// adds request_callback; BOOKING/WINDOWS keep the calendar tools and hide
-// request_callback. See docs/scheduling-modes-plan.md.
+// Which tool declarations to expose for a given scheduling mode:
+//   BOOKING (default) — calendar tools (search_availability + book_appointment)
+//   WINDOWS           — book_window only (arrival windows, no exact-time booking)
+//   CALLBACK          — no calendar at all; request_callback instead
+// See docs/scheduling-modes-plan.md.
 export function toolDeclarationsForMode(mode: SchedulingMode | null | undefined) {
-  if (mode === 'CALLBACK') {
-    return TOOL_DECLARATIONS.filter(t => t.name !== 'search_availability' && t.name !== 'book_appointment')
+  const deny: Record<string, ToolName[]> = {
+    CALLBACK: ['search_availability', 'book_appointment', 'book_window'],
+    WINDOWS:  ['search_availability', 'book_appointment', 'request_callback'],
+    BOOKING:  ['book_window', 'request_callback'],
   }
-  return TOOL_DECLARATIONS.filter(t => t.name !== 'request_callback')
+  const denied = deny[mode ?? 'BOOKING'] ?? deny['BOOKING']!
+  return TOOL_DECLARATIONS.filter(t => !denied.includes(t.name))
 }
 
 // --- HTTP client to internal API endpoints ----------------------------------
@@ -660,6 +682,29 @@ const handlers: Record<ToolName, ToolHandler> = {
       ok:      true,
       promise: result.data.promise,
       message: `Callback logged and the owner was alerted. Tell the caller, warmly and in your own words: ${result.data.promise}. Do NOT promise a specific clock time.`,
+    }
+  },
+
+  // WINDOWS scheduling mode — book a day + arrival window (not an exact time).
+  async book_window(args, ctx) {
+    const windowDate = String(args['window_date'] ?? '').trim()
+    const windowSlot = String(args['window_slot'] ?? '').trim().toUpperCase()
+    const contact    = String(args['contact_phone_or_email'] ?? '').trim()
+    const notes      = args['notes'] ? String(args['notes']) : undefined
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(windowDate)) return { ok: false, error: 'window_date must be YYYY-MM-DD' }
+    if (!['MORNING', 'AFTERNOON', 'EVENING'].includes(windowSlot)) return { ok: false, error: 'window_slot must be MORNING, AFTERNOON, or EVENING' }
+    if (!contact) return { ok: false, error: 'contact_phone_or_email is required' }
+
+    const result = await callApi<{ ok: boolean; label: string; appointmentId: string }>(
+      '/api/internal/gateway/tools/book-window',
+      ctx.tenantId,
+      { windowDate, windowSlot, contactQuery: contact, notes, conversationId: ctx.conversationId, externalCallId: ctx.externalCallId },
+    )
+    if (!result.ok) return { ok: false, error: result.error, message: 'Could not book that window. Tell the caller you\'ll have the team confirm the visit.' }
+    return {
+      ok: true,
+      appointment_id: result.data.appointmentId,
+      message: `Booked the ${result.data.label} arrival window. Confirm it to the caller ("you're all set for ${result.data.label}") — do NOT promise an exact clock time.`,
     }
   },
   // end_call is intercepted in session.ts onToolCall BEFORE executeTool is

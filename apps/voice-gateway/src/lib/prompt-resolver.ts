@@ -278,6 +278,15 @@ export function resolveSystemPrompt(
       'Then call the request_callback tool. Once it succeeds, tell the caller — warmly, in your own words — that ' +
       `${who} will call them back ${sla} and that a confirmation text is on the way. Never promise a specific clock time.`
     )
+  } else if (scheduling?.mode === 'WINDOWS') {
+    layers.push(
+      '--- Scheduling: arrival windows ---\n' +
+      'This business books ARRIVAL WINDOWS, not exact times — jobs run long, so an exact clock time cannot be promised. ' +
+      'Offer the caller a DAY and a WINDOW: morning (8 AM–12 PM), afternoon (12–4 PM), or evening (4–8 PM). ' +
+      'Do NOT offer or promise a specific clock time. Once they agree on a day + window, call the book_window tool ' +
+      'with window_date (YYYY-MM-DD) and window_slot (MORNING / AFTERNOON / EVENING). Then confirm the window back to ' +
+      'them ("you\'re all set for Tuesday afternoon") — never a precise time.'
+    )
   }
 
   // Layer 1.5 — Caller history (Phase E.7). Only present when the gateway
