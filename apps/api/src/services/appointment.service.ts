@@ -71,6 +71,19 @@ const DEFAULT_BUSINESS_HOURS: BusinessHoursMap = {
   sunday:    { closed: true },
 }
 
+// Demo tenants: showings any day within the coming week, WEEKENDS INCLUDED, so
+// the sandbox always has bookable slots close to the call. Wider than the
+// weekday default — demos have no real calendar to respect.
+const DEMO_BUSINESS_HOURS: BusinessHoursMap = {
+  monday:    { open: '09:00', close: '18:00' },
+  tuesday:   { open: '09:00', close: '18:00' },
+  wednesday: { open: '09:00', close: '18:00' },
+  thursday:  { open: '09:00', close: '18:00' },
+  friday:    { open: '09:00', close: '18:00' },
+  saturday:  { open: '09:00', close: '18:00' },
+  sunday:    { open: '09:00', close: '18:00' },
+}
+
 const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
 
 function timeOfDayInTz(ms: number, timezone: string): string {
@@ -371,6 +384,10 @@ export async function searchAvailability(
     const demoT = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { isDemo: true } })
     if (!demoT?.isDemo) {
       try { client = await getAuthenticatedGoogleClient(tenantId) } catch { client = null }
+    } else {
+      // Demo: always offer showings within the coming week, weekends included.
+      if (!businessHours) businessHours = DEMO_BUSINESS_HOURS
+      maxAdvanceMs = 7 * 24 * 60 * 60 * 1000
     }
   }
 
@@ -639,19 +656,50 @@ export async function createAppointment(tenantId: string, userId: string | null,
   // Gmail account, separate from Google Calendar's automatic invite. The
   // calendar invite gets the meeting on the contact's calendar; this email
   // is the human-tone touch ("we're looking forward to seeing you").
-  if (data.attendeeEmail) {
-    sendAppointmentConfirmationEmail(tenantId, {
-      to:               data.attendeeEmail,
-      contactId:        data.contactId ?? null,
-      appointmentType:  data.appointmentType,
-      startAt:          data.startAt,
-      endAt:            data.endAt,
-      timezone:         data.timezone,
-      location:         data.location,
-      notes:            data.notes,
-      partnerId:        data.partnerId ?? null,
-      demo:             demoSim,
-    }).catch(err => console.warn('[appointment] confirmation email failed:', (err as Error).message))
+  // Customer confirmation — channel per BusinessProfile.confirmationChannel:
+  // EMAIL (default) | SMS | BOTH. SMS goes to the caller's own number (no email
+  // spelling needed) but requires an A2P-approved SMS number; if SMS is chosen
+  // but unavailable, we fall back to email so a confirmation is never dropped.
+  try {
+    const profile = await prisma.businessProfile.findUnique({ where: { tenantId }, select: { confirmationChannel: true } })
+    const channel   = (profile?.confirmationChannel ?? 'EMAIL').toUpperCase()
+    const wantEmail = channel === 'EMAIL' || channel === 'BOTH'
+    const wantSms   = channel === 'SMS'   || channel === 'BOTH'
+
+    let smsSent = false
+    if (wantSms && !demoSim) {
+      const phone = data.contactId
+        ? (await prisma.contact.findFirst({ where: { id: data.contactId, tenantId }, select: { phoneE164: true } }))?.phoneE164
+        : null
+      const smsNum = await prisma.phoneNumber.findFirst({
+        where:  { tenantId, isSmsEnabled: true, a2pStatus: 'APPROVED' },
+        select: { e164Number: true },
+      })
+      if (phone && smsNum?.e164Number) {
+        const { sendSms } = await import('./sms.service.js')
+        const whenLabel = new Date(data.startAt).toLocaleString('en-US', { timeZone: data.timezone ?? undefined, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+        const r = await sendSms({ tenantId, from: smsNum.e164Number, to: phone, body: `You're booked for ${whenLabel}. Reply here to reschedule.`, contactId: data.contactId ?? undefined }).catch(() => ({ success: false }))
+        smsSent = !!r.success
+      }
+    }
+
+    // Email when chosen, OR as the fallback when SMS was requested but couldn't send.
+    if ((wantEmail || (channel === 'SMS' && !smsSent)) && data.attendeeEmail) {
+      sendAppointmentConfirmationEmail(tenantId, {
+        to:               data.attendeeEmail,
+        contactId:        data.contactId ?? null,
+        appointmentType:  data.appointmentType,
+        startAt:          data.startAt,
+        endAt:            data.endAt,
+        timezone:         data.timezone,
+        location:         data.location,
+        notes:            data.notes,
+        partnerId:        data.partnerId ?? null,
+        demo:             demoSim,
+      }).catch(err => console.warn('[appointment] confirmation email failed:', (err as Error).message))
+    }
+  } catch (e) {
+    console.warn('[appointment] confirmation dispatch failed:', (e as Error).message)
   }
 
   // Tenant-owner notification: fires regardless of whether the visitor gave
@@ -900,8 +948,19 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
     row('Time', `${timeStr} – ${endTimeStr}`),
     row('Your agent', agentLine),
     agentPhone ? row('Agent phone', agentPhoneTel ? `<a href="tel:${agentPhoneTel}" style="color:#1a9898;text-decoration:none">${agentPhone}</a>` : agentPhone) : '',
-    opts.notes ? row('Notes', opts.notes) : '',
   ].filter(Boolean).join('')
+
+  // "What we discussed" recap — Orby passes a short summary of the conversation
+  // (property, qualification answers, preferences) in `notes`, so the caller
+  // gets a reminder of everything covered on the call. Rendered as its own
+  // block, not a cramped table row. Escaped + newline-aware for LLM-authored text.
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const summaryBlock = opts.notes
+    ? `<div style="background:#f6fbfb;border:1px solid #d6ebeb;border-radius:8px;padding:14px 16px;margin:0 0 20px">
+         <div style="color:#1a9898;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px">What we discussed</div>
+         <div style="color:#333;font-size:14px;line-height:1.55">${esc(opts.notes).replace(/\n/g, '<br>')}</div>
+       </div>`
+    : ''
 
   // A short "what happens next" line, tailored for a showing when we can tell.
   const nextStep = isShowing
@@ -916,6 +975,7 @@ async function sendAppointmentConfirmationEmail(tenantId: string, opts: {
       <table style="width:100%;border-collapse:collapse;margin:0 0 18px;border-top:1px solid #eee;border-bottom:1px solid #eee">
         ${rows}
       </table>
+      ${summaryBlock}
       ${nextStep}
       ${calendarLine}
       ${footer}

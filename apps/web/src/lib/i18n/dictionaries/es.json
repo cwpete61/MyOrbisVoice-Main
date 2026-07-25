@@ -3536,6 +3536,14 @@
         "help": "Zona IANA usada para interpretar los horarios de apertura/cierre de arriba. El agente lee los horarios en voz alta en esta zona."
       }
     },
+    "confirmations": {
+      "heading": "Notificaciones de confirmación",
+      "description": "Cómo Orby envía al cliente la confirmación de su cita.",
+      "email": "Correo",
+      "sms": "Texto (SMS)",
+      "both": "Ambos (texto + correo)",
+      "a2pNote": "Las confirmaciones por texto requieren un número SMS verificado con A2P. Registra uno en Números de teléfono para habilitar SMS."
+    },
     "reminders": {
       "heading": "Recordatorios de cita",
       "description": "Envía correo y SMS a tus clientes antes de su cita automáticamente. Los recordatorios se programan en cada reserva nueva — llamadas de Orby, página pública de reservas y cualquier integración personalizada.",

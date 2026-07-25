@@ -659,6 +659,10 @@ model BusinessProfile {
   reminderOffsetsMin        Int[]    @default([1440, 60]) // 24h + 1h before
   reminderEmailEnabled      Boolean  @default(true)
   reminderSmsEnabled        Boolean  @default(true)
+  // How Orby sends the booking/callback confirmation to the customer:
+  // EMAIL (default, always available) | SMS | BOTH. SMS requires an A2P-approved
+  // SMS number; the sender falls back to email when SMS isn't available.
+  confirmationChannel       String   @default("EMAIL")
   // Phase E.8 — reminder copy customization. Optional overrides for the
   // built-in reminder templates. NULL = use defaults. Variables supported:
   // {firstName} {businessName} {appointmentType} {whenLabel} {dateStr}
@@ -3873,6 +3877,13 @@ model AgentDemo {
   // Personalized founder-intro video (JoggAI talking avatar of the operator,
   // greeting THIS lead by name). videoStatus: NONE|GENERATING|READY|FAILED.
   videoUrl        String?
+  // Which demo-email argument this agent actually received, and in which language.
+  // Without these the A/B is unmeasurable: three variants exist in code but a claim
+  // could never be attributed back to the argument that earned it. Claim rate grouped
+  // by emailVariant IS the test result (status SENT → CLAIMED already tracks the
+  // funnel), so no separate experiment table is needed.
+  emailVariant    String?         // 'A' (ISA anchor) | 'B' (founder story) | 'C' (speed stats)
+  emailLocale     String?         // 'en' | 'es'
   videoStatus     String?         @default("NONE")
   videoJoggId     String?
   enrichedAt      DateTime?

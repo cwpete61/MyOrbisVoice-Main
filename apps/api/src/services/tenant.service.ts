@@ -107,10 +107,14 @@ export interface TenantBookingPreferences {
   reminderEmailSubject:    string | null
   reminderEmailIntro:      string | null
   reminderSmsBody:         string | null
+  // How the customer confirmation is sent: EMAIL | SMS | BOTH.
+  confirmationChannel:     string
+  // Whether the tenant has an A2P-approved SMS number (gates SMS/BOTH in the UI).
+  smsReady:                boolean
 }
 
 export async function getTenantBookingPreferences(tenantId: string): Promise<TenantBookingPreferences> {
-  const [profile, tenant] = await Promise.all([
+  const [profile, tenant, smsNum] = await Promise.all([
     prisma.businessProfile.findUnique({
       where:  { tenantId },
       select: {
@@ -127,9 +131,11 @@ export async function getTenantBookingPreferences(tenantId: string): Promise<Ten
         reminderEmailSubject:   true,
         reminderEmailIntro:     true,
         reminderSmsBody:        true,
+        confirmationChannel:    true,
       },
     }),
     prisma.tenant.findUnique({ where: { id: tenantId }, select: { timezone: true } }),
+    prisma.phoneNumber.findFirst({ where: { tenantId, isSmsEnabled: true, a2pStatus: 'APPROVED' }, select: { id: true } }),
   ])
   return {
     businessHoursJson:      (profile?.businessHoursJson as BookingHoursMap | null) ?? null,
@@ -146,6 +152,8 @@ export async function getTenantBookingPreferences(tenantId: string): Promise<Ten
     reminderEmailSubject:   profile?.reminderEmailSubject   ?? null,
     reminderEmailIntro:     profile?.reminderEmailIntro     ?? null,
     reminderSmsBody:        profile?.reminderSmsBody        ?? null,
+    confirmationChannel:    profile?.confirmationChannel    ?? 'EMAIL',
+    smsReady:               !!smsNum,
   }
 }
 
@@ -218,6 +226,7 @@ export interface TenantBookingPreferencesUpdate {
   reminderEmailSubject?:   string | null
   reminderEmailIntro?:     string | null
   reminderSmsBody?:        string | null
+  confirmationChannel?:    string
 }
 
 export async function updateTenantBookingPreferences(
@@ -262,6 +271,12 @@ export async function updateTenantBookingPreferences(
       throw new AppError('BAD_REQUEST', 'reminderSmsEnabled must be a boolean', 400)
     }
     profileUpdate['reminderSmsEnabled'] = data.reminderSmsEnabled
+  }
+  if (data.confirmationChannel !== undefined) {
+    if (!['EMAIL', 'SMS', 'BOTH'].includes(data.confirmationChannel)) {
+      throw new AppError('BAD_REQUEST', 'confirmationChannel must be EMAIL, SMS, or BOTH', 400)
+    }
+    profileUpdate['confirmationChannel'] = data.confirmationChannel
   }
   // Phase E.8 — reminder template overrides. Length-capped to match the DB
   // VarChar widths; null clears the override and reverts to the default.

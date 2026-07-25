@@ -3536,6 +3536,14 @@
         "help": "IANA zone used to interpret the open/close times above. The agent reads slots aloud in this zone."
       }
     },
+    "confirmations": {
+      "heading": "Confirmation notifications",
+      "description": "How Orby sends the customer their booking confirmation.",
+      "email": "Email",
+      "sms": "Text (SMS)",
+      "both": "Both (text + email)",
+      "a2pNote": "Text confirmations need an A2P-verified SMS number. Register one under Phone Numbers to enable SMS."
+    },
     "reminders": {
       "heading": "Appointment reminders",
       "description": "Automatically email and text your customers before their appointment. Reminders fire on every new booking — Orby calls, the public booking page, and any custom integrations.",

@@ -63,6 +63,9 @@ interface BookingPrefs {
   reminderEmailSubject:    string | null
   reminderEmailIntro:      string | null
   reminderSmsBody:         string | null
+  // Customer confirmation channel: EMAIL | SMS | BOTH; smsReady gates SMS/BOTH.
+  confirmationChannel:     string
+  smsReady:                boolean
 }
 
 // Friendly preset offsets for the reminders editor (minutes before appointment).
@@ -289,6 +292,7 @@ export default function SettingsPage() {
   const [reminderEmailSubject, setReminderEmailSubject] = useState('')
   const [reminderEmailIntro,   setReminderEmailIntro]   = useState('')
   const [reminderSmsBody,      setReminderSmsBody]      = useState('')
+  const [confirmationChannel,  setConfirmationChannel]  = useState('EMAIL')
 
   useEffect(() => { if (tenant) setTenantForm(tenant) }, [tenant])
   useEffect(() => { if (profile) setProfileForm(profile) }, [profile])
@@ -308,6 +312,7 @@ export default function SettingsPage() {
     setReminderEmailSubject(bookingPrefs.reminderEmailSubject ?? '')
     setReminderEmailIntro(bookingPrefs.reminderEmailIntro     ?? '')
     setReminderSmsBody(bookingPrefs.reminderSmsBody           ?? '')
+    setConfirmationChannel(bookingPrefs.confirmationChannel   ?? 'EMAIL')
   }, [bookingPrefs])
 
   function showToast(type: 'success' | 'error', text: string) {
@@ -363,6 +368,7 @@ export default function SettingsPage() {
           reminderEmailSubject:   reminderEmailSubject.trim() ? reminderEmailSubject : null,
           reminderEmailIntro:     reminderEmailIntro.trim()   ? reminderEmailIntro   : null,
           reminderSmsBody:        reminderSmsBody.trim()      ? reminderSmsBody      : null,
+          confirmationChannel,
         }),
       })
       await reloadBooking()
@@ -666,6 +672,28 @@ export default function SettingsPage() {
             {t('tenantSettings.booking.timezone.help')}
           </p>
           <TimezoneSelect value={bookingTz} onChange={setBookingTz} />
+        </div>
+
+        {/* ── Confirmation notifications ──────────────────────────────────── */}
+        <div className="pt-4 mt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {t('tenantSettings.confirmations.heading')}
+          </p>
+          <p className="text-xs mt-0.5 mb-2" style={{ color: 'var(--text-secondary)' }}>
+            {t('tenantSettings.confirmations.description')}
+          </p>
+          <select value={confirmationChannel} onChange={e => setConfirmationChannel(e.target.value)}
+            className="text-sm rounded-lg px-2.5 py-1.5 w-auto"
+            style={{ background: 'var(--surface-raised)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}>
+            <option value="EMAIL">{t('tenantSettings.confirmations.email')}</option>
+            <option value="SMS"  disabled={!bookingPrefs?.smsReady}>{t('tenantSettings.confirmations.sms')}</option>
+            <option value="BOTH" disabled={!bookingPrefs?.smsReady}>{t('tenantSettings.confirmations.both')}</option>
+          </select>
+          {!bookingPrefs?.smsReady && (
+            <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
+              {t('tenantSettings.confirmations.a2pNote')}
+            </p>
+          )}
         </div>
 
         {/* ── Reminders (Phase E.6) ───────────────────────────────────────── */}

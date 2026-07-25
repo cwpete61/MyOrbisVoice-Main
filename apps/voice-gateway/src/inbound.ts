@@ -567,6 +567,26 @@ export async function handleInboundCall(ws: WebSocket) {
         'After it succeeds, tell the caller you have texted them the link.'
     }
 
+    // Confirmation channel awareness. When confirmations go by TEXT (SMS is
+    // chosen AND an A2P-approved number exists), Orby should NOT make the caller
+    // spell out an email — the text goes to their caller ID. BOTH still needs an
+    // email. SMS-chosen-but-not-A2P-ready silently falls back to email, so no
+    // note here (Orby collects the email as usual).
+    try {
+      const bp = await prisma.businessProfile.findUnique({ where: { tenantId }, select: { confirmationChannel: true } })
+      const confChannel = (bp?.confirmationChannel ?? 'EMAIL').toUpperCase()
+      if (confChannel === 'SMS' || confChannel === 'BOTH') {
+        const smsReady = await prisma.phoneNumber.findFirst({ where: { tenantId, isSmsEnabled: true, a2pStatus: 'APPROVED' }, select: { id: true } })
+        if (smsReady) {
+          systemPrompt += confChannel === 'BOTH'
+            ? '\n\n--- Confirmations ---\nSend the caller their confirmation by BOTH text and email. The text goes to the number they are calling from; still collect their email for the emailed copy.'
+            : '\n\n--- Confirmations ---\nConfirmations are sent by TEXT to the number the caller is calling from. You do NOT need to collect or spell out an email address for the confirmation — just make sure their callback number is right.'
+        }
+      }
+    } catch (e) {
+      console.error('[inbound] confirmation-channel prompt failed (non-fatal):', (e as Error).message)
+    }
+
     // Look up tenant's Gemini API key; fall back to platform env key
     const geminiConn = await prisma.integrationConnection.findFirst({
       where: { tenantId, provider: 'GEMINI', status: 'CONNECTED' },
