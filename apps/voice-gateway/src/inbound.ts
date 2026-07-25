@@ -396,6 +396,7 @@ export async function handleInboundCall(ws: WebSocket) {
     const fromNumber = params['fromNumber'] ?? ''
     callerFrom = fromNumber
     const partnerId  = params['partnerId']  ?? ''
+    const afterHours = params['afterHours'] === 'true'
     demoSessionId    = params['demoSessionId'] || null
     demoPinCapture   = params['demoPinCapture'] === '1'
     demoRecord       = params['demoRecord'] === '1' || demoPinCapture
@@ -537,6 +538,18 @@ export async function handleInboundCall(ws: WebSocket) {
       payCfg?.industryVertical ?? null, // Layer 1.2 — default vertical persona
       scheduling,                       // Layer 1.3 — scheduling-mode behavior
     )
+
+    // After-hours awareness. The call reached Orby outside business hours (the
+    // tenant chose "Orby answers 24/7"). Let her acknowledge it naturally instead
+    // of implying the office is open — she still helps, qualifies, books, or takes
+    // a message per her DNA.
+    if (afterHours) {
+      systemPrompt += '\n\n--- After hours ---\n' +
+        'This call is coming in OUTSIDE the business\'s normal hours. You are still here to help. ' +
+        'Do not claim the office is open or that staff are available right now. You may still answer questions, ' +
+        'qualify the caller, book an appointment for an upcoming open time, or take a message for the team to follow up. ' +
+        'Keep it warm and natural — a brief nod like "you\'ve reached us after hours, but I can still help" is enough; do not belabor it.'
+    }
 
     // Phase 2 — on-call payments. Only instruct Orby to offer/take payment when
     // the tenant has BOTH turned it on AND finished Stripe onboarding. Without

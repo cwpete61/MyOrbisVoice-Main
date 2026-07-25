@@ -92,7 +92,9 @@ export function buildInboundTwiml(opts: {
 
   const open = isWithinBusinessHours(opts.hoursJson, opts.timezone ?? undefined)
 
-  if (!open && opts.afterHoursMode) {
+  // 'agent' = Orby answers 24/7 (fall through to the stream below). Any other
+  // after-hours mode short-circuits to Twilio's own handling BEFORE Orby.
+  if (!open && opts.afterHoursMode && opts.afterHoursMode !== 'agent') {
     if (opts.afterHoursMode === 'voicemail') {
       response.say({ voice: 'alice' }, "We're currently closed. Please leave a message after the tone.")
       response.record({
@@ -115,7 +117,9 @@ export function buildInboundTwiml(opts: {
     return response.toString()
   }
 
-  // Business hours — connect to the AI voice agent via Media Stream
+  // Connect to Orby via Media Stream. Reached in business hours, on the default
+  // (unset) after-hours mode, and on 'agent' mode after hours. When it's after
+  // hours we flag it so Orby knows (she greets accordingly per her DNA).
   const connect = response.connect()
   const stream  = connect.stream({
     url: `${GW_WS_BASE}/ws/inbound`,
@@ -129,6 +133,9 @@ export function buildInboundTwiml(opts: {
   }
   if (opts.partnerId) {
     stream.parameter({ name: 'partnerId',     value: opts.partnerId })
+  }
+  if (!open) {
+    stream.parameter({ name: 'afterHours',    value: 'true' })
   }
 
   return response.toString()

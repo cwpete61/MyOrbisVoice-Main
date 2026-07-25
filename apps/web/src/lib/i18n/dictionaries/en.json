@@ -2506,9 +2506,9 @@
       }
     },
     "afterHoursOptions": {
-      "default": "Default (inform & hang up)",
-      "voicemail": "Record voicemail",
-      "forward": "Forward to number"
+      "default": "Orby answers 24/7 (recommended)",
+      "voicemail": "Record voicemail (Orby does not answer)",
+      "forward": "Forward to number (Orby does not answer)"
     },
     "days": {
       "mon": "Mon",

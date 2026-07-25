@@ -2506,9 +2506,9 @@
       }
     },
     "afterHoursOptions": {
-      "default": "Predeterminado (informar y colgar)",
-      "voicemail": "Grabar buzón de voz",
-      "forward": "Desviar a un número"
+      "default": "Orby responde 24/7 (recomendado)",
+      "voicemail": "Grabar buzón de voz (Orby no responde)",
+      "forward": "Desviar a un número (Orby no responde)"
     },
     "days": {
       "mon": "Lun",
