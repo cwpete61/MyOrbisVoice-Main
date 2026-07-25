@@ -977,6 +977,23 @@ router.post('/internal/gateway/tools/request-callback', async (req, res, next) =
     }
     const chan = (profile?.confirmationChannel ?? 'EMAIL').toUpperCase()
 
+    // Persist what we captured onto the caller's Contact — the same way a booking
+    // stores the job details — so the address + email live on the customer record,
+    // not only in the conversation summary. Resolve the contact by the live call's
+    // contactId, else by the phone Orby captured. Non-fatal.
+    try {
+      let contactId = call?.contactId ?? null
+      if (!contactId && d.phone) {
+        contactId = (await prisma.contact.findFirst({ where: { tenantId, phoneE164: d.phone }, select: { id: true } }))?.id ?? null
+      }
+      if (contactId) {
+        const patch: Record<string, unknown> = {}
+        if (d.address) patch['addressLine1'] = d.address.slice(0, 255)
+        if (callerEmail) patch['email'] = callerEmail
+        if (Object.keys(patch).length) await prisma.contact.update({ where: { id: contactId }, data: patch })
+      }
+    } catch (e) { console.warn('[request_callback] contact persist failed:', (e as Error).message) }
+
     let ownerEmailed = false
     if (profile?.fallbackNotificationEmail) {
       const r = await sendCallbackOwnerNotification({
