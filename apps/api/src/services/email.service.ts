@@ -287,6 +287,17 @@ export async function sendEmail(opts: EmailOptions): Promise<SendResult> {
     return { sent: false, skipped: 'suppressed', reason: `${supp.scope}:${supp.reason}` }
   }
 
+  // Default the From when the caller didn't set one. This is load-bearing for
+  // ROUTING, not just cosmetics: pickProvider() routes by From-domain, and an
+  // EMPTY From falls through to Postmark (line ~117) — which is HELD/dead on this
+  // account (accepts sends, delivers nothing). Every no-From transactional send
+  // (welcome, password reset, call notifications, booking/callback alerts) was
+  // silently dying there. Defaulting to the verified @myorbisvoice.com sender
+  // routes them to Resend, which is the proven-working transactional provider.
+  if (!opts.from) {
+    opts = { ...opts, from: 'MyOrbisVoice <notify@myorbisvoice.com>' }
+  }
+
   // Default Reply-To from config when the caller didn't set one. Our default
   // From (notify@myorbisvoice.com) is a no-reply alias with no inbox — without
   // a Reply-To, customer replies to password resets / confirmations bounce.
