@@ -6,7 +6,7 @@ import * as appointmentService from '../services/appointment.service.js'
 import * as googleService from '../services/google.service.js'
 import * as contactService from '../services/contact.service.js'
 import { storeGatewayRecording } from '../services/recording.service.js'
-import { sendEmail } from '../services/email.service.js'
+import { sendEmail, sendCallbackOwnerNotification, sendCallbackCallerConfirmation } from '../services/email.service.js'
 import { writeAuditLog } from '../lib/audit.js'
 import { AppError } from '@voiceautomation/shared'
 
@@ -898,6 +898,7 @@ const requestCallbackSchema = z.object({
   callSid:        z.string().min(1).optional(),
   name:           z.string().min(1).max(120),
   phone:          z.string().min(3).max(40),
+  email:          z.string().max(200).optional(),
   address:        z.string().max(300).optional(),
   problem:        z.string().max(600).optional(),
   urgency:        z.string().max(20).optional(),
@@ -956,13 +957,51 @@ router.post('/internal/gateway/tools/request-callback', async (req, res, next) =
       callerTexted = r.success
     }
 
+    // Email — the reliable channel (SMS is A2P-gated and often just queues). The
+    // BUSINESS OWNER always gets the lead; the CALLER gets a written confirmation
+    // when we have their email and confirmations aren't SMS-only. Routed via the
+    // real ESP (Resend), not the gateway's dead SMTP notifier.
+    const profile = await prisma.businessProfile.findUnique({
+      where:  { tenantId },
+      select: { fallbackNotificationEmail: true, confirmationChannel: true, brandName: true },
+    })
+    const tenantRow = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { displayName: true } })
+    const tenantName = profile?.brandName || tenantRow?.displayName || 'This business'
+    const appBaseUrl = process.env['APP_BASE_URL'] ?? 'https://app.myorbisvoice.com'
+    const ownerLocale = (await prisma.tenantMember.findFirst({ where: { tenantId }, select: { user: { select: { preferredLocale: true } } }, orderBy: { createdAt: 'asc' } }))?.user?.preferredLocale ?? 'en'
+
+    // Caller email: explicit from the tool, else the saved contact for this call.
+    let callerEmail = d.email?.trim() || null
+    if (!callerEmail && call?.contactId) {
+      callerEmail = (await prisma.contact.findUnique({ where: { id: call.contactId }, select: { email: true } }))?.email ?? null
+    }
+    const chan = (profile?.confirmationChannel ?? 'EMAIL').toUpperCase()
+
+    let ownerEmailed = false
+    if (profile?.fallbackNotificationEmail) {
+      const r = await sendCallbackOwnerNotification({
+        to: profile.fallbackNotificationEmail, tenantId, tenantName,
+        callerName: d.name, callerPhone: d.phone, address: d.address ?? null,
+        problem: d.problem ?? null, urgency: d.urgency ?? null, appBaseUrl, locale: ownerLocale,
+      }).catch(e => { console.warn('[request_callback] owner email failed:', (e as Error).message); return { sent: false } })
+      ownerEmailed = r.sent === true
+    }
+
+    let callerEmailed = false
+    if (callerEmail && (chan === 'EMAIL' || chan === 'BOTH')) {
+      const r = await sendCallbackCallerConfirmation({
+        to: callerEmail, tenantId, tenantName, who, whenPhrase: callbackSlaPhrase(sched.callbackSla), locale: ownerLocale,
+      }).catch(e => { console.warn('[request_callback] caller email failed:', (e as Error).message); return { sent: false } })
+      callerEmailed = r.sent === true
+    }
+
     await writeAuditLog({
       tenantId, actorType: 'SYSTEM', action: 'gateway.tool.request_callback',
       targetType: 'Conversation', targetId: conv?.id ?? undefined,
-      metadataJson: { name: d.name, phone: d.phone, urgency: d.urgency ?? 'ROUTINE', ownerNotified, callerTexted },
+      metadataJson: { name: d.name, phone: d.phone, urgency: d.urgency ?? 'ROUTINE', ownerNotified, callerTexted, ownerEmailed, callerEmailed },
     })
 
-    res.json({ data: { ok: true, promise, ownerNotified, callerTexted } })
+    res.json({ data: { ok: true, promise, ownerNotified, callerTexted, ownerEmailed, callerEmailed } })
   } catch (err) { next(err) }
 })
 

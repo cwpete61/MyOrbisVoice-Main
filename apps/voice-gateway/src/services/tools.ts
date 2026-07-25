@@ -340,13 +340,15 @@ export const TOOL_DECLARATIONS = [
     description:
       'Use this INSTEAD of booking an appointment when the business runs on callbacks (no fixed appointment times — a field/service business whose jobs run long). ' +
       'Call it once you have the caller\'s name, a callback number, and ideally the service address, a short description of the problem, and whether it is urgent. ' +
-      'It logs the lead, alerts the business owner immediately, and texts the caller a confirmation. ' +
-      'After it returns success, tell the caller the exact callback promise it returns (who will call and by when) — do NOT invent a specific clock time.',
+      'It logs the lead, alerts the business owner immediately, and sends the caller a written confirmation (email and/or text). ' +
+      'Also pass the caller\'s email when you have it — the confirmation email is the most reliable channel. ' +
+      'After it returns success, tell the caller the exact callback promise it returns (who will call and by when), and mention the confirmation the tool reports it actually sent — do NOT invent a specific clock time or claim a confirmation it did not send.',
     parameters: {
       type: 'OBJECT',
       properties: {
         name:    { type: 'STRING', description: 'Caller full name.' },
         phone:   { type: 'STRING', description: 'Callback number, E.164 preferred (e.g. "+15551234567").' },
+        email:   { type: 'STRING', description: 'Caller email, if given — the confirmation is sent here. Read it back phonetically to confirm before passing it.' },
         address: { type: 'STRING', description: 'Service address or job location.' },
         problem: { type: 'STRING', description: 'Short description of what they need / the problem.' },
         urgency: { type: 'STRING', description: 'One of: EMERGENCY (no heat / active leak / lockout — needs someone now), URGENT (needs today), ROUTINE.' },
@@ -682,16 +684,17 @@ const handlers: Record<ToolName, ToolHandler> = {
   async request_callback(args, ctx) {
     const name    = String(args['name']    ?? '').trim()
     const phone   = String(args['phone']   ?? '').trim()
+    const email   = String(args['email']   ?? '').trim()
     const address = String(args['address'] ?? '').trim()
     const problem = String(args['problem'] ?? '').trim()
     const urgency = String(args['urgency'] ?? 'ROUTINE').trim().toUpperCase()
     if (!name || !phone) return { ok: false, error: 'name and phone are required' }
 
-    const result = await callApi<{ ok: boolean; promise: string }>(
+    const result = await callApi<{ ok: boolean; promise: string; ownerEmailed?: boolean; callerEmailed?: boolean; callerTexted?: boolean }>(
       '/api/internal/gateway/tools/request-callback',
       ctx.tenantId,
       {
-        name, phone, address, problem, urgency,
+        name, phone, email, address, problem, urgency,
         callSid:        ctx.callSid,
         conversationId: ctx.conversationId,
         externalCallId: ctx.externalCallId,
@@ -701,10 +704,18 @@ const handlers: Record<ToolName, ToolHandler> = {
     if (!result.ok) {
       return { ok: false, error: result.error, message: 'Could not log the callback right now. Reassure the caller their message is noted and the team will call them back.' }
     }
+    const callerEmailed = result.data.callerEmailed === true
+    const callerTexted  = result.data.callerTexted === true
+    const confMsg = callerEmailed
+      ? 'You have also just emailed the caller a written confirmation — tell them it\'s on its way to their inbox.'
+      : callerTexted
+      ? 'You have also just texted the caller a confirmation — tell them.'
+      : 'No written confirmation could be sent to the caller (no email or text on file). If you have not already, ask for their email so the team can send written confirmation, then reassure them the team has their details and will call.'
     return {
       ok:      true,
       promise: result.data.promise,
-      message: `Callback logged and the owner was alerted. Tell the caller, warmly and in your own words: ${result.data.promise}. Do NOT promise a specific clock time.`,
+      caller_emailed: callerEmailed,
+      message: `Callback logged and the business owner was alerted by email. Tell the caller, warmly and in your own words: ${result.data.promise}. ${confMsg} Do NOT promise a specific clock time.`,
     }
   },
 

@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js'
 import { writeAuditLog } from '../lib/audit.js'
 import { AppError } from '@voiceautomation/shared'
 import { getAuthenticatedGoogleClient, sendGmailEmail } from './google.service.js'
-import { sendEmail } from './email.service.js'
+import { sendEmail, sendBookingOwnerNotification } from './email.service.js'
 import { scheduleAppointmentReminders, cancelAppointmentReminders } from './reminder.service.js'
 import { resolveBookingIdentity, BOOKING_BRAND } from './booking-identity.service.js'
 import { DEMO_PHONE_E164 } from './demo-session.service.js'
@@ -666,7 +666,7 @@ export async function createAppointment(tenantId: string, userId: string | null,
   let confSmsSent   = false
   let confEmailTo: string | null = null
   try {
-    const profile = await prisma.businessProfile.findUnique({ where: { tenantId }, select: { confirmationChannel: true } })
+    const profile = await prisma.businessProfile.findUnique({ where: { tenantId }, select: { confirmationChannel: true, fallbackNotificationEmail: true, brandName: true } })
     const channel   = (profile?.confirmationChannel ?? 'EMAIL').toUpperCase()
     const wantEmail = channel === 'EMAIL' || channel === 'BOTH'
     const wantSms   = channel === 'SMS'   || channel === 'BOTH'
@@ -702,6 +702,30 @@ export async function createAppointment(tenantId: string, userId: string | null,
         demo:             demoSim,
       }).catch(err => { console.warn('[appointment] confirmation email failed:', (err as Error).message); return false })
       if (confEmailSent) confEmailTo = data.attendeeEmail
+    }
+
+    // Business-owner notification — the company also gets an email that a
+    // booking came in (mirrors the callback owner-alert). Skipped for demos.
+    if (!demoSim && profile?.fallbackNotificationEmail) {
+      const contact = data.contactId
+        ? await prisma.contact.findFirst({ where: { id: data.contactId, tenantId }, select: { fullName: true, phoneE164: true } })
+        : null
+      const ownerLocale = (await prisma.tenantMember.findFirst({ where: { tenantId }, select: { user: { select: { preferredLocale: true } }, }, orderBy: { createdAt: 'asc' } }))?.user?.preferredLocale ?? 'en'
+      const tenantRow = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { displayName: true } })
+      const whenLabel = new Date(data.startAt).toLocaleString('en-US', { timeZone: data.timezone ?? undefined, weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+      await sendBookingOwnerNotification({
+        to:              profile.fallbackNotificationEmail,
+        tenantId,
+        tenantName:      profile.brandName || tenantRow?.displayName || 'This business',
+        callerName:      contact?.fullName ?? null,
+        callerPhone:     contact?.phoneE164 ?? null,
+        appointmentType: data.appointmentType ?? null,
+        whenLabel,
+        location:        data.location ?? null,
+        notes:           data.notes ?? null,
+        appBaseUrl:      process.env['APP_BASE_URL'] ?? 'https://app.myorbisvoice.com',
+        locale:          ownerLocale,
+      }).catch(err => console.warn('[appointment] owner notification failed:', (err as Error).message))
     }
   } catch (e) {
     console.warn('[appointment] confirmation dispatch failed:', (e as Error).message)

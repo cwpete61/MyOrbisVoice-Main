@@ -288,9 +288,9 @@ export function resolveSystemPrompt(
       '--- Scheduling: callback mode ---\n' +
       'This business does NOT book fixed appointment times on calls — jobs run long and times shift with traffic. ' +
       'Do NOT offer, suggest, or imply specific appointment slots or arrival times, and never mention checking a calendar. ' +
-      'Instead, capture the caller\'s name, a callback number, the service address, a short description of the problem, and whether it is an emergency. ' +
-      'Then call the request_callback tool. Once it succeeds, tell the caller — warmly, in your own words — that ' +
-      `${who} will call them back ${sla} and that a confirmation text is on the way. Never promise a specific clock time.`
+      'Instead, capture the caller\'s name, a callback number, the caller\'s EMAIL (ask for it — "what\'s the best email for your written confirmation?" — so the confirmation can actually reach them; read it back phonetically to confirm), the service address, a short description of the problem, and whether it is an emergency. ' +
+      'Then call the request_callback tool, passing the email when you have it. Once it succeeds, tell the caller — warmly, in your own words — that ' +
+      `${who} will call them back ${sla}, and confirm the written confirmation the tool reports it actually sent (email or text). Only say a confirmation was sent if the tool says so; otherwise say the team has their details. Never promise a specific clock time.`
     )
   } else if (scheduling?.mode === 'WINDOWS') {
     layers.push(

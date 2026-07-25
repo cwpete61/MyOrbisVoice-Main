@@ -615,6 +615,128 @@ export async function sendCallNotification(opts: {
   })
 }
 
+// ── Lead / booking notifications (bilingual EN/ES) ───────────────────────────
+// Fired when Orby captures a callback lead or books an appointment. Two
+// audiences: the BUSINESS OWNER (fallbackNotificationEmail — "you have a new
+// lead / booking") and the CALLER (a written confirmation of what happens next).
+// Routed through sendEmail() so they go out on the real ESP (Resend), NOT the
+// gateway's unconfigured SMTP path — the reason owners were getting nothing.
+
+const TEAL = '#1a9898'
+function esc(s?: string | null): string {
+  return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string))
+}
+function detailRow(label: string, value?: string | null): string {
+  if (!value) return ''
+  return `<tr><td style="padding:6px 12px 6px 0;color:#888;white-space:nowrap;vertical-align:top">${esc(label)}</td><td style="color:#222">${esc(value)}</td></tr>`
+}
+
+/** Business-owner alert: a new callback lead was captured on a call. */
+export async function sendCallbackOwnerNotification(opts: {
+  to: string
+  tenantId: string
+  tenantName: string
+  callerName?: string | null
+  callerPhone?: string | null
+  address?: string | null
+  problem?: string | null
+  urgency?: string | null
+  appBaseUrl: string
+  locale?: string
+}): Promise<SendResult> {
+  const es = (opts.locale ?? 'en').toLowerCase().startsWith('es')
+  const isUrgent = (opts.urgency ?? '').toUpperCase() === 'EMERGENCY'
+  const t = es
+    ? { subj: 'Nueva solicitud de llamada', h: 'Nueva solicitud de llamada', urgent: '🚨 URGENTE', name: 'Nombre', phone: 'Teléfono', addr: 'Dirección', prob: 'Problema', cta: 'Ver en MyOrbisVoice →', foot: 'Administra las notificaciones en la configuración de tu espacio.' }
+    : { subj: 'New callback request', h: 'New callback request', urgent: '🚨 URGENT', name: 'Name', phone: 'Phone', addr: 'Address', prob: 'Problem', cta: 'View in MyOrbisVoice →', foot: 'Manage notifications in your workspace settings.' }
+  return sendEmail({
+    to: opts.to,
+    tenantId: opts.tenantId,
+    subject: `${isUrgent ? t.urgent + ' — ' : ''}${t.subj}${opts.callerName ? ` — ${opts.callerName}` : ''}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#222;line-height:1.5">
+        <h2 style="color:${isUrgent ? '#dc2626' : TEAL};margin-bottom:4px">${isUrgent ? t.urgent + ' · ' : ''}${t.h}</h2>
+        <p style="color:#666;margin-top:0">${esc(opts.tenantName)}</p>
+        <table style="border-collapse:collapse;margin:16px 0">
+          ${detailRow(t.name, opts.callerName)}
+          ${detailRow(t.phone, opts.callerPhone)}
+          ${detailRow(t.addr, opts.address)}
+          ${detailRow(t.prob, opts.problem)}
+        </table>
+        <a href="${opts.appBaseUrl}/conversations" style="display:inline-block;background:${TEAL};color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:14px">${t.cta}</a>
+        <p style="color:#bbb;font-size:11px;margin-top:24px">MyOrbisVoice · ${t.foot}</p>
+      </div>`,
+  })
+}
+
+/** Caller-facing written confirmation that a callback is on its way. */
+export async function sendCallbackCallerConfirmation(opts: {
+  to: string
+  tenantId: string
+  tenantName: string
+  who: string
+  whenPhrase: string
+  locale?: string
+}): Promise<SendResult> {
+  const es = (opts.locale ?? 'en').toLowerCase().startsWith('es')
+  const t = es
+    ? { subj: `Recibimos tu solicitud — ${opts.tenantName}`, h: 'Recibimos tu solicitud', body: `Gracias por llamar a ${esc(opts.tenantName)}. ${esc(opts.who)} te devolverá la llamada ${esc(opts.whenPhrase)}.`, ps: 'Si necesitas agregar algo, responde a este correo o vuelve a llamarnos en cualquier momento.', foot: 'Confirmación enviada por MyOrbisVoice en nombre de este negocio.' }
+    : { subj: `We got your request — ${opts.tenantName}`, h: 'We got your request', body: `Thanks for calling ${esc(opts.tenantName)}. ${esc(opts.who)} will call you back ${esc(opts.whenPhrase)}.`, ps: 'Need to add anything? Just reply to this email or call us back anytime.', foot: 'Confirmation sent by MyOrbisVoice on behalf of this business.' }
+  return sendEmail({
+    to: opts.to,
+    tenantId: opts.tenantId,
+    subject: t.subj,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#222;line-height:1.55">
+        <h2 style="color:${TEAL};margin-bottom:4px">${t.h} ✅</h2>
+        <p style="color:#666;margin-top:0">${esc(opts.tenantName)}</p>
+        <p>${t.body}</p>
+        <p style="color:#555">${t.ps}</p>
+        <p style="color:#bbb;font-size:11px;margin-top:24px">${t.foot}</p>
+      </div>`,
+  })
+}
+
+/** Business-owner alert: an appointment was booked on a call. */
+export async function sendBookingOwnerNotification(opts: {
+  to: string
+  tenantId: string
+  tenantName: string
+  callerName?: string | null
+  callerPhone?: string | null
+  appointmentType?: string | null
+  whenLabel: string
+  location?: string | null
+  notes?: string | null
+  appBaseUrl: string
+  locale?: string
+}): Promise<SendResult> {
+  const es = (opts.locale ?? 'en').toLowerCase().startsWith('es')
+  const t = es
+    ? { subj: 'Nueva cita reservada', h: 'Nueva cita reservada', name: 'Cliente', phone: 'Teléfono', type: 'Tipo', when: 'Cuándo', loc: 'Lugar', notes: 'Notas', cta: 'Ver en MyOrbisVoice →', foot: 'Administra las notificaciones en la configuración de tu espacio.' }
+    : { subj: 'New appointment booked', h: 'New appointment booked', name: 'Customer', phone: 'Phone', type: 'Type', when: 'When', loc: 'Location', notes: 'Notes', cta: 'View in MyOrbisVoice →', foot: 'Manage notifications in your workspace settings.' }
+  return sendEmail({
+    to: opts.to,
+    tenantId: opts.tenantId,
+    subject: `${t.subj}${opts.callerName ? ` — ${opts.callerName}` : ''}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#222;line-height:1.5">
+        <h2 style="color:${TEAL};margin-bottom:4px">${t.h} 📅</h2>
+        <p style="color:#666;margin-top:0">${esc(opts.tenantName)}</p>
+        <table style="border-collapse:collapse;margin:16px 0">
+          ${detailRow(t.name, opts.callerName)}
+          ${detailRow(t.phone, opts.callerPhone)}
+          ${detailRow(t.type, opts.appointmentType)}
+          ${detailRow(t.when, opts.whenLabel)}
+          ${detailRow(t.loc, opts.location)}
+          ${detailRow(t.notes, opts.notes)}
+        </table>
+        <a href="${opts.appBaseUrl}/conversations" style="display:inline-block;background:${TEAL};color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:14px">${t.cta}</a>
+        <p style="color:#bbb;font-size:11px;margin-top:24px">MyOrbisVoice · ${t.foot}</p>
+      </div>`,
+  })
+}
+
 /** Password-reset email. Sends a one-shot URL with the raw token in the
  *  query string. The token expires in 15 minutes and can only be used
  *  once — token is hashed in the DB so a leak doesn't compromise pending
