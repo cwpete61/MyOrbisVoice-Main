@@ -73,6 +73,9 @@ export function resolveSystemPrompt(
    *  calendar behavior — Orby captures a callback instead of offering times.
    *  See docs/scheduling-modes-plan.md. */
   scheduling?: { mode?: string; callbackWho?: string; callbackSla?: string } | null,
+  /** Tenant's own name (BusinessProfile.brandName or Tenant.displayName) used as
+   *  the business-name fallback when DNA identity.businessName is blank. */
+  fallbackBusinessName?: string | null,
 ): string {
   const layers: string[] = []
 
@@ -242,10 +245,11 @@ export function resolveSystemPrompt(
     typeof dnaIdentity['agentName'] === 'string' && dnaIdentity['agentName'].trim()
       ? (dnaIdentity['agentName'] as string).trim()
       : 'Orby'
-  const resolvedBusinessName =
-    typeof dnaIdentity['businessName'] === 'string'
-      ? (dnaIdentity['businessName'] as string).trim()
-      : ''
+  // Prefer the DNA identity businessName; fall back to the tenant's own name
+  // (Tenant.displayName / BusinessProfile.brandName, passed in) so Orby names the
+  // business even when the DNA identity field was left blank.
+  const dnaBusinessName = typeof dnaIdentity['businessName'] === 'string' ? (dnaIdentity['businessName'] as string).trim() : ''
+  const resolvedBusinessName = dnaBusinessName || (fallbackBusinessName?.trim() || '')
   if (resolvedBusinessName) {
     layers.push(
       `You are ${resolvedAgentName}, an AI assistant for ${resolvedBusinessName}. ` +

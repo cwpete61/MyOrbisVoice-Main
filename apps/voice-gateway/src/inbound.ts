@@ -537,6 +537,7 @@ export async function handleInboundCall(ws: WebSocket) {
       await loadLearnedRules(tenantId), // Call-Review Phase 2 — published corrections
       payCfg?.industryVertical ?? null, // Layer 1.2 — default vertical persona
       scheduling,                       // Layer 1.3 — scheduling-mode behavior
+      payCfg?.displayName ?? null,      // business-name fallback when DNA is blank
     )
 
     // After-hours awareness. The call reached Orby outside business hours (the

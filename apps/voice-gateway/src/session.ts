@@ -92,13 +92,15 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     ? meta['partner']
     : null
   const tenantRow = await prisma.tenant.findUnique({
-    where: { id: session.tenantId }, select: { industryVertical: true },
+    where: { id: session.tenantId }, select: { industryVertical: true, displayName: true },
   })
   const systemPrompt = resolveSystemPrompt(
     prompts, dna, 'WIDGET', buildToolGuidanceBlock(), kbText, partner,
     null,                             // no caller-history on the widget
     await loadLearnedRules(session.tenantId), // Call-Review Phase 2 — published corrections
     tenantRow?.industryVertical ?? null,      // Layer 1.2 — default vertical persona
+    null,                                     // no scheduling override on widget
+    tenantRow?.displayName ?? null,           // business-name fallback
   )
 
   const transcript: TranscriptEntry[] = []

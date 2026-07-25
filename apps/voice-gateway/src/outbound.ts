@@ -221,7 +221,7 @@ export async function handleOutboundCall(ws: WebSocket) {
     }
 
     const outboundTenant = await prisma.tenant.findUnique({
-      where: { id: tenantId }, select: { industryVertical: true },
+      where: { id: tenantId }, select: { industryVertical: true, displayName: true },
     })
     const systemPrompt = resolveSystemPrompt(
       prompts as any[],
@@ -233,6 +233,8 @@ export async function handleOutboundCall(ws: WebSocket) {
       callerHistoryBlock,    // E.7 — Callee Context layer
       await loadLearnedRules(tenantId), // Call-Review Phase 2 — published corrections
       outboundTenant?.industryVertical ?? null, // Layer 1.2 — default vertical persona
+      null,                                     // no scheduling override on outbound
+      outboundTenant?.displayName ?? null,      // business-name fallback
     )
 
     // Build greeting from DNA business name + campaign description
