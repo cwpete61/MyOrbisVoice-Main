@@ -372,6 +372,20 @@ export const TOOL_DECLARATIONS = [
       required: ['window_date', 'window_slot', 'contact_phone_or_email'],
     },
   },
+  {
+    name: 'transfer_call',
+    description:
+      'Transfer the LIVE phone call to a human right now. Use when the caller asks to speak to a person, OR when it is a genuine EMERGENCY that needs immediate human help. ' +
+      'Say ONE brief line first ("Let me connect you with someone right now — one moment"), THEN call this. After it succeeds the call leaves you and rings the human — stop talking. ' +
+      'Only offer/attempt a transfer if your instructions indicate a transfer number is set; otherwise take a message or a callback instead.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        reason: { type: 'STRING', description: 'Short reason: EMERGENCY, CALLER_REQUEST, or a brief phrase.' },
+      },
+      required: [],
+    },
+  },
 ] as const
 
 export type ToolName = (typeof TOOL_DECLARATIONS)[number]['name']
@@ -706,6 +720,23 @@ const handlers: Record<ToolName, ToolHandler> = {
       appointment_id: result.data.appointmentId,
       message: `Booked the ${result.data.label} arrival window. Confirm it to the caller ("you're all set for ${result.data.label}") — do NOT promise an exact clock time.`,
     }
+  },
+
+  // Live transfer to a human (emergency / caller-requested). Redirects the active
+  // Twilio call away from the media stream to a <Dial> the tenant's transfer number.
+  async transfer_call(args, ctx) {
+    if (!ctx.callSid) {
+      return { ok: false, error: 'no live call', message: 'There is no live phone call to transfer. Offer to take a message or a callback instead.' }
+    }
+    const result = await callApi<{ ok: boolean; to?: string }>(
+      '/api/internal/gateway/tools/transfer-call',
+      ctx.tenantId,
+      { callSid: ctx.callSid, ownerAccountSid: ctx.ownerAccountSid ?? null, reason: String(args['reason'] ?? '') },
+    )
+    if (!result.ok) {
+      return { ok: false, error: result.error, message: 'Could not connect the transfer. Tell the caller you\'ll have someone call them right back, take their name + number, then use request_callback or record a message.' }
+    }
+    return { ok: true, message: 'Transfer connected — the call is being handed to a person. Stop talking; the transfer takes over the call now.' }
   },
   // end_call is intercepted in session.ts onToolCall BEFORE executeTool is
   // invoked (the gateway closes the WebSocket itself — there's no API roundtrip).

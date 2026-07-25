@@ -587,6 +587,14 @@ export async function handleInboundCall(ws: WebSocket) {
       console.error('[inbound] confirmation-channel prompt failed (non-fatal):', (e as Error).message)
     }
 
+    // Live transfer — only offer when the tenant configured a transfer number.
+    // Orby can triage ("is this an emergency?") and connect a human on demand.
+    const transferTo = (channelCfgJson['transferNumber'] as string) || (channelCfgJson['forwardingNumber'] as string) || ''
+    if (transferTo) {
+      systemPrompt += '\n\n--- Live transfer available ---\n' +
+        'You can connect the caller to a live person immediately. If the caller asks to speak to someone, OR the issue sounds like a genuine emergency, you may ask once "Is this an emergency?" — and if they say yes or ask for a person, say "Let me connect you with someone right now — one moment" and then call the transfer_call tool. Use it ONLY for real emergencies or an explicit request for a human; otherwise handle the call yourself or take a message.'
+    }
+
     // Look up tenant's Gemini API key; fall back to platform env key
     const geminiConn = await prisma.integrationConnection.findFirst({
       where: { tenantId, provider: 'GEMINI', status: 'CONNECTED' },

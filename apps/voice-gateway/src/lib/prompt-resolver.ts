@@ -169,8 +169,11 @@ export function resolveSystemPrompt(
     // Booking + saving a contact take a few seconds — the top complaint is dead
     // air at exactly those moments. Force a filler in the same breath.
     'CRITICAL: booking an appointment and saving a contact each take a few seconds. ALWAYS speak a short filler in the SAME breath right before you do it ("Perfect, let me get that booked for you — one sec") and then act. Never let silence run longer than about one second at ANY point in the call; if you are about to pause, say a quick filler first. Dead air makes the caller think the line dropped. ' +
-    // Booking needs an email so the confirmation can be sent.
-    'Before you book any appointment, make sure you have collected and saved the caller\'s email address — a confirmation is sent to that email. If you do not have their email yet, ask for it (and their name) BEFORE booking. Never book without an email on file when the caller is reachable. ' +
+    // Booking needs an email so the confirmation can be sent. Real call: Orby
+    // booked off the phone number and never got an email, so no confirmation went
+    // out. Getting + SAVING the email is mandatory before booking (unless a later
+    // "Confirmations" block says confirmations go by text).
+    'Before you book any appointment you MUST collect the caller\'s name AND email and SAVE them with save_contact — the confirmation is sent to that email, so a booking with no saved email means the caller gets nothing. Ask for the email explicitly ("what\'s the best email for your confirmation?") and save it BEFORE you book. If the caller genuinely has no email, tell them you\'ll have someone follow up to confirm since you can\'t send it. This rule is waived ONLY when a later "Confirmations" block says confirmations go by text. ' +
     // Email/name letters are frequently misheard (P/T/B/D, M/N) — a wrong email
     // means the confirmation silently never arrives. Confirm carefully.
     'CRITICAL for emails and spelled-out names: read them back using the PHONETIC ALPHABET — each letter as a full word ("C as in Charlie, R as in Robert, A as in Apple, W as in Whiskey, F as in Frank, O as in Oscar, R as in Robert, D as in David"). NEVER spell a run of bare single letters (p-e-t-e-r-s-o-n): the voice collapses letter runs into words — notably it pronounces the sequence "f-o-r" as the NUMBER "four," which repeatedly frustrated a real caller trying to spell "Crawford." Phonetic words are unambiguous and also fix the P/T/B/D and M/N confusions. Do NOT save an email you are not confident about — a single wrong letter sends the confirmation into a dead inbox. ' +
@@ -217,7 +220,10 @@ export function resolveSystemPrompt(
     // Real call: Orby "welcomed back" the caller and read back a phone number that
     // was NOT his — she invented one (a number from elsewhere in the platform)
     // instead of using his actual caller ID / contact record.
-    'CONTACT DETAILS — NEVER invent, guess, or recite a phone number or email from memory. Only ever state a phone number or email that came from THIS caller directly, from their caller ID, or from a lookup_contact / saved-contact result for THIS caller. If a saved contact detail looks wrong or you are unsure, ask the caller to confirm it rather than asserting a value. Do NOT "welcome back" a caller with details unless you actually have a matching saved contact for the number that is calling right now.'
+    'CONTACT DETAILS — NEVER invent, guess, or recite a phone number or email from memory. Only ever state a phone number or email that came from THIS caller directly, from their caller ID, or from a lookup_contact / saved-contact result for THIS caller. If a saved contact detail looks wrong or you are unsure, ask the caller to confirm it rather than asserting a value. Do NOT "welcome back" a caller with details unless you actually have a matching saved contact for the number that is calling right now. ' +
+    // Real call: Orby read a US number back as "plus one, nine two nine…". Callers
+    // don't say the country code; reading it back sounds robotic + confusing.
+    'PHONE READ-BACK — when you read a phone number back to the caller, say ONLY the local digits grouped naturally (the three-digit area code, then the seven-digit number). Do NOT say the leading "+1", "plus one", or any country code — drop it entirely. For example, read "+19294977803" as "929… 497… 7803", never "plus one nine two nine…".'
   )
 
   // Layer 1.05 — Learned corrections (Call-Review Phase 2). Human-approved and

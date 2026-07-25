@@ -632,6 +632,51 @@ router.post('/internal/gateway/tools/book-window', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ---------- tool: transfer_call (live emergency / human handoff) ----------
+// Redirects the active Twilio call away from the Gemini media stream to a <Dial>
+// of the tenant's transfer number. Orby has already spoken the handoff line, so
+// no TTS here. Fails cleanly (ok:false) when no transfer number is configured.
+const transferCallSchema = z.object({
+  callSid:         z.string().min(1),
+  ownerAccountSid: z.string().nullable().optional(),
+  reason:          z.string().max(120).optional(),
+})
+router.post('/internal/gateway/tools/transfer-call', async (req, res, next) => {
+  try {
+    const tenantId = (req as any).internalTenantId as string
+    const d = transferCallSchema.parse(req.body)
+
+    const [chan, tenant] = await Promise.all([
+      prisma.channelConfig.findFirst({ where: { tenantId, channelType: 'INBOUND' }, select: { configJson: true } }),
+      prisma.tenant.findUnique({ where: { id: tenantId }, select: { publicPhone: true } }),
+    ])
+    const cfg = (chan?.configJson ?? {}) as Record<string, unknown>
+    // Transfer target from channel config (admin-set), falling back to publicPhone.
+    // Sanitize to phone chars only — it's interpolated into TwiML.
+    const raw = (cfg['transferNumber'] as string) || (cfg['forwardingNumber'] as string) || tenant?.publicPhone || ''
+    const to = raw.replace(/[^+0-9]/g, '')
+    if (!to) { res.json({ data: { ok: false, error: 'no_transfer_number' } }); return }
+
+    // Build a Twilio client for the account the call lives on (subaccount or master).
+    const { getPlatformTwilioClient } = await import('../services/twilio.service.js')
+    const master = await getPlatformTwilioClient()
+    let client = master
+    if (d.ownerAccountSid && d.ownerAccountSid !== master.accountSid) {
+      const { getSubaccountAuthTokenBySid } = await import('../services/twilio-subaccount.service.js')
+      const token = await getSubaccountAuthTokenBySid(d.ownerAccountSid)
+      if (token) {
+        const Twilio = (await import('twilio')).default
+        client = Twilio(d.ownerAccountSid, token)
+      }
+    }
+
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Dial>${to}</Dial></Response>`
+    await client.calls(d.callSid).update({ twiml })
+    await writeAuditLog({ tenantId, actorType: 'SYSTEM', action: 'gateway.tool.transfer_call', targetType: 'Call', targetId: d.callSid, metadataJson: { to, reason: d.reason ?? '' } })
+    res.json({ data: { ok: true, to } })
+  } catch (err) { next(err) }
+})
+
 // ---------- internal: cancel an appointment created during this session ----------
 //
 // Used to compensate when Gemini Live emits a `toolCallCancellation` for a
