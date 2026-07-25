@@ -579,8 +579,8 @@ export async function handleInboundCall(ws: WebSocket) {
         const smsReady = await prisma.phoneNumber.findFirst({ where: { tenantId, isSmsEnabled: true, a2pStatus: 'APPROVED' }, select: { id: true } })
         if (smsReady) {
           systemPrompt += confChannel === 'BOTH'
-            ? '\n\n--- Confirmations ---\nSend the caller their confirmation by BOTH text and email. The text goes to the number they are calling from; still collect their email for the emailed copy.'
-            : '\n\n--- Confirmations ---\nConfirmations are sent by TEXT to the number the caller is calling from. You do NOT need to collect or spell out an email address for the confirmation — just make sure their callback number is right.'
+            ? '\n\n--- Confirmations (OVERRIDE) ---\nConfirmations for this business go by BOTH text and email. The text goes to the number they are calling from. Collect their email for the emailed copy, and when you confirm the booking tell them "I\'ll text and email your confirmation."'
+            : '\n\n--- Confirmations (OVERRIDE) ---\nConfirmations for this business go by TEXT to the number the caller is calling from. This OVERRIDES any earlier instruction to collect an email before booking: you may book WITHOUT an email — do NOT ask for or spell out an email. Just confirm their callback number is correct, and when you book tell them "I\'ll text your confirmation to this number." Never say you will email them.'
         }
       }
     } catch (e) {
