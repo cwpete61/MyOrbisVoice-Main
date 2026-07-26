@@ -518,7 +518,14 @@
 
     async _startRecording() {
       try {
-        this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } })
+        // echoCancellation is REQUIRED: on speakers (not headphones) the mic
+        // otherwise captures Orby's own voice, Gemini's VAD hears it as the
+        // caller speaking, and she interrupts/answers herself — turns pile up
+        // and "step on each other." AEC removes the rendered output from the
+        // captured signal. noiseSuppression + autoGainControl further stabilize
+        // what the model hears. Phones get this from the carrier; browsers must
+        // ask for it explicitly.
+        this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
         // Primary path: a 16 kHz capture context (matches what the gateway expects).
         // Some Samsung devices throw NotSupportedError when forced off their native
         // rate — fall back to an unconstrained context and downsample to 16 kHz in
