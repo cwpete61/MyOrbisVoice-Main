@@ -103,6 +103,19 @@
   .val{text-align:center;padding:8px 6px}
   .val b{display:block;font-size:clamp(26px,4vw,38px);font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;background:linear-gradient(120deg,var(--orbylite),var(--mm));-webkit-background-clip:text;background-clip:text;color:transparent}
   .val span{color:var(--sub);font-size:12.5px}
+  /* features & benefits */
+  .featlist{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:14px;counter-reset:feat}
+  .feat{display:flex;gap:14px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;backdrop-filter:var(--glass);transition:transform .2s,border-color .2s}
+  .feat:hover{transform:translateY(-3px);border-color:rgba(31,195,195,.4)}
+  .fnum{flex:0 0 auto;width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#03201f;background:linear-gradient(140deg,var(--orbylite),var(--orby));font-variant-numeric:tabular-nums}
+  .fbody{flex:1;min-width:0}
+  .fhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px}
+  .fhead h3{margin:0;font-size:15.5px;letter-spacing:-.2px}
+  .ftag{font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap}
+  .ftag.inc{color:#8ff0c0;background:rgba(52,199,89,.12);border:1px solid rgba(52,199,89,.35)}
+  .ftag.int{color:#bcd2ff;background:rgba(90,140,255,.12);border:1px solid rgba(90,140,255,.35)}
+  .feat p{margin:0;color:var(--sub);font-size:13.5px;line-height:1.5}
+
   /* reveal-on-scroll */
   .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1)}
   .reveal.in{opacity:1;transform:none}
@@ -195,7 +208,7 @@
   @media (max-width:900px){
     .hero .wrap{grid-template-columns:1fr;gap:24px}
     .hero h1{font-size:34px}
-    .grid,.steps{grid-template-columns:1fr}
+    .grid,.steps,.featlist{grid-template-columns:1fr}
     .book{grid-template-columns:1fr}
   }
 </style>
@@ -298,6 +311,13 @@
   <div class="grid" id="benGrid"></div>
 </div></section>
 
+<!-- FEATURES & BENEFITS -->
+<section id="features" class="band"><div class="wrap">
+  <h2 class="sec-title" id="featTitle">Everything Orby does</h2>
+  <p class="sec-sub" id="featSub">Features that pay for themselves.</p>
+  <ol class="featlist" id="featList"></ol>
+</div></section>
+
 <!-- HOW -->
 <section id="how"><div class="wrap">
   <h2 class="sec-title" id="howTitle">How it works</h2>
@@ -365,6 +385,21 @@
         ["⚡","Response","Picks up every call and web chat in under 3 seconds, day or night, so no one reaches a dead end."],
         ["💳","Sales","Qualifies interest, hands off to Stephanie, or books the call — and explains MoreMito Cash referrals."],
         ["🌎","Bilingual","Speaks fluent English and Spanish automatically — every customer feels at home."]
+      ],
+      featTitle:"Everything Orby does",
+      featSub:"Features that pay for themselves — in the order that matters most.",
+      tagInc:"Included", tagInt:"Integration",
+      features:[
+        ["Captures & verifies every lead","Collects each caller's name, phone, and email — and reads the email back to confirm it. No lead lost to a typo.","inc"],
+        ["Answers product & affiliate questions","Explains your products and the MoreMito Cash referral program clearly, instantly, 24/7.","inc"],
+        ["Sends emails on the spot","Emails product details — or how to become an affiliate — right after the call, automatically.","inc"],
+        ["Warm-transfers to a person","Hands the caller to Stephanie or an affiliate the moment a human is needed.","inc"],
+        ["Books appointments","Books calls and consultations straight onto the calendar.","inc"],
+        ["Stays compliant","Never makes medical claims — defers health questions to a professional. Supplement rules built in.","inc"],
+        ["Remembers every conversation","Logs each call with a summary and builds a customer & affiliate record — a CRM that fills itself.","inc"],
+        ["Plugs into your CRM","Syncs contacts and conversations into the tools you already use.","int"],
+        ["Connects to your systems","Via API: order history, order tracking, and customer or affiliate signup.","int"],
+        ["…and more","Outbound follow-up, review requests, win-back campaigns, bilingual EN/ES, and custom flows.","inc"]
       ],
       howTitle:"How it works",
       howSub:"Live in a day. No app for your customers to download — they just call or click.",
@@ -444,6 +479,21 @@
         ["💳","Ventas","Califica el interés, te conecta con Stephanie o agenda la llamada — y explica los referidos MoreMito Cash."],
         ["🌎","Bilingüe","Habla inglés y español con fluidez automáticamente — cada cliente se siente en casa."]
       ],
+      featTitle:"Todo lo que hace Orby",
+      featSub:"Funciones que se pagan solas — en el orden que más importa.",
+      tagInc:"Incluido", tagInt:"Integración",
+      features:[
+        ["Captura y verifica cada lead","Recoge nombre, teléfono y correo de cada persona — y le repite el correo para confirmarlo. Ningún lead se pierde por un error.","inc"],
+        ["Responde dudas de productos y afiliados","Explica tus productos y el programa de referidos MoreMito Cash con claridad, al instante, 24/7.","inc"],
+        ["Envía correos al momento","Envía detalles de productos — o cómo hacerse afiliado — justo después de la llamada, en automático.","inc"],
+        ["Transfiere a una persona","Conecta a la persona con Stephanie o un afiliado en cuanto se necesita a un humano.","inc"],
+        ["Agenda citas","Agenda llamadas y consultas directo en el calendario.","inc"],
+        ["Cumple normas","Nunca hace afirmaciones médicas — deriva las dudas de salud a un profesional. Reglas de suplementos integradas.","inc"],
+        ["Recuerda cada conversación","Registra cada llamada con un resumen y crea un expediente de cliente y afiliado — un CRM que se llena solo.","inc"],
+        ["Se conecta a tu CRM","Sincroniza contactos y conversaciones con las herramientas que ya usas.","int"],
+        ["Se conecta a tus sistemas","Vía API: historial de pedidos, seguimiento de envíos y alta de clientes o afiliados.","int"],
+        ["…y más","Seguimiento saliente, solicitud de reseñas, recuperación de clientes, bilingüe EN/ES y flujos a medida.","inc"]
+      ],
       howTitle:"Cómo funciona",
       howSub:"Lista en un día. Sin apps que descargar — solo llaman o hacen clic.",
       steps:[
@@ -514,6 +564,7 @@
     $("heroCallTxt").textContent=d.heroCallTxt;$("heroHow").textContent=d.heroHow;
     $("t1").textContent=d.t1;$("t2").textContent=d.t2;$("t3").textContent=d.t3;
     $("benTitle").textContent=d.benTitle;$("benSub").textContent=d.benSub;
+    $("featTitle").textContent=d.featTitle;$("featSub").textContent=d.featSub;
     $("howTitle").textContent=d.howTitle;$("howSub").textContent=d.howSub;
     $("bookH2").textContent=d.bookH2;$("bookP1").textContent=d.bookP1;$("bookP2").textContent=d.bookP2;
     $("bkName").placeholder=d.bkName;$("bkEmail").placeholder=d.bkEmail;$("bkPhone").placeholder=d.bkPhone;$("bkCo").placeholder=d.bkCo;$("bkSubmit").textContent=d.bkSubmit;
@@ -525,6 +576,7 @@
     var g=$("benGrid");g.innerHTML="";d.benefits.forEach(function(b){var c=document.createElement("div");c.className="cardx";c.innerHTML='<div class="ic">'+b[0]+'</div><h3>'+b[1]+'</h3><p>'+b[2]+'</p>';g.appendChild(c);});
     var s=$("stepGrid");s.innerHTML="";d.steps.forEach(function(st,i){var c=document.createElement("div");c.className="step";c.innerHTML='<div class="n">'+(i+1)+'</div><h3>'+st[0]+'</h3><p>'+st[1]+'</p>';s.appendChild(c);});
     var vs=$("valStrip");vs.innerHTML="";d.values.forEach(function(v){var c=document.createElement("div");c.className="val";c.innerHTML='<b>'+v[0]+'</b><span>'+v[1]+'</span>';vs.appendChild(c);});
+    var fl=$("featList");fl.innerHTML="";d.features.forEach(function(f,i){var li=document.createElement("li");li.className="feat";var tag=f[2]==="int"?'<span class="ftag int">'+d.tagInt+'</span>':'<span class="ftag inc">'+d.tagInc+'</span>';li.innerHTML='<span class="fnum">'+(i+1)+'</span><div class="fbody"><div class="fhead"><h3>'+f[0]+'</h3>'+tag+'</div><p>'+f[1]+'</p></div>';fl.appendChild(li);});
     setupReveal();
   }
   // reveal-on-scroll — tag content blocks once, observe, fade up into view
@@ -532,7 +584,7 @@
   function setupReveal(){
     if(!("IntersectionObserver" in window))return;
     if(!_revObs)_revObs=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");_revObs.unobserve(e.target);}});},{threshold:.12,rootMargin:"0px 0px -40px 0px"});
-    document.querySelectorAll(".cardx,.step,.val,.sec-title,.sec-sub,.book").forEach(function(el){if(!el.classList.contains("reveal")){el.classList.add("reveal");_revObs.observe(el);}});
+    document.querySelectorAll(".cardx,.step,.val,.feat,.sec-title,.sec-sub,.book").forEach(function(el){if(!el.classList.contains("reveal")){el.classList.add("reveal");_revObs.observe(el);}});
   }
 
   // ---------- engine detection ----------
