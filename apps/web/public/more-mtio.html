@@ -60,7 +60,10 @@
   .nav button.mini[aria-pressed="true"]{color:var(--ink);border-color:var(--orby)}
 
   /* hero */
-  .hero{padding:64px 0 24px}
+  .hero{padding:40px 0 20px}
+  /* explainer video */
+  .video-wrap{max-width:900px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid var(--line);box-shadow:0 30px 70px rgba(0,0,0,.45);background:#000;aspect-ratio:16/9}
+  .video-wrap video{width:100%;height:100%;display:block;object-fit:cover}
   .hero .wrap{display:grid;grid-template-columns:1.12fr .88fr;gap:44px;align-items:center}
   .eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--orbylite);background:rgba(31,195,195,.08);border:1px solid rgba(31,195,195,.28);padding:6px 13px;border-radius:999px}
   .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--orby);box-shadow:0 0 10px var(--orby);animation:pulseDot 2s infinite}
@@ -203,7 +206,7 @@
   .email .row{display:flex;gap:8px;margin:5px 0}
   .email .row span{color:#7a8aa0;min-width:60px}
   .email .close{display:block;width:100%;border:0;background:var(--orby);color:#03201f;padding:11px;font-weight:700;font-size:14px;cursor:pointer}
-  .badge{position:absolute;top:52px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(6,24,24,.85);border:1px solid rgba(25,181,181,.35);color:#8fe0e0;font-size:10.5px;font-weight:700;letter-spacing:.4px;padding:3px 9px;border-radius:999px}
+  .badge{position:absolute;top:40px;right:12px;z-index:7;background:rgba(6,24,24,.85);border:1px solid rgba(25,181,181,.35);color:#8fe0e0;font-size:10px;font-weight:700;letter-spacing:.4px;padding:3px 9px;border-radius:999px}
 
   @media (max-width:900px){
     .hero .wrap{grid-template-columns:1fr;gap:24px}
@@ -321,6 +324,15 @@
   </div>
 </section>
 
+<!-- EXPLAINER VIDEO -->
+<section id="explainer"><div class="wrap">
+  <h2 class="sec-title" id="expTitle">See Orby in 30 seconds</h2>
+  <p class="sec-sub" id="expSub">How Orby answers, captures, and books — for MoreMito.</p>
+  <div class="video-wrap">
+    <video id="expVideo" controls preload="metadata" playsinline poster="" src="/moremito-explainer-en.mp4"></video>
+  </div>
+</div></section>
+
 <!-- VALUE STRIP -->
 <section class="band" style="padding:30px 0"><div class="wrap">
   <div class="valstrip" id="valStrip"></div>
@@ -398,6 +410,7 @@
       heroCallTxt:"Talk to Orby now", heroHow:"See how it works",
       t1:"Never a missed call", t2:"Answers instantly", t3:"Bilingual by default",
       values:[["40%","of calls to small businesses go unanswered"],["85%","of people who can't reach you never call back"],["24/7","Orby answers — nights, weekends, holidays"],["<3s","average time to pick up"]],
+      expTitle:"See Orby in 30 seconds", expSub:"How Orby answers, captures, and books — for MoreMito.", videoSrc:"/moremito-explainer-en.mp4",
       benTitle:"One assistant. Every job you can't get to.",
       benSub:"Orby is a MoreMito team member that works 24/7 — for a fraction of a part-time hire.",
       benefits:[
@@ -491,6 +504,7 @@
       heroCallTxt:"Habla con Orby ahora", heroHow:"Cómo funciona",
       t1:"Nunca una llamada perdida", t2:"Contesta al instante", t3:"Bilingüe por defecto",
       values:[["40%","de las llamadas a pequeños negocios quedan sin contestar"],["85%","de quienes no te localizan nunca vuelven a llamar"],["24/7","Orby contesta — noches, fines de semana, festivos"],["<3s","tiempo promedio para contestar"]],
+      expTitle:"Mira a Orby en 30 segundos", expSub:"Cómo Orby contesta, captura y agenda — para MoreMito.", videoSrc:"/moremito-explainer-es.mp4",
       benTitle:"Una asistente. Todo lo que no alcanzas a hacer.",
       benSub:"Orby es un miembro del equipo de MoreMito que trabaja 24/7 — por una fracción de una contratación de medio tiempo.",
       benefits:[
@@ -585,6 +599,8 @@
     $("eyebrow").textContent=d.eyebrow;$("heroH1").innerHTML=d.heroH1;$("heroLead").textContent=d.heroLead;
     $("heroCallTxt").textContent=d.heroCallTxt;$("heroHow").textContent=d.heroHow;
     $("t1").textContent=d.t1;$("t2").textContent=d.t2;$("t3").textContent=d.t3;
+    $("expTitle").textContent=d.expTitle;$("expSub").textContent=d.expSub;
+    var ev=$("expVideo"); if(ev && !ev.src.endsWith(d.videoSrc)){ var playing=!ev.paused; ev.src=d.videoSrc; if(playing) ev.play().catch(function(){}); }
     $("benTitle").textContent=d.benTitle;$("benSub").textContent=d.benSub;
     $("featTitle").textContent=d.featTitle;$("featSub").textContent=d.featSub;
     $("howTitle").textContent=d.howTitle;$("howSub").textContent=d.howSub;

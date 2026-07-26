@@ -24,6 +24,7 @@ import { OrbyExplainerFinal01_16x9, ORBY_FINAL_01_FRAMES } from './compositions/
 import { OrbyExplainerFinalES_16x9, ORBY_FINAL_ES_FRAMES } from './compositions/OrbyExplainerFinalES_16x9'
 import { OrbyAgentsShort, ORBY_AGENTS_SHORT_FRAMES } from './compositions/OrbyAgentsShort'
 import { OrbyAgentsMarketing, ORBY_AGENTS_MKT_FRAMES } from './compositions/OrbyAgentsMarketing'
+import { MoreMitoExplainer16x9, MOREMITO_FRAMES } from './compositions/MoreMitoExplainer16x9'
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -56,6 +57,9 @@ export const RemotionRoot: React.FC = () => {
       {/* ── MyOrbisAgents explainers (teal RE-ISA brand, Aoede narration) ─── */}
       <Composition id="Orby-Agents-Short-16x9" component={OrbyAgentsShort} durationInFrames={ORBY_AGENTS_SHORT_FRAMES} fps={30} width={1920} height={1080} />
       <Composition id="Orby-Agents-Marketing-16x9" component={OrbyAgentsMarketing} durationInFrames={ORBY_AGENTS_MKT_FRAMES} fps={30} width={1920} height={1080} />
+      {/* ── MoreMito × Orby homepage explainer (bilingual pair) ──────────── */}
+      <Composition id="MoreMito-Explainer-16x9"    component={MoreMitoExplainer16x9} durationInFrames={MOREMITO_FRAMES} fps={30} width={1920} height={1080} defaultProps={{ lang: 'en' as const }} />
+      <Composition id="MoreMito-Explainer-ES-16x9" component={MoreMitoExplainer16x9} durationInFrames={MOREMITO_FRAMES} fps={30} width={1920} height={1080} defaultProps={{ lang: 'es' as const }} />
     </>
   )
 }
