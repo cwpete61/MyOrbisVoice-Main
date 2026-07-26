@@ -279,6 +279,14 @@ export function resolveSystemPrompt(
     )
   }
 
+  // Pronunciation — surfaced as its own prominent line (not just inside the
+  // stringified identity JSON below, which native-audio models under-weight).
+  // Placed right after the name so the model reads it before it ever speaks.
+  const dnaPronunciation = typeof dnaIdentity['pronunciation'] === 'string' ? (dnaIdentity['pronunciation'] as string).trim() : ''
+  if (dnaPronunciation) {
+    layers.push('PRONUNCIATION — CRITICAL. This governs how you SAY names out loud, every single time, in English and Spanish: ' + dnaPronunciation)
+  }
+
   // Layer 1.2 — Vertical persona (default behavior for this tenant's industry).
   // Real estate is no longer hardcoded in the baseline above; it — and every
   // other vertical — comes from here, selected by the tenant's IndustryVertical.
