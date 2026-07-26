@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MoreMito × Orby — your AI assistant that never misses a call</title>
+<style>
+  :root{
+    --bg:#050a12; --ink:#eef4fb; --sub:#93a6bd; --faint:#61758f;
+    --orby:#1fc3c3; --orby2:#0e8f8f; --orbylite:#5fe6e6; --mm:#5fc46a; --mm2:#2f8f3a;
+    --green:#34c759; --red:#ff3b30;
+    --card:rgba(19,32,52,.72); --card2:rgba(14,26,44,.6); --line:rgba(120,160,200,.14);
+    --glass:blur(14px) saturate(140%);
+    --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --r:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--sans);color:var(--ink);line-height:1.6;
+    background:var(--bg);
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    position:relative;overflow-x:hidden;
+  }
+  /* aurora backdrop — a living teal↔green wash, the Orby orb writ large */
+  body::before{
+    content:"";position:fixed;inset:-20% -10% auto -10%;height:120vh;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(48vw 40vw at 78% 8%,rgba(31,195,195,.20),transparent 60%),
+      radial-gradient(42vw 38vw at 8% 22%,rgba(95,196,106,.16),transparent 62%),
+      radial-gradient(60vw 50vw at 50% 120%,rgba(14,143,143,.14),transparent 60%);
+    animation:aurora 24s ease-in-out infinite alternate;
+  }
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(120vw 90vh at 50% -10%,transparent 55%,rgba(5,10,18,.7) 100%);}
+  @keyframes aurora{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(-3%,2%,0) scale(1.08)}}
+  ::selection{background:rgba(31,195,195,.3)}
+  /* hide the drop-in widget's own chrome — we drive it from our iPhone UI */
+  #ov-widget-btn,#ov-widget-panel{display:none!important}
+
+  a{color:var(--orby)}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  .btn{display:inline-flex;align-items:center;gap:9px;border:0;border-radius:999px;cursor:pointer;font-weight:700;font-size:15px;padding:14px 24px;text-decoration:none;transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s,filter .16s}
+  .btn-primary{background:linear-gradient(135deg,var(--orbylite),var(--orby) 55%,var(--orby2));color:#032220;box-shadow:0 12px 34px rgba(31,195,195,.4),inset 0 1px 0 rgba(255,255,255,.4)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 18px 44px rgba(31,195,195,.5),inset 0 1px 0 rgba(255,255,255,.4);filter:brightness(1.04)}
+  .btn-ghost{background:rgba(255,255,255,.03);color:var(--ink);border:1px solid var(--line)}
+  .btn-ghost:hover{border-color:var(--orby);transform:translateY(-2px)}
+  .btn:active{transform:translateY(0)}
+
+  /* top bar */
+  header.nav{position:sticky;top:0;z-index:40;background:rgba(6,11,20,.7);backdrop-filter:var(--glass);border-bottom:1px solid var(--line)}
+  .nav .wrap{display:flex;align-items:center;gap:14px;padding:12px 20px}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16px}
+  .leaf{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 30% 30%,var(--mm),var(--mm2));box-shadow:0 4px 12px rgba(87,182,97,.4)}
+  .x{color:var(--sub);font-weight:400;margin:0 2px}
+  .orb-dot{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#5fe6e6,var(--orby) 55%,var(--orby2))}
+  .nav .sp{flex:1}
+  .nav button.mini{background:var(--card);border:1px solid var(--line);color:var(--sub);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer}
+  .nav button.mini[aria-pressed="true"]{color:var(--ink);border-color:var(--orby)}
+
+  /* hero */
+  .hero{padding:64px 0 24px}
+  .hero .wrap{display:grid;grid-template-columns:1.12fr .88fr;gap:44px;align-items:center}
+  .eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--orbylite);background:rgba(31,195,195,.08);border:1px solid rgba(31,195,195,.28);padding:6px 13px;border-radius:999px}
+  .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--orby);box-shadow:0 0 10px var(--orby);animation:pulseDot 2s infinite}
+  @keyframes pulseDot{50%{opacity:.4}}
+  .hero h1{font-size:clamp(34px,5vw,50px);line-height:1.04;margin:18px 0 14px;letter-spacing:-1.6px;font-weight:800;text-wrap:balance}
+  .hero h1 .g{background:linear-gradient(100deg,var(--orbylite),var(--orby) 60%,var(--mm));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.lead{font-size:17.5px;color:var(--sub);margin:0 0 26px;max-width:520px}
+  .cta-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .trust{display:flex;gap:14px;margin-top:28px;flex-wrap:wrap}
+  .trust div{font-size:12.5px;color:var(--sub);background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px 16px;backdrop-filter:var(--glass)}
+  .trust b{display:block;color:var(--ink);font-size:22px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums;background:linear-gradient(100deg,var(--orbylite),var(--mm));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+  /* phone column */
+  .phone-col{display:flex;flex-direction:column;align-items:center;position:relative}
+  .phone-col::before{content:"";position:absolute;top:6%;left:50%;transform:translateX(-50%);width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(31,195,195,.35),transparent 68%);filter:blur(30px);z-index:0;pointer-events:none}
+  .phone-col .phone{position:relative;z-index:1}
+  .phone-hint{color:var(--faint);font-size:12px;margin:14px 4px 0;text-align:center;max-width:320px;position:relative;z-index:1}
+
+  /* sections */
+  section{padding:56px 0}
+  .sec-title{font-size:clamp(24px,3.4vw,32px);font-weight:800;letter-spacing:-.7px;text-align:center;margin:0 0 8px;text-wrap:balance}
+  .sec-sub{color:var(--sub);text-align:center;max-width:600px;margin:0 auto 36px;font-size:15.5px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .cardx{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px;backdrop-filter:var(--glass);position:relative;overflow:hidden;transition:transform .2s cubic-bezier(.2,.8,.2,1),border-color .2s,box-shadow .2s}
+  .cardx::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);opacity:.6}
+  .cardx:hover{transform:translateY(-4px);border-color:rgba(31,195,195,.4);box-shadow:0 18px 40px rgba(0,0,0,.35)}
+  .cardx .ic{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;background:linear-gradient(140deg,rgba(31,195,195,.18),rgba(95,196,106,.12));border:1px solid rgba(31,195,195,.28);margin-bottom:14px}
+  .cardx h3{margin:0 0 6px;font-size:16.5px;letter-spacing:-.2px}
+  .cardx p{margin:0;color:var(--sub);font-size:13.5px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:24px 22px 22px;position:relative;backdrop-filter:var(--glass);transition:transform .2s,border-color .2s}
+  .step:hover{transform:translateY(-4px);border-color:rgba(95,196,106,.4)}
+  .step .n{position:absolute;top:-16px;left:22px;width:34px;height:34px;border-radius:50%;background:linear-gradient(140deg,var(--orbylite),var(--orby));color:#03201f;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 8px 20px rgba(31,195,195,.4)}
+  .step h3{margin:12px 0 6px;font-size:16.5px;letter-spacing:-.2px}
+  .step p{margin:0;color:var(--sub);font-size:13.5px}
+  .band{background:linear-gradient(180deg,rgba(11,20,36,.5),rgba(8,15,28,.4));border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+
+  /* value strip */
+  .valstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:8px}
+  .val{text-align:center;padding:8px 6px}
+  .val b{display:block;font-size:clamp(26px,4vw,38px);font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums;background:linear-gradient(120deg,var(--orbylite),var(--mm));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .val span{color:var(--sub);font-size:12.5px}
+  /* reveal-on-scroll */
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){
+    .reveal{opacity:1;transform:none;transition:none}
+    body::before{animation:none}
+    .eyebrow::before{animation:none}
+  }
+
+  /* book-a-demo */
+  .book{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px;backdrop-filter:var(--glass);box-shadow:0 24px 60px rgba(0,0,0,.35)}
+  .book h2{margin:0 0 8px;font-size:24px;font-weight:800}
+  .book p{color:var(--sub);margin:0 0 6px;font-size:14.5px}
+  .form{display:flex;flex-direction:column;gap:10px}
+  .form input,.form select{background:#0a1424;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:12px 13px;font-size:14px;outline:none}
+  .form input:focus,.form select:focus{border-color:var(--orby)}
+  .ok{display:none;background:rgba(52,199,89,.12);border:1px solid rgba(52,199,89,.4);color:#c9f5d2;border-radius:10px;padding:12px;font-size:13.5px}
+  .ok.on{display:block}
+  footer{padding:30px 0 44px;color:#5c6c85;font-size:12.5px;text-align:center;border-top:1px solid var(--line)}
+
+  /* ---------- iPhone (demo) ---------- */
+  .phone{width:340px;max-width:100%;height:700px;max-height:82vh;position:relative;background:linear-gradient(180deg,#05070c,#0a0f18);border-radius:48px;padding:12px;box-shadow:0 0 0 11px #1b1f27,0 0 0 13px #2b2f38,0 40px 90px rgba(0,0,0,.55)}
+  .screen{position:absolute;inset:12px;border-radius:38px;overflow:hidden;background:linear-gradient(180deg,#0a1626,#0b1220);display:flex;flex-direction:column}
+  .notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:130px;height:26px;background:#05070c;border-radius:0 0 16px 16px;z-index:6}
+  .status{display:flex;justify-content:space-between;align-items:center;padding:11px 24px 4px;font-size:12.5px;font-weight:600;color:#dfe7f2;z-index:5}
+  .status .r{display:flex;gap:6px;align-items:center}
+  .view{flex:1;display:none;flex-direction:column;min-height:0}
+  .view.on{display:flex}
+  #idle{align-items:center;text-align:center;padding:22px 20px}
+  .mm-logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;margin-top:6px}
+  .avatar{width:104px;height:104px;border-radius:50%;margin:22px auto 12px;position:relative;background:radial-gradient(circle at 32% 28%,#5fe6e6,var(--orby) 45%,var(--orby2) 100%);box-shadow:0 12px 40px rgba(25,181,181,.45),inset 0 0 30px rgba(255,255,255,.25)}
+  .avatar::after{content:"";position:absolute;inset:12px;border-radius:50%;border:2px solid rgba(255,255,255,.28)}
+  .who{font-size:23px;font-weight:700;margin:2px 0}
+  .role{color:var(--sub);font-size:13px}
+  .tagline{color:var(--orby);font-size:12.5px;font-weight:600;margin-top:2px}
+  .idle-hint{color:var(--sub);font-size:12px;margin:16px 8px 0;line-height:1.5}
+  .call-btn{margin-top:auto;margin-bottom:6px;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .cbig{width:70px;height:70px;border-radius:50%;border:0;cursor:pointer;background:var(--green);color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(52,199,89,.5);transition:transform .12s}
+  .cbig:active{transform:scale(.94)}
+  .call-label{font-size:12px;color:var(--sub)}
+  #dialing{align-items:center;justify-content:center;text-align:center;padding:26px 20px}
+  .calling{color:var(--sub);font-size:15px;margin-top:8px}
+  .pulse{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 12px 40px rgba(25,181,181,.35)}50%{box-shadow:0 12px 60px rgba(25,181,181,.75)}}
+  #call{padding:0}
+  .call-top{display:flex;flex-direction:column;align-items:center;padding:10px 16px 8px;border-bottom:1px solid var(--line)}
+  .call-top .who{font-size:17px;margin:6px 0 0}
+  .timer{color:var(--sub);font-size:12.5px;margin-top:2px;font-variant-numeric:tabular-nums}
+  .mini{width:58px;height:58px;margin:0}
+  .speaking .ring{position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--orby);opacity:0;animation:ring 1.4s ease-out infinite}
+  .speaking .ring:nth-child(2){animation-delay:.5s}
+  @keyframes ring{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.4);opacity:0}}
+  .transcript{flex:1;overflow-y:auto;padding:12px 12px 6px;display:flex;flex-direction:column;gap:9px}
+  .bubble{max-width:84%;padding:9px 12px;border-radius:16px;font-size:14px;line-height:1.42;white-space:pre-wrap;word-wrap:break-word}
+  .b-orby{align-self:flex-start;background:#16283f;border:1px solid var(--line);border-bottom-left-radius:5px}
+  .b-you{align-self:flex-end;background:linear-gradient(180deg,#2aa9e0,#1f8fd0);color:#fff;border-bottom-right-radius:5px}
+  .b-sys{align-self:center;background:transparent;color:var(--sub);font-size:12px;text-align:center;max-width:92%}
+  .b-orby .nm{font-size:11px;color:var(--orby);font-weight:700;display:block;margin-bottom:2px}
+  .typing{display:inline-flex;gap:4px;padding:3px 2px}
+  .typing i{width:6px;height:6px;border-radius:50%;background:var(--sub);animation:blink 1.2s infinite}
+  .typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;padding:5px 11px 3px}
+  .chip{background:#16283f;border:1px solid var(--orby);color:#cdeef0;border-radius:999px;padding:7px 11px;font-size:12px;cursor:pointer;font-weight:600}
+  .chip:active{transform:scale(.96)}
+  .inputbar{display:flex;gap:7px;align-items:center;padding:9px 11px 12px;border-top:1px solid var(--line)}
+  .inputbar input{flex:1;background:#0c1626;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:10px 13px;font-size:13.5px;outline:none}
+  .inputbar input:focus{border-color:var(--orby)}
+  .icircle{width:40px;height:40px;border-radius:50%;border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto}
+  .mic{background:#16283f;color:#cdeef0;border:1px solid var(--line)}
+  .mic.rec{background:var(--red);color:#fff}
+  .send{background:var(--orby);color:#03201f}
+  .endrow{display:flex;justify-content:center;padding:0 0 12px}
+  .endbtn{width:56px;height:56px;border-radius:50%;border:0;background:var(--red);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 8px 24px rgba(255,59,48,.45)}
+  .toast{position:absolute;left:50%;top:60px;transform:translateX(-50%);background:#0f2a1a;border:1px solid #2f8f3a;color:#c9f5d2;padding:9px 14px;border-radius:12px;font-size:12px;font-weight:600;z-index:20;display:none}
+  .toast.on{display:block;animation:drop .4s ease}
+  @keyframes drop{from{opacity:0;transform:translateX(-50%) translateY(-8px)}}
+  .modal{position:absolute;inset:0;background:rgba(3,7,14,.72);z-index:30;display:none;align-items:center;justify-content:center;padding:18px}
+  .modal.on{display:flex}
+  .email{width:100%;max-width:300px;background:#fff;color:#1a2230;border-radius:16px;overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.5)}
+  .email .eh{background:#f4f7fb;padding:11px 13px;border-bottom:1px solid #e6ecf3;font-size:11.5px;color:#5a6b82}
+  .email .eh b{color:#1a2230}
+  .email .eb{padding:15px;font-size:13px;line-height:1.5}
+  .email .eb h3{margin:0 0 8px;color:var(--mm2);font-size:15px}
+  .email .row{display:flex;gap:8px;margin:5px 0}
+  .email .row span{color:#7a8aa0;min-width:60px}
+  .email .close{display:block;width:100%;border:0;background:var(--orby);color:#03201f;padding:11px;font-weight:700;font-size:14px;cursor:pointer}
+  .badge{position:absolute;top:52px;left:50%;transform:translateX(-50%);z-index:7;background:rgba(6,24,24,.85);border:1px solid rgba(25,181,181,.35);color:#8fe0e0;font-size:10.5px;font-weight:700;letter-spacing:.4px;padding:3px 9px;border-radius:999px}
+
+  @media (max-width:900px){
+    .hero .wrap{grid-template-columns:1fr;gap:24px}
+    .hero h1{font-size:34px}
+    .grid,.steps{grid-template-columns:1fr}
+    .book{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <span class="brand"><span class="leaf"></span>MoreMito <span class="x">×</span> <span class="orb-dot"></span>Orby</span>
+    <span class="sp"></span>
+    <button class="mini" id="langBtn" aria-pressed="false">Español</button>
+    <a href="#book" class="btn btn-primary" style="padding:9px 16px;font-size:13px" id="navCta">Book a demo</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow" id="eyebrow">AI voice assistant · for people & pets</span>
+      <h1 id="heroH1">The assistant that <span class="g">never misses a call</span> — for MoreMito.</h1>
+      <p class="lead" id="heroLead">Orby answers every call 24/7, explains your products, captures the lead, hands off to Stephanie, and books the follow-up — in English and Spanish. Try it right now →</p>
+      <div class="cta-row">
+        <button class="btn btn-primary" id="heroCall">📞 <span id="heroCallTxt">Talk to Orby now</span></button>
+        <a href="#how" class="btn btn-ghost" id="heroHow">See how it works</a>
+      </div>
+      <div class="trust">
+        <div><b>24/7</b><span id="t1">Never a missed call</span></div>
+        <div><b>&lt;3s</b><span id="t2">Answers instantly</span></div>
+        <div><b>EN/ES</b><span id="t3">Bilingual by default</span></div>
+      </div>
+    </div>
+    <div class="phone-col">
+      <!-- iPhone -->
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="status"><span id="clock">9:41</span><span class="r"><span>5G</span><span>100%</span></span></div>
+          <div class="badge" id="engineBadge">● Live Orby</div>
+          <div class="toast" id="toast">✉️ Confirmation email sent</div>
+
+          <div class="view on" id="idle">
+            <div class="mm-logo"><span class="leaf"></span> MoreMito</div>
+            <div class="avatar"></div>
+            <div class="who">MoreMito</div>
+            <div class="role" id="idleRole">AI Assistant · Orby</div>
+            <div class="tagline">“Life Is Precious”</div>
+            <div class="idle-hint" id="idleHint">Tap Call and talk to Orby about our products, the referral program, or book a call with a wellness advisor.</div>
+            <div class="call-btn">
+              <button class="cbig" id="callBtn" aria-label="Call">📞</button>
+              <span class="call-label" id="callLabel">Call Orby</span>
+            </div>
+          </div>
+
+          <div class="view" id="dialing">
+            <div class="avatar pulse"></div>
+            <div class="who">MoreMito</div>
+            <div class="calling" id="callingTxt">calling…</div>
+          </div>
+
+          <div class="view" id="call">
+            <div class="call-top">
+              <div class="avatar mini" id="orbyAv"><span class="ring"></span><span class="ring"></span></div>
+              <div class="who">Orby · MoreMito</div>
+              <div class="timer" id="timer">00:00</div>
+            </div>
+            <div class="transcript" id="transcript"></div>
+            <div class="chips" id="chips"></div>
+            <div class="inputbar" id="inputbar">
+              <button class="icircle mic" id="micBtn" title="Speak">🎤</button>
+              <input id="textIn" placeholder="Type your reply…" autocomplete="off">
+              <button class="icircle send" id="sendBtn">➤</button>
+            </div>
+            <div class="endrow"><button class="endbtn" id="endBtn" aria-label="End call">📵</button></div>
+          </div>
+
+          <div class="modal" id="modal">
+            <div class="email">
+              <div class="eh"><div>From: <b>MoreMito &lt;hello@moremito.store&gt;</b></div><div id="emTo">To: you</div><div>Subject: <b id="emSubj">Your MoreMito call is confirmed</b></div></div>
+              <div class="eb" id="emBody"></div>
+              <button class="close" id="emClose">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-hint" id="phoneHint">Live two-way voice with the real Orby engine. Allow the mic when asked. (Opened as a local file? It runs a scripted preview instead.)</div>
+    </div>
+  </div>
+</section>
+
+<!-- VALUE STRIP -->
+<section class="band" style="padding:30px 0"><div class="wrap">
+  <div class="valstrip" id="valStrip"></div>
+</div></section>
+
+<!-- BENEFITS -->
+<section id="what"><div class="wrap">
+  <h2 class="sec-title" id="benTitle">One assistant. Every job you can't get to.</h2>
+  <p class="sec-sub" id="benSub">Orby is a MoreMito team member that works 24/7 — for a fraction of a part-time hire.</p>
+  <div class="grid" id="benGrid"></div>
+</div></section>
+
+<!-- HOW -->
+<section id="how"><div class="wrap">
+  <h2 class="sec-title" id="howTitle">How it works</h2>
+  <p class="sec-sub" id="howSub">Live in a day. No app for your customers to download — they just call or click.</p>
+  <div class="steps" id="stepGrid"></div>
+</div></section>
+
+<!-- BOOK -->
+<section id="book" class="band"><div class="wrap">
+  <div class="book">
+    <div>
+      <h2 id="bookH2">See Orby on your own business</h2>
+      <p id="bookP1">Book a 15-minute demo and we'll set Orby up on your products, your voice, your advisors — bilingual, ready to answer.</p>
+      <p id="bookP2" style="color:var(--orby);font-weight:600">No contracts. Live in a day.</p>
+    </div>
+    <div>
+      <form class="form" id="bookForm">
+        <input id="bkName" placeholder="Your name" required>
+        <input id="bkEmail" type="email" placeholder="Email" required>
+        <input id="bkPhone" placeholder="Phone" >
+        <input id="bkCo" placeholder="Company (optional)">
+        <button class="btn btn-primary" type="submit" id="bkSubmit" style="justify-content:center">Book my demo</button>
+      </form>
+      <div class="ok" id="bookOk">✅ Thanks! We'll reach out shortly to set up your Orby demo.</div>
+    </div>
+  </div>
+</div></section>
+
+<footer>
+  <div class="wrap">
+    <p><b>MoreMito × Orby</b> — “Life Is Precious.”</p>
+    <p id="footNote">Interactive demo. The phone above connects to the live Orby voice engine; the booking form and any confirmation email shown are simulated for this preview.</p>
+  </div>
+</footer>
+
+<!-- Real Orby engine (drop-in). We hide its own button/panel and drive it from the iPhone Call button. -->
+<script src="https://gateway.myorbisvoice.com/widget/orbisvoice-widget.js" async></script>
+
+<script>
+(function(){
+  "use strict";
+  // Swap this for a MoreMito-trained widget publicKey once its Business DNA is provisioned.
+  // Until then it uses the shared demo Orby (real voice, generic brain).
+  var ORBY_PUBLIC_KEY = "d9fc8d95afd58d58a8f2e500a960d10cc81a6f75a12db97e";
+
+  var LANG="en", VOICE_ON=true, REAL=false, orby=null;
+  var $=function(id){return document.getElementById(id);};
+
+  // ---------- copy (bilingual) ----------
+  var C={
+    en:{
+      langBtn:"Español", navCta:"Book a demo",
+      eyebrow:"AI voice assistant · for people & pets",
+      heroH1:'The assistant that <span class="g">never misses a call</span> — for MoreMito.',
+      heroLead:"Orby answers every call 24/7, explains your products, captures the lead, hands off to Stephanie, and books the follow-up — in English and Spanish. Try it right now →",
+      heroCallTxt:"Talk to Orby now", heroHow:"See how it works",
+      t1:"Never a missed call", t2:"Answers instantly", t3:"Bilingual by default",
+      values:[["40%","of calls to small businesses go unanswered"],["85%","of people who can't reach you never call back"],["24/7","Orby answers — nights, weekends, holidays"],["<3s","average time to pick up"]],
+      benTitle:"One assistant. Every job you can't get to.",
+      benSub:"Orby is a MoreMito team member that works 24/7 — for a fraction of a part-time hire.",
+      benefits:[
+        ["📣","Marketing","Follows up new leads in seconds, requests reviews, and reactivates old customers — outbound, on autopilot."],
+        ["🎧","Support","Answers product questions, order status, and how-to's 24/7 — no hold music, no missed messages."],
+        ["💡","Explanation","Explains Ultramito Restore, Brain & Body, Rejuvenate, and Pet Life — clearly, compliantly, in plain language."],
+        ["⚡","Response","Picks up every call and web chat in under 3 seconds, day or night, so no one reaches a dead end."],
+        ["💳","Sales","Qualifies interest, hands off to Stephanie, or books the call — and explains MoreMito Cash referrals."],
+        ["🌎","Bilingual","Speaks fluent English and Spanish automatically — every customer feels at home."]
+      ],
+      howTitle:"How it works",
+      howSub:"Live in a day. No app for your customers to download — they just call or click.",
+      steps:[
+        ["Customer reaches out","They call your number or tap Call on your site. Orby answers instantly, 24/7, in their language."],
+        ["Orby handles it","She explains products, answers questions, captures the lead, and offers to connect Stephanie or book a call."],
+        ["You get the win","The lead, transcript, and a confirmation land in your inbox — nothing slips through the cracks."]
+      ],
+      bookH2:"See Orby on your own business",
+      bookP1:"Book a 15-minute demo and we'll set Orby up on your products, your voice, your advisors — bilingual, ready to answer.",
+      bookP2:"No contracts. Live in a day.",
+      bkName:"Your name", bkEmail:"Email", bkPhone:"Phone", bkCo:"Company (optional)", bkSubmit:"Book my demo",
+      bookOk:"✅ Thanks! We'll reach out shortly to set up your Orby demo.",
+      footNote:"Interactive demo. The phone above connects to the live Orby voice engine; the booking form and any confirmation email shown are simulated for this preview.",
+      idleRole:"AI Assistant · Orby", callLabel:"Call Orby",
+      idleHint:"Tap Call and talk to Orby about our products, the referral program, or book a call with a wellness advisor.",
+      phoneHintReal:"Live two-way voice with the real Orby engine. Allow the mic when asked, then just talk.",
+      phoneHintSim:"Preview mode (opened as a local file) — Orby follows a scripted demo. Host over https for live two-way voice.",
+      badgeLive:"● Live Orby", badgeSim:"● Preview",
+      connecting:"Connecting you to Orby…",
+      liveHi:"You're connected — say hi! Ask Orby about MoreMito's products, the referral program, or ask to speak with Stephanie.",
+      micNote:"If you don't hear Orby, allow microphone access and tap Call again.",
+      calling:"calling…", typePlaceholder:"Type your reply…",
+      // sim script
+      greet:"Hi there, thanks for calling MoreMito! I'm Orby, the AI assistant. Life is precious — so let's help you feel your best. Are you calling about wellness for you, something for your pet, or how our referral program works?",
+      people:"MoreMito makes mitochondrial-wellness supplements — your mitochondria are the tiny energy engines inside every cell. Our people line has Ultramito Restore for daily energy, Brain & Body for focus and vitality, and Ultramito Rejuvenate for healthy aging. Always good to check with your doctor about what's right for you. Want details on one, or should I have an advisor walk you through it?",
+      restore:"Ultramito Restore is our daily foundation — made to support cellular energy and recovery, so you feel steady through the day.",
+      brain:"Brain & Body supports mental focus and physical vitality together — a lot of folks take it to stay sharp and energized.",
+      rejuv:"Ultramito Rejuvenate is our healthy-aging formula, made to support renewal so you keep feeling vibrant.",
+      pet:"Pet Life is our pet line — the same mitochondrial-wellness idea for your dog or cat, to support their energy. Because they're family too.",
+      mito:"Great question — 'mito' is short for mitochondria, the little power plants inside your cells that make energy. Support them, and you support how you feel every day.",
+      referral:"Love that question — as a Referring Customer you share MoreMito with friends, and when they order you earn MoreMito Cash toward your own products. Our way of saying thanks.",
+      price:"Pricing depends on the product and whether you subscribe — I'd rather have Stephanie, one of our advisors, give you exact numbers and current offers. Talk to her now, or book a quick call?",
+      contact:"You can reach MoreMito at 888-884-8661 or support@moremito.store — we're in Greenville, South Carolina. But I can help right now. What are you looking for?",
+      offer:"Would you like to speak with Stephanie, one of our wellness advisors, right now — or should I set up a quick call for a time that works for you?",
+      now:"Let me see if Stephanie's free… one moment… — she's just finishing up with another customer. Rather than have you wait, let me grab your details and she'll call you right back within the hour. First, what's your name?",
+      bookStart:"Perfect — I'll set up a quick call with Stephanie. What day and time works best for you?",
+      askName:"Great. And who am I setting this up for — your name?",
+      askEmail:function(n){return "Thanks, "+n+". What's the best email for your confirmation?";},
+      badEmail:"Hmm, that didn't sound like a complete email — could you type it for me?",
+      confirmEmail:function(p){return "Let me read that back to make sure I've got it: "+p+". Did I get that right?";},
+      askPhone:"Perfect. And the best phone number for Stephanie to reach you?",
+      done:function(n,e,t){return "You're all set, "+n+"! I've "+t+" and just sent a confirmation to "+e+". Anything else while I have you?";},
+      bye:"Thanks so much for calling MoreMito — take care, life is precious. Bye for now! 💚",
+      fallback:"I want to get this right — are you asking about people products, pet products, pricing, or the referral program? Or I can connect you with Stephanie.",
+      yesMore:"Of course — what else can I tell you about MoreMito?",
+      toast:"✉️ Confirmation email sent",
+      emSubjBook:"Your MoreMito call with Stephanie is confirmed",
+      emSubjCB:"Stephanie from MoreMito will call you shortly",
+      emailBody:function(o){return "<h3>You're confirmed 💚</h3><p>Hi "+o.name+",</p><p>"+o.line+"</p>"+
+        "<div class='row'><span>Advisor</span><b>Stephanie · MoreMito</b></div>"+
+        (o.time?"<div class='row'><span>When</span><b>"+o.time+"</b></div>":"<div class='row'><span>When</span><b>Within the hour</b></div>")+
+        "<div class='row'><span>Phone</span><b>"+o.phone+"</b></div><div class='row'><span>Email</span><b>"+o.email+"</b></div>"+
+        "<p style='margin-top:12px;color:#5a6b82'>Questions? Call 888-884-8661. “Life Is Precious.”</p>";},
+      chips:{start:[["People products","people"],["Pet products","pet"],["Referral / MoreMito Cash","referral"],["Talk to Stephanie","offer"]],
+        after:[["Tell me more","people"],["Pricing","price"],["Book a call","book"],["Speak to Stephanie now","now"]],
+        offer:[["Speak now","now"],["Book a call","book"],["Keep chatting","yesMore"]],
+        yesno:[["Yes, that's right","yes"],["No, fix it","no"]],
+        end:[["That's all — thanks","bye"],["One more question","yesMore"]]},
+      lineBook:"booked your call with Stephanie", lineCB:"asked Stephanie to call you right back"
+    },
+    es:{
+      langBtn:"English", navCta:"Agenda una demo",
+      eyebrow:"Asistente de voz con IA · personas y mascotas",
+      heroH1:'La asistente que <span class="g">nunca pierde una llamada</span> — para MoreMito.',
+      heroLead:"Orby contesta cada llamada 24/7, explica tus productos, captura el lead, te conecta con Stephanie y agenda el seguimiento — en inglés y español. Pruébala ahora →",
+      heroCallTxt:"Habla con Orby ahora", heroHow:"Cómo funciona",
+      t1:"Nunca una llamada perdida", t2:"Contesta al instante", t3:"Bilingüe por defecto",
+      values:[["40%","de las llamadas a pequeños negocios quedan sin contestar"],["85%","de quienes no te localizan nunca vuelven a llamar"],["24/7","Orby contesta — noches, fines de semana, festivos"],["<3s","tiempo promedio para contestar"]],
+      benTitle:"Una asistente. Todo lo que no alcanzas a hacer.",
+      benSub:"Orby es un miembro del equipo de MoreMito que trabaja 24/7 — por una fracción de una contratación de medio tiempo.",
+      benefits:[
+        ["📣","Marketing","Da seguimiento a leads en segundos, pide reseñas y reactiva clientes — saliente y en automático."],
+        ["🎧","Soporte","Responde dudas de productos, estado de pedidos y guías 24/7 — sin música de espera ni mensajes perdidos."],
+        ["💡","Explicación","Explica Ultramito Restore, Brain & Body, Rejuvenate y Pet Life — claro y en lenguaje sencillo."],
+        ["⚡","Respuesta","Contesta cada llamada y chat en menos de 3 segundos, de día o de noche."],
+        ["💳","Ventas","Califica el interés, te conecta con Stephanie o agenda la llamada — y explica los referidos MoreMito Cash."],
+        ["🌎","Bilingüe","Habla inglés y español con fluidez automáticamente — cada cliente se siente en casa."]
+      ],
+      howTitle:"Cómo funciona",
+      howSub:"Lista en un día. Sin apps que descargar — solo llaman o hacen clic.",
+      steps:[
+        ["El cliente se comunica","Llama a tu número o toca Llamar en tu sitio. Orby contesta al instante, 24/7, en su idioma."],
+        ["Orby se encarga","Explica productos, responde dudas, captura el lead y ofrece conectar a Stephanie o agendar."],
+        ["Tú ganas","El lead, la transcripción y una confirmación llegan a tu correo — nada se te escapa."]
+      ],
+      bookH2:"Mira a Orby en tu propio negocio",
+      bookP1:"Agenda una demo de 15 minutos y montamos a Orby con tus productos, tu voz y tus asesores — bilingüe y lista para contestar.",
+      bookP2:"Sin contratos. Lista en un día.",
+      bkName:"Tu nombre", bkEmail:"Correo", bkPhone:"Teléfono", bkCo:"Empresa (opcional)", bkSubmit:"Agendar mi demo",
+      bookOk:"✅ ¡Gracias! Te contactaremos pronto para montar tu demo de Orby.",
+      footNote:"Demo interactiva. El teléfono se conecta al motor de voz Orby en vivo; el formulario y el correo de confirmación mostrados son simulados para esta vista previa.",
+      idleRole:"Asistente de IA · Orby", callLabel:"Llamar a Orby",
+      idleHint:"Toca Llamar y habla con Orby sobre nuestros productos, el programa de referidos, o agenda una llamada con una asesora.",
+      phoneHintReal:"Voz bidireccional en vivo con el motor Orby real. Permite el micrófono cuando se pida y habla.",
+      phoneHintSim:"Modo vista previa (archivo local) — Orby sigue un guion. Publícalo por https para voz en vivo.",
+      badgeLive:"● Orby en vivo", badgeSim:"● Vista previa",
+      connecting:"Conectándote con Orby…",
+      liveHi:"¡Estás conectado — salúdala! Pregúntale a Orby por los productos de MoreMito, el programa de referidos, o pide hablar con Stephanie.",
+      micNote:"Si no escuchas a Orby, permite el micrófono y toca Llamar de nuevo.",
+      calling:"llamando…", typePlaceholder:"Escribe tu respuesta…",
+      greet:"¡Hola, gracias por llamar a MoreMito! Soy Orby, la asistente de IA. La vida es preciosa, así que déjame ayudarte a sentirte de maravilla. ¿Llamas por bienestar para ti, algo para tu mascota, o por el programa de referidos?",
+      people:"MoreMito hace suplementos de bienestar mitocondrial — las mitocondrias son los motores de energía dentro de cada célula. Para personas tenemos Ultramito Restore para energía diaria, Brain & Body para enfoque y vitalidad, y Ultramito Rejuvenate para envejecimiento saludable. Siempre conviene consultar con tu médico. ¿Quieres detalles de alguno, o que una asesora te explique?",
+      restore:"Ultramito Restore es nuestra base diaria — para apoyar la energía celular y la recuperación, y sentirte estable todo el día.",
+      brain:"Brain & Body apoya el enfoque mental y la vitalidad física a la vez — muchos lo toman para mantenerse ágiles y con energía.",
+      rejuv:"Ultramito Rejuvenate es nuestra fórmula de envejecimiento saludable, para apoyar la renovación y sentirte vibrante.",
+      pet:"Pet Life es nuestra línea para mascotas — la misma idea de bienestar mitocondrial para tu perro o gato. Porque también son familia.",
+      mito:"Buena pregunta — 'mito' viene de mitocondrias, las centrales de energía dentro de tus células. Si las apoyas, apoyas cómo te sientes cada día.",
+      referral:"¡Me encanta! Como Cliente Referidor compartes MoreMito con amigos, y cuando compran ganas MoreMito Cash para tus propios productos. Nuestra forma de agradecer.",
+      price:"El precio depende del producto y si te suscribes — prefiero que Stephanie, una asesora, te dé los números exactos y las ofertas. ¿Hablas con ella ahora, o agendamos?",
+      contact:"Puedes comunicarte al 888-884-8661 o support@moremito.store — estamos en Greenville, Carolina del Sur. Pero puedo ayudarte ahora. ¿Qué buscas?",
+      offer:"¿Te gustaría hablar con Stephanie, una de nuestras asesoras, ahora — o agendo una llamada para cuando te convenga?",
+      now:"Déjame ver si Stephanie está libre… un momento… — está terminando con otro cliente. En vez de hacerte esperar, tomo tus datos y te devuelve la llamada dentro de una hora. Primero, ¿cuál es tu nombre?",
+      bookStart:"Perfecto — agendo una llamada con Stephanie. ¿Qué día y hora te conviene?",
+      askName:"Genial. ¿A nombre de quién lo agendo — tu nombre?",
+      askEmail:function(n){return "Gracias, "+n+". ¿Cuál es el mejor correo para tu confirmación?";},
+      badEmail:"Mmm, eso no sonó como un correo completo — ¿puedes escribirlo?",
+      confirmEmail:function(p){return "Déjame confirmarlo: "+p+". ¿Lo tengo bien?";},
+      askPhone:"Perfecto. ¿Y el mejor número para que Stephanie te contacte?",
+      done:function(n,e,t){return "¡Todo listo, "+n+"! "+t+" y acabo de enviar una confirmación a "+e+". ¿Algo más?";},
+      bye:"¡Muchas gracias por llamar a MoreMito — cuídate, la vida es preciosa. Hasta pronto! 💚",
+      fallback:"Quiero entenderte bien — ¿preguntas por productos para personas, mascotas, precios, o referidos? O te conecto con Stephanie.",
+      yesMore:"Claro — ¿qué más te cuento sobre MoreMito?",
+      toast:"✉️ Correo de confirmación enviado",
+      emSubjBook:"Tu llamada con Stephanie de MoreMito está confirmada",
+      emSubjCB:"Stephanie de MoreMito te llamará en breve",
+      emailBody:function(o){return "<h3>Confirmado 💚</h3><p>Hola "+o.name+",</p><p>"+o.line+"</p>"+
+        "<div class='row'><span>Asesora</span><b>Stephanie · MoreMito</b></div>"+
+        (o.time?"<div class='row'><span>Cuándo</span><b>"+o.time+"</b></div>":"<div class='row'><span>Cuándo</span><b>Dentro de una hora</b></div>")+
+        "<div class='row'><span>Teléfono</span><b>"+o.phone+"</b></div><div class='row'><span>Correo</span><b>"+o.email+"</b></div>"+
+        "<p style='margin-top:12px;color:#5a6b82'>¿Dudas? Llama al 888-884-8661. “Life Is Precious.”</p>";},
+      chips:{start:[["Productos personas","people"],["Productos mascotas","pet"],["Referidos / MoreMito Cash","referral"],["Hablar con Stephanie","offer"]],
+        after:[["Cuéntame más","people"],["Precios","price"],["Agendar llamada","book"],["Hablar con Stephanie ya","now"]],
+        offer:[["Hablar ahora","now"],["Agendar llamada","book"],["Seguir preguntando","yesMore"]],
+        yesno:[["Sí, correcto","yes"],["No, corrígelo","no"]],
+        end:[["Eso es todo — gracias","bye"],["Una pregunta más","yesMore"]]},
+      lineBook:"agendé tu llamada con Stephanie", lineCB:"le pedí a Stephanie que te devuelva la llamada"
+    }
+  };
+  function L(){return C[LANG];}
+
+  // ---------- render static copy ----------
+  function paint(){
+    var d=L();
+    $("langBtn").textContent=d.langBtn;$("navCta").textContent=d.navCta;
+    $("eyebrow").textContent=d.eyebrow;$("heroH1").innerHTML=d.heroH1;$("heroLead").textContent=d.heroLead;
+    $("heroCallTxt").textContent=d.heroCallTxt;$("heroHow").textContent=d.heroHow;
+    $("t1").textContent=d.t1;$("t2").textContent=d.t2;$("t3").textContent=d.t3;
+    $("benTitle").textContent=d.benTitle;$("benSub").textContent=d.benSub;
+    $("howTitle").textContent=d.howTitle;$("howSub").textContent=d.howSub;
+    $("bookH2").textContent=d.bookH2;$("bookP1").textContent=d.bookP1;$("bookP2").textContent=d.bookP2;
+    $("bkName").placeholder=d.bkName;$("bkEmail").placeholder=d.bkEmail;$("bkPhone").placeholder=d.bkPhone;$("bkCo").placeholder=d.bkCo;$("bkSubmit").textContent=d.bkSubmit;
+    $("bookOk").textContent=d.bookOk;$("footNote").textContent=d.footNote;
+    $("idleRole").textContent=d.idleRole;$("callLabel").textContent=d.callLabel;$("idleHint").textContent=d.idleHint;
+    $("textIn").placeholder=d.typePlaceholder;
+    $("engineBadge").textContent=REAL?d.badgeLive:d.badgeSim;
+    $("phoneHint").textContent=REAL?d.phoneHintReal:d.phoneHintSim;
+    var g=$("benGrid");g.innerHTML="";d.benefits.forEach(function(b){var c=document.createElement("div");c.className="cardx";c.innerHTML='<div class="ic">'+b[0]+'</div><h3>'+b[1]+'</h3><p>'+b[2]+'</p>';g.appendChild(c);});
+    var s=$("stepGrid");s.innerHTML="";d.steps.forEach(function(st,i){var c=document.createElement("div");c.className="step";c.innerHTML='<div class="n">'+(i+1)+'</div><h3>'+st[0]+'</h3><p>'+st[1]+'</p>';s.appendChild(c);});
+    var vs=$("valStrip");vs.innerHTML="";d.values.forEach(function(v){var c=document.createElement("div");c.className="val";c.innerHTML='<b>'+v[0]+'</b><span>'+v[1]+'</span>';vs.appendChild(c);});
+    setupReveal();
+  }
+  // reveal-on-scroll — tag content blocks once, observe, fade up into view
+  var _revObs=null;
+  function setupReveal(){
+    if(!("IntersectionObserver" in window))return;
+    if(!_revObs)_revObs=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");_revObs.unobserve(e.target);}});},{threshold:.12,rootMargin:"0px 0px -40px 0px"});
+    document.querySelectorAll(".cardx,.step,.val,.sec-title,.sec-sub,.book").forEach(function(el){if(!el.classList.contains("reveal")){el.classList.add("reveal");_revObs.observe(el);}});
+  }
+
+  // ---------- engine detection ----------
+  function detectEngine(){
+    var secure = location.protocol==="https:";
+    REAL = !!(window.OrbisVoice && window.OrbisVoice.__installed) && !!navigator.mediaDevices && secure;
+    if(REAL){ try{ orby = window.OrbisVoice.init({publicKey:ORBY_PUBLIC_KEY, agentName:"Orby", businessName:"MoreMito"}); }catch(e){ REAL=false; } }
+    $("engineBadge").textContent=REAL?L().badgeLive:L().badgeSim;
+    $("phoneHint").textContent=REAL?L().phoneHintReal:L().phoneHintSim;
+  }
+  // wait briefly for the async widget script
+  var tries=0;(function waitEngine(){ tries++; if(window.OrbisVoice||tries>20){detectEngine();} else setTimeout(waitEngine,150); })();
+
+  // ---------- iPhone shared ----------
+  var idle=$("idle"),dialing=$("dialing"),call=$("call"),transcript=$("transcript"),chips=$("chips");
+  var timerEl=$("timer"),orbyAv=$("orbyAv"),toast=$("toast"),modal=$("modal"),textIn=$("textIn");
+  function show(v){[idle,dialing,call].forEach(function(x){x.classList.remove("on");});v.classList.add("on");}
+  (function(){var dt=new Date();$("clock").textContent=(((dt.getHours()+11)%12)+1)+":"+String(dt.getMinutes()).padStart(2,"0");})();
+  var timer=null,secs=0;
+  function startTimer(){secs=0;timerEl.textContent="00:00";timer=setInterval(function(){secs++;timerEl.textContent=String(Math.floor(secs/60)).padStart(2,"0")+":"+String(secs%60).padStart(2,"0");},1000);}
+  function addBubble(who,text){var b=document.createElement("div");b.className="bubble "+(who==="orby"?"b-orby":who==="you"?"b-you":"b-sys");if(who==="orby"){b.innerHTML='<span class="nm">Orby</span>';b.appendChild(document.createTextNode(text));}else{b.textContent=text;}transcript.appendChild(b);transcript.scrollTop=transcript.scrollHeight;return b;}
+
+  // ---------- REAL engine call ----------
+  function startRealCall(){
+    show(call);startTimer();transcript.innerHTML="";chips.innerHTML="";
+    $("inputbar").style.display="none"; // real call is voice-only
+    orbyAv.classList.add("speaking");
+    addBubble("sys",L().connecting);
+    try{ window.OrbisVoice.open(); }catch(e){ REAL=false; return startSimCall(); }
+    setTimeout(function(){ addBubble("orby",L().liveHi); addBubble("sys",L().micNote); },400);
+  }
+  function endRealCall(){ try{ if(orby&&orby._endNow)orby._endNow(); }catch(e){} hangup(); }
+
+  // ---------- SIM fallback (scripted) ----------
+  var stage="idle",answered=0,lead={name:"",email:"",phone:"",time:"",cbOnly:false},pendingEmail="";
+  var voices=[];function lv(){voices=window.speechSynthesis?speechSynthesis.getVoices():[];}
+  if(window.speechSynthesis){lv();speechSynthesis.onvoiceschanged=lv;}
+  function pickVoice(){var pref=LANG==="es"?["Google español","Paulina","Mónica","es-"]:["Samantha","Google US English","Zira","en-US"];for(var p=0;p<pref.length;p++)for(var i=0;i<voices.length;i++){var v=voices[i];if((v.name&&v.name.indexOf(pref[p])>-1)||(v.lang&&v.lang.indexOf(pref[p])>-1))return v;}return voices[0]||null;}
+  function speak(t){if(!VOICE_ON||!window.speechSynthesis)return;try{speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(t.replace(/💚|✉️|…/g," "));var v=pickVoice();if(v){u.voice=v;u.lang=v.lang;}else u.lang=LANG==="es"?"es-ES":"en-US";u.rate=1;u.pitch=1.06;orbyAv.classList.add("speaking");u.onend=function(){orbyAv.classList.remove("speaking");};speechSynthesis.speak(u);}catch(e){}}
+  function orbySay(text,after){var ty=document.createElement("div");ty.className="bubble b-orby";ty.innerHTML='<span class="nm">Orby</span><span class="typing"><i></i><i></i><i></i></span>';transcript.appendChild(ty);transcript.scrollTop=transcript.scrollHeight;setTimeout(function(){transcript.removeChild(ty);addBubble("orby",text);speak(text);if(after)after();},Math.min(1500,500+text.length*11));}
+  function setChips(list){chips.innerHTML="";(list||[]).forEach(function(c){var b=document.createElement("button");b.className="chip";b.textContent=c[0];b.onclick=function(){route(c[1],c[0]);};chips.appendChild(b);});}
+  function focusInput(ph){textIn.value="";textIn.placeholder=ph||L().typePlaceholder;textIn.focus();}
+  function addYou(t){addBubble("you",t);}
+  function cap(s){s=(s||"").trim();return s.charAt(0).toUpperCase()+s.slice(1);}
+  function validEmail(e){return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);}
+  function nato(local){var m={a:"Alpha",b:"Bravo",c:"Charlie",d:"Delta",e:"Echo",f:"Foxtrot",g:"Golf",h:"Hotel",i:"India",j:"Juliet",k:"Kilo",l:"Lima",m:"Mike",n:"November",o:"Oscar",p:"Papa",q:"Quebec",r:"Romeo",s:"Sierra",t:"Tango",u:"Uniform",v:"Victor",w:"Whiskey",x:"Xray",y:"Yankee",z:"Zulu"};var o=[];for(var i=0;i<local.length;i++){var ch=local[i].toLowerCase();if(m[ch])o.push(ch.toUpperCase()+" as in "+m[ch]);else if(ch===".")o.push("dot");else o.push(ch);}return o.join(", ");}
+  function readEmail(e){var p=e.split("@");return nato(p[0]||"")+", at "+(p[1]||"").replace(/\./g," dot ");}
+  var KB=[[["restore"],"restore"],[["brain","body","focus"],"brain"],[["rejuv","aging","age","older"],"rejuv"],[["pet","dog","cat"],"pet"],[["mito","mitochond"],"mito"],[["referr","refer","moremito cash","earn","commission"],"referral"],[["price","cost","how much"],"price"],[["product","supplement","people","wellness","health"],"people"],[["contact","phone","address","hours","where"],"contact"],[["book","appointment","schedule","later"],"book"],[["stephanie","human","advisor","agent","person","speak to","talk to someone"],"now"]];
+  function classify(text){var s=text.toLowerCase();if(/(bye|goodbye|that'?s all|nothing else|no thanks|adios|eso es todo|gracias, no)/.test(s))return "bye";if(/(^| )(yes|yeah|yep|correct|s[ií]|correcto)( |$|,|\.)/.test(s))return "yes";if(/(^| )(no|nope|wrong|incorrecto)( |$|,|\.)/.test(s))return "no";for(var i=0;i<KB.length;i++)for(var j=0;j<KB[i][0].length;j++)if(s.indexOf(KB[i][0][j])>-1)return KB[i][1];return "fallback";}
+  function startSimCall(){
+    show(dialing);$("callingTxt").textContent=L().calling;
+    setTimeout(function(){show(call);startTimer();transcript.innerHTML="";chips.innerHTML="";$("inputbar").style.display="flex";stage="chat";answered=0;lead={name:"",email:"",phone:"",time:"",cbOnly:false};orbySay(L().greet,function(){setChips(L().chips.start);});},2600);
+  }
+  function route(intent,display){
+    var d=L();
+    if(stage==="name"){lead.name=cap(display||intent);addYou(display||intent);orbySay(d.askEmail(lead.name),function(){stage="email";setChips([]);focusInput("you@email.com");});return;}
+    if(stage==="email"){var raw=(display||intent).trim();addYou(raw);if(!validEmail(raw)){orbySay(d.badEmail,function(){focusInput("you@email.com");});return;}pendingEmail=raw.toLowerCase();orbySay(d.confirmEmail(readEmail(pendingEmail)),function(){stage="emailconfirm";setChips(d.chips.yesno);});return;}
+    if(stage==="emailconfirm"){var k=(intent==="yes"||intent==="no")?intent:classify(display||intent);addYou(display||intent);if(k==="no"){orbySay(d.askEmail(lead.name),function(){stage="email";setChips([]);focusInput("you@email.com");});return;}lead.email=pendingEmail;orbySay(d.askPhone,function(){stage="phone";setChips([]);focusInput("(555) 555-5555");});return;}
+    if(stage==="phone"){lead.phone=(display||intent).trim();addYou(display||intent);finishSim();return;}
+    if(stage==="booktime"){lead.time=cap(display||intent);addYou(display||intent);orbySay(d.askName,function(){stage="name";setChips([]);focusInput(LANG==="es"?"Tu nombre":"Your name");});return;}
+    var key=(["people","pet","referral","price","mito","restore","brain","rejuv","contact","offer","now","book","yesMore","bye","fallback"].indexOf(intent)>-1)?intent:classify(display||intent);
+    if(display)addYou(display);
+    if(key==="bye"){orbySay(d.bye,function(){setChips([]);setTimeout(hangup,2600);});stage="end";return;}
+    if(key==="offer"){orbySay(d.offer,function(){setChips(d.chips.offer);});stage="offer";return;}
+    if(key==="yesMore"){orbySay(d.yesMore,function(){setChips(d.chips.start);});stage="chat";return;}
+    if(key==="now"){lead.cbOnly=true;orbySay(d.now,function(){stage="name";setChips([]);focusInput(LANG==="es"?"Tu nombre":"Your name");});return;}
+    if(key==="book"){lead.cbOnly=false;orbySay(d.bookStart,function(){stage="booktime";setChips([]);focusInput(LANG==="es"?"p. ej. mañana 3pm":"e.g. tomorrow 3pm");});return;}
+    var ans=d[key]||d.fallback;answered++;
+    orbySay(ans,function(){if(answered>=2&&stage!=="offered"){stage="offered";setTimeout(function(){orbySay(d.offer,function(){setChips(d.chips.offer);});},400);}else setChips(d.chips.after);});
+    if(stage!=="offered")stage="chat";
+  }
+  function finishSim(){var d=L();var line=lead.cbOnly?d.lineCB:d.lineBook;orbySay(d.done(lead.name||"there",lead.email,line),function(){sendSimEmail();setChips(d.chips.end);stage="end";});}
+  function sendSimEmail(){var d=L();toast.textContent=d.toast;toast.classList.add("on");setTimeout(function(){toast.classList.remove("on");},3200);$("emTo").textContent="To: "+(lead.email||"you");$("emSubj").textContent=lead.cbOnly?d.emSubjCB:d.emSubjBook;$("emBody").innerHTML=d.emailBody({name:lead.name||"there",email:lead.email,phone:lead.phone||"—",time:lead.cbOnly?"":lead.time,line:lead.cbOnly?(LANG==="es"?"Stephanie te devolverá la llamada dentro de una hora.":"Stephanie will call you right back within the hour."):(LANG==="es"?"Tu llamada con Stephanie está confirmada.":"Your call with Stephanie is confirmed.")});setTimeout(function(){modal.classList.add("on");},900);}
+  // sim speech recognition
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition,rec=null,recording=false;
+  function toggleMic(){if(!SR){textIn.focus();return;}if(recording){try{rec.stop();}catch(e){}return;}rec=new SR();rec.lang=LANG==="es"?"es-ES":"en-US";rec.interimResults=false;rec.onstart=function(){recording=true;$("micBtn").classList.add("rec");};rec.onerror=rec.onend=function(){recording=false;$("micBtn").classList.remove("rec");};rec.onresult=function(e){var tx=e.results[0][0].transcript;if(tx&&tx.trim())route(tx.trim(),tx.trim());};try{rec.start();}catch(e){}}
+
+  // ---------- shared controls ----------
+  function startCall(){ if(REAL) startRealCall(); else startSimCall(); }
+  function hangup(){if(timer)clearInterval(timer);if(window.speechSynthesis)speechSynthesis.cancel();orbyAv.classList.remove("speaking");modal.classList.remove("on");stage="idle";show(idle);}
+
+  $("callBtn").onclick=startCall;
+  $("heroCall").onclick=function(){document.querySelector(".phone").scrollIntoView({behavior:"smooth",block:"center"});setTimeout(startCall,500);};
+  $("endBtn").onclick=function(){ if(REAL) endRealCall(); else hangup(); };
+  $("sendBtn").onclick=function(){var v=textIn.value.trim();if(!v)return;route(v,v);textIn.value="";};
+  textIn.addEventListener("keydown",function(e){if(e.key==="Enter"){var v=textIn.value.trim();if(v){route(v,v);textIn.value="";}}});
+  $("micBtn").onclick=toggleMic;
+  $("emClose").onclick=function(){modal.classList.remove("on");};
+  $("langBtn").onclick=function(){LANG=LANG==="en"?"es":"en";this.setAttribute("aria-pressed",LANG==="es");paint();};
+  $("bookForm").addEventListener("submit",function(e){e.preventDefault();$("bookOk").classList.add("on");this.reset();});
+
+  paint();
+})();
+</script>
+</body>
+</html>
