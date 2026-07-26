@@ -516,16 +516,33 @@
       this.connecting = false
     }
 
+    /** Acquire the mic, preferring echo cancellation but NEVER letting a strict
+     *  constraint kill the mic. Some browsers reject the sampleRate+echo combo
+     *  with OverconstrainedError; if the mic never opens, Orby greets and then
+     *  can't hear the visitor — she looks like she "stopped responding". So we
+     *  try richest→simplest and take the first that resolves. */
+    async _getMic() {
+      const attempts = [
+        { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        { sampleRate: 16000, channelCount: 1 },
+        true,
+      ]
+      let lastErr
+      for (const audio of attempts) {
+        try { return await navigator.mediaDevices.getUserMedia({ audio }) }
+        catch (e) { lastErr = e }
+      }
+      throw lastErr
+    }
+
     async _startRecording() {
       try {
-        // echoCancellation is REQUIRED: on speakers (not headphones) the mic
+        // echoCancellation matters: on speakers (not headphones) the mic
         // otherwise captures Orby's own voice, Gemini's VAD hears it as the
-        // caller speaking, and she interrupts/answers herself — turns pile up
-        // and "step on each other." AEC removes the rendered output from the
-        // captured signal. noiseSuppression + autoGainControl further stabilize
-        // what the model hears. Phones get this from the carrier; browsers must
-        // ask for it explicitly.
-        this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+        // caller speaking, and she answers herself — turns pile up. Requested
+        // best-effort via _getMic (falls back so it can't break the mic).
+        this.mediaStream = await this._getMic()
         // Primary path: a 16 kHz capture context (matches what the gateway expects).
         // Some Samsung devices throw NotSupportedError when forced off their native
         // rate — fall back to an unconstrained context and downsample to 16 kHz in
