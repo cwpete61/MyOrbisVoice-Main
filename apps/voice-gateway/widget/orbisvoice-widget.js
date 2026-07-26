@@ -288,6 +288,7 @@
       if (this.ws || this.connecting) return
       this.connecting = true
       this._dialAborted = false
+      this._ending = false
       // CRITICAL (mobile): create + resume the shared output context HERE,
       // synchronously inside the click handler while the user gesture is still
       // active. Every later playback reuses it. Done before any await below so
@@ -482,24 +483,26 @@
       }
 
       if (msg.type === 'ended') {
+        // Orby ended the call (she said goodbye, then end_call fired). Her
+        // farewell audio is already queued/scheduled ahead — DON'T hard-stop it
+        // or the goodbye gets clipped. Turn the mic off and stop the idle timer,
+        // then LET THE GOODBYE PLAY OUT before tearing down. (The End button and
+        // idle-timeout paths still hard-stop via _endNow — this drain is only for
+        // Orby's own natural close.)
+        this._ending = true  // suppress the hard-stop when the WS closes ~2s later
         if (this.recording) this._stopRecording()
-        this._stopPlaybackHard()
         this._disarmIdleTimer()
-        if (this.ws) { try { this.ws.close() } catch {} this.ws = null }
         this.connecting = false
-        // Upload the call recording before showing the "Thank you" screen,
-        // so the visitor sees a "Saving recording…" status while the WAV is
-        // on the wire. msg.conversationId is set by the gateway only after
-        // persistConversation finishes, so we know the FK target exists.
+        this._setStatus('Wrapping up…')
         const finishUp = () => {
           this._setStatus('Session ended. Thank you!')
-          setTimeout(() => this._close(), 2500)
+          setTimeout(() => this._close(), 2000)
         }
-        if (msg.conversationId) {
-          this._uploadRecording(msg.conversationId).finally(finishUp)
-        } else {
-          finishUp()
-        }
+        this._drainThenClose(() => {
+          if (this.ws) { try { this.ws.close() } catch {} this.ws = null }
+          if (msg.conversationId) this._uploadRecording(msg.conversationId).finally(finishUp)
+          else finishUp()
+        })
       }
 
       if (msg.type === 'error') {
@@ -509,9 +512,15 @@
 
     _onDisconnect() {
       if (this.recording) this._stopRecording()
-      this._stopPlaybackHard()
+      // If Orby is mid-goodbye (server 'ended' → draining), the gateway closes
+      // the WS ~2s later; do NOT hard-stop here or the tail of the goodbye gets
+      // clipped. _drainThenClose owns teardown in that case. Only hard-stop on a
+      // genuine mid-call disconnect.
+      if (!this._ending) {
+        this._stopPlaybackHard()
+        this._setStatus('Disconnected.')
+      }
       this._disarmIdleTimer()
-      this._setStatus('Disconnected.')
       this.ws = null
       this.connecting = false
     }
@@ -790,6 +799,28 @@
       }
       this._scheduledSources = []
       this._playHead = 0
+    }
+
+    /** Let queued/scheduled audio finish, THEN run cb(). Used on Orby's own
+     *  end-of-call so her goodbye plays out instead of being clipped. Flushes any
+     *  remaining chunks, waits until the scheduled playback tail (_playHead)
+     *  elapses, and hard-caps the wait so a stall can never hang the widget. */
+    _drainThenClose(cb) {
+      const started = Date.now()
+      const MAX_WAIT_MS = 12000
+      const tick = () => {
+        if (this._pcmQueue.length) this._flushAudio()
+        const ctx = this._outCtx
+        const remaining = ctx ? (this._playHead - ctx.currentTime) : 0
+        const drained = this._pcmQueue.length === 0 && remaining <= 0.06
+        if (drained || Date.now() - started > MAX_WAIT_MS) {
+          this._resetPlayback()
+          cb()
+          return
+        }
+        setTimeout(tick, 120)
+      }
+      tick()
     }
 
     _setStatus(text, pulsing = false) {
