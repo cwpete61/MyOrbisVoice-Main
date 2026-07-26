@@ -456,6 +456,17 @@
         this._playAudio(msg.data)
       }
 
+      // Barge-in: the visitor started speaking, so Gemini abandoned its current
+      // turn and the gateway forwards 'interrupted'. HARD-stop Orby's audio —
+      // she buffers/schedules chunks seconds ahead, so without stopping the
+      // already-scheduled AudioBufferSourceNodes the old sentence keeps playing
+      // OVER the visitor and the next turn, producing two overlapping voices.
+      // Keep the output context open for the reply that follows.
+      if (msg.type === 'interrupted') {
+        this._markActivity()
+        this._stopPlaybackHard()
+      }
+
       // transcript messages — UI ignores the text, but a user-role transcript
       // delta is the cleanest signal that the visitor is actively speaking.
       // (We can't use raw mic audio frames because the browser sends them every
