@@ -56,9 +56,9 @@ export function AdminNav() {
         { href: '/admin/partners',    label: 'Partners',         icon: <AffiliatesIcon />,  minTier: 'admin' },
         { href: '/admin/scripts',     label: 'Partner Scripts',  icon: <AffiliatesIcon />,  minTier: 'admin' },
         { href: '/admin/prospects',   label: 'Agent Prospects',  icon: <AffiliatesIcon />,  minTier: 'admin' },
-        { href: '/admin/agent-demos', label: 'Agent Demos',      icon: <AffiliatesIcon />,  minTier: 'admin' },
         { href: '/admin/agent-qualifier', label: 'Agent Qualifier', icon: <AffiliatesIcon />, minTier: 'admin' },
         { href: '/admin/proposals',   label: 'Proposals',        icon: <AffiliatesIcon />,  minTier: 'admin' },
+        { href: '/admin/agent-demos', label: 'Agent Demos',      icon: <AffiliatesIcon />,  minTier: 'admin' },
         // Webinars moved to the tenant dashboard (/webinars) — MyOrbisWebinar is a
         // tenant-owned product now, not a platform tool. Platform staff reach a tenant's
         // webinars by impersonating that tenant, exactly like contacts/appointments.
