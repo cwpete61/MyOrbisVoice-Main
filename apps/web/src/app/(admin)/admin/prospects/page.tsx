@@ -37,9 +37,10 @@ export default function ProspectsPage() {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [rows, setRows] = useState<Prospect[]>([])
+  const [sel, setSel] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
-    try { const d = await apiFetch<{ items: Prospect[] }>('/api/admin/agent-prospects'); setRows(d.items ?? []) }
+    try { const d = await apiFetch<{ items: Prospect[] }>('/api/admin/agent-prospects'); setRows(d.items ?? []); setSel(new Set()) }
     catch (e) { setErr(e instanceof Error ? e.message : 'Failed to load') }
   }, [])
   useEffect(() => { load() }, [load])
@@ -65,6 +66,15 @@ export default function ProspectsPage() {
     if (!window.confirm('Delete this prospect?')) return
     setRows((rs) => rs.filter((r) => r.id !== id))
     try { await apiFetch(`/api/admin/agent-prospects/${id}`, { method: 'DELETE' }) } catch { /* */ }
+  }
+  const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const allSelected = rows.length > 0 && sel.size === rows.length
+  const selectAll = () => setSel(allSelected ? new Set() : new Set(rows.map((r) => r.id)))
+  const bulkDelete = async () => {
+    const ids = [...sel]
+    if (!ids.length || !window.confirm(`Delete ${ids.length} prospect${ids.length > 1 ? 's' : ''}? This can't be undone.`)) return
+    setRows((rs) => rs.filter((r) => !sel.has(r.id))); setSel(new Set())
+    try { await apiFetch('/api/admin/agent-prospects/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) }) } catch { /* */ }
   }
   const genDemo = async (id: string) => {
     try {
@@ -127,17 +137,33 @@ export default function ProspectsPage() {
       </div>
 
       <div style={card}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 10px' }}>Targets ({rows.length})</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '0 0 10px', flexWrap: 'wrap' }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Targets ({rows.length})</h2>
+          {rows.length > 0 && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={allSelected} onChange={selectAll} /> Select all
+            </label>
+          )}
+          {sel.size > 0 && (
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{sel.size} selected</span>
+              <button onClick={bulkDelete} style={{ padding: '6px 12px', borderRadius: 8, border: 0, cursor: 'pointer', fontWeight: 700, fontSize: 13, background: '#c0392b', color: '#fff' }}>Delete selected</button>
+            </div>
+          )}
+        </div>
         {rows.length === 0 ? <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>No prospects yet. Score one above.</p> : (
           <div style={{ display: 'grid', gap: 8 }}>
             {rows.map((r) => (
-              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid var(--border-subtle)' }}>
-                <div style={{ minWidth: 0 }}>
+              <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid var(--border-subtle)', outline: sel.has(r.id) ? '2px solid ' + TEAL : 'none' }}>
+                <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} />
+                  <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ padding: '1px 8px', borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${tierStyle(r.tier).border}`, color: tierStyle(r.tier).color }}>{r.tier} · {r.score}</span>
                     {r.name}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{[r.market, r.salesLast12 != null ? `${r.salesLast12} sales/yr` : null, r.premierAgent ? 'Premier' : null, `$${r.recommendedTier}`].filter(Boolean).join(' · ')}{r.redFlags ? ` · ⚠ ${r.redFlags}` : ''}</div>
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                   {r.demoSlug

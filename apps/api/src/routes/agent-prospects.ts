@@ -72,6 +72,14 @@ router.delete('/agent-prospects/:id', async (req: Request, res: Response, next: 
   } catch (err) { next(err) }
 })
 
+router.post('/agent-prospects/bulk-delete', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const ids = Array.isArray((req.body as { ids?: unknown[] }).ids) ? (req.body as { ids: unknown[] }).ids.map(String) : []
+    if (ids.length) await prisma.agentProspect.deleteMany({ where: { id: { in: ids } } })
+    res.json({ data: { ok: true, count: ids.length } })
+  } catch (err) { next(err) }
+})
+
 // Generate a demo for a prospect. Folds into the unified AgentDemo model: builds
 // a real per-agent demo tenant (Orby from the profile, no listings) and returns
 // the /agent-demo/<slug> microsite URL. Idempotent. Replaces the old §17b
