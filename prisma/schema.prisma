@@ -3947,3 +3947,60 @@ model Listing {
   @@index([tenantId, status])
   @@index([ownerId])
 }
+
+// ─── Agent Qualifier (MyOrbisAgents) ────────────────────────────────────────
+// A public intake form where a real-estate agent (INDIVIDUAL) or a team/broker
+// (TEAM) self-reports their business. The operator sees a scored analysis
+// (targets vs their results, auto-verdict + override) and, on accept, generates
+// a full Proposal. Applicants NEVER see the score — the form just thanks them.
+// Standalone (not a Tenant) — these are prospects, not customers yet.
+model AgentApplication {
+  id          String  @id @default(uuid())
+  type        String  // INDIVIDUAL | TEAM
+  fullName    String
+  email       String
+  phone       String?
+  market      String?
+  // All self-reported answers (deals, avg price, leads, budget, timeline, team
+  // size, GCI, decision-maker, deploy-office-wide, CRM, bottleneck, language…).
+  metricsJson Json
+  // Scoring output (deterministic, from the qualifier config): total fit score,
+  // per-metric target-vs-result breakdown, and the auto-verdict.
+  score       Int      @default(0)
+  verdict     String   @default("PASS") // QUALIFIED | BORDERLINE | PASS
+  scoreJson   Json?
+  // Operator decision (overrides the auto-verdict).
+  status      String   @default("NEW")  // NEW | ACCEPTED | REJECTED
+  decidedById String?
+  decidedAt   DateTime?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  proposal    AgentProposal?
+
+  @@index([status])
+  @@index([verdict])
+  @@index([type])
+}
+
+// Full proposal auto-drafted for an accepted application: recommended tier,
+// pricing (per-seat for teams), an ROI projection from their numbers, and
+// onboarding steps. Operator edits before sending.
+model AgentProposal {
+  id            String  @id @default(uuid())
+  applicationId String  @unique
+  tier          String  // recommended plan/tier
+  pricingJson   Json    // { plan, monthly, seats?, perSeat?, discountPct? }
+  roiJson       Json    // { missedCallsMo, avgPrice, gciPct, recoveredMo }
+  onboardingJson Json   // [ step, step, step ]
+  summary       String?
+  status        String   @default("DRAFT") // DRAFT | SENT | ACCEPTED | DECLINED
+  createdById   String?
+  sentAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  application   AgentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}

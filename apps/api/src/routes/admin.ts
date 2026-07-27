@@ -2894,6 +2894,62 @@ router.get('/agent-demos', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ── Agent Qualifier (MyOrbisAgents): applications, decisions, proposals, config ─
+router.get('/agent-applications', async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const q = await import('../services/agent-qualifier.service.js')
+    res.json({ data: await q.listApplications({ status: req.query['status'] as string | undefined, verdict: req.query['verdict'] as string | undefined }) })
+  } catch (err) { next(err) }
+})
+router.post('/agent-applications/:id/decision', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const status = req.body?.status === 'ACCEPTED' ? 'ACCEPTED' : 'REJECTED'
+    const q = await import('../services/agent-qualifier.service.js')
+    const app = await q.decideApplication(req.params['id']!, status, req.user!.id, req.body?.notes)
+    // Auto-draft a proposal the moment a lead is accepted.
+    let proposal = null
+    if (status === 'ACCEPTED') proposal = await q.generateProposal(req.params['id']!, req.user!.id)
+    res.json({ data: { app, proposal } })
+  } catch (err) { next(err) }
+})
+router.post('/agent-applications/:id/proposal', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const q = await import('../services/agent-qualifier.service.js')
+    res.json({ data: await q.generateProposal(req.params['id']!, req.user!.id) })
+  } catch (err) { next(err) }
+})
+router.get('/agent-proposals', async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const q = await import('../services/agent-qualifier.service.js')
+    res.json({ data: await q.listProposals() })
+  } catch (err) { next(err) }
+})
+router.patch('/agent-proposals/:id', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const q = await import('../services/agent-qualifier.service.js')
+    res.json({ data: await q.updateProposal(req.params['id']!, req.body ?? {}) })
+  } catch (err) { next(err) }
+})
+router.get('/agent-qualifier/config', async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const q = await import('../services/agent-qualifier.service.js')
+    res.json({ data: await q.getConfig() })
+  } catch (err) { next(err) }
+})
+router.put('/agent-qualifier/config', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const q = await import('../services/agent-qualifier.service.js')
+    res.json({ data: await q.saveConfig(req.body ?? {}, req.user!.id) })
+  } catch (err) { next(err) }
+})
+
 // A/B scoreboard for the demo email. BEFORE '/agent-demos/:id' so it isn't read as an id.
 router.get('/agent-demos/ab-results', requirePlatformAdmin, async (req, res, next) => {
   try {

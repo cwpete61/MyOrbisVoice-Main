@@ -323,4 +323,25 @@ router.get('/public/social-links', async (_req, res, next) => {
 // was folded into the unified AgentDemo model. The prospect "generate demo"
 // route now builds a real /agent-demo/<slug>; /demo/<slug> 301-redirects there.
 
+// ── Agent Qualifier — public intake (MyOrbisAgents) ─────────────────────────
+// An RE agent or team/broker self-reports their business. We score it silently
+// and store it; the applicant only gets a thank-you. Operator reviews in admin.
+const agentApplicationSchema = z.object({
+  type:     z.enum(['INDIVIDUAL', 'TEAM']),
+  fullName: z.string().min(1).max(160),
+  email:    z.string().email().max(200),
+  phone:    z.string().max(40).optional(),
+  market:   z.string().max(160).optional(),
+  metrics:  z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).default({}),
+})
+router.post('/public/agent-application', async (req, res, next) => {
+  try {
+    const d = agentApplicationSchema.parse(req.body)
+    const { submitApplication } = await import('../services/agent-qualifier.service.js')
+    const r = await submitApplication(d)
+    // Never return the score/verdict — applicant sees only success.
+    res.json({ data: { ok: true, id: r.id } })
+  } catch (err) { next(err) }
+})
+
 export default router
