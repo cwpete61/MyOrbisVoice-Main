@@ -2921,6 +2921,29 @@ router.post('/agent-applications/:id/proposal', requirePlatformAdmin, async (req
     res.json({ data: await q.generateProposal(req.params['id']!, req.user!.id) })
   } catch (err) { next(err) }
 })
+router.patch('/agent-applications/:id', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const q = await import('../services/agent-qualifier.service.js')
+    res.json({ data: await q.updateApplication(req.params['id']!, req.body ?? {}) })
+  } catch (err) { next(err) }
+})
+router.post('/agent-applications/delete', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : []
+    const q = await import('../services/agent-qualifier.service.js')
+    res.json({ data: await q.deleteApplications(ids) })
+  } catch (err) { next(err) }
+})
+router.post('/agent-proposals/delete', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : []
+    const q = await import('../services/agent-qualifier.service.js')
+    res.json({ data: await q.deleteProposals(ids) })
+  } catch (err) { next(err) }
+})
 router.get('/agent-proposals', async (req, res, next) => {
   try {
     requireAgentsHost(req)

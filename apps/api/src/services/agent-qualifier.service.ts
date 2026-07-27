@@ -175,3 +175,18 @@ export async function listProposals() {
 export async function updateProposal(id: string, data: { tier?: string; pricingJson?: object; roiJson?: object; onboardingJson?: object; summary?: string; status?: string }) {
   return prisma.agentProposal.update({ where: { id }, data })
 }
+
+// Bulk delete. Deleting an application cascades to its proposal (schema onDelete).
+export async function deleteApplications(ids: string[]) {
+  if (!ids.length) return { count: 0 }
+  return prisma.agentApplication.deleteMany({ where: { id: { in: ids } } })
+}
+export async function deleteProposals(ids: string[]) {
+  if (!ids.length) return { count: 0 }
+  return prisma.agentProposal.deleteMany({ where: { id: { in: ids } } })
+}
+
+// Operator edits to an application (contact fields + a market note).
+export async function updateApplication(id: string, data: { fullName?: string; email?: string; phone?: string; market?: string; notes?: string }) {
+  return prisma.agentApplication.update({ where: { id }, data })
+}

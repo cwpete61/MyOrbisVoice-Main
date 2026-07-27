@@ -22,9 +22,20 @@ export default function ProposalsPage() {
   const [edit, setEdit] = useState<string | null>(null)
   const [draftSummary, setDraftSummary] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+  const [sel, setSel] = useState<Set<string>>(new Set())
 
-  async function load() { try { setRows(await apiFetch<Proposal[]>('/api/admin/agent-proposals')) } catch { /* ignore */ } }
+  async function load() { try { setRows(await apiFetch<Proposal[]>('/api/admin/agent-proposals')); setSel(new Set()) } catch { /* ignore */ } }
   useEffect(() => { load() }, [])
+
+  const toggle = (id: string) => setSel(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const allSelected = rows.length > 0 && sel.size === rows.length
+  const selectAll = () => setSel(allSelected ? new Set() : new Set(rows.map(r => r.id)))
+  async function del(ids: string[]) {
+    if (!ids.length || !confirm(`Delete ${ids.length} proposal${ids.length > 1 ? 's' : ''}? This can't be undone.`)) return
+    setBusy('bulk')
+    try { await apiFetch('/api/admin/agent-proposals/delete', { method: 'POST', body: JSON.stringify({ ids }) }); await load() }
+    catch { /* ignore */ } finally { setBusy(null) }
+  }
 
   async function save(id: string, data: Record<string, unknown>) {
     setBusy(id)
@@ -44,11 +55,26 @@ export default function ProposalsPage() {
       </div>
       <p style={{ color: 'var(--text-secondary,#9fb0c7)', marginTop: 4, fontSize: 14 }}>Auto-drafted when you accept a lead. Edit the summary, then mark it sent.</p>
 
+      {rows.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '10px 0 14px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary,#9fb0c7)', cursor: 'pointer' }}>
+            <input type="checkbox" checked={allSelected} onChange={selectAll} /> Select all
+          </label>
+          {sel.size > 0 && (
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary,#9fb0c7)' }}>{sel.size} selected</span>
+              <button disabled={busy === 'bulk'} onClick={() => del([...sel])} style={{ padding: '8px 14px', borderRadius: 9, border: 0, cursor: 'pointer', fontWeight: 700, fontSize: 13, background: '#c0392b', color: '#fff' }}>Delete selected</button>
+            </div>
+          )}
+        </div>
+      )}
+
       {rows.length === 0 && <p style={{ color: '#9fb0c7' }}>No proposals yet — accept a qualified lead to draft one.</p>}
 
       {rows.map(p => (
-        <div key={p.id} style={card}>
+        <div key={p.id} style={{ ...card, outline: sel.has(p.id) ? '2px solid #1fc3c3' : 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <input type="checkbox" checked={sel.has(p.id)} onChange={() => toggle(p.id)} />
             <b style={{ fontSize: 17 }}>{p.application.fullName}</b>
             <span style={pill(p.application.type === 'TEAM' ? '#5fc46a' : '#1fc3c3')}>{p.application.type === 'TEAM' ? 'Team / Broker' : 'Individual'}</span>
             <span style={pill('#8fe0e0')}>{p.tier}</span>
@@ -99,6 +125,7 @@ export default function ProposalsPage() {
                 <button disabled={busy === p.id} onClick={() => save(p.id, { status: 'DECLINED' })} style={{ padding: '8px 14px', borderRadius: 9, cursor: 'pointer', background: 'transparent', color: '#ff8a80', border: '1px solid #ff5c5c55', fontWeight: 600 }}>Declined</button>
               </>
             )}
+            <button disabled={busy === p.id} onClick={() => del([p.id])} style={{ marginLeft: 'auto', padding: '8px 14px', borderRadius: 9, cursor: 'pointer', background: 'transparent', color: '#ff8a80', border: '1px solid #ff5c5c55', fontWeight: 600 }}>Delete</button>
           </div>
         </div>
       ))}
