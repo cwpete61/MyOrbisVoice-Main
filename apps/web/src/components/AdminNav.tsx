@@ -106,6 +106,8 @@ export function AdminNav() {
           <div className="space-y-0.5">
             {visibleItems.map((item) => {
               const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href)
+              // Agent-funnel group gets a subtle 10% black wash to read as one block.
+              const agentGroup = ['/admin/prospects', '/admin/agent-qualifier', '/admin/proposals', '/admin/agent-demos'].includes(item.href)
               return (
                 <Link
                   key={item.href}
@@ -113,7 +115,7 @@ export function AdminNav() {
                   className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors"
                   style={{
                     color: active ? 'oklch(72% 0.12 193)' : 'var(--text-secondary)',
-                    background: active ? 'oklch(55% 0.11 193 / 0.12)' : 'transparent',
+                    background: active ? 'oklch(55% 0.11 193 / 0.12)' : agentGroup ? 'rgba(0,0,0,0.1)' : 'transparent',
                     fontWeight: active ? 500 : 400,
                   }}
                 >
