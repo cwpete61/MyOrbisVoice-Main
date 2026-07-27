@@ -7,8 +7,8 @@ import { AbsoluteFill, Sequence, useCurrentFrame, interpolate, Easing, Audio, st
 import { SORA, INTER, TEAL, TEAL_BRIGHT, TEAL_DEEP, GREEN, WHITE, MUTED, BG_TOP, BG_BOT } from './_theme'
 
 // Per-language total frames (measured from the rendered narration mp3s).
-export const MOREMITO_FRAMES_EN = 914
-export const MOREMITO_FRAMES_ES = 1085
+export const MOREMITO_FRAMES_EN = 892
+export const MOREMITO_FRAMES_ES = 1206
 export const MOREMITO_FRAMES = MOREMITO_FRAMES_EN // default
 
 const EASE = Easing.bezier(0.16, 1, 0.3, 1)
@@ -25,7 +25,7 @@ const T = {
   en: {
     hook1: 'A missed call is a', hook2: 'lost customer.', hookSub: 'Orby answers every one — 24/7.',
     whatEyebrow: 'Meet Orby', whatTitle: 'One assistant. Every job you can’t get to.',
-    chips: ['Answers 24/7', 'Explains your products', 'Captures the lead', 'Hands off to Stephanie', 'Books the follow-up'],
+    chips: ['Answers 24/7', 'Explains your products', 'Captures the lead', 'Hands off to a rep', 'Books the follow-up'],
     statsEyebrow: 'Why it works',
     stats: [['24/7', 'Never a missed call'], ['<3s', 'Answers instantly'], ['EN/ES', 'Bilingual by default']],
     featEyebrow: 'Everything Orby does',
@@ -35,7 +35,7 @@ const T = {
   es: {
     hook1: 'Una llamada perdida es un', hook2: 'cliente perdido.', hookSub: 'Orby contesta cada una — 24/7.',
     whatEyebrow: 'Conoce a Orby', whatTitle: 'Una asistente. Todo lo que no alcanzas a hacer.',
-    chips: ['Contesta 24/7', 'Explica tus productos', 'Captura el lead', 'Te conecta con Stephanie', 'Agenda el seguimiento'],
+    chips: ['Contesta 24/7', 'Explica tus productos', 'Captura el lead', 'Te conecta con un representante', 'Agenda el seguimiento'],
     statsEyebrow: 'Por qué funciona',
     stats: [['24/7', 'Nunca una llamada perdida'], ['<3s', 'Contesta al instante'], ['EN/ES', 'Bilingüe por defecto']],
     featEyebrow: 'Todo lo que hace Orby',
