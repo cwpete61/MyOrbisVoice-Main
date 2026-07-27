@@ -7,20 +7,24 @@ import Link from 'next/link'
 import { apiFetch } from '@/hooks/useApi'
 
 type Proposal = {
-  id: string; tier: string; status: string; summary?: string
-  pricingJson: { plan: string; monthly: number; seats?: number; perSeat?: number }
-  roiJson: { missedCallsMo: number; avgPrice: number; gciPct: number; recoveredMo: number }
-  onboardingJson: string[]
+  id: string; tier: string; status: string; publicToken?: string | null
+  heading?: string; intro?: string; summary?: string
+  pricingJson: { plan: string; monthly: number; annual?: number | null; setup?: number; seats?: number; perSeat?: number }
+  roiJson: { avgPrice: number; gciPct: number; commissionPerDeal: number; missedCallsMo: number; annualCost: number }
+  onboardingJson?: string[]; whatOrbyJson?: string[]; nextStepsJson?: string[]
+  linksJson?: { basicDemoUrl?: string; demoNumber?: string; micrositeUrl?: string }
   application: { fullName: string; email: string; type: string; market?: string; score: number }
   createdAt: string
 }
 
 const money = (n: number) => '$' + Math.round(n).toLocaleString()
+const PROPOSAL_ORIGIN = process.env.NEXT_PUBLIC_WEB_ORIGIN ?? (typeof window !== 'undefined' ? window.location.origin : '')
 
 export default function ProposalsPage() {
   const [rows, setRows] = useState<Proposal[]>([])
   const [edit, setEdit] = useState<string | null>(null)
-  const [draftSummary, setDraftSummary] = useState('')
+  const [ef, setEf] = useState<Record<string, string>>({})
+  const [copied, setCopied] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [sel, setSel] = useState<Set<string>>(new Set())
 
@@ -41,6 +45,30 @@ export default function ProposalsPage() {
     setBusy(id)
     try { await apiFetch(`/api/admin/agent-proposals/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); setEdit(null); await load() }
     catch { /* ignore */ } finally { setBusy(null) }
+  }
+  function startEdit(p: Proposal) {
+    setEdit(p.id)
+    setEf({
+      heading: p.heading ?? '', intro: p.intro ?? '', summary: p.summary ?? '',
+      tier: p.tier, monthly: String(p.pricingJson.monthly ?? ''), annual: String(p.pricingJson.annual ?? ''), setup: String(p.pricingJson.setup ?? ''),
+      demoNumber: p.linksJson?.demoNumber ?? '', basicDemoUrl: p.linksJson?.basicDemoUrl ?? '',
+      whatOrby: (p.whatOrbyJson ?? []).join('\n'), nextSteps: (p.nextStepsJson ?? []).join('\n'),
+    })
+  }
+  async function saveEdit(p: Proposal) {
+    const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean)
+    const data: Record<string, unknown> = {
+      heading: ef.heading, intro: ef.intro, summary: ef.summary, tier: ef.tier,
+      pricingJson: { ...p.pricingJson, monthly: Number(ef.monthly) || p.pricingJson.monthly, annual: ef.annual ? Number(ef.annual) : null, setup: ef.setup ? Number(ef.setup) : p.pricingJson.setup },
+      linksJson: { ...(p.linksJson ?? {}), demoNumber: ef.demoNumber, basicDemoUrl: ef.basicDemoUrl },
+      whatOrbyJson: lines(ef.whatOrby ?? ''), nextStepsJson: lines(ef.nextSteps ?? ''),
+    }
+    await save(p.id, data)
+  }
+  function copyLink(p: Proposal) {
+    if (!p.publicToken) return
+    const url = `${PROPOSAL_ORIGIN}/proposal/${p.publicToken}`
+    navigator.clipboard?.writeText(url).then(() => { setCopied(p.id); setTimeout(() => setCopied(null), 1500) }).catch(() => {})
   }
 
   const card = { background: 'var(--surface-1,#0f1c30)', border: '1px solid var(--border,#22344f)', borderRadius: 14, padding: 20, marginBottom: 14 } as const
@@ -79,45 +107,57 @@ export default function ProposalsPage() {
             <span style={pill(p.application.type === 'TEAM' ? '#5fc46a' : '#1fc3c3')}>{p.application.type === 'TEAM' ? 'Team / Broker' : 'Individual'}</span>
             <span style={pill('#8fe0e0')}>{p.tier}</span>
             <span style={pill(stColor[p.status] ?? '#9fb0c7')}>{p.status}</span>
-            <span style={{ marginLeft: 'auto', color: '#7a8aa0', fontSize: 13 }}>{p.application.email}</span>
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
+              {p.publicToken && <a href={`/proposal/${p.publicToken}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#1fc3c3', fontWeight: 700 }}>View ↗</a>}
+              {p.publicToken && <button onClick={() => copyLink(p)} style={{ background: 'none', border: 0, color: copied === p.id ? '#34c759' : '#9fb0c7', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>{copied === p.id ? 'Copied ✓' : 'Copy link'}</button>}
+            </span>
           </div>
+          <div style={{ color: '#7a8aa0', fontSize: 12.5, marginTop: 2 }}>{p.application.email}</div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, margin: '16px 0' }}>
             <div style={{ background: '#0c1626', border: '1px solid #22344f', borderRadius: 10, padding: 14 }}>
               <div style={{ color: '#7a8aa0', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>Pricing</div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#e8eef7' }}>{money(p.pricingJson.monthly)}<span style={{ fontSize: 14, color: '#9fb0c7', fontWeight: 500 }}>/mo</span></div>
-              <div style={{ color: '#9fb0c7', fontSize: 13, marginTop: 4 }}>
-                {p.pricingJson.plan}{p.pricingJson.seats ? ` · ${p.pricingJson.seats} seats × ${money(p.pricingJson.perSeat ?? 0)}` : ''}
-              </div>
+              {typeof p.pricingJson.annual === 'number' ? (
+                <>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#e8eef7' }}>{money(p.pricingJson.annual)}<span style={{ fontSize: 13, color: '#9fb0c7', fontWeight: 500 }}>/yr</span></div>
+                  <div style={{ color: '#9fb0c7', fontSize: 13, marginTop: 4 }}>{p.pricingJson.plan} · 50% for life · or {money(p.pricingJson.monthly)}/mo</div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#e8eef7' }}>{money(p.pricingJson.monthly)}<span style={{ fontSize: 13, color: '#9fb0c7', fontWeight: 500 }}>/mo</span></div>
+                  <div style={{ color: '#9fb0c7', fontSize: 13, marginTop: 4 }}>{p.pricingJson.plan}{p.pricingJson.seats ? ` · ${p.pricingJson.seats} seats × ${money(p.pricingJson.perSeat ?? 0)}` : ''}</div>
+                </>
+              )}
             </div>
             <div style={{ background: '#0c1626', border: '1px solid #22344f', borderRadius: 10, padding: 14 }}>
-              <div style={{ color: '#7a8aa0', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>ROI projection</div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#34c759' }}>{money(p.roiJson.recoveredMo)}<span style={{ fontSize: 14, color: '#9fb0c7', fontWeight: 500 }}>/mo</span></div>
-              <div style={{ color: '#9fb0c7', fontSize: 13, marginTop: 4 }}>~{p.roiJson.missedCallsMo} missed calls/mo × {money(p.roiJson.avgPrice)} × {p.roiJson.gciPct}%</div>
+              <div style={{ color: '#7a8aa0', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 8 }}>Value</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#34c759' }}>{money(p.roiJson.commissionPerDeal)}<span style={{ fontSize: 13, color: '#9fb0c7', fontWeight: 500 }}>/deal</span></div>
+              <div style={{ color: '#9fb0c7', fontSize: 13, marginTop: 4 }}>one saved deal covers ~{Math.max(1, Math.round(p.roiJson.commissionPerDeal / (p.roiJson.annualCost || 1)))} yr · ~{p.roiJson.missedCallsMo} calls/mo missed</div>
             </div>
           </div>
 
-          <div style={{ color: '#7a8aa0', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }}>Onboarding</div>
-          <ol style={{ margin: '0 0 14px', paddingLeft: 20, color: '#c9d6e6', fontSize: 14 }}>
-            {p.onboardingJson.map((s, i) => <li key={i} style={{ margin: '3px 0' }}>{s}</li>)}
-          </ol>
-
-          <div style={{ color: '#7a8aa0', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }}>Summary</div>
           {edit === p.id ? (
-            <>
-              <textarea value={draftSummary} onChange={e => setDraftSummary(e.target.value)} rows={4}
-                style={{ width: '100%', background: '#0c1626', border: '1px solid #22344f', color: '#e8eef7', borderRadius: 10, padding: 12, fontSize: 14 }} />
-              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <button disabled={busy === p.id} onClick={() => save(p.id, { summary: draftSummary })} style={{ padding: '8px 16px', borderRadius: 9, border: 0, cursor: 'pointer', fontWeight: 700, background: '#1fc3c3', color: '#03201f' }}>Save</button>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {([['heading', 'Heading'], ['intro', 'Intro'], ['tier', 'Plan / tier'], ['monthly', 'Monthly $'], ['annual', 'Annual $ (blank = none)'], ['setup', 'Setup $'], ['demoNumber', 'Demo phone'], ['basicDemoUrl', 'Basic demo URL']] as const).map(([k, lbl]) => (
+                <label key={k} style={{ fontSize: 12, color: '#7a8aa0' }}>{lbl}<input value={ef[k] ?? ''} onChange={e => setEf(p2 => ({ ...p2, [k]: e.target.value }))} style={{ width: '100%', background: '#0c1626', border: '1px solid #22344f', color: '#e8eef7', borderRadius: 8, padding: '8px 10px', fontSize: 13, marginTop: 4 }} /></label>
+              ))}
+              {([['whatOrby', 'What Orby does (one per line)'], ['nextSteps', 'Next steps (one per line)'], ['summary', 'Summary']] as const).map(([k, lbl]) => (
+                <label key={k} style={{ fontSize: 12, color: '#7a8aa0' }}>{lbl}<textarea value={ef[k] ?? ''} onChange={e => setEf(p2 => ({ ...p2, [k]: e.target.value }))} rows={k === 'summary' ? 3 : 4} style={{ width: '100%', background: '#0c1626', border: '1px solid #22344f', color: '#e8eef7', borderRadius: 8, padding: 10, fontSize: 13, marginTop: 4 }} /></label>
+              ))}
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button disabled={busy === p.id} onClick={() => saveEdit(p)} style={{ padding: '8px 16px', borderRadius: 9, border: 0, cursor: 'pointer', fontWeight: 700, background: '#1fc3c3', color: '#03201f' }}>Save</button>
                 <button onClick={() => setEdit(null)} style={{ padding: '8px 16px', borderRadius: 9, cursor: 'pointer', background: 'transparent', color: '#9fb0c7', border: '1px solid #22344f' }}>Cancel</button>
               </div>
-            </>
+            </div>
           ) : (
-            <p style={{ color: '#c9d6e6', fontSize: 14, lineHeight: 1.5, margin: '0 0 12px' }}>{p.summary}</p>
+            <>
+              <div style={{ color: '#7a8aa0', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }}>Summary</div>
+              <p style={{ color: '#c9d6e6', fontSize: 14, lineHeight: 1.5, margin: '0 0 12px' }}>{p.summary}</p>
+            </>
           )}
 
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            {edit !== p.id && <button onClick={() => { setEdit(p.id); setDraftSummary(p.summary ?? '') }} style={{ padding: '8px 14px', borderRadius: 9, cursor: 'pointer', background: 'transparent', color: '#9fb0c7', border: '1px solid #22344f', fontWeight: 600 }}>Edit summary</button>}
+            {edit !== p.id && <button onClick={() => startEdit(p)} style={{ padding: '8px 14px', borderRadius: 9, cursor: 'pointer', background: 'transparent', color: '#9fb0c7', border: '1px solid #22344f', fontWeight: 600 }}>Edit</button>}
             {p.status === 'DRAFT' && <button disabled={busy === p.id} onClick={() => save(p.id, { status: 'SENT' })} style={{ padding: '8px 16px', borderRadius: 9, border: 0, cursor: 'pointer', fontWeight: 700, background: '#1fc3c3', color: '#03201f' }}>Mark sent</button>}
             {p.status === 'SENT' && (
               <>

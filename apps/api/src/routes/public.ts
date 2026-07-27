@@ -344,4 +344,12 @@ router.post('/public/agent-application', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// Public read-only proposal by shareable token (the client's link).
+router.get('/public/proposal/:token', async (req, res, next) => {
+  try {
+    const { getProposalByToken } = await import('../services/agent-qualifier.service.js')
+    res.json({ data: await getProposalByToken(req.params['token']!) })
+  } catch (err) { next(err) }
+})
+
 export default router

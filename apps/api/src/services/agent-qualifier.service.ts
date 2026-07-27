@@ -5,6 +5,7 @@
 //    per-metric breakdown. Applicants never see it.
 //  • Operator: reviews (Targets view), accepts/rejects (overriding the verdict),
 //    and on accept generates a full Proposal (plan + pricing + ROI + onboarding).
+import { randomBytes } from 'node:crypto'
 import { prisma } from '../lib/prisma.js'
 import { getConfigValue, setConfigValue } from './system-config.service.js'
 import { AppError } from '@voiceautomation/shared'
@@ -18,12 +19,18 @@ export const DEFAULT_CONFIG = {
   individual: { dealsLast12: 12, avgPriceUsd: 200000, monthlyLeads: 20, budgetMo: 97, timelineDays: 90 },
   team:       { seats: 5, teamDeals: 60, monthlyLeads: 50, budgetMo: 385 },
   pricing: {
-    individual: { starter: 97, pro: 297 },
+    setup: 250,
+    // Real MyOrbisAgents plans. Annual = 50% off, LOCKED FOR LIFE (annual billing only).
+    plans: {
+      capture: { name: 'Solo Capture', monthly: 297, annual: 2282 },
+      power:   { name: 'Solo Power',   monthly: 497, annual: 3482 },
+    },
     teamSeat: [ { min: 100, price: 57 }, { min: 25, price: 67 }, { min: 5, price: 77 } ], // highest-min first
     gciPct: 2.5,       // commission % of sale price
     closeRate: 0.2,    // recovered-call → deal conversion for the ROI projection
     missedShare: 0.35, // share of monthly leads currently missed (after-hours/busy)
   },
+  demo: { basicDemoUrl: 'https://myorbisagents.com/', demoNumber: '' },
 } as const
 
 export type QualifierConfig = typeof DEFAULT_CONFIG
@@ -88,7 +95,7 @@ export function scoreApplication(type: string, m: Metrics, cfg: QualifierConfig)
   score = Math.max(0, Math.min(100, score))
   const verdict = score >= cfg.verdict.qualified ? 'QUALIFIED' : score >= cfg.verdict.borderline ? 'BORDERLINE' : 'PASS'
   const avg = num(m, 'avgPriceUsd'); const deals = num(m, type === 'TEAM' ? 'teamDeals' : 'dealsLast12')
-  const recommendedTier = type === 'TEAM' ? 'Team' : (avg >= 750000 || deals >= 20 ? 'Pro' : 'Starter')
+  const recommendedTier = type === 'TEAM' ? 'Team' : (avg >= 750000 || deals >= 20 ? 'Solo Power' : 'Solo Capture')
   return { score, verdict, rows, recommendedTier }
 }
 
@@ -131,38 +138,85 @@ export async function generateProposal(applicationId: string, byUserId: string) 
   if (!app) throw new AppError('NOT_FOUND', 'Application not found', 404)
   const cfg = await getConfig()
   const m = app.metricsJson as Metrics
-  const tier = (app.scoreJson as { recommendedTier?: string })?.recommendedTier ?? (app.type === 'TEAM' ? 'Team' : 'Starter')
+  const isTeam = app.type === 'TEAM'
+  const firstName = (app.fullName || 'there').split(/\s+/)[0]
 
-  // Pricing
+  // Recommended plan + pricing (real MyOrbisAgents plans; annual = 50% off for life).
+  const avg = num(m, 'avgPriceUsd') || (isTeam ? 400000 : 300000)
+  const dealsForTier = num(m, isTeam ? 'teamDeals' : 'dealsLast12')
+  let tier: string
   let pricing: Record<string, unknown>
-  if (app.type === 'TEAM') {
+  if (isTeam) {
     const seats = Math.max(1, num(m, 'seats'))
     const perSeat = perSeatFor(seats, cfg)
-    pricing = { plan: 'Team', seats, perSeat, monthly: seats * perSeat }
+    tier = 'Team'
+    pricing = { plan: 'Team', seats, perSeat, monthly: seats * perSeat, annual: null, setup: cfg.pricing.setup }
   } else {
-    const monthly = tier === 'Pro' ? cfg.pricing.individual.pro : cfg.pricing.individual.starter
-    pricing = { plan: tier, monthly }
+    const p = (avg >= 750000 || dealsForTier >= 20) ? cfg.pricing.plans.power : cfg.pricing.plans.capture
+    tier = p.name
+    pricing = { plan: p.name, monthly: p.monthly, annual: p.annual, setup: cfg.pricing.setup }
   }
 
-  // ROI projection from their own numbers.
-  const avg = num(m, 'avgPriceUsd') || (app.type === 'TEAM' ? 400000 : 300000)
+  // ROI — per-deal payback, the credible framing (avoid a hype monthly number).
   const leads = num(m, 'monthlyLeads')
-  const missedCallsMo = Math.round(leads * cfg.pricing.missedShare)
-  const recoveredMo = Math.round(missedCallsMo * cfg.pricing.closeRate * avg * (cfg.pricing.gciPct / 100))
-  const roi = { missedCallsMo, avgPrice: avg, gciPct: cfg.pricing.gciPct, closeRate: cfg.pricing.closeRate, recoveredMo }
+  const missedCallsMo = Math.max(1, Math.round(leads * cfg.pricing.missedShare))
+  const commissionPerDeal = Math.round(avg * (cfg.pricing.gciPct / 100))
+  const annualCost = typeof pricing['annual'] === 'number' ? (pricing['annual'] as number) : (pricing['monthly'] as number) * 12
+  const roi = { avgPrice: avg, gciPct: cfg.pricing.gciPct, commissionPerDeal, missedCallsMo, annualCost }
 
-  const onboarding = [
-    'Connect your phone number + import your listings',
-    'Brand Orby to your voice, market, and hours (bilingual EN/ES)',
-    'Go live in a day — Orby answers, qualifies, and books from call one',
+  const heading = 'Stop losing after-hours buyers on your listings'
+  const intro = `${firstName}, you've done the hard part: active listings that pull in buyers. The leak is what happens when one calls and you're mid-showing, with family, or asleep. This is a plan to close that gap without adding a person to your payroll.`
+  const whatOrby = [
+    'Answers every listing call in seconds, 24/7, in English and Spanish',
+    "Asks the buyer what they're after: budget, timeline, which property",
+    'Books the showing straight onto your calendar',
+    'Hands you a brief so you walk in knowing the buyer. You close.',
   ]
-  const summary = `Recommended ${tier} for ${app.fullName}. Orby covers the after-hours + busy-signal gap that's currently costing an estimated $${recoveredMo.toLocaleString()}/mo in un-worked commission.`
+  const onboarding = [
+    'Connect your phone number and import your listings',
+    'Brand Orby to your voice, market, and hours (bilingual EN/ES)',
+    'Go live in a day. Orby answers, qualifies, and books from call one.',
+  ]
+  const nextSteps = [
+    'Lock your founding rate: complete setup and your plan.',
+    'Custom demo: we tailor Orby to your listings, market, and voice, then walk you through her live.',
+    'Live training: a 1:1 session so you and your team know exactly how she hands buyers off to you.',
+    'Go live: Orby starts answering, usually within a day.',
+  ]
+  const links = { basicDemoUrl: cfg.demo.basicDemoUrl, demoNumber: cfg.demo.demoNumber, micrositeUrl: '' }
+  const summary = `Recommended ${tier} for ${app.fullName}. One recovered deal (about $${commissionPerDeal.toLocaleString()} commission) covers Orby for well over a year.`
 
+  const data = {
+    tier,
+    pricingJson: pricing as object,
+    roiJson: roi as object,
+    onboardingJson: onboarding as object,
+    whatOrbyJson: whatOrby as object,
+    nextStepsJson: nextSteps as object,
+    linksJson: links as object,
+    heading,
+    intro,
+    summary,
+    status: 'DRAFT',
+  }
+  // Keep the shareable link stable across regenerations (fill it if missing).
+  const existing = await prisma.agentProposal.findUnique({ where: { applicationId }, select: { publicToken: true } })
+  const publicToken = existing?.publicToken ?? randomBytes(24).toString('hex')
   return prisma.agentProposal.upsert({
     where: { applicationId },
-    update: { tier, pricingJson: pricing as object, roiJson: roi as object, onboardingJson: onboarding as object, summary, status: 'DRAFT' },
-    create: { applicationId, tier, pricingJson: pricing as object, roiJson: roi as object, onboardingJson: onboarding as object, summary, status: 'DRAFT', createdById: byUserId },
+    update: { ...data, publicToken },
+    create: { applicationId, createdById: byUserId, publicToken, ...data },
   })
+}
+
+// Public read-only view of a proposal by its shareable token (client-facing).
+export async function getProposalByToken(token: string) {
+  const p = await prisma.agentProposal.findUnique({
+    where: { publicToken: token },
+    include: { application: { select: { fullName: true, type: true, market: true } } },
+  })
+  if (!p) throw new AppError('NOT_FOUND', 'Proposal not found', 404)
+  return p
 }
 
 export async function listProposals() {
@@ -172,7 +226,7 @@ export async function listProposals() {
   })
 }
 
-export async function updateProposal(id: string, data: { tier?: string; pricingJson?: object; roiJson?: object; onboardingJson?: object; summary?: string; status?: string }) {
+export async function updateProposal(id: string, data: { tier?: string; pricingJson?: object; roiJson?: object; onboardingJson?: object; whatOrbyJson?: object; nextStepsJson?: object; linksJson?: object; heading?: string; intro?: string; summary?: string; status?: string }) {
   return prisma.agentProposal.update({ where: { id }, data })
 }
 

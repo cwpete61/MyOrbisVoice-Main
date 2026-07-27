@@ -3993,7 +3993,14 @@ model AgentProposal {
   pricingJson   Json    // { plan, monthly, seats?, perSeat?, discountPct? }
   roiJson       Json    // { missedCallsMo, avgPrice, gciPct, recoveredMo }
   onboardingJson Json   // [ step, step, step ]
-  summary       String?
+  // Client-facing formal proposal content (all editable in admin before send).
+  publicToken   String?  @unique  // shareable read-only link: /proposal/<token>
+  heading       String?
+  intro         String?  @db.Text
+  whatOrbyJson  Json?    // bullet list of what Orby does
+  nextStepsJson Json?    // post-payment steps (custom demo, live training, go-live)
+  linksJson     Json?    // { basicDemoUrl, demoNumber, micrositeUrl }
+  summary       String?  @db.Text
   status        String   @default("DRAFT") // DRAFT | SENT | ACCEPTED | DECLINED
   createdById   String?
   sentAt        DateTime?
