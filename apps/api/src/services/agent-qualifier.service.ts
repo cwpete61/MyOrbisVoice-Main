@@ -22,8 +22,8 @@ export const DEFAULT_CONFIG = {
     setup: 250,
     // Real MyOrbisAgents plans. Annual = 50% off, LOCKED FOR LIFE (annual billing only).
     plans: {
-      capture: { name: 'Solo Capture', monthly: 297, annual: 2282, payLink: 'https://buy.stripe.com/28E28tcsrd8h0LR47s0Ny07' },
-      power:   { name: 'Solo Power',   monthly: 497, annual: 3482, payLink: 'https://buy.stripe.com/6oUaEZ1NNfgp2TZ33o0Ny05' },
+      capture: { name: 'Solo Capture', monthly: 297, annual: 1782, payLink: 'https://buy.stripe.com/28E28tcsrd8h0LR47s0Ny07' },
+      power:   { name: 'Solo Power',   monthly: 497, annual: 2982, payLink: 'https://buy.stripe.com/6oUaEZ1NNfgp2TZ33o0Ny05' },
     },
     teamSeat: [ { min: 100, price: 57 }, { min: 25, price: 67 }, { min: 5, price: 77 } ], // highest-min first
     gciPct: 2.5,       // commission % of sale price
