@@ -660,7 +660,7 @@
   function detectEngine(){
     var secure = location.protocol==="https:";
     REAL = !!(window.OrbisVoice && window.OrbisVoice.__installed) && !!navigator.mediaDevices && secure;
-    if(REAL){ try{ orby = window.OrbisVoice.init({publicKey:ORBY_PUBLIC_KEY, agentName:"Orby", businessName:"MoreMito"}); }catch(e){ REAL=false; } }
+    if(REAL){ try{ orby = window.OrbisVoice.init({publicKey:ORBY_PUBLIC_KEY, agentName:"Orby", businessName:"MoreMydo"}); }catch(e){ REAL=false; } }
     $("engineBadge").textContent=REAL?L().badgeLive:L().badgeSim;
     $("phoneHint").textContent=REAL?L().phoneHintReal:L().phoneHintSim;
   }
