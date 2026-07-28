@@ -22,8 +22,8 @@ export const DEFAULT_CONFIG = {
     setup: 250,
     // Real MyOrbisAgents plans. Annual = 50% off, LOCKED FOR LIFE (annual billing only).
     plans: {
-      capture: { name: 'Solo Capture', monthly: 297, annual: 1782, payLink: 'https://buy.stripe.com/cNicN7eAzfgp66bcDY0Ny0b' },
-      power:   { name: 'Solo Power',   monthly: 497, annual: 2982, payLink: 'https://buy.stripe.com/bJe6oJ4ZZ6JTeCH33o0Ny0c' },
+      capture: { name: 'Solo Capture', monthly: 297, annual: 1782, payLink: 'https://buy.stripe.com/cNicN7eAzfgp66bcDY0Ny0b', payLinkMonthly: 'https://buy.stripe.com/aFafZj1NN6JT1PV0Vg0Ny0d' },
+      power:   { name: 'Solo Power',   monthly: 497, annual: 2982, payLink: 'https://buy.stripe.com/bJe6oJ4ZZ6JTeCH33o0Ny0c', payLinkMonthly: 'https://buy.stripe.com/9B68wRbon1pz1PV7jE0Ny0e' },
     },
     teamSeat: [ { min: 100, price: 57 }, { min: 25, price: 67 }, { min: 5, price: 77 } ], // highest-min first
     gciPct: 2.5,       // commission % of sale price
@@ -147,6 +147,7 @@ export async function generateProposal(applicationId: string, byUserId: string) 
   let tier: string
   let pricing: Record<string, unknown>
   let paymentLink = ''
+  let paymentLinkMonthly = ''
   if (isTeam) {
     const seats = Math.max(1, num(m, 'seats'))
     const perSeat = perSeatFor(seats, cfg)
@@ -157,6 +158,7 @@ export async function generateProposal(applicationId: string, byUserId: string) 
     tier = p.name
     pricing = { plan: p.name, monthly: p.monthly, annual: p.annual, setup: cfg.pricing.setup }
     paymentLink = p.payLink
+    paymentLinkMonthly = p.payLinkMonthly ?? ''
   }
 
   // ROI — per-deal payback, the credible framing (avoid a hype monthly number).
@@ -216,6 +218,7 @@ export async function generateProposal(applicationId: string, byUserId: string) 
     nextStepsJson: nextSteps as object,
     linksJson: links as object,
     paymentLink,
+    paymentLinkMonthly,
     contentEsJson: contentEs as object,
     heading,
     intro,
@@ -249,7 +252,7 @@ export async function listProposals() {
   })
 }
 
-export async function updateProposal(id: string, data: { tier?: string; pricingJson?: object; roiJson?: object; onboardingJson?: object; whatOrbyJson?: object; nextStepsJson?: object; linksJson?: object; paymentLink?: string; heading?: string; intro?: string; summary?: string; status?: string }) {
+export async function updateProposal(id: string, data: { tier?: string; pricingJson?: object; roiJson?: object; onboardingJson?: object; whatOrbyJson?: object; nextStepsJson?: object; linksJson?: object; paymentLink?: string; paymentLinkMonthly?: string; heading?: string; intro?: string; summary?: string; status?: string }) {
   return prisma.agentProposal.update({ where: { id }, data })
 }
 

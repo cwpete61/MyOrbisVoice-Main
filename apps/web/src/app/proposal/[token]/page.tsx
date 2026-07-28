@@ -10,7 +10,7 @@ const TEAL = '#0e8f8f', TEAL_BRIGHT = '#15a8a8', GREEN = '#2f8f3a', MUTED = '#93
 
 type EsContent = { heading?: string; intro?: string; whatOrby?: string[]; nextSteps?: string[]; summary?: string }
 type Proposal = {
-  tier: string; status: string; heading?: string; intro?: string; summary?: string; paymentLink?: string | null
+  tier: string; status: string; heading?: string; intro?: string; summary?: string; paymentLink?: string | null; paymentLinkMonthly?: string | null
   pricingJson: { plan: string; monthly: number; annual?: number | null; setup?: number; seats?: number; perSeat?: number }
   roiJson: { avgPrice: number; gciPct: number; commissionPerDeal: number; missedCallsMo: number; annualCost: number }
   whatOrbyJson?: string[]; nextStepsJson?: string[]
@@ -28,7 +28,7 @@ const L = {
     tryDemo: 'Try the basic demo now', basicDemo: 'Basic demo, instant', listingsLoaded: 'Your listings loaded in: call', answersAs: '. Orby answers as your listing agent.',
     yourPlan: 'Your plan', foundingAnnual: 'Founding annual', forLife: "That's 50% off, locked in for life (annual billing).", preferMonthly: 'Prefer monthly?', monthlyStd: 'at the standard rate. The lifetime discount is annual only.', setupLine: (s: string) => `${s} one-time setup.`,
     terms: 'All sales are final. Annual plans are prepaid and non-refundable.',
-    afterYes: 'What happens after you say yes', ready: 'Ready to start?', readyBody: (num: string) => `Complete your enrollment below, or reply to the email that sent you here. We'll have you live within a day.`, pay: 'Enroll now', langBtn: 'Español', pdf: 'Save as PDF', gone: 'This proposal link is no longer available.', loading: 'Loading…' },
+    afterYes: 'What happens after you say yes', ready: 'Ready to start?', readyBody: (num: string) => `Pick how you'd like to pay below, or reply to the email that sent you here. We'll have you live within a day.`, payAnnual: 'Enroll — Annual', payMonthly: 'Enroll — Monthly', bestValue: 'Best value · 50% off for life', plusSetup: 'Both include the one-time $250 setup.', langBtn: 'Español', pdf: 'Save as PDF', gone: 'This proposal link is no longer available.', loading: 'Loading…' },
   es: { preparedFor: 'Preparado para', gap: 'La brecha, en tus números', gapBody: (n: number) => `Cerca de ${n} llamada${n === 1 ? '' : 's'} de compradores al mes llegan a tus propiedades fuera de horario y caen en el buzón. La mayoría no deja mensaje ni vuelve a llamar. Llaman al siguiente agente del listado.`,
     whatOrby: 'Lo que hace Orby', notReplace: 'No te reemplaza. Se asegura de que el comprador hable con alguien en el momento en que llama.',
     math: 'Los números, en modo conservador', mathBody: (avg: string, comm: string) => `Tu venta promedio ronda ${avg}, unos ${comm} de comisión por operación. Orby no necesita salvar muchas de esas llamadas para pagarse sola.`,
@@ -37,7 +37,7 @@ const L = {
     tryDemo: 'Prueba la demo básica ahora', basicDemo: 'Demo básica, al instante', listingsLoaded: 'Tus propiedades cargadas: llama al', answersAs: '. Orby contesta como tu agente del listado.',
     yourPlan: 'Tu plan', foundingAnnual: 'Anual fundador', forLife: 'Eso es 50% de descuento, de por vida (pago anual).', preferMonthly: '¿Prefieres mensual?', monthlyStd: 'a la tarifa estándar. El descuento de por vida es solo anual.', setupLine: (s: string) => `${s} de configuración única.`,
     terms: 'Todas las ventas son finales. Los planes anuales se pagan por adelantado y no son reembolsables.',
-    afterYes: 'Qué pasa después de que digas que sí', ready: '¿Listo para empezar?', readyBody: () => `Completa tu inscripción abajo, o responde al correo que te trajo aquí. Te activamos en un día.`, pay: 'Inscribirme ahora', langBtn: 'English', pdf: 'Guardar PDF', gone: 'Este enlace de propuesta ya no está disponible.', loading: 'Cargando…' },
+    afterYes: 'Qué pasa después de que digas que sí', ready: '¿Listo para empezar?', readyBody: () => `Elige cómo prefieres pagar abajo, o responde al correo que te trajo aquí. Te activamos en un día.`, payAnnual: 'Inscribirme — Anual', payMonthly: 'Inscribirme — Mensual', bestValue: 'Mejor valor · 50% de por vida', plusSetup: 'Ambos incluyen la configuración única de $250.', langBtn: 'English', pdf: 'Guardar PDF', gone: 'Este enlace de propuesta ya no está disponible.', loading: 'Cargando…' },
 } as const
 
 export default function ProposalPage() {
@@ -130,7 +130,20 @@ export default function ProposalPage() {
         <div style={{ marginTop: 32, padding: '22px 24px', background: '#f2faf9', border: `1px solid ${TEAL}33`, borderRadius: 12 }}>
           <div style={{ fontWeight: 700, fontSize: 19 }}>{t.ready}</div>
           <p style={{ margin: '6px 0 14px', fontSize: 16, color: '#33404d' }}>{t.readyBody(links.demoNumber || '')}</p>
-          {p.paymentLink && <a href={p.paymentLink} target="_blank" rel="noreferrer" style={{ display: 'inline-block', background: TEAL, color: '#fff', padding: '13px 26px', borderRadius: 9, textDecoration: 'none', fontWeight: 800, fontFamily: 'system-ui,sans-serif', fontSize: 16 }}>{t.pay} →</a>}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'stretch' }}>
+            {p.paymentLink && (
+              <a href={p.paymentLink} target="_blank" rel="noreferrer" style={{ display: 'flex', flexDirection: 'column', gap: 3, background: TEAL, color: '#fff', padding: '13px 24px', borderRadius: 9, textDecoration: 'none', fontFamily: 'system-ui,sans-serif' }}>
+                <span style={{ fontWeight: 800, fontSize: 16 }}>{t.payAnnual} · {annual ? money(annual) : ''}/{lang === 'es' ? 'año' : 'yr'} →</span>
+                <span style={{ fontSize: 12.5, opacity: .9 }}>{t.bestValue}</span>
+              </a>
+            )}
+            {p.paymentLinkMonthly && (
+              <a href={p.paymentLinkMonthly} target="_blank" rel="noreferrer" style={{ display: 'flex', flexDirection: 'column', gap: 3, background: '#fff', color: TEAL, border: `2px solid ${TEAL}`, padding: '12px 22px', borderRadius: 9, textDecoration: 'none', fontFamily: 'system-ui,sans-serif' }}>
+                <span style={{ fontWeight: 800, fontSize: 16 }}>{t.payMonthly} · {money(pr.monthly)}/mo →</span>
+                <span style={{ fontSize: 12.5, opacity: .8 }}>{t.plusSetup}</span>
+              </a>
+            )}
+          </div>
         </div>
 
         <div style={{ marginTop: 26, paddingTop: 14, borderTop: `1px solid ${LINE}`, fontSize: 13, color: SUB, fontFamily: 'system-ui,sans-serif' }}>Crawford · MyOrbisAgents · <a href="https://myorbisagents.com/" style={{ color: TEAL }}>myorbisagents.com</a></div>
