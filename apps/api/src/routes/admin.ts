@@ -2958,6 +2958,13 @@ router.patch('/agent-proposals/:id', requirePlatformAdmin, async (req, res, next
     res.json({ data: await q.updateProposal(req.params['id']!, req.body ?? {}) })
   } catch (err) { next(err) }
 })
+router.post('/agent-proposals/:id/send', requirePlatformAdmin, async (req, res, next) => {
+  try {
+    requireAgentsHost(req)
+    const q = await import('../services/agent-qualifier.service.js')
+    res.json({ data: await q.sendProposal(req.params['id']!) })
+  } catch (err) { next(err) }
+})
 router.get('/agent-qualifier/config', async (req, res, next) => {
   try {
     requireAgentsHost(req)

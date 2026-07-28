@@ -22,8 +22,8 @@ export const DEFAULT_CONFIG = {
     setup: 250,
     // Real MyOrbisAgents plans. Annual = 50% off, LOCKED FOR LIFE (annual billing only).
     plans: {
-      capture: { name: 'Solo Capture', monthly: 297, annual: 2282 },
-      power:   { name: 'Solo Power',   monthly: 497, annual: 3482 },
+      capture: { name: 'Solo Capture', monthly: 297, annual: 2282, payLink: 'https://buy.stripe.com/28E28tcsrd8h0LR47s0Ny07' },
+      power:   { name: 'Solo Power',   monthly: 497, annual: 3482, payLink: 'https://buy.stripe.com/6oUaEZ1NNfgp2TZ33o0Ny05' },
     },
     teamSeat: [ { min: 100, price: 57 }, { min: 25, price: 67 }, { min: 5, price: 77 } ], // highest-min first
     gciPct: 2.5,       // commission % of sale price
@@ -146,6 +146,7 @@ export async function generateProposal(applicationId: string, byUserId: string) 
   const dealsForTier = num(m, isTeam ? 'teamDeals' : 'dealsLast12')
   let tier: string
   let pricing: Record<string, unknown>
+  let paymentLink = ''
   if (isTeam) {
     const seats = Math.max(1, num(m, 'seats'))
     const perSeat = perSeatFor(seats, cfg)
@@ -155,6 +156,7 @@ export async function generateProposal(applicationId: string, byUserId: string) 
     const p = (avg >= 750000 || dealsForTier >= 20) ? cfg.pricing.plans.power : cfg.pricing.plans.capture
     tier = p.name
     pricing = { plan: p.name, monthly: p.monthly, annual: p.annual, setup: cfg.pricing.setup }
+    paymentLink = p.payLink
   }
 
   // ROI — per-deal payback, the credible framing (avoid a hype monthly number).
@@ -186,6 +188,25 @@ export async function generateProposal(applicationId: string, byUserId: string) 
   const links = { basicDemoUrl: cfg.demo.basicDemoUrl, demoNumber: cfg.demo.demoNumber, micrositeUrl: '' }
   const summary = `Recommended ${tier} for ${app.fullName}. One recovered deal (about $${commissionPerDeal.toLocaleString()} commission) covers Orby for well over a year.`
 
+  // Spanish content (the bilingual proposal page reads this for lang=es).
+  const contentEs = {
+    heading: 'Deja de perder compradores fuera de horario en tus propiedades',
+    intro: `${firstName}, ya hiciste lo difícil: propiedades activas que atraen compradores. La fuga está en lo que pasa cuando uno llama y estás mostrando, con tu familia, o durmiendo. Este es un plan para cerrar esa brecha sin sumar a alguien a tu nómina.`,
+    whatOrby: [
+      'Contesta cada llamada en segundos, 24/7, en inglés y español',
+      'Le pregunta al comprador qué busca: presupuesto, tiempo, cuál propiedad',
+      'Agenda la visita directo en tu calendario',
+      'Te pasa un resumen para que llegues conociendo al comprador. Tú cierras.',
+    ],
+    nextSteps: [
+      'Asegura tu tarifa fundadora: completa la configuración y tu plan.',
+      'Demo personalizada: adaptamos a Orby a tus propiedades, mercado y voz, y te la mostramos en vivo.',
+      'Capacitación en vivo: una sesión 1 a 1 para que tú y tu equipo sepan cómo te pasa a los compradores.',
+      'Activación: Orby empieza a contestar, normalmente en un día.',
+    ],
+    summary: `${tier} recomendado para ${app.fullName}. Una sola operación recuperada (unos $${commissionPerDeal.toLocaleString()} de comisión) cubre a Orby por más de un año.`,
+  }
+
   const data = {
     tier,
     pricingJson: pricing as object,
@@ -194,6 +215,8 @@ export async function generateProposal(applicationId: string, byUserId: string) 
     whatOrbyJson: whatOrby as object,
     nextStepsJson: nextSteps as object,
     linksJson: links as object,
+    paymentLink,
+    contentEsJson: contentEs as object,
     heading,
     intro,
     summary,
@@ -226,8 +249,33 @@ export async function listProposals() {
   })
 }
 
-export async function updateProposal(id: string, data: { tier?: string; pricingJson?: object; roiJson?: object; onboardingJson?: object; whatOrbyJson?: object; nextStepsJson?: object; linksJson?: object; heading?: string; intro?: string; summary?: string; status?: string }) {
+export async function updateProposal(id: string, data: { tier?: string; pricingJson?: object; roiJson?: object; onboardingJson?: object; whatOrbyJson?: object; nextStepsJson?: object; linksJson?: object; paymentLink?: string; heading?: string; intro?: string; summary?: string; status?: string }) {
   return prisma.agentProposal.update({ where: { id }, data })
+}
+
+// Email the client the proposal link, then mark it SENT.
+export async function sendProposal(id: string) {
+  const p = await prisma.agentProposal.findUnique({ where: { id }, include: { application: { select: { fullName: true, email: true } } } })
+  if (!p) throw new AppError('NOT_FOUND', 'Proposal not found', 404)
+  if (!p.publicToken) throw new AppError('CONFLICT', 'Proposal has no shareable link yet', 409)
+  const firstName = (p.application.fullName || 'there').split(/\s+/)[0]
+  const origin = process.env['AGENTS_WEB_ORIGIN'] ?? 'https://app.myorbisagents.com'
+  const url = `${origin}/proposal/${p.publicToken}`
+  const { sendEmail } = await import('./email.service.js')
+  await sendEmail({
+    to: p.application.email,
+    from: 'MyOrbisAgents <notify@myorbisvoice.com>',
+    replyTo: 'crawford.peterson.sr@gmail.com',
+    subject: `${firstName}, your MyOrbisAgents proposal`,
+    html: `<div style="font-family:-apple-system,sans-serif;font-size:15px;line-height:1.6;color:#1a2230;max-width:540px">
+      <p>${firstName},</p>
+      <p>Here's the proposal we put together for you. It covers how Orby answers your listing calls, what it costs, and what happens after you say yes.</p>
+      <p><a href="${url}" style="display:inline-block;background:#0e8f8f;color:#fff;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:700">View your proposal</a></p>
+      <p style="color:#5a6b7b">Want to hear Orby first? Basic demo: <a href="https://myorbisagents.com/" style="color:#0e8f8f">myorbisagents.com</a></p>
+      <p>Reply here anytime.<br>Crawford · MyOrbisAgents</p>
+    </div>`,
+  }).catch((e) => console.warn('[proposal] send email failed:', (e as Error).message))
+  return prisma.agentProposal.update({ where: { id }, data: { status: 'SENT', sentAt: new Date() } })
 }
 
 // Bulk delete. Deleting an application cascades to its proposal (schema onDelete).

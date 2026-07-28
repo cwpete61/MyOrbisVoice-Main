@@ -8,7 +8,7 @@ import { apiFetch } from '@/hooks/useApi'
 
 type Proposal = {
   id: string; tier: string; status: string; publicToken?: string | null
-  heading?: string; intro?: string; summary?: string
+  heading?: string; intro?: string; summary?: string; paymentLink?: string | null
   pricingJson: { plan: string; monthly: number; annual?: number | null; setup?: number; seats?: number; perSeat?: number }
   roiJson: { avgPrice: number; gciPct: number; commissionPerDeal: number; missedCallsMo: number; annualCost: number }
   onboardingJson?: string[]; whatOrbyJson?: string[]; nextStepsJson?: string[]
@@ -51,19 +51,25 @@ export default function ProposalsPage() {
     setEf({
       heading: p.heading ?? '', intro: p.intro ?? '', summary: p.summary ?? '',
       tier: p.tier, monthly: String(p.pricingJson.monthly ?? ''), annual: String(p.pricingJson.annual ?? ''), setup: String(p.pricingJson.setup ?? ''),
-      demoNumber: p.linksJson?.demoNumber ?? '', basicDemoUrl: p.linksJson?.basicDemoUrl ?? '',
+      demoNumber: p.linksJson?.demoNumber ?? '', basicDemoUrl: p.linksJson?.basicDemoUrl ?? '', paymentLink: p.paymentLink ?? '',
       whatOrby: (p.whatOrbyJson ?? []).join('\n'), nextSteps: (p.nextStepsJson ?? []).join('\n'),
     })
   }
   async function saveEdit(p: Proposal) {
     const lines = (s: string) => s.split('\n').map(x => x.trim()).filter(Boolean)
     const data: Record<string, unknown> = {
-      heading: ef.heading, intro: ef.intro, summary: ef.summary, tier: ef.tier,
+      heading: ef.heading, intro: ef.intro, summary: ef.summary, tier: ef.tier, paymentLink: ef.paymentLink || null,
       pricingJson: { ...p.pricingJson, monthly: Number(ef.monthly) || p.pricingJson.monthly, annual: ef.annual ? Number(ef.annual) : null, setup: ef.setup ? Number(ef.setup) : p.pricingJson.setup },
       linksJson: { ...(p.linksJson ?? {}), demoNumber: ef.demoNumber, basicDemoUrl: ef.basicDemoUrl },
       whatOrbyJson: lines(ef.whatOrby ?? ''), nextStepsJson: lines(ef.nextSteps ?? ''),
     }
     await save(p.id, data)
+  }
+  async function sendProposal(p: Proposal) {
+    if (!confirm(`Email this proposal to ${p.application.email} and mark it sent?`)) return
+    setBusy(p.id)
+    try { await apiFetch(`/api/admin/agent-proposals/${p.id}/send`, { method: 'POST' }); await load() }
+    catch { alert('Send failed — check the email address and try again.') } finally { setBusy(null) }
   }
   function copyLink(p: Proposal) {
     if (!p.publicToken) return
@@ -138,7 +144,7 @@ export default function ProposalsPage() {
 
           {edit === p.id ? (
             <div style={{ display: 'grid', gap: 8 }}>
-              {([['heading', 'Heading'], ['intro', 'Intro'], ['tier', 'Plan / tier'], ['monthly', 'Monthly $'], ['annual', 'Annual $ (blank = none)'], ['setup', 'Setup $'], ['demoNumber', 'Demo phone'], ['basicDemoUrl', 'Basic demo URL']] as const).map(([k, lbl]) => (
+              {([['heading', 'Heading'], ['intro', 'Intro'], ['tier', 'Plan / tier'], ['monthly', 'Monthly $'], ['annual', 'Annual $ (blank = none)'], ['setup', 'Setup $'], ['demoNumber', 'Demo phone'], ['basicDemoUrl', 'Basic demo URL'], ['paymentLink', 'Payment link (Stripe)']] as const).map(([k, lbl]) => (
                 <label key={k} style={{ fontSize: 12, color: '#7a8aa0' }}>{lbl}<input value={ef[k] ?? ''} onChange={e => setEf(p2 => ({ ...p2, [k]: e.target.value }))} style={{ width: '100%', background: '#0c1626', border: '1px solid #22344f', color: '#e8eef7', borderRadius: 8, padding: '8px 10px', fontSize: 13, marginTop: 4 }} /></label>
               ))}
               {([['whatOrby', 'What Orby does (one per line)'], ['nextSteps', 'Next steps (one per line)'], ['summary', 'Summary']] as const).map(([k, lbl]) => (
@@ -158,7 +164,7 @@ export default function ProposalsPage() {
 
           <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
             {edit !== p.id && <button onClick={() => startEdit(p)} style={{ padding: '8px 14px', borderRadius: 9, cursor: 'pointer', background: 'transparent', color: '#9fb0c7', border: '1px solid #22344f', fontWeight: 600 }}>Edit</button>}
-            {p.status === 'DRAFT' && <button disabled={busy === p.id} onClick={() => save(p.id, { status: 'SENT' })} style={{ padding: '8px 16px', borderRadius: 9, border: 0, cursor: 'pointer', fontWeight: 700, background: '#1fc3c3', color: '#03201f' }}>Mark sent</button>}
+            {p.status === 'DRAFT' && <button disabled={busy === p.id} onClick={() => sendProposal(p)} style={{ padding: '8px 16px', borderRadius: 9, border: 0, cursor: 'pointer', fontWeight: 700, background: '#1fc3c3', color: '#03201f' }}>Email + mark sent</button>}
             {p.status === 'SENT' && (
               <>
                 <button disabled={busy === p.id} onClick={() => save(p.id, { status: 'ACCEPTED' })} style={{ padding: '8px 16px', borderRadius: 9, border: 0, cursor: 'pointer', fontWeight: 700, background: '#34c759', color: '#04210f' }}>Mark accepted</button>

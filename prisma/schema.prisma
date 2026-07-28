@@ -4000,6 +4000,8 @@ model AgentProposal {
   whatOrbyJson  Json?    // bullet list of what Orby does
   nextStepsJson Json?    // post-payment steps (custom demo, live training, go-live)
   linksJson     Json?    // { basicDemoUrl, demoNumber, micrositeUrl }
+  paymentLink   String?  // Stripe payment/checkout link for the recommended plan
+  contentEsJson Json?    // Spanish content: { heading, intro, whatOrby[], nextSteps[], summary }
   summary       String?  @db.Text
   status        String   @default("DRAFT") // DRAFT | SENT | ACCEPTED | DECLINED
   createdById   String?
