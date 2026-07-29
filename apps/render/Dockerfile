@@ -28,4 +28,7 @@ RUN pnpm build
 ENV PORT=4600
 ENV NODE_ENV=production
 EXPOSE 4600
+# Non-root: an app-layer RCE can't be root or drop system miners (breach hardening).
+RUN chown -R pwuser:pwuser /app
+USER pwuser
 CMD ["node", "dist/server.js"]

@@ -33,4 +33,7 @@ COPY --from=builder /app/packages/shared/dist   ./packages/shared/dist
 COPY --from=builder /app/apps/voice-gateway/dist ./apps/voice-gateway/dist
 COPY --from=builder /app/apps/voice-gateway/widget ./apps/voice-gateway/widget
 EXPOSE 5000
+# Non-root: an app-layer RCE can't be root or drop system miners (breach hardening).
+RUN chown -R node:node /app
+USER node
 CMD ["node", "apps/voice-gateway/dist/index.js"]

@@ -43,4 +43,7 @@ COPY --from=builder /app/packages/shared/dist   ./packages/shared/dist
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
 EXPOSE 4000
+# Non-root: an app-layer RCE can't be root or drop system miners (breach hardening).
+RUN chown -R node:node /app
+USER node
 CMD ["node", "apps/api/dist/index.js"]

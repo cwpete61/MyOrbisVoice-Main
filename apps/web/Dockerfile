@@ -31,4 +31,7 @@ COPY --from=builder /app/apps/web/.next ./apps/web/.next
 
 ENV NEXT_TELEMETRY_DISABLED=1
 EXPOSE 3000
+# Non-root: an app-layer RCE can't be root or drop system miners (breach hardening).
+RUN chown -R node:node /app
+USER node
 CMD ["pnpm", "--filter", "@voiceautomation/web", "start"]

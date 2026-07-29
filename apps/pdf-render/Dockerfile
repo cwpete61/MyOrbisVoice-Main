@@ -10,4 +10,7 @@ COPY server.mjs ./
 
 ENV PORT=4500
 EXPOSE 4500
+# Non-root: an app-layer RCE can't be root or drop system miners (breach hardening).
+RUN chown -R pwuser:pwuser /app
+USER pwuser
 CMD ["node", "server.mjs"]
