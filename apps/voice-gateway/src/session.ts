@@ -11,6 +11,29 @@ import { runCallQa } from './services/call-qa.service.js'
 import { persistConversation, markSessionFailed, startWidgetConversation, type TranscriptEntry } from './services/conversation.service.js'
 import { getGeminiApiKey, resolveGeminiApiKey } from './lib/gemini-key.js'
 import { toolDeclarationsForMode, buildToolGuidanceBlock, executeTool, rollbackToolCall, type ToolResult } from './services/tools.js'
+import { muxToWav, uploadGatewayRecording } from './inbound.js'
+
+// Widget mic is captured at 16 kHz (getUserMedia in the widget); Gemini Live
+// native-audio output is 24 kHz. Mux needs a common rate, so caller PCM is
+// upsampled 16→24 before mixing with Orby's 24 kHz stream. Linear interpolation
+// is fine for voice.
+const WIDGET_MIC_RATE = 16000
+const GEMINI_OUT_RATE = 24000
+function resamplePcm16(buf: Buffer, fromRate: number, toRate: number): Buffer {
+  if (fromRate === toRate || buf.length < 2) return buf
+  const inN = buf.length >> 1
+  const outN = Math.max(1, Math.floor((inN * toRate) / fromRate))
+  const out = Buffer.alloc(outN * 2)
+  for (let i = 0; i < outN; i++) {
+    const src = (i * fromRate) / toRate
+    const i0 = Math.floor(src)
+    const frac = src - i0
+    const s0 = buf.readInt16LE(Math.min(i0, inN - 1) * 2)
+    const s1 = buf.readInt16LE(Math.min(i0 + 1, inN - 1) * 2)
+    out.writeInt16LE(Math.round(s0 + (s1 - s0) * frac), i * 2)
+  }
+  return out
+}
 
 // Message types sent from the browser widget
 type ClientMsg =
@@ -124,6 +147,20 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
   // or externalCallId" for every widget call. The row starts as OPEN and is
   // flipped to COMPLETED by persistConversation() at session end.
   let conversationId: string | undefined
+
+  // Best-effort widget call recording. Capture caller (16k) + Orby (24k) PCM with
+  // arrival timestamps; muxed + uploaded at finalize. Capped so a long/abandoned
+  // session can't grow memory unbounded. Recording NEVER affects the live call.
+  const recCaller: { t: number; pcm: Buffer }[] = []
+  const recAgent:  { t: number; pcm: Buffer }[] = []
+  const recT0 = Date.now()
+  let recBytes = 0
+  const REC_CAP_BYTES = 60 * 1024 * 1024
+  const capRec = (arr: { t: number; pcm: Buffer }[], pcm: Buffer) => {
+    if (recBytes + pcm.length > REC_CAP_BYTES) return
+    recBytes += pcm.length
+    arr.push({ t: Date.now(), pcm })
+  }
   // Phase E.2 — pass partner.slug into the conversation so book_appointment
   // can route bookings to the partner's Google Calendar (set above when the
   // widget loads on /p/<slug>/ — see resolver). Null on non-partner pages.
@@ -209,6 +246,7 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     },
     onAudioChunk(chunk) {
       send(ws, { type: 'audio', data: chunk.toString('base64') })
+      capRec(recAgent, chunk)
     },
     onInterrupted() {
       send(ws, { type: 'interrupted' })
@@ -315,7 +353,9 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
     try {
       const msg: ClientMsg = JSON.parse(raw.toString('utf8'))
       if (msg.type === 'audio') {
-        gemini.sendAudio(Buffer.from(msg.data, 'base64'))
+        const pcm = Buffer.from(msg.data, 'base64')
+        gemini.sendAudio(pcm)
+        capRec(recCaller, pcm)
       } else if (msg.type === 'mic_stop') {
         // Explicit end-of-turn — bypass VAD and tell Gemini the user is done speaking
         gemini.signalTurnComplete()
@@ -361,6 +401,19 @@ export async function handleWidgetSession(ws: WebSocket, token: string) {
           usage: gemini?.getUsage() ?? null,
         })
         send(ws, { type: 'ended', conversationId })
+        // Best-effort recording: mux caller(16k→24k) + Orby(24k), upload keyed to
+        // session.id (== the widget conversation's externalCallId). Fire-and-forget
+        // so it never delays call end; any failure is logged, never thrown.
+        void (async () => {
+          try {
+            if (!recCaller.length && !recAgent.length) return
+            const caller24 = recCaller.map(c => ({ t: c.t, pcm: resamplePcm16(c.pcm, WIDGET_MIC_RATE, GEMINI_OUT_RATE) }))
+            const muxed = muxToWav(caller24, recAgent, recT0, GEMINI_OUT_RATE)
+            if (muxed) await uploadGatewayRecording(session.id, session.tenantId, muxed.wav, muxed.durationSecs)
+          } catch (e) {
+            console.warn('[session] widget recording failed (non-fatal):', (e as Error).message)
+          }
+        })()
       } else {
         await markSessionFailed(session.id)
         send(ws, { type: 'ended' })

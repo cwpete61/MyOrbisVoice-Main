@@ -65,7 +65,7 @@ function hangUpCall(callSid: string, ownerAccountSid: string | null) {
 // arrival time relative to session start, so gaps/overlaps land naturally and
 // the two voices don't stack up at t=0.
 type RecChunk = { t: number; pcm: Buffer }
-function muxToWav(caller: RecChunk[], agent: RecChunk[], t0: number, rate = 8000): { wav: Buffer; durationSecs: number } | null {
+export function muxToWav(caller: RecChunk[], agent: RecChunk[], t0: number, rate = 8000): { wav: Buffer; durationSecs: number } | null {
   const all = [...caller, ...agent]
   if (all.length === 0 || t0 === 0) return null
 
@@ -118,7 +118,7 @@ function muxToWav(caller: RecChunk[], agent: RecChunk[], t0: number, rate = 8000
 }
 
 const REC_API_BASE = (process.env['API_BASE_URL'] ?? 'http://localhost:4000').replace(/\/$/, '')
-async function uploadGatewayRecording(callSid: string, tenantId: string, wav: Buffer, durationSecs: number): Promise<void> {
+export async function uploadGatewayRecording(callSid: string, tenantId: string, wav: Buffer, durationSecs: number): Promise<void> {
   const token = process.env['GATEWAY_INTERNAL_TOKEN']
   if (!token) { console.warn('[inbound] recording: GATEWAY_INTERNAL_TOKEN unset, skip upload'); return }
   const res = await fetch(`${REC_API_BASE}/api/internal/gateway/recording`, {
