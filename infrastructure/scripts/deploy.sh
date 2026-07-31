@@ -132,7 +132,7 @@ ensure_deps() {
     docker cp $REMOTE/package.json        $container:/app/package.json
     docker cp $REMOTE/pnpm-lock.yaml      $container:/app/pnpm-lock.yaml
     docker cp $REMOTE/pnpm-workspace.yaml $container:/app/pnpm-workspace.yaml
-    docker exec $container mkdir -p /app/$app_dir 2>/dev/null || true
+    docker exec -u 0 $container mkdir -p /app/$app_dir 2>/dev/null || true
     docker cp $REMOTE/$app_dir/package.json $container:/app/$app_dir/package.json
     docker exec -e NODE_ENV=production $container sh -c 'cd /app && pnpm install --prod 2>&1 | tail -5'
   " || fail "ensure_deps failed for $container — check pnpm output above"
@@ -153,7 +153,7 @@ sync_workspace_packages() {
     [ -d "$REPO_ROOT/packages/$pkg/dist" ] || continue
     rsync -az "$REPO_ROOT/packages/$pkg/dist/" "$SERVER:$REMOTE/packages/$pkg/dist/"
     for c in myorbisvoice-api myorbisvoice-gateway; do
-      ssh_t 60 "$SERVER" "docker exec $c sh -c 'mkdir -p /app/packages/$pkg/dist' && docker cp $REMOTE/packages/$pkg/dist/. $c:/app/packages/$pkg/dist/" >/dev/null 2>&1 || true
+      ssh_t 60 "$SERVER" "docker exec -u 0 $c sh -c 'mkdir -p /app/packages/$pkg/dist' && docker cp $REMOTE/packages/$pkg/dist/. $c:/app/packages/$pkg/dist/" >/dev/null 2>&1 || true
     done
   done
   ok "Workspace packages shipped to api + gateway"
@@ -273,7 +273,7 @@ step_api() {
     --include='/es/' --include='/es/p/' --include='/es/p/sample/' --include='/es/p/sample/**' \
     --exclude='*' \
     "$REPO_ROOT/myorbisresults.com/" "$SERVER:$REMOTE/myorbisresults.com/"
-  ssh "$SERVER" "docker exec myorbisvoice-api mkdir -p /app/myorbisresults.com/p/sample /app/myorbisresults.com/es/p/sample && docker cp $REMOTE/myorbisresults.com/p/sample/. myorbisvoice-api:/app/myorbisresults.com/p/sample/ && docker cp $REMOTE/myorbisresults.com/es/p/sample/. myorbisvoice-api:/app/myorbisresults.com/es/p/sample/" || true
+  ssh "$SERVER" "docker exec -u 0 myorbisvoice-api mkdir -p /app/myorbisresults.com/p/sample /app/myorbisresults.com/es/p/sample && docker cp $REMOTE/myorbisresults.com/p/sample/. myorbisvoice-api:/app/myorbisresults.com/p/sample/ && docker cp $REMOTE/myorbisresults.com/es/p/sample/. myorbisvoice-api:/app/myorbisresults.com/es/p/sample/" || true
   # Restart FIRST so the freshly-injected dist goes live, THEN persist via commit
   # (same ordering as step_web). The OLD order (commit before restart) meant a
   # slow/hung commit — the 1200s-timeout `commit_image` can stall on a bloated
@@ -397,10 +397,14 @@ step_web() {
 
   # Assert on the ARTIFACT, not the env plumbing. A bundle that compiles cleanly but
   # points at localhost is a silent, total outage, so prove it before shipping.
-  # SocialLinks.tsx chooses its base from window.location.hostname at RUNTIME, so the
-  # literal legitimately appears in that chunk; anything else is a baked-in API base.
+  # Some components legitimately choose their base from window.location.hostname at
+  # RUNTIME, so the localhost literal appears in those chunks on purpose; a chunk with
+  # the literal but NO runtime hostname check is a baked-in (build-time) API base.
+  # NOTE: must be `grep -L` (files WITHOUT the pattern). `-Ll` collapses to `-l`
+  # (files WITH the pattern) — the exact inversion — which flagged every legit
+  # runtime-hostname chunk and silently blocked all web deploys.
   OFFENDERS=$(grep -rl '"http://localhost:4000"' "$REPO_ROOT/apps/web/.next/static/chunks/" 2>/dev/null \
-              | xargs -r grep -Ll 'window.location.hostname' 2>/dev/null || true)
+              | xargs -r grep -L 'window.location.hostname' 2>/dev/null || true)
   if [ -n "$OFFENDERS" ]; then
     echo "$OFFENDERS" | sed 's/^/   /'
     fail "Web bundle has a localhost API base baked in — production would call the visitor's laptop. Check apps/web/.env*"
@@ -422,7 +426,9 @@ step_web() {
   # `/`. Both fixed by full nuke + bit-for-bit tar-pipe injection. Don't
   # regress to partial-wipe + dot-glob cp without re-reading the postmortem
   # in CLAUDE.md "Known Deploy Pitfalls".
-  ssh "$SERVER" "docker exec myorbisvoice-web rm -rf /app/apps/web/.next" || fail "wipe of .next/ on web container failed"
+  # -u 0: containers now run non-root (uid 1000), so file-ops via docker exec must
+  # be run as root or they hit "Permission denied" on root-owned build dirs.
+  ssh "$SERVER" "docker exec -u 0 myorbisvoice-web rm -rf /app/apps/web/.next" || fail "wipe of .next/ on web container failed"
   # EXCLUDE .next/cache — it's the build-time webpack/babel cache (can be
   # multiple GB) and is NOT needed by `next start` at runtime. Including it made
   # the tar-pipe take 30+ min and stall mid-inject, leaving a half-populated
@@ -432,10 +438,13 @@ step_web() {
   # NOT match and silently ships the multi-GB cache (2026-07-03: two stalled
   # deploys / one outage before this was right).
   tar --exclude='.next/cache' --exclude='.next/cache/*' -czf - -C "$REPO_ROOT/apps/web" .next \
-    | ssh "$SERVER" "docker exec -i myorbisvoice-web tar -xzf - -C /app/apps/web" \
+    | ssh "$SERVER" "docker exec -i -u 0 myorbisvoice-web tar -xzf - -C /app/apps/web" \
     || fail "tar-pipe of .next/ to web container failed"
-  ssh "$SERVER" "docker exec myorbisvoice-web mkdir -p /app/apps/web/public && docker cp $REMOTE/apps/web/public/. myorbisvoice-web:/app/apps/web/public/" \
+  ssh "$SERVER" "docker exec -u 0 myorbisvoice-web mkdir -p /app/apps/web/public && docker cp $REMOTE/apps/web/public/. myorbisvoice-web:/app/apps/web/public/" \
     || fail "public/ sync to web container failed"
+  # Injected as root (tar/docker cp) → hand ownership to the non-root runtime user
+  # so `next start` can read the build and write .next/cache (ISR) at runtime.
+  ssh "$SERVER" "docker exec -u 0 myorbisvoice-web chown -R node:node /app/apps/web/.next /app/apps/web/public" || true
   # Sanity check: required files must exist after sync. Fail fast if they
   # don't — that way we never silently ship a half-broken web container
   # like 2026-05-09. Files chosen here are UNIVERSAL — Next.js produces

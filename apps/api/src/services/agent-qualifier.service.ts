@@ -182,10 +182,11 @@ export async function generateProposal(applicationId: string, byUserId: string) 
     'Go live in a day. Orby answers, qualifies, and books from call one.',
   ]
   const nextSteps = [
-    'Lock your founding rate: complete setup and your plan.',
-    'Custom demo: we tailor Orby to your listings, market, and voice, then walk you through her live.',
-    'Live training: a 1:1 session so you and your team know exactly how she hands buyers off to you.',
-    'Go live: Orby starts answering, usually within a day.',
+    'Lock in your founding annual rate with your initial payment.',
+    'Onboarding + a live 1:1 training session with your onboarding specialist for full use of the app.',
+    'We complete your app setup and integrations.',
+    'Experience your custom demo, tailored to your listings.',
+    'Go live: Orby starts capturing and enrolling new prospects within 24–48 hours.',
   ]
   const links = { basicDemoUrl: cfg.demo.basicDemoUrl, demoNumber: cfg.demo.demoNumber, micrositeUrl: '' }
   const summary = `Recommended ${tier} for ${app.fullName}. One recovered deal (about $${commissionPerDeal.toLocaleString()} commission) covers Orby for well over a year.`
@@ -201,10 +202,11 @@ export async function generateProposal(applicationId: string, byUserId: string) 
       'Te pasa un resumen para que llegues conociendo al comprador. Tú cierras.',
     ],
     nextSteps: [
-      'Asegura tu tarifa fundadora: completa la configuración y tu plan.',
-      'Demo personalizada: adaptamos a Orby a tus propiedades, mercado y voz, y te la mostramos en vivo.',
-      'Capacitación en vivo: una sesión 1 a 1 para que tú y tu equipo sepan cómo te pasa a los compradores.',
-      'Activación: Orby empieza a contestar, normalmente en un día.',
+      'Asegura tu tarifa anual fundadora con tu pago inicial.',
+      'Onboarding + una sesión de capacitación 1 a 1 con tu especialista para usar toda la app.',
+      'Completamos la configuración e integraciones de tu app.',
+      'Vive tu demo personalizada, adaptada a tus propiedades.',
+      'Activación: Orby empieza a captar e inscribir nuevos prospectos en 24–48 horas.',
     ],
     summary: `${tier} recomendado para ${app.fullName}. Una sola operación recuperada (unos $${commissionPerDeal.toLocaleString()} de comisión) cubre a Orby por más de un año.`,
   }

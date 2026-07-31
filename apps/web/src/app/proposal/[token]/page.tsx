@@ -20,24 +20,24 @@ type Proposal = {
 }
 
 const L = {
-  en: { preparedFor: 'Prepared for', gap: 'The gap, in your numbers', gapBody: (n: number) => `Roughly ${n} buyer call${n === 1 ? '' : 's'} a month come in on your listings after hours and reach voicemail. Most don't leave a message or call back. They dial the next agent on the listing.`,
-    whatOrby: 'What Orby does', notReplace: "She doesn't replace you. She makes sure the buyer reaches someone the moment they call.",
-    math: 'The math, kept conservative', mathBody: (avg: string, comm: string) => `Your average sale is about ${avg}, roughly ${comm} in commission per deal. Orby doesn't need to save many of those calls to pay for herself.`,
+  en: { preparedFor: 'Prepared for', tagline: 'Orby catches the calls you miss — so you keep the commission.', gap: 'The cost of missed calls', gapBody: (n: number) => `Roughly ${n} buyer call${n === 1 ? '' : 's'} a month come in on your listings after hours and reach voicemail. Most don't leave a message or call back. They dial the next agent on the listing.`,
+    whatOrby: 'How Orby can help', notReplace: "She doesn't replace you. She makes sure the buyer reaches someone the moment they call.",
+    math: 'By the numbers', mathBody: (avg: string, comm: string) => `Your average sale is about ${avg}, roughly ${comm} in commission per deal. Orby doesn't need to save many of those calls to pay for herself.`,
     chartRoiTitle: 'One saved deal vs. a year of Orby', chartCallsTitle: 'When your buyers call (typical)',
     orbyYear: 'Orby, per year', oneDeal: 'One recovered deal', afterHours: 'After hours / when busy', bizHours: 'Business hours',
-    tryDemo: 'Try the basic demo now', basicDemo: 'Basic demo, instant', listingsLoaded: 'Your listings loaded in: call', answersAs: '. Orby answers as your listing agent.',
+    tryDemo: 'Try the basic Orby demo now', basicDemo: 'Basic demo, instant', listingsLoaded: 'Your listings loaded in: call', answersAs: '. Orby answers as your listing agent.',
     yourPlan: 'Your plan', foundingAnnual: 'Founding annual', forLife: "That's 50% off, locked in for life (annual billing).", preferMonthly: 'Prefer monthly?', monthlyStd: 'at the standard rate. The lifetime discount is annual only.', setupLine: (s: string) => `${s} one-time setup.`,
     terms: 'All sales are final. Annual plans are prepaid and non-refundable.',
-    afterYes: 'What happens after you say yes', ready: 'Ready to start?', readyBody: (num: string) => `Pick how you'd like to pay below, or reply to the email that sent you here. We'll have you live within a day.`, payAnnual: 'Enroll — Annual', payMonthly: 'Enroll — Monthly', bestValue: 'Best value · 50% off for life', plusSetup: 'Both include the one-time $250 setup.', langBtn: 'Español', pdf: 'Save as PDF', gone: 'This proposal link is no longer available.', loading: 'Loading…' },
-  es: { preparedFor: 'Preparado para', gap: 'La brecha, en tus números', gapBody: (n: number) => `Cerca de ${n} llamada${n === 1 ? '' : 's'} de compradores al mes llegan a tus propiedades fuera de horario y caen en el buzón. La mayoría no deja mensaje ni vuelve a llamar. Llaman al siguiente agente del listado.`,
-    whatOrby: 'Lo que hace Orby', notReplace: 'No te reemplaza. Se asegura de que el comprador hable con alguien en el momento en que llama.',
-    math: 'Los números, en modo conservador', mathBody: (avg: string, comm: string) => `Tu venta promedio ronda ${avg}, unos ${comm} de comisión por operación. Orby no necesita salvar muchas de esas llamadas para pagarse sola.`,
+    afterYes: 'Upon acceptance — your next steps', ready: 'Ready to launch your app?', readyBody: (num: string) => `Pick how you'd like to pay below, or reply to the email that sent you here.`, payAnnual: 'Enroll — Annual', payMonthly: 'Enroll — Monthly', bestValue: 'Best value · 50% off for life', plusSetup: 'Both include the one-time $250 setup.', langBtn: 'Español', pdf: 'Save as PDF', gone: 'This proposal link is no longer available.', loading: 'Loading…' },
+  es: { preparedFor: 'Preparado para', tagline: 'Orby contesta las llamadas que pierdes — y tú te quedas con la comisión.', gap: 'El costo de las llamadas perdidas', gapBody: (n: number) => `Cerca de ${n} llamada${n === 1 ? '' : 's'} de compradores al mes llegan a tus propiedades fuera de horario y caen en el buzón. La mayoría no deja mensaje ni vuelve a llamar. Llaman al siguiente agente del listado.`,
+    whatOrby: 'Cómo te ayuda Orby', notReplace: 'No te reemplaza. Se asegura de que el comprador hable con alguien en el momento en que llama.',
+    math: 'En números', mathBody: (avg: string, comm: string) => `Tu venta promedio ronda ${avg}, unos ${comm} de comisión por operación. Orby no necesita salvar muchas de esas llamadas para pagarse sola.`,
     chartRoiTitle: 'Una operación salvada vs. un año de Orby', chartCallsTitle: 'Cuándo llaman tus compradores (típico)',
     orbyYear: 'Orby, por año', oneDeal: 'Una operación recuperada', afterHours: 'Fuera de horario / ocupado', bizHours: 'Horario laboral',
-    tryDemo: 'Prueba la demo básica ahora', basicDemo: 'Demo básica, al instante', listingsLoaded: 'Tus propiedades cargadas: llama al', answersAs: '. Orby contesta como tu agente del listado.',
+    tryDemo: 'Prueba la demo básica de Orby ahora', basicDemo: 'Demo básica, al instante', listingsLoaded: 'Tus propiedades cargadas: llama al', answersAs: '. Orby contesta como tu agente del listado.',
     yourPlan: 'Tu plan', foundingAnnual: 'Anual fundador', forLife: 'Eso es 50% de descuento, de por vida (pago anual).', preferMonthly: '¿Prefieres mensual?', monthlyStd: 'a la tarifa estándar. El descuento de por vida es solo anual.', setupLine: (s: string) => `${s} de configuración única.`,
     terms: 'Todas las ventas son finales. Los planes anuales se pagan por adelantado y no son reembolsables.',
-    afterYes: 'Qué pasa después de que digas que sí', ready: '¿Listo para empezar?', readyBody: () => `Elige cómo prefieres pagar abajo, o responde al correo que te trajo aquí. Te activamos en un día.`, payAnnual: 'Inscribirme — Anual', payMonthly: 'Inscribirme — Mensual', bestValue: 'Mejor valor · 50% de por vida', plusSetup: 'Ambos incluyen la configuración única de $250.', langBtn: 'English', pdf: 'Guardar PDF', gone: 'Este enlace de propuesta ya no está disponible.', loading: 'Cargando…' },
+    afterYes: 'Al aceptar — tus próximos pasos', ready: '¿Listo para lanzar tu app?', readyBody: () => `Elige cómo prefieres pagar abajo, o responde al correo que te trajo aquí.`, payAnnual: 'Inscribirme — Anual', payMonthly: 'Inscribirme — Mensual', bestValue: 'Mejor valor · 50% de por vida', plusSetup: 'Ambos incluyen la configuración única de $250.', langBtn: 'English', pdf: 'Guardar PDF', gone: 'Este enlace de propuesta ya no está disponible.', loading: 'Cargando…' },
 } as const
 
 export default function ProposalPage() {
@@ -76,8 +76,11 @@ export default function ProposalPage() {
 
       <div className="sheet" style={{ maxWidth: 760, margin: '0 auto', background: '#fff', border: `1px solid ${LINE}`, borderRadius: 14, boxShadow: '0 24px 60px rgba(20,40,70,.10)', padding: '40px 44px 48px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `2px solid ${TEAL}`, paddingBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, fontSize: 18, fontFamily: 'system-ui,sans-serif' }}>
-            <span style={{ width: 24, height: 24, borderRadius: '50%', background: `radial-gradient(circle at 32% 28%, ${TEAL_BRIGHT}, ${TEAL})`, display: 'inline-block' }} /> MyOrbisAgents
+          <div style={{ fontFamily: 'system-ui,sans-serif' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, fontSize: 18 }}>
+              <span style={{ width: 24, height: 24, borderRadius: '50%', background: `radial-gradient(circle at 32% 28%, ${TEAL_BRIGHT}, ${TEAL})`, display: 'inline-block' }} /> MyOrbisAgents
+            </div>
+            <div style={{ fontSize: 12.5, color: SUB, marginTop: 4 }}>{t.tagline} · <a href="https://myorbisagents.com" style={{ color: TEAL }}>myorbisagents.com</a></div>
           </div>
           <div style={{ fontSize: 13, color: SUB, fontFamily: 'system-ui,sans-serif', textAlign: 'right' }}>{t.preparedFor} <b style={{ color: INK }}>{p.application.fullName}</b>{p.application.market ? ` · ${p.application.market}` : ''}</div>
         </div>
