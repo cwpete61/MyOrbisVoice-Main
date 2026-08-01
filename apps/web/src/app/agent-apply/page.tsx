@@ -11,13 +11,15 @@ const C = {
   en: {
     eyebrow: 'MyOrbisAgents · Partner application',
     title: 'See if Orby is a fit for your business',
-    sub: 'Tell us about your real-estate business. We review every application and follow up personally.',
+    sub: 'Tell us about your real estate business needs, challenges, and successes.\n\nWe review every application and respond within 1–2 business days of your submitted form.',
     who: 'I am applying as', indiv: 'An individual agent', team: 'A team / broker',
     name: 'Full name', email: 'Email', phone: 'Phone', market: 'Primary market (city/area)',
-    years: 'Years in real estate', crm: 'CRM / tools you use', bottleneck: 'Your biggest bottleneck right now',
-    leads: 'New leads per month', budget: 'Monthly budget for this (USD)', timeline: 'Start within (days)',
-    deals: 'Deals closed (last 12 months)', avg: 'Average sale price (USD)',
+    years: 'Real Estate Experience (# of Years)', crm: 'CRM / tools you use', bottleneck: 'Describe your largest bottleneck',
+    leads: 'How many new leads / prospects do you get per week?', budget: "What's your marketing and advertising budget?", timeline: 'Projected Start Date',
+    deals: 'Productivity — Number of Sales Per Year?', avg: 'Average sale price (USD)',
     missing: 'Are you missing calls after hours / when busy?',
+    missedPerWeek: 'Estimate the number of calls missed per week',
+    heard: 'How did you hear about us?', heardAgent: 'Agent', heardWeb: 'Web', heardSocial: 'Social Media', heardReferral: 'Referral', heardOther: 'Other',
     seats: 'Number of agents / seats', teamDeals: 'Team deals closed (last 12 months)',
     dm: 'Are you the decision-maker?', office: 'Would you deploy Orby office-wide?',
     yes: 'Yes', no: 'No', submit: 'Submit application', sending: 'Sending…',
@@ -27,13 +29,15 @@ const C = {
   es: {
     eyebrow: 'MyOrbisAgents · Solicitud de socio',
     title: 'Descubre si Orby encaja con tu negocio',
-    sub: 'Cuéntanos sobre tu negocio inmobiliario. Revisamos cada solicitud y te contactamos personalmente.',
+    sub: 'Cuéntanos sobre las necesidades, retos y éxitos de tu negocio inmobiliario.\n\nRevisamos cada solicitud y respondemos dentro de 1 a 2 días hábiles de tu formulario enviado.',
     who: 'Aplico como', indiv: 'Un agente individual', team: 'Un equipo / bróker',
     name: 'Nombre completo', email: 'Correo', phone: 'Teléfono', market: 'Mercado principal (ciudad/zona)',
-    years: 'Años en bienes raíces', crm: 'CRM / herramientas que usas', bottleneck: 'Tu mayor obstáculo ahora',
-    leads: 'Leads nuevos por mes', budget: 'Presupuesto mensual para esto (USD)', timeline: 'Empezar en (días)',
-    deals: 'Operaciones cerradas (últimos 12 meses)', avg: 'Precio de venta promedio (USD)',
+    years: 'Experiencia en bienes raíces (# de años)', crm: 'CRM / herramientas que usas', bottleneck: 'Describe tu mayor obstáculo',
+    leads: '¿Cuántos leads / prospectos nuevos recibes por semana?', budget: '¿Cuál es tu presupuesto de marketing y publicidad?', timeline: 'Fecha de inicio proyectada',
+    deals: 'Productividad — ¿número de ventas por año?', avg: 'Precio de venta promedio (USD)',
     missing: '¿Pierdes llamadas fuera de horario / cuando estás ocupado?',
+    missedPerWeek: 'Estima el número de llamadas perdidas por semana',
+    heard: '¿Cómo te enteraste de nosotros?', heardAgent: 'Agente', heardWeb: 'Web', heardSocial: 'Redes sociales', heardReferral: 'Referido', heardOther: 'Otro',
     seats: 'Número de agentes / puestos', teamDeals: 'Operaciones del equipo (últimos 12 meses)',
     dm: '¿Eres quien toma la decisión?', office: '¿Desplegarías a Orby en toda la oficina?',
     yes: 'Sí', no: 'No', submit: 'Enviar solicitud', sending: 'Enviando…',
@@ -83,14 +87,18 @@ export default function AgentApplyPage() {
     if (!f.fullName || !f.email) { setErr(t.req); return }
     setBusy(true)
     const metricKeys = type === 'TEAM'
-      ? ['years', 'crm', 'bottleneck', 'monthlyLeads', 'budgetMo', 'timelineDays', 'seats', 'teamDeals', 'decisionMaker', 'deployOfficeWide']
-      : ['years', 'crm', 'bottleneck', 'monthlyLeads', 'budgetMo', 'timelineDays', 'dealsLast12', 'avgPriceUsd', 'missingAfterHours']
+      ? ['years', 'crm', 'bottleneck', 'monthlyLeads', 'budgetMo', 'timelineDays', 'seats', 'teamDeals', 'decisionMaker', 'deployOfficeWide', 'heardAbout']
+      : ['years', 'crm', 'bottleneck', 'monthlyLeads', 'budgetMo', 'timelineDays', 'dealsLast12', 'avgPriceUsd', 'missingAfterHours', 'missedPerWeek', 'heardAbout']
     const metrics: Record<string, string | number | boolean> = {}
     for (const k of metricKeys) {
       const v = f[k]
       if (v === undefined) continue
+      // Projected Start Date arrives as a YYYY-MM-DD string — convert to days-from-now for scoring.
+      if (k === 'timelineDays' && typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) {
+        metrics[k] = Math.max(0, Math.round((new Date(v).getTime() - Date.now()) / 86400000)); continue
+      }
       if (typeof v === 'boolean') metrics[k] = v
-      else if (['monthlyLeads', 'budgetMo', 'timelineDays', 'seats', 'teamDeals', 'dealsLast12', 'avgPriceUsd', 'years'].includes(k)) metrics[k] = Number(v) || 0
+      else if (['monthlyLeads', 'budgetMo', 'timelineDays', 'seats', 'teamDeals', 'dealsLast12', 'avgPriceUsd', 'years', 'missedPerWeek'].includes(k)) metrics[k] = Number(v) || 0
       else metrics[k] = v
     }
     try {
@@ -121,6 +129,18 @@ export default function AgentApplyPage() {
       </div>
     </div>
   )
+  const Radio = ({ dk, lk, opts }: { dk: string; lk: keyof typeof t; opts: { v: string; lk: keyof typeof t }[] }) => (
+    <div><span style={label}>{t[lk]}</span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {opts.map(o => (
+          <button key={o.v} type="button" onClick={() => set(dk, o.v)}
+            style={{ padding: '10px 14px', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 14,
+              border: '1px solid ' + (f[dk] === o.v ? 'var(--accent)' : 'var(--border)'),
+              background: f[dk] === o.v ? 'var(--chip)' : 'var(--inp)', color: 'var(--ink)' }}>{t[o.lk]}</button>
+        ))}
+      </div>
+    </div>
+  )
   const iconBtn = { background: 'var(--panel)', border: '1px solid var(--border)', color: 'var(--sub)', borderRadius: 999, padding: '6px 12px', fontSize: 13, cursor: 'pointer', fontWeight: 600 } as const
 
   return (
@@ -137,9 +157,9 @@ export default function AgentApplyPage() {
           </div>
         ) : (
           <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 18, padding: 28, backdropFilter: 'blur(12px)', boxShadow: dark ? 'none' : '0 20px 50px rgba(20,40,70,.10)' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 4, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 10 }}>{t.eyebrow}</div>
-            <h1 style={{ fontSize: 26, margin: '0 0 6px', letterSpacing: -0.5, color: 'var(--ink)' }}>{t.title}</h1>
-            <p style={{ color: 'var(--sub)', marginTop: 0, fontSize: 14.5 }}>{t.sub}</p>
+            <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 4, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 10, textAlign: 'center' }}>{t.eyebrow}</div>
+            <h1 style={{ fontSize: 26, margin: '0 0 6px', letterSpacing: -0.5, color: 'var(--ink)', textTransform: 'uppercase' }}>{t.title}</h1>
+            <p style={{ color: 'var(--sub)', marginTop: 0, fontSize: 14.5, whiteSpace: 'pre-line' }}>{t.sub}</p>
 
             <span style={label}>{t.who}</span>
             <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
@@ -153,13 +173,17 @@ export default function AgentApplyPage() {
 
             <Field dk="fullName" lk="name" /><Field dk="email" lk="email" type="email" /><Field dk="phone" lk="phone" /><Field dk="market" lk="market" />
             <Field dk="years" lk="years" type="number" /><Field dk="crm" lk="crm" /><Field dk="bottleneck" lk="bottleneck" />
-            <Field dk="monthlyLeads" lk="leads" type="number" /><Field dk="budgetMo" lk="budget" type="number" /><Field dk="timelineDays" lk="timeline" type="number" />
+            <Field dk="monthlyLeads" lk="leads" type="number" /><Field dk="budgetMo" lk="budget" type="number" /><Field dk="timelineDays" lk="timeline" type="date" />
 
             {type === 'INDIVIDUAL' ? (
-              <><Field dk="dealsLast12" lk="deals" type="number" /><Field dk="avgPriceUsd" lk="avg" type="number" /><YesNo dk="missingAfterHours" lk="missing" /></>
+              <><Field dk="dealsLast12" lk="deals" type="number" /><Field dk="avgPriceUsd" lk="avg" type="number" /><YesNo dk="missingAfterHours" lk="missing" /><Field dk="missedPerWeek" lk="missedPerWeek" type="number" /></>
             ) : (
               <><Field dk="seats" lk="seats" type="number" /><Field dk="teamDeals" lk="teamDeals" type="number" /><YesNo dk="decisionMaker" lk="dm" /><YesNo dk="deployOfficeWide" lk="office" /></>
             )}
+
+            <div style={{ marginTop: 4 }}>
+              <Radio dk="heardAbout" lk="heard" opts={[{ v: 'Agent', lk: 'heardAgent' }, { v: 'Web', lk: 'heardWeb' }, { v: 'Social Media', lk: 'heardSocial' }, { v: 'Referral', lk: 'heardReferral' }, { v: 'Other', lk: 'heardOther' }]} />
+            </div>
 
             {err && <p style={{ color: 'var(--err)', fontSize: 13, marginTop: 14 }}>{err}</p>}
             <button onClick={submit} disabled={busy}
