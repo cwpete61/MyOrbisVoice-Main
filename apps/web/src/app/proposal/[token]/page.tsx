@@ -78,7 +78,7 @@ export default function ProposalPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `2px solid ${TEAL}`, paddingBottom: 14, flexWrap: 'wrap', gap: 8 }}>
           <div style={{ fontFamily: 'system-ui,sans-serif' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700, fontSize: 18 }}>
-              <span style={{ width: 24, height: 24, borderRadius: '50%', background: `radial-gradient(circle at 32% 28%, ${TEAL_BRIGHT}, ${TEAL})`, display: 'inline-block' }} /> MyOrbisAgents
+              <span style={{ width: 24, height: 24, borderRadius: '50%', background: `radial-gradient(circle at 32% 28%, ${TEAL_BRIGHT}, ${TEAL})`, display: 'inline-block' }} /> MyOrbisAgents Proposal
             </div>
             <div style={{ fontSize: 12.5, color: SUB, marginTop: 4 }}>{t.tagline} · <a href="https://myorbisagents.com" style={{ color: TEAL }}>myorbisagents.com</a></div>
           </div>
@@ -164,7 +164,10 @@ export default function ProposalPage() {
           </div>
         </div>
 
-        <div style={{ marginTop: 26, paddingTop: 14, borderTop: `1px solid ${LINE}`, fontSize: 13, color: SUB, fontFamily: 'system-ui,sans-serif' }}>Crawford · MyOrbisAgents · <a href="https://myorbisagents.com/" style={{ color: TEAL }}>myorbisagents.com</a></div>
+        <div style={{ marginTop: 26, paddingTop: 14, borderTop: `1px solid ${LINE}`, fontSize: 13, color: SUB, fontFamily: 'system-ui,sans-serif' }}>
+          <div style={{ color: INK, fontWeight: 600 }}>Direct Contact: Crawford Peterson · Cell: 929-497-7803</div>
+          <div style={{ marginTop: 2 }}>Crawford · MyOrbisAgents · <a href="https://myorbisagents.com/" style={{ color: TEAL }}>myorbisagents.com</a></div>
+        </div>
       </div>
     </main>
   )

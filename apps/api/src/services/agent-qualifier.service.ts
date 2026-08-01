@@ -182,11 +182,11 @@ export async function generateProposal(applicationId: string, byUserId: string) 
     'Go live in a day. Orby answers, qualifies, and books from call one.',
   ]
   const nextSteps = [
-    'Lock in your founding annual rate with your initial payment.',
-    'Onboarding + a live 1:1 training session with your onboarding specialist for full use of the app.',
-    'We complete your app setup and integrations.',
+    'Submit your payment.',
+    'App setup and integration.',
+    'Complete onboarding, including a 1:1 live training session.',
     'Experience your custom demo, tailored to your listings.',
-    'Go live: Orby starts capturing and enrolling new prospects within 24–48 hours.',
+    'Go live! Orby can begin capturing leads within 24–48 hours of app setup and integration.',
   ]
   const links = { basicDemoUrl: cfg.demo.basicDemoUrl, demoNumber: cfg.demo.demoNumber, micrositeUrl: '' }
   const summary = `Recommended ${tier} for ${app.fullName}. One recovered deal (about $${commissionPerDeal.toLocaleString()} commission) covers Orby for well over a year.`
@@ -202,11 +202,11 @@ export async function generateProposal(applicationId: string, byUserId: string) 
       'Te pasa un resumen para que llegues conociendo al comprador. Tú cierras.',
     ],
     nextSteps: [
-      'Asegura tu tarifa anual fundadora con tu pago inicial.',
-      'Onboarding + una sesión de capacitación 1 a 1 con tu especialista para usar toda la app.',
-      'Completamos la configuración e integraciones de tu app.',
+      'Envía tu pago.',
+      'Configuración e integración de la app.',
+      'Completa el onboarding, incluyendo una sesión de capacitación 1 a 1 en vivo.',
       'Vive tu demo personalizada, adaptada a tus propiedades.',
-      'Activación: Orby empieza a captar e inscribir nuevos prospectos en 24–48 horas.',
+      '¡Activación! Orby puede empezar a captar prospectos dentro de 24 a 48 horas de la configuración e integración.',
     ],
     summary: `${tier} recomendado para ${app.fullName}. Una sola operación recuperada (unos $${commissionPerDeal.toLocaleString()} de comisión) cubre a Orby por más de un año.`,
   }
