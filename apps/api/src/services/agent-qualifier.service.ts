@@ -22,7 +22,7 @@ export const DEFAULT_CONFIG = {
     setup: 250,
     // Real MyOrbisAgents plans. Annual = 50% off, LOCKED FOR LIFE (annual billing only).
     plans: {
-      capture: { name: 'Solo Capture', monthly: 297, annual: 1782, payLink: 'https://buy.stripe.com/cNicN7eAzfgp66bcDY0Ny0b', payLinkMonthly: 'https://buy.stripe.com/aFafZj1NN6JT1PV0Vg0Ny0d' },
+      capture: { name: 'Solo Capture', monthly: 237, annual: 1782, payLink: 'https://buy.stripe.com/cNicN7eAzfgp66bcDY0Ny0b', payLinkMonthly: 'https://buy.stripe.com/aFafZj1NN6JT1PV0Vg0Ny0d' }, // monthly = MIR $237 (20% lifetime off $297 standard). NOTE: Stripe payLinkMonthly still charges $297 — needs a $237 link.
       power:   { name: 'Solo Power',   monthly: 497, annual: 2982, payLink: 'https://buy.stripe.com/bJe6oJ4ZZ6JTeCH33o0Ny0c', payLinkMonthly: 'https://buy.stripe.com/9B68wRbon1pz1PV7jE0Ny0e' },
     },
     teamSeat: [ { min: 100, price: 57 }, { min: 25, price: 67 }, { min: 5, price: 77 } ], // highest-min first

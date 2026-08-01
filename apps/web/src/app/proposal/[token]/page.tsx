@@ -26,7 +26,7 @@ const L = {
     chartRoiTitle: 'One saved deal vs. a year of Orby', chartCallsTitle: 'When your buyers call (typical)',
     orbyYear: 'Orby, per year', oneDeal: 'One recovered deal', afterHours: 'After hours / when busy', bizHours: 'Business hours',
     tryDemo: 'Try the basic Orby demo now', basicDemo: 'Basic demo, instant', listingsLoaded: 'Your listings loaded in: call', answersAs: '. Orby answers as your listing agent.',
-    yourPlan: 'Your plan', foundingAnnual: 'Founding annual', forLife: "That's 50% off, locked in for life (annual billing).", preferMonthly: 'Prefer monthly?', monthlyStd: 'at the standard rate. The lifetime discount is annual only.', setupLine: (s: string) => `${s} one-time setup.`,
+    yourPlan: 'Your plan', opt1Label: 'Option 1 — Founding Annual Rate (FAR)', opt1Pay: (a: string) => `One-time payment of ${a} per year`, opt1Disc: '(includes a 50% Lifetime Discount)', opt2Label: 'Option 2 — Monthly Introduction Rate (MIR)', opt2Pay: (m: string) => `Monthly payment of ${m}`, opt2Disc: '(includes a 20% Lifetime Discount)', payWithin: '*Please submit payment within 5 days of this proposal.', limitedTime: 'For a limited time only!', setupLine: (s: string) => `${s} one-time setup (applies to both options).`,
     terms: 'All sales are final. Annual plans are prepaid and non-refundable.',
     afterYes: 'Upon acceptance — your next steps', ready: 'Ready to launch your app?', readyBody: (num: string) => `Pick how you'd like to pay below, or reply to the email that sent you here.`, payAnnual: 'Enroll — Annual', payMonthly: 'Enroll — Monthly', bestValue: 'Best value · 50% off for life', plusSetup: 'Both include the one-time $250 setup.', langBtn: 'Español', pdf: 'Save as PDF', gone: 'This proposal link is no longer available.', loading: 'Loading…' },
   es: { preparedFor: 'Preparado para', tagline: 'Orby contesta las llamadas que pierdes — y tú te quedas con la comisión.', gap: 'El costo de las llamadas perdidas', gapBody: (n: number) => `Cerca de ${n} llamada${n === 1 ? '' : 's'} de compradores al mes llegan a tus propiedades fuera de horario y caen en el buzón. La mayoría no deja mensaje ni vuelve a llamar. Llaman al siguiente agente del listado.`,
@@ -35,7 +35,7 @@ const L = {
     chartRoiTitle: 'Una operación salvada vs. un año de Orby', chartCallsTitle: 'Cuándo llaman tus compradores (típico)',
     orbyYear: 'Orby, por año', oneDeal: 'Una operación recuperada', afterHours: 'Fuera de horario / ocupado', bizHours: 'Horario laboral',
     tryDemo: 'Prueba la demo básica de Orby ahora', basicDemo: 'Demo básica, al instante', listingsLoaded: 'Tus propiedades cargadas: llama al', answersAs: '. Orby contesta como tu agente del listado.',
-    yourPlan: 'Tu plan', foundingAnnual: 'Anual fundador', forLife: 'Eso es 50% de descuento, de por vida (pago anual).', preferMonthly: '¿Prefieres mensual?', monthlyStd: 'a la tarifa estándar. El descuento de por vida es solo anual.', setupLine: (s: string) => `${s} de configuración única.`,
+    yourPlan: 'Tu plan', opt1Label: 'Opción 1 — Tarifa Anual Fundadora (FAR)', opt1Pay: (a: string) => `Un solo pago de ${a} por año`, opt1Disc: '(incluye 50% de descuento de por vida)', opt2Label: 'Opción 2 — Tarifa Mensual de Introducción (MIR)', opt2Pay: (m: string) => `Pago mensual de ${m}`, opt2Disc: '(incluye 20% de descuento de por vida)', payWithin: '*Envía tu pago dentro de los 5 días de esta propuesta.', limitedTime: '¡Por tiempo limitado!', setupLine: (s: string) => `${s} de configuración única (aplica a ambas opciones).`,
     terms: 'Todas las ventas son finales. Los planes anuales se pagan por adelantado y no son reembolsables.',
     afterYes: 'Al aceptar — tus próximos pasos', ready: '¿Listo para lanzar tu app?', readyBody: () => `Elige cómo prefieres pagar abajo, o responde al correo que te trajo aquí.`, payAnnual: 'Inscribirme — Anual', payMonthly: 'Inscribirme — Mensual', bestValue: 'Mejor valor · 50% de por vida', plusSetup: 'Ambos incluyen la configuración única de $250.', langBtn: 'English', pdf: 'Guardar PDF', gone: 'Este enlace de propuesta ya no está disponible.', loading: 'Cargando…' },
 } as const
@@ -117,15 +117,30 @@ export default function ProposalPage() {
         )}
 
         <H>{t.yourPlan}: {pr.plan}</H>
-        <ul style={{ margin: 0, paddingLeft: 22, fontSize: 16, lineHeight: 1.7 }}>
-          {pr.seats ? <li><b>{money(pr.monthly)}/mo</b> — {pr.seats} × {money(pr.perSeat ?? 0)}</li>
-            : annual ? <>
-              <li><b>{t.foundingAnnual}: {money(annual)}/{lang === 'es' ? 'año' : 'year'}.</b> {t.forLife}</li>
-              <li>{t.preferMonthly} <b>{money(pr.monthly)}/mo</b> {t.monthlyStd}</li>
-            </> : <li><b>{money(pr.monthly)}/mo</b></li>}
-          {pr.setup ? <li>{t.setupLine(money(pr.setup))}</li> : null}
-        </ul>
-        <p style={{ fontSize: 13.5, color: SUB, margin: '10px 0 0', fontStyle: 'italic' }}>{t.terms}</p>
+        {pr.seats ? (
+          <ul style={{ margin: 0, paddingLeft: 22, fontSize: 16, lineHeight: 1.7 }}><li><b>{money(pr.monthly)}/mo</b> — {pr.seats} × {money(pr.perSeat ?? 0)}</li>{pr.setup ? <li>{t.setupLine(money(pr.setup))}</li> : null}</ul>
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {annual && (
+              <div style={{ border: `1px solid ${TEAL}44`, background: '#f2faf9', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontWeight: 800, color: TEAL, fontFamily: 'system-ui,sans-serif', fontSize: 15 }}>{t.opt1Label}</div>
+                <div style={{ fontSize: 19, fontWeight: 800, marginTop: 4 }}>{t.opt1Pay(money(annual))}</div>
+                <div style={{ fontSize: 14, color: SUB, marginTop: 2 }}>{t.opt1Disc}</div>
+                <div style={{ fontSize: 13, color: SUB, marginTop: 6, fontStyle: 'italic' }}>{t.payWithin}</div>
+                <div style={{ fontSize: 13.5, color: '#c0392b', fontWeight: 700, marginTop: 2 }}>{t.limitedTime}</div>
+              </div>
+            )}
+            <div style={{ border: `1px solid ${LINE}`, borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ fontWeight: 800, color: TEAL, fontFamily: 'system-ui,sans-serif', fontSize: 15 }}>{t.opt2Label}</div>
+              <div style={{ fontSize: 19, fontWeight: 800, marginTop: 4 }}>{t.opt2Pay(money(pr.monthly))}</div>
+              <div style={{ fontSize: 14, color: SUB, marginTop: 2 }}>{t.opt2Disc}</div>
+              <div style={{ fontSize: 13, color: SUB, marginTop: 6, fontStyle: 'italic' }}>{t.payWithin}</div>
+              <div style={{ fontSize: 13.5, color: '#c0392b', fontWeight: 700, marginTop: 2 }}>{t.limitedTime}</div>
+            </div>
+          </div>
+        )}
+        {pr.setup ? <p style={{ fontSize: 14, color: INK, margin: '12px 0 0' }}>{t.setupLine(money(pr.setup))}</p> : null}
+        <p style={{ fontSize: 13.5, color: SUB, margin: '8px 0 0', fontStyle: 'italic' }}>{t.terms}</p>
 
         <H>{t.afterYes}</H>
         <ol style={{ margin: 0, paddingLeft: 22, fontSize: 16, lineHeight: 1.7 }}>{(nextSteps ?? []).map((s, i) => <li key={i} style={{ margin: '4px 0' }}>{s}</li>)}</ol>
