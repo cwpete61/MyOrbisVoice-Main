@@ -92,7 +92,7 @@ export default function ProposalPage() {
         <p style={{ fontSize: 16, lineHeight: 1.6, margin: 0 }}>{t.gapBody(roi.missedCallsMo)}</p>
 
         <H>{t.whatOrby}</H>
-        <ul style={{ margin: 0, paddingLeft: 22, fontSize: 16, lineHeight: 1.7 }}>{(whatOrby ?? []).map((s, i) => <li key={i} style={{ margin: '3px 0' }}>{s}</li>)}</ul>
+        <ul style={{ margin: 0, paddingLeft: 22, fontSize: 16, lineHeight: 1.7, listStyleType: 'disc' }}>{(whatOrby ?? []).map((s, i) => { const x = s.trim(); return <li key={i} style={{ margin: '3px 0', display: 'list-item' }}>{/[.!?]$/.test(x) ? x : x + '.'}</li> })}</ul>
         <p style={{ fontSize: 16, lineHeight: 1.6, marginTop: 10, color: '#33404d' }}>{t.notReplace}</p>
 
         <H>{t.math}</H>
